@@ -71,9 +71,7 @@ export class DependencyGraphBuilder {
             resolvedDeps.push(resolved);
           }
         } else {
-          warnings.push(
-            `Unresolved import '${specifier}' in ${file.relativePath}`
-          );
+          warnings.push(`Unresolved import '${specifier}' in ${file.relativePath}`);
         }
       }
 

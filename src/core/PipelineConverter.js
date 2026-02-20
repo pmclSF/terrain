@@ -17,12 +17,7 @@ export class PipelineConverter extends BaseConverter {
    * @param {Object[]} frameworkDefinitions - Array of framework definitions to register
    * @param {Object} [options]
    */
-  constructor(
-    sourceFrameworkName,
-    targetFrameworkName,
-    frameworkDefinitions,
-    options = {}
-  ) {
+  constructor(sourceFrameworkName, targetFrameworkName, frameworkDefinitions, options = {}) {
     super(options);
     this.sourceFramework = sourceFrameworkName;
     this.targetFramework = targetFrameworkName;
@@ -63,11 +58,7 @@ export class PipelineConverter extends BaseConverter {
   async convertConfig(configPath, _options = {}) {
     const fs = (await import('fs/promises')).default;
     const content = await fs.readFile(configPath, 'utf8');
-    return this.configConverter.convert(
-      content,
-      this.sourceFramework,
-      this.targetFramework
-    );
+    return this.configConverter.convert(content, this.sourceFramework, this.targetFramework);
   }
 
   /**

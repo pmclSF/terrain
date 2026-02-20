@@ -29,12 +29,7 @@ export class ConversionPipeline {
    * @param {string} [options.language] - Language hint for disambiguation
    * @returns {Promise<{code: string, report: Object}>}
    */
-  async convert(
-    sourceCode,
-    sourceFrameworkName,
-    targetFrameworkName,
-    options = {}
-  ) {
+  async convert(sourceCode, sourceFrameworkName, targetFrameworkName, options = {}) {
     const language = options.language || null;
 
     // 1. Detect — resolve framework definitions
