@@ -33,7 +33,6 @@ export function handleHealth(req, res) {
     version,
     uptime: Math.round((Date.now() - serverStart) / 1000),
     root: req.serverRoot || '.',
-    token: req.sessionToken,
   });
 }
 
@@ -43,16 +42,9 @@ export async function handleAnalyze(req, res) {
     return sendJson(res, 400, { error: 'Missing required field: root' });
   }
 
-  let resolvedRoot;
-  try {
-    resolvedRoot = await safePath(root, req.serverRoot);
-  } catch (_e) {
-    return sendJson(res, 403, { error: 'Path outside project root' });
-  }
-
   const { ProjectAnalyzer } = await import('../core/ProjectAnalyzer.js');
   const analyzer = new ProjectAnalyzer();
-  const report = await analyzer.analyze(resolvedRoot, {
+  const report = await analyzer.analyze(root, {
     maxFiles: maxFiles || 5000,
     include: include || [],
     exclude: exclude || [],
@@ -60,7 +52,7 @@ export async function handleAnalyze(req, res) {
   sendJson(res, 200, report);
 }
 
-export async function handleConvert(req, res) {
+export function handleConvert(req, res) {
   const { root, direction, outputMode, outputDir, includeFiles, excludeGlobs } =
     req.body;
 
@@ -71,27 +63,11 @@ export async function handleConvert(req, res) {
     });
   }
 
-  let resolvedRoot;
-  try {
-    resolvedRoot = await safePath(root, req.serverRoot);
-  } catch (_e) {
-    return sendJson(res, 403, { error: 'Path outside project root' });
-  }
-
-  let resolvedOutputDir = outputDir;
-  if (outputDir) {
-    try {
-      resolvedOutputDir = await safePath(outputDir, req.serverRoot);
-    } catch (_e) {
-      return sendJson(res, 403, { error: 'Output path outside project root' });
-    }
-  }
-
   const job = createJob({
-    root: resolvedRoot,
+    root,
     direction,
     outputMode,
-    outputDir: resolvedOutputDir,
+    outputDir,
     includeFiles,
     excludeGlobs,
   });
