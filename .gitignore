@@ -21,6 +21,7 @@ lib-cov
 
 # Coverage directory used by tools like istanbul
 coverage
+!internal/coverage/
 *.lcov
 
 # nyc test coverage
@@ -143,8 +144,13 @@ benchmarks/python/
 benchmarks/results/
 benchmarks/run-benchmark.sh
 
+# Public benchmark repos and artifacts (generated, not committed)
+benchmarks/repos/
+artifacts/public-benchmarks/
+hamlet-bench
+
 # Large local-only directories
-hamlet/
+/hamlet/
 testing/
 
 # Test output (generated during test runs)

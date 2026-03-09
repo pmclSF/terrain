@@ -1,0 +1,9 @@
+# Expectations for microsoft/playwright benchmark.
+# E2E-heavy TypeScript repo with 762+ test files.
+# Baselines from 2026-03-06 run.
+min_test_files: 300
+min_code_units: 500
+require_posture: true
+analyze_must_succeed: true
+portfolio_must_succeed: true
+migration_must_succeed: true

@@ -1,269 +1,231 @@
 # Hamlet
 
-[![CI](https://github.com/pmclSF/hamlet/actions/workflows/ci.yml/badge.svg)](https://github.com/pmclSF/hamlet/actions/workflows/ci.yml)
-[![npm version](https://badge.fury.io/js/hamlet-converter.svg)](https://www.npmjs.com/package/hamlet-converter)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+**Signal-first test intelligence for engineering teams**
 
-Migrate your test suites between frameworks with confidence.
-
-**25 conversion directions** across **16 frameworks** in **3 languages** (JavaScript, Java, Python).
-
-## Node Support
-
-Hamlet supports **active and maintenance LTS** versions of Node.js. Currently: **Node 22** and **Node 24**.
-
-CI tests run on both. When a Node major reaches end-of-life, it is dropped in the next minor release.
+Hamlet analyzes repository structure, test code, runtime artifacts, coverage data, and local policy to surface the real state of your test system — risk, quality, migration readiness, and governance — without running tests.
 
 ## Quick Start
 
 ```bash
-npm install -g hamlet-converter
+# Install
+go install github.com/pmclSF/hamlet/cmd/hamlet@latest
 
-# Convert a single file
-hamlet jest2vt auth.test.js -o converted/
+# Or build from source
+git clone https://github.com/pmclSF/hamlet.git
+cd hamlet
+go build -o hamlet ./cmd/hamlet
 
-# Preview a migration
-hamlet estimate tests/ --from jest --to vitest
+# Analyze the current repository
+hamlet analyze
 
-# Migrate your project
-hamlet migrate tests/ --from jest --to vitest -o converted/
+# Executive summary with risk, trends, and benchmark readiness
+hamlet summary
+
+# Aggregate metrics scorecard
+hamlet metrics
+
+# JSON output for any command
+hamlet analyze --json
+hamlet summary --json
+hamlet metrics --json
 ```
 
-## Supported Conversions
+### Requirements
 
-### JavaScript Unit Testing
-
-| Direction | Shorthand |
-|-----------|-----------|
-| Jest &rarr; Vitest | `hamlet jest2vt` |
-| Mocha &rarr; Jest | `hamlet mocha2jest` |
-| Jasmine &rarr; Jest | `hamlet jas2jest` |
-| Jest &rarr; Mocha | `hamlet jest2mocha` |
-| Jest &rarr; Jasmine | `hamlet jest2jas` |
-
-### JavaScript E2E / Browser
-
-| Direction | Shorthand |
-|-----------|-----------|
-| Cypress &harr; Playwright | `hamlet cy2pw` / `hamlet pw2cy` |
-| Cypress &harr; Selenium | `hamlet cy2sel` / `hamlet sel2cy` |
-| Playwright &harr; Selenium | `hamlet pw2sel` / `hamlet sel2pw` |
-| Cypress &harr; WebdriverIO | `hamlet cy2wdio` / `hamlet wdio2cy` |
-| Playwright &harr; WebdriverIO | `hamlet pw2wdio` / `hamlet wdio2pw` |
-| Puppeteer &harr; Playwright | `hamlet pptr2pw` / `hamlet pw2pptr` |
-| TestCafe &rarr; Playwright | `hamlet tcafe2pw` |
-| TestCafe &rarr; Cypress | `hamlet tcafe2cy` |
-
-### Java
-
-| Direction | Shorthand |
-|-----------|-----------|
-| JUnit 4 &rarr; JUnit 5 | `hamlet ju42ju5` |
-| JUnit 5 &harr; TestNG | `hamlet ju52tng` / `hamlet tng2ju5` |
-
-### Python
-
-| Direction | Shorthand |
-|-----------|-----------|
-| pytest &harr; unittest | `hamlet pyt2ut` / `hamlet ut2pyt` |
-| nose2 &rarr; pytest | `hamlet nose22pyt` |
-
-Run `hamlet list` to see all directions with their shorthand aliases.
+- Go 1.23 or later
 
 ## Commands
 
-### Convert
+| Command | Description |
+|---------|-------------|
+| `hamlet analyze` | Analyze repository test suite — frameworks, signals, risk |
+| `hamlet summary` | Executive summary — posture, trends, focus, benchmark readiness |
+| `hamlet posture` | Detailed posture breakdown with measurement evidence |
+| `hamlet metrics` | Aggregate metrics scorecard (privacy-safe, benchmark-ready) |
+| `hamlet impact` | Impact analysis for changed code (git diff-aware) |
+| `hamlet migration readiness` | Migration readiness assessment with quality factors |
+| `hamlet migration blockers` | List migration blockers by type and area |
+| `hamlet migration preview` | Preview migration difficulty for a file or scope |
+| `hamlet compare` | Compare two snapshots and show trend changes |
+| `hamlet policy check` | Evaluate repository against local policy rules |
+| `hamlet export benchmark` | Output benchmark-safe JSON export for future comparison |
+| `hamlet version` | Show version, commit, and build date |
 
-Convert a single file, directory, or glob pattern:
+Run `hamlet --help` for full flag documentation.
 
-```bash
-# Single file
-hamlet convert auth.test.js --from jest --to vitest -o converted/
+## What Hamlet Reveals
 
-# Directory (requires --output)
-hamlet convert tests/ --from jest --to vitest -o converted/
+### Structure
+Framework inventory, test file discovery, code-to-test relationships, ownership mapping.
 
-# Glob pattern
-hamlet convert "tests/**/*.test.js" --from jest --to vitest -o converted/
+### Health
+Flaky tests, slow tests, skipped tests, dead tests, unstable suites.
 
-# Shorthand (equivalent to convert --from jest --to vitest)
-hamlet jest2vt auth.test.js -o converted/
-```
+### Quality
+Weak assertions, mock-heavy tests, untested exports, coverage blind spots.
 
-### Migrate
+### Migration Readiness
+Migration blockers, deprecated patterns, legacy framework drift, framework fragmentation.
 
-Full project migration with state tracking, dependency ordering, and config conversion:
+### Policy and Governance
+Local policy rules, violation tracking, compliance enforcement in CI.
 
-```bash
-hamlet migrate tests/ --from jest --to vitest -o converted/
+### Risk
+Explainable risk surfaces by dimension (reliability, change, speed) with directory and owner concentration.
 
-# Resume an interrupted migration
-hamlet migrate tests/ --from jest --to vitest -o converted/ --continue
+### Benchmark-Safe Exports
+Privacy-safe aggregate metrics for future cross-repo comparison — no raw paths or source code exposed.
 
-# Retry only previously failed files
-hamlet migrate tests/ --from jest --to vitest -o converted/ --retry-failed
-```
+## Snapshot Workflow
 
-### Estimate
-
-Preview migration complexity without converting:
-
-```bash
-hamlet estimate tests/ --from jest --to vitest
-```
-
-### Dry Run
-
-Preview what would happen without writing files:
-
-```bash
-hamlet convert tests/ --from jest --to vitest -o converted/ --dry-run
-hamlet migrate tests/ --from jest --to vitest --dry-run
-```
-
-### Other Commands
+Hamlet supports local snapshot history for trend tracking:
 
 ```bash
-hamlet list              # Show all conversion directions with shorthands
-hamlet shorthands        # List all shorthand command aliases
-hamlet detect file.js    # Auto-detect testing framework from a file
-hamlet doctor            # Run diagnostics
-hamlet status -d .       # Show current migration progress
-hamlet checklist -d .    # Generate migration checklist
-hamlet reset -d . --yes  # Clear migration state
-hamlet serve             # Start the API server
-hamlet ui                # Open the browser UI for interactive conversion
+# Save a snapshot
+hamlet analyze --write-snapshot
+
+# Later, save another snapshot
+hamlet analyze --write-snapshot
+
+# Compare the two most recent snapshots
+hamlet compare
+
+# Executive summary automatically includes trend highlights
+hamlet summary
 ```
 
-## Options
+Snapshots are stored in `.hamlet/snapshots/` as timestamped JSON files.
 
-| Option | Description |
-|--------|-------------|
-| `-o, --output <path>` | Output path (required for directories) |
-| `-f, --from <framework>` | Source framework |
-| `-t, --to <framework>` | Target framework |
-| `--dry-run` | Preview without writing files |
-| `--on-error <mode>` | Error handling: `skip` (default), `fail`, `best-effort` |
-| `-q, --quiet` | Suppress non-error output |
-| `--verbose` | Show detailed per-pattern output |
-| `--json` | Machine-readable JSON output |
-| `--no-color` | Disable color output |
-| `--auto-detect` | Auto-detect source framework |
+## Policy
 
-## JSON Output
+Define local policy rules in `.hamlet/policy.yaml`:
 
-For CI integration, use `--json` for machine-readable output:
+```yaml
+rules:
+  disallow_skipped_tests: true
+  max_weak_assertions: 10
+  max_mock_heavy_tests: 5
+```
+
+Then check compliance:
 
 ```bash
-hamlet jest2vt auth.test.js -o converted/ --json
+hamlet policy check        # human-readable output
+hamlet policy check --json # JSON output for CI
 ```
 
-```json
-{
-  "success": true,
-  "files": [{ "source": "auth.test.js", "output": "converted/auth.test.js", "confidence": 95 }],
-  "summary": { "converted": 1, "skipped": 0, "failed": 0 }
-}
-```
+Exit code 0 = pass, 1 = violations found.
 
-## How It Works
+## Migration Workflow
 
-1. **Detect** &mdash; determine source framework from content (regex heuristics per framework)
-2. **Parse** &mdash; classify source lines into IR nodes (suites, tests, hooks, assertions, raw code)
-3. **Transform** &mdash; apply regex-based pattern substitutions to convert API calls and test structure
-4. **Score** &mdash; walk the IR tree to calculate confidence (converted vs. unconvertible nodes)
-5. **Report** &mdash; generate HAMLET-TODO markers for patterns that need manual review
-
-> **Architecture note:** Conversion is currently regex-based string transformation.
-> The IR (intermediate representation) captures test structure for confidence scoring
-> but emitters operate on the source string, not the IR tree.
-> See [DESIGN.md](DESIGN.md) §1 for the hybrid IR + PatternEngine design rationale.
-
-## Confidence Scores
-
-Every conversion produces a confidence score (0-100%):
-
-- **High (80-100%)**: Fully automated, ready to use
-- **Medium (50-79%)**: Mostly automated, review HAMLET-TODO markers
-- **Low (0-49%)**: Significant manual work needed
-
-## HAMLET-TODO Markers
-
-When a pattern can't be automatically converted, Hamlet inserts a comment:
-
-```javascript
-// HAMLET-TODO: cy.session() has no direct equivalent in Playwright
-// Original: cy.session('admin', () => { ... })
-```
-
-Search for `HAMLET-TODO` after conversion to find patterns that need manual attention.
-
-## Config Conversion
-
-Convert framework configuration files:
+Hamlet started with migration pain — "how hard will this migration be?" V3 turns that pain into broader test intelligence while keeping migration as a first-class workflow:
 
 ```bash
-hamlet convert-config jest.config.js --to vitest -o vitest.config.js
-hamlet convert-config cypress.config.js --to playwright -o playwright.config.ts
+# Assess migration readiness
+hamlet migration readiness
+
+# List specific blockers
+hamlet migration blockers
+
+# Review policy and governance
+hamlet policy check
+
+# Save snapshot, fix issues, save another, then compare
+hamlet analyze --write-snapshot
+# ... fix blockers ...
+hamlet analyze --write-snapshot
+hamlet compare
 ```
 
-## Programmatic API
+## Architecture
 
-> **ESM only** — This package ships ES modules. Use `import`, not `require()`. Node >= 22 required.
+Hamlet is built around a signal-first architecture:
 
-```javascript
-import { ConverterFactory, FRAMEWORKS } from 'hamlet-converter/core';
-
-const converter = await ConverterFactory.createConverter('jest', 'vitest');
-const output = await converter.convert(jestCode);
-
-// Get conversion report
-const report = converter.getLastReport();
-console.log(`Confidence: ${report.confidence}%`);
+```
+Repository scan → Signal detection → Risk modeling → Reporting
 ```
 
-### Entry Points
+- **Signals** are the core abstraction — every finding is a structured signal
+- **Snapshots** are the canonical serialized artifact (`TestSuiteSnapshot`)
+- **Risk surfaces** are derived from signals with explainable scoring
+- **Reports** synthesize signals, risk, trends, and benchmark readiness
 
-| Import path | Stability | Contents |
-|-------------|-----------|----------|
-| `hamlet-converter` | **Stable** | `convertFile`, `convertRepository`, `processTestFiles`, `validateTests`, `generateReport`, `convertConfig`, `convertCypressToPlaywright`, `RepositoryConverter`, `BatchProcessor`, `ConversionReporter`, `VERSION`, `DEFAULT_OPTIONS`, `SUPPORTED_TEST_TYPES` |
-| `hamlet-converter/internals` | Internal | `DependencyAnalyzer`, `TestValidator`, `TypeScriptConverter`, `PluginConverter`, `VisualComparison`, `TestMapper`, `TestMetadataCollector`, utility namespaces. May change between minor versions. |
-| `hamlet-converter/core` | Internal | `ConverterFactory`, `BaseConverter`, `PatternEngine`, `MigrationEngine`, and other core classes. May change between minor versions. |
-| `hamlet-converter/converters` | Internal | Legacy E2E converter classes (`CypressToPlaywright`, etc.). May change between minor versions. |
+See [DESIGN.md](DESIGN.md) for architecture overview and [docs/](docs/) for detailed documentation.
 
-The `hamlet-converter` (main) entry point is the stable public API. Exports from `/internals`, `/core`, and `/converters` are available for advanced use but are not covered by semver stability guarantees.
+## Project Structure (V3 Go Engine)
 
-## Exit Codes
+```
+cmd/hamlet/          CLI entry point
+internal/
+├── analysis/        Repository scanning, framework detection, test file discovery
+├── benchmark/       Privacy-safe benchmark export and segmentation
+├── comparison/      Snapshot-to-snapshot trend comparison
+├── coverage/        Coverage ingestion (LCOV, Istanbul) and attribution
+├── engine/          Pipeline orchestration and detector registry
+├── governance/      Policy evaluation and governance signals
+├── health/          Runtime-backed health detectors (slow, flaky, skipped)
+├── heatmap/         Risk concentration model (directory and owner hotspots)
+├── identity/        Test identity hashing and normalization
+├── impact/          Change-scope impact analysis
+├── measurement/     Posture measurement framework
+├── metrics/         Aggregate metric derivation
+├── migration/       Migration detectors, readiness model, preview boundary
+├── models/          Canonical data models (Signal, Snapshot, Risk, etc.)
+├── ownership/       Ownership resolution (CODEOWNERS, config, directory)
+├── policy/          Policy config model and YAML loader
+├── quality/         Quality signal detectors
+├── reporting/       Human-readable report renderers
+├── runtime/         Runtime artifact ingestion (JUnit XML, Jest JSON)
+├── scoring/         Explainable risk engine (reliability, change, speed)
+├── signals/         Signal detector interface, registry, runner
+├── summary/         Executive summary builder
+├── testcase/        Test case extraction and identity collision detection
+└── testtype/        Test type inference (unit, integration, e2e)
+```
 
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | Runtime error (conversion failed) |
-| 2 | Invalid arguments (bad framework, missing file) |
+## Legacy Converter Engine
+
+Hamlet originated as a multi-framework test converter (V2, JavaScript ES modules). That engine is preserved in `src/`, `bin/`, and `test/` and remains functional. V3 reframes migration as one dimension of broader test intelligence. See [docs/legacy/](docs/legacy/) for historical architecture docs and [CLAUDE.md](CLAUDE.md) for legacy code conventions.
 
 ## Development
 
 ```bash
-npm install
-npm test                    # Run all tests
-npm run lint                # Lint source
-npm run format              # Format with Prettier
+# Build
+go build -o hamlet ./cmd/hamlet
+
+# Test all Go packages
+go test ./internal/... ./cmd/...
+
+# Test with verbose output
+go test -v ./internal/...
+
+# Legacy JavaScript tests (requires Node.js 22+)
+npm test
 ```
 
-## Requirements
+## Principles
 
-- Node.js >= 22.0.0
+- Signals are the core abstraction
+- Analysis comes before automation
+- Risk must be explainable
+- Hamlet must be useful locally, without SaaS
+- Privacy boundary: aggregate metrics never expose raw paths or source code
+- Hamlet measures system health, not individual developer productivity
 
-## Contributing
+## Status
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on adding new frameworks.
+Hamlet V3 is in active development. The Go engine implements:
+- repository analysis and signal detection
+- explainable risk modeling
+- local policy and governance
+- ownership-aware review and triage
+- migration intelligence
+- snapshot history and trend comparison
+- benchmark-ready metrics
+- executive summary reporting
+
+The JSON contract (`TestSuiteSnapshot`) is stabilizing but may evolve.
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Links
-
-- [GitHub Repository](https://github.com/pmclSF/hamlet)
-- [npm Package](https://www.npmjs.com/package/hamlet-converter)
-- [Issue Tracker](https://github.com/pmclSF/hamlet/issues)
+MIT License — see [LICENSE](LICENSE) for details.

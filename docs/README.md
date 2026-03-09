@@ -1,90 +1,76 @@
 # Hamlet Documentation
 
-> To be or not to be... in any framework you choose.
+**Signal-first test intelligence for engineering teams**
 
-Hamlet is a multi-framework test converter supporting **25 conversion directions** across **16 frameworks** in **JavaScript**, **Java**, and **Python**.
+## Product Evolution
 
-## Quick Links
+- **V2** was conversion-led: a multi-framework test converter (JS/Java/Python, 25 directions).
+- **V3** is signal-led: a test intelligence platform that surfaces risk, quality, migration readiness, and governance from static and runtime analysis.
+- **Migration remains the acquisition wedge** — the pain of framework migration is what brings teams to Hamlet. V3 turns that pain into broader test intelligence.
 
-- [Getting Started](./guides/getting-started.md)
-- [Migration Guide](./guides/migration-guide.md)
-- [CLI Reference](./api/cli.md)
-- [Configuration](./api/configuration.md)
-- [Conversion Process](./api/conversion.md)
-- [ADR: Jest ESM Strategy](./adr/004-jest-esm-strategy.md)
-- [Release Process](./releasing.md)
+The V2 converter engine is preserved and functional. See [legacy/](legacy/) for historical architecture docs.
 
-## Supported Frameworks
+## Start Here
 
-### JavaScript Unit Testing
+- [Demo Walkthrough](demo.md) — try Hamlet in a few minutes
+- [CLI Specification](cli-spec.md) — full command and flag reference
+- [Architecture](architecture.md) — how Hamlet works internally
 
-| Direction | Shorthand |
-|-----------|-----------|
-| Jest &rarr; Vitest | `hamlet jest2vt` |
-| Mocha &rarr; Jest | `hamlet mocha2jest` |
-| Jasmine &rarr; Jest | `hamlet jas2jest` |
-| Jest &rarr; Mocha | `hamlet jest2mocha` |
-| Jest &rarr; Jasmine | `hamlet jest2jas` |
+## Product
 
-### JavaScript E2E / Browser
+- [Vision](vision.md) — why Hamlet exists
+- [Product Concept](product-concept.md) — what Hamlet does
+- [Master Plan](MASTER_PLAN.md) — strategic direction
+- [Paid Product](paid-product.md) — future commercial direction
+- [UX Blueprint](ux-blueprint.md) — user experience design
 
-| Direction | Shorthand |
-|-----------|-----------|
-| Cypress &harr; Playwright | `hamlet cy2pw` / `hamlet pw2cy` |
-| Cypress &harr; Selenium | `hamlet cy2sel` / `hamlet sel2cy` |
-| Playwright &harr; Selenium | `hamlet pw2sel` / `hamlet sel2pw` |
-| Cypress &harr; WebdriverIO | `hamlet cy2wdio` / `hamlet wdio2cy` |
-| Playwright &harr; WebdriverIO | `hamlet pw2wdio` / `hamlet wdio2pw` |
-| Puppeteer &harr; Playwright | `hamlet pptr2pw` / `hamlet pw2pptr` |
-| TestCafe &rarr; Playwright | `hamlet tcafe2pw` |
-| TestCafe &rarr; Cypress | `hamlet tcafe2cy` |
+## Technical
 
-### Java
+- [Signal Model](signal-model.md) — the core signal abstraction
+- [Signal Catalog](signal-catalog.md) — all signal types
+- [VS Code Extension](vscode-extension.md) — extension architecture and views
+- [Roadmap](roadmap.md) — milestone history and future work
+- [Implementation Workbook](implementation-workbook.md) — stage-by-stage implementation log
 
-| Direction | Shorthand |
-|-----------|-----------|
-| JUnit 4 &rarr; JUnit 5 | `hamlet ju42ju5` |
-| JUnit 5 &harr; TestNG | `hamlet ju52tng` / `hamlet tng2ju5` |
+## Engineering
 
-### Python
+- [Architecture Map](engineering/architecture-map.md) — contributor-facing component map
+- [Detector Architecture](engineering/detector-architecture.md) — registry-based detector plugin system
+- [Detector Audit](engineering/detector-audit.md) — evidence classification for all detectors
+- [Deterministic Output](engineering/determinism.md) — deterministic output contract and enforcement
+- [Engineering Roadmap](engineering/future-work.md) — incremental analysis, parallelization, and layer separation
+- [Hosted Future](engineering/hosted-future.md) — what remains for hosted/org product
+- [Test Identity](engineering/test-identity.md) — deterministic test identity model
+- [Test Type Inference](engineering/test-type-inference.md) — evidence-based test classification
+- [Code Unit Inventory](engineering/code-unit-inventory.md) — normalized code structure model
+- [Coverage Ingestion](engineering/coverage-ingestion.md) — LCOV/Istanbul ingestion and normalization
+- [Coverage Attribution](engineering/coverage-attribution.md) — structural coverage for code units
+- [Per-Test Coverage](engineering/per-test-coverage.md) — per-test coverage attribution model
+- [Snapshot Test Lineage](engineering/snapshot-test-lineage.md) — longitudinal test tracking
 
-| Direction | Shorthand |
-|-----------|-----------|
-| pytest &harr; unittest | `hamlet pyt2ut` / `hamlet ut2pyt` |
-| nose2 &rarr; pytest | `hamlet nose22pyt` |
+## User Guides
 
-Run `hamlet list` to see all directions with their shorthand aliases.
+- [Coverage by Type](user-guides/coverage-by-type.md) — analyze coverage by unit/integration/e2e
 
-## Project Structure
+## Contributing
 
-```
-src/
-├── cli/               # CLI shorthand definitions and output helpers
-├── core/              # BaseConverter, ConverterFactory, PatternEngine,
-│                      #   FrameworkDetector, FrameworkRegistry, ConfigConverter,
-│                      #   MigrationEngine, Scanner, FileClassifier, ir.js
-├── converters/        # 6 E2E converter classes (Cypress/Playwright/Selenium pairs)
-├── converter/         # Batch processing, orchestration, validation, TypeScript support
-├── languages/         # Framework definitions organized by language:
-│   ├── java/          #   junit4, junit5, testng
-│   ├── javascript/    #   cypress, jest, mocha, jasmine, playwright, vitest,
-│   │                  #   puppeteer, testcafe, webdriverio
-│   └── python/        #   pytest, unittest_fw, nose2
-├── patterns/commands/ # Regex pattern definitions (assertions, navigation, selectors)
-├── server/            # Built-in dev server for hamlet serve / hamlet open
-├── ui/                # Web UI for interactive conversion
-├── utils/             # helpers.js, reporter.js
-├── types/             # TypeScript type definitions
-└── index.js           # Main entry point with public API
-```
+- [Writing a Detector](contributing/writing-a-detector.md) — how to add a new signal detector
+- [Test Identity & Coverage](contributing/test-identity-and-coverage.md) — extending identity, inference, and coverage
 
-## Examples
+## Release
 
-See the [examples](./examples/) directory for sample conversions:
+- [Release Checklist](release-checklist.md) — launch readiness status
+- [Release Process](releasing.md) — versioning and release workflow
 
-- [E2E Tests](./examples/e2e/)
-- [API Tests](./examples/api/)
+## Legacy (V2 Converter Engine)
 
-## License
+Historical documentation for the JavaScript converter engine:
 
-MIT License - see the [LICENSE](../LICENSE) file for details.
+- [V2 Converter Architecture](legacy/v2-converter-architecture.md)
+- [Legacy Notes](legacy/legacy-notes.md)
+- [Getting Started](guides/getting-started.md)
+- [Migration Guide](guides/migration-guide.md)
+- [CLI Reference (legacy)](api/cli.md)
+- [Configuration (legacy)](api/configuration.md)
+- [Conversion Process](api/conversion.md)
+- [Jest ESM Strategy](adr/004-jest-esm-strategy.md)
