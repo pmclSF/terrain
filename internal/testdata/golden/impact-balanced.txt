@@ -3,19 +3,25 @@ Terrain Impact Analysis
 
 Summary: 2 file(s) changed, 2 code unit(s) impacted, 8 test(s) relevant. Posture: partially_protected.
 
+Changed areas:
+  src                    src/auth.js (modified)
+  src                    src/payment.js (modified)
+
+Impacted tests:          8 of 11 total
+Selected for run:        2
+Coverage confidence:     High
+PR risk:                 PARTIALLY_PROTECTED
+
+Reason categories:
+  Direct code dependency:  2
+  Directory proximity:     6
+
 Change-Risk Posture: PARTIALLY_PROTECTED
   This change has partial protection. 0 protection gap(s) identified.
   protection:          well_protected
   exposure:            partially_protected
   coordination:        well_protected
   instability:         well_protected
-
-Impacted Code Units
-------------------------------------------------------------
-  AuthService                    modified  strong [exported]
-    Owner: team-platform
-  PaymentProcessor               modified  strong [exported]
-    Owner: team-payments
 
 Recommended Tests (2)
 ------------------------------------------------------------
@@ -27,7 +33,7 @@ Recommended Tests (2)
 Impacted Owners: team-payments, team-platform
 
 Next steps:
-  terrain analyze       full repo analysis
-  terrain posture       evidence-backed posture
-  terrain impact --json   machine-readable impact data
+  terrain impact --show selected   view protective test set with reasoning
+  terrain impact --show graph       see dependency graph
+  terrain impact --json             machine-readable impact data
 

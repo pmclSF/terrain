@@ -368,7 +368,7 @@ func main() {
 
 	case "ai":
 		if len(os.Args) < 3 {
-			fmt.Fprintln(os.Stderr, "Usage: terrain ai <list|run|record|baseline|doctor> [flags]")
+			fmt.Fprintln(os.Stderr, "Usage: terrain ai <list|run|record|replay|baseline|doctor> [flags]")
 			fmt.Fprintln(os.Stderr)
 			fmt.Fprintln(os.Stderr, "Commands:")
 			fmt.Fprintln(os.Stderr, "  list       list detected AI/eval scenarios and surfaces")

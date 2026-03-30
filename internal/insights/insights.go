@@ -117,6 +117,15 @@ type Recommendation struct {
 
 	// Impact estimates the benefit (e.g., "reduce CI runtime by ~15%").
 	Impact string `json:"impact,omitempty"`
+
+	// TargetFiles lists specific file paths to act on.
+	TargetFiles []string `json:"targetFiles,omitempty"`
+
+	// EffortBand is "small" (1-3 files), "medium" (4-10), or "large" (10+).
+	EffortBand string `json:"effortBand,omitempty"`
+
+	// Command is a runnable terrain command for drill-down.
+	Command string `json:"command,omitempty"`
 }
 
 // CategoryBreakdown summarizes findings within a category.
@@ -750,6 +759,17 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 			rec.Action = fmt.Sprintf("Consolidate %d duplicate test clusters", len(input.Duplicates.Clusters))
 			rec.Rationale = "Removing redundant tests reduces CI runtime and maintenance overhead."
 			rec.Impact = fmt.Sprintf("~%d fewer tests to maintain", input.Duplicates.DuplicateCount)
+			rec.Command = "terrain insights"
+			// Target files from the largest cluster.
+			if len(input.Duplicates.Clusters) > 0 {
+				cluster := input.Duplicates.Clusters[0]
+				for _, t := range cluster.Tests {
+					if len(rec.TargetFiles) >= 5 {
+						break
+					}
+					rec.TargetFiles = append(rec.TargetFiles, t)
+				}
+			}
 
 		case f.Category == CategoryArchitectureDebt && input.Fanout.FlaggedCount > 0:
 			rec.Action = "Refactor high-fanout fixtures to reduce blast radius"
@@ -761,22 +781,57 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 				rec.Rationale = "High-fanout nodes create fragile dependencies."
 			}
 			rec.Impact = "narrower test impact per change"
+			rec.Command = "terrain debug fanout"
+			// Target files from top flagged entries.
+			for _, e := range input.Fanout.Entries {
+				if !e.Flagged || len(rec.TargetFiles) >= 5 {
+					break
+				}
+				if e.Path != "" {
+					rec.TargetFiles = append(rec.TargetFiles, e.Path)
+				}
+			}
 
 		case f.Category == CategoryCoverageDebt && f.Title != "" && input.Coverage.SourceCount > 0:
 			lowCount := input.Coverage.BandCounts[depgraph.CoverageBandLow]
 			rec.Action = fmt.Sprintf("Add tests for %d uncovered source files", lowCount)
 			rec.Rationale = "Coverage gaps mean changes in these files cannot trigger targeted test selection."
 			rec.Impact = "improved change-scoped test selection accuracy"
+			rec.Command = "terrain analyze --verbose"
+			// Target files from lowest-coverage sources.
+			for _, src := range input.Coverage.Sources {
+				if len(rec.TargetFiles) >= 5 {
+					break
+				}
+				if src.TestCount == 0 {
+					rec.TargetFiles = append(rec.TargetFiles, src.SourceID)
+				}
+			}
 
 		case f.Category == CategoryReliability && f.Severity == SeverityCritical:
 			rec.Action = f.Title
 			rec.Rationale = f.Description
 			rec.Impact = "reduced risk of missed regressions"
+			// Target files from signals matching this finding.
+			for _, sig := range input.Snapshot.Signals {
+				if len(rec.TargetFiles) >= 5 {
+					break
+				}
+				if sig.Location.File != "" && (sig.Type == "flakyTest" || sig.Type == "slowTest") {
+					rec.TargetFiles = append(rec.TargetFiles, sig.Location.File)
+				}
+			}
+			if len(rec.TargetFiles) > 0 {
+				rec.Command = fmt.Sprintf("terrain show test %s", rec.TargetFiles[0])
+			}
 
 		default:
 			rec.Action = f.Title
 			rec.Rationale = f.Description
 		}
+
+		// Derive effort band from target file count.
+		rec.EffortBand = effortBand(len(rec.TargetFiles))
 
 		// Deduplicate: skip if we already have a rec with the same action.
 		dup := false
@@ -802,6 +857,20 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 	}
 
 	return recs
+}
+
+// effortBand classifies the number of target files into a band.
+func effortBand(fileCount int) string {
+	switch {
+	case fileCount == 0:
+		return ""
+	case fileCount <= 3:
+		return "small"
+	case fileCount <= 10:
+		return "medium"
+	default:
+		return "large"
+	}
 }
 
 // --- Headline and health grade ---

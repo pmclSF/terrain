@@ -93,6 +93,12 @@ type Report struct {
 
 	// Limitations notes where analysis is incomplete.
 	Limitations []string `json:"limitations,omitempty"`
+
+	// Headline is a single opinionated sentence summarizing the test system state.
+	Headline string `json:"headline"`
+
+	// NextActions are up to 3 prioritized recommendations with runnable commands.
+	NextActions []NextAction `json:"nextActions,omitempty"`
 }
 
 // KeyFinding is a prioritized finding surfaced in the analyze output.
@@ -367,6 +373,10 @@ func Build(input *BuildInput) *Report {
 			"Graph has %d nodes and %d edges — confidence-based test selection available via `terrain impact`.",
 			dgStats.NodeCount, dgStats.EdgeCount)
 	}
+
+	// Headline and next actions — the "10-second first impression".
+	r.Headline = deriveHeadline(r)
+	r.NextActions = deriveNextActions(r)
 
 	return r
 }
