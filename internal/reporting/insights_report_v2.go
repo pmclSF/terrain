@@ -11,7 +11,8 @@ import (
 // RenderInsightsReport writes a human-readable health report from the
 // structured insights.Report. This replaces the raw dump with a
 // prioritized, categorized view.
-func RenderInsightsReport(w io.Writer, r *insights.Report) {
+func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions) {
+	verbose := isVerbose(opts)
 	line := func(format string, args ...any) {
 		fmt.Fprintf(w, format+"\n", args...)
 	}
@@ -76,6 +77,14 @@ func RenderInsightsReport(w io.Writer, r *insights.Report) {
 			if f.Description != "" {
 				// Wrap long descriptions.
 				line("         %s", f.Description)
+			}
+			if verbose {
+				if f.Scope != "" {
+					line("         scope: %s", f.Scope)
+				}
+				if f.Metric != "" {
+					line("         metric: %s", f.Metric)
+				}
 			}
 		}
 		blank()
