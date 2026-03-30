@@ -133,7 +133,7 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	if err := validateCommandInputs(root, coveragePath, parsedRuntime); err != nil {
 		return err
 	}
-	var sarifOutput bool
+	var sarifOutput, annotationOutput bool
 	switch strings.ToLower(strings.TrimSpace(format)) {
 	case "":
 	case "json":
@@ -143,8 +143,11 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	case "sarif":
 		sarifOutput = true
 		jsonOutput = true // suppress progress output
+	case "annotation":
+		annotationOutput = true
+		jsonOutput = true // suppress progress output
 	default:
-		return fmt.Errorf("invalid --format %q (valid: json, text, sarif)", format)
+		return fmt.Errorf("invalid --format %q (valid: json, text, sarif, annotation)", format)
 	}
 
 	opt := analysisPipelineOptions(coveragePath, coverageRunLabel, parsedRuntime, slowThreshold)
@@ -171,6 +174,11 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(sarifLog)
+	}
+
+	if annotationOutput {
+		reporting.RenderGitHubAnnotations(os.Stdout, report)
+		return nil
 	}
 
 	if jsonOutput {

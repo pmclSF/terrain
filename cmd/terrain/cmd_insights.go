@@ -21,7 +21,7 @@ import (
 	"github.com/pmclSF/terrain/internal/summary"
 )
 
-func runPortfolio(root string, jsonOutput bool) error {
+func runPortfolio(root string, jsonOutput, verbose bool) error {
 	result, err := engine.RunPipeline(root, defaultPipelineOptions())
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
@@ -38,7 +38,7 @@ func runPortfolio(root string, jsonOutput bool) error {
 }
 
 // runPosture performs analysis and outputs a detailed posture breakdown.
-func runPosture(root string, jsonOutput bool) error {
+func runPosture(root string, jsonOutput, verbose bool) error {
 	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
@@ -56,7 +56,7 @@ func runPosture(root string, jsonOutput bool) error {
 }
 
 // runMetrics performs analysis and outputs aggregate metrics.
-func runMetrics(root string, jsonOutput bool) error {
+func runMetrics(root string, jsonOutput, verbose bool) error {
 	result, err := engine.RunPipeline(root, defaultPipelineOptions())
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
@@ -77,7 +77,7 @@ func runMetrics(root string, jsonOutput bool) error {
 
 // runSummary performs analysis and outputs an executive summary with
 // trend highlights (if prior snapshots exist) and benchmark readiness.
-func runSummary(root string, jsonOutput bool) error {
+func runSummary(root string, jsonOutput, verbose bool) error {
 	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
@@ -126,7 +126,7 @@ func runSummary(root string, jsonOutput bool) error {
 }
 
 // runFocus performs analysis and emits a compact action-first view.
-func runFocus(root string, jsonOutput bool) error {
+func runFocus(root string, jsonOutput, verbose bool) error {
 	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
@@ -197,7 +197,7 @@ func runFocus(root string, jsonOutput bool) error {
 
 // runInsights aggregates all insight engines into a single actionable report.
 // It combines executive summary, depgraph profile, and portfolio findings.
-func runInsights(root string, jsonOutput bool) error {
+func runInsights(root string, jsonOutput, verbose bool) error {
 	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
@@ -291,7 +291,7 @@ func runInsights(root string, jsonOutput bool) error {
 		return enc.Encode(report)
 	}
 
-	reporting.RenderInsightsReport(os.Stdout, report)
+	reporting.RenderInsightsReport(os.Stdout, report, reporting.ReportOptions{Verbose: verbose})
 	reporting.WriteHealthGuidance(os.Stdout, snapshot)
 	return nil
 }
