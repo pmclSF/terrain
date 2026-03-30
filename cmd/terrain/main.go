@@ -129,8 +129,9 @@ func main() {
 		metricsCmd := flag.NewFlagSet("metrics", flag.ExitOnError)
 		rootFlag := metricsCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := metricsCmd.Bool("json", false, "output JSON metrics snapshot")
+		verboseFlag := metricsCmd.Bool("verbose", false, "show detailed metric breakdowns")
 		_ = metricsCmd.Parse(os.Args[2:])
-		if err := runMetrics(*rootFlag, *jsonFlag); err != nil {
+		if err := runMetrics(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -139,8 +140,9 @@ func main() {
 		postureCmd := flag.NewFlagSet("posture", flag.ExitOnError)
 		rootFlag := postureCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := postureCmd.Bool("json", false, "output JSON posture snapshot")
+		verboseFlag := postureCmd.Bool("verbose", false, "show measurement values and thresholds")
 		_ = postureCmd.Parse(os.Args[2:])
-		if err := runPosture(*rootFlag, *jsonFlag); err != nil {
+		if err := runPosture(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -149,8 +151,9 @@ func main() {
 		portfolioCmd := flag.NewFlagSet("portfolio", flag.ExitOnError)
 		rootFlag := portfolioCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := portfolioCmd.Bool("json", false, "output JSON portfolio snapshot")
+		verboseFlag := portfolioCmd.Bool("verbose", false, "show per-asset details")
 		_ = portfolioCmd.Parse(os.Args[2:])
-		if err := runPortfolio(*rootFlag, *jsonFlag); err != nil {
+		if err := runPortfolio(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -159,8 +162,9 @@ func main() {
 		insightsCmd := flag.NewFlagSet("insights", flag.ExitOnError)
 		rootFlag := insightsCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := insightsCmd.Bool("json", false, "output JSON insights")
+		verboseFlag := insightsCmd.Bool("verbose", false, "show per-finding evidence and file details")
 		_ = insightsCmd.Parse(os.Args[2:])
-		if err := runInsights(*rootFlag, *jsonFlag); err != nil {
+		if err := runInsights(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -200,8 +204,9 @@ func main() {
 		summaryCmd := flag.NewFlagSet("summary", flag.ExitOnError)
 		rootFlag := summaryCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := summaryCmd.Bool("json", false, "output JSON summary with heatmap")
+		verboseFlag := summaryCmd.Bool("verbose", false, "show detailed heatmap breakdown")
 		_ = summaryCmd.Parse(os.Args[2:])
-		if err := runSummary(*rootFlag, *jsonFlag); err != nil {
+		if err := runSummary(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -210,8 +215,9 @@ func main() {
 		focusCmd := flag.NewFlagSet("focus", flag.ExitOnError)
 		rootFlag := focusCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := focusCmd.Bool("json", false, "output JSON focus summary")
+		verboseFlag := focusCmd.Bool("verbose", false, "show full rationale and dependency chains")
 		_ = focusCmd.Parse(os.Args[2:])
-		if err := runFocus(*rootFlag, *jsonFlag); err != nil {
+		if err := runFocus(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
