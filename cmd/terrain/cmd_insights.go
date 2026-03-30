@@ -51,6 +51,7 @@ func runPosture(root string, jsonOutput bool) error {
 	}
 
 	reporting.RenderPostureReport(os.Stdout, result.Snapshot)
+	reporting.WriteHealthGuidance(os.Stdout, result.Snapshot)
 	return nil
 }
 
@@ -70,6 +71,7 @@ func runMetrics(root string, jsonOutput bool) error {
 	}
 
 	reporting.RenderMetricsReport(os.Stdout, ms)
+	reporting.WriteHealthGuidance(os.Stdout, result.Snapshot)
 	return nil
 }
 
@@ -290,6 +292,7 @@ func runInsights(root string, jsonOutput bool) error {
 	}
 
 	reporting.RenderInsightsReport(os.Stdout, report)
+	reporting.WriteHealthGuidance(os.Stdout, snapshot)
 	return nil
 }
 
