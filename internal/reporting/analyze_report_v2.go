@@ -21,7 +21,27 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	line(strings.Repeat("=", 60))
 	blank()
 
-	// Repository profile (the "wow" section — leads with insight)
+	// Headline — the single most important sentence.
+	if r.Headline != "" {
+		line("  %s", r.Headline)
+		blank()
+	}
+
+	// Next actions — up to 3 prioritized things to do.
+	if len(r.NextActions) > 0 {
+		line("What to do next:")
+		for i, a := range r.NextActions {
+			line("  %d. %s", i+1, a.Title)
+			line("     $ %s", a.Command)
+			line("     %s", a.Explanation)
+			if i < len(r.NextActions)-1 {
+				blank()
+			}
+		}
+		blank()
+	}
+
+	// Repository profile
 	line("Repository Profile")
 	line(strings.Repeat("-", 60))
 	line("  Test volume:          %s", r.RepoProfile.TestVolume)
