@@ -13,6 +13,7 @@ import (
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/policy"
 	"github.com/pmclSF/terrain/internal/reporting"
+	"github.com/pmclSF/terrain/internal/sarif"
 )
 
 func runInit(root string) error {
@@ -132,14 +133,18 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	if err := validateCommandInputs(root, coveragePath, parsedRuntime); err != nil {
 		return err
 	}
+	var sarifOutput bool
 	switch strings.ToLower(strings.TrimSpace(format)) {
 	case "":
 	case "json":
 		jsonOutput = true
 	case "text":
 		jsonOutput = false
+	case "sarif":
+		sarifOutput = true
+		jsonOutput = true // suppress progress output
 	default:
-		return fmt.Errorf("invalid --format %q (valid: json, text)", format)
+		return fmt.Errorf("invalid --format %q (valid: json, text, sarif)", format)
 	}
 
 	opt := analysisPipelineOptions(coveragePath, coverageRunLabel, parsedRuntime, slowThreshold)
@@ -160,6 +165,13 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		Snapshot:  result.Snapshot,
 		HasPolicy: result.HasPolicy,
 	})
+
+	if sarifOutput {
+		sarifLog := sarif.FromAnalyzeReport(report, version)
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(sarifLog)
+	}
 
 	if jsonOutput {
 		enc := json.NewEncoder(os.Stdout)
