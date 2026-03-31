@@ -10,6 +10,8 @@ terrain analyze
 
 That's it. No config, no setup, no test execution required.
 
+> **New here?** Read the [Quickstart Guide](docs/quickstart.md) to understand your first report in 5 minutes.
+
 ---
 
 Terrain is a test system intelligence platform. It reads your repository — test code, source structure, coverage data, runtime artifacts, ownership files, and local policy — and builds a structural model of how your tests relate to your code. From that model it surfaces risk, quality gaps, redundancy, fragile dependencies, and migration readiness, all without running a single test.
