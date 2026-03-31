@@ -1,6 +1,6 @@
 # Feature Matrix
 
-> **Status:** Current (validated against implementation 2026-03-15)
+> **Status:** Current (validated against implementation 2026-03-30)
 > **Purpose:** Map Terrain's capabilities to the personas who use them. Each cell shows the support level for that persona's specific workflow. Status column distinguishes implemented, partial, and future.
 
 **See also:** [Persona Matrix](persona-matrix.md), [Persona Journeys](../architecture/17-persona-journeys.md), [Canonical User Journeys](canonical-user-journeys.md)
@@ -39,9 +39,9 @@
 | **Benchmark export** (`export benchmark`) | Implemented | --- | --- | --- | Useful | Strong |
 | **AI list** (`ai list`) | Implemented | --- | --- | Strong | --- | Useful |
 | **AI doctor** (`ai doctor`) | Implemented | --- | --- | Strong | --- | Useful |
-| **AI run** (`ai run`) | Future | --- | --- | Future | --- | --- |
-| **AI record** (`ai record`) | Future | --- | --- | Future | --- | --- |
-| **AI baseline** (`ai baseline`) | Future | --- | --- | Future | --- | --- |
+| **AI run** (`ai run`) | Implemented | --- | --- | Strong | --- | Useful |
+| **AI record** (`ai record`) | Implemented | --- | --- | Strong | --- | Useful |
+| **AI baseline** (`ai baseline`) | Implemented | --- | --- | Strong | --- | Useful |
 
 ## Analysis Engines x Personas
 
@@ -82,11 +82,11 @@
 | Scenario duplication insights | **Implemented** | Detects >50% surface overlap between scenario pairs |
 | Gauntlet artifact ingestion | **Implemented** | `--gauntlet` flag, signal generation for failures/regressions |
 | AI list command | **Implemented** | Lists scenarios, prompts, datasets, eval files |
-| AI doctor command | **Implemented** | 5-point diagnostic: scenarios, prompts, datasets, eval files, graph wiring |
+| AI doctor command | **Implemented** | 6-point diagnostic: scenarios, prompts, datasets, eval files, frameworks, graph wiring |
 | Graph node types (Prompt, Dataset, Model, EvalMetric) | **Partial** | Types defined in schema; not yet populated by inference |
 | Eval framework auto-detection (12 frameworks) | **Implemented** | Config files, dependency manifests, and source imports |
 | Auto-scenario derivation from eval files | **Implemented** | Eval test files + AI imports → scenarios without YAML |
-| AI run / record / baseline | **Future** | Scaffolded with doc references |
+| AI run / replay / record / baseline | **Implemented** | Execute eval suites, replay stored runs, record baselines, compare/promote results |
 | Eval-specific signals | **Future** | eval_safety_failure, eval_accuracy_regression, etc. |
 | Model version tracking | **Future** | Correlate eval results to model versions |
 | Dataset drift detection | **Future** | Detect training/eval data divergence |
@@ -227,4 +227,7 @@
 | `debug *` | Yes | Yes | Implemented |
 | `ai list` | Yes | Yes | Implemented |
 | `ai doctor` | Yes | Yes | Implemented |
-| `ai run` | --- | --- | Future |
+| `ai run` | Yes | Yes | Implemented |
+| `ai replay` | Yes | Yes | Implemented |
+| `ai record` | Yes | Yes | Implemented |
+| `ai baseline` | Yes | Yes | Implemented |

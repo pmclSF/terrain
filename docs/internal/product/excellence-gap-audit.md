@@ -96,7 +96,7 @@
 | Find eval gaps | `insights` | **Implemented** | Scenario duplication finding | None | - |
 | Check impact of model changes | `impact` | **Implemented** | `findImpactedScenarios()` maps surfaces to scenarios | None | - |
 | List scenarios/prompts/datasets | `ai list` | **Implemented** | Shows frameworks, auto-derived scenarios, surfaces | None | - |
-| Validate eval setup | `ai doctor` | **Implemented** | 5-point diagnostic | None | - |
+| Validate eval setup | `ai doctor` | **Implemented** | 6-point diagnostic | None | - |
 | Execute eval scenarios | `ai run` | **Implemented** | Detects framework, builds and executes command | None | - |
 | Record eval baseline | `ai record` | **Implemented** | Saves to `.terrain/baselines/latest.json` | None | - |
 | Manage baselines | `ai baseline` | **Implemented** | Reads and displays baseline | None | - |
@@ -173,7 +173,7 @@
 | `terrain migration blockers` | Implemented | By type and risk |
 | `terrain migration preview` | Implemented | Per-file/scope preview |
 | `terrain ai list` | Implemented | Frameworks + auto-derived scenarios |
-| `terrain ai doctor` | Implemented | 5-point diagnostic |
+| `terrain ai doctor` | Implemented | 6-point diagnostic |
 | `terrain ai run` | Implemented | Framework-delegated execution |
 | `terrain ai record` | Implemented | Baseline snapshot |
 | `terrain ai baseline` | Implemented | Baseline display |

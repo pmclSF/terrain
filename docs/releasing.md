@@ -8,17 +8,28 @@ git tag vX.Y.Z && git push origin vX.Y.Z
          ▼
   release.yml (trigger: tag push v*)
     ├── verify job:
-    │     ├── npm ci
+    │     ├── actions/setup-go + actions/setup-node
     │     ├── Assert tag matches package.json version
-    │     └── npm run release:verify
-    │           ├── format:check
-    │           ├── lint
-    │           ├── test (all suites)
-    │           └── verify-pack.js
-    │                 ├── npm pack → install in temp dir
-    │                 ├── Verify JS exports (VERSION, convertFile, …)
-    │                 ├── CLI smoke (--version, --help)
-    │                 └── Conversion smoke (jest→vitest)
+    │     └── make release-verify
+    │           ├── make go-release-verify
+    │           │     ├── go vet ./cmd/... ./internal/...
+    │           │     ├── go test ./cmd/... ./internal/...
+    │           │     ├── go build ./cmd/terrain
+    │           │     └── go test ./cmd/terrain/ -run TestSnapshot -count=1 -v
+    │           ├── make js-release-verify
+    │           │     ├── npm ci
+    │           │     ├── format:check
+    │           │     ├── lint
+    │           │     ├── test (all suites)
+    │           │     └── verify-pack.js
+    │           │           ├── npm pack → install in temp dir
+    │           │           ├── Verify JS exports (VERSION, convertFile, …)
+    │           │           ├── CLI smoke (`terrain-convert` + compat shim)
+    │           │           └── Conversion smoke (jest→vitest)
+    │           └── make extension-verify
+    │                 ├── npm --prefix extension/vscode ci
+    │                 ├── npm --prefix extension/vscode run compile
+    │                 └── npm --prefix extension/vscode test
     └── release job (needs: verify):
           ├── npm ci
           ├── npm publish --provenance (NPM_TOKEN secret)
@@ -50,7 +61,7 @@ version does not match `package.json` version — preventing accidental publishe
 of mismatched versions.
 
 `publish.yml` (renamed "Verify Release") is a safety net that triggers on
-`release: created` events. It runs `npm run release:verify` but does NOT
+`release: created` events. It runs `make release-verify` but does NOT
 publish — this catches issues if a release is created manually outside the
 tag-push flow.
 
@@ -82,12 +93,11 @@ Follow these steps before cutting any release.
 ### 1. Run the full verification locally
 
 ```bash
-npm run release:verify
+make release-verify
 ```
 
-This runs format:check, lint, tests, packs the tarball, installs it in a temp
-directory, verifies exports, runs CLI smoke tests (`--version`, `--help`), and
-runs a conversion smoke test (jest→vitest).
+This runs the Go release gate, the npm package verification, and the VS Code
+extension compile path in one contract.
 
 ### 2. Inspect tarball contents
 

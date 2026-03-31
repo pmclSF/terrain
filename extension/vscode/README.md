@@ -8,21 +8,24 @@ See [docs/vscode-extension.md](../../docs/vscode-extension.md) for the design.
 ## Architecture
 
 ```
-terrain analyze --json  -->  TestSuiteSnapshot  -->  TreeDataProviders  -->  Sidebar Views
+terrain analyze --json
+terrain insights --json
+terrain migration readiness --json
+        --> report bundle --> TreeDataProviders --> Sidebar Views
 ```
 
-The extension invokes the CLI, parses the JSON snapshot, and renders views.
+The extension invokes the CLI, parses the report bundle, and renders views.
 No business logic is duplicated in TypeScript.
 
 ## Sidebar Views
 
 | View | Content |
 |------|---------|
-| **Overview** | Repository name, framework count, test file count, signal count, risk surfaces, top issues |
-| **Health** | Health signals grouped by type (slow, flaky, skipped). Empty state when no runtime data |
-| **Quality** | Quality signals grouped by type (weak assertions, mock-heavy, untested exports) |
-| **Migration** | Framework summary, blocker count, blockers by type, area assessments (safe/caution/risky) |
-| **Review** | Medium+ severity findings grouped by type, owner, directory. Migration blockers surfaced |
+| **Overview** | Repository name, framework count, test file count, signal count, headline, risk posture, top findings |
+| **Health** | Reliability findings from `terrain insights`, skipped-test burden, runtime-readiness guidance |
+| **Quality** | Coverage and architecture findings from `terrain insights` |
+| **Migration** | Framework summary, readiness explanation, blocker count, area assessments, coverage guidance |
+| **Review** | Medium+ findings grouped by category, severity, and directory/scope |
 
 ## Commands
 
@@ -47,14 +50,15 @@ All views handle these states:
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `terrain.binaryPath` | `terrain` | Path to the terrain CLI binary |
-| `terrain.autoRefresh` | `false` | Auto-refresh when files change |
+| `terrain.autoRefresh` | `false` | Auto-refresh the sidebar after relevant workspace file changes |
 
 ## Development
 
 ```bash
 cd extension/vscode
-npm install
+npm ci
 npm run compile
+npm test
 # Press F5 in VS Code to launch Extension Development Host
 ```
 
@@ -63,6 +67,6 @@ npm run compile
 | File | Purpose |
 |------|---------|
 | `src/extension.ts` | Extension entry point, TreeDataProviders, commands, CLI integration |
-| `src/types.ts` | TypeScript types aligned with CLI JSON snapshot contract |
-| `src/signal_renderer.ts` | Grouping/filtering helpers for transforming snapshot data |
-| `src/views.ts` | View data builders for each sidebar view |
+| `src/types.ts` | TypeScript types aligned with analyze/insights/migration JSON contracts |
+| `src/signal_renderer.ts` | Grouping/filtering helpers for report findings |
+| `src/views.ts` | View data builders for the extension report bundle |

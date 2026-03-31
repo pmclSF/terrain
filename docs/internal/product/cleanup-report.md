@@ -2,6 +2,7 @@
 
 > **Date:** 2026-03-15
 > **Scope:** Remove obsolete CLI commands, unused graph types, orphaned packages, and Hamlet-era naming.
+> **Historical snapshot:** This report documents the cleanup state as of 2026-03-15. Some forward-looking notes in this document, especially around AI commands, may no longer reflect the current implementation.
 
 ## Summary
 
@@ -86,14 +87,18 @@ Remaining `hamlet` strings in artifacts are filesystem paths (`/Users/pzachary/h
 
 All CLI commands in `cmd/terrain/main.go` have valid handler functions and produce real output. The `terrain depgraph` backward-compatibility alias for `terrain debug depgraph` remains intentional and documented.
 
+> **Superseded note:** The AI command inventory below reflects the 2026-03-15
+> cleanup audit only. As of 2026-03-30, `terrain ai run`, `terrain ai replay`,
+> `terrain ai record`, and `terrain ai baseline` all execute today.
+
 **Commands verified (27 total):**
 - 4 canonical: analyze, impact, insights, explain
 - 13 supporting: init, summary, focus, posture, portfolio, metrics, compare, migration, policy check, select-tests, pr, show, export benchmark
-- 5 AI: ai list, ai doctor, ai run (scaffolded), ai record (scaffolded), ai baseline (scaffolded)
+- 5 AI at the time of this audit: ai list, ai doctor, ai run (then scaffolded), ai record (then scaffolded), ai baseline (then scaffolded)
 - 5 debug: debug graph, debug coverage, debug fanout, debug duplicates, debug depgraph
 - Plus: version, help
 
-The 3 scaffolded AI commands (`ai run`, `ai record`, `ai baseline`) return clear not-implemented messages with documentation pointers. These are intentional placeholders, not obsolete commands.
+At the time of this audit, the 3 scaffolded AI commands (`ai run`, `ai record`, `ai baseline`) returned clear not-implemented messages with documentation pointers. These were intentional placeholders, not obsolete commands.
 
 ---
 
@@ -112,7 +117,7 @@ All removed types are absent from the codebase.
 | Item | Reason |
 |------|--------|
 | `terrain depgraph` alias | Backward compatibility for `terrain debug depgraph`. Documented. |
-| AI scaffolded commands | `ai run`, `ai record`, `ai baseline` — planned features with clear not-implemented messages |
+| Historical AI scaffolded commands | `ai run`, `ai record`, `ai baseline` — this row reflects the 2026-03-15 cleanup audit only |
 | Graph reserved types | `NodeValidationTarget`, `NodeExecutionRun`, `NodeValidationExecution`, `NodePrompt`, `NodeDataset`, `NodeModel`, `NodeEvalMetric` — defined in schema for future use |
 
 ---
