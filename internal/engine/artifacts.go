@@ -92,9 +92,25 @@ var runtimeCandidates = []struct {
 	{"test-output.json", "go-test-json"},
 }
 
+// walkDirs are directories that commonly contain CI/test output artifacts.
+// The bounded walk checks these for known file patterns if the static
+// candidate checks find nothing.
+var walkDirs = []string{
+	"coverage", "test-results", "test-reports", "test-output",
+	".nyc_output", "build/reports", "build/test-results",
+	"target/surefire-reports", "target/test-results",
+	"reports", "junit", "htmlcov",
+}
+
+// walkMaxDepth is the maximum directory depth for artifact discovery walks.
+const walkMaxDepth = 3
+
+// walkMaxFiles is the maximum number of files examined per walk directory.
+const walkMaxFiles = 100
+
 // DiscoverArtifacts scans the repository root for common coverage and runtime
-// artifacts. The scan is lightweight — only os.Stat on known paths, no
-// directory walking. Returns what was found.
+// artifacts. It first checks known paths via os.Stat, then does a bounded walk
+// of common CI output directories if the static checks didn't find everything.
 func DiscoverArtifacts(root string) *ArtifactDiscovery {
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
@@ -102,6 +118,8 @@ func DiscoverArtifacts(root string) *ArtifactDiscovery {
 	}
 
 	d := &ArtifactDiscovery{}
+
+	// Phase 1: Static candidates (fast, exact paths).
 
 	// Coverage: first match wins.
 	for _, c := range coverageCandidates {
@@ -126,7 +144,81 @@ func DiscoverArtifacts(root string) *ArtifactDiscovery {
 		}
 	}
 
+	// Phase 2: Bounded directory walk for anything not yet found.
+	if d.CoveragePath == "" || len(d.RuntimePaths) == 0 {
+		discoverByWalk(absRoot, d, seen)
+	}
+
 	return d
+}
+
+// discoverByWalk does a bounded walk of common CI output directories,
+// looking for coverage and runtime artifacts by file name patterns.
+func discoverByWalk(root string, d *ArtifactDiscovery, seen map[string]bool) {
+	for _, dir := range walkDirs {
+		walkRoot := filepath.Join(root, dir)
+		info, err := os.Stat(walkRoot)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+
+		filesExamined := 0
+		_ = filepath.Walk(walkRoot, func(path string, fi os.FileInfo, err error) error {
+			if err != nil {
+				return nil // skip errors
+			}
+			if fi.IsDir() {
+				// Enforce depth limit.
+				rel, _ := filepath.Rel(walkRoot, path)
+				depth := strings.Count(rel, string(filepath.Separator))
+				if depth >= walkMaxDepth {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			filesExamined++
+			if filesExamined > walkMaxFiles {
+				return filepath.SkipDir
+			}
+			if fi.Size() == 0 {
+				return nil
+			}
+
+			name := fi.Name()
+
+			// Coverage patterns.
+			if d.CoveragePath == "" {
+				if name == "lcov.info" || name == "coverage.lcov" {
+					d.CoveragePath = path
+					d.CoverageFormat = "lcov"
+				} else if name == "coverage-final.json" {
+					d.CoveragePath = path
+					d.CoverageFormat = "istanbul"
+				} else if name == "coverage.out" || name == "cover.out" {
+					d.CoveragePath = path
+					d.CoverageFormat = "go-cover"
+				} else if name == "coverage.xml" {
+					d.CoveragePath = path
+					d.CoverageFormat = "cobertura"
+				}
+			}
+
+			// Runtime patterns.
+			if !seen[path] {
+				if strings.HasSuffix(name, ".xml") && (strings.Contains(name, "junit") || strings.Contains(name, "test-result") || name == "report.xml") {
+					seen[path] = true
+					d.RuntimePaths = append(d.RuntimePaths, path)
+					d.RuntimeFormats = append(d.RuntimeFormats, "junit-xml")
+				} else if name == "test-results.json" || name == "jest-results.json" || name == "test-output.json" {
+					seen[path] = true
+					d.RuntimePaths = append(d.RuntimePaths, path)
+					d.RuntimeFormats = append(d.RuntimeFormats, "jest-json")
+				}
+			}
+
+			return nil
+		})
+	}
 }
 
 // ApplyDiscovery merges auto-discovered artifacts into PipelineOptions,
