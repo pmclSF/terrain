@@ -28,6 +28,8 @@ const (
 	SignalSkippedTestsInCI       models.SignalType = "skippedTestsInCI"
 	SignalRuntimeBudgetExceeded  models.SignalType = "runtimeBudgetExceeded"
 	SignalStaticSkippedTest     models.SignalType = "staticSkippedTest"
+	SignalAssertionFreeTest    models.SignalType = "assertionFreeTest"
+	SignalOrphanedTestFile     models.SignalType = "orphanedTestFile"
 
 	// AI/eval signal types.
 	SignalEvalFailure            models.SignalType = "evalFailure"
@@ -180,6 +182,14 @@ var typeInfoBySignal = map[models.SignalType]TypeInfo{
 	SignalRuntimeBudgetExceeded: {
 		Description: "Observed runtimes exceed configured policy budget.",
 		Remediation: "Reduce runtime hotspots or adjust policy to reflect intentional tradeoffs.",
+	},
+	SignalAssertionFreeTest: {
+		Description: "Test files contain test function signatures but no detectable assertions.",
+		Remediation: "Add assertions to validate behavior — tests without assertions verify nothing.",
+	},
+	SignalOrphanedTestFile: {
+		Description: "Test files do not import any source modules from the repository.",
+		Remediation: "Connect orphaned tests to source code or remove if obsolete.",
 	},
 }
 

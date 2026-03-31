@@ -117,6 +117,26 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		},
 		Detector: &quality.StaticSkipDetector{},
 	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "health.assertion-free",
+			Domain:       signals.DomainHealth,
+			EvidenceType: signals.EvidenceStructuralPattern,
+			Description:  "Detect test files with tests but no detectable assertions.",
+			SignalTypes:  []models.SignalType{signals.SignalAssertionFreeTest},
+		},
+		Detector: &quality.AssertionFreeDetector{},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "health.orphaned-test",
+			Domain:       signals.DomainHealth,
+			EvidenceType: signals.EvidenceStructuralPattern,
+			Description:  "Detect test files with no linked source code units.",
+			SignalTypes:  []models.SignalType{signals.SignalOrphanedTestFile},
+		},
+		Detector: &quality.OrphanedTestDetector{},
+	})
 
 	// Migration detectors (no dependencies on other signals).
 	reg(signals.DetectorRegistration{
