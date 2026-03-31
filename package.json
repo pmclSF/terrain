@@ -55,7 +55,7 @@
   },
   "scripts": {
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
-    "lint": "eslint src/**/*.js",
+    "lint": "eslint src/**/*.js bin/**/*.js",
     "format": "prettier --write \"src/**/*.js\" \"bin/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.js\" \"bin/**/*.js\"",
     "start": "node bin/terrain.js",

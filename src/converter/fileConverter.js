@@ -105,17 +105,6 @@ function generateImports(types) {
 export async function convertCypressToPlaywright(cypressContent, options = {}) {
   let playwrightContent = cypressContent;
 
-  // Extract metadata inline from content (collectMetadata expects a file path)
-  const metadataCollector =
-    options.metadataCollector || new TestMetadataCollector();
-  const _metadata = {
-    type: metadataCollector.detectTestType(cypressContent),
-    suites: metadataCollector.extractTestSuites(cypressContent),
-    cases: metadataCollector.extractTestCases(cypressContent),
-    tags: metadataCollector.extractTags(cypressContent),
-    complexity: metadataCollector.calculateComplexity(cypressContent),
-  };
-
   // Detect test type
   const testType = detectTestType(cypressContent);
 

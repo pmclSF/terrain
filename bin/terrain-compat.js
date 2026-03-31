@@ -13,7 +13,7 @@
 import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
-const version = require('../package.json').version;
+const _version = require('../package.json').version;
 
 // Detect if we're being invoked as the npm `terrain` binary.
 // If so, show deprecation notice on stderr (won't pollute piped output).
