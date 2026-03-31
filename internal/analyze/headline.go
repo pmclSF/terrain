@@ -13,7 +13,8 @@ func deriveHeadline(r *Report) string {
 		)
 	}
 
-	if r.DuplicateClusters.RedundantTestCount > 50 {
+	// Duplicate clusters — even small counts are surprising and actionable.
+	if r.DuplicateClusters.ClusterCount > 0 {
 		return fmt.Sprintf(
 			"%d tests across %d clusters are structurally similar — consolidation would reduce CI load.",
 			r.DuplicateClusters.RedundantTestCount,
@@ -21,16 +22,27 @@ func deriveHeadline(r *Report) string {
 		)
 	}
 
+	if r.HighFanout.FlaggedCount > 0 && len(r.HighFanout.TopNodes) > 0 {
+		top := r.HighFanout.TopNodes[0]
+		return fmt.Sprintf(
+			"%s has %d dependents — any change ripples across many tests.",
+			top.Path, top.TransitiveFanout,
+		)
+	}
+
 	if r.HighFanout.FlaggedCount > 0 {
-		total := 0
-		for _, kf := range r.KeyFindings {
-			if kf.Category == "architecture_debt" {
-				total++
-			}
-		}
 		return fmt.Sprintf(
 			"%d shared fixtures have high fan-out — any change to them ripples across many tests.",
 			r.HighFanout.FlaggedCount,
+		)
+	}
+
+	// Skip burden is surprising and actionable.
+	if r.SkippedTestBurden.SkipRatio > 0.1 {
+		return fmt.Sprintf(
+			"%.0f%% of tests are skipped — %d tests may be masking instability.",
+			r.SkippedTestBurden.SkipRatio*100,
+			r.SkippedTestBurden.SkippedCount,
 		)
 	}
 

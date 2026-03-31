@@ -149,7 +149,7 @@ func ApplyDiscovery(opts *PipelineOptions, discovery *ArtifactDiscovery) []strin
 		opts.CoveragePath = discovery.CoveragePath
 		discovery.CoverageAutoDetected = true
 		messages = append(messages,
-			"Auto-detected coverage: "+relativePath(discovery.CoveragePath)+" ("+discovery.CoverageFormat+")")
+			"Auto-detected coverage: "+RelativePath(discovery.CoveragePath)+" ("+discovery.CoverageFormat+")")
 	}
 
 	// Runtime: apply only if not explicitly set.
@@ -158,32 +158,71 @@ func ApplyDiscovery(opts *PipelineOptions, discovery *ArtifactDiscovery) []strin
 		opts.RuntimePaths = discovery.RuntimePaths[:1]
 		discovery.RuntimeAutoDetected = true
 		messages = append(messages,
-			"Auto-detected runtime: "+relativePath(discovery.RuntimePaths[0])+" ("+discovery.RuntimeFormats[0]+")")
+			"Auto-detected runtime: "+RelativePath(discovery.RuntimePaths[0])+" ("+discovery.RuntimeFormats[0]+")")
 	}
 
 	return messages
 }
 
 // MissingArtifactHints returns user-facing hints for artifacts that were
-// not found and not explicitly provided. Returns nil if everything is
-// available or explicitly provided.
-func MissingArtifactHints(opts *PipelineOptions, discovery *ArtifactDiscovery) []string {
+// not found and not explicitly provided. Hints are tailored to detected
+// languages so that irrelevant suggestions (e.g., JUnit XML for a pure
+// JS repo) are suppressed. Returns nil if everything is available.
+func MissingArtifactHints(opts *PipelineOptions, discovery *ArtifactDiscovery, languages []string) []string {
 	var hints []string
 
 	if opts.CoveragePath == "" {
-		hints = append(hints,
-			"Coverage data not found. Provide with --coverage <path> to unlock coverage signals.")
+		hint := coverageHint(languages)
+		if hint != "" {
+			hints = append(hints, hint)
+		}
 	}
 
 	if len(opts.RuntimePaths) == 0 {
-		hints = append(hints,
-			"Runtime data not found. Provide with --runtime <path> to unlock health signals.")
+		hint := runtimeHint(languages)
+		if hint != "" {
+			hints = append(hints, hint)
+		}
 	}
 
 	return hints
 }
 
-func relativePath(absPath string) string {
+func coverageHint(languages []string) string {
+	for _, lang := range languages {
+		switch lang {
+		case "javascript", "typescript":
+			return "Coverage not found. Run: npx jest --coverage --coverageReporters=lcov (or provide --coverage <path>)"
+		case "go":
+			return "Coverage not found. Run: go test -coverprofile=coverage.out ./... (or provide --coverage <path>)"
+		case "python":
+			return "Coverage not found. Run: pytest --cov --cov-report=lcov (or provide --coverage <path>)"
+		case "java":
+			return "Coverage not found. Run your build tool's coverage target (or provide --coverage <path>)"
+		}
+	}
+	return "Coverage data not found. Provide with --coverage <path> to unlock coverage signals."
+}
+
+func runtimeHint(languages []string) string {
+	for _, lang := range languages {
+		switch lang {
+		case "javascript", "typescript":
+			return "Runtime not found. Run: npx jest --json --outputFile=jest-results.json (or provide --runtime <path>)"
+		case "go":
+			return "Runtime not found. Run: go test -json ./... > test-output.json (or provide --runtime <path>)"
+		case "python":
+			return "Runtime not found. Run: pytest --junitxml=junit.xml (or provide --runtime <path>)"
+		case "java":
+			return "Runtime not found. Run: mvn test (JUnit XML in target/surefire-reports/) or provide --runtime <path>"
+		}
+	}
+	return "Runtime data not found. Provide with --runtime <path> to unlock health signals."
+}
+
+// RelativePath returns the path relative to the current working directory,
+// falling back to the absolute path if the relative form would escape.
+func RelativePath(absPath string) string {
 	if cwd, err := os.Getwd(); err == nil {
 		if rel, err := filepath.Rel(cwd, absPath); err == nil && !strings.HasPrefix(rel, "..") {
 			return rel
