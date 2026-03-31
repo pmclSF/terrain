@@ -1,56 +1,56 @@
-# Terrain Test Intelligence -- VS Code Extension
+# Terrain Test Intelligence
 
-Thin VS Code / Cursor extension that renders Terrain analysis as sidebar views.
-All intelligence lives in the CLI -- the extension is a read-only lens.
+Understand your test system without leaving your editor. Terrain analyzes your repository's test structure, coverage, and quality — then surfaces findings directly in the VS Code sidebar.
 
-See [docs/vscode-extension.md](../../docs/vscode-extension.md) for the design.
+## Features
 
-## Architecture
+**Sidebar Views** — five panels organized by concern:
 
+- **Overview** — repository profile, framework inventory, headline finding, risk posture
+- **Health** — skip burden, flaky/slow test signals, runtime readiness guidance
+- **Quality** — coverage gaps, weak assertions, mock-heavy tests, duplicate clusters
+- **Migration** — framework readiness, blockers, area assessments
+- **Review** — all medium+ findings grouped by category and severity
+
+**Zero Configuration** — the extension invokes the `terrain` CLI on your workspace and renders the results. No setup files, no config, no test execution required.
+
+**Click to Navigate** — findings link directly to the source files they reference. Click any finding to jump to the relevant code.
+
+## Prerequisites
+
+Install the Terrain CLI:
+
+```bash
+go install github.com/pmclSF/terrain/cmd/terrain@latest
 ```
-terrain analyze --json
-terrain insights --json
-terrain migration readiness --json
-        --> report bundle --> TreeDataProviders --> Sidebar Views
-```
 
-The extension invokes the CLI, parses the report bundle, and renders views.
-No business logic is duplicated in TypeScript.
-
-## Sidebar Views
-
-| View | Content |
-|------|---------|
-| **Overview** | Repository name, framework count, test file count, signal count, headline, risk posture, top findings |
-| **Health** | Reliability findings from `terrain insights`, skipped-test burden, runtime-readiness guidance |
-| **Quality** | Coverage and architecture findings from `terrain insights` |
-| **Migration** | Framework summary, readiness explanation, blocker count, area assessments, coverage guidance |
-| **Review** | Medium+ findings grouped by category, severity, and directory/scope |
+The extension invokes `terrain analyze --json` and `terrain insights --json` in your workspace. All intelligence lives in the CLI — the extension is a lightweight rendering layer.
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `Terrain: Refresh Analysis` | Re-run `terrain analyze --json` and refresh all views |
+| `Terrain: Refresh Analysis` | Re-run analysis and refresh all views |
 | `Terrain: Open Executive Summary` | Open terminal with `terrain summary` |
 | `Terrain: Show Migration Blockers` | Open terminal with `terrain migration blockers` |
 | `Terrain: Reveal File` | Open the file associated with a finding |
 
-## States
-
-All views handle these states:
-
-- **Empty**: No analysis run yet -- shows prompt to refresh
-- **Loading**: Analysis in progress -- shows spinner
-- **Error**: CLI failed -- shows error message and install guidance
-- **Loaded**: Real data rendered from snapshot
-
-## Configuration
+## Settings
 
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `terrain.binaryPath` | `terrain` | Path to the terrain CLI binary |
-| `terrain.autoRefresh` | `false` | Auto-refresh the sidebar after relevant workspace file changes |
+| `terrain.autoRefresh` | `false` | Auto-refresh when workspace files change |
+
+## How It Works
+
+```
+terrain analyze --json  ─┐
+terrain insights --json  ├─→ report bundle ─→ sidebar views
+terrain migration --json ─┘
+```
+
+The extension calls the CLI, parses JSON output, and renders tree views. No business logic is duplicated in the extension — the CLI is the single source of truth.
 
 ## Development
 
@@ -66,7 +66,13 @@ npm test
 
 | File | Purpose |
 |------|---------|
-| `src/extension.ts` | Extension entry point, TreeDataProviders, commands, CLI integration |
-| `src/types.ts` | TypeScript types aligned with analyze/insights/migration JSON contracts |
-| `src/signal_renderer.ts` | Grouping/filtering helpers for report findings |
-| `src/views.ts` | View data builders for the extension report bundle |
+| `src/extension.ts` | Entry point, TreeDataProviders, commands, CLI integration |
+| `src/types.ts` | TypeScript types matching CLI JSON contracts |
+| `src/signal_renderer.ts` | Finding grouping and filtering helpers |
+| `src/views.ts` | View data builders for the report bundle |
+
+## Links
+
+- [Terrain CLI](https://github.com/pmclSF/terrain) — the analysis engine
+- [Quickstart Guide](https://github.com/pmclSF/terrain/blob/main/docs/quickstart.md) — get started in 5 minutes
+- [Signal Catalog](https://github.com/pmclSF/terrain/blob/main/docs/signal-catalog.md) — all 22+ signal types

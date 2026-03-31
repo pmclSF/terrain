@@ -5,6 +5,20 @@
   "version": "0.1.0",
   "publisher": "pmclSF",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pmclSF/terrain",
+    "directory": "extension/vscode"
+  },
+  "homepage": "https://github.com/pmclSF/terrain",
+  "keywords": [
+    "testing",
+    "test intelligence",
+    "test quality",
+    "coverage",
+    "migration",
+    "risk analysis"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },
