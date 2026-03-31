@@ -17,15 +17,22 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 22.x
           cache: npm
-
-      - name: Install dependencies
-        run: npm ci
+          cache-dependency-path: |
+            package-lock.json
+            extension/vscode/package-lock.json
 
       - name: Run release verification
-        run: npm run release:verify
+        run: make release-verify
