@@ -26,6 +26,8 @@ var KnownSignalTypes = map[SignalType]bool{
 	"skippedTestsInCI":       true,
 	"runtimeBudgetExceeded":  true,
 	"staticSkippedTest":      true,
+	"assertionFreeTest":      true,
+	"orphanedTestFile":       true,
 
 	// AI/eval signal types.
 	"evalFailure":            true,

@@ -11,9 +11,9 @@ func TestDefaultRegistry_WithoutPolicy(t *testing.T) {
 	t.Parallel()
 	r, _ := DefaultRegistry(Config{RepoRoot: "."})
 
-	// Should have 12 detectors (5 quality + 2 coverage + 5 migration, no governance).
-	if r.Len() != 12 {
-		t.Errorf("DefaultRegistry without policy: Len() = %d, want 12", r.Len())
+	// Should have 14 detectors (5 quality + 2 health + 2 coverage + 5 migration, no governance).
+	if r.Len() != 14 {
+		t.Errorf("DefaultRegistry without policy: Len() = %d, want 14", r.Len())
 	}
 
 	quality := r.ByDomain(signals.DomainQuality)
@@ -50,9 +50,9 @@ func TestDefaultRegistry_WithPolicy(t *testing.T) {
 	}
 	r, _ := DefaultRegistry(cfg)
 
-	// Should have 13 detectors (5 quality + 2 coverage + 5 migration + 1 governance).
-	if r.Len() != 13 {
-		t.Errorf("DefaultRegistry with policy: Len() = %d, want 13", r.Len())
+	// Should have 15 detectors (5 quality + 2 health + 2 coverage + 5 migration + 1 governance).
+	if r.Len() != 15 {
+		t.Errorf("DefaultRegistry with policy: Len() = %d, want 15", r.Len())
 	}
 
 	governance := r.ByDomain(signals.DomainGovernance)
@@ -73,6 +73,8 @@ func TestDefaultRegistry_DetectorIDs(t *testing.T) {
 		"quality.coverage-threshold",
 		"coverage.blind-spot",
 		"quality.static-skip",
+		"health.assertion-free",
+		"health.orphaned-test",
 		"migration.deprecated-pattern",
 		"migration.dynamic-test-generation",
 		"migration.custom-matcher",
