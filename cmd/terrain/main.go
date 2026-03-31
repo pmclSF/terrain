@@ -42,6 +42,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/logging"
+	"github.com/pmclSF/terrain/internal/telemetry"
 )
 
 // Build-time variables set via ldflags.
@@ -483,6 +484,41 @@ func main() {
 		default:
 			fmt.Fprintf(os.Stderr, "error: unknown ai subcommand: %q\n\n", aiSub)
 			printAIUsage()
+			os.Exit(1)
+		}
+
+	case "telemetry":
+		if len(os.Args) < 3 {
+			fmt.Println("Telemetry:", telemetry.Status())
+			fmt.Println()
+			fmt.Println("Usage:")
+			fmt.Println("  terrain telemetry --on     enable local telemetry")
+			fmt.Println("  terrain telemetry --off    disable local telemetry")
+			fmt.Println("  terrain telemetry --status show current state")
+			fmt.Println()
+			fmt.Println("Telemetry records command name, repo size band, languages,")
+			fmt.Println("signal count, and duration to ~/.terrain/telemetry.jsonl.")
+			fmt.Println("No file paths, repo URLs, or PII are recorded.")
+			fmt.Println("Override with TERRAIN_TELEMETRY=on|off environment variable.")
+			return
+		}
+		switch os.Args[2] {
+		case "--on", "on":
+			if err := telemetry.SaveConfig(telemetry.Config{Enabled: true}); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("Telemetry enabled. Events will be written to ~/.terrain/telemetry.jsonl")
+		case "--off", "off":
+			if err := telemetry.SaveConfig(telemetry.Config{Enabled: false}); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("Telemetry disabled.")
+		case "--status", "status":
+			fmt.Println("Telemetry:", telemetry.Status())
+		default:
+			fmt.Fprintf(os.Stderr, "unknown telemetry subcommand: %q\n", os.Args[2])
 			os.Exit(1)
 		}
 
