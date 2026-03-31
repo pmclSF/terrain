@@ -82,7 +82,7 @@ func runMigration(subCmd, root string, jsonOutput bool, file, scope string) erro
 }
 
 // runExportBenchmark performs analysis and outputs a benchmark-safe JSON export.
-func runExportBenchmark(root string) error {
+func runExportBenchmark(root string, _ bool) error {
 	result, err := engine.RunPipeline(root, defaultPipelineOptions())
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
@@ -220,4 +220,3 @@ func persistSnapshot(snapshot *models.TestSuiteSnapshot, root string) error {
 	logging.L().Info("snapshot persisted", "latest", latestPath, "archive", archivePath)
 	return nil
 }
-

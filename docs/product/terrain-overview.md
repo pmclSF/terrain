@@ -139,7 +139,7 @@ The JavaScript converter engine (`src/`, `bin/terrain.js`) provides multi-framew
 **CLI:**
 - **4 canonical commands** — analyze, impact, insights, explain
 - **13 supporting commands** — init, summary, focus, posture, portfolio, metrics, compare, migration, policy, select-tests, pr, show, export benchmark
-- **5 AI commands** — ai list, ai doctor, ai run (scaffolded), ai record (scaffolded), ai baseline (scaffolded)
+- **6 AI commands** — ai list, ai doctor, ai run, ai replay, ai record, ai baseline
 - **5 debug commands** — debug graph, coverage, fanout, duplicates, depgraph
 
 **AI Validation:**

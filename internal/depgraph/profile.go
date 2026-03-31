@@ -158,7 +158,19 @@ func classifyRedundancy(dupes *DuplicateResult) string {
 // EnrichProfileWithHealthRatios sets skip and flake burden on a profile
 // using ratios computed from runtime health metrics.
 func EnrichProfileWithHealthRatios(profile *RepoProfile, skipRatio, flakeRatio float64) {
+	EnrichProfileWithSkipRatio(profile, skipRatio)
+	EnrichProfileWithFlakeRatio(profile, flakeRatio)
+}
+
+// EnrichProfileWithSkipRatio sets skip burden on a profile using a
+// repository-level skipped-test ratio.
+func EnrichProfileWithSkipRatio(profile *RepoProfile, skipRatio float64) {
 	profile.SkipBurden = classifyRatioBurden(skipRatio)
+}
+
+// EnrichProfileWithFlakeRatio sets flake burden on a profile using a
+// repository-level flake ratio.
+func EnrichProfileWithFlakeRatio(profile *RepoProfile, flakeRatio float64) {
 	profile.FlakeBurden = classifyRatioBurden(flakeRatio)
 }
 

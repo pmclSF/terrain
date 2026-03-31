@@ -59,13 +59,24 @@ func TestDerive_Structure(t *testing.T) {
 func TestDerive_HealthSignals(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
-		TestFiles: make([]models.TestFile, 10),
+		TestFiles: []models.TestFile{
+			{Path: "a.test.js", TestCount: 1},
+			{Path: "b.test.js", TestCount: 1},
+			{Path: "c.test.js", TestCount: 1},
+			{Path: "d.test.js", TestCount: 1},
+			{Path: "e.test.js", TestCount: 1},
+			{Path: "f.test.js", TestCount: 1},
+			{Path: "g.test.js", TestCount: 1},
+			{Path: "h.test.js", TestCount: 1},
+			{Path: "i.test.js", TestCount: 1},
+			{Path: "j.test.js", TestCount: 1},
+		},
 		Signals: []models.Signal{
-			{Type: "flakyTest"},
-			{Type: "flakyTest"},
-			{Type: "skippedTest"},
-			{Type: "slowTest"},
-			{Type: "deadTest"},
+			{Type: "flakyTest", Location: models.SignalLocation{File: "a.test.js"}},
+			{Type: "flakyTest", Location: models.SignalLocation{File: "b.test.js"}},
+			{Type: "skippedTest", Location: models.SignalLocation{File: "c.test.js"}, Metadata: map[string]any{"skippedCount": 1, "totalCount": 1, "scope": "file"}},
+			{Type: "slowTest", Location: models.SignalLocation{File: "d.test.js"}},
+			{Type: "deadTest", Location: models.SignalLocation{File: "e.test.js"}},
 		},
 	}
 
@@ -79,6 +90,9 @@ func TestDerive_HealthSignals(t *testing.T) {
 	}
 	if ms.Health.SkippedTestCount != 1 {
 		t.Errorf("skippedTestCount = %d, want 1", ms.Health.SkippedTestCount)
+	}
+	if ms.Health.SkippedTestRatio != 0.1 {
+		t.Errorf("skippedTestRatio = %.2f, want 0.10", ms.Health.SkippedTestRatio)
 	}
 	if ms.Health.SlowTestCount != 1 {
 		t.Errorf("slowTestCount = %d, want 1", ms.Health.SlowTestCount)
