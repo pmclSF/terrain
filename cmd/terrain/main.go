@@ -487,6 +487,14 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "feedback":
+		url := "https://github.com/pmclSF/terrain/issues/new?template=feedback.md&title=Feedback:+&labels=feedback"
+		fmt.Println("Open the following URL to share feedback:")
+		fmt.Println()
+		fmt.Printf("  %s\n", url)
+		fmt.Println()
+		fmt.Println("Or email: terrain-feedback@pmcl.dev")
+
 	case "telemetry":
 		if len(os.Args) < 3 {
 			fmt.Println("Telemetry:", telemetry.Status())
