@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -27,12 +28,14 @@ func runAI(subCmd, root string, jsonOutput bool) error {
 	case "run":
 		// Handled separately in main dispatch with extra flags.
 		return runAIRun(root, jsonOutput, "", false, false)
+	case "replay":
+		return runAIReplay(root, jsonOutput, filepath.Join(root, ".terrain", "artifacts", "ai-run-latest.json"))
 	case "record":
 		return runAIRecord(root, jsonOutput)
 	case "baseline":
 		return runAIBaseline(root, jsonOutput)
 	default:
-		return fmt.Errorf("unknown ai subcommand: %q\nValid: list, run, record, baseline, doctor", subCmd)
+		return fmt.Errorf("unknown ai subcommand: %q\nValid: list, run, replay, record, baseline, doctor", subCmd)
 	}
 }
 
@@ -74,7 +77,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 			continue
 		}
 		entry := aiSurfaceEntry{
-			SurfaceID:     cs.SurfaceID, Name: cs.Name,
+			SurfaceID: cs.SurfaceID, Name: cs.Name,
 			Path: cs.Path, Language: cs.Language, Line: cs.Line,
 			DetectionTier: cs.DetectionTier, Confidence: cs.Confidence,
 			Reason: cs.Reason,
@@ -161,23 +164,23 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// --- JSON output ---
 	if jsonOutput {
 		type jsonResult struct {
-			Frameworks        []fwEntry             `json:"frameworks"`
-			Capabilities      []string              `json:"capabilities,omitempty"`
-			Scenarios         []aiScenarioEntry     `json:"scenarios"`
-			Prompts           []aiSurfaceEntry      `json:"prompts"`
-			Contexts          []aiSurfaceEntry      `json:"contexts,omitempty"`
-			Datasets          []aiSurfaceEntry      `json:"datasets"`
-			ToolDefs          []aiSurfaceEntry      `json:"toolDefinitions,omitempty"`
-			Retrievals        []aiSurfaceEntry      `json:"retrievalSurfaces,omitempty"`
-			Agents            []aiSurfaceEntry      `json:"agentSurfaces,omitempty"`
-			EvalDefs          []aiSurfaceEntry      `json:"evalDefinitions,omitempty"`
-			EvalFiles         []string              `json:"evalFiles"`
-			ModelFiles        []string              `json:"modelFiles,omitempty"`
-			UncoveredSurfaces []aiSurfaceEntry      `json:"uncoveredSurfaces,omitempty"`
-			Summary           map[string]int        `json:"summary"`
+			Frameworks        []fwEntry         `json:"frameworks"`
+			Capabilities      []string          `json:"capabilities,omitempty"`
+			Scenarios         []aiScenarioEntry `json:"scenarios"`
+			Prompts           []aiSurfaceEntry  `json:"prompts"`
+			Contexts          []aiSurfaceEntry  `json:"contexts,omitempty"`
+			Datasets          []aiSurfaceEntry  `json:"datasets"`
+			ToolDefs          []aiSurfaceEntry  `json:"toolDefinitions,omitempty"`
+			Retrievals        []aiSurfaceEntry  `json:"retrievalSurfaces,omitempty"`
+			Agents            []aiSurfaceEntry  `json:"agentSurfaces,omitempty"`
+			EvalDefs          []aiSurfaceEntry  `json:"evalDefinitions,omitempty"`
+			EvalFiles         []string          `json:"evalFiles"`
+			ModelFiles        []string          `json:"modelFiles,omitempty"`
+			UncoveredSurfaces []aiSurfaceEntry  `json:"uncoveredSurfaces,omitempty"`
+			Summary           map[string]int    `json:"summary"`
 		}
 		summary := map[string]int{
-			"scenarios":          len(scenarios),
+			"scenarios":         len(scenarios),
 			"capabilities":      len(capabilities),
 			"totalAISurfaces":   totalAI,
 			"uncoveredSurfaces": len(uncoveredSurfaces),
@@ -336,14 +339,14 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 // runAIRun detects eval frameworks and executes scenarios.
 // aiRunArtifact is the structured output of terrain ai run.
 type aiRunArtifact struct {
-	Mode       string              `json:"mode"`       // "impacted", "full", "dry-run"
-	Framework  string              `json:"framework"`
-	Command    string              `json:"command,omitempty"`
-	Selected   []aiRunScenario     `json:"selected"`
-	Skipped    []aiRunScenario     `json:"skipped,omitempty"`
-	Signals    []aiRunSignalEntry  `json:"signals,omitempty"`
-	Decision   aiRunDecision       `json:"decision"`
-	ExitCode   int                 `json:"exitCode"`
+	Mode      string             `json:"mode"` // "impacted", "full", "dry-run"
+	Framework string             `json:"framework"`
+	Command   string             `json:"command,omitempty"`
+	Selected  []aiRunScenario    `json:"selected"`
+	Skipped   []aiRunScenario    `json:"skipped,omitempty"`
+	Signals   []aiRunSignalEntry `json:"signals,omitempty"`
+	Decision  aiRunDecision      `json:"decision"`
+	ExitCode  int                `json:"exitCode"`
 }
 
 type aiRunScenario struct {
@@ -357,14 +360,14 @@ type aiRunScenario struct {
 }
 
 type aiRunSignalEntry struct {
-	Type       string `json:"type"`
-	Severity   string `json:"severity"`
-	Scenario   string `json:"scenario,omitempty"`
+	Type        string `json:"type"`
+	Severity    string `json:"severity"`
+	Scenario    string `json:"scenario,omitempty"`
 	Explanation string `json:"explanation"`
 }
 
 type aiRunDecision struct {
-	Action  string `json:"action"`  // "pass", "warn", "block"
+	Action  string `json:"action"` // "pass", "warn", "block"
 	Reason  string `json:"reason"`
 	Signals int    `json:"signals"`
 	Blocked int    `json:"blocked"`
@@ -455,15 +458,17 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	}
 
 	// Step 4: Build execution command.
-	cmd := buildEvalCommand(framework, det, selected, snap)
+	cmdArgs := buildEvalCommand(framework, det, selected, snap)
 
 	// Step 5: Execute (unless dry-run).
 	var execErr error
-	if !dryRun && cmd != "" {
-		parts := strings.Fields(cmd)
-		execCmd := exec.Command(parts[0], parts[1:]...)
+	var stderrBuf bytes.Buffer
+	if !dryRun && len(cmdArgs) > 0 {
+		execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
 		execCmd.Dir = root
-		if !jsonOutput {
+		if jsonOutput {
+			execCmd.Stderr = &stderrBuf
+		} else {
 			execCmd.Stdout = os.Stdout
 			execCmd.Stderr = os.Stderr
 		}
@@ -489,14 +494,18 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	}
 	if execErr != nil {
 		decision.Action = "block"
-		decision.Reason = fmt.Sprintf("eval execution failed: %v", execErr)
+		if stderr := stderrBuf.String(); stderr != "" {
+			decision.Reason = fmt.Sprintf("eval execution failed: %v\n%s", execErr, stderr)
+		} else {
+			decision.Reason = fmt.Sprintf("eval execution failed: %v", execErr)
+		}
 		exitCode = 1
 	}
 
 	// Step 7b: Compute content hashes and build persistent artifact.
 	hashes := airun.ComputeHashes(root, snap.CodeSurfaces)
 	persistArt := &airun.Artifact{
-		Mode: mode, Framework: framework, Command: cmd,
+		Mode: mode, Framework: framework, Command: strings.Join(cmdArgs, " "),
 		Decision: airun.Decision{
 			Action: decision.Action, Reason: decision.Reason,
 			Signals: decision.Signals, Blocked: decision.Blocked,
@@ -566,14 +575,14 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 
 	if dryRun {
 		fmt.Println("[dry-run] Would execute:")
-		fmt.Printf("  %s\n", cmd)
+		fmt.Printf("  %s\n", strings.Join(cmdArgs, " "))
 		fmt.Println()
 		fmt.Println("No execution performed.")
 		return nil
 	}
 
-	if cmd != "" {
-		fmt.Printf("Command: %s\n", cmd)
+	if len(cmdArgs) > 0 {
+		fmt.Printf("Command: %s\n", strings.Join(cmdArgs, " "))
 		fmt.Println()
 	}
 
@@ -605,20 +614,20 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	return nil
 }
 
-func buildEvalCommand(framework string, det *aidetect.DetectResult, selected []aiRunScenario, snap *models.TestSuiteSnapshot) string {
+func buildEvalCommand(framework string, det *aidetect.DetectResult, selected []aiRunScenario, snap *models.TestSuiteSnapshot) []string {
 	switch framework {
 	case "promptfoo":
-		cmd := "npx promptfoo eval"
+		args := []string{"npx", "promptfoo", "eval"}
 		if len(det.Frameworks) > 0 && det.Frameworks[0].ConfigFile != "" {
-			cmd += " -c " + det.Frameworks[0].ConfigFile
+			args = append(args, "-c", det.Frameworks[0].ConfigFile)
 		}
-		return cmd
+		return args
 	case "deepeval":
-		return "deepeval test run"
+		return []string{"deepeval", "test", "run"}
 	case "ragas":
-		return "python -m ragas evaluate"
+		return []string{"python", "-m", "ragas", "evaluate"}
 	case "langsmith":
-		return "langsmith test run"
+		return []string{"langsmith", "test", "run"}
 	}
 
 	// Generic: run eval files with detected test runner.
@@ -629,21 +638,21 @@ func buildEvalCommand(framework string, det *aidetect.DetectResult, selected []a
 		}
 	}
 	if len(evalFiles) == 0 {
-		return ""
+		return nil
 	}
 
-	runner := "npx vitest run"
+	runner := []string{"npx", "vitest", "run"}
 	for _, tf := range snap.TestFiles {
 		if tf.Framework == "pytest" {
-			runner = "pytest"
+			runner = []string{"pytest"}
 			break
 		}
 		if tf.Framework == "jest" {
-			runner = "npx jest"
+			runner = []string{"npx", "jest"}
 			break
 		}
 	}
-	return runner + " " + strings.Join(evalFiles, " ")
+	return append(runner, evalFiles...)
 }
 
 func evaluateAIRunDecision(snap *models.TestSuiteSnapshot, result *engine.PipelineResult) aiRunDecision {
@@ -715,7 +724,7 @@ func runAIRecord(root string, jsonOutput bool) error {
 	}
 
 	type baseline struct {
-		RecordedAt string           `json:"recordedAt"`
+		RecordedAt string            `json:"recordedAt"`
 		Scenarios  []models.Scenario `json:"scenarios"`
 		Surfaces   struct {
 			Prompts  int `json:"prompts"`
