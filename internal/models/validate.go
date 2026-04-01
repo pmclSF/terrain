@@ -137,7 +137,7 @@ func ValidateSignalInto(s Signal, idx int, ve *ValidationError) {
 
 	// Valid category values.
 	switch s.Category {
-	case CategoryStructure, CategoryHealth, CategoryQuality, CategoryMigration, CategoryGovernance, "":
+	case CategoryStructure, CategoryHealth, CategoryQuality, CategoryMigration, CategoryGovernance, CategoryAI, "":
 		// ok
 	default:
 		ve.addf("signals[%d] (%s) has invalid category %q", idx, s.Type, s.Category)
