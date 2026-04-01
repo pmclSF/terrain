@@ -9,7 +9,8 @@ import (
 )
 
 // RenderMetricsReport writes a human-readable metrics scorecard to w.
-func RenderMetricsReport(w io.Writer, ms *metrics.Snapshot) {
+func RenderMetricsReport(w io.Writer, ms *metrics.Snapshot, opts ...ReportOptions) {
+	_ = isVerbose(opts) // reserved for future verbose metric breakdowns
 	line := func(format string, args ...any) {
 		fmt.Fprintf(w, format+"\n", args...)
 	}

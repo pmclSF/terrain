@@ -1,10 +1,4 @@
 import { BaseConverter } from '../core/BaseConverter.js';
-import { PatternEngine } from '../core/PatternEngine.js';
-import { directMappings as navMappings } from '../patterns/commands/navigation.js';
-import { directMappings as selectorMappings } from '../patterns/commands/selectors.js';
-import { directMappings as interactionMappings } from '../patterns/commands/interactions.js';
-import { directMappings as assertionMappings } from '../patterns/commands/assertions.js';
-import { directMappings as waitMappings } from '../patterns/commands/waits.js';
 
 /**
  * Converts Cypress tests to Playwright format
@@ -14,174 +8,6 @@ export class CypressToPlaywright extends BaseConverter {
     super(options);
     this.sourceFramework = 'cypress';
     this.targetFramework = 'playwright';
-    this.engine = new PatternEngine();
-    this.initializePatterns();
-  }
-
-  /**
-   * Initialize conversion patterns
-   */
-  initializePatterns() {
-    const direction = 'cypress-playwright';
-
-    // Register all pattern categories
-    this.engine.registerPatterns('navigation', navMappings[direction] || {});
-    this.engine.registerPatterns(
-      'selectors',
-      selectorMappings[direction] || {}
-    );
-    this.engine.registerPatterns(
-      'interactions',
-      interactionMappings[direction] || {}
-    );
-    this.engine.registerPatterns(
-      'assertions',
-      assertionMappings[direction] || {}
-    );
-    this.engine.registerPatterns('waits', waitMappings[direction] || {});
-
-    // Test structure patterns — more specific patterns get higher priority
-    // to prevent 'describe(' matching inside 'describe.only('
-    this.engine.registerPattern(
-      'structure',
-      'describe\\.only\\(',
-      'test.describe.only(',
-      { priority: 10 }
-    );
-    this.engine.registerPattern(
-      'structure',
-      'describe\\.skip\\(',
-      'test.describe.skip(',
-      { priority: 10 }
-    );
-    this.engine.registerPattern('structure', 'it\\.only\\(', 'test.only(', {
-      priority: 10,
-    });
-    this.engine.registerPattern('structure', 'it\\.skip\\(', 'test.skip(', {
-      priority: 10,
-    });
-    this.engine.registerPattern('structure', 'describe\\(', 'test.describe(', {
-      priority: 0,
-    });
-    this.engine.registerPattern('structure', 'it\\(', 'test(', { priority: 0 });
-    this.engine.registerPattern('structure', 'before\\(', 'test.beforeAll(', {
-      priority: 0,
-    });
-    this.engine.registerPattern('structure', 'after\\(', 'test.afterAll(', {
-      priority: 0,
-    });
-    this.engine.registerPattern(
-      'structure',
-      'beforeEach\\(',
-      'test.beforeEach(',
-      { priority: 0 }
-    );
-    this.engine.registerPattern(
-      'structure',
-      'afterEach\\(',
-      'test.afterEach(',
-      { priority: 0 }
-    );
-    this.engine.registerPattern('structure', 'context\\(', 'test.describe(', {
-      priority: 0,
-    });
-    this.engine.registerPattern('structure', 'specify\\(', 'test(', {
-      priority: 0,
-    });
-
-    // Core command patterns
-    this.engine.registerPatterns('commands', {
-      'cy\\.visit\\(': 'await page.goto(',
-      'cy\\.get\\(': 'page.locator(',
-      'cy\\.contains\\(': 'page.getByText(',
-      'cy\\.find\\(': '.locator(',
-      'cy\\.focused\\(\\)': 'page.locator(":focus")',
-      'cy\\.root\\(\\)': 'page.locator("html")',
-      'cy\\.document\\(\\)': 'page',
-      'cy\\.window\\(\\)': 'page',
-      'cy\\.viewport\\(': 'await page.setViewportSize(',
-      'cy\\.screenshot\\(': 'await page.screenshot(',
-      'cy\\.reload\\(\\)': 'await page.reload()',
-      'cy\\.go\\([\'"]back[\'"]\\)': 'await page.goBack()',
-      'cy\\.go\\([\'"]forward[\'"]\\)': 'await page.goForward()',
-      'cy\\.url\\(\\)': 'page.url()',
-      'cy\\.title\\(\\)': 'await page.title()',
-      'cy\\.clearCookies\\(\\)': 'await context.clearCookies()',
-      'cy\\.clearLocalStorage\\(\\)':
-        'await page.evaluate(() => localStorage.clear())',
-      'cy\\.log\\(': 'console.log(',
-      'cy\\.pause\\(\\)': '// await page.pause() // Uncomment for debugging',
-      'cy\\.debug\\(\\)': '// debugger; // Uncomment for debugging',
-    });
-
-    // Interaction patterns
-    this.engine.registerPatterns('interactions', {
-      '\\.type\\(': '.fill(',
-      '\\.click\\(\\)': '.click()',
-      '\\.dblclick\\(\\)': '.dblclick()',
-      '\\.rightclick\\(\\)': '.click({ button: "right" })',
-      '\\.check\\(\\)': '.check()',
-      '\\.uncheck\\(\\)': '.uncheck()',
-      '\\.select\\(': '.selectOption(',
-      '\\.clear\\(\\)': '.clear()',
-      '\\.focus\\(\\)': '.focus()',
-      '\\.blur\\(\\)': '.blur()',
-      '\\.trigger\\([\'"]mouseover[\'"]\\)': '.hover()',
-      '\\.trigger\\([\'"]mouseenter[\'"]\\)': '.hover()',
-      '\\.scrollIntoView\\(\\)': '.scrollIntoViewIfNeeded()',
-      '\\.selectFile\\(': '.setInputFiles(',
-      '\\.attachFile\\(': '.setInputFiles(',
-    });
-
-    // Assertion patterns
-    this.engine.registerPatterns('assertions', {
-      '\\.should\\([\'"]be\\.visible[\'"]\\)':
-        '); await expect(element).toBeVisible()',
-      '\\.should\\([\'"]not\\.be\\.visible[\'"]\\)':
-        '); await expect(element).toBeHidden()',
-      '\\.should\\([\'"]exist[\'"]\\)':
-        '); await expect(element).toBeAttached()',
-      '\\.should\\([\'"]not\\.exist[\'"]\\)':
-        '); await expect(element).not.toBeAttached()',
-      '\\.should\\([\'"]have\\.text[\'"],\\s*([^()\n]+)\\)':
-        '); await expect(element).toHaveText($1)',
-      '\\.should\\([\'"]contain[\'"],\\s*([^()\n]+)\\)':
-        '); await expect(element).toContainText($1)',
-      '\\.should\\([\'"]have\\.value[\'"],\\s*([^()\n]+)\\)':
-        '); await expect(element).toHaveValue($1)',
-      '\\.should\\([\'"]have\\.attr[\'"],\\s*([^,\n]+),?\\s*([^)]*)\\)':
-        '); await expect(element).toHaveAttribute($1, $2)',
-      '\\.should\\([\'"]have\\.class[\'"],\\s*([^()\n]+)\\)':
-        '); await expect(element).toHaveClass($1)',
-      '\\.should\\([\'"]be\\.checked[\'"]\\)':
-        '); await expect(element).toBeChecked()',
-      '\\.should\\([\'"]be\\.disabled[\'"]\\)':
-        '); await expect(element).toBeDisabled()',
-      '\\.should\\([\'"]be\\.enabled[\'"]\\)':
-        '); await expect(element).toBeEnabled()',
-      '\\.should\\([\'"]have\\.length[\'"],\\s*([^()\n]+)\\)':
-        '); await expect(element).toHaveCount($1)',
-    });
-
-    // Traversal patterns
-    this.engine.registerPatterns('traversal', {
-      '\\.first\\(\\)': '.first()',
-      '\\.last\\(\\)': '.last()',
-      '\\.eq\\((\\d+)\\)': '.nth($1)',
-      '\\.parent\\(\\)': '.locator("..")',
-      '\\.children\\(\\)': '.locator("> *")',
-      '\\.siblings\\(\\)': '.locator("~ *")',
-      '\\.next\\(\\)': '.locator("+ *")',
-      '\\.prev\\(\\)': '.locator(":prev")',
-    });
-
-    // Network patterns
-    this.engine.registerPatterns('network', {
-      'cy\\.intercept\\(': 'await page.route(',
-      'cy\\.request\\(': 'await request.fetch(',
-      'cy\\.wait\\([\'"]@':
-        'await page.waitForResponse(response => response.url().includes("',
-    });
   }
 
   /**
@@ -759,12 +585,25 @@ export class CypressToPlaywright extends BaseConverter {
    */
   async convertConfig(configPath, _options = {}) {
     const fs = await import('fs/promises');
-    const content = await fs.readFile(configPath, 'utf8');
+    let content;
+    try {
+      content = await fs.readFile(configPath, 'utf8');
+    } catch (err) {
+      throw new Error(
+        `Failed to read Cypress config at ${configPath}: ${err.message}`
+      );
+    }
 
     let cypressConfig = {};
 
     if (configPath.endsWith('.json')) {
-      cypressConfig = JSON.parse(content);
+      try {
+        cypressConfig = JSON.parse(content);
+      } catch (err) {
+        throw new Error(
+          `Failed to parse Cypress JSON config at ${configPath}: ${err.message}`
+        );
+      }
     } else {
       // Extract values using regex (safer than eval)
       const baseUrlMatch = content.match(/baseUrl:\s*['"]([^'"]+)['"]/);
@@ -778,14 +617,14 @@ export class CypressToPlaywright extends BaseConverter {
 
       if (baseUrlMatch) cypressConfig.baseUrl = baseUrlMatch[1];
       if (viewportWidthMatch)
-        cypressConfig.viewportWidth = parseInt(viewportWidthMatch[1]);
+        cypressConfig.viewportWidth = parseInt(viewportWidthMatch[1], 10);
       if (viewportHeightMatch)
-        cypressConfig.viewportHeight = parseInt(viewportHeightMatch[1]);
+        cypressConfig.viewportHeight = parseInt(viewportHeightMatch[1], 10);
       if (videoMatch) cypressConfig.video = videoMatch[1] === 'true';
       if (screenshotMatch)
         cypressConfig.screenshotOnFailure = screenshotMatch[1] === 'true';
       if (timeoutMatch)
-        cypressConfig.defaultCommandTimeout = parseInt(timeoutMatch[1]);
+        cypressConfig.defaultCommandTimeout = parseInt(timeoutMatch[1], 10);
     }
 
     const playwrightConfig = {

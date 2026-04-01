@@ -377,6 +377,10 @@ func surfaceKindLabel(kind models.CodeSurfaceKind) string {
 func findProtectionGaps(units []ImpactedCodeUnit, tests []ImpactedTest, snap *models.TestSuiteSnapshot) []ProtectionGap {
 	var gaps []ProtectionGap
 
+	// When no coverage data was provided, downgrade severity since "no observed
+	// coverage" means "we don't have data" not "we measured and found zero."
+	hasCoverageData := hasCoverageArtifacts(snap)
+
 	for _, iu := range units {
 		if iu.ProtectionStatus == ProtectionNone {
 			severity := "medium"
@@ -389,6 +393,16 @@ func findProtectionGaps(units []ImpactedCodeUnit, tests []ImpactedTest, snap *mo
 				gapType = "untested_export"
 				explanation = fmt.Sprintf("Exported function %s has no observed test coverage.", iu.Name)
 				action = fmt.Sprintf("Add unit tests for exported function %s — this is public API surface.", iu.Name)
+			}
+
+			// Downgrade when no coverage artifacts were provided: the gap
+			// reflects missing data, not measured absence of tests.
+			if !hasCoverageData {
+				if severity == "high" {
+					severity = "medium"
+				} else {
+					severity = "low"
+				}
 			}
 
 			gaps = append(gaps, ProtectionGap{
@@ -638,6 +652,16 @@ func computeProtectionDimension(result *ImpactResult) ChangeRiskDimension {
 		}
 	}
 
+	// When no coverage data was provided, protection gaps reflect missing data
+	// rather than measured absence. Cap the band at "partially_protected" to
+	// avoid alarming merge recommendations based on absent evidence.
+	if !result.HasCoverageData && unprotected > 0 {
+		return ChangeRiskDimension{
+			Name: "protection", Band: "partially_protected",
+			Explanation: fmt.Sprintf("%d of %d impacted unit(s) have no observed coverage (no coverage artifacts provided).", unprotected, len(result.ImpactedUnits)),
+		}
+	}
+
 	ratio := float64(unprotected) / float64(len(result.ImpactedUnits))
 	switch {
 	case ratio == 0:
@@ -850,11 +874,27 @@ func identifyLimitations(scope *ChangeScope, snap *models.TestSuiteSnapshot, res
 		lims = append(lims, "No per-test coverage lineage available; test selection uses structural heuristics.")
 	}
 
+	if !hasCoverageArtifacts(snap) {
+		lims = append(lims, "No coverage artifacts provided; protection gaps reflect missing data, not measured absence. Provide --coverage to improve accuracy.")
+	}
+
 	if len(snap.Ownership) == 0 {
 		lims = append(lims, "No ownership data available; coordination risk may be underestimated.")
 	}
 
 	return lims
+}
+
+// hasCoverageArtifacts returns true if the snapshot includes coverage data
+// (lcov, cobertura, istanbul, etc.). When false, "no observed coverage"
+// reflects missing data rather than measured absence of tests.
+func hasCoverageArtifacts(snap *models.TestSuiteSnapshot) bool {
+	for _, ds := range snap.DataSources {
+		if ds.Name == "coverage" && ds.Status == models.DataSourceAvailable {
+			return true
+		}
+	}
+	return false
 }
 
 // --- helpers ---

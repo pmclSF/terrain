@@ -2,18 +2,12 @@
 
 import { program } from 'commander';
 import chalk from 'chalk';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 import { createRequire } from 'module';
 import fs from 'fs/promises';
 import path from 'path';
 import fg from 'fast-glob';
 import { ConverterFactory, FRAMEWORKS } from '../src/core/ConverterFactory.js';
-import {
-  SHORTHANDS,
-  CONVERSION_CATEGORIES,
-  FRAMEWORK_ABBREV,
-} from '../src/cli/shorthands.js';
+import { SHORTHANDS, CONVERSION_CATEGORIES } from '../src/cli/shorthands.js';
 
 const require = createRequire(import.meta.url);
 const version = require('../package.json').version;
@@ -209,7 +203,7 @@ async function convertAction(source, options) {
   // Determine if source is a file, directory, or glob
   let sourceFiles = [];
   let isBatch = false;
-  let sourceRoot = '';
+  let _sourceRoot = '';
 
   // Check for glob characters
   const isGlob =
@@ -236,7 +230,7 @@ async function convertAction(source, options) {
       path: f,
       relativePath: path.basename(f),
     }));
-    sourceRoot = path.dirname(matches[0]);
+    _sourceRoot = path.dirname(matches[0]);
     isBatch = true;
   } else {
     // Check if file or directory
@@ -321,7 +315,7 @@ async function convertAction(source, options) {
       const classifier = new FileClassifier();
 
       const allFiles = await scanner.scan(source);
-      sourceRoot = path.resolve(source);
+      _sourceRoot = path.resolve(source);
 
       for (const file of allFiles) {
         try {
@@ -1617,7 +1611,11 @@ program
         )
       );
 
-      const { results, checklist, state } = await engine.migrate(dir, {
+      const {
+        results: _results,
+        checklist: _checklist,
+        state,
+      } = await engine.migrate(dir, {
         from: options.from,
         to: options.to,
         output: options.output,
@@ -1812,7 +1810,7 @@ program
         return;
       }
 
-      const state = await stateManager.load();
+      await stateManager.load();
       const status = stateManager.getStatus();
 
       console.log(chalk.bold('Migration Status:'));

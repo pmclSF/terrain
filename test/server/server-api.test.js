@@ -28,6 +28,7 @@ describe('TerrainServer API', () => {
   let baseUrl;
   let token;
   let serverStartError;
+  let serverStarted = false;
 
   function itIfServer(name, fn) {
     it(name, async () => {
@@ -43,6 +44,7 @@ describe('TerrainServer API', () => {
       server = new TerrainServer({ port: 0 });
       baseUrl = await server.start();
       token = server.token;
+      serverStarted = true;
     } catch (err) {
       if (err && err.code === 'EPERM') {
         serverStartError = err;
@@ -57,7 +59,7 @@ describe('TerrainServer API', () => {
   });
 
   afterAll(async () => {
-    if (server) {
+    if (server && serverStarted) {
       await server.stop();
     }
     // Clean up output dir
