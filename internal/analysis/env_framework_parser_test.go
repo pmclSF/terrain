@@ -446,6 +446,63 @@ func TestParseFirebaseTestLabConfig_NoTestlab(t *testing.T) {
 	}
 }
 
+func TestParseSauceLabsConfig_EmptySuites(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+
+	os.MkdirAll(filepath.Join(root, ".sauce"), 0o755)
+	os.WriteFile(filepath.Join(root, ".sauce", "config.yml"), []byte(`
+apiVersion: v1alpha
+suites: []
+`), 0o644)
+
+	result := &FrameworkMatrixResult{}
+	parseSauceLabsConfig(root, result)
+
+	if len(result.DeviceConfigs) != 0 {
+		t.Errorf("expected 0 device configs for empty suites, got %d", len(result.DeviceConfigs))
+	}
+}
+
+func TestParseSauceLabsConfig_MalformedYAML(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+
+	os.MkdirAll(filepath.Join(root, ".sauce"), 0o755)
+	os.WriteFile(filepath.Join(root, ".sauce", "config.yml"), []byte(`{{{not yaml`), 0o644)
+
+	result := &FrameworkMatrixResult{}
+	parseSauceLabsConfig(root, result) // Should not panic.
+
+	if len(result.DeviceConfigs) != 0 {
+		t.Errorf("expected 0 device configs for malformed YAML, got %d", len(result.DeviceConfigs))
+	}
+}
+
+func TestParseSauceLabsConfig_AlternatePath(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+
+	// .sauce.yml in root (alternate location).
+	os.WriteFile(filepath.Join(root, ".sauce.yml"), []byte(`
+apiVersion: v1alpha
+suites:
+  - name: "Firefox"
+    browserName: "firefox"
+    platformName: "Windows 10"
+`), 0o644)
+
+	result := &FrameworkMatrixResult{}
+	parseSauceLabsConfig(root, result)
+
+	if len(result.DeviceConfigs) != 1 {
+		t.Fatalf("expected 1 device config from .sauce.yml, got %d", len(result.DeviceConfigs))
+	}
+	if result.DeviceConfigs[0].InferredFrom != "saucelabs" {
+		t.Errorf("InferredFrom = %q, want saucelabs", result.DeviceConfigs[0].InferredFrom)
+	}
+}
+
 func TestParseFrameworkMatrices_NoConfigs(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
