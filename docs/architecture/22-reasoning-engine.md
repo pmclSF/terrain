@@ -1,6 +1,6 @@
 # Reasoning Engine
 
-> **Status:** Implemented (hardened)
+> **Status:** HISTORICAL — the `internal/reasoning/` package described here was refactored. Reasoning capabilities are now distributed across `internal/depgraph/` (impact, coverage, fanout), `internal/explain/` (explanation traces), and `internal/scoring/` (risk scoring). This document is preserved for architectural context.
 > **Purpose:** Document how Terrain produces explainable, traceable reasoning for all findings and recommendations. Defines the five reasoning pipelines, their determinism guarantees, and explanation trace contracts.
 > **Key decisions:**
 > - Every finding has an explanation trace — no opaque scores or unexplained conclusions
