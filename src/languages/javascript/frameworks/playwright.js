@@ -19,6 +19,7 @@ import {
 } from '../../../core/ir.js';
 
 import { TodoFormatter } from '../../../core/TodoFormatter.js';
+import { parseJavaScript } from '../../../core/parsers/BabelParser.js';
 
 const formatter = new TodoFormatter('javascript');
 
@@ -43,12 +44,7 @@ function detect(source) {
 }
 
 function parse(source) {
-  // Minimal parse for when Playwright is the source (Playwright→X direction).
-  return new TestFile({
-    language: 'javascript',
-    imports: [],
-    body: [new RawCode({ code: source })],
-  });
+  return parseJavaScript(source, { framework: 'playwright' });
 }
 
 /**
