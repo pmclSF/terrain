@@ -12,8 +12,8 @@ func TestDefaultRegistry_WithoutPolicy(t *testing.T) {
 	r, _ := DefaultRegistry(Config{RepoRoot: "."})
 
 	// Should have 14 detectors (5 quality + 2 health + 2 coverage + 5 migration, no governance).
-	if r.Len() != 14 {
-		t.Errorf("DefaultRegistry without policy: Len() = %d, want 14", r.Len())
+	if r.Len() != 26 {
+		t.Errorf("DefaultRegistry without policy: Len() = %d, want 26", r.Len())
 	}
 
 	quality := r.ByDomain(signals.DomainQuality)
@@ -51,8 +51,8 @@ func TestDefaultRegistry_WithPolicy(t *testing.T) {
 	r, _ := DefaultRegistry(cfg)
 
 	// Should have 15 detectors (5 quality + 2 health + 2 coverage + 5 migration + 1 governance).
-	if r.Len() != 15 {
-		t.Errorf("DefaultRegistry with policy: Len() = %d, want 15", r.Len())
+	if r.Len() != 27 {
+		t.Errorf("DefaultRegistry with policy: Len() = %d, want 27", r.Len())
 	}
 
 	governance := r.ByDomain(signals.DomainGovernance)
@@ -80,6 +80,18 @@ func TestDefaultRegistry_DetectorIDs(t *testing.T) {
 		"migration.custom-matcher",
 		"migration.unsupported-setup",
 		"migration.framework-migration",
+		"health.slow-test",
+		"health.flaky-test",
+		"health.skipped-test",
+		"health.dead-test",
+		"health.unstable-suite",
+		"structural.assertion-free-import",
+		"structural.blast-radius-hotspot",
+		"structural.fixture-fragility-hotspot",
+		"structural.uncovered-ai-surface",
+		"structural.phantom-eval-scenario",
+		"structural.untested-prompt-flow",
+		"structural.capability-validation-gap",
 	}
 
 	all := r.All()

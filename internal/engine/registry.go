@@ -8,11 +8,14 @@ import (
 	"fmt"
 
 	"github.com/pmclSF/terrain/internal/governance"
+	"github.com/pmclSF/terrain/internal/health"
 	"github.com/pmclSF/terrain/internal/migration"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/policy"
 	"github.com/pmclSF/terrain/internal/quality"
+	"github.com/pmclSF/terrain/internal/runtime"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/structural"
 )
 
 // Config holds runtime configuration needed to construct detectors.
@@ -22,6 +25,14 @@ type Config struct {
 
 	// PolicyConfig is the loaded policy configuration (nil if no policy file).
 	PolicyConfig *policy.Config
+
+	// RuntimeResults holds ingested runtime data for health detectors.
+	// Nil when no runtime artifacts were provided.
+	RuntimeResults *[]runtime.TestResult
+
+	// SlowTestThresholdMs is the threshold for slow test detection.
+	// Zero uses the default (5000ms).
+	SlowTestThresholdMs float64
 }
 
 // DefaultRegistry returns a DetectorRegistry populated with all
@@ -192,6 +203,153 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			SignalTypes:  []models.SignalType{signals.SignalFrameworkMigration},
 		},
 		Detector: &migration.FrameworkMigrationDetector{},
+	})
+
+	// Runtime health detectors (Phase 1: adapted from health.HealthDetector).
+	// These are silent when no runtime data is provided.
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "health.slow-test",
+			Domain:       signals.DomainHealth,
+			EvidenceType: signals.EvidenceRuntime,
+			Description:  "Detect tests exceeding runtime threshold.",
+			SignalTypes:  []models.SignalType{signals.SignalSlowTest},
+		},
+		Detector: &RuntimeDetectorAdapter{
+			Health:  &health.SlowTestDetector{ThresholdMs: cfg.SlowTestThresholdMs},
+			Results: cfg.RuntimeResults,
+		},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "health.flaky-test",
+			Domain:       signals.DomainHealth,
+			EvidenceType: signals.EvidenceRuntime,
+			Description:  "Detect tests with intermittent failures or retry behavior.",
+			SignalTypes:  []models.SignalType{signals.SignalFlakyTest},
+		},
+		Detector: &RuntimeDetectorAdapter{
+			Health:  &health.FlakyTestDetector{},
+			Results: cfg.RuntimeResults,
+		},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "health.skipped-test",
+			Domain:       signals.DomainHealth,
+			EvidenceType: signals.EvidenceRuntime,
+			Description:  "Detect skipped tests from runtime results.",
+			SignalTypes:  []models.SignalType{signals.SignalSkippedTest},
+		},
+		Detector: &RuntimeDetectorAdapter{
+			Health:  &health.SkippedTestDetector{},
+			Results: cfg.RuntimeResults,
+		},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "health.dead-test",
+			Domain:       signals.DomainHealth,
+			EvidenceType: signals.EvidenceRuntime,
+			Description:  "Detect tests observed only in skipped state.",
+			SignalTypes:  []models.SignalType{signals.SignalDeadTest},
+		},
+		Detector: &RuntimeDetectorAdapter{
+			Health:  &health.DeadTestDetector{},
+			Results: cfg.RuntimeResults,
+		},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "health.unstable-suite",
+			Domain:       signals.DomainHealth,
+			EvidenceType: signals.EvidenceRuntime,
+			Description:  "Detect suites with elevated failure rates and retries.",
+			SignalTypes:  []models.SignalType{signals.SignalUnstableSuite},
+		},
+		Detector: &RuntimeDetectorAdapter{
+			Health:  &health.UnstableSuiteDetector{},
+			Results: cfg.RuntimeResults,
+		},
+	})
+
+	// Graph-powered structural detectors (Phase 2: require dependency graph).
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:            "structural.assertion-free-import",
+			Domain:        signals.DomainStructural,
+			EvidenceType:  signals.EvidenceGraphTraversal,
+			Description:   "Detect test files that import production code but never assert on it.",
+			SignalTypes:   []models.SignalType{signals.SignalAssertionFreeImport},
+			RequiresGraph: true,
+		},
+		Detector: &structural.AssertionFreeImportDetector{},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:            "structural.blast-radius-hotspot",
+			Domain:        signals.DomainStructural,
+			EvidenceType:  signals.EvidenceGraphTraversal,
+			Description:   "Detect source files with high test blast radius.",
+			SignalTypes:   []models.SignalType{signals.SignalBlastRadiusHotspot},
+			RequiresGraph: true,
+		},
+		Detector: &structural.BlastRadiusHotspotDetector{},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:            "structural.fixture-fragility-hotspot",
+			Domain:        signals.DomainStructural,
+			EvidenceType:  signals.EvidenceGraphTraversal,
+			Description:   "Detect fixtures with high test fanout creating fragility risk.",
+			SignalTypes:   []models.SignalType{signals.SignalFixtureFragilityHotspot},
+			RequiresGraph: true,
+		},
+		Detector: &structural.FixtureFragilityHotspotDetector{},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:            "structural.uncovered-ai-surface",
+			Domain:        signals.DomainStructural,
+			EvidenceType:  signals.EvidenceGraphTraversal,
+			Description:   "Detect AI surfaces with zero test or scenario coverage.",
+			SignalTypes:   []models.SignalType{signals.SignalUncoveredAISurface},
+			RequiresGraph: true,
+		},
+		Detector: &structural.UncoveredAISurfaceDetector{},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:            "structural.phantom-eval-scenario",
+			Domain:        signals.DomainStructural,
+			EvidenceType:  signals.EvidenceGraphTraversal,
+			Description:   "Detect eval scenarios that claim coverage they cannot reach.",
+			SignalTypes:   []models.SignalType{signals.SignalPhantomEvalScenario},
+			RequiresGraph: true,
+		},
+		Detector: &structural.PhantomEvalScenarioDetector{},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:            "structural.untested-prompt-flow",
+			Domain:        signals.DomainStructural,
+			EvidenceType:  signals.EvidenceGraphTraversal,
+			Description:   "Detect prompts that flow through source files with zero test coverage.",
+			SignalTypes:   []models.SignalType{signals.SignalUntestedPromptFlow},
+			RequiresGraph: true,
+		},
+		Detector: &structural.UntestedPromptFlowDetector{},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:            "structural.capability-validation-gap",
+			Domain:        signals.DomainStructural,
+			EvidenceType:  signals.EvidenceGraphTraversal,
+			Description:   "Detect AI capabilities with no eval scenario validation.",
+			SignalTypes:   []models.SignalType{signals.SignalCapabilityValidationGap},
+			RequiresGraph: true,
+		},
+		Detector: &structural.CapabilityValidationGapDetector{},
 	})
 
 	// Governance detectors (depend on signals from quality/migration detectors).
