@@ -81,9 +81,6 @@ tests/fixtures/**/.terrain/baselines/
 # === Large local-only directories ===
 testing/
 
-# === Legacy ===
-hamlet/
-
 # === Temporary ===
 PR_DESCRIPTION.md
 *.backup

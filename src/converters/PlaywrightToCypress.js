@@ -1,5 +1,4 @@
 import { BaseConverter } from '../core/BaseConverter.js';
-import { PatternEngine } from '../core/PatternEngine.js';
 
 /**
  * Converts Playwright tests to Cypress format
@@ -9,113 +8,6 @@ export class PlaywrightToCypress extends BaseConverter {
     super(options);
     this.sourceFramework = 'playwright';
     this.targetFramework = 'cypress';
-    this.engine = new PatternEngine();
-    this.initializePatterns();
-  }
-
-  initializePatterns() {
-    // Test structure patterns
-    this.engine.registerPatterns('structure', {
-      'test\\.describe\\(': 'describe(',
-      'test\\.describe\\.only\\(': 'describe.only(',
-      'test\\.describe\\.skip\\(': 'describe.skip(',
-      'test\\(': 'it(',
-      'test\\.only\\(': 'it.only(',
-      'test\\.skip\\(': 'it.skip(',
-      'test\\.beforeAll\\(': 'before(',
-      'test\\.afterAll\\(': 'after(',
-      'test\\.beforeEach\\(': 'beforeEach(',
-      'test\\.afterEach\\(': 'afterEach(',
-    });
-
-    // Navigation patterns
-    this.engine.registerPatterns('navigation', {
-      'await page\\.goto\\(([^)]+)\\)': 'cy.visit($1)',
-      'await page\\.goBack\\(\\)': "cy.go('back')",
-      'await page\\.goForward\\(\\)': "cy.go('forward')",
-      'await page\\.reload\\(\\)': 'cy.reload()',
-      'page\\.url\\(\\)': 'cy.url()',
-      'await page\\.title\\(\\)': 'cy.title()',
-    });
-
-    // Selector patterns
-    this.engine.registerPatterns('selectors', {
-      'page\\.locator\\(([^)]+)\\)': 'cy.get($1)',
-      'page\\.getByText\\(([^)]+)\\)': 'cy.contains($1)',
-      'page\\.getByRole\\(([^)]+)\\)': 'cy.get(`[role=$1]`)',
-      'page\\.getByTestId\\(([^)]+)\\)': 'cy.get(`[data-testid=$1]`)',
-      'page\\.getByLabel\\(([^)]+)\\)': 'cy.get(`[aria-label=$1]`)',
-      'page\\.getByPlaceholder\\(([^)]+)\\)': 'cy.get(`[placeholder=$1]`)',
-      '\\.locator\\(([^)]+)\\)': '.find($1)',
-      '\\.first\\(\\)': '.first()',
-      '\\.last\\(\\)': '.last()',
-      '\\.nth\\((\\d+)\\)': '.eq($1)',
-    });
-
-    // Interaction patterns
-    this.engine.registerPatterns('interactions', {
-      '\\.fill\\(([^)]+)\\)': '.type($1)',
-      '\\.click\\(\\)': '.click()',
-      '\\.dblclick\\(\\)': '.dblclick()',
-      '\\.click\\(\\{\\s*button:\\s*[\'"]right[\'"]\\s*\\}\\)': '.rightclick()',
-      '\\.check\\(\\)': '.check()',
-      '\\.uncheck\\(\\)': '.uncheck()',
-      '\\.selectOption\\(([^)]+)\\)': '.select($1)',
-      '\\.clear\\(\\)': '.clear()',
-      '\\.focus\\(\\)': '.focus()',
-      '\\.blur\\(\\)': '.blur()',
-      '\\.hover\\(\\)': '.trigger("mouseover")',
-      '\\.scrollIntoViewIfNeeded\\(\\)': '.scrollIntoView()',
-      '\\.setInputFiles\\(([^)]+)\\)': '.selectFile($1)',
-    });
-
-    // Assertion patterns
-    this.engine.registerPatterns('assertions', {
-      'await expect\\(([^)]+)\\)\\.toBeVisible\\(\\)':
-        '$1.should("be.visible")',
-      'await expect\\(([^)]+)\\)\\.toBeHidden\\(\\)':
-        '$1.should("not.be.visible")',
-      'await expect\\(([^)]+)\\)\\.toBeAttached\\(\\)': '$1.should("exist")',
-      'await expect\\(([^)]+)\\)\\.not\\.toBeAttached\\(\\)':
-        '$1.should("not.exist")',
-      'await expect\\(([^)]+)\\)\\.toHaveText\\(([^)]+)\\)':
-        '$1.should("have.text", $2)',
-      'await expect\\(([^)]+)\\)\\.toContainText\\(([^)]+)\\)':
-        '$1.should("contain.text", $2)',
-      'await expect\\(([^)]+)\\)\\.toHaveValue\\(([^)]+)\\)':
-        '$1.should("have.value", $2)',
-      'await expect\\(([^)]+)\\)\\.toHaveAttribute\\(([^,\n]+),\\s*([^)]+)\\)':
-        '$1.should("have.attr", $2, $3)',
-      'await expect\\(([^)]+)\\)\\.toHaveClass\\(([^)]+)\\)':
-        '$1.should("have.class", $2)',
-      'await expect\\(([^)]+)\\)\\.toBeChecked\\(\\)':
-        '$1.should("be.checked")',
-      'await expect\\(([^)]+)\\)\\.toBeDisabled\\(\\)':
-        '$1.should("be.disabled")',
-      'await expect\\(([^)]+)\\)\\.toBeEnabled\\(\\)':
-        '$1.should("be.enabled")',
-      'await expect\\(([^)]+)\\)\\.toHaveCount\\(([^)]+)\\)':
-        '$1.should("have.length", $2)',
-      'await expect\\(page\\)\\.toHaveURL\\(([^)]+)\\)':
-        'cy.url().should("include", $1)',
-      'await expect\\(page\\)\\.toHaveTitle\\(([^)]+)\\)':
-        'cy.title().should("eq", $1)',
-    });
-
-    // Wait patterns
-    this.engine.registerPatterns('waits', {
-      'await page\\.waitForTimeout\\((\\d+)\\)': 'cy.wait($1)',
-      'await page\\.waitForSelector\\(([^)]+)\\)': 'cy.get($1)',
-      'await page\\.waitForURL\\(([^)]+)\\)': 'cy.url().should("include", $1)',
-      'await page\\.waitForLoadState\\([\'"]networkidle[\'"]\\)':
-        'cy.wait(1000)',
-    });
-
-    // Network patterns
-    this.engine.registerPatterns('network', {
-      'await page\\.route\\(([^,\n]+),': 'cy.intercept($1,',
-      'await request\\.fetch\\(': 'cy.request(',
-    });
   }
 
   async convert(content, _options = {}) {
@@ -260,7 +152,7 @@ export class PlaywrightToCypress extends BaseConverter {
     result = result.replace(
       /await expect\(page\.locator\(([^()\n]+)\)\)\.toHaveCount\((\d+)\)\s*\/\*\s*at least \d+\s*\*\//g,
       (match, sel, count) => {
-        const n = parseInt(count) - 1;
+        const n = parseInt(count, 10) - 1;
         return `cy.get(${sel}).should('have.length.greaterThan', ${n})`;
       }
     );
@@ -631,8 +523,8 @@ export class PlaywrightToCypress extends BaseConverter {
       const heightMatch = content.match(/height\s*:\s*(\d+)/);
       if (widthMatch && heightMatch) {
         pwConfig.use.viewport = {
-          width: parseInt(widthMatch[1]),
-          height: parseInt(heightMatch[1]),
+          width: parseInt(widthMatch[1], 10),
+          height: parseInt(heightMatch[1], 10),
         };
       }
 
@@ -645,7 +537,7 @@ export class PlaywrightToCypress extends BaseConverter {
       if (screenshotMatch) pwConfig.use.screenshot = screenshotMatch[1];
 
       const timeoutMatch = content.match(/timeout\s*:\s*(\d+)/);
-      if (timeoutMatch) pwConfig.timeout = parseInt(timeoutMatch[1]);
+      if (timeoutMatch) pwConfig.timeout = parseInt(timeoutMatch[1], 10);
     } catch (e) {
       // Use defaults
     }
