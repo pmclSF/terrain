@@ -101,4 +101,44 @@ var KnownFrameworks = []FrameworkSignature{
 		DependencyKeys: []string{"@aws-sdk/client-bedrock-runtime", "boto3"},
 		ImportPatterns: []string{"bedrock-runtime", "from boto3", "invoke_model"},
 	},
+	{
+		Name:           "ollama",
+		DependencyKeys: []string{"ollama", "ollama-ai-provider"},
+		ImportPatterns: []string{"from ollama", "import ollama", "ollama/browser"},
+	},
+	{
+		Name:           "cohere",
+		DependencyKeys: []string{"cohere", "cohere-ai"},
+		ImportPatterns: []string{"from cohere", "import cohere", "cohere-ai"},
+	},
+	{
+		Name:           "groq",
+		DependencyKeys: []string{"groq", "groq-sdk"},
+		ImportPatterns: []string{"from groq", "import groq", "groq-sdk"},
+	},
+	{
+		Name:           "mistral",
+		DependencyKeys: []string{"@mistralai/mistralai", "mistralai"},
+		ImportPatterns: []string{"from mistralai", "import mistralai", "@mistralai/"},
+	},
+	{
+		Name:           "wandb",
+		DependencyKeys: []string{"wandb"},
+		ImportPatterns: []string{"import wandb", "from wandb", "WANDB_API_KEY"},
+	},
+	{
+		Name:           "mlflow",
+		DependencyKeys: []string{"mlflow"},
+		ImportPatterns: []string{"import mlflow", "from mlflow", "mlflow.start_run"},
+	},
+	{
+		Name:           "instructor",
+		DependencyKeys: []string{"instructor"},
+		ImportPatterns: []string{"import instructor", "from instructor", "instructor.patch"},
+	},
+	{
+		Name:           "guardrails",
+		DependencyKeys: []string{"guardrails-ai", "nemoguardrails"},
+		ImportPatterns: []string{"from guardrails", "import guardrails", "from nemoguardrails", "import nemoguardrails"},
+	},
 }
