@@ -37,7 +37,12 @@ func ParseEmbeddedPrompts(relPath, src, lang string) []models.CodeSurface {
 
 // AI markers that distinguish AI strings from ordinary strings.
 // Require at least 2 matches in a string block to classify as AI.
-var aiStringMarkers = regexp.MustCompile(`(?i)\b(you are a|you are an|as an ai|as a helpful|respond with|do not|always respond|your (role|task|job) is|instructions?:|system:|answer the|given the context|based on the|helpful assistant)\b`)
+var aiStringMarkers = regexp.MustCompile(`(?i)\b(you are a|you are an|as an ai|as a helpful|respond with|do not|always respond|your (role|task|job) is|instructions?:|system:|answer the|given the context|based on the|helpful assistant|think step by step|chain of thought|few[- ]shot|zero[- ]shot)\b`)
+
+// strongAIMarkers are high-signal markers where even a single occurrence
+// in a short string suggests AI context. Used to catch short prompts
+// that fall below the 60-char length threshold.
+var strongAIMarkers = regexp.MustCompile(`(?i)\b(you are an? (?:ai|helpful|expert)|as an ai|helpful assistant|system prompt|your (?:role|task|job) is)\b`)
 
 // jsTemplateLiteral finds backtick template literals spanning multiple lines or >60 chars.
 var jsTemplateLiteral = regexp.MustCompile("(?s)`([^`]{60,})`")
@@ -46,7 +51,7 @@ var jsTemplateLiteral = regexp.MustCompile("(?s)`([^`]{60,})`")
 var jsAssignedString = regexp.MustCompile(`(?:const|let|var)\s+(\w+)\s*=\s*["']([^"']{60,})["']`)
 
 // jsFewShotArray detects arrays of objects with input/output or user/assistant structure.
-var jsFewShotPattern = regexp.MustCompile(`(?s)\[\s*\{\s*(?:input|user|question)\s*:`)
+var jsFewShotPattern = regexp.MustCompile(`(?s)\[\s*\{\s*(?:input|user|question|example|exemplar|sample|prompt)\s*:`)
 
 // jsMultiMessageArray detects arrays with multiple role entries.
 var jsMultiRolePattern = regexp.MustCompile(`(?s)role\s*:\s*["'](?:system|user|assistant)["']`)
@@ -100,6 +105,19 @@ func parseJSPrompts(relPath, src string) []models.CodeSurface {
 		}
 	}
 
+	// 2b. Short strings with strong AI markers (catches prompts <60 chars).
+	jsShortString := regexp.MustCompile("(?:const|let|var)\\s+(\\w+)\\s*=\\s*[\"'`]([^\"'`]{10,59})[\"'`]")
+	for i, l := range lines {
+		if m := jsShortString.FindStringSubmatch(l); m != nil {
+			varName := m[1]
+			strContent := m[2]
+			if strongAIMarkers.MatchString(strContent) {
+				add("inline_prompt_"+varName, "["+models.DetectorContentString+"] string constant '"+varName+"' with strong AI marker", i+1, 0.75, models.TierContent)
+				break
+			}
+		}
+	}
+
 	// 3. Assigned string constants with AI content.
 	for i, l := range lines {
 		if m := jsAssignedString.FindStringSubmatch(l); m != nil {
@@ -134,7 +152,7 @@ var pyFString = regexp.MustCompile(`f["']([^"']{60,})["']`)
 var pyAssignedString = regexp.MustCompile(`^(\w+)\s*=\s*["']([^"']{60,})["']`)
 
 // pyFewShotPattern detects lists of dicts with input/output structure.
-var pyFewShotPattern = regexp.MustCompile(`(?s)\[\s*\{\s*["'](?:input|user|question)["']`)
+var pyFewShotPattern = regexp.MustCompile(`(?s)\[\s*\{\s*["'](?:input|user|question|example|exemplar|sample|prompt)["']`)
 
 // pyMultiRolePattern detects dicts with role keys.
 var pyMultiRolePattern = regexp.MustCompile(`["']role["']\s*:\s*["'](?:system|user|assistant)["']`)
@@ -206,7 +224,8 @@ func parsePythonPrompts(relPath, src string) []models.CodeSurface {
 var goBacktickString = regexp.MustCompile("(?s)`([^`]{60,})`")
 
 // goMultiRolePattern detects map literals or struct literals with role fields.
-var goRolePattern = regexp.MustCompile(`(?i)"role"\s*:\s*"(?:system|user|assistant)"`)
+// goRolePattern matches both JSON-style ("role": "system") and Go struct-style (Role: "system").
+var goRolePattern = regexp.MustCompile(`(?i)(?:"role"|Role)\s*:\s*"(?:system|user|assistant)"`)
 
 func parseGoPrompts(relPath, src string) []models.CodeSurface {
 	var surfaces []models.CodeSurface

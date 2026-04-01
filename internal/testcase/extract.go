@@ -46,13 +46,13 @@ func ExtractFromContent(src, relPath, framework string) []TestCase {
 	var cases []TestCase
 	switch lang {
 	case "js":
-		cases = extractJS(src, relPath, framework)
+		cases = extractJSWithAST(src, relPath, framework)
 	case "go":
-		cases = extractGo(src, relPath, framework)
+		cases = extractGoWithAST(src, relPath, framework)
 	case "python":
-		cases = extractPython(src, relPath, framework)
+		cases = extractPythonWithAST(src, relPath, framework)
 	case "java":
-		cases = extractJava(src, relPath, framework)
+		cases = extractJavaWithAST(src, relPath, framework)
 	}
 
 	// Assign stable IDs to all extracted cases.
