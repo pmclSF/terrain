@@ -3,6 +3,7 @@ package analyze
 import (
 	"testing"
 
+	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -47,21 +48,41 @@ func TestBuildSignalSummary(t *testing.T) {
 func TestBuildSkipSummary(t *testing.T) {
 	snap := &models.TestSuiteSnapshot{
 		TestFiles: []models.TestFile{
-			{TestCount: 10},
-			{TestCount: 5},
-		},
-		Signals: []models.Signal{
-			{Type: "skippedTest"},
-			{Type: "skippedTest"},
-			{Type: "weakAssertion"},
+			{Path: "test/a.test.js", TestCount: 10, SkipCount: 3},
+			{Path: "test/b.test.js", TestCount: 5},
 		},
 	}
 	ss := buildSkipSummary(snap)
-	if ss.SkippedCount != 2 {
-		t.Errorf("skipped = %d, want 2", ss.SkippedCount)
+	if ss.SkippedCount != 3 {
+		t.Errorf("skipped = %d, want 3", ss.SkippedCount)
 	}
 	if ss.TotalTests != 15 {
 		t.Errorf("total = %d, want 15", ss.TotalTests)
+	}
+	if ss.SkipRatio != 0.2 {
+		t.Errorf("ratio = %v, want 0.2", ss.SkipRatio)
+	}
+}
+
+func TestBuildCIOptimization_UsesMergedSkipCounts(t *testing.T) {
+	t.Parallel()
+
+	ci := buildCIOptimization(
+		&depgraph.DuplicateResult{DuplicateCount: 4},
+		&depgraph.FanoutResult{FlaggedCount: 2},
+		&models.TestSuiteSnapshot{
+			TestFiles: []models.TestFile{
+				{Path: "test/a.test.js", TestCount: 10, SkipCount: 3},
+				{Path: "test/b.test.js", TestCount: 5},
+			},
+		},
+	)
+
+	if ci.SkippedTestsReviewable != 3 {
+		t.Fatalf("SkippedTestsReviewable = %d, want 3", ci.SkippedTestsReviewable)
+	}
+	if ci.Recommendation == "" {
+		t.Fatal("expected recommendation")
 	}
 }
 

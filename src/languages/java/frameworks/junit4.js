@@ -17,6 +17,7 @@ import {
   Comment,
   Modifier,
 } from '../../../core/ir.js';
+import { parseJava } from '../../../core/parsers/TreeSitterParser.js';
 
 /**
  * Detect whether source code is JUnit 4.
@@ -67,6 +68,10 @@ function detect(source) {
  * Parse JUnit 4 source code into an IR tree.
  */
 function parse(source) {
+  return parseJava(source);
+}
+
+function _parseRegex(source) {
   const lines = source.split('\n');
   const imports = [];
   const allNodes = [];

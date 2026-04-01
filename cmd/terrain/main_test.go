@@ -108,7 +108,7 @@ func TestInitLogging_ParsesFlag(t *testing.T) {
 func TestRunInit_InvalidRoot(t *testing.T) {
 	t.Parallel()
 
-	if err := runInit(filepath.Join(t.TempDir(), "missing")); err == nil {
+	if err := runInit(filepath.Join(t.TempDir(), "missing"), false); err == nil {
 		t.Fatal("expected error for missing root")
 	}
 }
@@ -148,12 +148,12 @@ func TestRunAI_UnknownSubcommand(t *testing.T) {
 	}
 }
 
-func TestRunAI_ScaffoldedCommandsReturnError(t *testing.T) {
+func TestRunAI_CommandsRequireScenarioContext(t *testing.T) {
 	t.Parallel()
 	for _, sub := range []string{"run", "record", "baseline"} {
 		err := runAI(sub, ".", false)
 		if err == nil {
-			t.Errorf("terrain ai %s should return not-implemented error", sub)
+			t.Errorf("terrain ai %s should fail without runnable scenario context", sub)
 		}
 	}
 }

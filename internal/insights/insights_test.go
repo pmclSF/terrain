@@ -129,14 +129,7 @@ func TestBuild_SkipFindings(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
 		TestFiles: []models.TestFile{
-			{Path: "test/a.test.js", TestCount: 100},
-		},
-		Signals: []models.Signal{
-			{Type: "skippedTest", Severity: models.SeverityMedium},
-			{Type: "skippedTest", Severity: models.SeverityMedium},
-			{Type: "skippedTest", Severity: models.SeverityMedium},
-			{Type: "skippedTest", Severity: models.SeverityMedium},
-			{Type: "skippedTest", Severity: models.SeverityMedium},
+			{Path: "test/a.test.js", TestCount: 100, SkipCount: 5},
 		},
 	}
 	input := &BuildInput{
@@ -193,8 +186,8 @@ func TestBuild_HealthGrade(t *testing.T) {
 		want     string
 	}{
 		{
-			name: "grade A - no findings",
-			want: "A",
+			name:     "grade A - no findings",
+			want:     "A",
 			coverage: depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},
 		},
 		{

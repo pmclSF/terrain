@@ -9,6 +9,7 @@ describe('TerrainServer UI mode', () => {
   let server;
   let baseUrl;
   let serverStartError;
+  let serverStarted = false;
 
   function itIfServer(name, fn) {
     it(name, async () => {
@@ -23,6 +24,7 @@ describe('TerrainServer UI mode', () => {
     try {
       server = new TerrainServer({ port: 0, root: FIXTURES_ANALYZE, serveUI: true });
       baseUrl = await server.start();
+      serverStarted = true;
     } catch (err) {
       if (err && err.code === 'EPERM') {
         serverStartError = err;
@@ -35,7 +37,7 @@ describe('TerrainServer UI mode', () => {
   });
 
   afterAll(async () => {
-    if (server) {
+    if (server && serverStarted) {
       await server.stop();
     }
   });

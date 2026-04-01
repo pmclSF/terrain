@@ -92,9 +92,25 @@ var runtimeCandidates = []struct {
 	{"test-output.json", "go-test-json"},
 }
 
+// walkDirs are directories that commonly contain CI/test output artifacts.
+// The bounded walk checks these for known file patterns if the static
+// candidate checks find nothing.
+var walkDirs = []string{
+	"coverage", "test-results", "test-reports", "test-output",
+	".nyc_output", "build/reports", "build/test-results",
+	"target/surefire-reports", "target/test-results",
+	"reports", "junit", "htmlcov",
+}
+
+// walkMaxDepth is the maximum directory depth for artifact discovery walks.
+const walkMaxDepth = 3
+
+// walkMaxFiles is the maximum number of files examined per walk directory.
+const walkMaxFiles = 100
+
 // DiscoverArtifacts scans the repository root for common coverage and runtime
-// artifacts. The scan is lightweight — only os.Stat on known paths, no
-// directory walking. Returns what was found.
+// artifacts. It first checks known paths via os.Stat, then does a bounded walk
+// of common CI output directories if the static checks didn't find everything.
 func DiscoverArtifacts(root string) *ArtifactDiscovery {
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
@@ -102,6 +118,8 @@ func DiscoverArtifacts(root string) *ArtifactDiscovery {
 	}
 
 	d := &ArtifactDiscovery{}
+
+	// Phase 1: Static candidates (fast, exact paths).
 
 	// Coverage: first match wins.
 	for _, c := range coverageCandidates {
@@ -126,7 +144,81 @@ func DiscoverArtifacts(root string) *ArtifactDiscovery {
 		}
 	}
 
+	// Phase 2: Bounded directory walk for anything not yet found.
+	if d.CoveragePath == "" || len(d.RuntimePaths) == 0 {
+		discoverByWalk(absRoot, d, seen)
+	}
+
 	return d
+}
+
+// discoverByWalk does a bounded walk of common CI output directories,
+// looking for coverage and runtime artifacts by file name patterns.
+func discoverByWalk(root string, d *ArtifactDiscovery, seen map[string]bool) {
+	for _, dir := range walkDirs {
+		walkRoot := filepath.Join(root, dir)
+		info, err := os.Stat(walkRoot)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+
+		filesExamined := 0
+		_ = filepath.Walk(walkRoot, func(path string, fi os.FileInfo, err error) error {
+			if err != nil {
+				return nil // skip errors
+			}
+			if fi.IsDir() {
+				// Enforce depth limit.
+				rel, _ := filepath.Rel(walkRoot, path)
+				depth := strings.Count(rel, string(filepath.Separator))
+				if depth >= walkMaxDepth {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			filesExamined++
+			if filesExamined > walkMaxFiles {
+				return filepath.SkipDir
+			}
+			if fi.Size() == 0 {
+				return nil
+			}
+
+			name := fi.Name()
+
+			// Coverage patterns.
+			if d.CoveragePath == "" {
+				if name == "lcov.info" || name == "coverage.lcov" {
+					d.CoveragePath = path
+					d.CoverageFormat = "lcov"
+				} else if name == "coverage-final.json" {
+					d.CoveragePath = path
+					d.CoverageFormat = "istanbul"
+				} else if name == "coverage.out" || name == "cover.out" {
+					d.CoveragePath = path
+					d.CoverageFormat = "go-cover"
+				} else if name == "coverage.xml" {
+					d.CoveragePath = path
+					d.CoverageFormat = "cobertura"
+				}
+			}
+
+			// Runtime patterns.
+			if !seen[path] {
+				if strings.HasSuffix(name, ".xml") && (strings.Contains(name, "junit") || strings.Contains(name, "test-result") || name == "report.xml") {
+					seen[path] = true
+					d.RuntimePaths = append(d.RuntimePaths, path)
+					d.RuntimeFormats = append(d.RuntimeFormats, "junit-xml")
+				} else if name == "test-results.json" || name == "jest-results.json" || name == "test-output.json" {
+					seen[path] = true
+					d.RuntimePaths = append(d.RuntimePaths, path)
+					d.RuntimeFormats = append(d.RuntimeFormats, "jest-json")
+				}
+			}
+
+			return nil
+		})
+	}
 }
 
 // ApplyDiscovery merges auto-discovered artifacts into PipelineOptions,
@@ -149,7 +241,7 @@ func ApplyDiscovery(opts *PipelineOptions, discovery *ArtifactDiscovery) []strin
 		opts.CoveragePath = discovery.CoveragePath
 		discovery.CoverageAutoDetected = true
 		messages = append(messages,
-			"Auto-detected coverage: "+relativePath(discovery.CoveragePath)+" ("+discovery.CoverageFormat+")")
+			"Auto-detected coverage: "+RelativePath(discovery.CoveragePath)+" ("+discovery.CoverageFormat+")")
 	}
 
 	// Runtime: apply only if not explicitly set.
@@ -158,32 +250,71 @@ func ApplyDiscovery(opts *PipelineOptions, discovery *ArtifactDiscovery) []strin
 		opts.RuntimePaths = discovery.RuntimePaths[:1]
 		discovery.RuntimeAutoDetected = true
 		messages = append(messages,
-			"Auto-detected runtime: "+relativePath(discovery.RuntimePaths[0])+" ("+discovery.RuntimeFormats[0]+")")
+			"Auto-detected runtime: "+RelativePath(discovery.RuntimePaths[0])+" ("+discovery.RuntimeFormats[0]+")")
 	}
 
 	return messages
 }
 
 // MissingArtifactHints returns user-facing hints for artifacts that were
-// not found and not explicitly provided. Returns nil if everything is
-// available or explicitly provided.
-func MissingArtifactHints(opts *PipelineOptions, discovery *ArtifactDiscovery) []string {
+// not found and not explicitly provided. Hints are tailored to detected
+// languages so that irrelevant suggestions (e.g., JUnit XML for a pure
+// JS repo) are suppressed. Returns nil if everything is available.
+func MissingArtifactHints(opts *PipelineOptions, discovery *ArtifactDiscovery, languages []string) []string {
 	var hints []string
 
 	if opts.CoveragePath == "" {
-		hints = append(hints,
-			"Coverage data not found. Provide with --coverage <path> to unlock coverage signals.")
+		hint := coverageHint(languages)
+		if hint != "" {
+			hints = append(hints, hint)
+		}
 	}
 
 	if len(opts.RuntimePaths) == 0 {
-		hints = append(hints,
-			"Runtime data not found. Provide with --runtime <path> to unlock health signals.")
+		hint := runtimeHint(languages)
+		if hint != "" {
+			hints = append(hints, hint)
+		}
 	}
 
 	return hints
 }
 
-func relativePath(absPath string) string {
+func coverageHint(languages []string) string {
+	for _, lang := range languages {
+		switch lang {
+		case "javascript", "typescript":
+			return "Coverage not found. Run: npx jest --coverage --coverageReporters=lcov (or provide --coverage <path>)"
+		case "go":
+			return "Coverage not found. Run: go test -coverprofile=coverage.out ./... (or provide --coverage <path>)"
+		case "python":
+			return "Coverage not found. Run: pytest --cov --cov-report=lcov (or provide --coverage <path>)"
+		case "java":
+			return "Coverage not found. Run your build tool's coverage target (or provide --coverage <path>)"
+		}
+	}
+	return "Coverage data not found. Provide with --coverage <path> to unlock coverage signals."
+}
+
+func runtimeHint(languages []string) string {
+	for _, lang := range languages {
+		switch lang {
+		case "javascript", "typescript":
+			return "Runtime not found. Run: npx jest --json --outputFile=jest-results.json (or provide --runtime <path>)"
+		case "go":
+			return "Runtime not found. Run: go test -json ./... > test-output.json (or provide --runtime <path>)"
+		case "python":
+			return "Runtime not found. Run: pytest --junitxml=junit.xml (or provide --runtime <path>)"
+		case "java":
+			return "Runtime not found. Run: mvn test (JUnit XML in target/surefire-reports/) or provide --runtime <path>"
+		}
+	}
+	return "Runtime data not found. Provide with --runtime <path> to unlock health signals."
+}
+
+// RelativePath returns the path relative to the current working directory,
+// falling back to the absolute path if the relative form would escape.
+func RelativePath(absPath string) string {
 	if cwd, err := os.Getwd(); err == nil {
 		if rel, err := filepath.Rel(cwd, absPath); err == nil && !strings.HasPrefix(rel, "..") {
 			return rel

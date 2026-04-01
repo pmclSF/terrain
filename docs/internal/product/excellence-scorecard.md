@@ -140,7 +140,7 @@
 
 | Dimension | Score | Evidence |
 |-----------|-------|----------|
-| Clarity | A | `ai list` shows surface counts. `ai doctor` 6-point diagnostic. |
+| Clarity | A | `ai list` shows surface counts. `ai doctor` exposes the 6 core setup checks and adds contexts when detected. |
 | Correctness | A | 12 frameworks auto-detected. Scenarios auto-derived without YAML. Dedup works. |
 | Trustworthiness | B | Auto-detection depends on naming conventions. Graph nodes (Prompt, Dataset, Model, EvalMetric) not populated. |
 | Test coverage | B | AI workflow integration tests. Detection unit tests. No per-framework detection test. |
