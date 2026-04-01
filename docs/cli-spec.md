@@ -17,6 +17,9 @@ Print version, commit, and build date.
 
 Output: `terrain <version> (commit <sha>, built <date>)`
 
+Flags:
+- `--json` — output machine-readable version metadata
+
 ---
 
 ## Core commands
@@ -26,8 +29,13 @@ Purpose:
 Inspect a repository for common coverage/runtime artifacts and print a
 ready-to-run `terrain analyze` command with detected paths.
 
+Must support:
+- human-readable output (default)
+- JSON output (`--json`)
+
 Flags:
 - `--root PATH` — repository root to inspect (default: current directory)
+- `--json` — output JSON init result
 
 ### `terrain analyze`
 Primary command.
@@ -225,6 +233,7 @@ Output a benchmark-safe JSON artifact for future anonymous comparison.
 
 Flags:
 - `--root PATH` — repository root to analyze (default: current directory)
+- `--json` — accepted for explicit machine-readable invocation (output is always JSON)
 
 Output is always JSON (no human-readable mode — this is a machine artifact).
 
@@ -345,9 +354,10 @@ AI/eval validation namespace. List detected scenarios, run evals, manage baselin
 
 Subcommands:
 - `terrain ai list` — list detected AI/eval scenarios, prompt surfaces, dataset surfaces, and eval files
-- `terrain ai run` — execute eval scenarios and collect results (planned)
-- `terrain ai record` — record eval run results as a baseline snapshot (planned)
-- `terrain ai baseline` — manage eval baselines: show, compare, promote (planned)
+- `terrain ai run` — execute eval scenarios and collect results
+- `terrain ai replay` — replay and verify a previous eval run artifact
+- `terrain ai record` — record eval run results as a baseline snapshot
+- `terrain ai baseline` — manage eval baselines: show, compare, promote
 - `terrain ai doctor` — validate AI/eval setup: scenarios, prompts, datasets, eval files, graph wiring
 
 Flags (all subcommands):

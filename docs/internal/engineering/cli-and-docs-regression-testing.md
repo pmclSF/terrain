@@ -24,9 +24,14 @@ the wrong code, or prints malformed output, these tests catch it.
 | Build Succeeds | `go build ./cmd/terrain` | The binary compiles without errors |
 | Help Exit Code | `terrain --help` | Exit code 0 on help request |
 | Help Contains All Commands | `terrain --help` | Every registered subcommand appears in help text |
+| Namespace Help | `terrain ai|migration|debug|export --help` | Namespace help exits cleanly and lists valid subcommands |
+| Leaf Help Flags | `terrain ai replay --help`, `terrain migration readiness --help` | Subcommands only show flags they actually support |
 | Unknown Command Exit Code | `terrain nonexistent` | Non-zero exit code for unrecognized commands |
 | Analyze Testdata | `terrain analyze <path>` | Successful analysis of the sample repo with text output |
 | Analyze JSON | `terrain analyze --format json <path>` | JSON output parses correctly and contains expected fields |
+| Init JSON | `terrain init --json` | Init supports machine-readable automation |
+| Export JSON Flag | `terrain export benchmark --json` | Export accepts explicit JSON flag without changing semantics |
+| Version JSON | `terrain version --json` | Version metadata is scriptable |
 | Posture Testdata | `terrain posture <path>` | Posture report generates without error against sample repo |
 | Metrics Testdata | `terrain metrics <path>` | Metrics output includes expected measurement names |
 | Summary Testdata | `terrain summary <path>` | Summary report renders with expected sections and data |
@@ -53,8 +58,9 @@ actual CLI behavior:
 - **Command names in help text.** Every subcommand listed in `docs/cli-spec.md`
   must appear in `terrain --help` output. If a command is added or renamed in
   code but not updated in docs, this test fails.
-- **Flag names.** Key flags documented in the CLI spec are checked against
-  actual flag registration to catch drift.
+- **Flag names and namespace help.** Key flags documented in the CLI spec are
+  checked against actual flag registration, including namespace help and
+  subcommand-specific help output.
 - **Output format descriptions.** When docs claim a command supports
   `--format json`, the test confirms the flag is accepted.
 
@@ -71,7 +77,7 @@ go test ./internal/testdata/ -run TestCLI
 go test ./internal/testdata/ -run TestCLI -v
 ```
 
-CLI tests are included in the standard `go test ./...` run and are part of
+CLI tests are included in the standard `go test ./cmd/... ./internal/...` run and are part of
 both PR gates and release gates.
 
 ## Failure Investigation

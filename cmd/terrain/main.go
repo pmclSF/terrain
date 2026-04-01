@@ -33,6 +33,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -41,6 +42,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/logging"
+	"github.com/pmclSF/terrain/internal/telemetry"
 )
 
 // Build-time variables set via ldflags.
@@ -90,8 +92,9 @@ func main() {
 	case "init":
 		initCmd := flag.NewFlagSet("init", flag.ExitOnError)
 		rootFlag := initCmd.String("root", ".", "repository root to inspect")
+		jsonFlag := initCmd.Bool("json", false, "output JSON init result")
 		_ = initCmd.Parse(os.Args[2:])
-		if err := runInit(*rootFlag); err != nil {
+		if err := runInit(*rootFlag, *jsonFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -129,8 +132,9 @@ func main() {
 		metricsCmd := flag.NewFlagSet("metrics", flag.ExitOnError)
 		rootFlag := metricsCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := metricsCmd.Bool("json", false, "output JSON metrics snapshot")
+		verboseFlag := metricsCmd.Bool("verbose", false, "show detailed metric breakdowns")
 		_ = metricsCmd.Parse(os.Args[2:])
-		if err := runMetrics(*rootFlag, *jsonFlag); err != nil {
+		if err := runMetrics(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -139,8 +143,9 @@ func main() {
 		postureCmd := flag.NewFlagSet("posture", flag.ExitOnError)
 		rootFlag := postureCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := postureCmd.Bool("json", false, "output JSON posture snapshot")
+		verboseFlag := postureCmd.Bool("verbose", false, "show measurement values and thresholds")
 		_ = postureCmd.Parse(os.Args[2:])
-		if err := runPosture(*rootFlag, *jsonFlag); err != nil {
+		if err := runPosture(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -149,8 +154,9 @@ func main() {
 		portfolioCmd := flag.NewFlagSet("portfolio", flag.ExitOnError)
 		rootFlag := portfolioCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := portfolioCmd.Bool("json", false, "output JSON portfolio snapshot")
+		verboseFlag := portfolioCmd.Bool("verbose", false, "show per-asset details")
 		_ = portfolioCmd.Parse(os.Args[2:])
-		if err := runPortfolio(*rootFlag, *jsonFlag); err != nil {
+		if err := runPortfolio(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -159,8 +165,9 @@ func main() {
 		insightsCmd := flag.NewFlagSet("insights", flag.ExitOnError)
 		rootFlag := insightsCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := insightsCmd.Bool("json", false, "output JSON insights")
+		verboseFlag := insightsCmd.Bool("verbose", false, "show per-finding evidence and file details")
 		_ = insightsCmd.Parse(os.Args[2:])
-		if err := runInsights(*rootFlag, *jsonFlag); err != nil {
+		if err := runInsights(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -200,8 +207,9 @@ func main() {
 		summaryCmd := flag.NewFlagSet("summary", flag.ExitOnError)
 		rootFlag := summaryCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := summaryCmd.Bool("json", false, "output JSON summary with heatmap")
+		verboseFlag := summaryCmd.Bool("verbose", false, "show detailed heatmap breakdown")
 		_ = summaryCmd.Parse(os.Args[2:])
-		if err := runSummary(*rootFlag, *jsonFlag); err != nil {
+		if err := runSummary(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -210,8 +218,9 @@ func main() {
 		focusCmd := flag.NewFlagSet("focus", flag.ExitOnError)
 		rootFlag := focusCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := focusCmd.Bool("json", false, "output JSON focus summary")
+		verboseFlag := focusCmd.Bool("verbose", false, "show full rationale and dependency chains")
 		_ = focusCmd.Parse(os.Args[2:])
-		if err := runFocus(*rootFlag, *jsonFlag); err != nil {
+		if err := runFocus(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -230,17 +239,35 @@ func main() {
 
 	case "migration":
 		if len(os.Args) < 3 {
-			fmt.Fprintln(os.Stderr, "Usage: terrain migration <readiness|blockers|preview> [flags]")
+			printMigrationUsage()
 			os.Exit(2)
 		}
+		if isHelpArg(os.Args[2]) {
+			printMigrationUsage()
+			return
+		}
 		subCmd := os.Args[2]
-		migCmd := flag.NewFlagSet("migration "+subCmd, flag.ExitOnError)
-		rootFlag := migCmd.String("root", ".", "repository root to analyze")
-		jsonFlag := migCmd.Bool("json", false, "output JSON")
-		fileFlag := migCmd.String("file", "", "file path for preview (relative to root)")
-		scopeFlag := migCmd.String("scope", "", "directory scope for preview")
-		_ = migCmd.Parse(os.Args[3:])
-		if err := runMigration(subCmd, *rootFlag, *jsonFlag, *fileFlag, *scopeFlag); err != nil {
+		var err error
+		switch subCmd {
+		case "readiness", "blockers":
+			migCmd := flag.NewFlagSet("migration "+subCmd, flag.ExitOnError)
+			rootFlag := migCmd.String("root", ".", "repository root to analyze")
+			jsonFlag := migCmd.Bool("json", false, "output JSON")
+			_ = migCmd.Parse(os.Args[3:])
+			err = runMigration(subCmd, *rootFlag, *jsonFlag, "", "")
+		case "preview":
+			migCmd := flag.NewFlagSet("migration preview", flag.ExitOnError)
+			rootFlag := migCmd.String("root", ".", "repository root to analyze")
+			jsonFlag := migCmd.Bool("json", false, "output JSON")
+			fileFlag := migCmd.String("file", "", "file path for preview (relative to root)")
+			scopeFlag := migCmd.String("scope", "", "directory scope for preview")
+			_ = migCmd.Parse(os.Args[3:])
+			err = runMigration(subCmd, *rootFlag, *jsonFlag, *fileFlag, *scopeFlag)
+		default:
+			fmt.Fprintf(os.Stderr, "unknown migration subcommand: %q (valid: readiness, blockers, preview)\n", subCmd)
+			os.Exit(2)
+		}
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -296,22 +323,36 @@ func main() {
 		}
 
 	case "export":
-		if len(os.Args) < 3 || os.Args[2] != "benchmark" {
-			fmt.Fprintln(os.Stderr, "Usage: terrain export benchmark [flags]")
+		if len(os.Args) < 3 {
+			printExportUsage()
+			os.Exit(2)
+		}
+		if isHelpArg(os.Args[2]) {
+			printExportUsage()
+			return
+		}
+		if os.Args[2] != "benchmark" {
+			fmt.Fprintf(os.Stderr, "unknown export subcommand: %q\n\n", os.Args[2])
+			printExportUsage()
 			os.Exit(2)
 		}
 		exportCmd := flag.NewFlagSet("export benchmark", flag.ExitOnError)
 		rootFlag := exportCmd.String("root", ".", "repository root to analyze")
+		jsonFlag := exportCmd.Bool("json", false, "output JSON benchmark export")
 		_ = exportCmd.Parse(os.Args[3:])
-		if err := runExportBenchmark(*rootFlag); err != nil {
+		if err := runExportBenchmark(*rootFlag, *jsonFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
 
 	case "debug":
 		if len(os.Args) < 3 {
-			fmt.Fprintln(os.Stderr, "Usage: terrain debug <graph|coverage|fanout|duplicates|depgraph> [flags]")
+			printDebugUsage()
 			os.Exit(2)
+		}
+		if isHelpArg(os.Args[2]) {
+			printDebugUsage()
+			return
 		}
 		debugSub := os.Args[2]
 		if debugSub == "depgraph" {
@@ -368,32 +409,42 @@ func main() {
 
 	case "ai":
 		if len(os.Args) < 3 {
-			fmt.Fprintln(os.Stderr, "Usage: terrain ai <list|run|record|baseline|doctor> [flags]")
-			fmt.Fprintln(os.Stderr)
-			fmt.Fprintln(os.Stderr, "Commands:")
-			fmt.Fprintln(os.Stderr, "  list       list detected AI/eval scenarios and surfaces")
-			fmt.Fprintln(os.Stderr, "  run        execute eval scenarios and collect results")
-			fmt.Fprintln(os.Stderr, "  replay     replay and verify a previous run artifact")
-			fmt.Fprintln(os.Stderr, "  record     record eval run results as a baseline snapshot")
-			fmt.Fprintln(os.Stderr, "  baseline   manage eval baselines (show, compare, promote)")
-			fmt.Fprintln(os.Stderr, "  doctor     validate AI/eval setup and surface configuration issues")
+			printAIUsage()
 			os.Exit(2)
 		}
+		if isHelpArg(os.Args[2]) {
+			printAIUsage()
+			return
+		}
 		aiSub := os.Args[2]
-		aiCmd := flag.NewFlagSet("ai "+aiSub, flag.ExitOnError)
-		rootFlag := aiCmd.String("root", ".", "repository root to analyze")
-		jsonFlag := aiCmd.Bool("json", false, "output JSON")
-		aiVerboseFlag := aiCmd.Bool("verbose", false, "show detection evidence per surface")
-		baseRef := aiCmd.String("base", "", "git base ref for impact-based scenario selection")
-		fullFlag := aiCmd.Bool("full", false, "run all scenarios (skip impact selection)")
-		dryRunFlag := aiCmd.Bool("dry-run", false, "show what would run without executing")
-		_ = aiCmd.Parse(os.Args[3:])
-		if aiSub == "run" {
+		switch aiSub {
+		case "list":
+			aiCmd := flag.NewFlagSet("ai list", flag.ExitOnError)
+			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
+			jsonFlag := aiCmd.Bool("json", false, "output JSON")
+			verboseFlag := aiCmd.Bool("verbose", false, "show detection evidence per surface")
+			_ = aiCmd.Parse(os.Args[3:])
+			if err := runAIList(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+		case "run":
+			aiCmd := flag.NewFlagSet("ai run", flag.ExitOnError)
+			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
+			jsonFlag := aiCmd.Bool("json", false, "output JSON")
+			baseRef := aiCmd.String("base", "", "git base ref for impact-based scenario selection")
+			fullFlag := aiCmd.Bool("full", false, "run all scenarios (skip impact selection)")
+			dryRunFlag := aiCmd.Bool("dry-run", false, "show what would run without executing")
+			_ = aiCmd.Parse(os.Args[3:])
 			if err := runAIRun(*rootFlag, *jsonFlag, *baseRef, *fullFlag, *dryRunFlag); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}
-		} else if aiSub == "replay" {
+		case "replay":
+			aiCmd := flag.NewFlagSet("ai replay", flag.ExitOnError)
+			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
+			jsonFlag := aiCmd.Bool("json", false, "output JSON")
+			_ = aiCmd.Parse(os.Args[3:])
 			args := aiCmd.Args()
 			if len(args) == 0 {
 				// Default to latest artifact.
@@ -403,17 +454,96 @@ func main() {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}
-		} else if aiSub == "list" {
-			if err := runAIList(*rootFlag, *jsonFlag, *aiVerboseFlag); err != nil {
+		case "record":
+			aiCmd := flag.NewFlagSet("ai record", flag.ExitOnError)
+			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
+			jsonFlag := aiCmd.Bool("json", false, "output JSON")
+			_ = aiCmd.Parse(os.Args[3:])
+			if err := runAIRecord(*rootFlag, *jsonFlag); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}
-		} else if err := runAI(aiSub, *rootFlag, *jsonFlag); err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		case "baseline":
+			aiCmd := flag.NewFlagSet("ai baseline", flag.ExitOnError)
+			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
+			jsonFlag := aiCmd.Bool("json", false, "output JSON")
+			_ = aiCmd.Parse(os.Args[3:])
+			if err := runAIBaseline(*rootFlag, *jsonFlag); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+		case "doctor":
+			aiCmd := flag.NewFlagSet("ai doctor", flag.ExitOnError)
+			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
+			jsonFlag := aiCmd.Bool("json", false, "output JSON")
+			_ = aiCmd.Parse(os.Args[3:])
+			if err := runAIDoctor(*rootFlag, *jsonFlag); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "error: unknown ai subcommand: %q\n\n", aiSub)
+			printAIUsage()
+			os.Exit(1)
+		}
+
+	case "feedback":
+		url := "https://github.com/pmclSF/terrain/issues/new?template=feedback.md&title=Feedback:+&labels=feedback"
+		fmt.Println("Open the following URL to share feedback:")
+		fmt.Println()
+		fmt.Printf("  %s\n", url)
+		fmt.Println()
+		fmt.Println("Or email: terrain-feedback@pmcl.dev")
+
+	case "telemetry":
+		if len(os.Args) < 3 {
+			fmt.Println("Telemetry:", telemetry.Status())
+			fmt.Println()
+			fmt.Println("Usage:")
+			fmt.Println("  terrain telemetry --on     enable local telemetry")
+			fmt.Println("  terrain telemetry --off    disable local telemetry")
+			fmt.Println("  terrain telemetry --status show current state")
+			fmt.Println()
+			fmt.Println("Telemetry records command name, repo size band, languages,")
+			fmt.Println("signal count, and duration to ~/.terrain/telemetry.jsonl.")
+			fmt.Println("No file paths, repo URLs, or PII are recorded.")
+			fmt.Println("Override with TERRAIN_TELEMETRY=on|off environment variable.")
+			return
+		}
+		switch os.Args[2] {
+		case "--on", "on":
+			if err := telemetry.SaveConfig(telemetry.Config{Enabled: true}); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("Telemetry enabled. Events will be written to ~/.terrain/telemetry.jsonl")
+		case "--off", "off":
+			if err := telemetry.SaveConfig(telemetry.Config{Enabled: false}); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Println("Telemetry disabled.")
+		case "--status", "status":
+			fmt.Println("Telemetry:", telemetry.Status())
+		default:
+			fmt.Fprintf(os.Stderr, "unknown telemetry subcommand: %q\n", os.Args[2])
 			os.Exit(1)
 		}
 
 	case "version", "--version", "-v":
+		versionCmd := flag.NewFlagSet("version", flag.ExitOnError)
+		jsonFlag := versionCmd.Bool("json", false, "output JSON version info")
+		_ = versionCmd.Parse(os.Args[2:])
+		if *jsonFlag {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			_ = enc.Encode(map[string]string{
+				"version": version,
+				"commit":  commit,
+				"date":    date,
+			})
+			return
+		}
 		fmt.Printf("terrain %s (commit %s, built %s)\n", version, commit, date)
 
 	case "--help", "-h", "help":
@@ -442,6 +572,10 @@ func initLogging(args []string) {
 		}
 	}
 	// Default: info level (already set by logging.init()).
+}
+
+func isHelpArg(arg string) bool {
+	return arg == "--help" || arg == "-h" || arg == "help"
 }
 
 func printUsage() {
@@ -479,6 +613,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "AI / eval:")
 	fmt.Fprintln(os.Stderr, "  ai list [flags]          list detected AI/eval scenarios and surfaces")
 	fmt.Fprintln(os.Stderr, "  ai run [flags]           execute eval scenarios and collect results")
+	fmt.Fprintln(os.Stderr, "  ai replay [flags]        replay and verify a previous eval run artifact")
 	fmt.Fprintln(os.Stderr, "  ai record [flags]        record eval run results as a baseline snapshot")
 	fmt.Fprintln(os.Stderr, "  ai baseline [flags]      manage eval baselines (show, compare, promote)")
 	fmt.Fprintln(os.Stderr, "  ai doctor [flags]        validate AI/eval setup and configuration")
@@ -494,9 +629,9 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  terrain-bench            run benchmark suite across repos (go run ./cmd/terrain-bench)")
 	fmt.Fprintln(os.Stderr, "  terrain-truthcheck       validate output against ground truth (go run ./cmd/terrain-truthcheck)")
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Common flags:")
+	fmt.Fprintln(os.Stderr, "Common repo-scoped flags:")
 	fmt.Fprintln(os.Stderr, "  --root PATH              repository root (default: current directory)")
-	fmt.Fprintln(os.Stderr, "  --json                   machine-readable JSON output")
+	fmt.Fprintln(os.Stderr, "  --json                   machine-readable output where supported")
 	fmt.Fprintln(os.Stderr, "  --base REF               git base ref for diff (impact, pr, select-tests)")
 	fmt.Fprintln(os.Stderr, "  --log-level LEVEL        diagnostic verbosity: quiet, debug (default: info)")
 	fmt.Fprintln(os.Stderr)
@@ -507,6 +642,44 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  4. terrain explain <target>           understand why")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Docs: docs/examples/{analyze,summary,insights,explain,focus,impact}-report.md")
+}
+
+func printMigrationUsage() {
+	fmt.Fprintln(os.Stderr, "Usage: terrain migration <readiness|blockers|preview> [flags]")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Subcommands:")
+	fmt.Fprintln(os.Stderr, "  readiness   assess migration readiness and risk")
+	fmt.Fprintln(os.Stderr, "  blockers    list migration blockers and highest-risk areas")
+	fmt.Fprintln(os.Stderr, "  preview     preview migration for a file or directory scope")
+}
+
+func printExportUsage() {
+	fmt.Fprintln(os.Stderr, "Usage: terrain export benchmark [flags]")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Exports a privacy-safe benchmark artifact as JSON.")
+}
+
+func printDebugUsage() {
+	fmt.Fprintln(os.Stderr, "Usage: terrain debug <graph|coverage|fanout|duplicates|depgraph> [flags]")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Subcommands:")
+	fmt.Fprintln(os.Stderr, "  graph       dependency graph statistics")
+	fmt.Fprintln(os.Stderr, "  coverage    structural coverage analysis")
+	fmt.Fprintln(os.Stderr, "  fanout      high-fanout node analysis")
+	fmt.Fprintln(os.Stderr, "  duplicates  duplicate test cluster analysis")
+	fmt.Fprintln(os.Stderr, "  depgraph    full dependency graph analysis")
+}
+
+func printAIUsage() {
+	fmt.Fprintln(os.Stderr, "Usage: terrain ai <list|run|replay|record|baseline|doctor> [flags]")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Commands:")
+	fmt.Fprintln(os.Stderr, "  list       list detected AI/eval scenarios and surfaces")
+	fmt.Fprintln(os.Stderr, "  run        execute eval scenarios and collect results")
+	fmt.Fprintln(os.Stderr, "  replay     replay and verify a previous run artifact")
+	fmt.Fprintln(os.Stderr, "  record     record eval run results as a baseline snapshot")
+	fmt.Fprintln(os.Stderr, "  baseline   manage eval baselines (show, compare, promote)")
+	fmt.Fprintln(os.Stderr, "  doctor     validate AI/eval setup and surface configuration issues")
 }
 
 func defaultPipelineOptions() engine.PipelineOptions {

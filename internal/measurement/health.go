@@ -5,6 +5,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/skipstats"
 )
 
 // HealthMeasurements returns measurement definitions for the health dimension.
@@ -84,38 +85,26 @@ func computeFlakyShare(snap *models.TestSuiteSnapshot) Result {
 }
 
 func computeSkipDensity(snap *models.TestSuiteSnapshot) Result {
-	total := len(snap.TestFiles)
-	if total == 0 {
+	stats := skipstats.Summarize(snap)
+	if stats.TotalFiles == 0 {
 		return Result{
 			ID: "health.skip_density", Dimension: DimensionHealth,
 			Value: 0, Units: UnitsRatio, Band: "strong",
 			Evidence: EvidenceNone, Explanation: "No test files detected.",
 		}
 	}
-
-	fileSet := map[string]bool{}
-	for _, s := range snap.Signals {
-		if s.Type != signals.SignalSkippedTest {
-			continue
-		}
-		if s.Location.File != "" {
-			fileSet[s.Location.File] = true
-		}
+	evidence := EvidencePartial
+	if runtimeEvidence(snap) == EvidenceStrong {
+		evidence = EvidenceStrong
 	}
-	count := len(fileSet)
-	if count == 0 {
-		// Backward compatibility for snapshots that only contain repo-level skipped signals.
-		count = countSignals(snap, signals.SignalSkippedTest)
-	}
-	ratio := float64(count) / float64(total)
-	band := ratioToBand(ratio, 0.05, 0.15, 0.30)
 
 	return Result{
 		ID: "health.skip_density", Dimension: DimensionHealth,
-		Value: ratio, Units: UnitsRatio, Band: band,
-		Evidence:    EvidenceStrong,
-		Explanation: fmt.Sprintf("%d of %d test file(s) contain skipped tests (%.0f%%).", count, total, ratio*100),
-		Inputs:      []string{"skippedTest"},
+		Value: stats.FileRatio, Units: UnitsRatio, Band: ratioToBand(stats.FileRatio, 0.05, 0.15, 0.30),
+		Evidence:    evidence,
+		Explanation: fmt.Sprintf("%d of %d test file(s) contain skipped tests (%.0f%%).", stats.FilesWithSkips, stats.TotalFiles, stats.FileRatio*100),
+		Inputs:      []string{"skippedTest", "staticSkippedTest"},
+		Limitations: evidenceLimitations(evidence),
 	}
 }
 

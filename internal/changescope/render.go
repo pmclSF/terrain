@@ -72,21 +72,31 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 
 	// --- Pre-existing gaps touched by this change ---
 	if len(existingDebt) > 0 {
-		line("<details><summary>Pre-existing issues on changed files (%d)</summary>", len(existingDebt))
-		line("")
-		limit := 5
-		if len(existingDebt) < limit {
-			limit = len(existingDebt)
+		if len(existingDebt) <= 3 {
+			// Small counts: show inline instead of hiding in a collapsible.
+			line("### Pre-existing issues (%d)", len(existingDebt))
+			line("")
+			for _, f := range existingDebt {
+				line("- `%s`: %s", f.Path, f.Explanation)
+			}
+			line("")
+		} else {
+			line("<details><summary>Pre-existing issues on changed files (%d)</summary>", len(existingDebt))
+			line("")
+			limit := 5
+			if len(existingDebt) < limit {
+				limit = len(existingDebt)
+			}
+			for _, f := range existingDebt[:limit] {
+				line("- `%s`: %s", f.Path, f.Explanation)
+			}
+			if len(existingDebt) > limit {
+				line("- ... and %d more", len(existingDebt)-limit)
+			}
+			line("")
+			line("</details>")
+			line("")
 		}
-		for _, f := range existingDebt[:limit] {
-			line("- `%s`: %s", f.Path, f.Explanation)
-		}
-		if len(existingDebt) > limit {
-			line("- ... and %d more", len(existingDebt)-limit)
-		}
-		line("")
-		line("</details>")
-		line("")
 	}
 
 	// --- Test recommendations ---
@@ -521,32 +531,29 @@ func formatSingleTestReason(t TestSelection, unitTestCount map[string]int, total
 	if t.Confidence == "exact" {
 		label = "exact coverage of"
 	}
-	const maxDisplay = 4
+	const maxDisplay = 3
 	if len(unique) > 0 {
 		var why string
 		if len(unique) <= maxDisplay {
-			why = fmt.Sprintf("%s `%s`", label, strings.Join(unique, "`, `"))
+			why = fmt.Sprintf("%s %s", label, formatUnitList(unique))
 		} else {
-			why = fmt.Sprintf("%s `%s` + %d more", label, strings.Join(unique[:maxDisplay], "`, `"), len(unique)-maxDisplay)
-		}
-		if len(shared) > 0 {
-			why += fmt.Sprintf(" (+ %d shared)", len(shared))
+			why = fmt.Sprintf("%s %s + %d more", label, formatUnitList(unique[:maxDisplay]), len(unique)-maxDisplay)
 		}
 		return why
 	}
 	if len(unitNames) <= maxDisplay {
-		why := fmt.Sprintf("%s `%s`", label, strings.Join(unitNames, "`, `"))
-		if totalTests > 1 {
-			why += fmt.Sprintf(" (shared across %d tests)", unitTestCount[t.CoversUnits[0]])
-		}
-		return why
+		return fmt.Sprintf("%s %s", label, formatUnitList(unitNames))
 	}
-	shown := strings.Join(unitNames[:maxDisplay], "`, `")
-	why := fmt.Sprintf("%s `%s` + %d more", label, shown, len(unitNames)-maxDisplay)
-	if totalTests > 1 {
-		why += fmt.Sprintf(" (shared across %d tests)", unitTestCount[t.CoversUnits[0]])
+	return fmt.Sprintf("%s %s + %d more", label, formatUnitList(unitNames[:maxDisplay]), len(unitNames)-maxDisplay)
+}
+
+// formatUnitList renders unit names as a comma-separated inline code list.
+func formatUnitList(names []string) string {
+	parts := make([]string, len(names))
+	for i, n := range names {
+		parts[i] = "`" + n + "`"
 	}
-	return why
+	return strings.Join(parts, ", ")
 }
 
 func deduplicateStrings(ss []string) []string {

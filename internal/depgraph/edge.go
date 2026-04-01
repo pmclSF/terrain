@@ -59,6 +59,7 @@ const (
 	EdgeUsesModel                EdgeType = "uses_model"
 	EdgeUsesPrompt               EdgeType = "uses_prompt"
 	EdgeEvaluatesMetric          EdgeType = "evaluates_metric"
+	EdgeAIDefinedInFile          EdgeType = "ai_defined_in_file"
 )
 
 // --- Execution edges ---
