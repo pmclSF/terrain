@@ -32,6 +32,9 @@ func testSnapshot() *models.TestSuiteSnapshot {
 			"src/auth.js":    {"team-platform"},
 			"src/payment.js": {"team-payments"},
 		},
+		DataSources: []models.DataSource{
+			{Name: "coverage", Status: models.DataSourceAvailable},
+		},
 	}
 }
 
