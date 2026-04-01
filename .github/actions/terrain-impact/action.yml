@@ -1,6 +1,10 @@
 name: 'Terrain Impact Analysis'
 description: 'Run Terrain impact analysis using the Go CLI, generate CI artifacts, and post a PR comment with results.'
 
+branding:
+  icon: 'shield'
+  color: 'green'
+
 inputs:
   go-version-file:
     description: 'Path to go.mod for Go version detection'
