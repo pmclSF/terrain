@@ -22,6 +22,7 @@
 //	terrain migration <sub>      readiness, blockers, or preview
 //	terrain policy check         evaluate local policy rules
 //	terrain export benchmark     privacy-safe JSON export for benchmarking
+//	terrain serve                local HTTP server with HTML report and JSON API
 //
 // Advanced / debug:
 //
@@ -42,6 +43,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/logging"
+	"github.com/pmclSF/terrain/internal/server"
 	"github.com/pmclSF/terrain/internal/telemetry"
 )
 
@@ -545,6 +547,16 @@ func main() {
 			return
 		}
 		fmt.Printf("terrain %s (commit %s, built %s)\n", version, commit, date)
+
+	case "serve":
+		serveCmd := flag.NewFlagSet("serve", flag.ExitOnError)
+		rootFlag := serveCmd.String("root", ".", "repository root to analyze")
+		portFlag := serveCmd.Int("port", server.DefaultPort, "port to listen on")
+		_ = serveCmd.Parse(os.Args[2:])
+		if err := runServe(*rootFlag, *portFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
 
 	case "--help", "-h", "help":
 		printUsage()
