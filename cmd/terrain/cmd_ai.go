@@ -13,6 +13,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/aidetect"
 	"github.com/pmclSF/terrain/internal/airun"
+	"github.com/pmclSF/terrain/internal/comparison"
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/models"
@@ -33,6 +34,10 @@ func runAI(subCmd, root string, jsonOutput bool) error {
 	case "record":
 		return runAIRecord(root, jsonOutput)
 	case "baseline":
+		// Check for "terrain ai baseline compare" sub-subcommand.
+		if len(os.Args) > 3 && os.Args[3] == "compare" {
+			return runAIBaselineCompare(root, jsonOutput)
+		}
 		return runAIBaseline(root, jsonOutput)
 	default:
 		return fmt.Errorf("unknown ai subcommand: %q\nValid: list, run, replay, record, baseline, doctor", subCmd)
@@ -817,6 +822,152 @@ func runAIBaseline(root string, jsonOutput bool) error {
 	// Compare with current state.
 	fmt.Println()
 	fmt.Println("To compare with current state: terrain ai list --json")
+
+	return nil
+}
+
+func runAIBaselineCompare(root string, jsonOutput bool) error {
+	blPath := filepath.Join(root, ".terrain", "baselines", "latest.json")
+	data, err := os.ReadFile(blPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return fmt.Errorf("no baseline found. Run `terrain ai record` to create one first")
+		}
+		return fmt.Errorf("reading baseline: %w", err)
+	}
+
+	// Parse baseline for scenario list and any stored metrics.
+	var baseline struct {
+		RecordedAt string `json:"recordedAt"`
+		Scenarios  []struct {
+			ScenarioID string             `json:"scenarioId"`
+			Name       string             `json:"name"`
+			Metrics    map[string]float64 `json:"metrics,omitempty"`
+		} `json:"scenarios"`
+	}
+	if err := json.Unmarshal(data, &baseline); err != nil {
+		return fmt.Errorf("parsing baseline: %w", err)
+	}
+
+	// Run current analysis to get current scenario state.
+	result, err := engine.RunPipeline(root, engine.PipelineOptions{EngineVersion: version})
+	if err != nil {
+		return fmt.Errorf("analysis failed: %w", err)
+	}
+
+	// Build metric maps: scenarioID → metricName → value.
+	baselineMetrics := make(map[string]map[string]float64)
+	for _, s := range baseline.Scenarios {
+		if len(s.Metrics) > 0 {
+			baselineMetrics[s.ScenarioID] = s.Metrics
+		}
+	}
+
+	// Extract current metrics from Gauntlet signals in snapshot.
+	currentMetrics := make(map[string]map[string]float64)
+	for _, sig := range result.Snapshot.Signals {
+		if sig.Location.ScenarioID == "" || sig.Metadata == nil {
+			continue
+		}
+		sid := sig.Location.ScenarioID
+		if currentMetrics[sid] == nil {
+			currentMetrics[sid] = make(map[string]float64)
+		}
+		// Extract numeric metrics from signal metadata.
+		for k, v := range sig.Metadata {
+			if f, ok := v.(float64); ok {
+				currentMetrics[sid][k] = f
+			}
+		}
+	}
+
+	// Compare scenarios: added/removed.
+	baselineIDs := make(map[string]string) // id → name
+	for _, s := range baseline.Scenarios {
+		baselineIDs[s.ScenarioID] = s.Name
+	}
+	currentIDs := make(map[string]string)
+	for _, s := range result.Snapshot.Scenarios {
+		currentIDs[s.ScenarioID] = s.Name
+	}
+
+	var added, removed []string
+	for id, name := range currentIDs {
+		if _, ok := baselineIDs[id]; !ok {
+			added = append(added, name)
+		}
+	}
+	for id, name := range baselineIDs {
+		if _, ok := currentIDs[id]; !ok {
+			removed = append(removed, name)
+		}
+	}
+
+	// Compare metrics.
+	deltas := comparison.CompareEvalMetrics(baselineMetrics, currentMetrics)
+
+	if jsonOutput {
+		out := map[string]any{
+			"baselineRecordedAt": baseline.RecordedAt,
+			"baselineScenarios":  len(baseline.Scenarios),
+			"currentScenarios":   len(result.Snapshot.Scenarios),
+			"addedScenarios":     added,
+			"removedScenarios":   removed,
+			"metricDeltas":       deltas,
+		}
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(out)
+	}
+
+	// Human-readable output.
+	fmt.Println("Terrain AI Baseline Comparison")
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Printf("Baseline recorded: %s\n", baseline.RecordedAt)
+	fmt.Printf("Scenarios: %d → %d", len(baseline.Scenarios), len(result.Snapshot.Scenarios))
+	if diff := len(result.Snapshot.Scenarios) - len(baseline.Scenarios); diff > 0 {
+		fmt.Printf(" (+%d)\n", diff)
+	} else if diff < 0 {
+		fmt.Printf(" (%d)\n", diff)
+	} else {
+		fmt.Println(" (unchanged)")
+	}
+
+	if len(added) > 0 {
+		fmt.Println("\nAdded scenarios:")
+		for _, name := range added {
+			fmt.Printf("  + %s\n", name)
+		}
+	}
+	if len(removed) > 0 {
+		fmt.Println("\nRemoved scenarios:")
+		for _, name := range removed {
+			fmt.Printf("  - %s\n", name)
+		}
+	}
+
+	if len(deltas) > 0 {
+		fmt.Println("\nMetric changes:")
+		regressionCount := 0
+		for _, d := range deltas {
+			marker := "  "
+			if d.IsRegression {
+				marker = "▼ "
+				regressionCount++
+			} else {
+				marker = "▲ "
+			}
+			fmt.Printf("  %s%-30s %-20s %.4f → %.4f (%+.4f)\n",
+				marker, d.ScenarioID, d.MetricName, d.FromValue, d.ToValue, d.Delta)
+		}
+		if regressionCount > 0 {
+			fmt.Printf("\n⚠ %d regression(s) detected\n", regressionCount)
+		}
+	} else if len(baselineMetrics) == 0 {
+		fmt.Println("\nNo baseline metrics recorded. Re-run `terrain ai record` with --gauntlet to capture metrics.")
+	} else {
+		fmt.Println("\nNo metric changes detected.")
+	}
 
 	return nil
 }

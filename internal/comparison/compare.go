@@ -62,6 +62,20 @@ type SnapshotComparison struct {
 
 	// MethodologyNotes explains methodology compatibility decisions.
 	MethodologyNotes []string `json:"methodologyNotes,omitempty"`
+
+	// EvalMetricDeltas compares AI evaluation metrics between snapshots.
+	EvalMetricDeltas []EvalMetricDelta `json:"evalMetricDeltas,omitempty"`
+}
+
+// EvalMetricDelta represents a change in a per-scenario evaluation metric.
+type EvalMetricDelta struct {
+	ScenarioID   string  `json:"scenarioId"`
+	ScenarioName string  `json:"scenarioName,omitempty"`
+	MetricName   string  `json:"metricName"`
+	FromValue    float64 `json:"fromValue"`
+	ToValue      float64 `json:"toValue"`
+	Delta        float64 `json:"delta"`
+	IsRegression bool    `json:"isRegression"`
 }
 
 // OwnershipDelta summarizes changes to ownership metrics across snapshots.
@@ -738,4 +752,74 @@ func compareOwnership(from, to map[string][]string) *OwnershipDelta {
 	}
 
 	return d
+}
+
+// CompareEvalMetrics compares per-scenario evaluation metrics between two
+// metric maps. Each map is keyed by scenario ID → metric name → value.
+// A metric is considered a regression if its value decreased (for accuracy-like
+// metrics where higher is better) or increased (for cost/latency-like metrics
+// where lower is better).
+func CompareEvalMetrics(from, to map[string]map[string]float64) []EvalMetricDelta {
+	if len(from) == 0 || len(to) == 0 {
+		return nil
+	}
+
+	// Metrics where higher values are better (regressions when they decrease).
+	higherIsBetter := map[string]bool{
+		"accuracy": true, "precision": true, "recall": true, "f1": true,
+		"bleu": true, "rouge": true, "similarity": true, "relevance": true,
+		"groundedness": true, "faithfulness": true, "correctness": true,
+	}
+
+	var deltas []EvalMetricDelta
+	for scenarioID, toMetrics := range to {
+		fromMetrics, exists := from[scenarioID]
+		if !exists {
+			continue
+		}
+		for metricName, toVal := range toMetrics {
+			fromVal, exists := fromMetrics[metricName]
+			if !exists {
+				continue
+			}
+			delta := toVal - fromVal
+			if delta == 0 {
+				continue
+			}
+
+			isRegression := false
+			if higherIsBetter[strings.ToLower(metricName)] {
+				isRegression = delta < 0 // decreased = regression
+			} else {
+				isRegression = delta > 0 // increased = regression (cost, latency)
+			}
+
+			deltas = append(deltas, EvalMetricDelta{
+				ScenarioID:   scenarioID,
+				MetricName:   metricName,
+				FromValue:    fromVal,
+				ToValue:      toVal,
+				Delta:        delta,
+				IsRegression: isRegression,
+			})
+		}
+	}
+
+	// Sort: regressions first, then by absolute delta descending.
+	sort.Slice(deltas, func(i, j int) bool {
+		if deltas[i].IsRegression != deltas[j].IsRegression {
+			return deltas[i].IsRegression
+		}
+		di := deltas[i].Delta
+		dj := deltas[j].Delta
+		if di < 0 {
+			di = -di
+		}
+		if dj < 0 {
+			dj = -dj
+		}
+		return di > dj
+	})
+
+	return deltas
 }
