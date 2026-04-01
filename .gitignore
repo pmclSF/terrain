@@ -81,6 +81,9 @@ tests/fixtures/**/.terrain/baselines/
 # === Large local-only directories ===
 testing/
 
+# === Private internal docs (kept locally, not committed) ===
+docs/internal/
+
 # === Temporary ===
 PR_DESCRIPTION.md
 *.backup

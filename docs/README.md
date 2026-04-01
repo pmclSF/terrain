@@ -45,12 +45,8 @@ The legacy converter engine is preserved and functional. See [legacy/](legacy/) 
 
 ## Engineering
 
-- [Architecture Map](internal/engineering/architecture-map.md) — contributor-facing component map
 - [Detector Architecture](engineering/detector-architecture.md) — registry-based detector plugin system
-- [Detector Audit](internal/engineering/detector-audit.md) — evidence classification for all detectors
 - [Deterministic Output](engineering/determinism.md) — deterministic output contract and enforcement
-- [Engineering Roadmap](internal/engineering/future-work.md) — incremental analysis, parallelization, and layer separation
-- [Hosted Future](internal/engineering/hosted-future.md) — what remains for hosted/org product
 - [Test Identity](engineering/test-identity.md) — deterministic test identity model
 - [Test Type Inference](engineering/test-type-inference.md) — evidence-based test classification
 - [Code Unit Inventory](engineering/code-unit-inventory.md) — normalized code structure model
