@@ -152,8 +152,10 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	case "annotation":
 		annotationOutput = true
 		jsonOutput = true // suppress progress output
+	case "html":
+		jsonOutput = true // suppress progress output
 	default:
-		return fmt.Errorf("invalid --format %q (valid: json, text, sarif, annotation)", format)
+		return fmt.Errorf("invalid --format %q (valid: json, text, sarif, annotation, html)", format)
 	}
 
 	opt := analysisPipelineOptions(coveragePath, coverageRunLabel, parsedRuntime, slowThreshold)
@@ -203,6 +205,10 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	if annotationOutput {
 		reporting.RenderGitHubAnnotations(os.Stdout, report)
 		return nil
+	}
+
+	if strings.EqualFold(strings.TrimSpace(format), "html") {
+		return reporting.RenderAnalyzeHTML(os.Stdout, report)
 	}
 
 	if jsonOutput {
