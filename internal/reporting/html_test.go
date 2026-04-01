@@ -79,9 +79,78 @@ func TestRenderAnalyzeHTML_Basic(t *testing.T) {
 		t.Error("missing risk dimension")
 	}
 
+	// Signal summary section.
+	if !strings.Contains(html, "Signal Summary") {
+		t.Error("missing signal summary section")
+	}
+	if !strings.Contains(html, "high") {
+		t.Error("missing high severity badge")
+	}
+
+	// Coverage confidence section.
+	if !strings.Contains(html, "Coverage Confidence") {
+		t.Error("missing coverage section")
+	}
+
+	// Data completeness section.
+	if !strings.Contains(html, "Data Completeness") {
+		t.Error("missing data completeness section")
+	}
+	if !strings.Contains(html, "available") {
+		t.Error("missing available status in data completeness")
+	}
+
+	// Risk posture section.
+	if !strings.Contains(html, "Risk Posture") {
+		t.Error("missing risk posture section")
+	}
+	if !strings.Contains(html, "strong") {
+		t.Error("missing strong band in risk posture")
+	}
+
+	// Total finding count overflow message.
+	if !strings.Contains(html, "5 total findings") {
+		t.Error("missing total finding count")
+	}
+
 	// Self-containment: no external URLs.
 	if strings.Contains(html, "https://cdn") || strings.Contains(html, "https://fonts") {
 		t.Error("HTML contains external CDN references — should be self-contained")
+	}
+}
+
+func TestRenderAnalyzeHTML_SpecialCharacters(t *testing.T) {
+	t.Parallel()
+	report := &analyze.Report{
+		SchemaVersion: "1",
+		Repository:    analyze.RepositoryInfo{Name: `repo<script>alert("xss")</script>`},
+		Headline:      `Test "headline" with <b>HTML</b> & special chars`,
+		KeyFindings: []analyze.KeyFinding{
+			{Title: `Finding with "quotes" & <tags>`, Severity: "high"},
+		},
+	}
+
+	var buf bytes.Buffer
+	err := RenderAnalyzeHTML(&buf, report)
+	if err != nil {
+		t.Fatalf("RenderAnalyzeHTML failed: %v", err)
+	}
+
+	html := buf.String()
+
+	// html/template should escape special characters.
+	if strings.Contains(html, "<script>alert") {
+		t.Error("XSS: script tag was not escaped")
+	}
+	if strings.Contains(html, `"xss"`) {
+		t.Error("XSS: unescaped quotes in script context")
+	}
+	// The escaped version should be present.
+	if !strings.Contains(html, "&lt;script&gt;") && !strings.Contains(html, "&#34;") {
+		// html/template uses different escaping forms; just verify the raw script is gone.
+		if strings.Contains(html, "<script>alert") {
+			t.Error("XSS: raw script tag present in output")
+		}
 	}
 }
 

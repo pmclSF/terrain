@@ -126,6 +126,19 @@ func TestCLISmoke_PRCommand(t *testing.T) {
 	}
 }
 
+// TestCLISmoke_AIBaselineCompare verifies the compare subcommand runs
+// without panicking. It may error if no baseline exists (expected).
+func TestCLISmoke_AIBaselineCompare(t *testing.T) {
+	root := fixtureRoot(t)
+
+	_, _ = captureRun(func() error {
+		// This will likely return "no baseline found" error — that's fine.
+		// We're testing that the command doesn't panic.
+		return runAIBaselineCompare(root, true)
+	})
+	// No assertion on error — "no baseline found" is a valid outcome.
+}
+
 // captureRun redirects os.Stdout, runs fn, and returns captured output.
 // Must NOT be used concurrently — os.Stdout is global.
 func captureRun(fn func() error) ([]byte, error) {
