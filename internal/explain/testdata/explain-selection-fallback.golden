@@ -16,7 +16,6 @@
   "gapCount": 1,
   "limitations": [
     "No per-test coverage lineage available; test selection uses structural heuristics.",
-    "No coverage artifacts provided; protection gaps reflect missing data, not measured absence. Provide --coverage to improve accuracy.",
     "No ownership data available; coordination risk may be underestimated."
   ]
 }

@@ -35,7 +35,7 @@
   "degraded-data": {
     "testFiles": 1,
     "codeUnits": 1,
-    "signals": 2,
+    "signals": 0,
     "riskSurfaces": 0,
     "maxRiskScore": 0,
     "sourceAvailable": true,

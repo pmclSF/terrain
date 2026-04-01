@@ -55,7 +55,6 @@
   ],
   "gapCount": 0,
   "limitations": [
-    "No coverage artifacts provided; protection gaps reflect missing data, not measured absence. Provide --coverage to improve accuracy.",
     "No ownership data available; coordination risk may be underestimated."
   ]
 }

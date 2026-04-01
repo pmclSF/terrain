@@ -12,7 +12,6 @@ import (
 	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/matrix"
 	"github.com/pmclSF/terrain/internal/models"
-	"github.com/pmclSF/terrain/internal/skipstats"
 	"github.com/pmclSF/terrain/internal/stability"
 )
 
@@ -95,9 +94,6 @@ type Report struct {
 	// Limitations notes where analysis is incomplete.
 	Limitations []string `json:"limitations,omitempty"`
 
-	// DiscoveredArtifacts lists auto-detected coverage and runtime artifacts.
-	DiscoveredArtifacts []DiscoveredArtifact `json:"discoveredArtifacts,omitempty"`
-
 	// Headline is a single opinionated sentence summarizing the test system state.
 	Headline string `json:"headline"`
 
@@ -120,13 +116,6 @@ type KeyFinding struct {
 
 	// Metric is the key number (e.g., "340 duplicates", "12 flaky tests").
 	Metric string `json:"metric,omitempty"`
-}
-
-// DiscoveredArtifact describes an auto-detected coverage or runtime artifact.
-type DiscoveredArtifact struct {
-	Kind   string `json:"kind"`   // "coverage" or "runtime"
-	Path   string `json:"path"`   // relative path to the artifact
-	Format string `json:"format"` // e.g. "lcov", "istanbul", "junit-xml"
 }
 
 // RepositoryInfo captures repo metadata.
@@ -166,11 +155,11 @@ type FrameworkCount struct {
 
 // ProfileSummary classifies the repository.
 type ProfileSummary struct {
-	TestVolume             string  `json:"testVolume"`
-	CIPressure             string  `json:"ciPressure"`
-	CoverageConfidence     string  `json:"coverageConfidence"`
-	RedundancyLevel        string  `json:"redundancyLevel"`
-	FanoutBurden           string  `json:"fanoutBurden"`
+	TestVolume         string  `json:"testVolume"`
+	CIPressure         string  `json:"ciPressure"`
+	CoverageConfidence string  `json:"coverageConfidence"`
+	RedundancyLevel    string  `json:"redundancyLevel"`
+	FanoutBurden       string  `json:"fanoutBurden"`
 	SkipBurden             string  `json:"skipBurden,omitempty"`
 	FlakeBurden            string  `json:"flakeBurden,omitempty"`
 	ManualCoveragePresence string  `json:"manualCoveragePresence,omitempty"`
@@ -236,11 +225,11 @@ type RiskDimension struct {
 
 // SignalBreakdown counts signals by severity and category.
 type SignalBreakdown struct {
-	Total      int            `json:"total"`
-	Critical   int            `json:"critical"`
-	High       int            `json:"high"`
-	Medium     int            `json:"medium"`
-	Low        int            `json:"low"`
+	Total    int            `json:"total"`
+	Critical int            `json:"critical"`
+	High     int            `json:"high"`
+	Medium   int            `json:"medium"`
+	Low      int            `json:"low"`
 	ByCategory map[string]int `json:"byCategory"`
 }
 
@@ -266,9 +255,8 @@ type ManualCoverageSummary struct {
 
 // BuildInput contains everything needed to build an analyze report.
 type BuildInput struct {
-	Snapshot            *models.TestSuiteSnapshot
-	HasPolicy           bool
-	DiscoveredArtifacts []DiscoveredArtifact
+	Snapshot  *models.TestSuiteSnapshot
+	HasPolicy bool
 }
 
 // Build constructs an AnalyzeReport from a pipeline snapshot.
@@ -300,7 +288,6 @@ func Build(input *BuildInput) *Report {
 		Snapshot:   BuildSnapshotProfileData(snap),
 	}
 	dgProfile := depgraph.AnalyzeProfile(dg, profileInsights)
-	depgraph.EnrichProfileWithSkipRatio(&dgProfile, skipstats.Summarize(snap).TestRatio)
 
 	// Edge cases and policy.
 	dgEdgeCases := depgraph.DetectEdgeCases(dgProfile, dg, profileInsights)
@@ -386,9 +373,6 @@ func Build(input *BuildInput) *Report {
 			"Graph has %d nodes and %d edges — confidence-based test selection available via `terrain impact`.",
 			dgStats.NodeCount, dgStats.EdgeCount)
 	}
-
-	// Discovered artifacts.
-	r.DiscoveredArtifacts = input.DiscoveredArtifacts
 
 	// Headline and next actions — the "10-second first impression".
 	r.Headline = deriveHeadline(r)
@@ -552,11 +536,28 @@ func buildFanoutSummary(fanout *depgraph.FanoutResult) FanoutSummary {
 }
 
 func buildSkipSummary(snap *models.TestSuiteSnapshot) SkipSummary {
-	stats := skipstats.Summarize(snap)
+	skipped := 0
+	total := 0
+	for _, sig := range snap.Signals {
+		if sig.Type == "skippedTest" {
+			skipped++
+		}
+	}
+	for _, tf := range snap.TestFiles {
+		total += tf.TestCount
+	}
+	if total == 0 {
+		total = len(snap.TestCases)
+	}
+
+	ratio := 0.0
+	if total > 0 {
+		ratio = float64(skipped) / float64(total)
+	}
 	return SkipSummary{
-		SkippedCount: stats.SkippedTests,
-		TotalTests:   stats.TotalTests,
-		SkipRatio:    stats.TestRatio,
+		SkippedCount: skipped,
+		TotalTests:   total,
+		SkipRatio:    ratio,
 	}
 }
 
@@ -582,7 +583,12 @@ func buildCIOptimization(dupes *depgraph.DuplicateResult, fanout *depgraph.Fanou
 	ci := CIOptimizationSummary{
 		DuplicateTestsRemovable: dupes.DuplicateCount,
 		HighFanoutNodes:         fanout.FlaggedCount,
-		SkippedTestsReviewable:  skipstats.Summarize(snap).SkippedTests,
+	}
+	// Count skipped tests as reviewable.
+	for _, sig := range snap.Signals {
+		if sig.Type == "skippedTest" {
+			ci.SkippedTestsReviewable++
+		}
 	}
 
 	// Build recommendation.
@@ -918,7 +924,7 @@ func buildLimitations(snap *models.TestSuiteSnapshot, hasPolicy bool) []string {
 		lims = append(lims, "No coverage data provided; coverage confidence is structural (import-based) only.")
 	}
 	if !dsAvailable(snap, "runtime") {
-		lims = append(lims, "No runtime data provided; static skip detection is available, but flaky/slow/dead/unstable signals require runtime artifacts.")
+		lims = append(lims, "No runtime data provided; skip/flaky/slow test detection unavailable.")
 	}
 	if !hasPolicy && !dsAvailable(snap, "policy") {
 		lims = append(lims, "No policy file found; governance checks skipped.")

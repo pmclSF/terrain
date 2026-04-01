@@ -54,10 +54,6 @@ function detect(source) {
 }
 
 function parse(source) {
-  return parsePython(source);
-}
-
-function _parseRegex(source) {
   const lines = source.split('\n');
   const imports = [];
   const allNodes = [];

@@ -38,7 +38,6 @@
   "postureBand": "partially_protected",
   "summary": "1 file(s) changed, 2 code unit(s) impacted, 1 test(s) relevant. Posture: partially_protected.",
   "limitations": [
-    "No coverage artifacts provided; protection gaps reflect missing data, not measured absence. Provide --coverage to improve accuracy.",
     "No ownership data available; coordination risk may be underestimated."
   ]
 }

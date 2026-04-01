@@ -1,101 +1,58 @@
 package models
 
-// SignalSource describes how a signal type is produced.
-type SignalSource string
-
-const (
-	// SignalSourceStatic signals are produced by static code analysis (no external data needed).
-	SignalSourceStatic SignalSource = "static"
-	// SignalSourceRuntime signals require runtime test results (JUnit XML, Jest JSON).
-	SignalSourceRuntime SignalSource = "runtime"
-	// SignalSourceGraph signals are produced by dependency graph traversal.
-	SignalSourceGraph SignalSource = "graph"
-	// SignalSourceGauntlet signals are produced by Gauntlet evaluation artifact ingestion.
-	SignalSourceGauntlet SignalSource = "gauntlet"
-)
-
-// SignalCatalogEntry describes a signal type's provenance and data requirements.
-type SignalCatalogEntry struct {
-	Source SignalSource
-}
-
-// SignalCatalog maps every known signal type to its source tier.
-// This enables tooling to distinguish which signals require external data.
-var SignalCatalog = map[SignalType]SignalCatalogEntry{
-	// Core static signals (Tier 1) — no external data required.
-	"untestedExport":         {Source: SignalSourceStatic},
-	"weakAssertion":          {Source: SignalSourceStatic},
-	"mockHeavyTest":          {Source: SignalSourceStatic},
-	"testsOnlyMocks":         {Source: SignalSourceStatic},
-	"snapshotHeavyTest":      {Source: SignalSourceStatic},
-	"coverageBlindSpot":      {Source: SignalSourceStatic},
-	"coverageThresholdBreak": {Source: SignalSourceStatic},
-	"frameworkMigration":     {Source: SignalSourceStatic},
-	"migrationBlocker":       {Source: SignalSourceStatic},
-	"deprecatedTestPattern":  {Source: SignalSourceStatic},
-	"dynamicTestGeneration":  {Source: SignalSourceStatic},
-	"customMatcherRisk":      {Source: SignalSourceStatic},
-	"unsupportedSetup":       {Source: SignalSourceStatic},
-	"policyViolation":        {Source: SignalSourceStatic},
-	"legacyFrameworkUsage":   {Source: SignalSourceStatic},
-	"skippedTestsInCI":       {Source: SignalSourceStatic},
-	"runtimeBudgetExceeded":  {Source: SignalSourceStatic},
-	"staticSkippedTest":      {Source: SignalSourceStatic},
-	"assertionFreeTest":      {Source: SignalSourceStatic},
-	"orphanedTestFile":       {Source: SignalSourceStatic},
-
-	// Runtime health signals (Tier 2) — require runtime artifacts.
-	"slowTest":      {Source: SignalSourceRuntime},
-	"flakyTest":     {Source: SignalSourceRuntime},
-	"skippedTest":   {Source: SignalSourceRuntime},
-	"deadTest":      {Source: SignalSourceRuntime},
-	"unstableSuite": {Source: SignalSourceRuntime},
-
-	// Graph-powered structural signals (Tier 3) — produced by dependency graph traversal.
-	"uncoveredAISurface":      {Source: SignalSourceGraph},
-	"phantomEvalScenario":     {Source: SignalSourceGraph},
-	"untestedPromptFlow":      {Source: SignalSourceGraph},
-	"blastRadiusHotspot":      {Source: SignalSourceGraph},
-	"fixtureFragilityHotspot": {Source: SignalSourceGraph},
-	"assertionFreeImport":     {Source: SignalSourceGraph},
-	"capabilityValidationGap": {Source: SignalSourceGraph},
-
-	// AI/eval signals (Tier 4) — produced by Gauntlet artifact ingestion.
-	"evalFailure":            {Source: SignalSourceGauntlet},
-	"evalRegression":         {Source: SignalSourceGauntlet},
-	"accuracyRegression":     {Source: SignalSourceGauntlet},
-	"citationMissing":        {Source: SignalSourceGauntlet},
-	"retrievalMiss":          {Source: SignalSourceGauntlet},
-	"answerGroundingFailure": {Source: SignalSourceGauntlet},
-	"toolSelectionError":     {Source: SignalSourceGauntlet},
-	"schemaParseFailure":     {Source: SignalSourceGauntlet},
-	"safetyFailure":          {Source: SignalSourceGauntlet},
-	"aiPolicyViolation":      {Source: SignalSourceGauntlet},
-	"hallucinationDetected":  {Source: SignalSourceGauntlet},
-	"latencyRegression":      {Source: SignalSourceGauntlet},
-	"costRegression":         {Source: SignalSourceGauntlet},
-	"contextOverflowRisk":    {Source: SignalSourceGauntlet},
-	"wrongSourceSelected":    {Source: SignalSourceGauntlet},
-	"citationMismatch":       {Source: SignalSourceGauntlet},
-	"staleSourceRisk":        {Source: SignalSourceGauntlet},
-	"chunkingRegression":     {Source: SignalSourceGauntlet},
-	"rerankerRegression":     {Source: SignalSourceGauntlet},
-	"topKRegression":         {Source: SignalSourceGauntlet},
-	"toolRoutingError":       {Source: SignalSourceGauntlet},
-	"toolGuardrailViolation": {Source: SignalSourceGauntlet},
-	"toolBudgetExceeded":     {Source: SignalSourceGauntlet},
-	"agentFallbackTriggered": {Source: SignalSourceGauntlet},
-}
-
 // KnownSignalTypes is the canonical signal vocabulary accepted by snapshot
-// validation. Derived from SignalCatalog.
-var KnownSignalTypes = func() map[SignalType]bool {
-	m := make(map[SignalType]bool, len(SignalCatalog))
-	for k := range SignalCatalog {
-		m[k] = true
-	}
-	return m
-}()
+// validation. Keep this in sync with internal/signals.
+var KnownSignalTypes = map[SignalType]bool{
+	"slowTest":               true,
+	"flakyTest":              true,
+	"skippedTest":            true,
+	"deadTest":               true,
+	"unstableSuite":          true,
+	"untestedExport":         true,
+	"weakAssertion":          true,
+	"mockHeavyTest":          true,
+	"testsOnlyMocks":         true,
+	"snapshotHeavyTest":      true,
+	"coverageBlindSpot":      true,
+	"coverageThresholdBreak": true,
+	"frameworkMigration":     true,
+	"migrationBlocker":       true,
+	"deprecatedTestPattern":  true,
+	"dynamicTestGeneration":  true,
+	"customMatcherRisk":      true,
+	"unsupportedSetup":       true,
+	"policyViolation":        true,
+	"legacyFrameworkUsage":   true,
+	"skippedTestsInCI":       true,
+	"runtimeBudgetExceeded":  true,
+	"staticSkippedTest":      true,
+
+	// AI/eval signal types.
+	"evalFailure":            true,
+	"evalRegression":         true,
+	"accuracyRegression":     true,
+	"citationMissing":        true,
+	"retrievalMiss":          true,
+	"answerGroundingFailure": true,
+	"toolSelectionError":     true,
+	"schemaParseFailure":     true,
+	"safetyFailure":          true,
+	"aiPolicyViolation":      true,
+	"hallucinationDetected":  true,
+	"latencyRegression":      true,
+	"costRegression":         true,
+	"contextOverflowRisk":    true,
+	"wrongSourceSelected":    true,
+	"citationMismatch":       true,
+	"staleSourceRisk":        true,
+	"chunkingRegression":     true,
+	"rerankerRegression":     true,
+	"topKRegression":         true,
+	"toolRoutingError":       true,
+	"toolGuardrailViolation": true,
+	"toolBudgetExceeded":     true,
+	"agentFallbackTriggered": true,
+}
 
 // IsKnownSignalType reports whether t is part of Terrain's canonical catalog.
 func IsKnownSignalType(t SignalType) bool {

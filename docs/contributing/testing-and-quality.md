@@ -118,15 +118,15 @@ The golden file is stored alongside the test under `testdata/golden/`.
 ### Running Benchmarks
 
 ```bash
-go test ./cmd/... ./internal/... -bench=. -benchmem           # All Terrain benchmarks
+go test ./... -bench=. -benchmem           # All benchmarks
 go test ./internal/analysis/ -bench=BenchmarkAnalyze  # Specific benchmark
-go test ./cmd/... ./internal/... -bench=. -count=5            # Multiple iterations for stability
+go test ./... -bench=. -count=5            # Multiple iterations for stability
 ```
 
 ### Updating Golden Files
 
 ```bash
-go test ./internal/testdata/ -run TestGolden -update      # Update shared golden files
+go test ./... -run TestGolden -update      # Update all golden files
 go test ./internal/report/ -run TestRenderSummary -update  # Update one
 ```
 
@@ -147,8 +147,8 @@ indicate a regression.
 
 ## Checklist Before Submitting
 
-- [ ] `go vet ./cmd/... ./internal/...` passes
-- [ ] `go test ./cmd/... ./internal/...` passes
+- [ ] `go vet ./...` passes
+- [ ] `go test ./...` passes
 - [ ] New public functions have test coverage
 - [ ] Golden files are reviewed if updated
 - [ ] No test depends on external network or filesystem state

@@ -329,14 +329,14 @@ Do not add npm packages for functionality that can be implemented in a few lines
 - Testing utilities (no `@testing-library/*`, no `sinon`, no `nock`)
 - Type-checking libraries (the project uses JSDoc + `.d.ts` files)
 
-> **Note:** Do not add utility libraries (lodash, underscore, etc.) — use native equivalents.
+> **Note:** `lodash` is listed as a runtime dependency in `package.json` but is not currently imported by any source file. Do not add new lodash imports — use native equivalents.
 
 ### 15. PR readability checklist
 
 Before submitting any PR, verify:
 - [ ] `npm run format:check` passes (zero formatting issues)
 - [ ] `npm run lint` passes (zero errors)
-- [ ] `npm test` passes (all suites green)
+- [ ] `npm test` passes (all 705 suites, 1916 tests)
 - [ ] No `jest.mock()`, `jest.spyOn()`, or mock files were introduced
 - [ ] All imports include `.js` extensions
 - [ ] No `require()` or `module.exports` (except `commitlint.config.cjs` and `createRequire` for JSON)

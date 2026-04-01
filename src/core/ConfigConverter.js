@@ -81,37 +81,6 @@ const CYPRESS_TO_WDIO_KEYS = {
   specPattern: (value) => ({ key: 'specs', value }),
 };
 
-const CYPRESS_TO_SELENIUM_KEYS = {
-  baseUrl: (value) => ({ key: 'baseUrl', value }),
-  defaultCommandTimeout: (value) => ({ key: 'implicitWait', value }),
-  viewportWidth: (value, allConfig) => {
-    const height = allConfig.viewportHeight || 720;
-    return {
-      key: 'windowSize',
-      value: `{ width: ${value}, height: ${height} }`,
-    };
-  },
-  viewportHeight: () => null,
-};
-
-const SELENIUM_TO_CYPRESS_KEYS = {
-  baseUrl: (value) => ({ key: 'baseUrl', value }),
-  implicitWait: (value) => ({ key: 'defaultCommandTimeout', value }),
-  browserName: (value) => ({ key: 'browser', value }),
-};
-
-const PLAYWRIGHT_TO_SELENIUM_KEYS = {
-  baseURL: (value) => ({ key: 'baseUrl', value }),
-  timeout: (value) => ({ key: 'implicitWait', value }),
-  testMatch: (value) => ({ key: 'specs', value }),
-};
-
-const SELENIUM_TO_PLAYWRIGHT_KEYS = {
-  baseUrl: (value) => ({ key: 'use.baseURL', value }),
-  implicitWait: (value) => ({ key: 'timeout', value }),
-  browserName: (value) => ({ key: 'use.browserName', value }),
-};
-
 const MOCHA_TO_JEST_KEYS = {
   timeout: (value) => ({ key: 'testTimeout', value }),
   spec: (value) => ({ key: 'testMatch', value }),
@@ -151,10 +120,6 @@ export class ConfigConverter {
       'playwright-webdriverio': (c) => this._convertPlaywrightToWdio(c),
       'webdriverio-cypress': (c) => this._convertWdioToCypress(c),
       'cypress-webdriverio': (c) => this._convertCypressToWdio(c),
-      'cypress-selenium': (c) => this._convertCypressToSelenium(c),
-      'selenium-cypress': (c) => this._convertSeleniumToCypress(c),
-      'playwright-selenium': (c) => this._convertPlaywrightToSelenium(c),
-      'selenium-playwright': (c) => this._convertSeleniumToPlaywright(c),
       'mocha-jest': (c) => this._convertMochaToJest(c),
       'jasmine-jest': (c) => this._convertJasmineToJest(c),
       'pytest-unittest': (c) => this._convertPytestToUnittest(c),
@@ -298,54 +263,6 @@ export class ConfigConverter {
    * @param {string} content
    * @returns {string}
    */
-  _convertCypressToSelenium(content) {
-    const parsed = this._extractConfigObject(content);
-    if (!parsed) {
-      return this._addTodoHeader(content, 'cypress', 'selenium');
-    }
-
-    const { keys } = parsed;
-    return this._renderSeleniumConfig(
-      keys,
-      CYPRESS_TO_SELENIUM_KEYS,
-      'Cypress'
-    );
-  }
-
-  _convertSeleniumToCypress(content) {
-    const parsed = this._extractConfigObject(content);
-    const keys = parsed ? parsed.keys : {};
-    return this._renderCypressConfig(
-      keys,
-      SELENIUM_TO_CYPRESS_KEYS,
-      'Selenium'
-    );
-  }
-
-  _convertPlaywrightToSelenium(content) {
-    const parsed = this._extractConfigObject(content);
-    if (!parsed) {
-      return this._addTodoHeader(content, 'playwright', 'selenium');
-    }
-
-    const { keys } = parsed;
-    return this._renderSeleniumConfig(
-      keys,
-      PLAYWRIGHT_TO_SELENIUM_KEYS,
-      'Playwright'
-    );
-  }
-
-  _convertSeleniumToPlaywright(content) {
-    const parsed = this._extractConfigObject(content);
-    const keys = parsed ? parsed.keys : {};
-    return this._renderPlaywrightConfig(
-      keys,
-      SELENIUM_TO_PLAYWRIGHT_KEYS,
-      'Selenium'
-    );
-  }
-
   _convertMochaToJest(content) {
     const parsed =
       this._parseYamlSimple(content) ||
@@ -732,61 +649,6 @@ export class ConfigConverter {
     converted.push(...this._renderObjectEntries(mapped, 2));
     converted.push('  },');
     converted.push('});');
-
-    if (todos.length > 0) {
-      converted.push('');
-      for (const todo of todos) {
-        converted.push(todo);
-      }
-    }
-
-    return converted.join('\n') + '\n';
-  }
-
-  /**
-   * Render a Selenium config file from parsed keys.
-   * @param {Object} keys
-   * @param {Object} keyMap
-   * @param {string} sourceName
-   * @returns {string}
-   */
-  _renderSeleniumConfig(keys, keyMap, sourceName) {
-    const converted = [];
-    const todos = [];
-    const mapped = {};
-
-    converted.push(
-      "const { Builder, By, until } = require('selenium-webdriver');"
-    );
-    converted.push('');
-    converted.push('module.exports = {');
-
-    for (const [key, value] of Object.entries(keys)) {
-      const mapper = keyMap[key];
-      if (mapper) {
-        const result = mapper(value, keys);
-        if (result) {
-          this._assignNestedValue(mapped, result.key, result.value);
-        }
-      } else {
-        todos.push(
-          this.formatter.formatTodo({
-            id: 'CONFIG-UNSUPPORTED',
-            description: `Unsupported ${sourceName} config key: ${key}`,
-            original: `${key}: ${JSON.stringify(value)}`,
-            action: 'Manually convert this option to Selenium equivalent',
-          })
-        );
-      }
-    }
-
-    // Always include capabilities
-    if (!mapped.capabilities) {
-      mapped.capabilities = "{ browserName: 'chrome' }";
-    }
-
-    converted.push(...this._renderObjectEntries(mapped, 1));
-    converted.push('};');
 
     if (todos.length > 0) {
       converted.push('');

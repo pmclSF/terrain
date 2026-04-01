@@ -78,7 +78,7 @@ All measurement code is tested in `internal/measurement/measurement_test.go`. Wh
 - Run all measurement tests: `go test ./internal/measurement/ -v`
 - Run comparison tests: `go test ./internal/comparison/ -v`
 - Run the full suite: `go test ./internal/... -count=1`
-- Build everything: `go build ./cmd/... ./internal/...`
+- Build everything: `go build ./internal/... ./cmd/...`
 
 ### Golden test
 

@@ -1,25 +1,24 @@
 // Terrain VS Code Extension
 //
-// Thin client over the CLI. The extension renders the same report contracts
-// users can run manually from the terminal.
+// Thin client over the CLI. All intelligence lives in `terrain analyze --json`.
+// The extension renders structured views from the snapshot — no business logic.
 
-import { execFile } from "child_process";
-import * as path from "path";
 import * as vscode from "vscode";
-import { GroupedFinding, riskBandIcon, severityIcon } from "./signal_renderer";
-import { InsightFinding, KeyFinding, MigrationReadiness, ReportBundle } from "./types";
+import { TestSuiteSnapshot, Signal } from "./types";
 import {
-  buildHealth,
-  buildMigration,
   buildOverview,
+  buildHealth,
   buildQuality,
+  buildMigration,
   buildReview,
-  HealthData,
-  MigrationData,
   OverviewData,
+  HealthData,
   QualityData,
+  MigrationData,
   ReviewData,
 } from "./views";
+import { severityIcon, riskBandIcon, GroupedItem } from "./signal_renderer";
+import { execFile } from "child_process";
 
 // ── State ──────────────────────────────────────────────────
 
@@ -27,10 +26,9 @@ type ExtensionState =
   | { kind: "empty" }
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "loaded"; bundle: ReportBundle };
+  | { kind: "loaded"; snapshot: TestSuiteSnapshot };
 
 let state: ExtensionState = { kind: "empty" };
-let autoRefreshHandle: ReturnType<typeof setTimeout> | undefined;
 
 // ── Activation ─────────────────────────────────────────────
 
@@ -53,7 +51,10 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.registerTreeDataProvider("terrain.overview", overviewProvider),
     vscode.window.registerTreeDataProvider("terrain.health", healthProvider),
     vscode.window.registerTreeDataProvider("terrain.quality", qualityProvider),
-    vscode.window.registerTreeDataProvider("terrain.migration", migrationProvider),
+    vscode.window.registerTreeDataProvider(
+      "terrain.migration",
+      migrationProvider
+    ),
     vscode.window.registerTreeDataProvider("terrain.review", reviewProvider)
   );
 
@@ -67,53 +68,21 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand("terrain.openMigrationBlockers", () => {
       runCliInTerminal("migration blockers");
     }),
-    vscode.commands.registerCommand("terrain.revealFile", (filePath: string) => {
-      if (filePath && vscode.workspace.workspaceFolders?.[0]) {
-        const uri = vscode.Uri.joinPath(
-          vscode.workspace.workspaceFolders[0].uri,
-          filePath
-        );
-        void vscode.window.showTextDocument(uri);
+    vscode.commands.registerCommand(
+      "terrain.revealFile",
+      (filePath: string) => {
+        if (filePath && vscode.workspace.workspaceFolders?.[0]) {
+          const uri = vscode.Uri.joinPath(
+            vscode.workspace.workspaceFolders[0].uri,
+            filePath
+          );
+          vscode.window.showTextDocument(uri);
+        }
       }
-    })
+    )
   );
 
-  context.subscriptions.push(
-    vscode.workspace.onDidSaveTextDocument((document) => {
-      if (shouldAutoRefreshUri(document.uri)) {
-        scheduleAutoRefresh(providers);
-      }
-    }),
-    vscode.workspace.onDidCreateFiles((event) => {
-      if (event.files.some(shouldAutoRefreshUri)) {
-        scheduleAutoRefresh(providers);
-      }
-    }),
-    vscode.workspace.onDidDeleteFiles((event) => {
-      if (event.files.some(shouldAutoRefreshUri)) {
-        scheduleAutoRefresh(providers);
-      }
-    }),
-    vscode.workspace.onDidRenameFiles((event) => {
-      if (
-        event.files.some(
-          ({ oldUri, newUri }) =>
-            shouldAutoRefreshUri(oldUri) || shouldAutoRefreshUri(newUri)
-        )
-      ) {
-        scheduleAutoRefresh(providers);
-      }
-    }),
-    vscode.workspace.onDidChangeConfiguration((event) => {
-      if (
-        event.affectsConfiguration("terrain.autoRefresh") ||
-        event.affectsConfiguration("terrain.binaryPath")
-      ) {
-        scheduleAutoRefresh(providers);
-      }
-    })
-  );
-
+  // Initial analysis on activation.
   runAnalysis(providers);
 }
 
@@ -132,116 +101,36 @@ function getWorkspaceRoot(): string | undefined {
   return vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 }
 
-function isAutoRefreshEnabled(): boolean {
-  return (
-    vscode.workspace.getConfiguration("terrain").get<boolean>("autoRefresh") ||
-    false
-  );
-}
-
-function shouldAutoRefreshUri(uri: vscode.Uri): boolean {
-  const root = getWorkspaceRoot();
-  if (!root || uri.scheme !== "file") {
-    return false;
-  }
-
-  const rel = path.relative(root, uri.fsPath);
-  if (!rel || rel.startsWith("..") || path.isAbsolute(rel)) {
-    return false;
-  }
-
-  const ignored = new Set([
-    ".git",
-    ".terrain",
-    "node_modules",
-    "dist",
-    "build",
-    "out",
-  ]);
-  return !rel.split(path.sep).some((segment) => ignored.has(segment));
-}
-
-function scheduleAutoRefresh(providers: TerrainTreeProvider[]) {
-  if (!isAutoRefreshEnabled()) {
-    return;
-  }
-  if (autoRefreshHandle) {
-    clearTimeout(autoRefreshHandle);
-  }
-  autoRefreshHandle = setTimeout(() => {
-    autoRefreshHandle = undefined;
-    runAnalysis(providers);
-  }, 400);
-}
-
-function execTerrainJSON<T>(binary: string, args: string[]): Promise<T> {
-  return new Promise((resolve, reject) => {
-    execFile(binary, args, (err, stdout, stderr) => {
-      if (err) {
-        const detail = stderr?.trim() || err.message;
-        reject(new Error(`${args.join(" ")} failed: ${detail}`));
-        return;
-      }
-
-      try {
-        resolve(JSON.parse(stdout) as T);
-      } catch (parseErr) {
-        const message =
-          parseErr instanceof Error ? parseErr.message : String(parseErr);
-        reject(new Error(`Failed to parse ${args.join(" ")} JSON: ${message}`));
-      }
-    });
-  });
-}
-
-async function loadReportBundle(binary: string, root: string): Promise<ReportBundle> {
-  const [analyze, insights, migration] = await Promise.all([
-    execTerrainJSON<ReportBundle["analyze"]>(binary, [
-      "analyze",
-      "--json",
-      "--root",
-      root,
-    ]),
-    execTerrainJSON<ReportBundle["insights"]>(binary, [
-      "insights",
-      "--json",
-      "--root",
-      root,
-    ]),
-    execTerrainJSON<MigrationReadiness>(binary, [
-      "migration",
-      "readiness",
-      "--json",
-      "--root",
-      root,
-    ]),
-  ]);
-
-  return { analyze, insights, migration };
-}
-
 function runAnalysis(providers: TerrainTreeProvider[]) {
   const root = getWorkspaceRoot();
   if (!root) {
     state = { kind: "error", message: "No workspace folder open" };
-    providers.forEach((provider) => provider.refresh());
+    providers.forEach((p) => p.refresh());
     return;
   }
 
   state = { kind: "loading" };
-  providers.forEach((provider) => provider.refresh());
+  providers.forEach((p) => p.refresh());
 
   const binary = getTerrainBinary();
-  void loadReportBundle(binary, root)
-    .then((bundle) => {
-      state = { kind: "loaded", bundle };
-      providers.forEach((provider) => provider.refresh());
-    })
-    .catch((error) => {
-      const message = error instanceof Error ? error.message : String(error);
-      state = { kind: "error", message };
-      providers.forEach((provider) => provider.refresh());
-    });
+  execFile(binary, ["analyze", "--json", "--root", root], (err, stdout) => {
+    if (err) {
+      state = {
+        kind: "error",
+        message: `terrain analyze failed: ${err.message}`,
+      };
+      providers.forEach((p) => p.refresh());
+      return;
+    }
+
+    try {
+      const snapshot = JSON.parse(stdout) as TestSuiteSnapshot;
+      state = { kind: "loaded", snapshot };
+    } catch (e) {
+      state = { kind: "error", message: `Failed to parse snapshot JSON` };
+    }
+    providers.forEach((p) => p.refresh());
+  });
 }
 
 function runCliInTerminal(subcommand: string) {
@@ -293,12 +182,8 @@ function stateItems(): TerrainTreeItem[] | null {
         ),
       ];
     case "loaded":
-      return null;
+      return null; // proceed to real data
   }
-}
-
-function loadedBundle(): ReportBundle {
-  return (state as { kind: "loaded"; bundle: ReportBundle }).bundle;
 }
 
 function makeItem(
@@ -316,44 +201,36 @@ function makeItem(
   return item;
 }
 
-function attachScopeCommand(item: TerrainTreeItem, scope?: string) {
-  if (!scope || !scope.startsWith("file:")) {
-    return;
+function signalItem(s: Signal): TerrainTreeItem {
+  const loc = s.location?.file
+    ? `${s.location.file}${s.location.line ? `:${s.location.line}` : ""}`
+    : "";
+  const label = loc ? `${s.type} - ${loc}` : s.type;
+  const item = new TerrainTreeItem(label);
+  item.iconPath = new vscode.ThemeIcon(severityIcon(s.severity));
+  item.tooltip = s.explanation;
+  item.description = s.evidenceStrength
+    ? `${s.severity} (${s.evidenceStrength})`
+    : s.severity;
+  if (s.location?.file) {
+    item.command = {
+      command: "terrain.revealFile",
+      title: "Open File",
+      arguments: [s.location.file],
+    };
   }
-
-  item.command = {
-    command: "terrain.revealFile",
-    title: "Open File",
-    arguments: [scope.slice("file:".length)],
-  };
-}
-
-function findingItem(finding: InsightFinding): TerrainTreeItem {
-  const label = finding.scope ? `${finding.title} — ${finding.scope}` : finding.title;
-  const item = makeItem(label, `$(${severityIcon(finding.severity)})`, finding.description);
-  item.description = [finding.severity, finding.metric].filter(Boolean).join(" • ");
-  attachScopeCommand(item, finding.scope);
   return item;
 }
 
-function keyFindingItem(finding: KeyFinding): TerrainTreeItem {
-  const item = makeItem(
-    finding.title,
-    `$(${severityIcon(finding.severity)})`,
-    finding.metric || finding.category
-  );
-  item.description = [finding.severity, finding.metric].filter(Boolean).join(" • ");
-  return item;
-}
-
-function groupedFindingItems(groups: GroupedFinding[]): TerrainTreeItem[] {
-  return groups.map((group) => {
-    const children = group.findings.map(findingItem);
-    return new TerrainTreeItem(
-      `${group.key} (${group.count})`,
+function groupItems(groups: GroupedItem[]): TerrainTreeItem[] {
+  return groups.map((g) => {
+    const children = g.signals.map(signalItem);
+    const item = new TerrainTreeItem(
+      `${g.key} (${g.count})`,
       vscode.TreeItemCollapsibleState.Collapsed,
       children
     );
+    return item;
   });
 }
 
@@ -375,7 +252,9 @@ class OverviewTreeProvider implements TerrainTreeProvider {
     if (element) return element.children;
     const items = stateItems();
     if (items) return items;
-    const data = buildOverview(loadedBundle());
+    const snap = (state as { kind: "loaded"; snapshot: TestSuiteSnapshot })
+      .snapshot;
+    const data = buildOverview(snap);
     return this.buildItems(data);
   }
 
@@ -387,36 +266,35 @@ class OverviewTreeProvider implements TerrainTreeProvider {
       makeItem(`Signals: ${data.signalCount}`, "$(warning)"),
     ];
 
-    if (data.branch) {
-      items.push(makeItem(`Branch: ${data.branch}`, "$(git-branch)"));
-    }
-
-    items.push(makeItem(data.headline, "$(info)"));
-
-    if (data.riskPosture.length > 0) {
-      const riskChildren = data.riskPosture.map((risk) => {
-        const item = makeItem(
-          `${risk.dimension}: ${risk.band.toUpperCase()}`,
-          `$(${riskBandIcon(risk.band)})`
+    if (data.riskSurfaces.length > 0) {
+      const riskChildren = data.riskSurfaces
+        .filter((r) => r.scope === "repository")
+        .map((r) => {
+          const item = makeItem(
+            `${r.type}: ${r.band}`,
+            riskBandIcon(r.band)
+          );
+          item.tooltip = r.explanation || "";
+          return item;
+        });
+      if (riskChildren.length > 0) {
+        items.push(
+          new TerrainTreeItem(
+            "Risk Surfaces",
+            vscode.TreeItemCollapsibleState.Expanded,
+            riskChildren
+          )
         );
-        item.description = risk.band;
-        return item;
-      });
-      items.push(
-        new TerrainTreeItem(
-          "Risk Posture",
-          vscode.TreeItemCollapsibleState.Expanded,
-          riskChildren
-        )
-      );
+      }
     }
 
-    if (data.topFindings.length > 0) {
+    if (data.topIssues.length > 0) {
+      const issueChildren = data.topIssues.map(signalItem);
       items.push(
         new TerrainTreeItem(
-          "Top Findings",
+          "Top Issues",
           vscode.TreeItemCollapsibleState.Collapsed,
-          data.topFindings.map(keyFindingItem)
+          issueChildren
         )
       );
     }
@@ -443,37 +321,23 @@ class HealthTreeProvider implements TerrainTreeProvider {
     if (element) return element.children;
     const items = stateItems();
     if (items) return items;
-    const data = buildHealth(loadedBundle());
+    const snap = (state as { kind: "loaded"; snapshot: TestSuiteSnapshot })
+      .snapshot;
+    const data = buildHealth(snap);
     return this.buildItems(data);
   }
 
   private buildItems(data: HealthData): TerrainTreeItem[] {
-    const items: TerrainTreeItem[] = [
-      makeItem(`Health grade: ${data.healthGrade}`, "$(heart)"),
-    ];
-
-    if (data.skippedTests > 0) {
-      items.push(
+    if (data.signals.length === 0) {
+      return [
         makeItem(
-          `Skipped tests detected: ${data.skippedTests}`,
-          "$(debug-pause)",
-          "Static skip detection works without runtime artifacts."
-        )
-      );
+          "No health signals detected",
+          "$(pass)",
+          "Health signals require runtime artifacts. Use --runtime flag with terrain analyze."
+        ),
+      ];
     }
-
-    if (data.findings.length === 0) {
-      const tooltip = data.runtimeAvailable
-        ? "No reliability findings surfaced in the current insights report."
-        : "No runtime data detected. Static skip detection still works, but flaky/slow/dead findings require runtime artifacts.";
-      items.push(makeItem("No reliability findings detected", "$(pass)", tooltip));
-      return items;
-    }
-
-    items.push(
-      ...groupedFindingItems(data.bySeverity)
-    );
-    return items;
+    return groupItems(data.byType);
   }
 }
 
@@ -495,15 +359,17 @@ class QualityTreeProvider implements TerrainTreeProvider {
     if (element) return element.children;
     const items = stateItems();
     if (items) return items;
-    const data = buildQuality(loadedBundle());
+    const snap = (state as { kind: "loaded"; snapshot: TestSuiteSnapshot })
+      .snapshot;
+    const data = buildQuality(snap);
     return this.buildItems(data);
   }
 
   private buildItems(data: QualityData): TerrainTreeItem[] {
-    if (data.findings.length === 0) {
-      return [makeItem("No coverage or architecture findings", "$(pass)")];
+    if (data.signals.length === 0) {
+      return [makeItem("No quality signals detected", "$(pass)")];
     }
-    return groupedFindingItems(data.byCategory);
+    return groupItems(data.byType);
   }
 }
 
@@ -525,62 +391,65 @@ class MigrationTreeProvider implements TerrainTreeProvider {
     if (element) return element.children;
     const items = stateItems();
     if (items) return items;
-    const data = buildMigration(loadedBundle());
+    const snap = (state as { kind: "loaded"; snapshot: TestSuiteSnapshot })
+      .snapshot;
+    const data = buildMigration(snap);
     return this.buildItems(data);
   }
 
   private buildItems(data: MigrationData): TerrainTreeItem[] {
-    const readinessIcon = data.totalBlockers > 0 ? "$(warning)" : "$(pass)";
-    const items: TerrainTreeItem[] = [
-      makeItem(
-        `Readiness: ${data.readinessLevel.toUpperCase()}`,
-        readinessIcon
-      ),
-      makeItem(data.explanation, "$(info)"),
-    ];
+    const items: TerrainTreeItem[] = [];
 
+    // Framework summary
     if (data.frameworkSummary.length > 0) {
+      const fwChildren = data.frameworkSummary.map((fw) =>
+        makeItem(fw, "$(package)")
+      );
       items.push(
         new TerrainTreeItem(
           "Frameworks",
           vscode.TreeItemCollapsibleState.Expanded,
-          data.frameworkSummary.map((framework) => makeItem(framework, "$(package)"))
+          fwChildren
         )
       );
     }
 
+    // Blocker count
     if (data.totalBlockers === 0) {
-      items.push(makeItem("No migration blockers found", "$(pass)"));
+      items.push(
+        makeItem("No migration blockers found", "$(pass)")
+      );
     } else {
-      items.push(makeItem(`${data.totalBlockers} migration blocker(s)`, "$(warning)"));
+      items.push(
+        makeItem(`${data.totalBlockers} migration signals`, "$(warning)")
+      );
     }
 
+    // Blocker groups
     if (data.blockerGroups.length > 0) {
       items.push(
         new TerrainTreeItem(
           "Blockers by Type",
           vscode.TreeItemCollapsibleState.Collapsed,
-          data.blockerGroups.map((group) =>
-            makeItem(`${group.key} (${group.count})`, "$(warning)")
-          )
+          groupItems(data.blockerGroups)
         )
       );
     }
 
+    // Area assessments
     if (data.areaAssessments.length > 0) {
-      const areaChildren = data.areaAssessments.map((assessment) => {
+      const areaChildren = data.areaAssessments.map((a) => {
         const icon =
-          assessment.classification === "risky"
+          a.classification === "risky"
             ? "error"
-            : assessment.classification === "caution"
+            : a.classification === "caution"
             ? "warning"
             : "pass";
         const item = makeItem(
-          `${assessment.directory} [${assessment.classification.toUpperCase()}]`,
-          `$(${icon})`,
-          assessment.explanation
+          `${a.directory} [${a.classification.toUpperCase()}]`,
+          icon
         );
-        item.description = `${assessment.migrationBlockers} blockers, ${assessment.qualityIssues} quality issues`;
+        item.description = `${a.blockerCount} blockers, ${a.qualityIssueCount} quality issues`;
         return item;
       });
       items.push(
@@ -588,25 +457,6 @@ class MigrationTreeProvider implements TerrainTreeProvider {
           "Area Assessments",
           vscode.TreeItemCollapsibleState.Collapsed,
           areaChildren
-        )
-      );
-    }
-
-    if (data.coverageGuidance.length > 0) {
-      const coverageChildren = data.coverageGuidance.map((guidance) => {
-        const item = makeItem(
-          `${guidance.directory} (${guidance.priority})`,
-          "$(lightbulb)",
-          guidance.reason
-        );
-        item.description = guidance.reason;
-        return item;
-      });
-      items.push(
-        new TerrainTreeItem(
-          "Coverage Guidance",
-          vscode.TreeItemCollapsibleState.Collapsed,
-          coverageChildren
         )
       );
     }
@@ -633,7 +483,9 @@ class ReviewTreeProvider implements TerrainTreeProvider {
     if (element) return element.children;
     const items = stateItems();
     if (items) return items;
-    const data = buildReview(loadedBundle());
+    const snap = (state as { kind: "loaded"; snapshot: TestSuiteSnapshot })
+      .snapshot;
+    const data = buildReview(snap);
     return this.buildItems(data);
   }
 
@@ -646,22 +498,22 @@ class ReviewTreeProvider implements TerrainTreeProvider {
       makeItem(`${data.totalCount} findings need attention`, "$(warning)"),
     ];
 
-    if (data.byCategory.length > 0) {
+    if (data.byType.length > 0) {
       items.push(
         new TerrainTreeItem(
-          "By Category",
+          "By Type",
           vscode.TreeItemCollapsibleState.Collapsed,
-          groupedFindingItems(data.byCategory)
+          groupItems(data.byType)
         )
       );
     }
 
-    if (data.bySeverity.length > 0) {
+    if (data.byOwner.length > 0) {
       items.push(
         new TerrainTreeItem(
-          "By Severity",
+          "By Owner",
           vscode.TreeItemCollapsibleState.Collapsed,
-          groupedFindingItems(data.bySeverity)
+          groupItems(data.byOwner)
         )
       );
     }
@@ -671,7 +523,17 @@ class ReviewTreeProvider implements TerrainTreeProvider {
         new TerrainTreeItem(
           "By Directory",
           vscode.TreeItemCollapsibleState.Collapsed,
-          groupedFindingItems(data.byDirectory)
+          groupItems(data.byDirectory)
+        )
+      );
+    }
+
+    if (data.migrationBlockers.length > 0) {
+      items.push(
+        new TerrainTreeItem(
+          "Migration Blockers",
+          vscode.TreeItemCollapsibleState.Collapsed,
+          groupItems(data.migrationBlockers)
         )
       );
     }

@@ -98,117 +98,6 @@ var jsOpenAICallPattern = regexp.MustCompile(
 var jsAnthropicCallPattern = regexp.MustCompile(
 	`\b(?:anthropic|client)\.messages\.create\s*\(`)
 
-// --- AI infrastructure patterns (streaming, tokens, guardrails, etc.) ---
-
-// Streaming configuration: stream: true, .stream(), for await...of response
-var jsStreamingPattern = regexp.MustCompile(
-	`\b(?:` +
-		`stream\s*:\s*true|` +
-		`\.stream\s*\(|` +
-		`for\s+await\s*\(\s*(?:const|let|var)\s+\w+\s+of\b|` +
-		`onToken|onCompletion|onFinal|` +
-		`ReadableStream|TransformStream|TextDecoderStream|` +
-		`text/event-stream)`)
-
-// Token management: tiktoken, token counting, budget enforcement
-var jsTokenPattern = regexp.MustCompile(
-	`\b(?:` +
-		`tiktoken|encoding_for_model|get_encoding|` +
-		`token_count|tokenCount|countTokens|numTokens|num_tokens|` +
-		`max_tokens|maxTokens|token_limit|tokenLimit|` +
-		`truncateToTokenLimit|token_budget|tokenBudget)`)
-
-// Eval metrics: BLEU, ROUGE, cosine similarity, custom scoring
-var jsEvalMetricPattern = regexp.MustCompile(
-	`\b(?:` +
-		`bleu_score|bleuScore|BLEU|` +
-		`rouge_score|rougeScore|ROUGE|` +
-		`cosine_similarity|cosineSimilarity|` +
-		`semantic_similarity|semanticSimilarity|` +
-		`levenshtein|editDistance|` +
-		`f1_score|f1Score|precision_score|recall_score|` +
-		`exactMatch|exact_match|fuzzyMatch|fuzzy_match)`)
-
-// Guardrails and safety: content filtering, moderation, PII
-var jsGuardrailPattern = regexp.MustCompile(
-	`\b(?:` +
-		`guardrail|Guardrails|NeMoGuardrails|` +
-		`content_filter|contentFilter|moderations\.create|` +
-		`safety_settings|safetySettings|` +
-		`toxicity|harmful|jailbreak|` +
-		`pii_redact|redactPII|anonymize|` +
-		`InputGuard|OutputGuard|` +
-		`blocked_categories|blockList)`)
-
-// Fine-tuning infrastructure: JSONL data, training, LoRA
-var jsFineTunePattern = regexp.MustCompile(
-	`\b(?:` +
-		`fine_tun|finetune|fineTune|` +
-		`training_data|trainingData|` +
-		`\.jsonl\b|` +
-		`LoRA|lora_config|peft|` +
-		`training_args|TrainingArguments)`)
-
-// Tool control flow: tool_choice, parallel tool calls, fallback
-var jsToolControlPattern = regexp.MustCompile(
-	`\b(?:` +
-		`tool_choice\s*:|toolChoice\s*:|` +
-		`parallel_tool_calls|parallelToolCalls|` +
-		`tool_call_id|toolCallId|` +
-		`function_call\s*:|functionCall\s*:)`)
-
-// Python equivalents
-var pyStreamingPattern = regexp.MustCompile(
-	`\b(?:` +
-		`stream\s*=\s*True|` +
-		`\.stream\s*\(|` +
-		`async\s+for\s+\w+\s+in\b|` +
-		`on_llm_new_token|StreamingStdOutCallbackHandler|` +
-		`ServerSentEvent|EventSourceResponse)`)
-
-var pyTokenPattern = regexp.MustCompile(
-	`\b(?:` +
-		`tiktoken|encoding_for_model|get_encoding|` +
-		`token_count|count_tokens|num_tokens|` +
-		`max_tokens|token_limit|` +
-		`truncate_to_token_limit|token_budget)`)
-
-var pyEvalMetricPattern = regexp.MustCompile(
-	`\b(?:` +
-		`bleu_score|rouge_score|` +
-		`cosine_similarity|semantic_similarity|` +
-		`levenshtein_distance|edit_distance|` +
-		`f1_score|precision_score|recall_score|` +
-		`exact_match|fuzzy_match|` +
-		`evaluate\.load|` +
-		`from\s+rouge\b|from\s+nltk\.translate\.bleu)`)
-
-var pyGuardrailPattern = regexp.MustCompile(
-	`\b(?:` +
-		`guardrails|nemoguardrails|NemoGuardrails|` +
-		`content_filter|moderations\.create|` +
-		`safety_settings|` +
-		`toxicity|harmful|jailbreak|` +
-		`pii_redact|anonymize|presidio|` +
-		`InputRail|OutputRail|` +
-		`blocked_categories)`)
-
-var pyFineTunePattern = regexp.MustCompile(
-	`\b(?:` +
-		`fine_tun|finetune|` +
-		`training_data|` +
-		`\.jsonl\b|` +
-		`LoraConfig|lora_config|PeftModel|get_peft_model|` +
-		`TrainingArguments|SFTTrainer|` +
-		`from\s+peft\b|from\s+trl\b)`)
-
-var pyToolControlPattern = regexp.MustCompile(
-	`\b(?:` +
-		`tool_choice\s*=|` +
-		`parallel_tool_calls|` +
-		`tool_call_id|` +
-		`function_call\s*=)`)
-
 func parsePromptASTJS(relPath, src string) []models.CodeSurface {
 	var surfaces []models.CodeSurface
 	pkg := inferSurfacePackage(relPath)
@@ -362,29 +251,6 @@ func parsePromptASTJS(relPath, src string) []models.CodeSurface {
 			add("template_prompt_"+varName, models.SurfacePrompt, DetectorASTTemplateCall,
 				"AST: template literal prompt '"+varName+"'",
 				i+1, 0.90)
-		}
-	}
-
-	// 7. AI infrastructure detection — streaming, tokens, metrics, guardrails, fine-tuning, tools.
-	infraPatterns := []struct {
-		pat        *regexp.Regexp
-		name       string
-		kind       models.CodeSurfaceKind
-		detectorID string
-		reason     string
-		confidence float64
-	}{
-		{jsStreamingPattern, "streaming_handler", models.SurfaceAgent, DetectorASTPromptBuilder, "streaming response handler", 0.88},
-		{jsTokenPattern, "token_management", models.SurfaceAgent, DetectorASTPromptBuilder, "token counting/management infrastructure", 0.85},
-		{jsEvalMetricPattern, "eval_metric", models.SurfaceEvalDef, DetectorASTPromptBuilder, "AI evaluation metric computation", 0.88},
-		{jsGuardrailPattern, "guardrail", models.SurfaceAgent, DetectorASTPromptBuilder, "AI safety guardrail/content filter", 0.90},
-		{jsFineTunePattern, "fine_tuning", models.SurfaceDataset, DetectorASTPromptBuilder, "fine-tuning data or configuration", 0.85},
-		{jsToolControlPattern, "tool_control", models.SurfaceToolDef, DetectorASTPromptBuilder, "tool selection/control flow pattern", 0.88},
-	}
-	for _, ip := range infraPatterns {
-		if m := ip.pat.FindStringIndex(src); m != nil {
-			line := 1 + strings.Count(src[:m[0]], "\n")
-			add(ip.name, ip.kind, ip.detectorID, "AST: "+ip.reason, line, ip.confidence)
 		}
 	}
 
@@ -629,29 +495,6 @@ func parsePromptASTPython(relPath, src string) []models.CodeSurface {
 			add("few_shot_"+ar.varName, models.SurfaceContext, DetectorASTFewShot,
 				"AST: list of "+strconv.Itoa(ar.objectCount)+" dicts with input/output shape in '"+ar.varName+"'",
 				ar.line, 0.93)
-		}
-	}
-
-	// 8. AI infrastructure detection — streaming, tokens, metrics, guardrails, fine-tuning, tools.
-	pyInfraPatterns := []struct {
-		pat        *regexp.Regexp
-		name       string
-		kind       models.CodeSurfaceKind
-		detectorID string
-		reason     string
-		confidence float64
-	}{
-		{pyStreamingPattern, "streaming_handler", models.SurfaceAgent, DetectorASTPromptBuilder, "streaming response handler", 0.88},
-		{pyTokenPattern, "token_management", models.SurfaceAgent, DetectorASTPromptBuilder, "token counting/management infrastructure", 0.85},
-		{pyEvalMetricPattern, "eval_metric", models.SurfaceEvalDef, DetectorASTPromptBuilder, "AI evaluation metric computation", 0.88},
-		{pyGuardrailPattern, "guardrail", models.SurfaceAgent, DetectorASTPromptBuilder, "AI safety guardrail/content filter", 0.90},
-		{pyFineTunePattern, "fine_tuning", models.SurfaceDataset, DetectorASTPromptBuilder, "fine-tuning data or configuration", 0.85},
-		{pyToolControlPattern, "tool_control", models.SurfaceToolDef, DetectorASTPromptBuilder, "tool selection/control flow pattern", 0.88},
-	}
-	for _, ip := range pyInfraPatterns {
-		if m := ip.pat.FindStringIndex(src); m != nil {
-			line := 1 + strings.Count(src[:m[0]], "\n")
-			add(ip.name, ip.kind, ip.detectorID, "AST: "+ip.reason, line, ip.confidence)
 		}
 	}
 

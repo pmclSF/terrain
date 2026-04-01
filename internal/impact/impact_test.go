@@ -66,9 +66,6 @@ func TestAnalyze_UntestedExportGap(t *testing.T) {
 		Frameworks: []models.Framework{
 			{Name: "jest", Type: models.FrameworkTypeUnit, FileCount: 1},
 		},
-		DataSources: []models.DataSource{
-			{Name: "coverage", Status: models.DataSourceAvailable},
-		},
 	}
 
 	scope := &ChangeScope{

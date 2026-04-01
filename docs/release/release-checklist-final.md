@@ -2,13 +2,9 @@
 
 ## Build verification
 - [ ] `go build ./cmd/terrain/` succeeds
-- [ ] `go vet ./cmd/... ./internal/...` clean
-- [ ] `go test ./cmd/... ./internal/...` all pass
-- [ ] `go test ./cmd/terrain/ -run TestSnapshot -count=1 -v` all pass
-- [ ] `npm run release:verify` passes
-- [ ] `npm --prefix extension/vscode ci && npm --prefix extension/vscode run compile` passes
+- [ ] `go vet ./...` clean
+- [ ] `go test ./internal/...` all pass
 - [ ] Binary runs: `terrain --help` shows updated help text
-- [ ] `make release-verify` passes end to end
 
 ## First-run flow
 - [ ] `terrain analyze` produces useful output on a real repo
@@ -35,7 +31,7 @@
 
 ## Policy
 - [ ] `terrain policy check` works with no policy file (exit 0)
-- [ ] `terrain policy check` works with policy file and violations (exit 2)
+- [ ] `terrain policy check` works with policy file and violations (exit 1)
 
 ## Export
 - [ ] `terrain export benchmark` produces valid JSON

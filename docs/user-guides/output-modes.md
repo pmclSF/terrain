@@ -19,10 +19,10 @@ terrain portfolio
 
 ## JSON (--json)
 
-Machine-readable commands support `--json` for structured output:
+All commands support `--json` for machine-readable output:
 
 ```bash
-terrain analyze --json     # AnalyzeReport object (schemaVersion 1)
+terrain analyze --json     # Full TestSuiteSnapshot
 terrain summary --json     # ExecutiveSummary object
 terrain posture --json     # MeasurementSnapshot object
 terrain metrics --json     # Metrics Snapshot
@@ -35,10 +35,6 @@ JSON output is stable and suitable for:
 - Custom dashboards
 - Programmatic analysis
 - Diff/comparison tooling
-
-`TestSuiteSnapshot` remains the internal engine snapshot and persisted
-artifact format used for snapshot storage and comparison. `terrain analyze
---json` emits the user-facing analyze report, not the raw snapshot model.
 
 ## Privacy-safe export
 

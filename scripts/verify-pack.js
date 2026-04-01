@@ -98,20 +98,14 @@ try {
 
   // CLI smoke tests
   console.log('CLI smoke tests...');
-  const terrainConvertBin = path.join(
-    tmpDir,
-    'node_modules',
-    '.bin',
-    'terrain-convert'
-  );
-  const terrainCompatBin = path.join(
+  const terrainBin = path.join(
     tmpDir,
     'node_modules',
     '.bin',
     'terrain'
   );
 
-  const versionOut = execFileSync(terrainConvertBin, ['--version'], {
+  const versionOut = execFileSync(terrainBin, ['--version'], {
     encoding: 'utf8',
   }).trim();
   const pkgVersion = JSON.parse(
@@ -126,9 +120,9 @@ try {
     );
     process.exit(1);
   }
-  console.log(`  terrain-convert --version: ${versionOut}`);
+  console.log(`  terrain --version: ${versionOut}`);
 
-  const helpOut = execFileSync(terrainConvertBin, ['--help'], {
+  const helpOut = execFileSync(terrainBin, ['--help'], {
     encoding: 'utf8',
   });
   const requiredHelpTokens = ['convert', 'detect', 'doctor'];
@@ -138,18 +132,7 @@ try {
       process.exit(1);
     }
   }
-  console.log('  terrain-convert --help: ok (contains convert, detect, doctor)');
-
-  const compatVersionOut = execFileSync(terrainCompatBin, ['--version'], {
-    encoding: 'utf8',
-  }).trim();
-  if (compatVersionOut !== pkgVersion) {
-    console.error(
-      `  compat --version mismatch: got "${compatVersionOut}", expected "${pkgVersion}"`
-    );
-    process.exit(1);
-  }
-  console.log('  terrain compatibility shim: ok');
+  console.log('  terrain --help: ok (contains convert, detect, doctor)');
 
   // Conversion smoke test: jest → vitest on a tiny inline fixture
   console.log('\nConversion smoke test...');
@@ -167,7 +150,7 @@ try {
   );
 
   execFileSync(
-    terrainConvertBin,
+    terrainBin,
     ['convert', fixtureDir, '--from', 'jest', '--to', 'vitest', '-o', outDir],
     { encoding: 'utf8' }
   );

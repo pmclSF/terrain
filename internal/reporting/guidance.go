@@ -14,8 +14,7 @@ func WriteHealthGuidance(w io.Writer, snap *models.TestSuiteSnapshot) {
 		return
 	}
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "  Static skip detection is available without runtime artifacts.")
-	fmt.Fprintln(w, "  Additional health signals (flaky, slow, dead, unstable tests) require runtime artifacts.")
+	fmt.Fprintln(w, "  Health signals (flaky, slow, dead tests) require runtime artifacts.")
 	fmt.Fprintln(w, "  Generate with:")
 	fmt.Fprintln(w, "    Jest:    npx jest --json --outputFile=jest-results.json")
 	fmt.Fprintln(w, "    Pytest:  pytest --junitxml=junit.xml")

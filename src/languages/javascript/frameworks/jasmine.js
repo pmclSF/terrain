@@ -19,7 +19,6 @@ import {
   Modifier,
 } from '../../../core/ir.js';
 import { TodoFormatter } from '../../../core/TodoFormatter.js';
-import { parseJavaScript } from '../../../core/parsers/BabelParser.js';
 
 const formatter = new TodoFormatter('javascript');
 
@@ -85,10 +84,6 @@ function detect(source) {
  * and creates IR nodes for scoring and conversion tracking.
  */
 function parse(source) {
-  return parseJavaScript(source, { framework: 'jasmine' });
-}
-
-function _parseRegex(source) {
   const lines = source.split('\n');
   const imports = [];
   const allNodes = [];

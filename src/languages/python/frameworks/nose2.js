@@ -17,7 +17,6 @@ import {
   Comment,
   Modifier,
 } from '../../../core/ir.js';
-import { parsePython } from '../../../core/parsers/TreeSitterParser.js';
 
 /**
  * Detect whether source code is nose2.
@@ -67,10 +66,6 @@ function detect(source) {
  * Parse nose2 source code into an IR tree.
  */
 function parse(source) {
-  return parsePython(source);
-}
-
-function _parseRegex(source) {
   const lines = source.split('\n');
   const imports = [];
   const allNodes = [];

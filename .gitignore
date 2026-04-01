@@ -19,7 +19,6 @@ coverage/
 # === Build output ===
 dist/
 build/Release
-extension/vscode/out/
 
 # === Environment ===
 .env
@@ -75,11 +74,14 @@ artifacts/
 test/output/
 test/fixtures/
 reports/
-tests/fixtures/**/.terrain/artifacts/
-tests/fixtures/**/.terrain/baselines/
 
 # === Large local-only directories ===
 testing/
+
+# === Stale / legacy ===
+hamlet/
+fixtures/demos/
+ci/
 
 # === Temporary ===
 PR_DESCRIPTION.md

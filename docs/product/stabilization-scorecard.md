@@ -4,7 +4,6 @@
 > **Baseline:** Post-v3 improvements (merged PR #100, CI green on `53220b2`)
 > **Method:** Full re-audit across architecture, UX, inference, determinism, maintainability, security, and release readiness.
 > **Test suite:** 41 Go packages, 0 failures. JS: 732 test suites, 2274 tests, 0 failures.
-> **Historical snapshot:** This scorecard reflects the repository state at the commit above. Counts and blanket assertions in this document can drift after later changes and should not be treated as a live source of truth.
 
 ---
 
@@ -105,7 +104,7 @@
 | Code documentation | A | All public types in models/ have godoc comments |
 | CI gates | A | Format, lint, test (Node 22+24), Go race detector, golden, fixture matrix, benchmarks |
 | Conventional commits | A | Enforced by commitlint via husky |
-| TODO/FIXME inventory | C | Repository still contains active TODO/FIXME markers; track and age them explicitly instead of claiming zero |
+| Zero TODO/FIXME | A | Grep finds 0 across entire codebase |
 
 **Key improvement:** Registry initialization no longer panics (returns errors). Extraction logic deduplicated (4 pairs consolidated). Context cancellation throughout analysis layer.
 

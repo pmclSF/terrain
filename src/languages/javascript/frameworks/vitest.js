@@ -19,7 +19,6 @@ import {
   Modifier,
 } from '../../../core/ir.js';
 import { TodoFormatter } from '../../../core/TodoFormatter.js';
-import { parseJavaScript } from '../../../core/parsers/BabelParser.js';
 
 const formatter = new TodoFormatter('javascript');
 
@@ -66,7 +65,12 @@ function detect(source) {
  * For now, delegates to a minimal implementation.
  */
 function parse(source) {
-  return parseJavaScript(source, { framework: 'vitest' });
+  // Minimal parse for detection/scoring. Full parse not yet needed.
+  return new TestFile({
+    language: 'javascript',
+    imports: [],
+    body: [new RawCode({ code: source })],
+  });
 }
 
 /**

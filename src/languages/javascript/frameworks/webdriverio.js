@@ -17,7 +17,6 @@ import {
 } from '../../../core/ir.js';
 
 import { TodoFormatter } from '../../../core/TodoFormatter.js';
-import { parseJavaScript } from '../../../core/parsers/BabelParser.js';
 
 const formatter = new TodoFormatter('javascript');
 
@@ -70,10 +69,6 @@ function detect(source) {
 }
 
 function parse(source) {
-  return parseJavaScript(source, { framework: 'webdriverio' });
-}
-
-function _parseRegex(source) {
   const lines = source.split('\n');
   const imports = [];
   const body = [];

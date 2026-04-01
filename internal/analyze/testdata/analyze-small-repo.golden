@@ -18,7 +18,6 @@
     "coverageConfidence": "low",
     "redundancyLevel": "low",
     "fanoutBurden": "low",
-    "skipBurden": "low",
     "manualCoveragePresence": "none",
     "graphDensity": 0.06666666666666667
   },

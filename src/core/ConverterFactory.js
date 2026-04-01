@@ -57,7 +57,6 @@ const FRAMEWORK_FILE_OVERRIDE = {
  */
 const PIPELINE_DIRECTIONS = new Set([
   'cypress-playwright',
-  'cypress-selenium',
   'jest-vitest',
   'mocha-jest',
   'jasmine-jest',
@@ -72,13 +71,9 @@ const PIPELINE_DIRECTIONS = new Set([
   'webdriverio-playwright',
   'webdriverio-cypress',
   'playwright-webdriverio',
-  'playwright-cypress',
-  'playwright-selenium',
   'cypress-webdriverio',
   'puppeteer-playwright',
   'playwright-puppeteer',
-  'selenium-cypress',
-  'selenium-playwright',
   'testcafe-playwright',
   'testcafe-cypress',
 ]);
@@ -100,6 +95,27 @@ export class ConverterFactory {
    */
   static async initialize() {
     if (this.initialized) return;
+
+    const converterModules = [
+      ['cypress-selenium', () => import('../converters/CypressToSelenium.js')],
+      [
+        'playwright-cypress',
+        () => import('../converters/PlaywrightToCypress.js'),
+      ],
+      [
+        'playwright-selenium',
+        () => import('../converters/PlaywrightToSelenium.js'),
+      ],
+      ['selenium-cypress', () => import('../converters/SeleniumToCypress.js')],
+      [
+        'selenium-playwright',
+        () => import('../converters/SeleniumToPlaywright.js'),
+      ],
+    ];
+
+    for (const [key, loader] of converterModules) {
+      this.converters.set(key, loader);
+    }
 
     this.initialized = true;
   }

@@ -1,47 +1,59 @@
-// Helpers for transforming CLI findings into grouped view items.
-// Keep this thin: formatting and grouping only.
+// Helpers for transforming snapshot data into grouped view items.
+// Keep this thin — grouping only, no inference or business logic.
 
-import { InsightFinding } from "./types";
+import { Signal, RiskSurface, TestSuiteSnapshot } from "./types";
 
-export interface GroupedFinding {
+export interface GroupedItem {
   key: string;
-  findings: InsightFinding[];
+  signals: Signal[];
   count: number;
 }
 
-export function groupFindingsByCategory(
-  findings: InsightFinding[]
-): GroupedFinding[] {
-  return groupFindings(findings, (finding) => finding.category);
+/** Group signals by their type field. */
+export function groupByType(signals: Signal[]): GroupedItem[] {
+  return groupBy(signals, (s) => s.type);
 }
 
-export function groupFindingsBySeverity(
-  findings: InsightFinding[]
-): GroupedFinding[] {
-  return groupFindings(findings, (finding) => finding.severity);
+/** Group signals by their owner field. */
+export function groupByOwner(signals: Signal[]): GroupedItem[] {
+  return groupBy(signals, (s) => s.owner || "unknown");
 }
 
-export function groupFindingsByDirectory(
-  findings: InsightFinding[]
-): GroupedFinding[] {
-  return groupFindings(findings, (finding) => {
-    const scope = finding.scope || "";
-    if (!scope || scope.startsWith("scenario:")) {
-      return "(repo-level)";
-    }
-    const normalized = scope.replace(/^file:/, "");
-    const lastSlash = normalized.lastIndexOf("/");
-    return lastSlash > 0 ? normalized.substring(0, lastSlash) : "(repo-level)";
+/** Group signals by their category field. */
+export function groupByCategory(signals: Signal[]): GroupedItem[] {
+  return groupBy(signals, (s) => s.category);
+}
+
+/** Group signals by the directory of their file location. */
+export function groupByDirectory(signals: Signal[]): GroupedItem[] {
+  return groupBy(signals, (s) => {
+    const file = s.location?.file || "";
+    const lastSlash = file.lastIndexOf("/");
+    return lastSlash > 0 ? file.substring(0, lastSlash) : "(repo-level)";
   });
 }
 
-export function reviewWorthyFindings(
-  findings: InsightFinding[]
-): InsightFinding[] {
+/** Filter signals to review-worthy items (medium+ severity). */
+export function reviewWorthy(signals: Signal[]): Signal[] {
   const reviewSeverities = new Set(["medium", "high", "critical"]);
-  return findings.filter((finding) => reviewSeverities.has(finding.severity));
+  return signals.filter((s) => reviewSeverities.has(s.severity));
 }
 
+/** Filter signals to migration-related types. */
+export function migrationSignals(signals: Signal[]): Signal[] {
+  const migrationTypes = new Set([
+    "frameworkMigration",
+    "migrationBlocker",
+    "deprecatedTestPattern",
+    "dynamicTestGeneration",
+    "customMatcherRisk",
+    "unsupportedSetup",
+    "legacyFrameworkUsage",
+  ]);
+  return signals.filter((s) => migrationTypes.has(s.type));
+}
+
+/** Get a severity icon for display. */
 export function severityIcon(severity: string): string {
   switch (severity) {
     case "critical":
@@ -57,6 +69,7 @@ export function severityIcon(severity: string): string {
   }
 }
 
+/** Get a risk band icon for display. */
 export function riskBandIcon(band: string): string {
   switch (band) {
     case "critical":
@@ -64,34 +77,31 @@ export function riskBandIcon(band: string): string {
     case "high":
       return "warning";
     case "medium":
-    case "moderate":
       return "info";
-    case "weak":
-      return "warning";
     default:
       return "pass";
   }
 }
 
-function groupFindings(
-  findings: InsightFinding[],
-  keyFn: (finding: InsightFinding) => string
-): GroupedFinding[] {
-  const map = new Map<string, InsightFinding[]>();
-  for (const finding of findings) {
-    const key = keyFn(finding);
+function groupBy(
+  signals: Signal[],
+  keyFn: (s: Signal) => string
+): GroupedItem[] {
+  const map = new Map<string, Signal[]>();
+  for (const s of signals) {
+    const key = keyFn(s);
     const existing = map.get(key);
     if (existing) {
-      existing.push(finding);
+      existing.push(s);
     } else {
-      map.set(key, [finding]);
+      map.set(key, [s]);
     }
   }
 
-  const groups: GroupedFinding[] = [];
-  for (const [key, groupedFindings] of map) {
-    groups.push({ key, findings: groupedFindings, count: groupedFindings.length });
+  const groups: GroupedItem[] = [];
+  for (const [key, sigs] of map) {
+    groups.push({ key, signals: sigs, count: sigs.length });
   }
-  groups.sort((left, right) => right.count - left.count || left.key.localeCompare(right.key));
+  groups.sort((a, b) => b.count - a.count);
   return groups;
 }

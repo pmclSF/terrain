@@ -29,18 +29,16 @@ func deriveNextActions(r *Report) []NextAction {
 		}
 		switch ds.Name {
 		case "coverage":
-			cmd := coverageCommand(r.Repository.Languages)
 			actions = append(actions, NextAction{
 				Title:       "Unlock coverage analysis",
-				Command:     cmd,
+				Command:     "terrain analyze --coverage <path-to-lcov-or-cobertura>",
 				Explanation: "Coverage data enables precise structural coverage mapping.",
 			})
 		case "runtime":
-			cmd := runtimeCommand(r.Repository.Languages)
 			actions = append(actions, NextAction{
 				Title:       "Unlock health signals",
-				Command:     cmd,
-				Explanation: "Runtime data unlocks flaky, slow, dead, and unstable test detection.",
+				Command:     "terrain analyze --runtime <path-to-junit-xml-or-jest-json>",
+				Explanation: "Runtime data reveals flaky, slow, and dead tests.",
 			})
 		}
 	}
@@ -83,32 +81,4 @@ func deriveNextActions(r *Report) []NextAction {
 	}
 
 	return actions
-}
-
-func coverageCommand(languages []string) string {
-	for _, lang := range languages {
-		switch lang {
-		case "javascript", "typescript":
-			return "npx jest --coverage --coverageReporters=lcov"
-		case "go":
-			return "go test -coverprofile=coverage.out ./..."
-		case "python":
-			return "pytest --cov --cov-report=lcov"
-		}
-	}
-	return "terrain analyze --coverage <path-to-lcov-or-cobertura>"
-}
-
-func runtimeCommand(languages []string) string {
-	for _, lang := range languages {
-		switch lang {
-		case "javascript", "typescript":
-			return "npx jest --json --outputFile=jest-results.json"
-		case "go":
-			return "go test -json ./... > test-output.json"
-		case "python":
-			return "pytest --junitxml=junit.xml"
-		}
-	}
-	return "terrain analyze --runtime <path-to-junit-xml-or-jest-json>"
 }

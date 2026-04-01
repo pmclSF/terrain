@@ -1,123 +1,166 @@
-// Types aligned with the current Terrain CLI JSON contracts.
-// The extension consumes report-oriented JSON, not the internal engine snapshot.
+// Types aligned with the Terrain CLI JSON snapshot contract.
+// These types are consumed from `terrain analyze --json` output.
+// Do NOT duplicate business logic here — the CLI is the source of truth.
 
-export interface DataSource {
-  name: string;
-  available: boolean;
+export interface SignalLocation {
+  repository?: string;
+  package?: string;
+  file?: string;
+  symbol?: string;
+  line?: number;
 }
 
-export interface RepositoryInfo {
-  name: string;
-  branch?: string;
-  commitSha?: string;
-  languages?: string[];
+export interface Signal {
+  type: string;
+  category: "structure" | "health" | "quality" | "migration" | "governance";
+  severity: "info" | "low" | "medium" | "high" | "critical";
+  confidence?: number;
+  evidenceStrength?: "strong" | "moderate" | "weak";
+  evidenceSource?:
+    | "ast"
+    | "structural-pattern"
+    | "path-name"
+    | "runtime"
+    | "coverage"
+    | "policy"
+    | "codeowners";
+  location: SignalLocation;
+  owner?: string;
+  explanation: string;
+  suggestedAction?: string;
+  metadata?: Record<string, unknown>;
 }
 
-export interface FrameworkSummary {
+export interface RiskSurface {
+  type: string;
+  scope: string;
+  scopeName: string;
+  band: "low" | "medium" | "high" | "critical";
+  score?: number;
+  contributingSignals?: Signal[];
+  explanation?: string;
+  suggestedAction?: string;
+}
+
+export interface Framework {
   name: string;
   type?: string;
   fileCount: number;
-  testCount?: number;
 }
 
-export interface TestSummary {
-  testFileCount: number;
-  testCaseCount: number;
-  codeUnitCount: number;
-  scenarioCount?: number;
-  codeSurfaceCount?: number;
-  promptCount?: number;
-  datasetCount?: number;
-  frameworks: FrameworkSummary[];
+export interface RuntimeStats {
+  avgRuntimeMs?: number;
+  p95RuntimeMs?: number;
+  passRate?: number;
+  retryRate?: number;
+  runtimeVariance?: number;
 }
 
-export interface KeyFinding {
-  title: string;
-  severity: "critical" | "high" | "medium" | "low";
-  category: string;
-  metric?: string;
+export interface TestFile {
+  path: string;
+  framework?: string;
+  owner?: string;
+  testCount: number;
+  assertionCount: number;
+  mockCount: number;
+  snapshotCount: number;
+  runtimeStats?: RuntimeStats;
+  linkedCodeUnits?: string[];
+  signals?: Signal[];
 }
 
-export interface RiskDimension {
-  dimension: string;
-  band:
-    | "critical"
-    | "high"
-    | "medium"
-    | "low"
-    | "strong"
-    | "moderate"
-    | "weak"
-    | "unknown";
+export interface RepositoryMetadata {
+  name: string;
+  rootPath: string;
+  languages?: string[];
+  packageManagers?: string[];
+  ciSystems?: string[];
+  snapshotTimestamp?: string;
+  commitSHA?: string;
+  branch?: string;
 }
 
-export interface SignalSummary {
-  total: number;
-  critical: number;
-  high: number;
-  medium: number;
-  low: number;
-  byCategory?: Record<string, number>;
+export interface ParameterizationInfo {
+  isTemplate: boolean;
+  paramSignature?: string;
+  estimatedInstances?: number;
 }
 
-export interface SkipSummary {
-  skippedCount: number;
-  totalTests: number;
-  skipRatio: number;
+export interface TestCase {
+  testId: string;
+  canonicalIdentity: string;
+  filePath: string;
+  suiteHierarchy?: string[];
+  testName: string;
+  framework: string;
+  language: string;
+  line?: number;
+  extractionKind: string;
+  confidence: number;
+  testType?: string;
+  testTypeConfidence?: number;
+  testTypeEvidence?: string[];
+  parameterized?: ParameterizationInfo;
 }
 
-export interface AnalyzeReport {
-  schemaVersion: string;
-  repository: RepositoryInfo;
-  dataCompleteness: DataSource[];
-  testsDetected: TestSummary;
-  skippedTestBurden?: SkipSummary;
-  keyFindings?: KeyFinding[];
-  totalFindingCount?: number;
-  riskPosture?: RiskDimension[];
-  signalSummary: SignalSummary;
-  headline: string;
-  limitations?: string[];
+export interface CodeUnit {
+  unitId?: string;
+  name: string;
+  path: string;
+  kind: "function" | "method" | "class" | "module" | "unknown";
+  exported: boolean;
+  parentName?: string;
+  language?: string;
+  startLine?: number;
+  endLine?: number;
+  complexity?: number;
+  coverage?: number;
+  linkedTestFiles?: string[];
+  owner?: string;
 }
 
-export interface InsightFinding {
-  title: string;
+export interface CoverageInsight {
+  type: string;
+  severity: string;
   description: string;
-  category:
-    | "optimization"
-    | "reliability"
-    | "architecture_debt"
-    | "coverage_debt";
-  severity: "critical" | "high" | "medium" | "low";
-  priority: number;
-  scope?: string;
-  metric?: string;
+  path?: string;
+  unitId?: string;
+  suggestedAction?: string;
 }
 
-export interface InsightRecommendation {
-  action: string;
-  rationale: string;
-  category:
-    | "optimization"
-    | "reliability"
-    | "architecture_debt"
-    | "coverage_debt";
-  priority: number;
-  impact?: string;
-  targetFiles?: string[];
-  effortBand?: string;
-  command?: string;
+export interface CoverageSummary {
+  totalCodeUnits: number;
+  coveredByUnitTests: number;
+  coveredByIntegration: number;
+  coveredByE2e: number;
+  coveredOnlyByE2e: number;
+  uncoveredExported: number;
+  uncovered: number;
+  lineCoveragePct?: number;
+  branchCoveragePct?: number;
 }
 
-export interface InsightsReport {
-  headline: string;
-  healthGrade: string;
-  findings: InsightFinding[];
-  recommendations: InsightRecommendation[];
-  dataCompleteness: DataSource[];
+// Migration preview types aligned with `terrain migration preview --json`.
+export interface MigrationPreviewBlocker {
+  type: string;
+  pattern: string;
+  explanation: string;
+  remediation: string;
+}
+
+export interface MigrationPreviewResult {
+  file: string;
+  sourceFramework: string;
+  suggestedTarget?: string;
+  difficulty: "low" | "medium" | "high" | "unknown";
+  blockers?: MigrationPreviewBlocker[];
+  safePatterns?: string[];
+  previewAvailable: boolean;
+  explanation: string;
   limitations?: string[];
 }
 
+// Migration readiness types aligned with `terrain migration readiness --json`.
 export interface MigrationBlockerExample {
   type: string;
   file: string;
@@ -133,25 +176,36 @@ export interface MigrationAreaAssessment {
   explanation: string;
 }
 
-export interface CoverageGuidanceItem {
-  directory: string;
-  reason: string;
-  priority: "high" | "medium" | "low";
-}
-
 export interface MigrationReadiness {
-  frameworks: FrameworkSummary[];
+  frameworks: Framework[];
   totalBlockers: number;
   blockersByType: Record<string, number>;
-  representativeBlockers?: MigrationBlockerExample[] | null;
+  representativeBlockers?: MigrationBlockerExample[];
   readinessLevel: "low" | "medium" | "high" | "unknown";
   explanation: string;
   areaAssessments?: MigrationAreaAssessment[];
-  coverageGuidance?: CoverageGuidanceItem[];
 }
 
-export interface ReportBundle {
-  analyze: AnalyzeReport;
-  insights: InsightsReport;
-  migration: MigrationReadiness;
+export interface SnapshotMeta {
+  schemaVersion: string;
+  engineVersion?: string;
+  detectorCount?: number;
+  detectors?: string[];
+}
+
+export interface TestSuiteSnapshot {
+  snapshotMeta?: SnapshotMeta;
+  repository: RepositoryMetadata;
+  frameworks?: Framework[];
+  testFiles?: TestFile[];
+  testCases?: TestCase[];
+  codeUnits?: CodeUnit[];
+  signals?: Signal[];
+  risk?: RiskSurface[];
+  coverageSummary?: CoverageSummary;
+  coverageInsights?: CoverageInsight[];
+  ownership?: Record<string, string[]>;
+  policies?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  generatedAt: string;
 }

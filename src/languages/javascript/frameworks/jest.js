@@ -18,10 +18,8 @@ import {
   Comment,
   Modifier,
   ParameterSet,
-  walkIR,
 } from '../../../core/ir.js';
 import { TodoFormatter } from '../../../core/TodoFormatter.js';
-import { parseJavaScript } from '../../../core/parsers/BabelParser.js';
 
 const formatter = new TodoFormatter('javascript');
 
@@ -79,13 +77,6 @@ function detect(source) {
  * passes through as RawCode nodes.
  */
 function parse(source) {
-  return parseJavaScript(source, { framework: 'jest' });
-}
-
-/**
- * Legacy regex-based parse (preserved for reference, no longer called).
- */
-function _parseRegex(source) {
   const lines = source.split('\n');
   const imports = [];
   const body = [];
@@ -424,16 +415,14 @@ function _parseRegex(source) {
  * @returns {string} Converted Jest source code
  */
 function emit(ir, source) {
-  // Build a line→node map from the IR for guided chunking.
-  // Walks the full IR tree (not just top-level) so that assertions,
-  // hooks, and mocks nested inside describe/it blocks are mapped.
+  // Build a line→node map from the IR for guided chunking
   const nodeByLine = new Map();
-  if (ir) {
-    walkIR(ir, (node) => {
-      if (node.sourceLocation && node.type !== 'TestFile') {
+  if (ir && ir.body) {
+    for (const node of [...(ir.imports || []), ...ir.body]) {
+      if (node.sourceLocation) {
         nodeByLine.set(node.sourceLocation.line, node);
       }
-    });
+    }
   }
 
   // --- File-level Phase 0: Restore multi-line TERRAIN-TODO blocks ---
@@ -461,7 +450,7 @@ function emit(ir, source) {
     const lineNum = i + 1;
     const node = nodeByLine.get(lineNum);
 
-    if (!node) return applyAllJestTransforms(line);
+    if (!node) return line; // blank lines or unmapped
 
     switch (node.type) {
       case 'ImportStatement':
@@ -479,7 +468,9 @@ function emit(ir, source) {
       case 'Comment':
         return line; // pass-through
       default:
-        return applyAllJestTransforms(line);
+        // RawCode or unknown: apply conservative chain transforms
+        // for multi-line assertion/mock continuations
+        return transformRawCodeToJest(line);
     }
   });
 
@@ -972,19 +963,6 @@ function transformMockToJest(line) {
  * Transform RawCode lines: conservative chain transforms for
  * multi-line assertion/mock continuations and unconvertible patterns.
  */
-function applyAllJestTransforms(line) {
-  // Skip lines that are already TERRAIN comments/markers
-  if (/^\s*\/\/\s*TERRAIN-/.test(line)) return line;
-  let r = line;
-  r = transformSuiteToJest(r);
-  r = transformTestCaseToJest(r);
-  r = transformHookToJest(r);
-  r = transformAssertionToJest(r);
-  r = transformMockToJest(r);
-  r = transformRawCodeToJest(r);
-  return r;
-}
-
 function transformRawCodeToJest(line) {
   let r = line;
 
@@ -1088,7 +1066,42 @@ function transformRawCodeToJest(line) {
       );
     });
   }
-  // this.timeout, this.retries, this.slow are handled by transformMockToJest
+  if (/this\.timeout/.test(r)) {
+    r = r.replace(/this\.timeout\s*\(\s*(\d+)\s*\)\s*;?/g, (match, ms) => {
+      return (
+        formatter.formatWarning({
+          description: `Mocha this.timeout(${ms}) — use jest.setTimeout(${ms}) at top of file or per-test timeout option`,
+          original: match.trim(),
+        }) +
+        '\n// ' +
+        match.trim()
+      );
+    });
+  }
+  if (/this\.retries/.test(r)) {
+    r = r.replace(/this\.retries\s*\(\s*(\d+)\s*\)\s*;?/g, (match, count) => {
+      return (
+        formatter.formatWarning({
+          description: `Mocha this.retries(${count}) — use jest.retryTimes(${count}) at top of describe block`,
+          original: match.trim(),
+        }) +
+        '\n// ' +
+        match.trim()
+      );
+    });
+  }
+  if (/this\.slow/.test(r)) {
+    r = r.replace(/this\.slow\s*\(\s*(\d+)\s*\)\s*;?/g, (match, ms) => {
+      return (
+        formatter.formatWarning({
+          description: `Mocha this.slow(${ms}) has no Jest equivalent — remove or use a custom reporter`,
+          original: match.trim(),
+        }) +
+        '\n// ' +
+        match.trim()
+      );
+    });
+  }
   if (/\bpending\s*\(/.test(r)) {
     r = r.replace(/\bpending\s*\(\s*(['"][^'"]*['"])?\s*\)\s*;?/g, (match) => {
       return (
@@ -1126,7 +1139,22 @@ function transformRawCodeToJest(line) {
   r = r.replace(/\.calls\.first\(\)\.args/g, '.mock.calls[0]');
   r = r.replace(/\.calls\.allArgs\(\)/g, '.mock.calls');
 
-  // jasmine.addMatchers is handled by transformMockToJest
+  // Unconvertible Jasmine patterns on raw lines
+  if (/jasmine\.addMatchers/.test(r)) {
+    r = r.replace(/jasmine\.addMatchers\s*\([^)]*\)/g, (match) => {
+      return (
+        formatter.formatTodo({
+          id: 'UNCONVERTIBLE-CUSTOM-MATCHER',
+          description:
+            'Jasmine custom matchers must be converted to expect.extend() in Jest',
+          original: match.trim(),
+          action: 'Rewrite custom matchers using expect.extend()',
+        }) +
+        '\n// ' +
+        match.trim()
+      );
+    });
+  }
 
   // Jasmine asymmetric matchers (may appear in raw code args)
   r = r.replace(/\bjasmine\.any\(([^)]+)\)/g, 'expect.any($1)');

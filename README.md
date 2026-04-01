@@ -10,8 +10,6 @@ terrain analyze
 
 That's it. No config, no setup, no test execution required.
 
-> **New here?** Read the [Quickstart Guide](docs/quickstart.md) to understand your first report in 5 minutes.
-
 ---
 
 Terrain is a test system intelligence platform. It reads your repository — test code, source structure, coverage data, runtime artifacts, ownership files, and local policy — and builds a structural model of how your tests relate to your code. From that model it surfaces risk, quality gaps, redundancy, fragile dependencies, and migration readiness, all without running a single test.
@@ -289,10 +287,9 @@ The old `terrain` npm binary name is deprecated. Use `terrain-convert` instead t
 |---------|---------|
 | `terrain ai list` | List detected scenarios, prompts, datasets, eval files |
 | `terrain ai doctor` | Validate AI/eval setup and surface configuration issues |
-| `terrain ai run` | Execute eval scenarios and collect results |
-| `terrain ai replay` | Replay and verify a previous eval run artifact |
-| `terrain ai record` | Record eval results as a baseline snapshot |
-| `terrain ai baseline` | Manage eval baselines (show, compare, promote) |
+| `terrain ai run` | Execute eval scenarios and collect results (planned) |
+| `terrain ai record` | Record eval results as a baseline snapshot (planned) |
+| `terrain ai baseline` | Manage eval baselines (planned) |
 
 ### Advanced / debug
 
@@ -304,7 +301,7 @@ The old `terrain` npm binary name is deprecated. Use `terrain-convert` instead t
 | `terrain debug duplicates` | Duplicate test cluster analysis |
 | `terrain debug depgraph` | Full dependency graph analysis (all engines) |
 
-Repository-scoped commands support `--root PATH`, and machine-readable commands support `--json`. Run `terrain <command> --help` for full flag documentation.
+All commands support `--root PATH` and `--json` flags. Run `terrain --help` for full flag documentation.
 
 ## Architecture Overview
 
@@ -414,17 +411,14 @@ Exit code 0 = pass, 2 = violations found, 1 = error.
 # Build
 go build -o terrain ./cmd/terrain
 
-# Test Terrain-owned Go packages
-go test ./cmd/... ./internal/...
+# Test all Go packages
+go test ./internal/... ./cmd/...
 
 # Test with verbose output
-go test -v ./cmd/... ./internal/...
+go test -v ./internal/...
 
 # Legacy JavaScript tests (requires Node.js 22+)
 npm test
-
-# Full release verification (Go + npm package + VS Code extension)
-make release-verify
 ```
 
 ## Documentation

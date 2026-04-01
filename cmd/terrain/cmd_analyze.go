@@ -16,16 +16,10 @@ import (
 	"github.com/pmclSF/terrain/internal/sarif"
 )
 
-func runInit(root string, jsonOutput bool) error {
+func runInit(root string) error {
 	result, err := engine.RunInit(root)
 	if err != nil {
 		return err
-	}
-
-	if jsonOutput {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		return enc.Encode(result)
 	}
 
 	sep := strings.Repeat("─", 60)
@@ -169,28 +163,10 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		logging.L().Info(msg)
 	}
 
-	// Build discovered artifacts list for the report.
-	var discovered []analyze.DiscoveredArtifact
-	if d := result.ArtifactDiscovery; d != nil {
-		if d.CoverageAutoDetected && d.CoveragePath != "" {
-			discovered = append(discovered, analyze.DiscoveredArtifact{
-				Kind: "coverage", Path: engine.RelativePath(d.CoveragePath), Format: d.CoverageFormat,
-			})
-		}
-		if d.RuntimeAutoDetected {
-			for i, p := range d.RuntimePaths {
-				discovered = append(discovered, analyze.DiscoveredArtifact{
-					Kind: "runtime", Path: engine.RelativePath(p), Format: d.RuntimeFormats[i],
-				})
-			}
-		}
-	}
-
 	// Build the structured analyze report (includes depgraph analysis).
 	report := analyze.Build(&analyze.BuildInput{
-		Snapshot:            result.Snapshot,
-		HasPolicy:           result.HasPolicy,
-		DiscoveredArtifacts: discovered,
+		Snapshot:  result.Snapshot,
+		HasPolicy: result.HasPolicy,
 	})
 
 	if sarifOutput {
@@ -220,7 +196,7 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	}
 
 	// Show hints for missing artifacts after the report.
-	hints := engine.MissingArtifactHints(&opt, result.ArtifactDiscovery, result.Snapshot.Repository.Languages)
+	hints := engine.MissingArtifactHints(&opt, result.ArtifactDiscovery)
 	if len(hints) > 0 {
 		fmt.Println()
 		fmt.Println("Unlock more:")

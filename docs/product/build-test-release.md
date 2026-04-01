@@ -1,6 +1,6 @@
 # Build, Test, and Release Pipeline
 
-> **Status:** Current (validated 2026-03-30)
+> **Status:** Current (validated 2026-03-15)
 > **Purpose:** Document the CI/CD pipeline, test gates, and release process for Terrain.
 
 ## CI Pipeline (`ci.yml`)
@@ -12,9 +12,8 @@ The CI pipeline runs on every push to `main` and on every pull request. All jobs
 ```
 ci.yml
 ├─ test (JS)              → format + lint + jest (Node 22.x, 24.x)
-├─ go-test                → go mod tidy + Go verification + race tests
+├─ go-test                → go mod tidy + build + unit tests + golden tests
 │                            + CLI smoke tests + fixture matrix + benchmark smoke
-├─ extension              → VS Code extension verify (compile + smoke test)
 ├─ go-bench-compare       → benchstat base vs head (PRs only)
 └─ build (integration)    → JS CLI sanity + conversion round-trip
 ```
@@ -35,7 +34,7 @@ ci.yml
 |------|---------|---------|
 | Tidy check | `go mod tidy && git diff --exit-code` | No dependency drift |
 | Build | `go build -o terrain ./cmd/terrain` | Binary compiles |
-| Unit tests | `go test ./cmd/... ./internal/... -count=1 -race` | Terrain-owned packages pass with race detector |
+| Unit tests | `go test ./internal/... ./cmd/... -count=1 -race` | All packages pass with race detector |
 | Golden tests | `go test ./cmd/terrain/ -run TestSnapshot -count=1 -v` | Snapshot stability for 4 canonical commands |
 | CLI smoke | `./terrain version && analyze + insights on sample-repo` | Binary runs, produces JSON |
 | Fixture matrix | `analyze --json` on 5 fixtures | Handles diverse repo shapes |
@@ -96,19 +95,7 @@ Tag push matching `v*` triggers `release.yml`.
 Tag push (v*)
 ├─ verify
 │   ├─ Tag matches package.json version
-│   └─ make release-verify
-│       ├─ make go-release-verify
-│       │   ├─ go vet ./cmd/... ./internal/...
-│       │   ├─ go test ./cmd/... ./internal/...
-│       │   ├─ go build ./cmd/terrain
-│       │   └─ go test ./cmd/terrain/ -run TestSnapshot -count=1 -v
-│       ├─ make js-release-verify
-│       │   ├─ npm ci
-│       │   └─ npm run release:verify (format + lint + test + pack)
-│       └─ make extension-verify
-│           ├─ npm --prefix extension/vscode ci
-│           ├─ npm --prefix extension/vscode run compile
-│           └─ npm --prefix extension/vscode test
+│   └─ npm run release:verify (format + lint + test + pack)
 ├─ release (needs: verify)
 │   ├─ npm publish --provenance
 │   └─ Create GitHub Release
@@ -141,7 +128,7 @@ builds:
 
 ### Safety Net (`publish.yml`)
 
-If a GitHub Release is created manually (not via `release.yml`), runs `make release-verify` to surface issues. Does NOT publish.
+If a GitHub Release is created manually (not via `release.yml`), runs `npm run release:verify` to surface issues. Does NOT publish.
 
 ## Test Taxonomy
 
@@ -150,7 +137,7 @@ If a GitHub Release is created manually (not via `release.yml`), runs `make rele
 | JS unit tests | Jest test suite (1916 tests) | `npm test` | CI: `test` job |
 | JS format | Prettier | `npm run format:check` | CI: `test` job |
 | JS lint | ESLint | `npm run lint` | CI: `test` job |
-| Go unit tests | Terrain-owned packages | `go test ./cmd/... ./internal/...` | CI: `go-test` job |
+| Go unit tests | All internal + cmd packages | `go test ./internal/... ./cmd/...` | CI: `go-test` job |
 | Go race detection | Data race detector | `-race` flag | CI: `go-test` job |
 | Golden/snapshot | 4 canonical command stability | `TestSnapshot_*` | CI: `go-test` job |
 | CLI smoke | Binary produces valid output | `terrain version/analyze/insights` | CI: `go-test` job |
@@ -171,8 +158,8 @@ npm run format              # Format JS source
 npm run format:check        # Check JS formatting
 
 # Go
-go test ./cmd/... ./internal/...                  # All Terrain Go tests
-go test ./cmd/terrain/ -run TestSnapshot -v       # Snapshot/golden regression tests
+go test ./internal/... ./cmd/... -count=1 -race  # All Go tests
+go test ./cmd/terrain/ -run TestSnapshot -v       # Golden tests only
 go build -o terrain ./cmd/terrain                 # Build binary
 
 # Benchmark
@@ -181,7 +168,7 @@ go build -o terrain-bench ./cmd/terrain-bench     # Build bench harness
 ./terrain-bench --output benchmarks/output/       # Write results
 
 # Release verification
-make release-verify         # Go CLI + npm package + VS Code extension
+npm run release:verify      # Full pre-release check
 ```
 
 ## Exit Codes

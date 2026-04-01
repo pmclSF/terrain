@@ -46,8 +46,8 @@ These are active, but currently look abandoned due to product wiring issues.
 3. Resolve npm/bin ownership decision (converter CLI vs TS graph CLI).
 4. Align docs and release gates to the chosen ownership model.
 5. Run full verification:
-   - `go test ./cmd/... ./internal/...`
-   - `go vet ./cmd/... ./internal/...`
+   - `go test ./...`
+   - `go vet ./...`
    - `staticcheck ./...`
    - `npm run lint`
    - `npm test`

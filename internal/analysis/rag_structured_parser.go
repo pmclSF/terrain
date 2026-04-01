@@ -77,7 +77,7 @@ func parseRAGStructuredJS(relPath, src string) []models.RAGPipelineSurface {
 	}
 
 	for i, line := range lines {
-		window := buildWindow(lines, i, 10)
+		window := buildWindow(lines, i, 5)
 
 		// Vector store constructors (enhanced with config extraction).
 		if m := jsVectorStoreConstructor.FindStringSubmatch(line); m != nil {
@@ -306,7 +306,7 @@ func parseRAGStructuredPython(relPath, src string) []models.RAGPipelineSurface {
 	}
 
 	for i, line := range lines {
-		window := buildWindow(lines, i, 10)
+		window := buildWindow(lines, i, 5)
 
 		// Vector store factory methods.
 		if m := pyVectorStoreFactory.FindStringSubmatch(line); m != nil {

@@ -7,7 +7,7 @@ Status checklist for Terrain release readiness.
 - [x] Core commands work: analyze, summary, insights, explain, focus, portfolio, posture, metrics, impact, select-tests, pr, show, compare, policy check, export benchmark, init
 - [x] Migration commands: readiness, blockers, preview (file + scope)
 - [x] Debug/inspection commands: debug (graph, coverage, fanout, duplicates), depgraph
-- [x] Human-readable output across user-facing commands and JSON output where documented
+- [x] Human-readable and JSON output for all commands
 - [x] Executive summary with posture, trends, focus, benchmark readiness
 - [x] Structured recommendations with what/why/where/evidence-strength
 - [x] Blind spots / known-limitations section in summaries
@@ -16,15 +16,15 @@ Status checklist for Terrain release readiness.
 
 ## Engineering
 
-- [x] All Go packages build cleanly (`go build ./cmd/... ./internal/...`)
-- [x] All Go tests pass (`go test ./cmd/... ./internal/...`)
+- [x] All Go packages build cleanly (`go build ./internal/... ./cmd/...`)
+- [x] All Go tests pass (`go test ./internal/... ./cmd/...`)
 - [x] 25 internal packages with test coverage
-- [x] Analyze report contract (`terrain analyze --json`, schema v1) and persisted snapshot contract are documented distinctly
+- [x] Snapshot contract (`TestSuiteSnapshot`) stable for current engine features
 - [x] Evidence model: EvidenceStrength, EvidenceSource, Confidence on all signals
 - [x] Registry-based detector architecture with 10 detectors (quality, migration, governance)
 - [x] Runtime ingestion: JUnit XML, Jest JSON parsers
 - [x] Coverage ingestion: LCOV, Istanbul JSON parsers with attribution
-- [x] Extension report-bundle types and view builders
+- [x] Extension type definitions and view builders
 
 ## UX
 
@@ -41,7 +41,7 @@ Status checklist for Terrain release readiness.
 - [x] README accurate with quick start, commands, architecture
 - [x] docs/README.md provides navigation index with product evolution
 - [x] docs/demo.md walkthrough complete (includes migration workflow)
-- [x] docs/cli-spec.md covers all shipped commands
+- [x] docs/cli-spec.md covers all 22 commands
 - [x] docs/roadmap.md milestones A through O documented
 - [x] docs/architecture.md layered architecture documented
 - [x] docs/engineering/detector-architecture.md documented
@@ -79,15 +79,12 @@ These are intentionally not yet shipped:
 
 ## Stability
 
-The user-facing analyze JSON contract is the structured `AnalyzeReport`
-(schema versioned). The persisted engine snapshot (`TestSuiteSnapshot`) is a
-separate internal/storage contract.
+The JSON contract (`TestSuiteSnapshot`) is stabilizing but may evolve. Early adopters should expect minor schema changes in signal metadata and risk surface fields.
 
 Core concepts are stable:
 - Signal types and categories
 - Risk bands (low, medium, high, critical)
-- Analyze report structure (`terrain analyze --json`)
-- Persisted snapshot structure
+- Snapshot structure
 - Policy rule format
 - Metrics aggregate model
 - Benchmark export schema v1

@@ -264,20 +264,8 @@ export class TerrainServer {
   stop() {
     return new Promise((resolve, reject) => {
       if (!this._server) return resolve();
-
-      if (!this._server.listening) {
-        this._server = null;
-        return resolve();
-      }
-
-      if (typeof this._server.closeAllConnections === 'function') {
-        this._server.closeAllConnections();
-      }
+      this._server.closeAllConnections();
       this._server.close((err) => {
-        if (err && err.code === 'ERR_SERVER_NOT_RUNNING') {
-          this._server = null;
-          return resolve();
-        }
         if (err) return reject(err);
         this._server = null;
         resolve();

@@ -156,9 +156,9 @@ Run: `go test -bench=. ./internal/testdata/`
 
 Before release, all of the following must pass:
 
-- `go test ./cmd/... ./internal/...` -- all Terrain unit, integration, golden, schema, determinism, adversarial, E2E, and CLI tests
+- `go test ./...` -- all unit, integration, golden, schema, determinism, adversarial, E2E, and CLI tests
 - `go test -bench=. ./internal/testdata/` -- benchmarks must not regress (manual review)
-- `go vet ./cmd/... ./internal/...` -- static analysis
+- `go vet ./...` -- static analysis
 - Golden files must be up to date (no `-update` needed)
 - CLI tests verify binary compilation and all commands respond correctly
 

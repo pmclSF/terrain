@@ -21,7 +21,6 @@ import (
 
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
-	"github.com/pmclSF/terrain/internal/skipstats"
 )
 
 // Snapshot contains benchmark-ready aggregate metrics derived from
@@ -136,7 +135,6 @@ func Derive(snap *models.TestSuiteSnapshot) *Snapshot {
 	totalFiles := len(snap.TestFiles)
 	signalCounts := countSignalsByType(snap.Signals)
 	signalFileCounts := countSignalFilesByType(snap.Signals)
-	skipSummary := skipstats.Summarize(snap)
 
 	healthCount := func(signalType string) int {
 		if c := signalFileCounts[signalType]; c > 0 {
@@ -166,14 +164,15 @@ func Derive(snap *models.TestSuiteSnapshot) *Snapshot {
 	// Health
 	slowCount := healthCount("slowTest")
 	flakyCount := healthCount("flakyTest")
+	skippedCount := healthCount("skippedTest")
 	deadCount := healthCount("deadTest")
 	ms.Health = HealthMetrics{
 		SlowTestCount:    slowCount,
 		SlowTestRatio:    safeRatio(slowCount, totalFiles),
 		FlakyTestCount:   flakyCount,
 		FlakyTestRatio:   safeRatio(flakyCount, totalFiles),
-		SkippedTestCount: skipSummary.SkippedTests,
-		SkippedTestRatio: skipSummary.TestRatio,
+		SkippedTestCount: skippedCount,
+		SkippedTestRatio: safeRatio(skippedCount, totalFiles),
 		DeadTestCount:    deadCount,
 	}
 

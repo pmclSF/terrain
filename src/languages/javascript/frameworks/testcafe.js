@@ -16,7 +16,6 @@ import {
   RawCode,
   Comment,
 } from '../../../core/ir.js';
-import { parseJavaScript } from '../../../core/parsers/BabelParser.js';
 
 function detect(source) {
   if (!source || !source.trim()) return 0;
@@ -64,10 +63,6 @@ function detect(source) {
 }
 
 function parse(source) {
-  return parseJavaScript(source, { framework: 'testcafe' });
-}
-
-function _parseRegex(source) {
   const lines = source.split('\n');
   const imports = [];
   const body = [];

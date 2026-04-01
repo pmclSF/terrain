@@ -15,7 +15,6 @@ func makeSnap(testFiles int, sigs ...models.Signal) *models.TestSuiteSnapshot {
 		snap.TestFiles = append(snap.TestFiles, models.TestFile{
 			Path:      "test/file_" + string(rune('a'+i)) + ".test.js",
 			Framework: "jest",
-			TestCount: 1,
 		})
 	}
 	snap.Signals = sigs
@@ -109,18 +108,11 @@ func TestEvidenceLimitations(t *testing.T) {
 
 // --- registry tests ---
 
-func mustRegister(t *testing.T, r *Registry, def Definition) {
-	t.Helper()
-	if err := r.Register(def); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestRegistry_RegisterAndLen(t *testing.T) {
 	t.Parallel()
 	r := NewRegistry()
-	mustRegister(t, r, Definition{ID: "test.one", Dimension: DimensionHealth})
-	mustRegister(t, r, Definition{ID: "test.two", Dimension: DimensionHealth})
+	r.MustRegister(Definition{ID: "test.one", Dimension: DimensionHealth})
+	r.MustRegister(Definition{ID: "test.two", Dimension: DimensionHealth})
 
 	if r.Len() != 2 {
 		t.Errorf("Len() = %d, want 2", r.Len())
@@ -141,9 +133,9 @@ func TestRegistry_DuplicateReturnsError(t *testing.T) {
 func TestRegistry_ByDimension(t *testing.T) {
 	t.Parallel()
 	r := NewRegistry()
-	mustRegister(t, r, Definition{ID: "h.one", Dimension: DimensionHealth})
-	mustRegister(t, r, Definition{ID: "s.one", Dimension: DimensionStructuralRisk})
-	mustRegister(t, r, Definition{ID: "h.two", Dimension: DimensionHealth})
+	r.MustRegister(Definition{ID: "h.one", Dimension: DimensionHealth})
+	r.MustRegister(Definition{ID: "s.one", Dimension: DimensionStructuralRisk})
+	r.MustRegister(Definition{ID: "h.two", Dimension: DimensionHealth})
 
 	health := r.ByDimension(DimensionHealth)
 	if len(health) != 2 {
@@ -158,7 +150,7 @@ func TestRegistry_ByDimension(t *testing.T) {
 func TestRegistry_Run(t *testing.T) {
 	t.Parallel()
 	r := NewRegistry()
-	mustRegister(t, r, Definition{
+	r.MustRegister(Definition{
 		ID:        "test.constant",
 		Dimension: DimensionHealth,
 		Compute: func(_ *models.TestSuiteSnapshot) Result {
@@ -199,7 +191,7 @@ func TestDefaultRegistry_AllDimensionsCovered(t *testing.T) {
 
 func TestDefaultRegistry_NoDuplicateIDs(t *testing.T) {
 	t.Parallel()
-	// DefaultRegistry returns an error on duplicate IDs; if this runs without error, no duplicates.
+	// DefaultRegistry uses MustRegister which panics on duplicate IDs; if this runs, no duplicates.
 	r, _ := DefaultRegistry()
 	if r.Len() == 0 {
 		t.Error("default registry has no measurements")
@@ -233,32 +225,17 @@ func TestHealth_FlakyShare_WithSignals(t *testing.T) {
 	}
 }
 
-func TestHealth_SkipDensity_StaticEvidence(t *testing.T) {
+func TestHealth_SkipDensity(t *testing.T) {
 	t.Parallel()
-	snap := makeSnap(20)
-	snap.TestFiles[0].SkipCount = 1
+	snap := makeSnap(20,
+		sig(signals.SignalSkippedTest),
+	)
 	r := computeSkipDensity(snap)
 	if r.Value != 0.05 {
 		t.Errorf("skip_density value = %v, want 0.05", r.Value)
 	}
 	if r.Band != "strong" {
 		t.Errorf("skip_density band = %q, want 'strong'", r.Band)
-	}
-	if r.Evidence != EvidencePartial {
-		t.Errorf("skip_density evidence = %q, want 'partial'", r.Evidence)
-	}
-}
-
-func TestHealth_SkipDensity_RuntimeEvidence(t *testing.T) {
-	t.Parallel()
-	snap := makeSnap(20,
-		sigInFile(signals.SignalSkippedTest, "test/file_a.test.js"),
-	)
-	snap.TestFiles[0].RuntimeStats = &models.RuntimeStats{AvgRuntimeMs: 100}
-
-	r := computeSkipDensity(snap)
-	if r.Value != 0.05 {
-		t.Errorf("skip_density value = %v, want 0.05", r.Value)
 	}
 	if r.Evidence != EvidenceStrong {
 		t.Errorf("skip_density evidence = %q, want 'strong'", r.Evidence)

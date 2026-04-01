@@ -12,53 +12,56 @@ The extension should remain a thin client over CLI JSON output.
 
 Flow:
 1. extension invokes `terrain analyze --json`
-2. extension invokes `terrain insights --json`
-3. extension invokes `terrain migration readiness --json`
-4. extension renders sidebar views from that report bundle
+2. CLI returns a TestSuiteSnapshot
+3. extension renders structured views
 
 ## Sidebar views
 
 ### Overview
 Repository-level summary:
 - framework inventory
-- validation counts
-- headline summary
-- top findings
-- risk posture
+- top health issues
+- top quality issues
+- migration readiness
+- highest-risk areas
 
 ### Health
-Reliability-oriented findings from `terrain insights`, including skipped-test
-burden and runtime-readiness guidance when runtime artifacts are absent.
+Signals like:
+- slow tests
+- flaky tests
+- skipped tests
+- dead tests
 
 ### Quality
-Coverage and architecture findings from `terrain insights`, such as structural
-coverage debt and high-fanout architecture pressure.
+Signals like:
+- untested exports
+- weak assertions
+- mock-heavy tests
+- coverage threshold breaks
 
 ### Migration
-- migration readiness level and explanation
+- migration readiness level
 - blocker groups by type
-- area assessments (safe/caution/risky)
+- blocker groups by directory with area assessments (safe/caution/risky)
+- blocker groups by owner
 - framework summary
-- coverage guidance for risky areas
+- preview affordance (file-level drill-down via `terrain migration preview`)
+- representative examples
 
 ### Review
 Grouped triage for:
-- prioritized findings by category
-- prioritized findings by severity
-- prioritized findings by directory/scope
+- signal type
+- owners
+- packages/directories
+- migration blockers (first-class grouping)
+- confidence/risk bands
 
-## Current interactions
+## Editor interactions
 
-- sidebar views fed by `terrain analyze --json`, `terrain insights --json`, and
-  `terrain migration readiness --json`
-- refresh command to rerun analysis on demand
-- optional auto-refresh on relevant file changes
-- terminal shortcuts for summary and migration blockers
-- file reveal from findings
-
-Future editor enrichments like diagnostics, hovers, and diff previews can build
-on the same CLI report contracts without moving business logic into the
-extension.
+- diagnostics based on signals
+- hover explanations
+- migration hints
+- future diff previews
 
 ## Implementation
 
@@ -67,9 +70,9 @@ Source files under `extension/vscode/src/`:
 | File | Purpose |
 |------|---------|
 | `extension.ts` | Entry point: TreeDataProviders, commands, CLI integration, state management |
-| `types.ts` | TypeScript types aligned with analyze/insights/migration JSON contracts |
-| `signal_renderer.ts` | Grouping/filtering helpers for report findings and severity/risk display |
-| `views.ts` | View data builders for the report bundle consumed by the extension |
+| `types.ts` | TypeScript types aligned with CLI JSON snapshot contract |
+| `signal_renderer.ts` | Grouping/filtering helpers (groupByType, groupByOwner, groupByDirectory, reviewWorthy, migrationSignals) |
+| `views.ts` | View data builders (buildOverview, buildHealth, buildQuality, buildReview, buildMigration) |
 
 ### Commands
 

@@ -72,9 +72,8 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 		line("    terrain analyze --root . --coverage path/to/lcov.info")
 	}
 	if runtimeStatus != models.DataSourceAvailable {
-		line("  Static skip detection is available from source code.")
-		line("  Runtime-dependent signals still need runtime artifacts:")
-		line("    slowTest, flakyTest, deadTest, unstableSuite")
+		line("  Runtime-dependent signals unavailable without runtime artifacts:")
+		line("    slowTest, flakyTest, skippedTest, deadTest, unstableSuite")
 		line("  Provide runtime data with:")
 		line("    terrain analyze --root . --runtime path/to/results.xml")
 	}
@@ -258,7 +257,6 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 	line("     terrain analyze --root . --coverage path/to/lcov.info")
 	line("  2) Add runtime data:")
 	line("     terrain analyze --root . --runtime path/to/test-results.xml")
-	line("     This unlocks flaky/slow/dead/unstable signals; static skip detection already runs.")
 	line("  3) Show full findings:")
 	line("     terrain analyze --root . --verbose")
 	line("  4) Save trend baseline:")

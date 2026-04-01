@@ -1,5 +1,10 @@
 import { ConverterFactory, FRAMEWORKS } from '../../src/core/ConverterFactory.js';
 import { PipelineConverter } from '../../src/core/PipelineConverter.js';
+import { PlaywrightToCypress } from '../../src/converters/PlaywrightToCypress.js';
+import { CypressToSelenium } from '../../src/converters/CypressToSelenium.js';
+import { SeleniumToCypress } from '../../src/converters/SeleniumToCypress.js';
+import { PlaywrightToSelenium } from '../../src/converters/PlaywrightToSelenium.js';
+import { SeleniumToPlaywright } from '../../src/converters/SeleniumToPlaywright.js';
 
 describe('ConverterFactory', () => {
   beforeEach(() => {
@@ -332,32 +337,30 @@ describe('ConverterFactory', () => {
       });
     });
 
-    describe('E2E converter directions (now pipeline-backed)', () => {
-      it('should create PipelineConverter for playwright-cypress', async () => {
+    describe('legacy converter directions', () => {
+      it('should create PlaywrightToCypress converter', async () => {
         const converter = await ConverterFactory.createConverter('playwright', 'cypress');
-        expect(converter).toBeInstanceOf(PipelineConverter);
-        expect(converter.sourceFramework).toBe('playwright');
-        expect(converter.targetFramework).toBe('cypress');
+        expect(converter).toBeInstanceOf(PlaywrightToCypress);
       });
 
-      it('should create PipelineConverter for cypress-selenium', async () => {
+      it('should create CypressToSelenium converter', async () => {
         const converter = await ConverterFactory.createConverter('cypress', 'selenium');
-        expect(converter).toBeInstanceOf(PipelineConverter);
+        expect(converter).toBeInstanceOf(CypressToSelenium);
       });
 
-      it('should create PipelineConverter for selenium-cypress', async () => {
+      it('should create SeleniumToCypress converter', async () => {
         const converter = await ConverterFactory.createConverter('selenium', 'cypress');
-        expect(converter).toBeInstanceOf(PipelineConverter);
+        expect(converter).toBeInstanceOf(SeleniumToCypress);
       });
 
-      it('should create PipelineConverter for playwright-selenium', async () => {
+      it('should create PlaywrightToSelenium converter', async () => {
         const converter = await ConverterFactory.createConverter('playwright', 'selenium');
-        expect(converter).toBeInstanceOf(PipelineConverter);
+        expect(converter).toBeInstanceOf(PlaywrightToSelenium);
       });
 
-      it('should create PipelineConverter for selenium-playwright', async () => {
+      it('should create SeleniumToPlaywright converter', async () => {
         const converter = await ConverterFactory.createConverter('selenium', 'playwright');
-        expect(converter).toBeInstanceOf(PipelineConverter);
+        expect(converter).toBeInstanceOf(SeleniumToPlaywright);
       });
     });
 

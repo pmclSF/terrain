@@ -1,4 +1,5 @@
 import { BaseConverter } from '../core/BaseConverter.js';
+import { PatternEngine } from '../core/PatternEngine.js';
 
 /**
  * Converts Selenium WebDriver tests to Cypress format
@@ -8,6 +9,95 @@ export class SeleniumToCypress extends BaseConverter {
     super(options);
     this.sourceFramework = 'selenium';
     this.targetFramework = 'cypress';
+    this.engine = new PatternEngine();
+    this.initializePatterns();
+  }
+
+  initializePatterns() {
+    // Navigation patterns
+    this.engine.registerPatterns('navigation', {
+      'await driver\\.get\\(([^)]+)\\)': 'cy.visit($1)',
+      'await driver\\.navigate\\(\\)\\.to\\(([^)]+)\\)': 'cy.visit($1)',
+      'await driver\\.navigate\\(\\)\\.back\\(\\)': "cy.go('back')",
+      'await driver\\.navigate\\(\\)\\.forward\\(\\)': "cy.go('forward')",
+      'await driver\\.navigate\\(\\)\\.refresh\\(\\)': 'cy.reload()',
+      'await driver\\.getCurrentUrl\\(\\)': 'cy.url()',
+      'await driver\\.getTitle\\(\\)': 'cy.title()',
+    });
+
+    // Selector patterns
+    this.engine.registerPatterns('selectors', {
+      'await driver\\.findElement\\(By\\.css\\(([^)]+)\\)\\)': 'cy.get($1)',
+      'await driver\\.findElement\\(By\\.id\\(([^)]+)\\)\\)':
+        'cy.get(`#${$1}`)',
+      'await driver\\.findElement\\(By\\.name\\(([^)]+)\\)\\)':
+        'cy.get(`[name=${$1}]`)',
+      'await driver\\.findElement\\(By\\.className\\(([^)]+)\\)\\)':
+        'cy.get(`.${$1}`)',
+      'await driver\\.findElement\\(By\\.tagName\\(([^)]+)\\)\\)': 'cy.get($1)',
+      'await driver\\.findElement\\(By\\.xpath\\(([^)]+)\\)\\)': 'cy.xpath($1)',
+      'await driver\\.findElement\\(By\\.linkText\\(([^)]+)\\)\\)':
+        'cy.contains("a", $1)',
+      'await driver\\.findElement\\(By\\.partialLinkText\\(([^)]+)\\)\\)':
+        'cy.contains("a", $1)',
+      'await driver\\.findElements\\(By\\.css\\(([^)]+)\\)\\)': 'cy.get($1)',
+      '\\.findElement\\(By\\.css\\(([^)]+)\\)\\)': '.find($1)',
+      'await driver\\.switchTo\\(\\)\\.activeElement\\(\\)': 'cy.focused()',
+    });
+
+    // Interaction patterns
+    this.engine.registerPatterns('interactions', {
+      '\\.sendKeys\\(([^)]+)\\)': '.type($1)',
+      '\\.click\\(\\)': '.click()',
+      '\\.clear\\(\\)': '.clear()',
+      '\\.submit\\(\\)': '.submit()',
+    });
+
+    // Assertion patterns
+    this.engine.registerPatterns('assertions', {
+      'expect\\(await ([^.]+)\\.isDisplayed\\(\\)\\)\\.toBe\\(true\\)':
+        '$1.should("be.visible")',
+      'expect\\(await ([^.]+)\\.isDisplayed\\(\\)\\)\\.toBe\\(false\\)':
+        '$1.should("not.be.visible")',
+      'expect\\(await ([^.]+)\\.getText\\(\\)\\)\\.toBe\\(([^)]+)\\)':
+        '$1.should("have.text", $2)',
+      'expect\\(await ([^.]+)\\.getText\\(\\)\\)\\.toContain\\(([^)]+)\\)':
+        '$1.should("contain", $2)',
+      'expect\\(await ([^.]+)\\.getAttribute\\([\'"]value[\'"]\\)\\)\\.toBe\\(([^)]+)\\)':
+        '$1.should("have.value", $2)',
+      'expect\\(await ([^.]+)\\.getAttribute\\(([^)]+)\\)\\)\\.toBe\\(([^)]+)\\)':
+        '$1.should("have.attr", $2, $3)',
+      'expect\\(await ([^.]+)\\.isSelected\\(\\)\\)\\.toBe\\(true\\)':
+        '$1.should("be.checked")',
+      'expect\\(await ([^.]+)\\.isSelected\\(\\)\\)\\.toBe\\(false\\)':
+        '$1.should("not.be.checked")',
+      'expect\\(await ([^.]+)\\.isEnabled\\(\\)\\)\\.toBe\\(false\\)':
+        '$1.should("be.disabled")',
+      'expect\\(await ([^.]+)\\.isEnabled\\(\\)\\)\\.toBe\\(true\\)':
+        '$1.should("be.enabled")',
+    });
+
+    // Wait patterns
+    this.engine.registerPatterns('waits', {
+      'await driver\\.sleep\\((\\d+)\\)': 'cy.wait($1)',
+      'await driver\\.wait\\(until\\.elementLocated\\(By\\.css\\(([^)]+)\\)\\),\\s*(\\d+)\\)':
+        'cy.get($1, { timeout: $2 })',
+      'await driver\\.wait\\(until\\.elementIsVisible\\(([^)]+)\\),\\s*(\\d+)\\)':
+        '$1.should("be.visible")',
+      'await driver\\.wait\\(until\\.urlContains\\(([^)]+)\\),\\s*(\\d+)\\)':
+        'cy.url().should("include", $1)',
+    });
+
+    // Remove Selenium imports and setup
+    this.engine.registerPatterns('cleanup', {
+      'const\\s*\\{[^{}\n]*Builder[^{}\n]*\\}\\s*=\\s*require\\([\'"]selenium-webdriver[\'"]\\);?':
+        '',
+      'const\\s*\\{[^{}\n]*expect[^{}\n]*\\}\\s*=\\s*require\\([\'"]@jest/globals[\'"]\\);?':
+        '',
+      'let\\s+driver;?': '',
+      'beforeAll\\s*\\([^)]*\\)\\s*\\{[^{}\n]*new\\s+Builder[^{}\n]*\\};?': '',
+      'afterAll\\s*\\([^)]*\\)\\s*\\{[^{}\n]*driver\\.quit[^{}\n]*\\};?': '',
+    });
   }
 
   async convert(content, _options = {}) {

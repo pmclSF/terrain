@@ -11,9 +11,8 @@ HEALTH
       No runtime data available; flakiness cannot be assessed from static analysis alone.
       * No runtime data available; result is based on static analysis only.
     health.skip_density                      0.0% [strong]
-      Evidence: partial
+      Evidence: strong
       0 of 1 test file(s) contain skipped tests (0%).
-      * Partial data available; result may improve with more runtime artifacts.
     health.dead_test_share                   0.0% [strong]
       Evidence: strong
       0 of 1 test file(s) contain dead tests (0%).

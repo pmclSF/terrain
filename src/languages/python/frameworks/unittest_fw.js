@@ -22,7 +22,6 @@ import {
   Modifier,
 } from '../../../core/ir.js';
 import { TodoFormatter } from '../../../core/TodoFormatter.js';
-import { parsePython } from '../../../core/parsers/TreeSitterParser.js';
 
 const formatter = new TodoFormatter('python');
 
@@ -79,10 +78,6 @@ function detect(source) {
  * Parse unittest source code into an IR tree.
  */
 function parse(source) {
-  return parsePython(source);
-}
-
-function _parseRegex(source) {
   const lines = source.split('\n');
   const imports = [];
   const allNodes = [];

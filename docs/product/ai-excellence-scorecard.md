@@ -19,7 +19,7 @@
 | Workflow | Command | Score | Evidence |
 |----------|---------|-------|----------|
 | AI inventory | `ai list` | **A** | Summary table, capability grouping, gap analysis, 7 surface types, JSON parity |
-| AI health check | `ai doctor` | **A** | Base 6-point diagnostic (scenarios, prompts, datasets, eval files, frameworks, graph wiring); contexts surface as an additional pass check when detected |
+| AI health check | `ai doctor` | **A** | 6-point diagnostic (scenarios, prompts, datasets, contexts, frameworks, graph wiring) |
 | AI scenario selection | `ai run` | **A** | Impact-based + full + dry-run. Structured artifact with hashes. CI exit codes. |
 | AI replay | `ai replay` | **A** | Hash-based verification. Content change detection. Scenario count diff. |
 | AI explain | `explain <scenario>` | **A** | Surface-kind breakdown (prompt/context/retrieval/tool/agent). Signals. Policy decision. |

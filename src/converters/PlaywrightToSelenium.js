@@ -1,4 +1,5 @@
 import { BaseConverter } from '../core/BaseConverter.js';
+import { PatternEngine } from '../core/PatternEngine.js';
 
 /**
  * Converts Playwright tests to Selenium WebDriver format
@@ -8,6 +9,83 @@ export class PlaywrightToSelenium extends BaseConverter {
     super(options);
     this.sourceFramework = 'playwright';
     this.targetFramework = 'selenium';
+    this.engine = new PatternEngine();
+    this.initializePatterns();
+  }
+
+  initializePatterns() {
+    // Test structure patterns
+    this.engine.registerPatterns('structure', {
+      'test\\.describe\\(': 'describe(',
+      'test\\(': 'it(',
+      'test\\.beforeAll\\(': 'beforeAll(',
+      'test\\.afterAll\\(': 'afterAll(',
+      'test\\.beforeEach\\(': 'beforeEach(',
+      'test\\.afterEach\\(': 'afterEach(',
+    });
+
+    // Navigation patterns
+    this.engine.registerPatterns('navigation', {
+      'await page\\.goto\\(([^)]+)\\)': 'await driver.get($1)',
+      'await page\\.goBack\\(\\)': 'await driver.navigate().back()',
+      'await page\\.goForward\\(\\)': 'await driver.navigate().forward()',
+      'await page\\.reload\\(\\)': 'await driver.navigate().refresh()',
+      'page\\.url\\(\\)': 'await driver.getCurrentUrl()',
+      'await page\\.title\\(\\)': 'await driver.getTitle()',
+    });
+
+    // Selector patterns
+    this.engine.registerPatterns('selectors', {
+      'page\\.locator\\(([^)]+)\\)': 'await driver.findElement(By.css($1))',
+      'page\\.getByText\\(([^)]+)\\)':
+        'await driver.findElement(By.xpath(`//*[contains(text(),$1)]`))',
+      'page\\.getByTestId\\(([^)]+)\\)':
+        'await driver.findElement(By.css(`[data-testid=$1]`))',
+      'page\\.getByRole\\(([^,\n]+),?\\s*\\{?\\s*name:\\s*([^}]+)\\}?\\)':
+        'await driver.findElement(By.css(`[$1][name=$2]`))',
+      '\\.locator\\(([^)]+)\\)': '.findElement(By.css($1))',
+      '\\.first\\(\\)': '[0]',
+      '\\.last\\(\\)': '.slice(-1)[0]',
+      '\\.nth\\((\\d+)\\)': '[$1]',
+    });
+
+    // Interaction patterns
+    this.engine.registerPatterns('interactions', {
+      '\\.fill\\(([^)]+)\\)': '.sendKeys($1)',
+      '\\.click\\(\\)': '.click()',
+      '\\.clear\\(\\)': '.clear()',
+      '\\.check\\(\\)': '.click()',
+      '\\.uncheck\\(\\)': '.click()',
+    });
+
+    // Assertion patterns
+    this.engine.registerPatterns('assertions', {
+      'await expect\\(([^)]+)\\)\\.toBeVisible\\(\\)':
+        'expect(await $1.isDisplayed()).toBe(true)',
+      'await expect\\(([^)]+)\\)\\.toBeHidden\\(\\)':
+        'expect(await $1.isDisplayed()).toBe(false)',
+      'await expect\\(([^)]+)\\)\\.toHaveText\\(([^)]+)\\)':
+        'expect(await $1.getText()).toBe($2)',
+      'await expect\\(([^)]+)\\)\\.toContainText\\(([^)]+)\\)':
+        'expect(await $1.getText()).toContain($2)',
+      'await expect\\(([^)]+)\\)\\.toHaveValue\\(([^)]+)\\)':
+        'expect(await $1.getAttribute("value")).toBe($2)',
+      'await expect\\(([^)]+)\\)\\.toBeChecked\\(\\)':
+        'expect(await $1.isSelected()).toBe(true)',
+      'await expect\\(([^)]+)\\)\\.toBeDisabled\\(\\)':
+        'expect(await $1.isEnabled()).toBe(false)',
+      'await expect\\(([^)]+)\\)\\.toBeEnabled\\(\\)':
+        'expect(await $1.isEnabled()).toBe(true)',
+    });
+
+    // Wait patterns
+    this.engine.registerPatterns('waits', {
+      'await page\\.waitForTimeout\\((\\d+)\\)': 'await driver.sleep($1)',
+      'await page\\.waitForSelector\\(([^)]+)\\)':
+        'await driver.wait(until.elementLocated(By.css($1)), 10000)',
+      'await page\\.waitForURL\\(([^)]+)\\)':
+        'await driver.wait(until.urlContains($1), 10000)',
+    });
   }
 
   async convert(content, _options = {}) {

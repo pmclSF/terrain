@@ -1,6 +1,6 @@
 # Persona Coverage Matrix
 
-> **Status:** Current (validated 2026-03-30)
+> **Status:** Current (validated 2026-03-15)
 > **Purpose:** For each persona, show exactly which Terrain features serve them, at what depth, and what gaps remain. This is the persona-first view of the [Feature Matrix](feature-matrix.md).
 
 ## Backend Engineer
@@ -96,8 +96,7 @@ terrain migration readiness
 | Scenario explain | Strong | `terrain explain <scenario-id>` |
 | Scenario duplication insights | Strong | `terrain insights` (>50% surface overlap) |
 | AI list command | Strong | `terrain ai list` (scenarios, prompts, datasets, eval files) |
-| AI doctor command | Strong | `terrain ai doctor` (6-point diagnostic: scenarios, prompts, datasets, eval files, frameworks, graph wiring) |
-| AI run / record / baseline / replay | Strong | `terrain ai run`, `terrain ai replay`, `terrain ai record`, `terrain ai baseline` |
+| AI doctor command | Strong | `terrain ai doctor` (5-point diagnostic) |
 | Gauntlet artifact ingestion | Strong | `terrain analyze --gauntlet results.json` |
 | Eval file detection by path | Useful | Detects eval/, evals/, __evals__/, benchmarks/ directories |
 | Validation inventory (prompts, datasets counted) | Strong | `terrain analyze` |
@@ -108,6 +107,7 @@ terrain migration readiness
 | Feature | Status | Gap |
 |---|---|---|
 | Graph node population (Prompt, Dataset, Model, EvalMetric) | Partial | Types defined; not populated by inference yet |
+| AI run / record / baseline commands | Future | Scaffolded with doc references |
 | Eval framework auto-detection (12 frameworks) | **Implemented** | Config, deps, imports detected; scenarios auto-derived |
 | Eval-specific signals (accuracy_regression, safety_failure) | Future | No eval-aware signal detectors |
 | Model version tracking | Future | Cannot correlate evals to model versions |

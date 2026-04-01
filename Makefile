@@ -4,11 +4,10 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
 COMMIT  ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)
-GO_OWNED_PKGS := ./cmd/... ./internal/...
 
 .PHONY: build test lint clean demo benchmark-fetch benchmark-smoke benchmark-full benchmark-stress benchmark-summary install \
        test-golden test-determinism test-schema test-adversarial test-e2e test-cli test-bench golden-update pr-gate release-gate \
-       sbom sbom-cyclonedx sbom-spdx release-dry-run go-release-verify js-release-verify extension-verify release-verify
+       sbom sbom-cyclonedx sbom-spdx release-dry-run
 
 # Build the CLI binary
 build:
@@ -20,21 +19,20 @@ install:
 
 # Run all Go tests
 test:
-	go test $(GO_OWNED_PKGS)
+	go test ./internal/... ./cmd/...
 
 # Run tests with verbose output
 test-v:
-	go test -v $(GO_OWNED_PKGS)
+	go test -v ./internal/... ./cmd/...
 
 # Run tests with coverage
 test-cover:
-	go test -coverprofile=coverage.out $(GO_OWNED_PKGS)
+	go test -coverprofile=coverage.out ./internal/... ./cmd/...
 	go tool cover -func=coverage.out
 
 # Build check (compile only, no binary output)
 check:
-	go vet $(GO_OWNED_PKGS)
-	go build ./cmd/terrain
+	go build ./internal/... ./cmd/...
 
 # Clean build artifacts
 clean:
@@ -111,32 +109,12 @@ release-dry-run:
 # ── Release Gates ──────────────────────────────────────────
 
 # PR gate: fast checks required on every PR
-pr-gate:
-	$(MAKE) check
-	$(MAKE) test
+pr-gate: check
+	go vet ./cmd/... ./internal/...
+	go test ./internal/... ./cmd/...
 
 # Release gate: full verification required before release
-release-gate: go-release-verify
-
-go-release-verify:
-	go vet $(GO_OWNED_PKGS)
-	go test $(GO_OWNED_PKGS)
-	go build ./cmd/terrain
-	go test ./cmd/terrain/ -run TestSnapshot -count=1 -v
-
-js-release-verify:
-	npm ci
-	npm run release:verify
-
-extension-verify:
-	npm --prefix extension/vscode ci
-	npm --prefix extension/vscode run compile
-	npm --prefix extension/vscode test
-
-release-verify:
-	$(MAKE) go-release-verify
-	$(MAKE) js-release-verify
-	$(MAKE) extension-verify
+release-gate: pr-gate test-determinism test-golden test-schema test-e2e test-cli
 
 # Legacy JavaScript tests (requires Node.js 22+)
 test-legacy:

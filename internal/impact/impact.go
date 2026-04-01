@@ -344,10 +344,6 @@ type ImpactResult struct {
 	// Limitations describes data gaps affecting the analysis.
 	Limitations []string `json:"limitations,omitempty"`
 
-	// HasCoverageData indicates whether coverage artifacts were provided.
-	// When false, protection gaps reflect missing data, not measured absence.
-	HasCoverageData bool `json:"hasCoverageData"`
-
 	// PolicyApplied indicates whether an edge-case policy was applied.
 	PolicyApplied bool `json:"policyApplied,omitempty"`
 
@@ -462,8 +458,6 @@ func analyzeFromScope(scope *ChangeScope, snap *models.TestSuiteSnapshot) *Impac
 		Scope:          *scope,
 		TotalTestCount: len(snap.TestFiles),
 	}
-
-	result.HasCoverageData = hasCoverageArtifacts(snap)
 
 	// Map changed files to code surfaces and behavior surfaces.
 	result.ChangedAreas = mapChangedSurfaces(scope, snap)

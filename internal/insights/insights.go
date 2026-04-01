@@ -12,7 +12,6 @@ import (
 	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/matrix"
 	"github.com/pmclSF/terrain/internal/models"
-	"github.com/pmclSF/terrain/internal/skipstats"
 	"github.com/pmclSF/terrain/internal/stability"
 )
 
@@ -20,10 +19,10 @@ import (
 type Category string
 
 const (
-	CategoryOptimization     Category = "optimization"
-	CategoryReliability      Category = "reliability"
+	CategoryOptimization    Category = "optimization"
+	CategoryReliability     Category = "reliability"
 	CategoryArchitectureDebt Category = "architecture_debt"
-	CategoryCoverageDebt     Category = "coverage_debt"
+	CategoryCoverageDebt    Category = "coverage_debt"
 )
 
 // Severity ranks how urgent a finding is.
@@ -131,10 +130,10 @@ type Recommendation struct {
 
 // CategoryBreakdown summarizes findings within a category.
 type CategoryBreakdown struct {
-	Count         int    `json:"count"`
-	CriticalCount int    `json:"criticalCount"`
-	HighCount     int    `json:"highCount"`
-	TopFinding    string `json:"topFinding,omitempty"`
+	Count          int      `json:"count"`
+	CriticalCount  int      `json:"criticalCount"`
+	HighCount      int      `json:"highCount"`
+	TopFinding     string   `json:"topFinding,omitempty"`
 }
 
 // DataSource describes a data source's availability.
@@ -430,25 +429,43 @@ func coverageFindings(input *BuildInput) []Finding {
 
 func skipFindings(input *BuildInput) []Finding {
 	var findings []Finding
-	stats := skipstats.Summarize(input.Snapshot)
+	snap := input.Snapshot
 
-	if stats.SkippedTests == 0 {
+	skipped := 0
+	for _, sig := range snap.Signals {
+		if sig.Type == "skippedTest" || sig.Type == "conditionallySkippedTest" {
+			skipped++
+		}
+	}
+
+	if skipped == 0 {
 		return findings
 	}
 
+	totalTests := 0
+	for _, tf := range snap.TestFiles {
+		totalTests += tf.TestCount
+	}
+	if totalTests == 0 {
+		totalTests = len(snap.TestCases)
+	}
+
 	sev := SeverityLow
-	if stats.TestRatio > 0.10 {
-		sev = SeverityHigh
-	} else if stats.TestRatio > 0.03 {
-		sev = SeverityMedium
+	if totalTests > 0 {
+		ratio := float64(skipped) / float64(totalTests)
+		if ratio > 0.10 {
+			sev = SeverityHigh
+		} else if ratio > 0.03 {
+			sev = SeverityMedium
+		}
 	}
 
 	findings = append(findings, Finding{
-		Title:       fmt.Sprintf("%d skipped tests consuming CI resources", stats.SkippedTests),
+		Title:       fmt.Sprintf("%d skipped tests consuming CI resources", skipped),
 		Description: "Skipped tests still occupy CI queue slots and mask coverage gaps. Review whether each skip is still justified or should be removed.",
 		Category:    CategoryReliability,
 		Severity:    sev,
-		Metric:      fmt.Sprintf("%d skipped", stats.SkippedTests),
+		Metric:      fmt.Sprintf("%d skipped", skipped),
 	})
 
 	return findings
@@ -933,7 +950,7 @@ func buildLimitations(input *BuildInput) []string {
 		lims = append(lims, "No coverage data; coverage confidence is structural (import-based) only.")
 	}
 	if !dsAvailable(snap, "runtime") {
-		lims = append(lims, "No runtime data; static skip detection is available, but flaky/slow/dead/unstable signals still require runtime artifacts.")
+		lims = append(lims, "No runtime data; flaky/slow test detection relies on structural signals only.")
 	}
 	if !input.HasPolicy && !dsAvailable(snap, "policy") {
 		lims = append(lims, "No policy file found; governance checks skipped.")

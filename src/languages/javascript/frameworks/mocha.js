@@ -18,10 +18,8 @@ import {
   RawCode,
   Comment,
   Modifier,
-  walkIR,
 } from '../../../core/ir.js';
 import { TodoFormatter } from '../../../core/TodoFormatter.js';
-import { parseJavaScript } from '../../../core/parsers/BabelParser.js';
 
 const formatter = new TodoFormatter('javascript');
 
@@ -103,10 +101,6 @@ function detect(source) {
  * and creates IR nodes for scoring and conversion tracking.
  */
 function parse(source) {
-  return parseJavaScript(source, { framework: 'mocha' });
-}
-
-function _parseRegex(source) {
   const lines = source.split('\n');
   const imports = [];
   const allNodes = [];
@@ -472,15 +466,14 @@ function _parseRegex(source) {
  * @returns {string} Converted Mocha+Chai+Sinon source code
  */
 function emit(ir, source) {
-  // Build a line→node map from the IR for guided chunking.
-  // Walks the full IR tree so nested assertions/hooks/mocks are mapped.
+  // Build a line→node map from the IR for guided chunking
   const nodeByLine = new Map();
-  if (ir) {
-    walkIR(ir, (node) => {
-      if (node.sourceLocation && node.type !== 'TestFile') {
+  if (ir && ir.body) {
+    for (const node of [...(ir.imports || []), ...ir.body]) {
+      if (node.sourceLocation) {
         nodeByLine.set(node.sourceLocation.line, node);
       }
-    });
+    }
   }
 
   // --- File-level Phase 0: Strip incoming TERRAIN-TODO blocks ---
@@ -496,7 +489,7 @@ function emit(ir, source) {
     const lineNum = i + 1;
     const node = nodeByLine.get(lineNum);
 
-    if (!node) return applyAllMochaTransforms(line);
+    if (!node) return line; // blank lines or unmapped
 
     switch (node.type) {
       case 'ImportStatement':
@@ -514,7 +507,8 @@ function emit(ir, source) {
       case 'Comment':
         return line; // pass-through
       default:
-        return applyAllMochaTransforms(line);
+        // RawCode or unknown: apply conservative transforms
+        return transformRawCodeToMocha(line);
     }
   });
 
@@ -743,17 +737,6 @@ function transformMockToMocha(line) {
 /**
  * Transform RawCode lines: conservative transforms for continuation lines.
  */
-function applyAllMochaTransforms(line) {
-  if (/^\s*\/\/\s*TERRAIN-/.test(line)) return line;
-  let r = line;
-  r = transformImportToMocha(r);
-  r = transformHookToMocha(r);
-  r = transformAssertionToMocha(r);
-  r = transformMockToMocha(r);
-  r = transformRawCodeToMocha(r);
-  return r;
-}
-
 function transformRawCodeToMocha(line) {
   let r = line;
 

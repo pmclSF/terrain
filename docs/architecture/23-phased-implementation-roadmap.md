@@ -89,7 +89,7 @@ Extends analysis beyond single-environment, automated-only testing to account fo
 
 | Document | Coverage |
 |----------|----------|
-| [18-environment-and-device-model.md](18-environment-and-device-model.md) | Environment nodes, device matrix, coverage gaps |
+| [17-environment-and-device-model.md](17-environment-and-device-model.md) | Environment nodes, device matrix, coverage gaps |
 | [19-ai-scenario-and-eval-model.md](19-ai-scenario-and-eval-model.md) | AI/ML evaluation integration |
 | [20-manual-coverage-and-governance-model.md](20-manual-coverage-and-governance-model.md) | API integration for live manual coverage |
 
