@@ -1,8 +1,10 @@
 # Common-Cause Clustering
 
+> **Status:** HISTORICAL — the `internal/clustering/` package described here was removed. Clustering capabilities are now handled by `internal/stability/` (root-cause grouping of unstable tests) and `internal/depgraph/duplicate.go` (structural test deduplication). This document is preserved for design context.
+
 ## Overview
 
-The `internal/clustering` package detects **common-cause clusters** — groups of tests that share a dependency (helper, fixture, setup path, or code unit) which appears responsible for broad instability, slowness, or concentrated signal patterns across the test suite.
+The `internal/clustering` package detected **common-cause clusters** — groups of tests that share a dependency (helper, fixture, setup path, or code unit) which appeared responsible for broad instability, slowness, or concentrated signal patterns across the test suite.
 
 Each cluster is a **candidate hypothesis**, not a proven root cause. The package surfaces evidence and confidence scores so downstream consumers (CLI, extension, reporting) can present findings with appropriate caveats.
 

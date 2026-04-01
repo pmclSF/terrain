@@ -33,9 +33,9 @@ See [docs/architecture.md](docs/architecture.md) for the full layered architectu
 | [docs/roadmap.md](docs/roadmap.md) | Milestone history and future work |
 | [docs/cli-spec.md](docs/cli-spec.md) | Full command and flag reference |
 | [docs/engineering/detector-architecture.md](docs/engineering/detector-architecture.md) | Registry-based detector plugin system |
-| [docs/engineering/architecture-map.md](docs/engineering/architecture-map.md) | Contributor-facing component and pipeline map |
-| [docs/engineering/detector-audit.md](docs/engineering/detector-audit.md) | Evidence classification for all detectors |
-| [docs/engineering/hosted-future.md](docs/engineering/hosted-future.md) | What remains for hosted/org product |
+| [docs/internal/engineering/architecture-map.md](docs/internal/engineering/architecture-map.md) | Contributor-facing component and pipeline map |
+| [docs/internal/engineering/detector-audit.md](docs/internal/engineering/detector-audit.md) | Evidence classification for all detectors |
+| [docs/internal/engineering/hosted-future.md](docs/internal/engineering/hosted-future.md) | What remains for hosted/org product |
 | [docs/contributing/writing-a-detector.md](docs/contributing/writing-a-detector.md) | How to add a new signal detector |
 
 ## Package Map
@@ -69,7 +69,7 @@ internal/
   testtype/          Test type inference (unit, integration, e2e)
 ```
 
-See [docs/engineering/architecture-map.md](docs/engineering/architecture-map.md) for the full contributor-oriented component map.
+See [docs/internal/engineering/architecture-map.md](docs/internal/engineering/architecture-map.md) for the full contributor-oriented component map.
 
 ## Migration Context
 

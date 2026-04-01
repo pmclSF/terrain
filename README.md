@@ -336,7 +336,7 @@ internal/
 ├── benchmark/       Privacy-safe benchmark export and assessment scoring
 ├── comparison/      Snapshot-to-snapshot trend comparison
 ├── coverage/        Coverage ingestion (LCOV, Istanbul) and attribution
-├── depgraph/        Dependency graph: 20 node types, 15 edge types, 5 reasoning engines
+├── depgraph/        Dependency graph: 20 node types, 20 edge types, 5 reasoning engines
 ├── engine/          Pipeline orchestration and detector registry
 ├── explain/         Structured explanation builder (tests + scenarios)
 ├── gauntlet/        Gauntlet AI eval artifact ingestion

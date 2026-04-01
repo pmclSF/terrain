@@ -6,7 +6,7 @@ Terrain V3 is a complete architectural shift from V2's conversion-led approach
 to a signal-first test intelligence platform built in Go.
 
 ### Core Analysis
-- Repository scanning with framework detection (16 JS/TS/Java/Python frameworks)
+- Repository scanning with framework detection (17 JS/TS/Java/Python/Go frameworks)
 - Test file discovery and code unit extraction
 - Signal-first architecture: every finding is a structured Signal with type, severity, evidence, and location
 - Evidence model with strength (strong/moderate/weak), source, and confidence scoring

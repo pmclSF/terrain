@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Terrain is a test system intelligence platform that maps your "test terrain". The current engine (Go, in `internal/` and `cmd/`) analyzes repository structure, test code, and policy to surface risk, quality, migration readiness, and governance findings. The legacy converter engine (JavaScript ES modules, in `src/` and `bin/`) provides multi-framework test conversion across 16 frameworks and remains functional.
+Terrain is a test system intelligence platform that maps your "test terrain". The current engine (Go, in `internal/` and `cmd/`) analyzes repository structure, test code, and policy to surface risk, quality, migration readiness, and governance findings. The converter engine (JavaScript ES modules, in `src/` and `bin/`) provides multi-framework test conversion across 18 frameworks (10 JS/TS, 4 Java, 4 Python) and remains functional.
 
 The instructions below apply to the JavaScript codebase (`src/`, `test/`, `bin/`).
 
@@ -49,18 +49,22 @@ Jest 29 requires `--experimental-vm-modules` for ESM support. This flag leaves i
 
 ```
 src/
-├── cli/               # shorthands.js — shorthand command definitions
-├── core/              # 25 modules: BaseConverter, ConverterFactory, PatternEngine,
-│                      #   FrameworkDetector, FrameworkRegistry, ConfigConverter,
-│                      #   MigrationEngine, Scanner, FileClassifier, ir.js, etc.
+├── cli/               # shorthands.js, doctor.js, outputHelpers.js
+├── core/              # ~28 modules: BaseConverter, ConverterFactory, ConversionPipeline,
+│                      #   PipelineConverter, FrameworkDetector, FrameworkRegistry,
+│                      #   ConfigConverter, PatternEngine, MigrationEngine, Scanner,
+│                      #   FileClassifier, ConfidenceScorer, OutputValidator, ir.js, etc.
+│   └── parsers/       # BabelParser.js (JS/TS AST), TreeSitterParser.js (Python/Java AST)
 ├── converters/        # 6 E2E converter classes (Cypress/Playwright/Selenium pairs)
 ├── converter/         # Batch processing, orchestration, validation, TypeScript support
-├── languages/         # Framework definitions organized by language:
-│   ├── java/          #   junit4, junit5, testng
+├── languages/         # Framework definitions organized by language (18 total):
+│   ├── java/          #   junit4, junit5, testng, selenium
 │   ├── javascript/    #   cypress, jest, mocha, jasmine, playwright, vitest,
-│   │                  #   puppeteer, testcafe, webdriverio
-│   └── python/        #   pytest, unittest_fw, nose2
+│   │                  #   puppeteer, testcafe, webdriverio, selenium
+│   └── python/        #   pytest, unittest_fw, nose2, selenium_py
 ├── patterns/commands/ # Regex pattern definitions (assertions, navigation, selectors, etc.)
+├── server/            # TerrainServer.js, handlers.js, router.js, jobStore.js, pathUtils.js
+├── ui/                # Browser UI: app.js, analyze.js, diffview.js, components.js
 ├── utils/             # helpers.js (fileUtils, stringUtils, codeUtils, etc.), reporter.js
 ├── types/             # TypeScript type definitions (index.d.ts)
 └── index.js           # Main entry point with public API functions
@@ -69,8 +73,9 @@ src/
 ### Key patterns
 
 - **Inheritance:** All converters extend `BaseConverter`. Override `convert()`, `convertConfig()`, `getImports()`, `detectTestTypes()`.
-- **Factory:** `ConverterFactory.createConverter(from, to, options)` is async — uses dynamic `import()` to lazy-load converter modules and avoid circular dependencies.
-- **PatternEngine:** Registry of regex patterns organized by category with priority-based application. Each converter creates its own engine instance.
+- **Factory:** `ConverterFactory.createConverter(from, to, options)` is async — all 25 conversion directions are now pipeline-backed via `PipelineConverter`.
+- **Pipeline:** `ConversionPipeline` implements a 5-stage conversion: Detect → Parse → Transform → Emit → Score. Framework definitions in `src/languages/` provide `detect()`, `parse()`, and `emit()` functions.
+- **AST Parsers:** All 18 framework `parse()` functions use AST-based parsing (`@babel/parser` for JS/TS, `web-tree-sitter` for Python/Java) instead of regex. This eliminates false positives from patterns inside string literals and comments. Legacy regex parsers are preserved as `_parseRegex()` for reference.
 - **FrameworkDetector:** Purely static utility class — no instantiation needed.
 - **Barrel exports:** `src/core/index.js` and `src/converters/index.js` re-export their modules.
 
@@ -354,19 +359,27 @@ Before submitting any PR, verify:
 |------|---------|-------------|
 | `src/index.js` | Main API entry point | `convertFile`, `convertRepository`, `VERSION`, etc. |
 | `src/core/BaseConverter.js` | Abstract base class | `BaseConverter` |
-| `src/core/ConverterFactory.js` | Factory + lazy loading | `ConverterFactory`, `FRAMEWORKS` |
-| `src/core/PatternEngine.js` | Regex pattern registry | `PatternEngine` |
+| `src/core/ConverterFactory.js` | Factory + pipeline routing | `ConverterFactory`, `FRAMEWORKS` |
+| `src/core/ConversionPipeline.js` | 5-stage conversion pipeline | `ConversionPipeline` |
+| `src/core/PipelineConverter.js` | BaseConverter adapter for pipeline | `PipelineConverter` |
 | `src/core/FrameworkDetector.js` | Auto-detect framework | `FrameworkDetector` |
 | `src/core/FrameworkRegistry.js` | Framework metadata registry | `FrameworkRegistry` |
 | `src/core/ConfigConverter.js` | Config file conversion | `ConfigConverter` |
+| `src/core/PatternEngine.js` | Regex pattern registry (used by PatternEngine tests) | `PatternEngine` |
+| `src/core/ConfidenceScorer.js` | IR-based conversion scoring | `ConfidenceScorer` |
+| `src/core/OutputValidator.js` | Conversion output validation | `OutputValidator` |
+| `src/core/ir.js` | Intermediate representation | IR node constructors, `walkIR` |
+| `src/core/parsers/BabelParser.js` | AST parser for JS/TS → IR | `parseJavaScript` |
+| `src/core/parsers/TreeSitterParser.js` | AST parser for Python/Java → IR | `parsePython`, `parseJava` |
 | `src/core/MigrationEngine.js` | Full project migration | `MigrationEngine` |
 | `src/core/Scanner.js` | File discovery | `Scanner` |
 | `src/core/FileClassifier.js` | Classify file types | `FileClassifier` |
-| `src/core/ir.js` | Intermediate representation | IR node constructors |
 | `src/converters/*.js` | 6 E2E converter classes | One class each |
-| `src/languages/*/frameworks/*.js` | Framework pattern definitions | Pattern registrations |
+| `src/languages/*/frameworks/*.js` | Framework definitions (detect/parse/emit) | 18 framework definitions |
 | `src/cli/shorthands.js` | CLI shorthand definitions | `SHORTHANDS`, `CONVERSION_CATEGORIES` |
+| `src/cli/doctor.js` | Environment diagnostics | `runDoctor` |
 | `src/utils/helpers.js` | Utility namespaces | `fileUtils`, `stringUtils`, `codeUtils`, `testUtils`, `reportUtils`, `logUtils` |
+| `src/server/TerrainServer.js` | HTTP server for browser UI | `TerrainServer` |
 | `bin/terrain.js` | CLI entry point | Commander.js CLI |
 
 ## Running Tests
