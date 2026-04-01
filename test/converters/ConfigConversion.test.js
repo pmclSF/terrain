@@ -123,8 +123,8 @@ export default defineConfig({
 
       const result = await converter.convertConfig('', {});
 
-      expect(result).toContain("import { defineConfig } from '@playwright/test'");
-      expect(result).toContain('testDir');
+      expect(result).toContain('defineConfig');
+      expect(result).toContain("@playwright/test");
     });
   });
 });

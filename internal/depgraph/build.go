@@ -658,13 +658,30 @@ func buildAISurfaceNodes(g *Graph, snap *models.TestSuiteSnapshot) {
 			Package: cs.Package,
 		})
 
+		// Link AI node to its containing source file.
+		sourceFileID := "file:" + cs.Path
+		if g.Node(sourceFileID) != nil {
+			g.AddEdge(&Edge{
+				From:         nodeID,
+				To:           sourceFileID,
+				Type:         EdgeAIDefinedInFile,
+				Confidence:   1.0,
+				EvidenceType: EvidenceStaticAnalysis,
+			})
+		}
+
 		// Link each covering scenario to this AI node.
+		// Use the surface's detection confidence instead of a hardcoded value.
+		edgeConfidence := cs.Confidence
+		if edgeConfidence == 0 {
+			edgeConfidence = 0.8 // fallback for surfaces without confidence
+		}
 		for _, scenarioID := range surfaceScenarios[cs.SurfaceID] {
 			g.AddEdge(&Edge{
 				From:         scenarioID,
 				To:           nodeID,
 				Type:         edgeType,
-				Confidence:   0.8,
+				Confidence:   edgeConfidence,
 				EvidenceType: EvidenceInferred,
 			})
 		}

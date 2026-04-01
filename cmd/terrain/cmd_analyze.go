@@ -13,12 +13,19 @@ import (
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/policy"
 	"github.com/pmclSF/terrain/internal/reporting"
+	"github.com/pmclSF/terrain/internal/sarif"
 )
 
-func runInit(root string) error {
+func runInit(root string, jsonOutput bool) error {
 	result, err := engine.RunInit(root)
 	if err != nil {
 		return err
+	}
+
+	if jsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(result)
 	}
 
 	sep := strings.Repeat("─", 60)
@@ -132,14 +139,21 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	if err := validateCommandInputs(root, coveragePath, parsedRuntime); err != nil {
 		return err
 	}
+	var sarifOutput, annotationOutput bool
 	switch strings.ToLower(strings.TrimSpace(format)) {
 	case "":
 	case "json":
 		jsonOutput = true
 	case "text":
 		jsonOutput = false
+	case "sarif":
+		sarifOutput = true
+		jsonOutput = true // suppress progress output
+	case "annotation":
+		annotationOutput = true
+		jsonOutput = true // suppress progress output
 	default:
-		return fmt.Errorf("invalid --format %q (valid: json, text)", format)
+		return fmt.Errorf("invalid --format %q (valid: json, text, sarif, annotation)", format)
 	}
 
 	opt := analysisPipelineOptions(coveragePath, coverageRunLabel, parsedRuntime, slowThreshold)
@@ -155,11 +169,41 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		logging.L().Info(msg)
 	}
 
+	// Build discovered artifacts list for the report.
+	var discovered []analyze.DiscoveredArtifact
+	if d := result.ArtifactDiscovery; d != nil {
+		if d.CoverageAutoDetected && d.CoveragePath != "" {
+			discovered = append(discovered, analyze.DiscoveredArtifact{
+				Kind: "coverage", Path: engine.RelativePath(d.CoveragePath), Format: d.CoverageFormat,
+			})
+		}
+		if d.RuntimeAutoDetected {
+			for i, p := range d.RuntimePaths {
+				discovered = append(discovered, analyze.DiscoveredArtifact{
+					Kind: "runtime", Path: engine.RelativePath(p), Format: d.RuntimeFormats[i],
+				})
+			}
+		}
+	}
+
 	// Build the structured analyze report (includes depgraph analysis).
 	report := analyze.Build(&analyze.BuildInput{
-		Snapshot:  result.Snapshot,
-		HasPolicy: result.HasPolicy,
+		Snapshot:            result.Snapshot,
+		HasPolicy:           result.HasPolicy,
+		DiscoveredArtifacts: discovered,
 	})
+
+	if sarifOutput {
+		sarifLog := sarif.FromAnalyzeReport(report, version)
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(sarifLog)
+	}
+
+	if annotationOutput {
+		reporting.RenderGitHubAnnotations(os.Stdout, report)
+		return nil
+	}
 
 	if jsonOutput {
 		enc := json.NewEncoder(os.Stdout)
@@ -176,7 +220,7 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	}
 
 	// Show hints for missing artifacts after the report.
-	hints := engine.MissingArtifactHints(&opt, result.ArtifactDiscovery)
+	hints := engine.MissingArtifactHints(&opt, result.ArtifactDiscovery, result.Snapshot.Repository.Languages)
 	if len(hints) > 0 {
 		fmt.Println()
 		fmt.Println("Unlock more:")

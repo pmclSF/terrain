@@ -9,7 +9,8 @@ import (
 )
 
 // RenderPortfolioReport writes a human-readable portfolio intelligence report to w.
-func RenderPortfolioReport(w io.Writer, snap *models.TestSuiteSnapshot) {
+func RenderPortfolioReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...ReportOptions) {
+	_ = isVerbose(opts) // reserved for future verbose per-asset detail
 	line := func(format string, args ...any) {
 		fmt.Fprintf(w, format+"\n", args...)
 	}

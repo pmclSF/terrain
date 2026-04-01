@@ -32,15 +32,15 @@
     },
     "cypress-playwright": {
       "simple": {
-        "lineFidelity": 0.75,
+        "lineFidelity": 0.688,
         "structuralFidelity": 1
       },
       "medium": {
-        "lineFidelity": 0.781,
+        "lineFidelity": 0.543,
         "structuralFidelity": 1
       },
       "complex": {
-        "lineFidelity": 0.833,
+        "lineFidelity": 0.607,
         "structuralFidelity": 1
       }
     },

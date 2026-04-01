@@ -10,7 +10,7 @@ PR changes a prompt or dataset
     ↓
 terrain impact          → identifies impacted tests AND scenarios
     ↓
-terrain ai run          → executes impacted eval scenarios (via Gauntlet)
+terrain ai run          → executes impacted eval scenarios via the detected runner
     ↓
 terrain explain <id>    → traces why a scenario was selected
 ```
@@ -59,16 +59,16 @@ Next steps:
 ### 2. Run Impacted Evaluations
 
 ```bash
-# Execute the impacted scenarios via Gauntlet
+# Execute the impacted scenarios
 terrain ai run
 ```
 
-When fully implemented, this command will:
-1. Read the impacted scenario list from the most recent impact analysis
-2. Invoke Gauntlet as the execution backend
-3. Collect results and ingest them back into Terrain
+Today, this command:
+1. Reads impacted scenarios from the current repo state and recent diff
+2. Builds an execution command for the detected eval framework or runner
+3. Executes the selected scenarios and persists a replayable artifact under `.terrain/artifacts/`
 
-Currently scaffolded — use Gauntlet directly and feed results back:
+You can still ingest external results directly when you already have a Gauntlet artifact:
 
 ```bash
 # Run Gauntlet manually
@@ -145,9 +145,9 @@ scenarios:
 
 The `surfaces` field links scenarios to code surfaces by ID. When those surfaces change, the scenario is flagged as impacted.
 
-### Option 2: Auto-Detection (Future)
+### Option 2: Auto-Detection (Implemented)
 
-Terrain will detect eval frameworks (deepeval, promptfoo, ragas) from config files and directory conventions, creating scenarios automatically without YAML configuration.
+Terrain already detects eval frameworks from config files, dependency manifests, source imports, and eval-file conventions, deriving scenarios automatically when YAML is absent.
 
 ## What Each Command Provides
 
@@ -157,7 +157,7 @@ Terrain will detect eval frameworks (deepeval, promptfoo, ragas) from config fil
 | `terrain impact` | `ImpactedScenarios[]` with confidence, relevance, and covered surfaces |
 | `terrain explain <scenario>` | Verdict explaining why the scenario is impacted, with changed surface list |
 | `terrain ai list` | All detected scenarios, prompt surfaces, dataset surfaces, eval files |
-| `terrain ai doctor` | 5-point diagnostic: scenarios, prompts, datasets, eval files, graph wiring |
+| `terrain ai doctor` | 6-point diagnostic: scenarios, prompts, datasets, eval files, frameworks, graph wiring |
 | `terrain insights` | AI scenario duplication finding when scenarios overlap >50% of surfaces |
 
 ## The Reasoning Path
@@ -201,7 +201,7 @@ The AI workflow is validated by 7 integration tests in `cmd/terrain/ai_workflow_
 | `TestAIWorkflow_ExplainScenario` | `terrain explain` produces verdict for scenario by ID and name |
 | `TestAIWorkflow_ExplainScenario_NilResult` | Graceful error on nil impact result |
 | `TestAIWorkflow_AIListShowsScenarios` | `terrain ai list` shows scenarios and dataset surfaces |
-| `TestAIWorkflow_AIDoctorPassesWithScenarios` | `terrain ai doctor` passes 4/5 checks with configured scenarios |
+| `TestAIWorkflow_AIDoctorPassesWithScenarios` | `terrain ai doctor` emits the expected 6-check JSON contract and text summary for the fixture |
 | `TestAIWorkflow_FullChain_Deterministic` | Full pipeline produces identical output across runs |
 
 Fixture: `tests/fixtures/ai-eval-suite/` with `.terrain/terrain.yaml` defining 3 scenarios covering classifier, embeddings, and dataset surfaces.

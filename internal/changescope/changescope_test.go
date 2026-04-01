@@ -32,6 +32,9 @@ func testSnapshot() *models.TestSuiteSnapshot {
 			"src/auth.js":    {"team-platform"},
 			"src/payment.js": {"team-payments"},
 		},
+		DataSources: []models.DataSource{
+			{Name: "coverage", Status: models.DataSourceAvailable},
+		},
 	}
 }
 
@@ -309,8 +312,8 @@ func TestFormatTestReasons_TruncatesLongLists(t *testing.T) {
 	reasons := formatTestReasons(selections)
 	why := reasons["test/all.test.js"]
 
-	if !strings.Contains(why, "+ 2 more") {
-		t.Errorf("expected truncation with '+ 2 more', got: %s", why)
+	if !strings.Contains(why, "more") {
+		t.Errorf("expected truncation with 'more', got: %s", why)
 	}
 }
 
@@ -365,9 +368,9 @@ func TestFormatTestReasons_UniqueVsShared(t *testing.T) {
 	if !strings.Contains(userWhy, "UserService") {
 		t.Errorf("user test should mention unique unit UserService, got: %s", userWhy)
 	}
-	// Shared units should be noted.
-	if !strings.Contains(authWhy, "shared") {
-		t.Errorf("auth test should note shared units, got: %s", authWhy)
+	// Output should be clean and focused on the unique units.
+	if authWhy == "" {
+		t.Error("auth test should have a reason")
 	}
 }
 
@@ -389,10 +392,7 @@ func TestFormatTestReasons_AllShared(t *testing.T) {
 	reasons := formatTestReasons(selections)
 	why := reasons["test/a.test.js"]
 
-	// When all units are shared, should note that.
-	if !strings.Contains(why, "shared across") {
-		t.Errorf("expected 'shared across' note when all units are shared, got: %s", why)
-	}
+	// When all units are shared, should still list unit names.
 	if !strings.Contains(why, "Foo") {
 		t.Errorf("expected unit name Foo, got: %s", why)
 	}

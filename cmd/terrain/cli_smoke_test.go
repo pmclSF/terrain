@@ -1,0 +1,149 @@
+package main
+
+import (
+	"bytes"
+	"io"
+	"os"
+	"testing"
+)
+
+// TestCLISmoke_ReportingCommands runs every reporting command against the
+// fixture repo and verifies no errors or panics. These are smoke tests
+// that catch regressions (broken imports, nil panics, serialization
+// failures) without the maintenance burden of golden files.
+//
+// Not parallel: commands write to os.Stdout which requires sequential capture.
+func TestCLISmoke_ReportingCommands(t *testing.T) {
+	root := fixtureRoot(t)
+
+	tests := []struct {
+		name string
+		run  func() error
+	}{
+		{"summary", func() error { return runSummary(root, true, false) }},
+		{"posture", func() error { return runPosture(root, true, false) }},
+		{"metrics", func() error { return runMetrics(root, true, false) }},
+		{"portfolio", func() error { return runPortfolio(root, true, false) }},
+		{"focus", func() error { return runFocus(root, true, false) }},
+		{"migration", func() error { return runMigration("readiness", root, true, "", "") }},
+		{"benchmark", func() error { return runExportBenchmark(root, true) }},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out, err := captureRun(tt.run)
+			if err != nil {
+				t.Errorf("%s returned error: %v", tt.name, err)
+			}
+			if len(out) == 0 {
+				t.Errorf("%s produced no output", tt.name)
+			}
+		})
+	}
+}
+
+// TestCLISmoke_ExplainCommand verifies the explain command runs without error.
+func TestCLISmoke_ExplainCommand(t *testing.T) {
+	root := fixtureRoot(t)
+
+	out, err := captureRun(func() error {
+		return runExplain("selection", root, "HEAD~1", true, false)
+	})
+	if err != nil {
+		t.Errorf("explain selection failed: %v", err)
+	}
+	if len(out) == 0 {
+		t.Error("explain selection produced no output")
+	}
+}
+
+// TestCLISmoke_PolicyCheckCommand verifies policy check runs without error.
+func TestCLISmoke_PolicyCheckCommand(t *testing.T) {
+	root := fixtureRoot(t)
+
+	out, _ := captureRun(func() error {
+		exitCode := runPolicyCheck(root, true, "", "", "", 0)
+		if exitCode != 0 && exitCode != 2 {
+			t.Errorf("policy check exit code = %d, want 0 or 2", exitCode)
+		}
+		return nil
+	})
+	_ = out // Policy check may produce empty output when no policy is configured.
+}
+
+// TestCLISmoke_DepgraphCommand verifies the debug depgraph command works.
+func TestCLISmoke_DepgraphCommand(t *testing.T) {
+	root := fixtureRoot(t)
+
+	out, err := captureRun(func() error {
+		return runDepgraph(root, true, "stats", "")
+	})
+	if err != nil {
+		t.Errorf("depgraph stats failed: %v", err)
+	}
+	if len(out) == 0 {
+		t.Error("depgraph stats produced no output")
+	}
+}
+
+// TestCLISmoke_ShowCommand verifies show doesn't panic on unknown IDs.
+func TestCLISmoke_ShowCommand(t *testing.T) {
+	root := fixtureRoot(t)
+
+	// Non-existent ID should not panic. It may return an error or "not found".
+	_, _ = captureRun(func() error {
+		return runShow("test", "nonexistent-id", root, true)
+	})
+}
+
+// TestCLISmoke_SelectTestsCommand verifies select-tests runs.
+func TestCLISmoke_SelectTestsCommand(t *testing.T) {
+	root := fixtureRoot(t)
+
+	out, err := captureRun(func() error {
+		return runSelectTests(root, "HEAD~1", true)
+	})
+	if err != nil {
+		t.Errorf("select-tests failed: %v", err)
+	}
+	if len(out) == 0 {
+		t.Error("select-tests produced no output")
+	}
+}
+
+// TestCLISmoke_PRCommand verifies the PR command runs.
+func TestCLISmoke_PRCommand(t *testing.T) {
+	root := fixtureRoot(t)
+
+	out, err := captureRun(func() error {
+		return runPR(root, "HEAD~1", true, "")
+	})
+	if err != nil {
+		t.Errorf("pr failed: %v", err)
+	}
+	if len(out) == 0 {
+		t.Error("pr produced no output")
+	}
+}
+
+// captureRun redirects os.Stdout, runs fn, and returns captured output.
+// Must NOT be used concurrently — os.Stdout is global.
+func captureRun(fn func() error) ([]byte, error) {
+	old := os.Stdout
+	r, w, pipeErr := os.Pipe()
+	if pipeErr != nil {
+		return nil, pipeErr
+	}
+	os.Stdout = w
+
+	fnErr := fn()
+
+	w.Close()
+	os.Stdout = old
+
+	var buf bytes.Buffer
+	io.Copy(&buf, r)
+	r.Close()
+
+	return buf.Bytes(), fnErr
+}

@@ -116,7 +116,7 @@ Test coverage expectations:
 ```bash
 go test ./internal/measurement/ -v -run TestMyNew
 go test ./internal/... -count=1
-go build ./internal/... ./cmd/...
+go build ./cmd/... ./internal/...
 ```
 
 ## Step 5: Document
@@ -138,4 +138,4 @@ Include: what, how, evidence, thresholds, why it matters, limitations.
 - [ ] No duplicate measurement ID (registry panics on duplicates)
 - [ ] Documentation updated
 - [ ] `go test ./internal/measurement/` passes
-- [ ] `go build ./internal/... ./cmd/...` passes
+- [ ] `go build ./cmd/... ./internal/...` passes

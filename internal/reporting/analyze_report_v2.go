@@ -21,7 +21,50 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	line(strings.Repeat("=", 60))
 	blank()
 
-	// Repository profile (the "wow" section — leads with insight)
+	// Headline — the single most important sentence.
+	if r.Headline != "" {
+		line("  %s", r.Headline)
+		blank()
+	}
+
+	// Auto-discovered artifacts.
+	if len(r.DiscoveredArtifacts) > 0 {
+		for _, a := range r.DiscoveredArtifacts {
+			line("  Auto-detected %s: %s (%s)", a.Kind, a.Path, a.Format)
+		}
+		blank()
+	}
+
+	// Key findings — top 3 prioritized issues, shown early for impact.
+	if len(r.KeyFindings) > 0 {
+		line("Key Findings")
+		line(strings.Repeat("-", 60))
+		for i, f := range r.KeyFindings {
+			badge := strings.ToUpper(f.Severity)
+			line("  %d. [%s] %s", i+1, badge, f.Title)
+		}
+		remaining := r.TotalFindingCount - len(r.KeyFindings)
+		if remaining > 0 {
+			line("  %d more finding(s) available — run `terrain insights` for the full report.", remaining)
+		}
+		blank()
+	}
+
+	// Next actions — up to 3 prioritized things to do.
+	if len(r.NextActions) > 0 {
+		line("What to do next:")
+		for i, a := range r.NextActions {
+			line("  %d. %s", i+1, a.Title)
+			line("     $ %s", a.Command)
+			line("     %s", a.Explanation)
+			if i < len(r.NextActions)-1 {
+				blank()
+			}
+		}
+		blank()
+	}
+
+	// Repository profile
 	line("Repository Profile")
 	line(strings.Repeat("-", 60))
 	line("  Test volume:          %s", r.RepoProfile.TestVolume)
@@ -146,22 +189,8 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		blank()
 	}
 
-	// Key findings — top 3 prioritized issues.
-	if len(r.KeyFindings) > 0 {
-		line("Key Findings")
-		line(strings.Repeat("-", 60))
-		for i, f := range r.KeyFindings {
-			badge := strings.ToUpper(f.Severity)
-			line("  %d. [%s] %s", i+1, badge, f.Title)
-		}
-		remaining := r.TotalFindingCount - len(r.KeyFindings)
-		if remaining > 0 {
-			blank()
-			line("  %d more finding(s) available — run `terrain insights` for the full report.", remaining)
-		}
-		blank()
-	} else {
-		// Fallback to TopInsight for backward compat when no findings derived.
+	// Fallback insight when no key findings were shown at the top.
+	if len(r.KeyFindings) == 0 && r.TopInsight != "" {
 		line("Top Insight")
 		line(strings.Repeat("-", 60))
 		line("  %s", r.TopInsight)
@@ -252,13 +281,14 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		line("Stability")
 		line(strings.Repeat("-", 60))
 		line("  %d skipped test(s) detected. Skipped tests may mask instability.", r.SkippedTestBurden.SkippedCount)
-		line("  Provide --runtime artifacts to unlock flaky/slow test detection and root-cause clustering.")
+		line("  Provide --runtime artifacts to unlock flaky/slow/dead detection and root-cause clustering.")
 		blank()
 	} else if !hasDataSource(r.DataCompleteness, "runtime") {
 		line("Stability")
 		line(strings.Repeat("-", 60))
-		line("  No runtime data provided. Provide --runtime (JUnit XML or Jest JSON)")
-		line("  to unlock: flaky test detection, slow test flagging, stability clustering.")
+		line("  No runtime data provided. Static skip detection is already available.")
+		line("  Provide --runtime (JUnit XML or Jest JSON) to unlock flaky/slow/dead detection")
+		line("  and stability clustering.")
 		blank()
 	}
 

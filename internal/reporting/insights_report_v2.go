@@ -11,7 +11,8 @@ import (
 // RenderInsightsReport writes a human-readable health report from the
 // structured insights.Report. This replaces the raw dump with a
 // prioritized, categorized view.
-func RenderInsightsReport(w io.Writer, r *insights.Report) {
+func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions) {
+	verbose := isVerbose(opts)
 	line := func(format string, args ...any) {
 		fmt.Fprintf(w, format+"\n", args...)
 	}
@@ -77,6 +78,14 @@ func RenderInsightsReport(w io.Writer, r *insights.Report) {
 				// Wrap long descriptions.
 				line("         %s", f.Description)
 			}
+			if verbose {
+				if f.Scope != "" {
+					line("         scope: %s", f.Scope)
+				}
+				if f.Metric != "" {
+					line("         metric: %s", f.Metric)
+				}
+			}
 		}
 		blank()
 	}
@@ -99,6 +108,22 @@ func RenderInsightsReport(w io.Writer, r *insights.Report) {
 			}
 			if rec.Impact != "" {
 				line("     impact: %s", rec.Impact)
+			}
+			if rec.EffortBand != "" {
+				line("     effort: %s", rec.EffortBand)
+			}
+			if len(rec.TargetFiles) > 0 {
+				shown := rec.TargetFiles
+				if len(shown) > 3 {
+					shown = shown[:3]
+				}
+				line("     files:  %s", strings.Join(shown, ", "))
+				if len(rec.TargetFiles) > 3 {
+					line("             +%d more", len(rec.TargetFiles)-3)
+				}
+			}
+			if rec.Command != "" {
+				line("     run:    %s", rec.Command)
 			}
 		}
 		blank()

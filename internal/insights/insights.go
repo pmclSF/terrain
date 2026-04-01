@@ -12,6 +12,7 @@ import (
 	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/matrix"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/skipstats"
 	"github.com/pmclSF/terrain/internal/stability"
 )
 
@@ -19,10 +20,10 @@ import (
 type Category string
 
 const (
-	CategoryOptimization    Category = "optimization"
-	CategoryReliability     Category = "reliability"
+	CategoryOptimization     Category = "optimization"
+	CategoryReliability      Category = "reliability"
 	CategoryArchitectureDebt Category = "architecture_debt"
-	CategoryCoverageDebt    Category = "coverage_debt"
+	CategoryCoverageDebt     Category = "coverage_debt"
 )
 
 // Severity ranks how urgent a finding is.
@@ -117,14 +118,23 @@ type Recommendation struct {
 
 	// Impact estimates the benefit (e.g., "reduce CI runtime by ~15%").
 	Impact string `json:"impact,omitempty"`
+
+	// TargetFiles lists specific file paths to act on.
+	TargetFiles []string `json:"targetFiles,omitempty"`
+
+	// EffortBand is "small" (1-3 files), "medium" (4-10), or "large" (10+).
+	EffortBand string `json:"effortBand,omitempty"`
+
+	// Command is a runnable terrain command for drill-down.
+	Command string `json:"command,omitempty"`
 }
 
 // CategoryBreakdown summarizes findings within a category.
 type CategoryBreakdown struct {
-	Count          int      `json:"count"`
-	CriticalCount  int      `json:"criticalCount"`
-	HighCount      int      `json:"highCount"`
-	TopFinding     string   `json:"topFinding,omitempty"`
+	Count         int    `json:"count"`
+	CriticalCount int    `json:"criticalCount"`
+	HighCount     int    `json:"highCount"`
+	TopFinding    string `json:"topFinding,omitempty"`
 }
 
 // DataSource describes a data source's availability.
@@ -420,43 +430,25 @@ func coverageFindings(input *BuildInput) []Finding {
 
 func skipFindings(input *BuildInput) []Finding {
 	var findings []Finding
-	snap := input.Snapshot
+	stats := skipstats.Summarize(input.Snapshot)
 
-	skipped := 0
-	for _, sig := range snap.Signals {
-		if sig.Type == "skippedTest" || sig.Type == "conditionallySkippedTest" {
-			skipped++
-		}
-	}
-
-	if skipped == 0 {
+	if stats.SkippedTests == 0 {
 		return findings
 	}
 
-	totalTests := 0
-	for _, tf := range snap.TestFiles {
-		totalTests += tf.TestCount
-	}
-	if totalTests == 0 {
-		totalTests = len(snap.TestCases)
-	}
-
 	sev := SeverityLow
-	if totalTests > 0 {
-		ratio := float64(skipped) / float64(totalTests)
-		if ratio > 0.10 {
-			sev = SeverityHigh
-		} else if ratio > 0.03 {
-			sev = SeverityMedium
-		}
+	if stats.TestRatio > 0.10 {
+		sev = SeverityHigh
+	} else if stats.TestRatio > 0.03 {
+		sev = SeverityMedium
 	}
 
 	findings = append(findings, Finding{
-		Title:       fmt.Sprintf("%d skipped tests consuming CI resources", skipped),
+		Title:       fmt.Sprintf("%d skipped tests consuming CI resources", stats.SkippedTests),
 		Description: "Skipped tests still occupy CI queue slots and mask coverage gaps. Review whether each skip is still justified or should be removed.",
 		Category:    CategoryReliability,
 		Severity:    sev,
-		Metric:      fmt.Sprintf("%d skipped", skipped),
+		Metric:      fmt.Sprintf("%d skipped", stats.SkippedTests),
 	})
 
 	return findings
@@ -750,6 +742,17 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 			rec.Action = fmt.Sprintf("Consolidate %d duplicate test clusters", len(input.Duplicates.Clusters))
 			rec.Rationale = "Removing redundant tests reduces CI runtime and maintenance overhead."
 			rec.Impact = fmt.Sprintf("~%d fewer tests to maintain", input.Duplicates.DuplicateCount)
+			rec.Command = "terrain insights"
+			// Target files from the largest cluster.
+			if len(input.Duplicates.Clusters) > 0 {
+				cluster := input.Duplicates.Clusters[0]
+				for _, t := range cluster.Tests {
+					if len(rec.TargetFiles) >= 5 {
+						break
+					}
+					rec.TargetFiles = append(rec.TargetFiles, t)
+				}
+			}
 
 		case f.Category == CategoryArchitectureDebt && input.Fanout.FlaggedCount > 0:
 			rec.Action = "Refactor high-fanout fixtures to reduce blast radius"
@@ -761,22 +764,57 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 				rec.Rationale = "High-fanout nodes create fragile dependencies."
 			}
 			rec.Impact = "narrower test impact per change"
+			rec.Command = "terrain debug fanout"
+			// Target files from top flagged entries.
+			for _, e := range input.Fanout.Entries {
+				if !e.Flagged || len(rec.TargetFiles) >= 5 {
+					break
+				}
+				if e.Path != "" {
+					rec.TargetFiles = append(rec.TargetFiles, e.Path)
+				}
+			}
 
 		case f.Category == CategoryCoverageDebt && f.Title != "" && input.Coverage.SourceCount > 0:
 			lowCount := input.Coverage.BandCounts[depgraph.CoverageBandLow]
 			rec.Action = fmt.Sprintf("Add tests for %d uncovered source files", lowCount)
 			rec.Rationale = "Coverage gaps mean changes in these files cannot trigger targeted test selection."
 			rec.Impact = "improved change-scoped test selection accuracy"
+			rec.Command = "terrain analyze --verbose"
+			// Target files from lowest-coverage sources.
+			for _, src := range input.Coverage.Sources {
+				if len(rec.TargetFiles) >= 5 {
+					break
+				}
+				if src.TestCount == 0 {
+					rec.TargetFiles = append(rec.TargetFiles, src.SourceID)
+				}
+			}
 
 		case f.Category == CategoryReliability && f.Severity == SeverityCritical:
 			rec.Action = f.Title
 			rec.Rationale = f.Description
 			rec.Impact = "reduced risk of missed regressions"
+			// Target files from signals matching this finding.
+			for _, sig := range input.Snapshot.Signals {
+				if len(rec.TargetFiles) >= 5 {
+					break
+				}
+				if sig.Location.File != "" && (sig.Type == "flakyTest" || sig.Type == "slowTest") {
+					rec.TargetFiles = append(rec.TargetFiles, sig.Location.File)
+				}
+			}
+			if len(rec.TargetFiles) > 0 {
+				rec.Command = fmt.Sprintf("terrain show test %s", rec.TargetFiles[0])
+			}
 
 		default:
 			rec.Action = f.Title
 			rec.Rationale = f.Description
 		}
+
+		// Derive effort band from target file count.
+		rec.EffortBand = effortBand(len(rec.TargetFiles))
 
 		// Deduplicate: skip if we already have a rec with the same action.
 		dup := false
@@ -802,6 +840,20 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 	}
 
 	return recs
+}
+
+// effortBand classifies the number of target files into a band.
+func effortBand(fileCount int) string {
+	switch {
+	case fileCount == 0:
+		return ""
+	case fileCount <= 3:
+		return "small"
+	case fileCount <= 10:
+		return "medium"
+	default:
+		return "large"
+	}
 }
 
 // --- Headline and health grade ---
@@ -881,7 +933,7 @@ func buildLimitations(input *BuildInput) []string {
 		lims = append(lims, "No coverage data; coverage confidence is structural (import-based) only.")
 	}
 	if !dsAvailable(snap, "runtime") {
-		lims = append(lims, "No runtime data; flaky/slow test detection relies on structural signals only.")
+		lims = append(lims, "No runtime data; static skip detection is available, but flaky/slow/dead/unstable signals still require runtime artifacts.")
 	}
 	if !input.HasPolicy && !dsAvailable(snap, "policy") {
 		lims = append(lims, "No policy file found; governance checks skipped.")

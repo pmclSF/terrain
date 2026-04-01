@@ -61,8 +61,11 @@ export class PipelineConverter extends BaseConverter {
    * @returns {Promise<string>} Converted config content
    */
   async convertConfig(configPath, _options = {}) {
-    const fs = (await import('fs/promises')).default;
-    const content = await fs.readFile(configPath, 'utf8');
+    let content = '';
+    if (configPath) {
+      const fs = (await import('fs/promises')).default;
+      content = await fs.readFile(configPath, 'utf8');
+    }
     return this.configConverter.convert(
       content,
       this.sourceFramework,

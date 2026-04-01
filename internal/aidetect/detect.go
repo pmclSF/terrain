@@ -145,11 +145,11 @@ func detectDependencies(root string, result *DetectResult) {
 
 // Model invocation patterns in source code.
 var modelCallPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)openai|ChatCompletion|chat\.completions\.create`),
-	regexp.MustCompile(`(?i)anthropic|messages\.create|claude`),
-	regexp.MustCompile(`(?i)\.invoke\(|\.call\(|\.predict\(|\.generate\(`),
-	regexp.MustCompile(`(?i)LLMChain|ChatPromptTemplate|PromptTemplate`),
-	regexp.MustCompile(`(?i)pipeline\(|AutoModel|AutoTokenizer`),
+	regexp.MustCompile(`\bOpenAI\b|ChatCompletion|chat\.completions\.create`),
+	regexp.MustCompile(`\bAnthropic\b|messages\.create|claude`),
+	regexp.MustCompile(`\.(invoke|predict|generate)\s*\(`),
+	regexp.MustCompile(`\bLLMChain\b|\bChatPromptTemplate\b|\bPromptTemplate\b`),
+	regexp.MustCompile(`\bpipeline\s*\(|\bAutoModel\b|\bAutoTokenizer\b`),
 }
 
 // detectFromSource walks source files looking for AI import patterns.

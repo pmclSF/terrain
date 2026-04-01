@@ -31,16 +31,6 @@ func (r *Registry) Register(def Definition) error {
 	return nil
 }
 
-// MustRegister adds a measurement definition, panicking on duplicate ID.
-//
-// Deprecated: Use Register and propagate errors instead.
-// Retained only for backward compatibility with tests.
-func (r *Registry) MustRegister(def Definition) {
-	if err := r.Register(def); err != nil {
-		panic(err)
-	}
-}
-
 // All returns all registered definitions in registration order.
 func (r *Registry) All() []Definition {
 	out := make([]Definition, len(r.definitions))

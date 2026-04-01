@@ -10,7 +10,8 @@ import (
 
 // RenderPostureReport writes a detailed posture breakdown with measurement
 // evidence and explanations. This is the "posture explain" output.
-func RenderPostureReport(w io.Writer, snap *models.TestSuiteSnapshot) {
+func RenderPostureReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...ReportOptions) {
+	_ = isVerbose(opts) // reserved for future verbose posture detail
 	line := func(format string, args ...any) {
 		fmt.Fprintf(w, format+"\n", args...)
 	}

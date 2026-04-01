@@ -11,9 +11,9 @@ func TestDefaultRegistry_WithoutPolicy(t *testing.T) {
 	t.Parallel()
 	r, _ := DefaultRegistry(Config{RepoRoot: "."})
 
-	// Should have 12 detectors (5 quality + 2 coverage + 5 migration, no governance).
-	if r.Len() != 12 {
-		t.Errorf("DefaultRegistry without policy: Len() = %d, want 12", r.Len())
+	// Should have 14 detectors (5 quality + 2 health + 2 coverage + 5 migration, no governance).
+	if r.Len() != 26 {
+		t.Errorf("DefaultRegistry without policy: Len() = %d, want 26", r.Len())
 	}
 
 	quality := r.ByDomain(signals.DomainQuality)
@@ -50,9 +50,9 @@ func TestDefaultRegistry_WithPolicy(t *testing.T) {
 	}
 	r, _ := DefaultRegistry(cfg)
 
-	// Should have 13 detectors (5 quality + 2 coverage + 5 migration + 1 governance).
-	if r.Len() != 13 {
-		t.Errorf("DefaultRegistry with policy: Len() = %d, want 13", r.Len())
+	// Should have 15 detectors (5 quality + 2 health + 2 coverage + 5 migration + 1 governance).
+	if r.Len() != 27 {
+		t.Errorf("DefaultRegistry with policy: Len() = %d, want 27", r.Len())
 	}
 
 	governance := r.ByDomain(signals.DomainGovernance)
@@ -73,11 +73,25 @@ func TestDefaultRegistry_DetectorIDs(t *testing.T) {
 		"quality.coverage-threshold",
 		"coverage.blind-spot",
 		"quality.static-skip",
+		"health.assertion-free",
+		"health.orphaned-test",
 		"migration.deprecated-pattern",
 		"migration.dynamic-test-generation",
 		"migration.custom-matcher",
 		"migration.unsupported-setup",
 		"migration.framework-migration",
+		"health.slow-test",
+		"health.flaky-test",
+		"health.skipped-test",
+		"health.dead-test",
+		"health.unstable-suite",
+		"structural.assertion-free-import",
+		"structural.blast-radius-hotspot",
+		"structural.fixture-fragility-hotspot",
+		"structural.uncovered-ai-surface",
+		"structural.phantom-eval-scenario",
+		"structural.untested-prompt-flow",
+		"structural.capability-validation-gap",
 	}
 
 	all := r.All()

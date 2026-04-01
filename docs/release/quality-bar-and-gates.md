@@ -11,18 +11,18 @@ complete in under 2 minutes.
 
 | Gate | Command | What It Catches |
 |------|---------|-----------------|
-| `go vet` | `go vet ./...` | Static analysis: unused variables, formatting errors, suspicious constructs |
-| `go test` | `go test ./...` | Unit test failures, integration test failures |
+| `go vet` | `go vet ./cmd/... ./internal/...` | Static analysis across Terrain-owned Go packages |
+| `go test` | `go test ./cmd/... ./internal/...` | Unit test failures across Terrain-owned Go packages |
 | `go build` | `go build ./cmd/terrain` | Compilation errors, missing dependencies |
-| Golden tests | `go test ./... -run TestGolden` | Output regressions against checked-in golden files |
+| Snapshot regression | `go test ./cmd/terrain/ -run TestSnapshot -count=1 -v` | CLI output regressions against checked-in snapshots |
 
 **Makefile targets:**
 
 ```makefile
-make check       # Runs go vet
-make test        # Runs go test ./...
-make test-v      # Runs go test ./... -v (verbose)
-make test-cover  # Runs go test ./... -coverprofile=coverage.out
+make check       # Runs go vet ./cmd/... ./internal/... and go build ./cmd/terrain
+make test        # Runs go test ./cmd/... ./internal/...
+make test-v      # Runs go test ./cmd/... ./internal/... -v (verbose)
+make test-cover  # Runs go test ./cmd/... ./internal/... -coverprofile=coverage.out
 ```
 
 PR gates are configured in the CI workflow and block merge on failure.
@@ -37,6 +37,8 @@ release is tagged.
 | Gate | What It Validates |
 |------|-------------------|
 | All PR gates | Everything in Tier 1 |
+| npm package verify | `npm run release:verify` on a clean install |
+| VS Code extension verify | `npm --prefix extension/vscode ci && npm --prefix extension/vscode run compile && npm --prefix extension/vscode test` |
 | Determinism suite | Same input produces byte-identical output across runs |
 | Schema compatibility | JSON output conforms to published schemas in `docs/schema/` |
 | Benchmark-safe export | Exported benchmark data excludes sensitive fields and meets format requirements |
@@ -47,6 +49,14 @@ release is tagged.
 Release gates are run manually before tagging a release or automatically
 in the release CI workflow. See `docs/release/release-checklist-final.md`
 for the full release process.
+
+The canonical release contract is `make release-verify`, which runs:
+
+```bash
+make go-release-verify
+make js-release-verify
+make extension-verify
+```
 
 ## Tier 3: Nightly and Optional Gates
 
