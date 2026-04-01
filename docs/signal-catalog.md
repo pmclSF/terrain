@@ -2,7 +2,18 @@
 
 Terrain's signal system operates in four tiers, each requiring different data sources. All signals share the same structure: type, category, severity, confidence, evidence strength, location, explanation, and suggested remediation.
 
-## Tier 1: Core Static Signals (22 types)
+## Why tiers?
+
+Signals are discovered progressively as more data becomes available:
+
+- **Tier 1** requires only source code (always available on every `terrain analyze` run)
+- **Tier 2** requires test execution data (JUnit XML, Jest JSON — provide via `--runtime`)
+- **Tier 3** is automatic (dependency graph analysis runs alongside Tier 1)
+- **Tier 4** requires AI evaluation artifacts (Gauntlet format — provide via `--gauntlet`)
+
+Most teams get value from Tier 1 alone. Tiers 2–4 add depth without requiring additional setup.
+
+## Tier 1: Core Static Signals (20 types)
 
 Emitted by static analysis alone. No runtime artifacts required. Available on every `terrain analyze` run.
 
@@ -340,7 +351,7 @@ Remediation: Add eval scenarios that exercise this capability to ensure behavior
 
 ---
 
-## Tier 4: AI/Eval Signals (22 types)
+## Tier 4: AI/Eval Signals (24 types)
 
 Emitted when Gauntlet evaluation artifacts are provided. These signals represent observed evaluation failures and regressions from actual AI system execution. They cannot be produced by static analysis.
 
