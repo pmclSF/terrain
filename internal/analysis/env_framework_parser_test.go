@@ -343,6 +343,109 @@ func TestInferBrowserEngine(t *testing.T) {
 	}
 }
 
+func TestParseSauceLabsConfig(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+
+	os.MkdirAll(filepath.Join(root, ".sauce"), 0o755)
+	os.WriteFile(filepath.Join(root, ".sauce", "config.yml"), []byte(`
+apiVersion: v1alpha
+suites:
+  - name: "Chrome on Windows"
+    platformName: "Windows 11"
+    browserName: "chrome"
+  - name: "Safari on macOS"
+    platformName: "macOS 14"
+    browserName: "safari"
+  - name: "Pixel 7"
+    capabilities:
+      deviceName: "Google Pixel 7"
+      platformName: "Android"
+`), 0o644)
+
+	result := &FrameworkMatrixResult{}
+	parseSauceLabsConfig(root, result)
+
+	if len(result.DeviceConfigs) != 3 {
+		t.Fatalf("expected 3 device configs, got %d", len(result.DeviceConfigs))
+	}
+
+	names := map[string]bool{}
+	for _, dc := range result.DeviceConfigs {
+		names[dc.Name] = true
+		if dc.InferredFrom != "saucelabs" {
+			t.Errorf("device %q: InferredFrom = %q, want saucelabs", dc.Name, dc.InferredFrom)
+		}
+	}
+
+	if !names["Google Pixel 7"] {
+		t.Error("expected Google Pixel 7 device")
+	}
+	if !names["chrome on Windows 11"] {
+		t.Error("expected chrome on Windows 11 device")
+	}
+
+	if len(result.EnvironmentClasses) != 1 || result.EnvironmentClasses[0].ClassID != "envclass:saucelabs-device" {
+		t.Error("expected saucelabs-device environment class")
+	}
+}
+
+func TestParseFirebaseTestLabConfig(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+
+	os.WriteFile(filepath.Join(root, "firebase.json"), []byte(`{
+  "testlab": {
+    "devices": [
+      {"model": "Pixel7", "version": "33"},
+      {"model": "Pixel6", "version": "31"},
+      {"model": "redfin", "version": "30", "locale": "en_US"}
+    ]
+  }
+}`), 0o644)
+
+	result := &FrameworkMatrixResult{}
+	parseFirebaseTestLabConfig(root, result)
+
+	if len(result.DeviceConfigs) != 3 {
+		t.Fatalf("expected 3 device configs, got %d", len(result.DeviceConfigs))
+	}
+
+	found := map[string]bool{}
+	for _, dc := range result.DeviceConfigs {
+		found[dc.Name] = true
+		if dc.InferredFrom != "firebase-testlab" {
+			t.Errorf("device %q: InferredFrom = %q, want firebase-testlab", dc.Name, dc.InferredFrom)
+		}
+	}
+
+	if !found["Pixel7 (API 33)"] {
+		t.Error("expected Pixel7 (API 33) device")
+	}
+	if !found["redfin (API 30)"] {
+		t.Error("expected redfin (API 30) device")
+	}
+
+	if len(result.EnvironmentClasses) != 1 || result.EnvironmentClasses[0].ClassID != "envclass:firebase-device" {
+		t.Error("expected firebase-device environment class")
+	}
+}
+
+func TestParseFirebaseTestLabConfig_NoTestlab(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+
+	// firebase.json without testlab field should be silently ignored.
+	os.WriteFile(filepath.Join(root, "firebase.json"), []byte(`{"hosting": {"public": "dist"}}`), 0o644)
+
+	result := &FrameworkMatrixResult{}
+	parseFirebaseTestLabConfig(root, result)
+
+	if len(result.DeviceConfigs) != 0 {
+		t.Errorf("expected 0 device configs, got %d", len(result.DeviceConfigs))
+	}
+}
+
 func TestParseFrameworkMatrices_NoConfigs(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
