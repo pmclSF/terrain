@@ -35,7 +35,7 @@ func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string) 
 
 	// Apply edge-case policy to adjust confidence and add warnings.
 	snapshot := result.Snapshot
-	dg := depgraph.Build(snapshot)
+	dg := result.Graph
 	dgCov := depgraph.AnalyzeCoverage(dg)
 	dgDupes := depgraph.DetectDuplicates(dg)
 	dgFanout := depgraph.AnalyzeFanout(dg, depgraph.DefaultFanoutThreshold)

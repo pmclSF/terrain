@@ -258,7 +258,7 @@ func runInsights(root string, jsonOutput, verbose bool) error {
 		}}
 		input.Coverage = depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}}
 	} else {
-		dg := depgraph.Build(snapshot)
+		dg := result.Graph
 		input.Coverage = depgraph.AnalyzeCoverage(dg)
 		input.Duplicates = depgraph.DetectDuplicates(dg)
 		input.Fanout = depgraph.AnalyzeFanout(dg, depgraph.DefaultFanoutThreshold)
