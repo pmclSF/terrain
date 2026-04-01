@@ -295,6 +295,10 @@ func parseMobileDeviceConfigs(root string, result *FrameworkMatrixResult) {
 	parseBrowserStackConfig(root, result)
 	// Appium capabilities in JSON
 	parseAppiumConfig(root, result)
+	// Sauce Labs config (.sauce/config.yml or .sauce.yml)
+	parseSauceLabsConfig(root, result)
+	// Firebase Test Lab config (firebase.json with testlab field)
+	parseFirebaseTestLabConfig(root, result)
 }
 
 func parseBrowserStackConfig(root string, result *FrameworkMatrixResult) {
@@ -457,6 +461,183 @@ func extractAppiumDevices(content, filename string, result *FrameworkMatrixResul
 		result.EnvironmentClasses = appendClassIfNew(result.EnvironmentClasses, models.EnvironmentClass{
 			ClassID:   classID,
 			Name:      "Appium devices",
+			Dimension: "device",
+			MemberIDs: memberIDs,
+		})
+	}
+}
+
+// --- Sauce Labs ---
+
+func parseSauceLabsConfig(root string, result *FrameworkMatrixResult) {
+	paths := []string{
+		filepath.Join(root, ".sauce", "config.yml"),
+		filepath.Join(root, ".sauce.yml"),
+		filepath.Join(root, ".sauce", "config.yaml"),
+	}
+
+	var data []byte
+	for _, p := range paths {
+		d, err := os.ReadFile(p)
+		if err == nil {
+			data = d
+			break
+		}
+	}
+	if data == nil {
+		return
+	}
+
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return
+	}
+
+	classID := "envclass:saucelabs-device"
+	var memberIDs []string
+
+	// Sauce Labs config: suites[].capabilities or suites[].platformName/browserName
+	suites := extractInterfaceSlice(raw, "suites")
+	for _, s := range suites {
+		sMap, ok := s.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		// Direct fields on suite.
+		platformName := stringFromMap(sMap, "platformName")
+		browserName := stringFromMap(sMap, "browserName")
+		deviceName := stringFromMap(sMap, "deviceName")
+
+		// Or nested in capabilities.
+		if caps, ok := sMap["capabilities"].(map[string]interface{}); ok {
+			if platformName == "" {
+				platformName = stringFromMap(caps, "platformName")
+			}
+			if browserName == "" {
+				browserName = stringFromMap(caps, "browserName")
+			}
+			if deviceName == "" {
+				deviceName = stringFromMap(caps, "deviceName")
+			}
+		}
+
+		var name string
+		if deviceName != "" {
+			name = deviceName
+		} else if browserName != "" {
+			name = browserName
+			if platformName != "" {
+				name += " on " + platformName
+			}
+		} else if platformName != "" {
+			name = platformName
+		} else {
+			continue
+		}
+
+		deviceID := "device:sl-" + sanitizeID(name)
+		memberIDs = append(memberIDs, deviceID)
+
+		dc := models.DeviceConfig{
+			DeviceID:     deviceID,
+			Name:         name,
+			Platform:     inferDevicePlatform(name),
+			FormFactor:   inferFormFactor(name),
+			ClassID:      classID,
+			InferredFrom: "saucelabs",
+		}
+		if browserName != "" {
+			dc.BrowserEngine = inferBrowserEngine(browserName)
+		}
+
+		result.DeviceConfigs = appendDeviceIfNew(result.DeviceConfigs, dc)
+	}
+
+	if len(memberIDs) > 0 {
+		result.EnvironmentClasses = appendClassIfNew(result.EnvironmentClasses, models.EnvironmentClass{
+			ClassID:   classID,
+			Name:      "Sauce Labs devices",
+			Dimension: "device",
+			MemberIDs: memberIDs,
+		})
+	}
+}
+
+// --- Firebase Test Lab ---
+
+func parseFirebaseTestLabConfig(root string, result *FrameworkMatrixResult) {
+	data, err := os.ReadFile(filepath.Join(root, "firebase.json"))
+	if err != nil {
+		return
+	}
+
+	// firebase.json is standard JSON; yaml.Unmarshal handles JSON too.
+	var raw map[string]interface{}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return
+	}
+
+	// Look for testlab configuration.
+	testlab, ok := raw["testlab"].(map[string]interface{})
+	if !ok {
+		// Also check emulators.testlab or hosting.testlab as fallback.
+		if emu, ok := raw["emulators"].(map[string]interface{}); ok {
+			testlab, _ = emu["testlab"].(map[string]interface{})
+		}
+	}
+	if testlab == nil {
+		return
+	}
+
+	classID := "envclass:firebase-device"
+	var memberIDs []string
+
+	// Firebase Test Lab: devices[] array with model, version, locale, orientation.
+	devices := extractInterfaceSlice(testlab, "devices")
+	if devices == nil {
+		// Also check device as a flat key.
+		devices = extractInterfaceSlice(testlab, "device")
+	}
+
+	for _, d := range devices {
+		dMap, ok := d.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		model := stringFromMap(dMap, "model")
+		version := stringFromMap(dMap, "version")
+
+		if model == "" {
+			continue
+		}
+
+		name := model
+		if version != "" {
+			name += " (API " + version + ")"
+		}
+
+		deviceID := "device:ftl-" + sanitizeID(model)
+		memberIDs = append(memberIDs, deviceID)
+
+		dc := models.DeviceConfig{
+			DeviceID:     deviceID,
+			Name:         name,
+			Platform:     inferDevicePlatform(model),
+			FormFactor:   inferFormFactor(model),
+			OSVersion:    version,
+			ClassID:      classID,
+			InferredFrom: "firebase-testlab",
+		}
+
+		result.DeviceConfigs = appendDeviceIfNew(result.DeviceConfigs, dc)
+	}
+
+	if len(memberIDs) > 0 {
+		result.EnvironmentClasses = appendClassIfNew(result.EnvironmentClasses, models.EnvironmentClass{
+			ClassID:   classID,
+			Name:      "Firebase Test Lab devices",
 			Dimension: "device",
 			MemberIDs: memberIDs,
 		})
