@@ -477,7 +477,7 @@ describe('ConfigConverter', () => {
 
     it('should handle unsupported conversion direction', () => {
       const input = `module.exports = { baseUrl: '/' };`;
-      const result = converter.convert(input, 'selenium', 'playwright');
+      const result = converter.convert(input, 'puppeteer', 'selenium');
 
       expect(result).toContain('TERRAIN-TODO');
       expect(result).toContain('Manual action required');
