@@ -97,8 +97,8 @@
     "fast-glob": "3.3.3",
     "pixelmatch": "7.1.0",
     "pngjs": "7.0.0",
-    "tree-sitter-wasms": "0.1.11",
-    "web-tree-sitter": "0.24.7"
+    "tree-sitter-wasms": "0.1.13",
+    "web-tree-sitter": "0.26.8"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.6.1",
