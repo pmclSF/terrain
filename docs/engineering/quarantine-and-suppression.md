@@ -1,5 +1,7 @@
 # Quarantine and Suppression Awareness (Stage 108)
 
+> **Status:** HISTORICAL — the `internal/suppression/` package described here was removed and not promoted as a standalone runtime subsystem. Current Terrain surfaces skip debt and related reliability concerns through active health, migration, and lifecycle reporting paths. This document is preserved for design context.
+
 ## Overview
 
 The `internal/suppression` package detects and models quarantined tests,
