@@ -48,11 +48,12 @@ Update `cmd/terrain` when the public contract changes:
 
 ## Testing Conventions
 
-- Test file naming: `ClassName.test.js` in matching `test/` subdirectory
-- Use `beforeEach` for fresh instances, never share mutable state
-- Jest `expect()` assertions only
-- Async tests use `async/await`
-- Every new public class/function must have test coverage
+- Go tests live next to the package they exercise as `*_test.go`
+- Prefer table-driven tests for catalog, parser, and command-contract coverage
+- Use inline fixtures for focused conversion cases; use `tests/fixtures/` only when repo shape matters
+- Keep `go test ./cmd/... ./internal/...` green for product changes
+- Keep `npm test` green when you touch the npm wrapper or installer logic
+- Keep `npm --prefix extension/vscode test` green when you touch the VS Code extension
 
 ## Commit Messages
 
