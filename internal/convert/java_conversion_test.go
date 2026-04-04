@@ -153,3 +153,36 @@ func TestExecuteJUnit4ToJunit5Directory_ConvertsJavaFilesAndPreservesHelpers(t *
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
 	}
 }
+
+func TestConvertJUnit4ToJunit5Source_ConvertsExpectedExceptionToAssertThrows(t *testing.T) {
+	t.Parallel()
+
+	input := `import org.junit.Test;
+
+public class ExampleTest {
+    @Test(expected = IllegalArgumentException.class)
+    public void testInvalid() {
+        parse("bad");
+    }
+}
+`
+
+	got, err := ConvertJUnit4ToJunit5Source(input)
+	if err != nil {
+		t.Fatalf("ConvertJUnit4ToJunit5Source returned error: %v", err)
+	}
+	for _, want := range []string{
+		"import org.junit.jupiter.api.Assertions;",
+		"@Test",
+		"Assertions.assertThrows(IllegalArgumentException.class, () -> {",
+		"parse(\"bad\");",
+		"});",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "@Test(expected") {
+		t.Fatalf("expected legacy expected exception annotation to be removed, got:\n%s", got)
+	}
+}

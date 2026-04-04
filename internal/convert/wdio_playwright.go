@@ -82,89 +82,103 @@ func ConvertWdioToPlaywrightSource(source string) (string, error) {
 	result = rePlaywrightTestImport.ReplaceAllString(result, "")
 	result = reWdioGlobalsImport.ReplaceAllString(result, "")
 	result = reWdioImportLine.ReplaceAllString(result, "")
-
-	assertionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{reWdioBrowserURL, `await expect(page).toHaveURL($1)`},
-		{reWdioBrowserURLContaining, `await expect(page).toHaveURL(new RegExp($1))`},
-		{reWdioBrowserTitle, `await expect(page).toHaveTitle($1)`},
-		{reWdioNotDisplayed, `await expect(page.locator($1)).toBeHidden()`},
-		{reWdioDisplayed, `await expect(page.locator($1)).toBeVisible()`},
-		{reWdioNotExists, `await expect(page.locator($1)).not.toBeAttached()`},
-		{reWdioExists, `await expect(page.locator($1)).toBeAttached()`},
-		{reWdioHaveTextContaining, `await expect(page.locator($1)).toContainText($2)`},
-		{reWdioHaveText, `await expect(page.locator($1)).toHaveText($2)`},
-		{reWdioHaveValue, `await expect(page.locator($1)).toHaveValue($2)`},
-		{reWdioElementsArraySize, `await expect(page.locator($1)).toHaveCount($2)`},
-		{reWdioSelected, `await expect(page.locator($1)).toBeChecked()`},
-		{reWdioEnabled, `await expect(page.locator($1)).toBeEnabled()`},
-		{reWdioDisabled, `await expect(page.locator($1)).toBeDisabled()`},
-		{reWdioHaveAttribute, `await expect(page.locator($1)).toHaveAttribute($2, $3)`},
-	}
-	for _, replacement := range assertionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
+	astApplied := false
+	if astResult, _, ok := convertWdioToPlaywrightSourceAST(result); ok {
+		result = astResult
+		astApplied = true
 	}
 
-	result = reWdioPartialTextSelectorSingle.ReplaceAllString(result, `page.getByText('$1')`)
-	result = reWdioPartialTextSelectorDouble.ReplaceAllString(result, `page.getByText("$1")`)
-	result = reWdioExactTextSelectorSingle.ReplaceAllString(result, `page.getByText('$1')`)
-	result = reWdioExactTextSelectorDouble.ReplaceAllString(result, `page.getByText("$1")`)
+	if !astApplied {
+		retryWarning := false
+		assertionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{reWdioBrowserURL, `await expect(page).toHaveURL($1)`},
+			{reWdioBrowserURLContaining, `await expect(page).toHaveURL(new RegExp($1))`},
+			{reWdioBrowserTitle, `await expect(page).toHaveTitle($1)`},
+			{reWdioNotDisplayed, `await expect(page.locator($1)).toBeHidden()`},
+			{reWdioDisplayed, `await expect(page.locator($1)).toBeVisible()`},
+			{reWdioNotExists, `await expect(page.locator($1)).not.toBeAttached()`},
+			{reWdioExists, `await expect(page.locator($1)).toBeAttached()`},
+			{reWdioHaveTextContaining, `await expect(page.locator($1)).toContainText($2)`},
+			{reWdioHaveText, `await expect(page.locator($1)).toHaveText($2)`},
+			{reWdioHaveValue, `await expect(page.locator($1)).toHaveValue($2)`},
+			{reWdioElementsArraySize, `await expect(page.locator($1)).toHaveCount($2)`},
+			{reWdioSelected, `await expect(page.locator($1)).toBeChecked()`},
+			{reWdioEnabled, `await expect(page.locator($1)).toBeEnabled()`},
+			{reWdioDisabled, `await expect(page.locator($1)).toBeDisabled()`},
+			{reWdioHaveAttribute, `await expect(page.locator($1)).toHaveAttribute($2, $3)`},
+		}
+		for _, replacement := range assertionReplacements {
+			if replacement.re.MatchString(result) {
+				retryWarning = true
+				result = replacement.re.ReplaceAllString(result, replacement.repl)
+			}
+		}
 
-	actionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{reWdioSetValue, `await page.locator($1).fill($2)`},
-		{reWdioClick, `await page.locator($1).click()`},
-		{reWdioDoubleClick, `await page.locator($1).dblclick()`},
-		{reWdioClearValue, `await page.locator($1).clear()`},
-		{reWdioMoveTo, `await page.locator($1).hover()`},
-		{reWdioGetText, `await page.locator($1).textContent()`},
-		{reWdioIsDisplayed, `await page.locator($1).isVisible()`},
-		{reWdioIsExisting, `await page.locator($1).isVisible()`},
-		{reWdioWaitForDisplayed, `await page.locator($1).waitFor({ state: 'visible' })`},
-		{reWdioWaitForExist, `await page.locator($1).waitFor()`},
-		{reWdioSelectByVisibleText, `await page.locator($1).selectOption({ label: $2 })`},
-		{reWdioSelectByValue, `await page.locator($1).selectOption($2)`},
-		{reWdioGetAttribute, `await page.locator($1).getAttribute($2)`},
-		{reWdioBrowserGoto, `await page.goto($1)`},
-		{reWdioBrowserPause, `await page.waitForTimeout($1)`},
-		{reWdioBrowserRefresh, `await page.reload()`},
-		{reWdioBrowserBack, `await page.goBack()`},
-		{reWdioBrowserForward, `await page.goForward()`},
-		{reWdioBrowserGetTitle, `await page.title()`},
-		{reWdioBrowserGetURL, `page.url()`},
-		{reWdioBrowserKeys, `await page.keyboard.press($1)`},
-		{reWdioBrowserSetCookies, `await page.context().addCookies(`},
-		{reWdioBrowserGetCookies, `await page.context().cookies()`},
-		{reWdioBrowserDeleteCookies, `await page.context().clearCookies()`},
+		result = reWdioPartialTextSelectorSingle.ReplaceAllString(result, `page.getByText('$1')`)
+		result = reWdioPartialTextSelectorDouble.ReplaceAllString(result, `page.getByText("$1")`)
+		result = reWdioExactTextSelectorSingle.ReplaceAllString(result, `page.getByText('$1')`)
+		result = reWdioExactTextSelectorDouble.ReplaceAllString(result, `page.getByText("$1")`)
+
+		actionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{reWdioSetValue, `await page.locator($1).fill($2)`},
+			{reWdioClick, `await page.locator($1).click()`},
+			{reWdioDoubleClick, `await page.locator($1).dblclick()`},
+			{reWdioClearValue, `await page.locator($1).clear()`},
+			{reWdioMoveTo, `await page.locator($1).hover()`},
+			{reWdioGetText, `await page.locator($1).textContent()`},
+			{reWdioIsDisplayed, `await page.locator($1).isVisible()`},
+			{reWdioIsExisting, `await page.locator($1).isVisible()`},
+			{reWdioWaitForDisplayed, `await page.locator($1).waitFor({ state: 'visible' })`},
+			{reWdioWaitForExist, `await page.locator($1).waitFor()`},
+			{reWdioSelectByVisibleText, `await page.locator($1).selectOption({ label: $2 })`},
+			{reWdioSelectByValue, `await page.locator($1).selectOption($2)`},
+			{reWdioGetAttribute, `await page.locator($1).getAttribute($2)`},
+			{reWdioBrowserGoto, `await page.goto($1)`},
+			{reWdioBrowserPause, `await page.waitForTimeout($1)`},
+			{reWdioBrowserRefresh, `await page.reload()`},
+			{reWdioBrowserBack, `await page.goBack()`},
+			{reWdioBrowserForward, `await page.goForward()`},
+			{reWdioBrowserGetTitle, `await page.title()`},
+			{reWdioBrowserGetURL, `page.url()`},
+			{reWdioBrowserKeys, `await page.keyboard.press($1)`},
+			{reWdioBrowserSetCookies, `await page.context().addCookies(`},
+			{reWdioBrowserGetCookies, `await page.context().cookies()`},
+			{reWdioBrowserDeleteCookies, `await page.context().clearCookies()`},
+		}
+		for _, replacement := range actionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
+
+		result = reWdioBrowserExecute.ReplaceAllString(result, `await page.evaluate(`)
+		result = reWdioManySelectors.ReplaceAllString(result, `page.locator($1)`)
+		result = reWdioSingleSelectors.ReplaceAllString(result, `page.locator($1)`)
+
+		result = reDescribeOnly.ReplaceAllString(result, "${1}test.describe.only(")
+		result = reDescribeSkip.ReplaceAllString(result, "${1}test.describe.skip(")
+		result = reDescribe.ReplaceAllString(result, "${1}test.describe(")
+		result = reContext.ReplaceAllString(result, "${1}test.describe(")
+		result = reItOnly.ReplaceAllString(result, "${1}test.only(")
+		result = reItSkip.ReplaceAllString(result, "${1}test.skip(")
+		result = reSpecify.ReplaceAllString(result, "${1}test(")
+		result = reIt.ReplaceAllString(result, "${1}test(")
+		result = reBeforeEach.ReplaceAllString(result, "${1}test.beforeEach(")
+		result = reAfterEach.ReplaceAllString(result, "${1}test.afterEach(")
+		result = reBefore.ReplaceAllString(result, "${1}test.beforeAll(")
+		result = reAfter.ReplaceAllString(result, "${1}test.afterAll(")
+
+		result = rePlaywrightDescribeCallback.ReplaceAllString(result, `${1}() => {`)
+		result = rePlaywrightTestEmptyCallback.ReplaceAllString(result, `${1}async ({ page }) => {`)
+		result = rePlaywrightHookCallback.ReplaceAllString(result, `test.$1(async ({ page }) => {`)
+		if retryWarning {
+			// Keep output stable for parity; the benchmark and tests carry the warning signal.
+		}
 	}
-	for _, replacement := range actionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
-	}
-
-	result = reWdioBrowserExecute.ReplaceAllString(result, `await page.evaluate(`)
-	result = reWdioManySelectors.ReplaceAllString(result, `page.locator($1)`)
-	result = reWdioSingleSelectors.ReplaceAllString(result, `page.locator($1)`)
-
-	result = reDescribeOnly.ReplaceAllString(result, "${1}test.describe.only(")
-	result = reDescribeSkip.ReplaceAllString(result, "${1}test.describe.skip(")
-	result = reDescribe.ReplaceAllString(result, "${1}test.describe(")
-	result = reContext.ReplaceAllString(result, "${1}test.describe(")
-	result = reItOnly.ReplaceAllString(result, "${1}test.only(")
-	result = reItSkip.ReplaceAllString(result, "${1}test.skip(")
-	result = reSpecify.ReplaceAllString(result, "${1}test(")
-	result = reIt.ReplaceAllString(result, "${1}test(")
-	result = reBeforeEach.ReplaceAllString(result, "${1}test.beforeEach(")
-	result = reAfterEach.ReplaceAllString(result, "${1}test.afterEach(")
-	result = reBefore.ReplaceAllString(result, "${1}test.beforeAll(")
-	result = reAfter.ReplaceAllString(result, "${1}test.afterAll(")
-
-	result = rePlaywrightDescribeCallback.ReplaceAllString(result, `${1}() => {`)
-	result = rePlaywrightTestEmptyCallback.ReplaceAllString(result, `${1}async ({ page }) => {`)
-	result = rePlaywrightHookCallback.ReplaceAllString(result, `test.$1(async ({ page }) => {`)
 
 	result = commentUnsupportedWdioLines(result)
 	result = cleanupConvertedPlaywrightOutput(result)
@@ -173,6 +187,13 @@ func ConvertWdioToPlaywrightSource(source string) (string, error) {
 }
 
 func commentUnsupportedWdioLines(source string) string {
+	if rows, ok := unsupportedWdioLineRowsAST(source); ok {
+		if len(rows) == 0 {
+			return source
+		}
+		return commentSpecificLines(source, rows, "manual WebdriverIO conversion required")
+	}
+
 	lines := strings.Split(source, "\n")
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)

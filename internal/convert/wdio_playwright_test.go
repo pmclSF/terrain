@@ -110,6 +110,54 @@ func TestConvertWdioToPlaywrightSource_CommentsUnsupportedPatterns(t *testing.T)
 	}
 }
 
+func TestConvertWdioToPlaywrightSource_DoesNotRewriteStringsOrComments(t *testing.T) {
+	t.Parallel()
+
+	input := `// await $('#login-btn').click() should stay in comments
+const note = "await browser.url('/dashboard') should stay literal";
+
+it('keeps literals intact', async () => {
+  await browser.url('/login');
+  expect(note).toContain('browser.url');
+});
+`
+
+	got, err := ConvertWdioToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertWdioToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// await $('#login-btn').click() should stay in comments") {
+		t.Fatalf("expected comment to stay unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "await browser.url('/dashboard') should stay literal";`) {
+		t.Fatalf("expected string literal to stay unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.goto('/login')") {
+		t.Fatalf("expected runtime browser call to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertWdioToPlaywrightSource_ConvertsTextSelectorsWithAstPath(t *testing.T) {
+	t.Parallel()
+
+	input := `it('uses text selectors', async () => {
+  await $('=Save').click();
+  await expect($('*=draft')).toBeDisplayed();
+});
+`
+
+	got, err := ConvertWdioToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertWdioToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "await page.getByText('Save').click()") {
+		t.Fatalf("expected exact text selector conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await expect(page.getByText('draft')).toBeVisible()") {
+		t.Fatalf("expected partial text selector conversion, got:\n%s", got)
+	}
+}
+
 func TestExecuteWdioToPlaywrightDirectory_PreservesFileNamesAndHelpers(t *testing.T) {
 	t.Parallel()
 

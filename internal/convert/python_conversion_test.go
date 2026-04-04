@@ -144,3 +144,79 @@ func TestExecuteUnittestToPytestDirectory_ConvertsPythonFilesAndPreservesHelpers
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
 	}
 }
+
+func TestConvertPytestToUnittestSource_ConvertsParametrizeToSubTestLoop(t *testing.T) {
+	t.Parallel()
+
+	input := `import pytest
+
+@pytest.mark.parametrize("value, expected", [(1, 2), (3, 4)])
+def test_pairs(value, expected):
+    assert value != expected
+`
+
+	got, err := ConvertPytestToUnittestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPytestToUnittestSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"class TestPairs(unittest.TestCase):",
+		"def test_pairs(self):",
+		"for value, expected in [(1, 2), (3, 4)]:",
+		"with self.subTest(value=value, expected=expected):",
+		"self.assertNotEqual(value, expected)",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "manual pytest decorator migration required") {
+		t.Fatalf("expected parametrize decorator to convert without manual TODO, got:\n%s", got)
+	}
+}
+
+func TestConvertPytestToUnittestSource_ConvertsRaisesMatchToAssertRaisesRegex(t *testing.T) {
+	t.Parallel()
+
+	input := `import pytest
+
+def test_invalid():
+    with pytest.raises(ValueError, match="boom"):
+        explode()
+`
+
+	got, err := ConvertPytestToUnittestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPytestToUnittestSource returned error: %v", err)
+	}
+	if !strings.Contains(got, `with self.assertRaisesRegex(ValueError, "boom"):`) {
+		t.Fatalf("expected raises match conversion, got:\n%s", got)
+	}
+}
+
+func TestConvertUnittestToPytestSource_ConvertsComparatorAssertions(t *testing.T) {
+	t.Parallel()
+
+	input := `import unittest
+
+class TestExample(unittest.TestCase):
+    def test_compare(self):
+        self.assertGreater(total, 1)
+        self.assertLessEqual(count, 3)
+        self.assertIs(result, None)
+`
+
+	got, err := ConvertUnittestToPytestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertUnittestToPytestSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"assert total > 1",
+		"assert count <= 3",
+		"assert result is None",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+}

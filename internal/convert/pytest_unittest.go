@@ -86,16 +86,31 @@ func buildUnittestClassFromPytest(fixtures, tests []pythonBlock) []string {
 
 	for index, test := range tests {
 		name, params, _ := extractPythonFuncParts(test.Signature)
-		classLines = append(classLines, fmt.Sprintf("    def %s(self):", name))
-		body := make([]string, 0, len(test.Body)+4)
+		paramNames := []string(nil)
+		paramExpr := ""
+		body := make([]string, 0, len(test.Body)+8)
+
 		for _, decorator := range test.Decorators {
+			if names, expr, ok := parsePytestParametrizeDecorator(decorator); ok && len(paramNames) == 0 {
+				paramNames = names
+				paramExpr = expr
+				continue
+			}
 			body = append(body, "# TERRAIN-TODO: manual pytest decorator migration required")
 			body = append(body, "# "+decorator)
 		}
+
+		params = stripPytestParamNames(params, paramNames)
+		classLines = append(classLines, fmt.Sprintf("    def %s(self):", name))
 		if len(params) > 0 {
 			body = append(body, "# TERRAIN-TODO: pytest fixture arguments require manual unittest setup")
 		}
-		body = append(body, convertPytestBodyToUnittest(test.Body)...)
+		convertedBody := convertPytestBodyToUnittest(test.Body)
+		if len(paramNames) > 0 && paramExpr != "" {
+			body = append(body, buildUnittestSubTestFromPytestParametrize(paramNames, paramExpr, convertedBody)...)
+		} else {
+			body = append(body, convertedBody...)
+		}
 		classLines = append(classLines, indentPythonLines(nonEmptyPythonBody(body), "        ")...)
 		if index < len(tests)-1 {
 			classLines = append(classLines, "")
@@ -171,6 +186,14 @@ func convertPytestRaisesLineToUnittest(line string) string {
 	if len(args) == 0 {
 		return indent + "# TERRAIN-TODO: manual pytest.raises migration required"
 	}
+	if len(args) >= 2 {
+		for _, extra := range args[1:] {
+			extra = strings.TrimSpace(extra)
+			if strings.HasPrefix(extra, "match=") {
+				return indent + fmt.Sprintf("with self.assertRaisesRegex(%s, %s):", args[0], strings.TrimSpace(strings.TrimPrefix(extra, "match=")))
+			}
+		}
+	}
 	return indent + fmt.Sprintf("with self.assertRaises(%s):", args[0])
 }
 
@@ -222,5 +245,40 @@ func joinMultilineSection(chunks []string) []string {
 		}
 		lines = append(lines, strings.Split(chunk, "\n")...)
 	}
+	return lines
+}
+
+func stripPytestParamNames(params, paramNames []string) []string {
+	if len(paramNames) == 0 {
+		return params
+	}
+	remove := map[string]bool{}
+	for _, name := range paramNames {
+		remove[strings.TrimSpace(name)] = true
+	}
+	filtered := make([]string, 0, len(params))
+	for _, param := range params {
+		key := strings.TrimSpace(strings.SplitN(param, "=", 2)[0])
+		if remove[key] {
+			continue
+		}
+		filtered = append(filtered, param)
+	}
+	return filtered
+}
+
+func buildUnittestSubTestFromPytestParametrize(paramNames []string, paramExpr string, body []string) []string {
+	lines := make([]string, 0, len(body)+4)
+	loopTarget := strings.Join(paramNames, ", ")
+	if len(paramNames) == 1 {
+		loopTarget = paramNames[0]
+	}
+	lines = append(lines, fmt.Sprintf("for %s in %s:", loopTarget, paramExpr))
+	subParts := make([]string, 0, len(paramNames))
+	for _, name := range paramNames {
+		subParts = append(subParts, fmt.Sprintf("%s=%s", name, name))
+	}
+	lines = append(lines, "    with self.subTest("+strings.Join(subParts, ", ")+"):")
+	lines = append(lines, indentPythonLines(nonEmptyPythonBody(body), "        ")...)
 	return lines
 }

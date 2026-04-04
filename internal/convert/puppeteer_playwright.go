@@ -56,6 +56,13 @@ func ConvertPuppeteerToPlaywrightSource(source string) (string, error) {
 	}
 
 	result := strings.ReplaceAll(source, "\r\n", "\n")
+	if astResult, ok := convertPuppeteerToPlaywrightSourceAST(result); ok {
+		result = astResult
+		result = cleanupConvertedPlaywrightOutput(result)
+		result = prependImportPreservingHeader(result, "import { test, expect } from '@playwright/test';")
+		return ensureTrailingNewline(result), nil
+	}
+
 	result = rePlaywrightTestImport.ReplaceAllString(result, "")
 	result = rePptrRequireImport.ReplaceAllString(result, "")
 	result = rePptrESMImport.ReplaceAllString(result, "")

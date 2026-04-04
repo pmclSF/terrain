@@ -95,3 +95,56 @@ test('opens', async t => {
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
 	}
 }
+
+func TestConvertTestCafeToCypressSource_HandlesSelectorParensAndPreservesComments(t *testing.T) {
+	t.Parallel()
+
+	input := `import { Selector } from 'testcafe';
+
+fixture` + "`" + `Checkout` + "`" + `;
+
+test('complex selector', async t => {
+  // Selector('.btn:nth-child(2)') should stay in this comment
+  const note = "Selector('.btn:nth-child(2)') is only documentation";
+  await t.click(Selector('.btn:nth-child(2)').find('.label'));
+});
+`
+
+	got, err := ConvertTestCafeToCypressSource(input)
+	if err != nil {
+		t.Fatalf("ConvertTestCafeToCypressSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// Selector('.btn:nth-child(2)') should stay in this comment") {
+		t.Fatalf("expected comment to be preserved, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "Selector('.btn:nth-child(2)') is only documentation"`) {
+		t.Fatalf("expected string literal to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "cy.get('.btn:nth-child(2)').find('.label').click()") {
+		t.Fatalf("expected nested selector with parens to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertTestCafeToCypressSource_CommentsUnsupportedUseRole(t *testing.T) {
+	t.Parallel()
+
+	input := `import { Role } from 'testcafe';
+
+fixture` + "`" + `Checkout` + "`" + `;
+
+test('role', async t => {
+  await t.useRole(adminRole);
+});
+`
+
+	got, err := ConvertTestCafeToCypressSource(input)
+	if err != nil {
+		t.Fatalf("ConvertTestCafeToCypressSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual TestCafe conversion required") {
+		t.Fatalf("expected unsupported useRole line to be commented, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await t.useRole(adminRole);") {
+		t.Fatalf("expected original useRole line to be preserved as comment, got:\n%s", got)
+	}
+}

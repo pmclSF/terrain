@@ -39,6 +39,10 @@ func ConvertJasmineToJestSource(source string) (string, error) {
 	}
 
 	result := strings.ReplaceAll(source, "\r\n", "\n")
+	if astResult, ok := convertJasmineToJestSourceAST(result); ok {
+		return astResult, nil
+	}
+
 	result = reJasmineCreateSpyObj.ReplaceAllStringFunc(result, convertJasmineCreateSpyObj)
 	result = reJasmineCreateSpyReturnValue.ReplaceAllString(result, "jest.fn().mockReturnValue($1)")
 	result = reJasmineCreateSpyCallFake.ReplaceAllString(result, "jest.fn().mockImplementation($1)")

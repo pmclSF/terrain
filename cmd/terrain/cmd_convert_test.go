@@ -858,7 +858,7 @@ func TestRunConvert_ExecutesCypressToSelenium(t *testing.T) {
 	if !strings.Contains(text, "await driver.get('/checkout')") {
 		t.Fatalf("expected visit conversion, got:\n%s", text)
 	}
-	if !strings.Contains(text, "await driver.findElement(By.css('#submit')).click()") {
+	if !strings.Contains(text, "await (await driver.findElement(By.css('#submit'))).click()") {
 		t.Fatalf("expected click conversion, got:\n%s", text)
 	}
 	if !strings.Contains(text, "expect(await (await driver.findElement(By.css('.notice'))).isDisplayed()).toBe(true)") {

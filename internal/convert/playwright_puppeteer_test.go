@@ -75,6 +75,28 @@ test.describe('assertions', () => {
 	}
 }
 
+func TestConvertPlaywrightToPuppeteerSource_ConvertsClearSemanticsWithoutBackspaceHack(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test } from '@playwright/test';
+
+test('clears input', async ({ page }) => {
+  await page.locator('#email').clear();
+});
+`
+
+	got, err := ConvertPlaywrightToPuppeteerSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToPuppeteerSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "await page.$eval('#email', el => { el.value = '';") {
+		t.Fatalf("expected clear to use DOM value reset, got:\n%s", got)
+	}
+	if strings.Contains(got, "clickCount: 3") || strings.Contains(got, "keyboard.press('Backspace')") {
+		t.Fatalf("expected legacy triple-click clear hack to be removed, got:\n%s", got)
+	}
+}
+
 func TestExecutePlaywrightToPuppeteerDirectory_PreservesFileNamesAndHelpers(t *testing.T) {
 	t.Parallel()
 
@@ -116,5 +138,62 @@ func TestExecutePlaywrightToPuppeteerDirectory_PreservesFileNamesAndHelpers(t *t
 	}
 	if string(convertedHelper) != "export const support = true;\n" {
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
+	}
+}
+
+func TestConvertPlaywrightToPuppeteerSource_DoesNotRewriteStringsOrComments(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test, expect } from '@playwright/test';
+
+test.describe('notes', () => {
+  test('leaves prose alone', async ({ page }) => {
+    // await page.locator('#save').click() should stay in this comment
+    const note = "await expect(page).toHaveURL('/docs') is only documentation";
+    const action = "page.locator('#save').click()";
+    await page.locator('#save').click();
+    expect(note).toContain("toHaveURL('/docs')");
+    expect(action).toContain("locator('#save').click()");
+  });
+});
+`
+
+	got, err := ConvertPlaywrightToPuppeteerSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToPuppeteerSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// await page.locator('#save').click() should stay in this comment") {
+		t.Fatalf("expected comment to be preserved, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "await expect(page).toHaveURL('/docs') is only documentation"`) {
+		t.Fatalf("expected string literal to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const action = "page.locator('#save').click()"`) {
+		t.Fatalf("expected action string to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.click('#save')") {
+		t.Fatalf("expected real Playwright action to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertPlaywrightToPuppeteerSource_CommentsUnsupportedGetByRole(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test } from '@playwright/test';
+
+test('manual', async ({ page }) => {
+  await page.getByRole('button', { name: 'Save' }).click();
+});
+`
+
+	got, err := ConvertPlaywrightToPuppeteerSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToPuppeteerSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual Playwright conversion required") {
+		t.Fatalf("expected unsupported getByRole line to be commented, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await page.getByRole('button', { name: 'Save' }).click();") {
+		t.Fatalf("expected original getByRole line to be preserved as comment, got:\n%s", got)
 	}
 }

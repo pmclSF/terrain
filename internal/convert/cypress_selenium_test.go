@@ -33,8 +33,8 @@ describe('Checkout', () => {
 		"await driver.quit();",
 		"it('submits', async () => {",
 		"await driver.get('/checkout')",
-		"await driver.findElement(By.css('#email')).sendKeys('user@test.com')",
-		"await driver.findElement(By.css('#submit')).click()",
+		"await (await driver.findElement(By.css('#email'))).sendKeys('user@test.com')",
+		"await (await driver.findElement(By.css('#submit'))).click()",
 		"expect(await (await driver.findElement(By.css('.notice'))).isDisplayed()).toBe(true)",
 	} {
 		if !strings.Contains(got, want) {
@@ -107,5 +107,54 @@ func TestExecuteCypressToSeleniumDirectory_PreservesFileNamesAndHelpers(t *testi
 	}
 	if string(convertedHelper) != "export const support = true;\n" {
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
+	}
+}
+
+func TestConvertCypressToSeleniumSource_HandlesSelectorParensAndPreservesComments(t *testing.T) {
+	t.Parallel()
+
+	input := `/// <reference types="cypress" />
+
+describe('Checkout', () => {
+  it('handles selector parens', () => {
+    // cy.get('.btn:nth-child(2)') should stay in this comment
+    const note = "cy.get('.btn:nth-child(2)') is only documentation";
+    cy.get('.btn:nth-child(2)').click();
+  });
+});
+`
+
+	got, err := ConvertCypressToSeleniumSource(input)
+	if err != nil {
+		t.Fatalf("ConvertCypressToSeleniumSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// cy.get('.btn:nth-child(2)') should stay in this comment") {
+		t.Fatalf("expected comment to be preserved, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "cy.get('.btn:nth-child(2)') is only documentation"`) {
+		t.Fatalf("expected string literal to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await (await driver.findElement(By.css('.btn:nth-child(2)'))).click()") {
+		t.Fatalf("expected selector with nested parens to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertCypressToSeleniumSource_CommentsUnsupportedSession(t *testing.T) {
+	t.Parallel()
+
+	input := `it('uses session', () => {
+  cy.session('auth', () => {});
+});
+`
+
+	got, err := ConvertCypressToSeleniumSource(input)
+	if err != nil {
+		t.Fatalf("ConvertCypressToSeleniumSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "TERRAIN-TODO: manual Cypress conversion required") {
+		t.Fatalf("expected TODO comment for unsupported Cypress helpers, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// cy.session('auth', () => {});") {
+		t.Fatalf("expected original unsupported line to be commented out, got:\n%s", got)
 	}
 }

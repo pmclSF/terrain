@@ -721,6 +721,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Benchmark / validation (separate binaries):")
 	fmt.Fprintln(os.Stderr, "  terrain-bench            run benchmark suite across repos (go run ./cmd/terrain-bench)")
+	fmt.Fprintln(os.Stderr, "  terrain-convert-bench    compare Go converters against the legacy JS performance floor")
 	fmt.Fprintln(os.Stderr, "  terrain-truthcheck       validate output against ground truth (go run ./cmd/terrain-truthcheck)")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Common repo-scoped flags:")

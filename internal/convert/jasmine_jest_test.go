@@ -95,3 +95,59 @@ func TestExecuteJasmineToJestDirectory_PreservesFileNamesAndHelpers(t *testing.T
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
 	}
 }
+
+func TestConvertJasmineToJestSource_DoesNotRewriteStringsOrComments(t *testing.T) {
+	t.Parallel()
+
+	input := `describe('notes', () => {
+  it('leaves prose alone', () => {
+    // jasmine.clock().install() should stay in this comment
+    const note = "spyOn(service, 'get') is only documentation";
+    const matcher = "jasmine.any(String)";
+    const fn = jasmine.createSpy().and.callFake(() => true);
+    expect(fn()).toBe(true);
+    expect(note).toContain("spyOn(service, 'get')");
+    expect(matcher).toContain("jasmine.any(String)");
+  });
+});
+`
+
+	got, err := ConvertJasmineToJestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertJasmineToJestSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// jasmine.clock().install() should stay in this comment") {
+		t.Fatalf("expected comment to be preserved, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "spyOn(service, 'get') is only documentation"`) {
+		t.Fatalf("expected string literal to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const matcher = "jasmine.any(String)"`) {
+		t.Fatalf("expected matcher string to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "const fn = jest.fn().mockImplementation(() => true)") {
+		t.Fatalf("expected real jasmine spy call to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertJasmineToJestSource_CommentsUnsupportedAddMatchers(t *testing.T) {
+	t.Parallel()
+
+	input := `describe('matchers', () => {
+  it('flags manual work', () => {
+    jasmine.addMatchers(buildMatchers());
+  });
+});
+`
+
+	got, err := ConvertJasmineToJestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertJasmineToJestSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual Jasmine matcher migration required") {
+		t.Fatalf("expected addMatchers to be commented for manual review, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// jasmine.addMatchers(buildMatchers());") {
+		t.Fatalf("expected original addMatchers line to be preserved as comment, got:\n%s", got)
+	}
+}

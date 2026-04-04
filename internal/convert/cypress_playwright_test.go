@@ -82,6 +82,65 @@ func TestConvertCypressToPlaywrightSource_CommentsUnsupportedPatterns(t *testing
 	}
 }
 
+func TestConvertCypressToPlaywrightSource_DoesNotRewriteStringsOrComments(t *testing.T) {
+	t.Parallel()
+
+	input := `// cy.get('.cta').click() should stay in comments
+const note = "cy.visit('/dashboard') should stay literal";
+
+it('keeps literals intact', () => {
+  cy.visit('/login');
+  expect(note).toContain('cy.visit');
+});
+`
+
+	got, err := ConvertCypressToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertCypressToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// cy.get('.cta').click() should stay in comments") {
+		t.Fatalf("expected Cypress comment to stay unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "cy.visit('/dashboard') should stay literal";`) {
+		t.Fatalf("expected Cypress string literal to stay unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.goto('/login')") {
+		t.Fatalf("expected runtime Cypress call to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertCypressToPlaywrightSource_FunctionCallbacksBecomePlaywrightStyle(t *testing.T) {
+	t.Parallel()
+
+	input := `describe('Checkout', function () {
+  beforeEach(function () {
+    cy.visit('/checkout');
+  });
+
+  it('submits', function () {
+    cy.get('button[type="submit"]').click();
+  });
+});
+`
+
+	got, err := ConvertCypressToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertCypressToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "test.describe('Checkout', () => {") {
+		t.Fatalf("expected describe function callback conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "test.beforeEach(async ({ page }) => {") {
+		t.Fatalf("expected hook function callback conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "test('submits', async ({ page }) => {") {
+		t.Fatalf("expected test function callback conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.locator('button[type=\"submit\"]').click()") {
+		t.Fatalf("expected click conversion inside function callback, got:\n%s", got)
+	}
+}
+
 func TestExecuteCypressToPlaywrightDirectory_RenamesCyFilesToSpec(t *testing.T) {
 	t.Parallel()
 

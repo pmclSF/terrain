@@ -84,79 +84,86 @@ func ConvertWdioToCypressSource(source string) (string, error) {
 	result := strings.ReplaceAll(source, "\r\n", "\n")
 	result = reWdioImportGlobals.ReplaceAllString(result, "")
 	result = reWdioImportPlain.ReplaceAllString(result, "")
-
-	assertionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{reWdioToCyExpectURL, `cy.url().should('eq', $1)`},
-		{reWdioToCyExpectURLContains, `cy.url().should('include', $1)`},
-		{reWdioToCyExpectTitle, `cy.title().should('eq', $1)`},
-		{reWdioToCyDisplayed, `cy.get($1).should('be.visible')`},
-		{reWdioToCyNotDisplayed, `cy.get($1).should('not.be.visible')`},
-		{reWdioToCyExist, `cy.get($1).should('exist')`},
-		{reWdioToCyNotExist, `cy.get($1).should('not.exist')`},
-		{reWdioToCyText, `cy.get($1).should('have.text', $2)`},
-		{reWdioToCyContainText, `cy.get($1).should('contain', $2)`},
-		{reWdioToCyValue, `cy.get($1).should('have.value', $2)`},
-		{reWdioToCyCount, `cy.get($1).should('have.length', $2)`},
-		{reWdioToCySelected, `cy.get($1).should('be.checked')`},
-		{reWdioToCyEnabled, `cy.get($1).should('be.enabled')`},
-		{reWdioToCyDisabled, `cy.get($1).should('be.disabled')`},
-		{reWdioToCyAttribute, `cy.get($1).should('have.attr', $2, $3)`},
-	}
-	for _, replacement := range assertionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
+	astApplied := false
+	if astResult, ok := convertWdioToCypressSourceAST(result); ok {
+		result = astResult
+		astApplied = true
 	}
 
-	result = reWdioToCyExactClickS.ReplaceAllString(result, "cy.contains('$1').click()")
-	result = reWdioToCyExactClickD.ReplaceAllString(result, "cy.contains('$1').click()")
-	result = reWdioToCyPartialClickS.ReplaceAllString(result, "cy.contains('$1').click()")
-	result = reWdioToCyPartialClickD.ReplaceAllString(result, "cy.contains('$1').click()")
+	if !astApplied {
+		assertionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{reWdioToCyExpectURL, `cy.url().should('eq', $1)`},
+			{reWdioToCyExpectURLContains, `cy.url().should('include', $1)`},
+			{reWdioToCyExpectTitle, `cy.title().should('eq', $1)`},
+			{reWdioToCyDisplayed, `cy.get($1).should('be.visible')`},
+			{reWdioToCyNotDisplayed, `cy.get($1).should('not.be.visible')`},
+			{reWdioToCyExist, `cy.get($1).should('exist')`},
+			{reWdioToCyNotExist, `cy.get($1).should('not.exist')`},
+			{reWdioToCyText, `cy.get($1).should('have.text', $2)`},
+			{reWdioToCyContainText, `cy.get($1).should('contain', $2)`},
+			{reWdioToCyValue, `cy.get($1).should('have.value', $2)`},
+			{reWdioToCyCount, `cy.get($1).should('have.length', $2)`},
+			{reWdioToCySelected, `cy.get($1).should('be.checked')`},
+			{reWdioToCyEnabled, `cy.get($1).should('be.enabled')`},
+			{reWdioToCyDisabled, `cy.get($1).should('be.disabled')`},
+			{reWdioToCyAttribute, `cy.get($1).should('have.attr', $2, $3)`},
+		}
+		for _, replacement := range assertionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
 
-	actionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{reWdioToCySetValue, `cy.get($1).clear().type($2)`},
-		{reWdioToCyClick, `cy.get($1).click()`},
-		{reWdioToCyDoubleClick, `cy.get($1).dblclick()`},
-		{reWdioToCyClearValue, `cy.get($1).clear()`},
-		{reWdioToCyMoveTo, `cy.get($1).trigger('mouseover')`},
-		{reWdioToCyGetText, `cy.get($1).invoke('text')`},
-		{reWdioToCyIsDisplayed, `cy.get($1).should('be.visible')`},
-		{reWdioToCyIsExisting, `cy.get($1).should('exist')`},
-		{reWdioToCyWaitForDisplayed, `cy.get($1).should('be.visible')`},
-		{reWdioToCyWaitForExist, `cy.get($1).should('exist')`},
-		{reWdioToCySelectText, `cy.get($1).select($2)`},
-		{reWdioToCySelectValue, `cy.get($1).select($2)`},
-		{reWdioToCyGetAttribute, `cy.get($1).invoke('attr', $2)`},
-		{reWdioToCyVisit, `cy.visit($1)`},
-		{reWdioToCyWait, `cy.wait($1)`},
-		{reWdioToCyExecStorage, `cy.clearLocalStorage()`},
-		{reWdioToCyReload, `cy.reload()`},
-		{reWdioToCyBack, `cy.go('back')`},
-		{reWdioToCyForward, `cy.go('forward')`},
-		{reWdioToCyGetTitle, `cy.title()`},
-		{reWdioToCyGetURL, `cy.url()`},
-		{reWdioToCyKeys, `cy.get('body').type($1)`},
-		{reWdioToCyDeleteCookies, `cy.clearCookies()`},
-		{reWdioToCyGetCookies, `cy.getCookies()`},
-		{reWdioToCyConsoleLog, `cy.log($1)`},
+		result = reWdioToCyExactClickS.ReplaceAllString(result, "cy.contains('$1').click()")
+		result = reWdioToCyExactClickD.ReplaceAllString(result, "cy.contains('$1').click()")
+		result = reWdioToCyPartialClickS.ReplaceAllString(result, "cy.contains('$1').click()")
+		result = reWdioToCyPartialClickD.ReplaceAllString(result, "cy.contains('$1').click()")
+
+		actionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{reWdioToCySetValue, `cy.get($1).clear().type($2)`},
+			{reWdioToCyClick, `cy.get($1).click()`},
+			{reWdioToCyDoubleClick, `cy.get($1).dblclick()`},
+			{reWdioToCyClearValue, `cy.get($1).clear()`},
+			{reWdioToCyMoveTo, `cy.get($1).trigger('mouseover')`},
+			{reWdioToCyGetText, `cy.get($1).invoke('text')`},
+			{reWdioToCyIsDisplayed, `cy.get($1).should('be.visible')`},
+			{reWdioToCyIsExisting, `cy.get($1).should('exist')`},
+			{reWdioToCyWaitForDisplayed, `cy.get($1).should('be.visible')`},
+			{reWdioToCyWaitForExist, `cy.get($1).should('exist')`},
+			{reWdioToCySelectText, `cy.get($1).select($2)`},
+			{reWdioToCySelectValue, `cy.get($1).select($2)`},
+			{reWdioToCyGetAttribute, `cy.get($1).invoke('attr', $2)`},
+			{reWdioToCyVisit, `cy.visit($1)`},
+			{reWdioToCyWait, `cy.wait($1)`},
+			{reWdioToCyExecStorage, `cy.clearLocalStorage()`},
+			{reWdioToCyReload, `cy.reload()`},
+			{reWdioToCyBack, `cy.go('back')`},
+			{reWdioToCyForward, `cy.go('forward')`},
+			{reWdioToCyGetTitle, `cy.title()`},
+			{reWdioToCyGetURL, `cy.url()`},
+			{reWdioToCyKeys, `cy.get('body').type($1)`},
+			{reWdioToCyDeleteCookies, `cy.clearCookies()`},
+			{reWdioToCyGetCookies, `cy.getCookies()`},
+			{reWdioToCyConsoleLog, `cy.log($1)`},
+		}
+		for _, replacement := range actionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
+
+		result = reWdioToCyExec.ReplaceAllString(result, `cy.window().then($1)`)
+		result = reWdioToCyExactSelS.ReplaceAllString(result, "cy.contains('$1')")
+		result = reWdioToCyExactSelD.ReplaceAllString(result, "cy.contains('$1')")
+		result = reWdioToCyPartialSelS.ReplaceAllString(result, "cy.contains('$1')")
+		result = reWdioToCyPartialSelD.ReplaceAllString(result, "cy.contains('$1')")
+		result = reWdioToCyManySelectors.ReplaceAllString(result, `cy.get($1)`)
+		result = reWdioToCySingleSelectors.ReplaceAllString(result, `cy.get($1)`)
+
+		result = commentUnsupportedWdioCypressLines(result)
 	}
-	for _, replacement := range actionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
-	}
-
-	result = reWdioToCyExec.ReplaceAllString(result, `cy.window().then($1)`)
-	result = reWdioToCyExactSelS.ReplaceAllString(result, "cy.contains('$1')")
-	result = reWdioToCyExactSelD.ReplaceAllString(result, "cy.contains('$1')")
-	result = reWdioToCyPartialSelS.ReplaceAllString(result, "cy.contains('$1')")
-	result = reWdioToCyPartialSelD.ReplaceAllString(result, "cy.contains('$1')")
-	result = reWdioToCyManySelectors.ReplaceAllString(result, `cy.get($1)`)
-	result = reWdioToCySingleSelectors.ReplaceAllString(result, `cy.get($1)`)
-
-	result = commentUnsupportedWdioCypressLines(result)
 	result = cleanupConvertedCypressOutput(result)
 	return ensureTrailingNewline(result), nil
 }

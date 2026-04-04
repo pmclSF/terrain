@@ -55,6 +55,14 @@ func ConvertPlaywrightToPuppeteerSource(source string) (string, error) {
 	}
 
 	result := strings.ReplaceAll(source, "\r\n", "\n")
+	if astResult, ok := convertPlaywrightToPuppeteerSourceAST(result); ok {
+		result = astResult
+		result = addPuppeteerLifecycleBoilerplate(result)
+		result = cleanupConvertedPuppeteerOutput(result)
+		result = prependImportPreservingHeader(result, "const puppeteer = require('puppeteer');")
+		return ensureTrailingNewline(result), nil
+	}
+
 	result = rePlaywrightImportRemove.ReplaceAllString(result, "")
 
 	assertionReplacements := []struct {
@@ -102,7 +110,13 @@ func ConvertPlaywrightToPuppeteerSource(source string) (string, error) {
 	}
 
 	if rePWToPptrClear.MatchString(result) {
-		result = rePWToPptrClear.ReplaceAllString(result, "await page.click($1, { clickCount: 3 });\n    await page.keyboard.press('Backspace')")
+		result = rePWToPptrClear.ReplaceAllStringFunc(result, func(match string) string {
+			parts := rePWToPptrClear.FindStringSubmatch(match)
+			if len(parts) != 2 {
+				return match
+			}
+			return puppeteerClearSelector(parts[1])
+		})
 	}
 
 	result = rePWDescribeOnly.ReplaceAllString(result, "describe.only(")

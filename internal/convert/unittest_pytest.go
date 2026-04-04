@@ -263,6 +263,30 @@ func convertUnittestAssertionLineToPytest(line string) (string, bool) {
 		if len(args) >= 2 {
 			return indent + fmt.Sprintf("assert isinstance(%s, %s)", args[0], args[1]), false
 		}
+	case "assertGreater":
+		if len(args) >= 2 {
+			return indent + fmt.Sprintf("assert %s > %s", args[0], args[1]), false
+		}
+	case "assertGreaterEqual":
+		if len(args) >= 2 {
+			return indent + fmt.Sprintf("assert %s >= %s", args[0], args[1]), false
+		}
+	case "assertLess":
+		if len(args) >= 2 {
+			return indent + fmt.Sprintf("assert %s < %s", args[0], args[1]), false
+		}
+	case "assertLessEqual":
+		if len(args) >= 2 {
+			return indent + fmt.Sprintf("assert %s <= %s", args[0], args[1]), false
+		}
+	case "assertIs":
+		if len(args) >= 2 {
+			return indent + fmt.Sprintf("assert %s is %s", args[0], args[1]), false
+		}
+	case "assertIsNot":
+		if len(args) >= 2 {
+			return indent + fmt.Sprintf("assert %s is not %s", args[0], args[1]), false
+		}
 	}
 
 	return indent + "# TERRAIN-TODO: manual unittest assertion migration required", false

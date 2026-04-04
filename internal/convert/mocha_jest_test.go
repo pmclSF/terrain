@@ -105,3 +105,65 @@ describe('service', () => {
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
 	}
 }
+
+func TestConvertMochaToJestSource_DoesNotRewriteStringsOrComments(t *testing.T) {
+	t.Parallel()
+
+	input := `const { expect } = require('chai');
+
+describe('notes', () => {
+  it('leaves prose alone', () => {
+    // sinon.useFakeTimers() should stay in this comment
+    const note = "expect(value).to.equal(1) is only documentation";
+    const clockDoc = "clock.tick(50)";
+    const fn = sinon.stub().returns(true);
+    expect(note).to.contain("expect(value).to.equal(1)");
+    expect(clockDoc).to.contain("clock.tick(50)");
+    expect(fn()).to.be.true;
+  });
+});
+`
+
+	got, err := ConvertMochaToJestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertMochaToJestSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// sinon.useFakeTimers() should stay in this comment") {
+		t.Fatalf("expected comment to be preserved, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "expect(value).to.equal(1) is only documentation"`) {
+		t.Fatalf("expected string literal to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const clockDoc = "clock.tick(50)"`) {
+		t.Fatalf("expected timer string to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "const fn = jest.fn().mockReturnValue(true)") {
+		t.Fatalf("expected real sinon stub call to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertMochaToJestSource_CommentsUnsupportedChaiAssert(t *testing.T) {
+	t.Parallel()
+
+	input := `describe('manual', () => {
+  it('flags unsupported assertions', () => {
+    chai.expect(value).to.equal(1);
+    assert.equal(value, 1);
+  });
+});
+`
+
+	got, err := ConvertMochaToJestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertMochaToJestSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual Mocha assertion conversion required") {
+		t.Fatalf("expected unsupported assertions to be commented, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// chai.expect(value).to.equal(1);") {
+		t.Fatalf("expected chai.expect line to be preserved as comment, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// assert.equal(value, 1);") {
+		t.Fatalf("expected assert line to be preserved as comment, got:\n%s", got)
+	}
+}

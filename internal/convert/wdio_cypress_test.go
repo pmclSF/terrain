@@ -147,3 +147,30 @@ func TestExecuteWdioToCypressDirectory_PreservesFileNamesAndHelpers(t *testing.T
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
 	}
 }
+
+func TestConvertWdioToCypressSource_HandlesSelectorParensAndPreservesComments(t *testing.T) {
+	t.Parallel()
+
+	input := `describe('selectors', () => {
+  it('keeps prose intact', async () => {
+    // await $('.btn:nth-child(2)').click() should stay in this comment
+    const note = "await $('.btn:nth-child(2)').click() is only documentation";
+    await $('.btn:nth-child(2)').click();
+  });
+});
+`
+
+	got, err := ConvertWdioToCypressSource(input)
+	if err != nil {
+		t.Fatalf("ConvertWdioToCypressSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// await $('.btn:nth-child(2)').click() should stay in this comment") {
+		t.Fatalf("expected comment to be preserved, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "await $('.btn:nth-child(2)').click() is only documentation"`) {
+		t.Fatalf("expected string literal to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "cy.get('.btn:nth-child(2)').click()") {
+		t.Fatalf("expected selector with nested parens to convert, got:\n%s", got)
+	}
+}

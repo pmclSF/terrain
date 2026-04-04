@@ -97,96 +97,106 @@ func ConvertCypressToPlaywrightSource(source string) (string, error) {
 	result := strings.ReplaceAll(source, "\r\n", "\n")
 	result = rePlaywrightTestImport.ReplaceAllString(result, "")
 	result = reCypressReference.ReplaceAllString(result, "")
-	result = reCyJoinChains.ReplaceAllString(result, "cy.$1($2).")
-	result = reCyJoinMethods.ReplaceAllString(result, ").$1")
 
 	retryWarning := false
-	assertionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{reCyGetShouldVisible, `await expect(page.locator($1)).toBeVisible()`},
-		{reCyGetShouldHidden, `await expect(page.locator($1)).toBeHidden()`},
-		{reCyGetShouldExist, `await expect(page.locator($1)).toBeAttached()`},
-		{reCyGetShouldNotExist, `await expect(page.locator($1)).not.toBeAttached()`},
-		{reCyGetShouldText, `await expect(page.locator($1)).toHaveText($2)`},
-		{reCyGetShouldContain, `await expect(page.locator($1)).toContainText($2)`},
-		{reCyGetShouldValue, `await expect(page.locator($1)).toHaveValue($2)`},
-		{reCyGetShouldChecked, `await expect(page.locator($1)).toBeChecked()`},
-		{reCyGetShouldDisabled, `await expect(page.locator($1)).toBeDisabled()`},
-		{reCyGetShouldEnabled, `await expect(page.locator($1)).toBeEnabled()`},
-		{reCyGetShouldClass, `await expect(page.locator($1)).toHaveClass($2)`},
-		{reCyGetShouldLength, `await expect(page.locator($1)).toHaveCount($2)`},
-		{reCyGetShouldNotEmpty, `await expect(page.locator($1)).not.toBeEmpty()`},
-		{reCyContainsShouldVis, `await expect(page.getByText($1)).toBeVisible()`},
-		{reCyURLShouldInclude, `expect(page.url()).toContain($1)`},
-		{reCyURLShouldEq, `expect(page.url()).toBe($1)`},
-		{reCyTitleShouldEq, `await expect(page).toHaveTitle($1)`},
+	astApplied := false
+	if astResult, astRetryWarning, ok := convertCypressToPlaywrightSourceAST(result); ok {
+		result = astResult
+		retryWarning = retryWarning || astRetryWarning
+		astApplied = true
 	}
-	for _, replacement := range assertionReplacements {
-		if replacement.re.MatchString(result) {
+
+	if !astApplied {
+		result = reCyJoinChains.ReplaceAllString(result, "cy.$1($2).")
+		result = reCyJoinMethods.ReplaceAllString(result, ").$1")
+
+		assertionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{reCyGetShouldVisible, `await expect(page.locator($1)).toBeVisible()`},
+			{reCyGetShouldHidden, `await expect(page.locator($1)).toBeHidden()`},
+			{reCyGetShouldExist, `await expect(page.locator($1)).toBeAttached()`},
+			{reCyGetShouldNotExist, `await expect(page.locator($1)).not.toBeAttached()`},
+			{reCyGetShouldText, `await expect(page.locator($1)).toHaveText($2)`},
+			{reCyGetShouldContain, `await expect(page.locator($1)).toContainText($2)`},
+			{reCyGetShouldValue, `await expect(page.locator($1)).toHaveValue($2)`},
+			{reCyGetShouldChecked, `await expect(page.locator($1)).toBeChecked()`},
+			{reCyGetShouldDisabled, `await expect(page.locator($1)).toBeDisabled()`},
+			{reCyGetShouldEnabled, `await expect(page.locator($1)).toBeEnabled()`},
+			{reCyGetShouldClass, `await expect(page.locator($1)).toHaveClass($2)`},
+			{reCyGetShouldLength, `await expect(page.locator($1)).toHaveCount($2)`},
+			{reCyGetShouldNotEmpty, `await expect(page.locator($1)).not.toBeEmpty()`},
+			{reCyContainsShouldVis, `await expect(page.getByText($1)).toBeVisible()`},
+			{reCyURLShouldInclude, `expect(page.url()).toContain($1)`},
+			{reCyURLShouldEq, `expect(page.url()).toBe($1)`},
+			{reCyTitleShouldEq, `await expect(page).toHaveTitle($1)`},
+		}
+		for _, replacement := range assertionReplacements {
+			if replacement.re.MatchString(result) {
+				retryWarning = true
+				result = replacement.re.ReplaceAllString(result, replacement.repl)
+			}
+		}
+		if reCyGetShouldLengthGT.MatchString(result) {
 			retryWarning = true
+			result = reCyGetShouldLengthGT.ReplaceAllString(result, `expect(await page.locator($1).count()).toBeGreaterThan($2)`)
+		}
+
+		actionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{reCyGetClearType, `await page.locator($1).fill($2)`},
+			{reCyGetFirstClick, `await page.locator($1).first().click()`},
+			{reCyGetLastClick, `await page.locator($1).last().click()`},
+			{reCyGetEqClick, `await page.locator($1).nth($2).click()`},
+			{reCyGetClick, `await page.locator($1).click()`},
+			{reCyGetDoubleClick, `await page.locator($1).dblclick()`},
+			{reCyGetType, `await page.locator($1).fill($2)`},
+			{reCyGetClear, `await page.locator($1).clear()`},
+			{reCyGetCheck, `await page.locator($1).check()`},
+			{reCyGetUncheck, `await page.locator($1).uncheck()`},
+			{reCyGetSelect, `await page.locator($1).selectOption($2)`},
+			{reCyGetFocus, `await page.locator($1).focus()`},
+			{reCyGetBlur, `await page.locator($1).blur()`},
+			{reCyGetScrollInto, `await page.locator($1).scrollIntoViewIfNeeded()`},
+			{reCyContainsClick, `await page.getByText($1).click()`},
+			{reCyVisit, `await page.goto($1)`},
+			{reCyReload, `await page.reload()`},
+			{reCyGoBack, `await page.goBack()`},
+			{reCyGoForward, `await page.goForward()`},
+			{reCyViewport, `await page.setViewportSize({ width: $1, height: $2 })`},
+			{reCyScreenshotPath, `await page.screenshot({ path: $1 })`},
+			{reCyScreenshot, `await page.screenshot()`},
+			{reCyWaitNumber, `await page.waitForTimeout($1)`},
+			{reCyGetFirst, `page.locator($1).first()`},
+			{reCyGetLast, `page.locator($1).last()`},
+			{reCyGetEq, `page.locator($1).nth($2)`},
+			{reCyContainsOnly, `page.getByText($1)`},
+			{reCyGetOnly, `page.locator($1)`},
+		}
+		for _, replacement := range actionReplacements {
 			result = replacement.re.ReplaceAllString(result, replacement.repl)
 		}
-	}
-	if reCyGetShouldLengthGT.MatchString(result) {
-		retryWarning = true
-		result = reCyGetShouldLengthGT.ReplaceAllString(result, `expect(await page.locator($1).count()).toBeGreaterThan($2)`)
-	}
 
-	actionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{reCyGetClearType, `await page.locator($1).fill($2)`},
-		{reCyGetFirstClick, `await page.locator($1).first().click()`},
-		{reCyGetLastClick, `await page.locator($1).last().click()`},
-		{reCyGetEqClick, `await page.locator($1).nth($2).click()`},
-		{reCyGetClick, `await page.locator($1).click()`},
-		{reCyGetDoubleClick, `await page.locator($1).dblclick()`},
-		{reCyGetType, `await page.locator($1).fill($2)`},
-		{reCyGetClear, `await page.locator($1).clear()`},
-		{reCyGetCheck, `await page.locator($1).check()`},
-		{reCyGetUncheck, `await page.locator($1).uncheck()`},
-		{reCyGetSelect, `await page.locator($1).selectOption($2)`},
-		{reCyGetFocus, `await page.locator($1).focus()`},
-		{reCyGetBlur, `await page.locator($1).blur()`},
-		{reCyGetScrollInto, `await page.locator($1).scrollIntoViewIfNeeded()`},
-		{reCyContainsClick, `await page.getByText($1).click()`},
-		{reCyVisit, `await page.goto($1)`},
-		{reCyReload, `await page.reload()`},
-		{reCyGoBack, `await page.goBack()`},
-		{reCyGoForward, `await page.goForward()`},
-		{reCyViewport, `await page.setViewportSize({ width: $1, height: $2 })`},
-		{reCyScreenshotPath, `await page.screenshot({ path: $1 })`},
-		{reCyScreenshot, `await page.screenshot()`},
-		{reCyWaitNumber, `await page.waitForTimeout($1)`},
-		{reCyGetFirst, `page.locator($1).first()`},
-		{reCyGetLast, `page.locator($1).last()`},
-		{reCyGetEq, `page.locator($1).nth($2)`},
-		{reCyContainsOnly, `page.getByText($1)`},
-		{reCyGetOnly, `page.locator($1)`},
-	}
-	for _, replacement := range actionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
-	}
+		result = reDescribeOnly.ReplaceAllString(result, "${1}test.describe.only(")
+		result = reDescribeSkip.ReplaceAllString(result, "${1}test.describe.skip(")
+		result = reDescribe.ReplaceAllString(result, "${1}test.describe(")
+		result = reContext.ReplaceAllString(result, "${1}test.describe(")
+		result = reItOnly.ReplaceAllString(result, "${1}test.only(")
+		result = reItSkip.ReplaceAllString(result, "${1}test.skip(")
+		result = reSpecify.ReplaceAllString(result, "${1}test(")
+		result = reIt.ReplaceAllString(result, "${1}test(")
+		result = reBeforeEach.ReplaceAllString(result, "${1}test.beforeEach(")
+		result = reAfterEach.ReplaceAllString(result, "${1}test.afterEach(")
+		result = reBefore.ReplaceAllString(result, "${1}test.beforeAll(")
+		result = reAfter.ReplaceAllString(result, "${1}test.afterAll(")
 
-	result = reDescribeOnly.ReplaceAllString(result, "${1}test.describe.only(")
-	result = reDescribeSkip.ReplaceAllString(result, "${1}test.describe.skip(")
-	result = reDescribe.ReplaceAllString(result, "${1}test.describe(")
-	result = reContext.ReplaceAllString(result, "${1}test.describe(")
-	result = reItOnly.ReplaceAllString(result, "${1}test.only(")
-	result = reItSkip.ReplaceAllString(result, "${1}test.skip(")
-	result = reSpecify.ReplaceAllString(result, "${1}test(")
-	result = reIt.ReplaceAllString(result, "${1}test(")
-	result = reBeforeEach.ReplaceAllString(result, "${1}test.beforeEach(")
-	result = reAfterEach.ReplaceAllString(result, "${1}test.afterEach(")
-	result = reBefore.ReplaceAllString(result, "${1}test.beforeAll(")
-	result = reAfter.ReplaceAllString(result, "${1}test.afterAll(")
-
-	result = rePlaywrightDescribeCallback.ReplaceAllString(result, `${1}() => {`)
-	result = rePlaywrightTestEmptyCallback.ReplaceAllString(result, `${1}async ({ page }) => {`)
-	result = rePlaywrightHookCallback.ReplaceAllString(result, `test.$1(async ({ page }) => {`)
+		result = rePlaywrightDescribeCallback.ReplaceAllString(result, `${1}() => {`)
+		result = rePlaywrightTestEmptyCallback.ReplaceAllString(result, `${1}async ({ page }) => {`)
+		result = rePlaywrightHookCallback.ReplaceAllString(result, `test.$1(async ({ page }) => {`)
+	}
 
 	result = commentUnsupportedCypressLines(result)
 
@@ -200,6 +210,13 @@ func ConvertCypressToPlaywrightSource(source string) (string, error) {
 }
 
 func commentUnsupportedCypressLines(source string) string {
+	if lines, ok := unsupportedCypressLineRowsAST(source); ok {
+		if len(lines) == 0 {
+			return source
+		}
+		return commentSpecificLines(source, lines, "manual Cypress conversion required")
+	}
+
 	lines := strings.Split(source, "\n")
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
@@ -214,6 +231,22 @@ func commentUnsupportedCypressLines(source string) string {
 			indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
 			lines[i] = indent + "// TERRAIN-TODO: manual Cypress conversion required\n" + indent + "// " + strings.TrimSpace(line)
 		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func commentSpecificLines(source string, rows map[int]bool, todo string) string {
+	lines := strings.Split(source, "\n")
+	for i, line := range lines {
+		if !rows[i] {
+			continue
+		}
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "//") {
+			continue
+		}
+		indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+		lines[i] = indent + "// TERRAIN-TODO: " + todo + "\n" + indent + "// " + strings.TrimSpace(line)
 	}
 	return strings.Join(lines, "\n")
 }

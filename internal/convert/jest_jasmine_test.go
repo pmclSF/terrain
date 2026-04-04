@@ -96,3 +96,59 @@ func TestExecuteJestToJasmineDirectory_PreservesFileNamesAndHelpers(t *testing.T
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
 	}
 }
+
+func TestConvertJestToJasmineSource_DoesNotRewriteStringsOrComments(t *testing.T) {
+	t.Parallel()
+
+	input := `describe('notes', () => {
+  it('leaves prose alone', () => {
+    // jest.useFakeTimers() should stay in this comment
+    const note = "jest.spyOn(service, 'get') is only documentation";
+    const matcher = "expect.any(String)";
+    const fn = jest.fn().mockImplementation(() => true);
+    expect(fn()).toBe(true);
+    expect(note).toContain("jest.spyOn(service, 'get')");
+    expect(matcher).toContain("expect.any(String)");
+  });
+});
+`
+
+	got, err := ConvertJestToJasmineSource(input)
+	if err != nil {
+		t.Fatalf("ConvertJestToJasmineSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// jest.useFakeTimers() should stay in this comment") {
+		t.Fatalf("expected comment to be preserved, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "jest.spyOn(service, 'get') is only documentation"`) {
+		t.Fatalf("expected string literal to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const matcher = "expect.any(String)"`) {
+		t.Fatalf("expected matcher string to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "const fn = jasmine.createSpy().and.callFake(() => true)") {
+		t.Fatalf("expected real jest.fn call to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertJestToJasmineSource_CommentsUnsupportedModuleMock(t *testing.T) {
+	t.Parallel()
+
+	input := `describe('mocks', () => {
+  it('flags manual work', () => {
+    jest.mock('./service');
+  });
+});
+`
+
+	got, err := ConvertJestToJasmineSource(input)
+	if err != nil {
+		t.Fatalf("ConvertJestToJasmineSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual Jest module mock conversion required") {
+		t.Fatalf("expected jest.mock to be commented for manual review, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// jest.mock('./service');") {
+		t.Fatalf("expected original jest.mock line to be preserved as comment, got:\n%s", got)
+	}
+}

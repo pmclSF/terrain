@@ -119,3 +119,54 @@ func TestExecutePlaywrightToSeleniumDirectory_PreservesFileNamesAndHelpers(t *te
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
 	}
 }
+
+func TestConvertPlaywrightToSeleniumSource_HandlesSelectorParensAndPreservesComments(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test, expect } from '@playwright/test';
+
+test.describe('Account', () => {
+  test('opens', async ({ page }) => {
+    // page.locator('.btn:nth-child(2)').click() should stay in this comment
+    const note = "page.locator('.btn:nth-child(2)').click() is documentation";
+    await page.locator('.btn:nth-child(2)').click();
+  });
+});
+`
+
+	got, err := ConvertPlaywrightToSeleniumSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToSeleniumSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// page.locator('.btn:nth-child(2)').click() should stay in this comment") {
+		t.Fatalf("expected comment to be preserved, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "page.locator('.btn:nth-child(2)').click() is documentation"`) {
+		t.Fatalf("expected string literal to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await driver.findElement(By.css('.btn:nth-child(2)')).click()") {
+		t.Fatalf("expected selector with nested parens to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertPlaywrightToSeleniumSource_CommentsUnsupportedGetByTestID(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test } from '@playwright/test';
+
+test('unsupported', async ({ page }) => {
+  await page.getByTestId('ready').click();
+});
+`
+
+	got, err := ConvertPlaywrightToSeleniumSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToSeleniumSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "TERRAIN-TODO: manual Playwright conversion required") {
+		t.Fatalf("expected TODO comment for unsupported Playwright helpers, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await page.getByTestId('ready').click();") {
+		t.Fatalf("expected original unsupported line to be commented out, got:\n%s", got)
+	}
+}

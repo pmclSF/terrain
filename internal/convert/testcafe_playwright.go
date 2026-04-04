@@ -62,61 +62,68 @@ func ConvertTestCafeToPlaywrightSource(source string) (string, error) {
 	result = rePlaywrightTestImport.ReplaceAllString(result, "")
 	result = reTcImport.ReplaceAllString(result, "")
 	result, suiteName, pageURL := extractTestCafeFixture(result)
-
-	result = reTcSelectorAssignText.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4}).filter({ hasText: ${5} });`)
-	result = reTcSelectorAssignFind.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4}).locator(${5});`)
-	result = reTcSelectorAssignNth.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4}).nth(${5});`)
-	result = reTcSelectorAssign.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4});`)
-
-	assertionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{reTcExpectExistsOk, `await expect(page.locator($1)).toBeAttached()`},
-		{reTcExpectExistsNotOk, `await expect(page.locator($1)).not.toBeAttached()`},
-		{reTcExpectVisibleOk, `await expect(page.locator($1)).toBeVisible()`},
-		{reTcExpectVisibleNotOk, `await expect(page.locator($1)).toBeHidden()`},
-		{reTcExpectCountEq, `await expect(page.locator($1)).toHaveCount($2)`},
-		{reTcExpectInnerTextEq, `await expect(page.locator($1)).toHaveText($2)`},
-		{reTcExpectInnerTextIn, `await expect(page.locator($1)).toContainText($2)`},
-		{reTcExpectValueEq, `await expect(page.locator($1)).toHaveValue($2)`},
-	}
-	for _, replacement := range assertionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
+	astApplied := false
+	if astResult, ok := convertTestCafeToPlaywrightSourceAST(result); ok {
+		result = astResult
+		astApplied = true
 	}
 
-	actionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{reTcClickSelectorText, `await page.locator($1).filter({ hasText: $2 }).click()`},
-		{reTcClickSelectorNth, `await page.locator($1).nth($2).click()`},
-		{reTcClickSelectorFind, `await page.locator($1).locator($2).click()`},
-		{reTcClickSelector, `await page.locator($1).click()`},
-		{reTcTypeTextSelector, `await page.locator($1).fill($2)`},
-		{reTcDoubleClick, `await page.locator($1).dblclick()`},
-		{reTcHover, `await page.locator($1).hover()`},
-		{reTcNavigate, `await page.goto($1)`},
-		{reTcWait, `await page.waitForTimeout($1)`},
-		{reTcTakeScreenshot, `await page.screenshot()`},
-		{reTcResizeWindow, `await page.setViewportSize({ width: $1, height: $2 })`},
-		{reTcSetFilesToUpload, `await page.locator($1).setInputFiles($2)`},
-		{reTcClick, `await page.locator($1).click()`},
-		{reTcTypeText, `await page.locator($1).fill($2)`},
-	}
-	for _, replacement := range actionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
-	}
+	if !astApplied {
+		result = reTcSelectorAssignText.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4}).filter({ hasText: ${5} });`)
+		result = reTcSelectorAssignFind.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4}).locator(${5});`)
+		result = reTcSelectorAssignNth.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4}).nth(${5});`)
+		result = reTcSelectorAssign.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4});`)
 
-	result = reTcSelectorWithText.ReplaceAllString(result, `page.locator($1).filter({ hasText: $2 })`)
-	result = reTcSelectorFind.ReplaceAllString(result, `page.locator($1).locator($2)`)
-	result = reTcSelectorNth.ReplaceAllString(result, `page.locator($1).nth($2)`)
-	result = reTcSelectorStandalone.ReplaceAllString(result, `page.locator($1)`)
-	result = reTcPWExpectLocatorVar.ReplaceAllString(result, `await expect($1).`)
-	result = reTcPWActionLocatorVar.ReplaceAllString(result, `await $1.`)
-	result = reTcTestCallback.ReplaceAllString(result, `test($1, async ({ page }) => {`)
+		assertionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{reTcExpectExistsOk, `await expect(page.locator($1)).toBeAttached()`},
+			{reTcExpectExistsNotOk, `await expect(page.locator($1)).not.toBeAttached()`},
+			{reTcExpectVisibleOk, `await expect(page.locator($1)).toBeVisible()`},
+			{reTcExpectVisibleNotOk, `await expect(page.locator($1)).toBeHidden()`},
+			{reTcExpectCountEq, `await expect(page.locator($1)).toHaveCount($2)`},
+			{reTcExpectInnerTextEq, `await expect(page.locator($1)).toHaveText($2)`},
+			{reTcExpectInnerTextIn, `await expect(page.locator($1)).toContainText($2)`},
+			{reTcExpectValueEq, `await expect(page.locator($1)).toHaveValue($2)`},
+		}
+		for _, replacement := range assertionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
 
-	result = commentUnsupportedTestCafePlaywrightLines(result)
+		actionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{reTcClickSelectorText, `await page.locator($1).filter({ hasText: $2 }).click()`},
+			{reTcClickSelectorNth, `await page.locator($1).nth($2).click()`},
+			{reTcClickSelectorFind, `await page.locator($1).locator($2).click()`},
+			{reTcClickSelector, `await page.locator($1).click()`},
+			{reTcTypeTextSelector, `await page.locator($1).fill($2)`},
+			{reTcDoubleClick, `await page.locator($1).dblclick()`},
+			{reTcHover, `await page.locator($1).hover()`},
+			{reTcNavigate, `await page.goto($1)`},
+			{reTcWait, `await page.waitForTimeout($1)`},
+			{reTcTakeScreenshot, `await page.screenshot()`},
+			{reTcResizeWindow, `await page.setViewportSize({ width: $1, height: $2 })`},
+			{reTcSetFilesToUpload, `await page.locator($1).setInputFiles($2)`},
+			{reTcClick, `await page.locator($1).click()`},
+			{reTcTypeText, `await page.locator($1).fill($2)`},
+		}
+		for _, replacement := range actionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
+
+		result = reTcSelectorWithText.ReplaceAllString(result, `page.locator($1).filter({ hasText: $2 })`)
+		result = reTcSelectorFind.ReplaceAllString(result, `page.locator($1).locator($2)`)
+		result = reTcSelectorNth.ReplaceAllString(result, `page.locator($1).nth($2)`)
+		result = reTcSelectorStandalone.ReplaceAllString(result, `page.locator($1)`)
+		result = reTcPWExpectLocatorVar.ReplaceAllString(result, `await expect($1).`)
+		result = reTcPWActionLocatorVar.ReplaceAllString(result, `await $1.`)
+		result = reTcTestCallback.ReplaceAllString(result, `test($1, async ({ page }) => {`)
+
+		result = commentUnsupportedTestCafePlaywrightLines(result)
+	}
 	result = cleanupConvertedPlaywrightOutput(result)
 	result = wrapTestCafePlaywrightSuite(result, suiteName, pageURL)
 	result = prependImportPreservingHeader(result, "import { test, expect } from '@playwright/test';")
