@@ -144,6 +144,39 @@ func main() {
 			os.Exit(exitCodeForCLIError(err))
 		}
 
+	case "migrate":
+		if err := runMigrateCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "estimate":
+		if err := runEstimateCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "status":
+		if err := runStatusCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "checklist":
+		if err := runChecklistCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "doctor":
+		os.Exit(runDoctorCLI(os.Args[2:]))
+
+	case "reset":
+		if err := runResetCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
 	case "policy":
 		if len(os.Args) < 3 || os.Args[2] != "check" {
 			fmt.Fprintln(os.Stderr, "Usage: terrain policy check [flags]")
@@ -648,6 +681,12 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  init [flags]             detect data paths and print recommended analyze command")
 	fmt.Fprintln(os.Stderr, "  convert <source> [flags] inspect or execute Go-native conversion directions")
 	fmt.Fprintln(os.Stderr, "  convert-config [flags]   convert framework config files with the Go-native runtime")
+	fmt.Fprintln(os.Stderr, "  migrate <dir> [flags]    run project-wide Go-native conversion workflow")
+	fmt.Fprintln(os.Stderr, "  estimate <dir> [flags]   estimate migration complexity without writing files")
+	fmt.Fprintln(os.Stderr, "  status [flags]           show current migration progress")
+	fmt.Fprintln(os.Stderr, "  checklist [flags]        generate the current migration checklist")
+	fmt.Fprintln(os.Stderr, "  doctor [path] [flags]    run migration diagnostics for a directory")
+	fmt.Fprintln(os.Stderr, "  reset [flags]            clear conversion migration state")
 	fmt.Fprintln(os.Stderr, "  list-conversions [flags] list supported conversion directions")
 	fmt.Fprintln(os.Stderr, "  shorthands [flags]       list shorthand conversion aliases")
 	fmt.Fprintln(os.Stderr, "  detect <file-or-dir>     detect the dominant framework for a file or directory")

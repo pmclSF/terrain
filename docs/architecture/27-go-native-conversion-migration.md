@@ -201,6 +201,20 @@ Target outcomes:
 - `terrain migrate`, `estimate`, `status`, `checklist`, and `doctor` are Go-native
 - release verification can stop depending on the legacy JS runtime for product behavior
 
+Current status:
+
+- `terrain estimate` is now Go-native and runs the conversion runtime in-memory to produce confidence bands, blockers, and effort estimates
+- `terrain migrate` is now Go-native and adds project scanning, config conversion, state tracking, resume/retry support, and checklist generation on top of the direct converters
+- `terrain status` is now Go-native and reads conversion workflow state from `.terrain/migration/`
+- `terrain checklist` is now Go-native and renders the saved migration checklist from workflow state
+- `terrain doctor` is now Go-native and validates path access, writable output, project config, test inventory, supported directions, and saved migration state
+- `terrain reset` is now Go-native and clears only conversion migration state rather than deleting the full `.terrain/` directory
+
+Milestone result:
+
+- the end-to-end conversion workflow no longer depends on the legacy JS runtime for product behavior
+- direct conversion and project-wide migration now share the same Go-native execution core
+
 ### Milestone 4: Legacy retirement
 
 Target outcomes:
@@ -222,7 +236,7 @@ Target outcomes:
 
 After this slice, the recommended next implementation step is:
 
-1. Port `migrate`, `estimate`, `status`, `checklist`, and `doctor`
-2. Add deeper parity coverage for advanced Java, Python, and browser framework features that still emit `TERRAIN-TODO`
-3. Move release verification off the legacy JS runtime for product behavior
-4. Retire the legacy JS runtime direction-by-direction as parity closes
+1. Add deeper parity coverage for advanced Java, Python, and browser framework features that still emit `TERRAIN-TODO`
+2. Move release verification off the legacy JS runtime for product behavior entirely
+3. Retire `bin/terrain.js` as the legacy fallback implementation
+4. Trim or archive legacy converter docs once the new workflow docs fully replace them

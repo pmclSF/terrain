@@ -298,6 +298,65 @@ func DetectConfigFramework(path string) string {
 	}
 }
 
+// SupportsConfigConversion reports whether the Go-native config runtime supports
+// a given framework direction.
+func SupportsConfigConversion(fromFramework, toFramework string) bool {
+	switch NormalizeFramework(fromFramework) + "-" + NormalizeFramework(toFramework) {
+	case "jest-vitest",
+		"vitest-jest",
+		"cypress-playwright",
+		"playwright-cypress",
+		"webdriverio-playwright",
+		"playwright-webdriverio",
+		"webdriverio-cypress",
+		"cypress-webdriverio",
+		"cypress-selenium",
+		"selenium-cypress",
+		"playwright-selenium",
+		"selenium-playwright",
+		"mocha-jest",
+		"jasmine-jest":
+		return true
+	default:
+		return false
+	}
+}
+
+// TargetConfigFileName returns the conventional target config filename for a
+// framework, falling back to the existing basename when Terrain does not have a
+// stronger convention.
+func TargetConfigFileName(toFramework, fallbackBase string) string {
+	switch NormalizeFramework(toFramework) {
+	case "jest":
+		return "jest.config.js"
+	case "vitest":
+		return "vitest.config.ts"
+	case "playwright":
+		return "playwright.config.ts"
+	case "cypress":
+		return "cypress.config.js"
+	case "webdriverio":
+		return "wdio.conf.js"
+	case "mocha":
+		return ".mocharc.yml"
+	case "jasmine":
+		return "jasmine.json"
+	case "pytest":
+		return "pytest.ini"
+	case "unittest":
+		return "unittest.cfg"
+	case "testng":
+		return "testng.xml"
+	case "junit5":
+		return "junit-platform.properties"
+	default:
+		if strings.TrimSpace(fallbackBase) != "" {
+			return fallbackBase
+		}
+		return "terrain.config"
+	}
+}
+
 // ConvertConfig converts framework config text between supported directions.
 func ConvertConfig(content, fromFramework, toFramework string) (string, error) {
 	fromFramework = NormalizeFramework(fromFramework)
