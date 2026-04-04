@@ -1157,7 +1157,7 @@ func TestAnalyze_NonTestableFilesExcluded(t *testing.T) {
 			{Path: "src/auth.js", ChangeKind: ChangeModified},
 			{Path: "README.md", ChangeKind: ChangeModified},
 			{Path: ".github/workflows/ci.yml", ChangeKind: ChangeModified},
-			{Path: "CLAUDE.md", ChangeKind: ChangeModified},
+			{Path: "docs/README.md", ChangeKind: ChangeModified},
 			{Path: "Makefile", ChangeKind: ChangeModified},
 			{Path: ".goreleaser.yaml", ChangeKind: ChangeModified},
 			{Path: "package.json", ChangeKind: ChangeModified},
