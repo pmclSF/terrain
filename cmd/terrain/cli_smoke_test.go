@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"sync"
 	"testing"
 )
+
+var captureRunMu sync.Mutex
 
 // TestCLISmoke_ReportingCommands runs every reporting command against the
 // fixture repo and verifies no errors or panics. These are smoke tests
@@ -142,6 +145,9 @@ func TestCLISmoke_AIBaselineCompare(t *testing.T) {
 // captureRun redirects os.Stdout, runs fn, and returns captured output.
 // Must NOT be used concurrently — os.Stdout is global.
 func captureRun(fn func() error) ([]byte, error) {
+	captureRunMu.Lock()
+	defer captureRunMu.Unlock()
+
 	old := os.Stdout
 	r, w, pipeErr := os.Pipe()
 	if pipeErr != nil {
@@ -159,4 +165,11 @@ func captureRun(fn func() error) ([]byte, error) {
 	r.Close()
 
 	return buf.Bytes(), fnErr
+}
+
+// runCaptured serializes stdout-affecting commands even when the caller only
+// cares about the returned error or side effects on disk.
+func runCaptured(fn func() error) error {
+	_, err := captureRun(fn)
+	return err
 }

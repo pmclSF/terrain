@@ -114,6 +114,36 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "convert":
+		if err := runConvertCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "convert-config":
+		if err := runConvertConfigCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "list", "list-conversions":
+		if err := runListConversionsCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "shorthands":
+		if err := runShorthandsCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "detect":
+		if err := runDetectCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
 	case "policy":
 		if len(os.Args) < 3 || os.Args[2] != "check" {
 			fmt.Fprintln(os.Stderr, "Usage: terrain policy check [flags]")
@@ -561,6 +591,13 @@ func main() {
 	case "--help", "-h", "help":
 		printUsage()
 	default:
+		if _, ok := lookupConvertShorthand(os.Args[1]); ok {
+			if err := runShorthandCLI(os.Args[1], os.Args[2:]); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(exitCodeForCLIError(err))
+			}
+			return
+		}
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])
 		printUsage()
 		os.Exit(2)
@@ -609,6 +646,11 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Supporting commands:")
 	fmt.Fprintln(os.Stderr, "  init [flags]             detect data paths and print recommended analyze command")
+	fmt.Fprintln(os.Stderr, "  convert <source> [flags] inspect or execute Go-native conversion directions")
+	fmt.Fprintln(os.Stderr, "  convert-config [flags]   convert framework config files with the Go-native runtime")
+	fmt.Fprintln(os.Stderr, "  list-conversions [flags] list supported conversion directions")
+	fmt.Fprintln(os.Stderr, "  shorthands [flags]       list shorthand conversion aliases")
+	fmt.Fprintln(os.Stderr, "  detect <file-or-dir>     detect the dominant framework for a file or directory")
 	fmt.Fprintln(os.Stderr, "  summary [flags]          executive summary with risk, trends, benchmark readiness")
 	fmt.Fprintln(os.Stderr, "  focus [flags]            prioritized next actions")
 	fmt.Fprintln(os.Stderr, "  posture [flags]          detailed posture breakdown with measurement evidence")
@@ -621,6 +663,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  migration <sub> [flags]  readiness, blockers, or preview")
 	fmt.Fprintln(os.Stderr, "  policy check [flags]     evaluate local policy rules")
 	fmt.Fprintln(os.Stderr, "  export benchmark [flags] privacy-safe JSON export for benchmarking")
+	fmt.Fprintln(os.Stderr, "  serve [flags]            local HTTP server with HTML report and JSON API")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "AI / eval:")
 	fmt.Fprintln(os.Stderr, "  ai list [flags]          list detected AI/eval scenarios and surfaces")
