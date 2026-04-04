@@ -286,6 +286,10 @@ None. This is a new engine and a new binary. The legacy JavaScript converter eng
 ### Install
 
 ```bash
+brew install pmclSF/terrain/mapterrain
+# or
+npm install -g mapterrain
+# or
 go install github.com/pmclSF/terrain/cmd/terrain@latest
 ```
 

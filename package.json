@@ -1,7 +1,7 @@
 {
-  "name": "terrain-testframework",
-  "version": "2.0.2",
-  "description": "Terrain test framework converter — migrate tests between Jest, Vitest, Playwright, Cypress, pytest, JUnit, and 10 more frameworks.",
+  "name": "mapterrain",
+  "version": "1.0.0",
+  "description": "Terrain test intelligence CLI with bundled legacy test converter commands.",
   "type": "module",
   "main": "src/index.js",
   "types": "src/types/index.d.ts",
@@ -24,8 +24,9 @@
     }
   },
   "bin": {
-    "terrain-convert": "bin/terrain.js",
-    "terrain": "bin/terrain-compat.js"
+    "mapterrain": "bin/terrain-cli.js",
+    "terrain": "bin/terrain-cli.js",
+    "terrain-convert": "bin/terrain.js"
   },
   "files": [
     "bin",
@@ -54,11 +55,12 @@
     "url": "https://github.com/pmclSF/terrain/issues"
   },
   "scripts": {
+    "postinstall": "node bin/postinstall.js",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "lint": "eslint src/**/*.js bin/**/*.js",
     "format": "prettier --write \"src/**/*.js\" \"bin/**/*.js\"",
     "format:check": "prettier --check \"src/**/*.js\" \"bin/**/*.js\"",
-    "start": "node bin/terrain.js",
+    "start": "node bin/terrain-cli.js",
     "convert": "node bin/terrain.js",
     "lint-staged": "lint-staged",
     "test:staged": "jest --findRelatedTests",
@@ -66,6 +68,10 @@
     "prepublishOnly": "npm run format:check && npm run lint && npm test"
   },
   "keywords": [
+    "terrain",
+    "test-intelligence",
+    "test-analysis",
+    "risk-analysis",
     "playwright",
     "cypress",
     "selenium",
@@ -88,7 +94,7 @@
     "test-migration",
     "test-converter"
   ],
-  "author": "pmcISF",
+  "author": "pmclSF",
   "license": "MIT",
   "dependencies": {
     "@babel/parser": "7.29.2",

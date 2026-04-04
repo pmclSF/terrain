@@ -3,7 +3,12 @@
 **Map your test terrain.** Understand your test system in 30 seconds.
 
 ```bash
-go install github.com/pmclSF/terrain/cmd/terrain@latest
+# Homebrew
+brew install pmclSF/terrain/mapterrain
+
+# npm
+npm install -g mapterrain
+
 cd your-repo
 terrain analyze
 ```
@@ -212,17 +217,63 @@ When you run `terrain analyze`, Terrain builds a structural model: which tests e
 
 The result is faster CI that comes from *understanding the test system*, not from skipping tests and hoping for the best.
 
-## Quick Start
+## Installation
+
+### Homebrew (macOS and Linux)
 
 ```bash
-# Install
-go install github.com/pmclSF/terrain/cmd/terrain@latest
+brew install pmclSF/terrain/mapterrain
+```
 
-# Or build from source
+After the first install, you can also tap once and use the short formula name:
+
+```bash
+brew tap pmclSF/terrain
+brew install mapterrain
+```
+
+### npm
+
+```bash
+npm install -g mapterrain
+```
+
+### Go install
+
+```bash
+go install github.com/pmclSF/terrain/cmd/terrain@latest
+```
+
+Requires Go 1.23 or later.
+
+### Pre-built binaries
+
+Download the appropriate binary for your platform from [GitHub Releases](https://github.com/pmclSF/terrain/releases), then:
+
+```bash
+chmod +x terrain
+sudo mv terrain /usr/local/bin/
+```
+
+Binaries are available for macOS, Linux, and Windows (amd64 and arm64).
+
+### Build from source
+
+```bash
 git clone https://github.com/pmclSF/terrain.git
 cd terrain
 go build -o terrain ./cmd/terrain
+```
 
+### Verify installation
+
+```bash
+terrain --version
+```
+
+## Quick Start
+
+```bash
 # Detect coverage/runtime data paths (recommended first step)
 terrain init
 
@@ -233,26 +284,25 @@ terrain analyze
 terrain analyze --json
 ```
 
-### Requirements
+### npm package layout
 
-- Go 1.23 or later
-
-### Legacy Test Converter (npm)
-
-The npm package `terrain-testframework` provides a separate CLI for **test framework conversion** (migrating tests between Jest, Vitest, Playwright, Cypress, pytest, JUnit, and 10 more frameworks). It is distinct from the Go-based analysis CLI above.
+The npm package `mapterrain` installs the primary Terrain CLI as `terrain`. It also bundles the legacy `terrain-convert` command for test framework conversion workflows (Jest, Vitest, Playwright, Cypress, pytest, JUnit, and 10 more frameworks).
 
 ```bash
-# Install the converter
-npm install -g terrain-testframework
+# Install Terrain from npm
+npm install -g mapterrain
 
-# Convert tests
+# Main CLI
+terrain analyze
+
+# Legacy converter
 terrain-convert convert src/tests/ --from jest --to vitest -o converted/
 
 # Shorthand aliases
 terrain-convert cy2pw src/e2e/ -o converted/
 ```
 
-The old `terrain` npm binary name is deprecated. Use `terrain-convert` instead to avoid conflicts with the Go CLI.
+The old npm package `hamlet-converter` is deprecated in favor of `mapterrain`.
 
 ## Commands
 
@@ -282,6 +332,7 @@ The old `terrain` npm binary name is deprecated. Use `terrain-convert` instead t
 | `terrain migration <sub>` | Migration readiness, blockers, or preview |
 | `terrain policy check` | Evaluate local policy rules |
 | `terrain export benchmark` | Privacy-safe JSON export for benchmarking |
+| `terrain serve` | Local HTTP server with HTML report and JSON API |
 
 ### AI / eval
 

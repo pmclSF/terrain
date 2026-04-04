@@ -17,7 +17,7 @@ import type {
   IConverterFactory,
   IFrameworkDetector,
   IPatternEngine,
-} from 'terrain-testframework';
+} from 'mapterrain';
 
 import {
   convertFile,
@@ -33,7 +33,7 @@ import {
   BatchProcessor,
   ConversionReporter,
   RepositoryConverter,
-} from 'terrain-testframework';
+} from 'mapterrain';
 
 import {
   ConverterFactory,
@@ -42,7 +42,7 @@ import {
   BaseConverter,
   PipelineConverter,
   FRAMEWORKS,
-} from 'terrain-testframework/core';
+} from 'mapterrain/core';
 
 import {
   CypressToPlaywright,
@@ -51,9 +51,9 @@ import {
   PlaywrightToSelenium,
   SeleniumToCypress,
   SeleniumToPlaywright,
-} from 'terrain-testframework/converters';
+} from 'mapterrain/converters';
 
-import { DependencyAnalyzer, fileUtils } from 'terrain-testframework/internals';
+import { DependencyAnalyzer, fileUtils } from 'mapterrain/internals';
 
 // ── Framework type ──
 const fw: Framework = 'jest';

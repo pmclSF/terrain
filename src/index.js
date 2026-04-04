@@ -9,7 +9,7 @@
  *   Constants: VERSION, SUPPORTED_TEST_TYPES, DEFAULT_OPTIONS
  *
  * Internal/advanced classes and utilities are available via the
- * "terrain-testframework/internals" subpath export.
+ * "mapterrain/internals" subpath export.
  */
 
 // Core orchestration

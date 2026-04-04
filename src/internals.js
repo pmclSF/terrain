@@ -2,7 +2,7 @@
  * Terrain internal/advanced exports.
  *
  * These are implementation details that may change between minor versions.
- * Prefer the public API from "terrain-testframework" unless you need low-level
+ * Prefer the public API from "mapterrain" unless you need low-level
  * access for custom tooling.
  */
 
