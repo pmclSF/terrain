@@ -1141,7 +1141,9 @@ Examples:
   $ terrain-convert doctor
 
 For test system intelligence (analyze, insights, impact, explain):
-  Install the Go CLI: go install github.com/pmclSF/terrain/cmd/terrain@latest`
+  Install Terrain: brew install pmclSF/terrain/mapterrain
+                   npm install -g mapterrain
+                   go install github.com/pmclSF/terrain/cmd/terrain@latest`
   )
   .option('--verbose', 'Show detailed output for all commands')
   .option('--debug', 'Show stack traces and internal debug info');

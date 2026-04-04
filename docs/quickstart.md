@@ -5,7 +5,13 @@ Terrain analyzes your test system without running any tests. It reads your code,
 ## Install
 
 ```bash
-# Binary (recommended)
+# Homebrew
+brew install pmclSF/terrain/mapterrain
+
+# npm
+npm install -g mapterrain
+
+# Go binary
 go install github.com/pmclSF/terrain/cmd/terrain@latest
 
 # From source

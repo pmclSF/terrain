@@ -1,9 +1,10 @@
 # Changelog
 
-## 3.0.0 — V3 Signal-First Test Intelligence (unreleased)
+## 1.0.0 — Signal-First Test Intelligence (2026-04-03)
 
-Terrain V3 is a complete architectural shift from V2's conversion-led approach
-to a signal-first test intelligence platform built in Go.
+Terrain 1.0 is the first release of the Terrain test intelligence platform.
+This is a complete architectural shift from the V2 converter to a signal-first
+platform built in Go.
 
 ### Core Analysis
 - Repository scanning with framework detection (17 JS/TS/Java/Python/Go frameworks)

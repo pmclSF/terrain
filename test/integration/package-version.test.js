@@ -14,8 +14,13 @@ describe('Package version resolution', () => {
   let tarball;
   let npmCacheDir;
   let npmEnv;
+  let packageName;
 
   beforeAll(async () => {
+    const pkg = JSON.parse(
+      await fs.readFile(path.join(rootDir, 'package.json'), 'utf8')
+    );
+    packageName = pkg.name;
     npmCacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'terrain-npm-cache-'));
     npmEnv = {
       ...process.env,
@@ -50,7 +55,7 @@ describe('Package version resolution', () => {
     await fs.mkdir(consumerNodeModules, { recursive: true });
     await fs.symlink(
       packageDir,
-      path.join(consumerNodeModules, 'terrain-testframework')
+      path.join(consumerNodeModules, packageName)
     );
 
     // Allow extracted package to resolve dependencies from this workspace.
@@ -86,7 +91,7 @@ describe('Package version resolution', () => {
       [
         '--input-type=module',
         '-e',
-        "import { VERSION } from 'terrain-testframework'; process.stdout.write(VERSION);",
+        `import { VERSION } from '${packageName}'; process.stdout.write(VERSION);`,
       ],
       {
         cwd: consumerDir,
@@ -103,7 +108,7 @@ describe('Package version resolution', () => {
       [
         '--input-type=module',
         '-e',
-        "import { ConverterFactory, FRAMEWORKS } from 'terrain-testframework/core'; process.stdout.write(String(Boolean(ConverterFactory && FRAMEWORKS)));",
+        `import { ConverterFactory, FRAMEWORKS } from '${packageName}/core'; process.stdout.write(String(Boolean(ConverterFactory && FRAMEWORKS)));`,
       ],
       {
         cwd: consumerDir,

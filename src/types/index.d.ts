@@ -235,7 +235,7 @@ export interface IPatternEngine {
   clear(): void;
 }
 
-// ── Classes exported from main entry (terrain-testframework) ──
+// ── Classes exported from main entry (mapterrain) ──
 
 export class RepositoryConverter {
   constructor();

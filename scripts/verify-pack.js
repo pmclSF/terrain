@@ -16,13 +16,48 @@ const rootDir = path.resolve(__dirname, '..');
 
 let tmpDir;
 let tarball;
+let npmCacheDir;
+let builtBinaryDir;
 
 try {
+  const packageJson = JSON.parse(
+    await fs.readFile(path.join(rootDir, 'package.json'), 'utf8')
+  );
+  const packageName = packageJson.name;
+  const packageVersion = packageJson.version;
+
+  npmCacheDir = await fs.mkdtemp(path.join(os.tmpdir(), 'terrain-npm-cache-'));
+  builtBinaryDir = await fs.mkdtemp(path.join(os.tmpdir(), 'terrain-binary-'));
+  const localBinary = path.join(
+    builtBinaryDir,
+    process.platform === 'win32' ? 'terrain.exe' : 'terrain'
+  );
+
+  execFileSync(
+    'go',
+    [
+      'build',
+      '-ldflags',
+      `-X main.version=${packageVersion} -X main.commit=verify-pack -X main.date=1970-01-01T00:00:00Z`,
+      '-o',
+      localBinary,
+      './cmd/terrain',
+    ],
+    { cwd: rootDir, encoding: 'utf8' }
+  );
+
+  const npmEnv = {
+    ...process.env,
+    NPM_CONFIG_CACHE: npmCacheDir,
+    npm_config_cache: npmCacheDir,
+    TERRAIN_INSTALLER_LOCAL_BINARY: localBinary,
+  };
+
   console.log('Packing tarball...');
   const packOutput = execFileSync(
     'npm',
     ['pack', '--pack-destination', os.tmpdir()],
-    { cwd: rootDir, encoding: 'utf8' }
+    { cwd: rootDir, encoding: 'utf8', env: npmEnv }
   ).trim();
 
   const tarballName = packOutput.split('\n').pop().trim();
@@ -66,8 +101,16 @@ try {
   // Install in temp dir and verify imports
   console.log('\nInstalling in temp directory...');
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'terrain-verify-'));
-  execFileSync('npm', ['init', '-y'], { cwd: tmpDir, encoding: 'utf8' });
-  execFileSync('npm', ['install', tarball], { cwd: tmpDir, encoding: 'utf8' });
+  execFileSync('npm', ['init', '-y'], {
+    cwd: tmpDir,
+    encoding: 'utf8',
+    env: npmEnv,
+  });
+  execFileSync('npm', ['install', tarball], {
+    cwd: tmpDir,
+    encoding: 'utf8',
+    env: npmEnv,
+  });
 
   console.log('Verifying exports...');
   const check = execFileSync(
@@ -76,8 +119,8 @@ try {
       '--input-type=module',
       '-e',
       `
-      import { VERSION, convertFile, convertRepository, BatchProcessor, ConversionReporter } from 'terrain-testframework';
-      const pkg = JSON.parse(await import('fs/promises').then(f => f.default.readFile('node_modules/terrain-testframework/package.json', 'utf8')));
+      import { VERSION, convertFile, convertRepository, BatchProcessor, ConversionReporter } from '${packageName}';
+      const pkg = JSON.parse(await import('fs/promises').then(f => f.default.readFile('node_modules/${packageName}/package.json', 'utf8')));
       const errors = [];
       if (VERSION !== pkg.version) errors.push('VERSION ' + VERSION + ' !== package.json ' + pkg.version);
       if (typeof convertFile !== 'function') errors.push('convertFile is not a function');
@@ -104,11 +147,17 @@ try {
     '.bin',
     'terrain-convert'
   );
-  const terrainCompatBin = path.join(
+  const terrainBin = path.join(
     tmpDir,
     'node_modules',
     '.bin',
     'terrain'
+  );
+  const packageBin = path.join(
+    tmpDir,
+    'node_modules',
+    '.bin',
+    packageName
   );
 
   const versionOut = execFileSync(terrainConvertBin, ['--version'], {
@@ -116,7 +165,7 @@ try {
   }).trim();
   const pkgVersion = JSON.parse(
     await fs.readFile(
-      path.join(tmpDir, 'node_modules', 'terrain-testframework', 'package.json'),
+      path.join(tmpDir, 'node_modules', packageName, 'package.json'),
       'utf8'
     )
   ).version;
@@ -140,16 +189,53 @@ try {
   }
   console.log('  terrain-convert --help: ok (contains convert, detect, doctor)');
 
-  const compatVersionOut = execFileSync(terrainCompatBin, ['--version'], {
-    encoding: 'utf8',
-  }).trim();
-  if (compatVersionOut !== pkgVersion) {
+  const terrainVersion = JSON.parse(
+    execFileSync(terrainBin, ['version', '--json'], {
+      encoding: 'utf8',
+    })
+  );
+  if (terrainVersion.version !== pkgVersion) {
     console.error(
-      `  compat --version mismatch: got "${compatVersionOut}", expected "${pkgVersion}"`
+      `  terrain version mismatch: got "${terrainVersion.version}", expected "${pkgVersion}"`
     );
     process.exit(1);
   }
-  console.log('  terrain compatibility shim: ok');
+  console.log(`  terrain version --json: ok (${terrainVersion.version})`);
+
+  const packageVersionJson = JSON.parse(
+    execFileSync(packageBin, ['version', '--json'], {
+      encoding: 'utf8',
+    })
+  );
+  if (packageVersionJson.version !== pkgVersion) {
+    console.error(
+      `  ${packageName} version mismatch: got "${packageVersionJson.version}", expected "${pkgVersion}"`
+    );
+    process.exit(1);
+  }
+  console.log(`  ${packageName} alias: ok`);
+
+  const analyzeRepoDir = path.join(tmpDir, 'analyze-fixture');
+  await fs.mkdir(analyzeRepoDir, { recursive: true });
+  await fs.writeFile(
+    path.join(analyzeRepoDir, 'sample.test.js'),
+    `describe('Smoke', () => {
+  it('works', () => {
+    expect(true).toBe(true);
+  });
+});
+`
+  );
+  const analyzeOut = execFileSync(
+    terrainBin,
+    ['analyze', '--root', analyzeRepoDir],
+    { encoding: 'utf8' }
+  );
+  if (!analyzeOut.includes('Terrain')) {
+    console.error('  terrain analyze output did not look valid');
+    process.exit(1);
+  }
+  console.log('  terrain analyze smoke: ok');
 
   // Conversion smoke test: jest → vitest on a tiny inline fixture
   console.log('\nConversion smoke test...');
@@ -196,4 +282,8 @@ try {
 } finally {
   if (tmpDir) await fs.rm(tmpDir, { recursive: true, force: true });
   if (tarball) await fs.rm(tarball, { force: true });
+  if (npmCacheDir) await fs.rm(npmCacheDir, { recursive: true, force: true });
+  if (builtBinaryDir) {
+    await fs.rm(builtBinaryDir, { recursive: true, force: true });
+  }
 }
