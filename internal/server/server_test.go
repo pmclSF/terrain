@@ -6,6 +6,10 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/pmclSF/terrain/internal/analyze"
+	"github.com/pmclSF/terrain/internal/engine"
 )
 
 func TestHandleHealth(t *testing.T) {
@@ -43,16 +47,15 @@ func TestHandleRoot_NotFound(t *testing.T) {
 }
 
 func TestHandleRoot_ReturnsHTML(t *testing.T) {
-	// This test requires a valid repo root — use the project root.
-	// Skip if running in a CI environment without the full repo.
-	s := New("../..", 0)
+	t.Parallel()
+	s := newServerWithCachedReport()
 
 	req := httptest.NewRequest("GET", "/", nil)
 	w := httptest.NewRecorder()
 	s.handleRoot(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Skipf("root handler returned %d (likely missing fixture); skipping", w.Code)
+		t.Fatalf("root handler returned %d, want 200", w.Code)
 	}
 
 	ct := w.Header().Get("Content-Type")
@@ -70,14 +73,15 @@ func TestHandleRoot_ReturnsHTML(t *testing.T) {
 }
 
 func TestHandleAnalyze_ReturnsJSON(t *testing.T) {
-	s := New("../..", 0)
+	t.Parallel()
+	s := newServerWithCachedReport()
 
 	req := httptest.NewRequest("GET", "/api/analyze", nil)
 	w := httptest.NewRecorder()
 	s.handleAnalyze(w, req)
 
 	if w.Code != http.StatusOK {
-		t.Skipf("analyze handler returned %d (likely missing fixture); skipping", w.Code)
+		t.Fatalf("analyze handler returned %d, want 200", w.Code)
 	}
 
 	ct := w.Header().Get("Content-Type")
@@ -92,4 +96,37 @@ func TestHandleAnalyze_ReturnsJSON(t *testing.T) {
 	if _, ok := body["schemaVersion"]; !ok {
 		t.Error("response missing schemaVersion field")
 	}
+}
+
+func newServerWithCachedReport() *Server {
+	s := New(".", 0)
+	s.cachedAt = time.Now()
+	s.cachedResult = &engine.PipelineResult{}
+	s.cachedReport = &analyze.Report{
+		SchemaVersion: analyze.AnalyzeReportSchemaVersion,
+		Repository: analyze.RepositoryInfo{
+			Name: "server-test-repo",
+		},
+		Headline: "Server test report",
+		TestsDetected: analyze.TestSummary{
+			TestFileCount: 1,
+			TestCaseCount: 2,
+			CodeUnitCount: 1,
+			Frameworks: []analyze.FrameworkCount{
+				{Name: "vitest", FileCount: 1, Type: "unit"},
+			},
+		},
+		SignalSummary: analyze.SignalBreakdown{
+			Total: 1,
+			High:  1,
+		},
+		KeyFindings: []analyze.KeyFinding{
+			{
+				Title:    "Example finding",
+				Severity: "high",
+				Category: "coverage_debt",
+			},
+		},
+	}
+	return s
 }
