@@ -10,33 +10,175 @@ import (
 func TestConvertJestToVitestSource_GoldenFixtures(t *testing.T) {
 	t.Parallel()
 
-	cases := []string{
-		"test/javascript/jest-to-vitest/imports/IMPORT-001",
-		"test/javascript/jest-to-vitest/hooks/HOOKS-001",
-		"test/javascript/jest-to-vitest/mocking/MOCK-001",
-		"test/javascript/jest-to-vitest/imports/IMPORT-007",
+	cases := []struct {
+		name     string
+		input    string
+		expected string
+	}{
+		{
+			name: "IMPORT-001",
+			input: `const { sum } = require('./math');
+
+describe('math', () => {
+  it('adds numbers', () => {
+    expect(sum(1, 2)).toBe(3);
+  });
+
+  it('handles zero', () => {
+    expect(sum(0, 0)).toBe(0);
+  });
+
+  it('handles negative numbers', () => {
+    expect(sum(-1, -2)).toBe(-3);
+  });
+});
+`,
+			expected: `import { describe, it, expect } from 'vitest';
+
+const { sum } = require('./math');
+
+describe('math', () => {
+  it('adds numbers', () => {
+    expect(sum(1, 2)).toBe(3);
+  });
+
+  it('handles zero', () => {
+    expect(sum(0, 0)).toBe(0);
+  });
+
+  it('handles negative numbers', () => {
+    expect(sum(-1, -2)).toBe(-3);
+  });
+});
+`,
+		},
+		{
+			name: "HOOKS-001",
+			input: `describe('DatabaseConnection', () => {
+  let connection;
+
+  beforeAll(() => {
+    connection = {
+      host: 'localhost',
+      port: 5432,
+      connected: true,
+    };
+  });
+
+  it('should be connected after setup', () => {
+    expect(connection.connected).toBe(true);
+  });
+
+  it('should use the correct host', () => {
+    expect(connection.host).toBe('localhost');
+  });
+
+  it('should use the correct port', () => {
+    expect(connection.port).toBe(5432);
+  });
+});
+`,
+			expected: `import { describe, it, expect, beforeAll } from 'vitest';
+
+describe('DatabaseConnection', () => {
+  let connection;
+
+  beforeAll(() => {
+    connection = {
+      host: 'localhost',
+      port: 5432,
+      connected: true,
+    };
+  });
+
+  it('should be connected after setup', () => {
+    expect(connection.connected).toBe(true);
+  });
+
+  it('should use the correct host', () => {
+    expect(connection.host).toBe('localhost');
+  });
+
+  it('should use the correct port', () => {
+    expect(connection.port).toBe(5432);
+  });
+});
+`,
+		},
+		{
+			name: "MOCK-001",
+			input: `describe('UserService', () => {
+  it('should call the callback on success', () => {
+    const callback = jest.fn();
+    const service = new UserService();
+    service.onSuccess(callback);
+    service.execute();
+    expect(callback).toHaveBeenCalled();
+  });
+});
+`,
+			expected: `import { describe, it, expect, vi } from 'vitest';
+
+describe('UserService', () => {
+  it('should call the callback on success', () => {
+    const callback = vi.fn();
+    const service = new UserService();
+    service.onSuccess(callback);
+    service.execute();
+    expect(callback).toHaveBeenCalled();
+  });
+});
+`,
+		},
+		{
+			name: "IMPORT-007",
+			input: `jest.setTimeout(30000);
+
+describe('slow integration tests', () => {
+  it('should complete a long-running operation', () => {
+    const start = Date.now();
+    const result = { status: 'complete' };
+    const elapsed = Date.now() - start;
+    expect(result.status).toBe('complete');
+    expect(elapsed).toBeLessThan(30000);
+  });
+
+  it('should handle timeout-sensitive work', () => {
+    const data = Array.from({ length: 1000 }, (_, i) => i);
+    expect(data).toHaveLength(1000);
+  });
+});
+`,
+			expected: `import { describe, it, expect, vi } from 'vitest';
+
+vi.setConfig({ testTimeout: 30000 });
+
+describe('slow integration tests', () => {
+  it('should complete a long-running operation', () => {
+    const start = Date.now();
+    const result = { status: 'complete' };
+    const elapsed = Date.now() - start;
+    expect(result.status).toBe('complete');
+    expect(elapsed).toBeLessThan(30000);
+  });
+
+  it('should handle timeout-sensitive work', () => {
+    const data = Array.from({ length: 1000 }, (_, i) => i);
+    expect(data).toHaveLength(1000);
+  });
+});
+`,
+		},
 	}
 
 	for _, fixture := range cases {
-		t.Run(filepath.Base(fixture), func(t *testing.T) {
-			inputPath := repoPath(t, fixture+".input.js")
-			expectedPath := repoPath(t, fixture+".expected.js")
-
-			input, err := os.ReadFile(inputPath)
-			if err != nil {
-				t.Fatalf("read input: %v", err)
-			}
-			expected, err := os.ReadFile(expectedPath)
-			if err != nil {
-				t.Fatalf("read expected: %v", err)
-			}
-
-			got, err := ConvertJestToVitestSource(string(input))
+		t.Run(fixture.name, func(t *testing.T) {
+			got, err := ConvertJestToVitestSource(fixture.input)
 			if err != nil {
 				t.Fatalf("ConvertJestToVitestSource returned error: %v", err)
 			}
-			if got != string(expected) {
-				t.Fatalf("converted output mismatch\n--- got ---\n%s\n--- want ---\n%s", got, expected)
+			if got != fixture.expected {
+				t.Fatalf("converted output mismatch\n--- got ---\n%s\n--- want ---\n%s", got, fixture.expected)
 			}
 		})
 	}
@@ -117,13 +259,4 @@ func TestExecuteJestToVitestDirectory_WritesConvertedAndUnchangedFiles(t *testin
 	if string(convertedHelper) != "export function helper() { return 1; }\n" {
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
 	}
-}
-
-func repoPath(t *testing.T, rel string) string {
-	t.Helper()
-	wd, err := os.Getwd()
-	if err != nil {
-		t.Fatalf("getwd: %v", err)
-	}
-	return filepath.Join(wd, "..", "..", rel)
 }

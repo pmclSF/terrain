@@ -4,7 +4,7 @@
 
 Terrain is a ground-up rewrite of the analysis engine in Go. It introduces a signal-first architecture that maps test suites into structured snapshots, evaluates them across five posture dimensions backed by 18 measurements, and surfaces portfolio intelligence, impact analysis, and migration readiness -- all from a single CLI.
 
-This is a new product direction, not an in-place upgrade. The legacy JavaScript converter engine (test framework conversion across 16 frameworks) remains functional and unchanged.
+This is a new product direction, not an in-place upgrade. Terrain now ships both analysis and framework migration from the same Go-native CLI.
 
 ## Key Capabilities
 
@@ -271,7 +271,7 @@ All commands support `--json` for machine-readable output and `--root PATH` to t
 
 ## Breaking Changes
 
-None. This is a new engine and a new binary. The legacy JavaScript converter engine (`node bin/terrain.js`) is unchanged and continues to work independently.
+None. This is a new engine and a new binary. Framework migration now ships inside the same Go-native `terrain` CLI.
 
 ## Known Limitations
 

@@ -25,7 +25,7 @@ For a release tagged `v1.0.0`, the Go release job produces:
 The npm release job additionally publishes `mapterrain` to npm with
 `--provenance` (Sigstore OIDC attestation via npm's built-in support). The npm
 package installs the `terrain` CLI by fetching the matching GitHub release
-archive during install, and also bundles the legacy `terrain-convert` command.
+archive during install.
 
 ## Checksums
 

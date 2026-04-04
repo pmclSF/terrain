@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 /**
- * Verify that npm pack produces a valid, installable package with correct exports.
- * Run via: npm run release:verify (after format:check, lint, and test).
+ * Verify that npm pack produces a valid, installable CLI wrapper package.
+ * Run via: npm test or npm run release:verify.
  */
 
 import { execFileSync } from 'child_process';
@@ -98,7 +98,7 @@ try {
     process.exit(1);
   }
 
-  // Install in temp dir and verify imports
+  // Install in temp dir and verify the packaged CLI wrapper.
   console.log('\nInstalling in temp directory...');
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'terrain-verify-'));
   execFileSync('npm', ['init', '-y'], {
@@ -112,83 +112,17 @@ try {
     env: npmEnv,
   });
 
-  console.log('Verifying exports...');
-  const check = execFileSync(
-    'node',
-    [
-      '--input-type=module',
-      '-e',
-      `
-      import { VERSION, convertFile, convertRepository, BatchProcessor, ConversionReporter } from '${packageName}';
-      const pkg = JSON.parse(await import('fs/promises').then(f => f.default.readFile('node_modules/${packageName}/package.json', 'utf8')));
-      const errors = [];
-      if (VERSION !== pkg.version) errors.push('VERSION ' + VERSION + ' !== package.json ' + pkg.version);
-      if (typeof convertFile !== 'function') errors.push('convertFile is not a function');
-      if (typeof convertRepository !== 'function') errors.push('convertRepository is not a function');
-      if (typeof BatchProcessor !== 'function') errors.push('BatchProcessor is not a function');
-      if (typeof ConversionReporter !== 'function') errors.push('ConversionReporter is not a function');
-      if (errors.length) { console.error(errors.join('\\n')); process.exit(1); }
-      console.log('  VERSION=' + VERSION + ' (matches package.json)');
-      console.log('  convertFile: ok');
-      console.log('  convertRepository: ok');
-      console.log('  BatchProcessor: ok');
-      console.log('  ConversionReporter: ok');
-    `,
-    ],
-    { cwd: tmpDir, encoding: 'utf8' }
-  );
-  console.log(check);
-
   // CLI smoke tests
   console.log('CLI smoke tests...');
-  const terrainConvertBin = path.join(
-    tmpDir,
-    'node_modules',
-    '.bin',
-    'terrain-convert'
-  );
-  const terrainBin = path.join(
-    tmpDir,
-    'node_modules',
-    '.bin',
-    'terrain'
-  );
-  const packageBin = path.join(
-    tmpDir,
-    'node_modules',
-    '.bin',
-    packageName
-  );
+  const terrainBin = path.join(tmpDir, 'node_modules', '.bin', 'terrain');
+  const packageBin = path.join(tmpDir, 'node_modules', '.bin', packageName);
 
-  const versionOut = execFileSync(terrainConvertBin, ['--version'], {
-    encoding: 'utf8',
-  }).trim();
   const pkgVersion = JSON.parse(
     await fs.readFile(
       path.join(tmpDir, 'node_modules', packageName, 'package.json'),
       'utf8'
     )
   ).version;
-  if (versionOut !== pkgVersion) {
-    console.error(
-      `  --version mismatch: got "${versionOut}", expected "${pkgVersion}"`
-    );
-    process.exit(1);
-  }
-  console.log(`  terrain-convert --version: ${versionOut}`);
-
-  const helpOut = execFileSync(terrainConvertBin, ['--help'], {
-    encoding: 'utf8',
-  });
-  const requiredHelpTokens = ['convert', 'detect', 'doctor'];
-  for (const token of requiredHelpTokens) {
-    if (!helpOut.includes(token)) {
-      console.error(`  --help missing expected token: "${token}"`);
-      process.exit(1);
-    }
-  }
-  console.log('  terrain-convert --help: ok (contains convert, detect, doctor)');
-
   const terrainVersion = JSON.parse(
     execFileSync(terrainBin, ['version', '--json'], {
       encoding: 'utf8',
@@ -201,6 +135,27 @@ try {
     process.exit(1);
   }
   console.log(`  terrain version --json: ok (${terrainVersion.version})`);
+
+  const listConversions = JSON.parse(
+    execFileSync(terrainBin, ['list-conversions', '--json'], {
+      encoding: 'utf8',
+    })
+  );
+  const directionCount = Array.isArray(listConversions.categories)
+    ? listConversions.categories.reduce(
+        (total, category) =>
+          total +
+          (Array.isArray(category.directions) ? category.directions.length : 0),
+        0
+      )
+    : 0;
+  if (directionCount === 0) {
+    console.error('  terrain list-conversions returned no directions');
+    process.exit(1);
+  }
+  console.log(
+    `  terrain list-conversions --json: ok (${directionCount} directions)`
+  );
 
   const packageVersionJson = JSON.parse(
     execFileSync(packageBin, ['version', '--json'], {
@@ -237,10 +192,11 @@ try {
   }
   console.log('  terrain analyze smoke: ok');
 
-  // Conversion smoke test: jest → vitest on a tiny inline fixture
+  // Conversion smoke test: jest -> vitest on a tiny inline fixture.
   console.log('\nConversion smoke test...');
   const fixtureDir = path.join(tmpDir, 'fixture');
-  const outDir = path.join(tmpDir, 'converted');
+  const convertOutDir = path.join(tmpDir, 'converted');
+  const migrateOutDir = path.join(tmpDir, 'migrated');
   await fs.mkdir(fixtureDir, { recursive: true });
   await fs.writeFile(
     path.join(fixtureDir, 'smoke.test.js'),
@@ -253,18 +209,27 @@ try {
   );
 
   execFileSync(
-    terrainConvertBin,
-    ['convert', fixtureDir, '--from', 'jest', '--to', 'vitest', '-o', outDir],
+    terrainBin,
+    [
+      'convert',
+      fixtureDir,
+      '--from',
+      'jest',
+      '--to',
+      'vitest',
+      '-o',
+      convertOutDir,
+    ],
     { encoding: 'utf8' }
   );
 
-  const convertedFiles = await fs.readdir(outDir);
+  const convertedFiles = await fs.readdir(convertOutDir);
   if (convertedFiles.length === 0) {
     console.error('  No output files produced');
     process.exit(1);
   }
   const convertedContent = await fs.readFile(
-    path.join(outDir, convertedFiles[0]),
+    path.join(convertOutDir, convertedFiles[0]),
     'utf8'
   );
   if (!convertedContent.includes('describe') || convertedContent.length < 10) {
@@ -273,6 +238,34 @@ try {
   }
   console.log(
     `  jest→vitest: ok (${convertedFiles.length} file, ${convertedContent.length} bytes)`
+  );
+
+  console.log('\nMigration workflow smoke test...');
+  execFileSync(
+    terrainBin,
+    [
+      'migrate',
+      fixtureDir,
+      '--from',
+      'jest',
+      '--to',
+      'vitest',
+      '-o',
+      migrateOutDir,
+    ],
+    { encoding: 'utf8' }
+  );
+  const migrationStatus = JSON.parse(
+    execFileSync(terrainBin, ['status', '--dir', fixtureDir, '--json'], {
+      encoding: 'utf8',
+    })
+  );
+  if (!migrationStatus.exists || migrationStatus.status.converted === 0) {
+    console.error('  migration status did not report converted files');
+    process.exit(1);
+  }
+  console.log(
+    `  terrain migrate/status: ok (${migrationStatus.status.converted} converted)`
   );
 
   console.log('\nRelease verification passed.');

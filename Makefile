@@ -124,7 +124,7 @@ go-release-verify:
 	go build ./cmd/terrain
 	go test ./cmd/terrain/ -run TestSnapshot -count=1 -v
 
-js-release-verify:
+npm-release-verify:
 	npm ci
 	npm run release:verify
 
@@ -135,12 +135,8 @@ extension-verify:
 
 release-verify:
 	$(MAKE) go-release-verify
-	$(MAKE) js-release-verify
+	$(MAKE) npm-release-verify
 	$(MAKE) extension-verify
-
-# Legacy JavaScript tests (requires Node.js 22+)
-test-legacy:
-	npm test
 
 # ── Public Benchmark Matrix ──────────────────────────────────
 

@@ -10,86 +10,41 @@ make test
 ./terrain analyze
 ```
 
-## Quick Start (Legacy Converter)
+## Quick Start (Conversion Workflow)
 
-The JavaScript converter engine is still functional for framework conversion work:
+Test framework migration is now part of the main Go CLI:
 
 ```bash
-npm install
-npm test
+go build -o terrain ./cmd/terrain
+./terrain list-conversions
+./terrain convert tests/ --from jest --to vitest -o converted/
 ```
 
-## Adding a New Framework (Legacy Converter)
+## Adding a New Conversion Direction
 
-### 1. Create Framework Definition
+### 1. Add runtime support in Go
 
-Create `src/languages/{lang}/frameworks/{name}.js`:
+Extend the conversion runtime under `internal/convert`:
 
-```javascript
-export default {
-  name: 'myframework',
-  language: 'javascript',
-  paradigm: 'bdd',       // 'bdd', 'xunit', or 'functional'
-  detect: {
-    imports: [/from ['"]myframework['"]/],
-    globals: [/\bmyGlobal\b/],
-    patterns: [/myFramework\.specific\(/],
-  },
-  parse(content) {
-    // Return IR (intermediate representation) nodes
-    // See existing frameworks for IR node types
-  },
-  emit(irNodes, options) {
-    // Convert IR nodes to target framework code
-    // Return { code, imports }
-  },
-  imports: {
-    default: "import { test } from 'myframework';",
-  },
-};
-```
+- add or update the direction entry in `internal/convert/catalog.go`
+- implement the source conversion function in `internal/convert/*.go`
+- wire directory execution in `internal/convert/execute.go`
+- add config conversion support in `internal/convert/config.go` when needed
 
-### 2. Register in ConverterFactory
+### 2. Wire the CLI
 
-In `src/core/ConverterFactory.js`:
+Update `cmd/terrain` when the public contract changes:
 
-- Add to `FRAMEWORKS` constant
-- Add to `FRAMEWORK_LANGUAGE` map
-- Add conversion directions to `PIPELINE_DIRECTIONS`
-
-### 3. Write Fixture Tests
-
-Create test fixtures as triplets:
-
-```
-test/{lang}/{from}-to-{to}/{category}/{ID}.test.js  # Test file
-test/{lang}/{from}-to-{to}/{category}/{ID}.input.ext # Input fixture
-test/{lang}/{from}-to-{to}/{category}/{ID}.expected.ext # (optional) Expected output
-```
-
-Each test should:
-- Import from the direct file path (not barrels)
-- Use `ConverterFactory.createConverter(from, to)`
-- Test the actual conversion output (no mocks)
-- Cover happy path, edge cases, and error conditions
-
-### 4. Add CLI Shorthands
-
-In `src/cli/shorthands.js`:
-- Add abbreviation to `FRAMEWORK_ABBREV`
-- Add direction entries to `DIRECTIONS`
-- Add to appropriate `CONVERSION_CATEGORIES` group
-
-### 5. Add Config Conversion (if applicable)
-
-If the framework has config files, add conversion rules to `src/core/ConfigConverter.js`.
+- `cmd/terrain/cmd_convert.go`
+- `cmd/terrain/cmd_convert_config.go`
+- `cmd/terrain/cmd_workflow.go`
+- `cmd/terrain/main.go`
 
 ## Code Style
 
-- **ES modules** (`import`/`export`) with `.js` extensions on all relative imports
-- **Single quotes**, **2-space indent**, **semicolons always**
-- **No mocks** — test real implementations exclusively
-- **No `require()`** — except `commitlint.config.js`
+- Product logic lives in Go under `cmd/` and `internal/`
+- Keep the npm wrapper thin; `bin/*.js` and `scripts/*.js` are packaging helpers, not product runtime
+- Prefer deterministic golden and contract tests over broad integration drift
 
 ## Testing Conventions
 
@@ -117,10 +72,10 @@ Repository scan → Signal detection → Risk scoring → Snapshot → Reporting
 
 See [DESIGN.md](DESIGN.md) for the full architecture overview and [docs/architecture.md](docs/architecture.md) for the layered design.
 
-### Legacy JavaScript converter engine (still functional)
+### Go-native conversion runtime
 
 ```
-Source Code → Framework Parser → IR Nodes → Framework Emitter → Target Code
+Source File/Project → internal/convert runtime → Migration state/checklist → Target Code
 ```
 
-See [docs/legacy/converter-architecture-legacy.md](docs/legacy/converter-architecture-legacy.md) for the converter architecture.
+See [docs/architecture/27-go-native-conversion-migration.md](docs/architecture/27-go-native-conversion-migration.md) for the migration plan and end state.

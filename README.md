@@ -286,7 +286,7 @@ terrain analyze --json
 
 ### npm package layout
 
-The npm package `mapterrain` installs the primary Terrain CLI as `terrain`. It also bundles the legacy `terrain-convert` command for test framework conversion workflows (Jest, Vitest, Playwright, Cypress, pytest, JUnit, and 10 more frameworks).
+The npm package `mapterrain` installs the Terrain CLI as `terrain`. Test framework migration is now part of the main Go-native CLI.
 
 ```bash
 # Install Terrain from npm
@@ -295,11 +295,11 @@ npm install -g mapterrain
 # Main CLI
 terrain analyze
 
-# Legacy converter
-terrain-convert convert src/tests/ --from jest --to vitest -o converted/
+# Conversion workflow
+terrain convert src/tests/ --from jest --to vitest -o converted/
 
 # Shorthand aliases
-terrain-convert cy2pw src/e2e/ -o converted/
+terrain cy2pw src/e2e/ -o converted/
 ```
 
 The old npm package `hamlet-converter` is deprecated in favor of `mapterrain`.
@@ -471,7 +471,7 @@ go test ./cmd/... ./internal/...
 # Test with verbose output
 go test -v ./cmd/... ./internal/...
 
-# Legacy JavaScript tests (requires Node.js 22+)
+# Verify the npm wrapper package
 npm test
 
 # Full release verification (Go + npm package + VS Code extension)

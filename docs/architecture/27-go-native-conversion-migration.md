@@ -1,9 +1,9 @@
 # Go-native Conversion Migration
 
-> **Status:** In Progress
+> **Status:** Completed
 > **Purpose:** Define how Terrain retires the legacy JavaScript converter runtime and moves the full conversion surface, tests, and release-critical workflows into Go.
 > **Key decisions:**
-> - `terrain` becomes the only product CLI; legacy JS commands become compatibility references, not the long-term runtime
+> - `terrain` becomes the only product CLI
 > - Migration is phased; we do not attempt a big-bang rewrite of the converter, migration engine, and test suite
 > - Low-risk public contract commands land first in Go (`convert`, `list-conversions`, `shorthands`, `detect`) before source-to-source execution
 
@@ -11,10 +11,9 @@
 
 ## Goal
 
-Terrain already has a strong Go-native analysis engine, but the framework conversion and migration surface still lives in the legacy JavaScript runtime. That split creates product and release friction:
+Terrain already has a strong Go-native analysis engine, and the framework conversion and migration surface now lives alongside it in Go. The migration effort existed to eliminate the product and release friction caused by the old split runtime:
 
 - npm behaves differently from Homebrew and GitHub Releases
-- `terrain` is the product name, but `terrain-convert` is still the functional runtime for migration
 - CI and release verification still depend on two implementation stacks for one product story
 
 The target state is simple:
@@ -45,11 +44,10 @@ Some pieces intentionally stay non-Go:
 
 ## Current State
 
-Today the repo has three distinct layers for the migration product surface:
+The migration product surface now has two distinct layers:
 
 1. Go-native Terrain analysis in `cmd/terrain` and `internal/*`
-2. Legacy JavaScript conversion runtime in `bin/terrain.js` and `src/*`
-3. Large JavaScript test coverage under `test/*`
+2. Go-native conversion and migration runtime in `internal/convert` and `cmd/terrain`
 
 The legacy command contract includes:
 
@@ -125,7 +123,7 @@ Replace JS-owned verification with Go-native tests in layers:
 - workflow tests for migrate / status / doctor
 - real-world fixture coverage for representative ecosystems
 
-The JS suite remains only as a temporary parity oracle until the Go-native suite is trustworthy.
+The legacy JS suite is no longer a required parity oracle for release verification.
 
 ### 6. Packaging and release simplification
 
@@ -217,12 +215,12 @@ Milestone result:
 
 ### Milestone 4: Legacy retirement
 
-Target outcomes:
+Completed outcomes:
 
-- remove `src/*` product runtime
-- remove `bin/terrain.js` as the primary implementation
-- archive or trim `docs/legacy/*` that are no longer relevant
-- reduce npm package responsibilities to install/bootstrap only
+- removed `src/*` legacy product runtime from the supported release path
+- removed `bin/terrain.js` as a supported implementation
+- reduced npm package responsibilities to install/bootstrap only
+- moved CI and release verification onto the Go-native product runtime
 
 ## Risks
 
@@ -234,9 +232,8 @@ Target outcomes:
 
 ## Immediate Next Slice
 
-After this slice, the recommended next implementation step is:
+Post-migration follow-up:
 
-1. Add deeper parity coverage for advanced Java, Python, and browser framework features that still emit `TERRAIN-TODO`
-2. Move release verification off the legacy JS runtime for product behavior entirely
-3. Retire `bin/terrain.js` as the legacy fallback implementation
-4. Trim or archive legacy converter docs once the new workflow docs fully replace them
+1. Keep improving conversion fidelity for advanced Java, Python, and browser patterns that still emit `TERRAIN-TODO`
+2. Archive or trim legacy converter docs once they are no longer useful historical references
+3. Keep the npm wrapper intentionally thin so the product runtime stays Go-native
