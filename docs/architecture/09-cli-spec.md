@@ -8,7 +8,7 @@
 > - Debug commands are namespaced under `terrain debug` to separate diagnostic tooling from user-facing workflows
 > - Artifact generation uses `--artifact` flag to write JSON files alongside console output
 
-See also: [10-json-artifact-schemas.md](10-json-artifact-schemas.md)
+See also: [10-json-artifact-schemas.md](10-json-artifact-schemas.md), [27-go-native-conversion-migration.md](27-go-native-conversion-migration.md)
 
 ## Global Flags
 
@@ -90,6 +90,52 @@ Detect data files and print recommended analyze command.
 
 ```bash
 terrain init [--root PATH]
+```
+
+### `terrain convert`
+
+Inspect a conversion direction and the Go-native migration path for it.
+
+```bash
+terrain convert <source> --from FRAMEWORK --to FRAMEWORK [--plan] [--dry-run] [--json]
+```
+
+Current status: this command owns the Go-native contract, direction catalog, shorthand support, and source framework detection. Execution is still being ported from the legacy JavaScript runtime.
+
+Current executable directions: `jasmine -> jest`, `jest -> jasmine`, `jest -> mocha`, `jest -> vitest`, `mocha -> jest`, `cypress -> playwright`, `cypress -> selenium`, `cypress -> webdriverio`, `playwright -> cypress`, `playwright -> puppeteer`, `playwright -> selenium`, `playwright -> webdriverio`, `puppeteer -> playwright`, `selenium -> cypress`, `selenium -> playwright`, `testcafe -> cypress`, `testcafe -> playwright`, `webdriverio -> cypress`, and `webdriverio -> playwright`. Other directions remain plan-only while they are ported.
+
+### `terrain convert-config`
+
+Convert test framework configuration files with the Go-native runtime.
+
+```bash
+terrain convert-config <source> --to FRAMEWORK [--from FRAMEWORK] [--output PATH] [--dry-run] [--json]
+```
+
+Current executable config directions include the core JavaScript migration paths that used to live in the legacy JS converter, including `jest -> vitest`, `vitest -> jest`, `cypress -> playwright`, `playwright -> cypress`, `webdriverio -> playwright`, `playwright -> webdriverio`, `webdriverio -> cypress`, `cypress -> webdriverio`, `cypress -> selenium`, `selenium -> cypress`, `playwright -> selenium`, `selenium -> playwright`, `mocha -> jest`, and `jasmine -> jest`.
+
+### `terrain detect`
+
+Detect the dominant framework for a file or directory.
+
+```bash
+terrain detect <file-or-dir> [--json]
+```
+
+### `terrain list-conversions`
+
+List supported conversion directions and shorthand aliases.
+
+```bash
+terrain list-conversions [--json]
+```
+
+### `terrain shorthands`
+
+List shorthand aliases such as `cy2pw` and `jesttovt`.
+
+```bash
+terrain shorthands [--json]
 ```
 
 ### `terrain summary`
