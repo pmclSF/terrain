@@ -51,75 +51,84 @@ func ConvertPlaywrightToSeleniumSource(source string) (string, error) {
 	}
 
 	result := strings.ReplaceAll(source, "\r\n", "\n")
-	result = rePlaywrightImportRemove.ReplaceAllString(result, "")
-
-	assertionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{rePWToSelExpectURLRegex, `expect(await driver.getCurrentUrl()).toContain($1)`},
-		{rePWToSelExpectURL, `expect(await driver.getCurrentUrl()).toBe($1)`},
-		{rePWToSelExpectTitle, `expect(await driver.getTitle()).toBe($1)`},
-		{rePWToSelExpectVisible, `expect(await (await driver.findElement(By.css($1))).isDisplayed()).toBe(true)`},
-		{rePWToSelExpectHidden, `expect(await (await driver.findElement(By.css($1))).isDisplayed()).toBe(false)`},
-		{rePWToSelExpectAttached, `expect((await driver.findElements(By.css($1))).length).toBeGreaterThan(0)`},
-		{rePWToSelExpectNotAttach, `expect((await driver.findElements(By.css($1))).length).toBe(0)`},
-		{rePWToSelExpectText, `expect(await (await driver.findElement(By.css($1))).getText()).toBe($2)`},
-		{rePWToSelExpectContain, `expect(await (await driver.findElement(By.css($1))).getText()).toContain($2)`},
-		{rePWToSelExpectValue, `expect(await (await driver.findElement(By.css($1))).getAttribute("value")).toBe($2)`},
-		{rePWToSelExpectChecked, `expect(await (await driver.findElement(By.css($1))).isSelected()).toBe(true)`},
-		{rePWToSelExpectDisabled, `expect(await (await driver.findElement(By.css($1))).isEnabled()).toBe(false)`},
-		{rePWToSelExpectEnabled, `expect(await (await driver.findElement(By.css($1))).isEnabled()).toBe(true)`},
-		{rePWToSelExpectCount, `expect((await driver.findElements(By.css($1))).length).toBe($2)`},
-	}
-	for _, replacement := range assertionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
+	astApplied := false
+	if astResult, ok := convertPlaywrightToSeleniumSourceAST(result); ok {
+		result = astResult
+		astApplied = true
 	}
 
-	actionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{rePWToSelFill, `await driver.findElement(By.css($1)).sendKeys($2)`},
-		{rePWToSelClick, `await driver.findElement(By.css($1)).click()`},
-		{rePWToSelClear, `await driver.findElement(By.css($1)).clear()`},
-		{rePWToSelGoto, `await driver.get($1)`},
-		{rePWToSelReload, `await driver.navigate().refresh()`},
-		{rePWToSelBack, `await driver.navigate().back()`},
-		{rePWToSelForward, `await driver.navigate().forward()`},
-		{rePWToSelSetViewport, `await driver.manage().window().setRect({ width: $1, height: $2 })`},
-		{rePWToSelWaitTimeout, `await driver.sleep($1)`},
-		{rePWToSelClearCookies, `await driver.manage().deleteAllCookies()`},
-		{rePWToSelStorageClear, `await driver.executeScript("localStorage.clear()")`},
-		{rePWToSelGetByTextClick, "await driver.findElement(By.xpath(`//*[contains(text(),$1)]`)).click()"},
-	}
-	for _, replacement := range actionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
+	if !astApplied {
+		result = rePlaywrightImportRemove.ReplaceAllString(result, "")
+
+		assertionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{rePWToSelExpectURLRegex, `expect(await driver.getCurrentUrl()).toContain($1)`},
+			{rePWToSelExpectURL, `expect(await driver.getCurrentUrl()).toBe($1)`},
+			{rePWToSelExpectTitle, `expect(await driver.getTitle()).toBe($1)`},
+			{rePWToSelExpectVisible, `expect(await (await driver.findElement(By.css($1))).isDisplayed()).toBe(true)`},
+			{rePWToSelExpectHidden, `expect(await (await driver.findElement(By.css($1))).isDisplayed()).toBe(false)`},
+			{rePWToSelExpectAttached, `expect((await driver.findElements(By.css($1))).length).toBeGreaterThan(0)`},
+			{rePWToSelExpectNotAttach, `expect((await driver.findElements(By.css($1))).length).toBe(0)`},
+			{rePWToSelExpectText, `expect(await (await driver.findElement(By.css($1))).getText()).toBe($2)`},
+			{rePWToSelExpectContain, `expect(await (await driver.findElement(By.css($1))).getText()).toContain($2)`},
+			{rePWToSelExpectValue, `expect(await (await driver.findElement(By.css($1))).getAttribute("value")).toBe($2)`},
+			{rePWToSelExpectChecked, `expect(await (await driver.findElement(By.css($1))).isSelected()).toBe(true)`},
+			{rePWToSelExpectDisabled, `expect(await (await driver.findElement(By.css($1))).isEnabled()).toBe(false)`},
+			{rePWToSelExpectEnabled, `expect(await (await driver.findElement(By.css($1))).isEnabled()).toBe(true)`},
+			{rePWToSelExpectCount, `expect((await driver.findElements(By.css($1))).length).toBe($2)`},
+		}
+		for _, replacement := range assertionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
+
+		actionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{rePWToSelFill, `await driver.findElement(By.css($1)).sendKeys($2)`},
+			{rePWToSelClick, `await driver.findElement(By.css($1)).click()`},
+			{rePWToSelClear, `await driver.findElement(By.css($1)).clear()`},
+			{rePWToSelGoto, `await driver.get($1)`},
+			{rePWToSelReload, `await driver.navigate().refresh()`},
+			{rePWToSelBack, `await driver.navigate().back()`},
+			{rePWToSelForward, `await driver.navigate().forward()`},
+			{rePWToSelSetViewport, `await driver.manage().window().setRect({ width: $1, height: $2 })`},
+			{rePWToSelWaitTimeout, `await driver.sleep($1)`},
+			{rePWToSelClearCookies, `await driver.manage().deleteAllCookies()`},
+			{rePWToSelStorageClear, `await driver.executeScript("localStorage.clear()")`},
+			{rePWToSelGetByTextClick, "await driver.findElement(By.xpath(`//*[contains(text(),$1)]`)).click()"},
+		}
+		for _, replacement := range actionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
+
+		if rePWToSelCheck.MatchString(result) {
+			result = rePWToSelCheck.ReplaceAllString(result, "const checkbox = await driver.findElement(By.css($1));\n    if (!(await checkbox.isSelected())) await checkbox.click()")
+		}
+		if rePWToSelUncheck.MatchString(result) {
+			result = rePWToSelUncheck.ReplaceAllString(result, "const checkbox = await driver.findElement(By.css($1));\n    if (await checkbox.isSelected()) await checkbox.click()")
+		}
+		if rePWToSelSelectOption.MatchString(result) {
+			result = rePWToSelSelectOption.ReplaceAllString(result, "const select = await driver.findElement(By.css($1));\n    await select.findElement(By.css(`option[value=${$2}]`)).click()")
+		}
+
+		result = rePWDescribeOnly.ReplaceAllString(result, "describe.only(")
+		result = rePWDescribeSkip.ReplaceAllString(result, "describe.skip(")
+		result = rePWDescribe.ReplaceAllString(result, "describe(")
+		result = rePWTestOnly.ReplaceAllString(result, "it.only(")
+		result = rePWTestSkip.ReplaceAllString(result, "it.skip(")
+		result = rePWBeforeAll.ReplaceAllString(result, "beforeAll(")
+		result = rePWAfterAll.ReplaceAllString(result, "afterAll(")
+		result = rePWBeforeEach.ReplaceAllString(result, "beforeEach(")
+		result = rePWAfterEach.ReplaceAllString(result, "afterEach(")
+		result = rePWTestCall.ReplaceAllString(result, "it($1,")
+		result = rePWCallbackArgs.ReplaceAllString(result, "() =>")
+
+		result = commentUnsupportedPlaywrightSeleniumLines(result)
 	}
 
-	if rePWToSelCheck.MatchString(result) {
-		result = rePWToSelCheck.ReplaceAllString(result, "const checkbox = await driver.findElement(By.css($1));\n    if (!(await checkbox.isSelected())) await checkbox.click()")
-	}
-	if rePWToSelUncheck.MatchString(result) {
-		result = rePWToSelUncheck.ReplaceAllString(result, "const checkbox = await driver.findElement(By.css($1));\n    if (await checkbox.isSelected()) await checkbox.click()")
-	}
-	if rePWToSelSelectOption.MatchString(result) {
-		result = rePWToSelSelectOption.ReplaceAllString(result, "const select = await driver.findElement(By.css($1));\n    await select.findElement(By.css(`option[value=${$2}]`)).click()")
-	}
-
-	result = rePWDescribeOnly.ReplaceAllString(result, "describe.only(")
-	result = rePWDescribeSkip.ReplaceAllString(result, "describe.skip(")
-	result = rePWDescribe.ReplaceAllString(result, "describe(")
-	result = rePWTestOnly.ReplaceAllString(result, "it.only(")
-	result = rePWTestSkip.ReplaceAllString(result, "it.skip(")
-	result = rePWBeforeAll.ReplaceAllString(result, "beforeAll(")
-	result = rePWAfterAll.ReplaceAllString(result, "afterAll(")
-	result = rePWBeforeEach.ReplaceAllString(result, "beforeEach(")
-	result = rePWAfterEach.ReplaceAllString(result, "afterEach(")
-	result = rePWTestCall.ReplaceAllString(result, "it($1,")
-	result = rePWCallbackArgs.ReplaceAllString(result, "() =>")
-
-	result = commentUnsupportedPlaywrightSeleniumLines(result)
 	result = cleanupConvertedSeleniumOutput(result)
 	result = prependImportPreservingHeader(result, seleniumBoilerplate)
 	return ensureTrailingNewline(result), nil

@@ -6,6 +6,8 @@
 > - `terrain` becomes the only product CLI
 > - Migration is phased; we do not attempt a big-bang rewrite of the converter, migration engine, and test suite
 > - Low-risk public contract commands land first in Go (`convert`, `list-conversions`, `shorthands`, `detect`) before source-to-source execution
+> - Go-native converter fidelity improvements should prefer AST / Tree-sitter-backed rewrites over whole-file regex substitution where practical
+> - Performance must never fall below the legacy JS floor; benchmark gates enforce that contract as converters evolve
 
 **See also:** [09-cli-spec.md](09-cli-spec.md), [23-phased-implementation-roadmap.md](23-phased-implementation-roadmap.md), [../legacy/converter-architecture-legacy.md](../legacy/converter-architecture-legacy.md)
 
@@ -91,6 +93,12 @@ Build the Go-native conversion engine under `internal/convert` in slices:
 - parser / rewrite helpers by language
 - file-level conversion APIs
 - batch execution and output planning
+
+Implementation guidance for this layer:
+
+- use Tree-sitter / AST-backed parsing for structure-sensitive rewrites where correctness or predictable performance matter
+- keep regex/string replacement as a fallback or for narrow expression-level substitutions, not as the default whole-file strategy
+- verify new parser-backed conversions against the legacy JS runtime floor with the converter benchmark harness
 
 Recommended first execution directions:
 
@@ -237,3 +245,4 @@ Post-migration follow-up:
 1. Keep improving conversion fidelity for advanced Java, Python, and browser patterns that still emit `TERRAIN-TODO`
 2. Archive or trim legacy converter docs once they are no longer useful historical references
 3. Keep the npm wrapper intentionally thin so the product runtime stays Go-native
+4. Continue replacing regex-heavy JavaScript conversion paths with AST-backed rewrite passes, starting with the highest-traffic directions

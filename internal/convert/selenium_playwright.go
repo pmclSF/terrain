@@ -55,78 +55,87 @@ func ConvertSeleniumToPlaywrightSource(source string) (string, error) {
 	}
 
 	result := strings.ReplaceAll(source, "\r\n", "\n")
-	result = rePlaywrightTestImport.ReplaceAllString(result, "")
-	result = reSelRequireImport.ReplaceAllString(result, "")
-	result = reSelESMImport.ReplaceAllString(result, "")
-	result = reSelJestGlobalsImport.ReplaceAllString(result, "")
-	result = reSelDriverDeclaration.ReplaceAllString(result, "")
-	result = reSelBeforeAllSetup.ReplaceAllString(result, "")
-	result = reSelAfterAllTeardown.ReplaceAllString(result, "")
-
-	assertionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{reSelExpectVisible, `await expect(page.locator($1)).toBeVisible()`},
-		{reSelExpectHidden, `await expect(page.locator($1)).toBeHidden()`},
-		{reSelExpectText, `await expect(page.locator($1)).toHaveText($2)`},
-		{reSelExpectContainText, `await expect(page.locator($1)).toContainText($2)`},
-		{reSelExpectValue, `await expect(page.locator($1)).toHaveValue($2)`},
-		{reSelExpectChecked, `await expect(page.locator($1)).toBeChecked()`},
-		{reSelExpectDisabled, `await expect(page.locator($1)).toBeDisabled()`},
-		{reSelExpectEnabled, `await expect(page.locator($1)).toBeEnabled()`},
-		{reSelExpectCountZero, `await expect(page.locator($1)).not.toBeAttached()`},
-		{reSelExpectCount, `await expect(page.locator($1)).toHaveCount($2)`},
-		{reSelExpectAttached, `await expect(page.locator($1)).toBeAttached()`},
-		{reSelExpectCurrentURLIn, `await expect(page).toHaveURL(new RegExp($1))`},
-		{reSelExpectCurrentURLEq, `await expect(page).toHaveURL($1)`},
-		{reSelExpectTitle, `await expect(page).toHaveTitle($1)`},
-	}
-	for _, replacement := range assertionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
+	astApplied := false
+	if astResult, ok := convertSeleniumToPlaywrightSourceAST(result); ok {
+		result = astResult
+		astApplied = true
 	}
 
-	actionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{reSelSendKeys, `await page.locator($1).fill($2)`},
-		{reSelClick, `await page.locator($1).click()`},
-		{reSelClear, `await page.locator($1).clear()`},
-		{reSelGoto, `await page.goto($1)`},
-		{reSelRefresh, `await page.reload()`},
-		{reSelBack, `await page.goBack()`},
-		{reSelForward, `await page.goForward()`},
-		{reSelSleep, `await page.waitForTimeout($1)`},
-		{reSelDeleteCookies, `await page.context().clearCookies()`},
-		{reSelLocalStorageClear, `await page.evaluate(() => localStorage.clear())`},
-		{reSelXPathClick, "await page.locator(`xpath=$1`).click()"},
+	if !astApplied {
+		result = rePlaywrightTestImport.ReplaceAllString(result, "")
+		result = reSelRequireImport.ReplaceAllString(result, "")
+		result = reSelESMImport.ReplaceAllString(result, "")
+		result = reSelJestGlobalsImport.ReplaceAllString(result, "")
+		result = reSelDriverDeclaration.ReplaceAllString(result, "")
+		result = reSelBeforeAllSetup.ReplaceAllString(result, "")
+		result = reSelAfterAllTeardown.ReplaceAllString(result, "")
+
+		assertionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{reSelExpectVisible, `await expect(page.locator($1)).toBeVisible()`},
+			{reSelExpectHidden, `await expect(page.locator($1)).toBeHidden()`},
+			{reSelExpectText, `await expect(page.locator($1)).toHaveText($2)`},
+			{reSelExpectContainText, `await expect(page.locator($1)).toContainText($2)`},
+			{reSelExpectValue, `await expect(page.locator($1)).toHaveValue($2)`},
+			{reSelExpectChecked, `await expect(page.locator($1)).toBeChecked()`},
+			{reSelExpectDisabled, `await expect(page.locator($1)).toBeDisabled()`},
+			{reSelExpectEnabled, `await expect(page.locator($1)).toBeEnabled()`},
+			{reSelExpectCountZero, `await expect(page.locator($1)).not.toBeAttached()`},
+			{reSelExpectCount, `await expect(page.locator($1)).toHaveCount($2)`},
+			{reSelExpectAttached, `await expect(page.locator($1)).toBeAttached()`},
+			{reSelExpectCurrentURLIn, `await expect(page).toHaveURL(new RegExp($1))`},
+			{reSelExpectCurrentURLEq, `await expect(page).toHaveURL($1)`},
+			{reSelExpectTitle, `await expect(page).toHaveTitle($1)`},
+		}
+		for _, replacement := range assertionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
+
+		actionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{reSelSendKeys, `await page.locator($1).fill($2)`},
+			{reSelClick, `await page.locator($1).click()`},
+			{reSelClear, `await page.locator($1).clear()`},
+			{reSelGoto, `await page.goto($1)`},
+			{reSelRefresh, `await page.reload()`},
+			{reSelBack, `await page.goBack()`},
+			{reSelForward, `await page.goForward()`},
+			{reSelSleep, `await page.waitForTimeout($1)`},
+			{reSelDeleteCookies, `await page.context().clearCookies()`},
+			{reSelLocalStorageClear, `await page.evaluate(() => localStorage.clear())`},
+			{reSelXPathClick, "await page.locator(`xpath=$1`).click()"},
+		}
+		for _, replacement := range actionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
+
+		result = reSelFindElementsCSS.ReplaceAllString(result, `page.locator($1)`)
+		result = reSelFindElementCSS.ReplaceAllString(result, `page.locator($1)`)
+
+		result = reDescribeOnly.ReplaceAllString(result, "${1}test.describe.only(")
+		result = reDescribeSkip.ReplaceAllString(result, "${1}test.describe.skip(")
+		result = reDescribe.ReplaceAllString(result, "${1}test.describe(")
+		result = reContext.ReplaceAllString(result, "${1}test.describe(")
+		result = reItOnly.ReplaceAllString(result, "${1}test.only(")
+		result = reItSkip.ReplaceAllString(result, "${1}test.skip(")
+		result = reSpecify.ReplaceAllString(result, "${1}test(")
+		result = reIt.ReplaceAllString(result, "${1}test(")
+		result = reBeforeEach.ReplaceAllString(result, "${1}test.beforeEach(")
+		result = reAfterEach.ReplaceAllString(result, "${1}test.afterEach(")
+		result = reBefore.ReplaceAllString(result, "${1}test.beforeAll(")
+		result = reAfter.ReplaceAllString(result, "${1}test.afterAll(")
+
+		result = rePlaywrightDescribeCallback.ReplaceAllString(result, `${1}() => {`)
+		result = rePlaywrightTestEmptyCallback.ReplaceAllString(result, `${1}async ({ page }) => {`)
+		result = rePlaywrightHookCallback.ReplaceAllString(result, `test.$1(async ({ page }) => {`)
+
+		result = commentUnsupportedSeleniumLines(result)
 	}
-	for _, replacement := range actionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
-	}
 
-	result = reSelFindElementsCSS.ReplaceAllString(result, `page.locator($1)`)
-	result = reSelFindElementCSS.ReplaceAllString(result, `page.locator($1)`)
-
-	result = reDescribeOnly.ReplaceAllString(result, "${1}test.describe.only(")
-	result = reDescribeSkip.ReplaceAllString(result, "${1}test.describe.skip(")
-	result = reDescribe.ReplaceAllString(result, "${1}test.describe(")
-	result = reContext.ReplaceAllString(result, "${1}test.describe(")
-	result = reItOnly.ReplaceAllString(result, "${1}test.only(")
-	result = reItSkip.ReplaceAllString(result, "${1}test.skip(")
-	result = reSpecify.ReplaceAllString(result, "${1}test(")
-	result = reIt.ReplaceAllString(result, "${1}test(")
-	result = reBeforeEach.ReplaceAllString(result, "${1}test.beforeEach(")
-	result = reAfterEach.ReplaceAllString(result, "${1}test.afterEach(")
-	result = reBefore.ReplaceAllString(result, "${1}test.beforeAll(")
-	result = reAfter.ReplaceAllString(result, "${1}test.afterAll(")
-
-	result = rePlaywrightDescribeCallback.ReplaceAllString(result, `${1}() => {`)
-	result = rePlaywrightTestEmptyCallback.ReplaceAllString(result, `${1}async ({ page }) => {`)
-	result = rePlaywrightHookCallback.ReplaceAllString(result, `test.$1(async ({ page }) => {`)
-
-	result = commentUnsupportedSeleniumLines(result)
 	result = cleanupConvertedPlaywrightOutput(result)
 	result = prependImportPreservingHeader(result, "import { test, expect } from '@playwright/test';")
 	return ensureTrailingNewline(result), nil

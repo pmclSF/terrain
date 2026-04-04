@@ -114,13 +114,13 @@ func convertNoseBodyToPytest(body []string) []string {
 		case trimmed == "":
 			out = append(out, "")
 		case strings.HasPrefix(trimmed, "assert_equal("):
-			out = append(out, convertNoseAssertionLine(line, "assert_equal", "=="))
+			out = append(out, convertNoseAssertionInvocation(line, "assert_equal", "=="))
 		case strings.HasPrefix(trimmed, "assert_true("):
-			out = append(out, convertNoseUnaryAssertionLine(line, "assert_true", false))
+			out = append(out, convertNoseUnaryAssertionInvocation(line, "assert_true", false))
 		case strings.HasPrefix(trimmed, "assert_false("):
-			out = append(out, convertNoseUnaryAssertionLine(line, "assert_false", true))
+			out = append(out, convertNoseUnaryAssertionInvocation(line, "assert_false", true))
 		case strings.HasPrefix(trimmed, "assert_in("):
-			out = append(out, convertNoseAssertionLine(line, "assert_in", "in"))
+			out = append(out, convertNoseAssertionInvocation(line, "assert_in", "in"))
 		default:
 			out = append(out, line)
 		}
@@ -128,7 +128,7 @@ func convertNoseBodyToPytest(body []string) []string {
 	return nonEmptyPythonBody(trimPythonBlankEdges(out))
 }
 
-func convertNoseAssertionLine(line, method, operator string) string {
+func convertNoseAssertionInvocation(line, method, operator string) string {
 	indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
 	trimmed := strings.TrimSpace(line)
 	open := strings.IndexByte(trimmed, '(')
@@ -148,7 +148,7 @@ func convertNoseAssertionLine(line, method, operator string) string {
 	}
 }
 
-func convertNoseUnaryAssertionLine(line, method string, negate bool) string {
+func convertNoseUnaryAssertionInvocation(line, method string, negate bool) string {
 	indent := line[:len(line)-len(strings.TrimLeft(line, " "))]
 	trimmed := strings.TrimSpace(line)
 	open := strings.IndexByte(trimmed, '(')

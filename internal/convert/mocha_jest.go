@@ -53,6 +53,10 @@ func ConvertMochaToJestSource(source string) (string, error) {
 	}
 
 	result := strings.ReplaceAll(source, "\r\n", "\n")
+	if astResult, ok := convertMochaToJestSourceAST(result); ok {
+		return astResult, nil
+	}
+
 	result = stripMochaPreludeImports(result)
 	result = reMochaBeforeAll.ReplaceAllString(result, "beforeAll(")
 	result = reMochaAfterAll.ReplaceAllString(result, "afterAll(")

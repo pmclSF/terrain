@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 var (
@@ -47,6 +49,38 @@ var vitestImportOrder = []string{
 	"vi",
 }
 
+var jestToVitestMembers = map[string]string{
+	"fn":                       "fn",
+	"spyOn":                    "spyOn",
+	"mock":                     "mock",
+	"doMock":                   "doMock",
+	"unmock":                   "unmock",
+	"clearAllMocks":            "clearAllMocks",
+	"resetAllMocks":            "resetAllMocks",
+	"restoreAllMocks":          "restoreAllMocks",
+	"useFakeTimers":            "useFakeTimers",
+	"useRealTimers":            "useRealTimers",
+	"advanceTimersByTime":      "advanceTimersByTime",
+	"advanceTimersToNextTimer": "advanceTimersToNextTimer",
+	"runAllTimers":             "runAllTimers",
+	"runOnlyPendingTimers":     "runOnlyPendingTimers",
+	"clearAllTimers":           "clearAllTimers",
+	"resetModules":             "resetModules",
+	"isMockFunction":           "isMockFunction",
+	"setSystemTime":            "setSystemTime",
+}
+
+var vitestGlobalNames = map[string]bool{
+	"describe":   true,
+	"it":         true,
+	"test":       true,
+	"expect":     true,
+	"beforeEach": true,
+	"afterEach":  true,
+	"beforeAll":  true,
+	"afterAll":   true,
+}
+
 // ConvertJestToVitestSource rewrites common Jest test patterns to their
 // Vitest equivalents. This first Go-native slice is intentionally scoped to
 // the high-confidence, API-compatible surface.
@@ -55,8 +89,12 @@ func ConvertJestToVitestSource(source string) (string, error) {
 		return source, nil
 	}
 
-	result := source
+	source = strings.ReplaceAll(source, "\r\n", "\n")
+	if result, ok := convertJestToVitestSourceAST(source); ok {
+		return result, nil
+	}
 
+	result := source
 	var existingVitestNames []string
 	result = reVitestImport.ReplaceAllStringFunc(result, func(match string) string {
 		submatches := reVitestImport.FindStringSubmatch(match)
@@ -75,7 +113,6 @@ func ConvertJestToVitestSource(source string) (string, error) {
 	result = reJestGlobalsRequire.ReplaceAllString(result, "")
 	result = reJestSetTimeout.ReplaceAllString(result, "vi.setConfig({ testTimeout: $1 })")
 	result = jestToVitestReplacer.Replace(result)
-	result = strings.ReplaceAll(result, "\r\n", "\n")
 
 	imports := detectVitestImports(result)
 	for _, name := range existingVitestNames {
@@ -90,6 +127,114 @@ func ConvertJestToVitestSource(source string) (string, error) {
 	result = prependImportPreservingHeader(result, importLine)
 	result = collapseBlankLines(result)
 	return ensureTrailingNewline(result), nil
+}
+
+func convertJestToVitestSourceAST(source string) (string, bool) {
+	tree, ok := parseJSSyntaxTree(source)
+	if !ok {
+		return "", false
+	}
+	defer tree.Close()
+
+	imports := map[string]bool{}
+	existingVitestNames := map[string]bool{}
+	edits := make([]textEdit, 0, 8)
+
+	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
+		switch node.Type() {
+		case "import_statement":
+			module := jsNodeText(node, tree.src)
+			switch {
+			case strings.Contains(module, "'vitest'") || strings.Contains(module, "\"vitest\""):
+				for _, name := range extractNamedImports(module) {
+					existingVitestNames[name] = true
+				}
+				edits = append(edits, textEdit{
+					start: int(node.StartByte()),
+					end:   int(node.EndByte()),
+				})
+				return false
+			case strings.Contains(module, "'@jest/globals'") || strings.Contains(module, "\"@jest/globals\""):
+				edits = append(edits, textEdit{
+					start: int(node.StartByte()),
+					end:   int(node.EndByte()),
+				})
+				return false
+			}
+		case "lexical_declaration", "variable_declaration":
+			text := jsNodeText(node, tree.src)
+			if strings.Contains(text, "require('@jest/globals')") || strings.Contains(text, "require(\"@jest/globals\")") {
+				edits = append(edits, textEdit{
+					start: int(node.StartByte()),
+					end:   int(node.EndByte()),
+				})
+				return false
+			}
+		case "call_expression":
+			callee := jsCalleeNode(node)
+			if callee != nil {
+				base := jsBaseIdentifier(callee, tree.src)
+				if vitestGlobalNames[base] {
+					imports[base] = true
+				}
+				if callee.Type() == "member_expression" {
+					object := jsMemberObject(callee)
+					property := jsNodeText(jsMemberProperty(callee), tree.src)
+					if jsNodeText(object, tree.src) == "jest" && property == "setTimeout" {
+						args := jsArgumentsNode(node)
+						if args != nil && args.NamedChildCount() > 0 {
+							imports["vi"] = true
+							edits = append(edits, textEdit{
+								start:       int(node.StartByte()),
+								end:         int(node.EndByte()),
+								replacement: "vi.setConfig({ testTimeout: " + jsNodeText(args.NamedChild(0), tree.src) + " })",
+							})
+							return false
+						}
+					}
+				}
+			}
+		case "member_expression":
+			base := jsBaseIdentifier(node, tree.src)
+			if vitestGlobalNames[base] {
+				imports[base] = true
+			}
+
+			object := jsMemberObject(node)
+			property := jsNodeText(jsMemberProperty(node), tree.src)
+			if jsNodeText(object, tree.src) != "jest" {
+				return true
+			}
+			if property == "setTimeout" {
+				return true
+			}
+			mapped, ok := jestToVitestMembers[property]
+			if !ok {
+				return true
+			}
+			imports["vi"] = true
+			edits = append(edits, textEdit{
+				start:       int(node.StartByte()),
+				end:         int(node.EndByte()),
+				replacement: "vi." + mapped,
+			})
+			return false
+		}
+		return true
+	})
+
+	result := applyTextEdits(source, edits)
+	for name := range existingVitestNames {
+		imports[name] = true
+	}
+	if len(imports) == 0 {
+		return ensureTrailingNewline(collapseBlankLines(result)), true
+	}
+
+	importLine := buildVitestImport(imports)
+	result = prependImportPreservingHeader(result, importLine)
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), true
 }
 
 func detectVitestImports(source string) map[string]bool {
@@ -118,18 +263,41 @@ func detectVitestImports(source string) map[string]bool {
 
 func buildVitestImport(imports map[string]bool) string {
 	names := make([]string, 0, len(imports))
+	seen := map[string]bool{}
 	for _, name := range vitestImportOrder {
 		if imports[name] {
 			names = append(names, name)
+			seen[name] = true
 		}
 	}
-	if len(names) == 0 {
-		for name := range imports {
-			names = append(names, name)
+	extra := make([]string, 0, len(imports))
+	for name := range imports {
+		if seen[name] {
+			continue
 		}
-		sort.Strings(names)
+		extra = append(extra, name)
 	}
+	sort.Strings(extra)
+	names = append(names, extra...)
 	return fmt.Sprintf("import { %s } from 'vitest';", strings.Join(names, ", "))
+}
+
+func extractNamedImports(importLine string) []string {
+	start := strings.Index(importLine, "{")
+	end := strings.Index(importLine, "}")
+	if start < 0 || end <= start {
+		return nil
+	}
+	raw := strings.Split(importLine[start+1:end], ",")
+	names := make([]string, 0, len(raw))
+	for _, name := range raw {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+		names = append(names, name)
+	}
+	return names
 }
 
 func prependImportPreservingHeader(source, importLine string) string {

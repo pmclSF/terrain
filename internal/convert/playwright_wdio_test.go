@@ -110,6 +110,58 @@ test('uses route', async ({ page }) => {
 	}
 }
 
+func TestConvertPlaywrightToWdioSource_DoesNotRewriteStringsOrComments(t *testing.T) {
+	t.Parallel()
+
+	input := `// await page.locator('#save').click() should stay in comments
+const note = "await page.goto('/dashboard') should stay literal";
+
+test('keeps literals intact', async ({ page }) => {
+  await page.goto('/login');
+  expect(note).toContain('page.goto');
+});
+`
+
+	got, err := ConvertPlaywrightToWdioSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToWdioSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// await page.locator('#save').click() should stay in comments") {
+		t.Fatalf("expected comment to stay unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "await page.goto('/dashboard') should stay literal";`) {
+		t.Fatalf("expected string literal to stay unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await browser.url('/login')") {
+		t.Fatalf("expected runtime playwright call to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertPlaywrightToWdioSource_RemovesFixtureArgsAndConvertsGetByText(t *testing.T) {
+	t.Parallel()
+
+	input := `test.describe('selectors', () => {
+  test('should find by text', async ({ page }) => {
+    await page.getByText('Sign In').click();
+  });
+});
+`
+
+	got, err := ConvertPlaywrightToWdioSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToWdioSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "describe('selectors', async () => {") && !strings.Contains(got, "describe('selectors', () => {") {
+		t.Fatalf("expected describe conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "it('should find by text', async () => {") {
+		t.Fatalf("expected fixture args to be removed from test callback, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await $(`*=Sign In`).click()") {
+		t.Fatalf("expected getByText conversion, got:\n%s", got)
+	}
+}
+
 func TestExecutePlaywrightToWdioDirectory_PreservesFileNamesAndHelpers(t *testing.T) {
 	t.Parallel()
 

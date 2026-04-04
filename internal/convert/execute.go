@@ -88,6 +88,13 @@ func Execute(source string, direction Direction, options ExecuteOptions) (Execut
 	}
 }
 
+// ConvertSource runs the Go-native source converter directly on in-memory text for
+// a supported direction. It is used by tests and benchmark tooling that need to
+// compare converter runtimes without introducing filesystem overhead.
+func ConvertSource(direction Direction, input string) (string, error) {
+	return convertSourceContent(direction, input)
+}
+
 func executeJestToVitest(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
 	info, err := os.Stat(source)
 	if err != nil {

@@ -89,93 +89,100 @@ func ConvertPlaywrightToCypressSource(source string) (string, error) {
 	result := strings.ReplaceAll(source, "\r\n", "\n")
 	result = rePlaywrightImportRemove.ReplaceAllString(result, "")
 	result = reCypressReferenceLine.ReplaceAllString(result, "")
-
-	assertionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{rePWExpectVisible, `cy.get($1).should('be.visible')`},
-		{rePWExpectHidden, `cy.get($1).should('not.be.visible')`},
-		{rePWExpectAttached, `cy.get($1).should('exist')`},
-		{rePWExpectNotAttached, `cy.get($1).should('not.exist')`},
-		{rePWExpectText, `cy.get($1).should('have.text', $2)`},
-		{rePWExpectContainText, `cy.get($1).should('contain', $2)`},
-		{rePWExpectValue, `cy.get($1).should('have.value', $2)`},
-		{rePWExpectClass, `cy.get($1).should('have.class', $2)`},
-		{rePWExpectChecked, `cy.get($1).should('be.checked')`},
-		{rePWExpectDisabled, `cy.get($1).should('be.disabled')`},
-		{rePWExpectEnabled, `cy.get($1).should('be.enabled')`},
-		{rePWExpectCount, `cy.get($1).should('have.length', $2)`},
-		{rePWExpectPageURLRegex, `cy.url().should('match', $1)`},
-		{rePWExpectPageURL, `cy.url().should('include', $1)`},
-		{rePWExpectTitle, `cy.title().should('eq', $1)`},
-	}
-	for _, replacement := range assertionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
+	astApplied := false
+	if astResult, ok := convertPlaywrightToCypressSourceAST(result); ok {
+		result = astResult
+		astApplied = true
 	}
 
-	genericAssertionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{rePWGenericVisible, `$1.should('be.visible')`},
-		{rePWGenericHidden, `$1.should('not.be.visible')`},
-		{rePWGenericAttached, `$1.should('exist')`},
-		{rePWGenericText, `$1.should('have.text', $2)`},
-		{rePWGenericContainText, `$1.should('contain', $2)`},
-		{rePWGenericCount, `$1.should('have.length', $2)`},
-	}
-	for _, replacement := range genericAssertionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
-	}
+	if !astApplied {
+		assertionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{rePWExpectVisible, `cy.get($1).should('be.visible')`},
+			{rePWExpectHidden, `cy.get($1).should('not.be.visible')`},
+			{rePWExpectAttached, `cy.get($1).should('exist')`},
+			{rePWExpectNotAttached, `cy.get($1).should('not.exist')`},
+			{rePWExpectText, `cy.get($1).should('have.text', $2)`},
+			{rePWExpectContainText, `cy.get($1).should('contain', $2)`},
+			{rePWExpectValue, `cy.get($1).should('have.value', $2)`},
+			{rePWExpectClass, `cy.get($1).should('have.class', $2)`},
+			{rePWExpectChecked, `cy.get($1).should('be.checked')`},
+			{rePWExpectDisabled, `cy.get($1).should('be.disabled')`},
+			{rePWExpectEnabled, `cy.get($1).should('be.enabled')`},
+			{rePWExpectCount, `cy.get($1).should('have.length', $2)`},
+			{rePWExpectPageURLRegex, `cy.url().should('match', $1)`},
+			{rePWExpectPageURL, `cy.url().should('include', $1)`},
+			{rePWExpectTitle, `cy.title().should('eq', $1)`},
+		}
+		for _, replacement := range assertionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
 
-	actionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{rePWLocatorClick, `cy.get($1).click()`},
-		{rePWLocatorDouble, `cy.get($1).dblclick()`},
-		{rePWLocatorFill, `cy.get($1).type($2)`},
-		{rePWLocatorClear, `cy.get($1).clear()`},
-		{rePWLocatorCheck, `cy.get($1).check()`},
-		{rePWLocatorUncheck, `cy.get($1).uncheck()`},
-		{rePWLocatorSelect, `cy.get($1).select($2)`},
-		{rePWLocatorFocus, `cy.get($1).focus()`},
-		{rePWLocatorBlur, `cy.get($1).blur()`},
-		{rePWLocatorScroll, `cy.get($1).scrollIntoView()`},
-		{rePWLocatorHover, `cy.get($1).trigger('mouseover')`},
-		{rePWGetByTextClick, `cy.contains($1).click()`},
-		{rePWGetByRoleClick, `cy.contains('[role=' + $1 + ']', $2).click()`},
-		{rePWGoto, `cy.visit($1)`},
-		{rePWReload, `cy.reload()`},
-		{rePWGoBack, `cy.go('back')`},
-		{rePWGoForward, `cy.go('forward')`},
-		{rePWWaitTimeout, `cy.wait($1)`},
-		{rePWSetViewport, `cy.viewport($1, $2)`},
-		{rePWScreenshotPath, `cy.screenshot($1)`},
-		{rePWScreenshot, `cy.screenshot()`},
-	}
-	for _, replacement := range actionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
-	}
+		genericAssertionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{rePWGenericVisible, `$1.should('be.visible')`},
+			{rePWGenericHidden, `$1.should('not.be.visible')`},
+			{rePWGenericAttached, `$1.should('exist')`},
+			{rePWGenericText, `$1.should('have.text', $2)`},
+			{rePWGenericContainText, `$1.should('contain', $2)`},
+			{rePWGenericCount, `$1.should('have.length', $2)`},
+		}
+		for _, replacement := range genericAssertionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
 
-	result = rePWDescribeOnly.ReplaceAllString(result, "describe.only(")
-	result = rePWDescribeSkip.ReplaceAllString(result, "describe.skip(")
-	result = rePWDescribe.ReplaceAllString(result, "describe(")
-	result = rePWTestOnly.ReplaceAllString(result, "it.only(")
-	result = rePWTestSkip.ReplaceAllString(result, "it.skip(")
-	result = rePWBeforeAll.ReplaceAllString(result, "before(")
-	result = rePWAfterAll.ReplaceAllString(result, "after(")
-	result = rePWBeforeEach.ReplaceAllString(result, "beforeEach(")
-	result = rePWAfterEach.ReplaceAllString(result, "afterEach(")
-	result = rePWTestCall.ReplaceAllString(result, "it($1,")
-	result = rePWCallbackArgs.ReplaceAllString(result, "() =>")
+		actionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{rePWLocatorClick, `cy.get($1).click()`},
+			{rePWLocatorDouble, `cy.get($1).dblclick()`},
+			{rePWLocatorFill, `cy.get($1).type($2)`},
+			{rePWLocatorClear, `cy.get($1).clear()`},
+			{rePWLocatorCheck, `cy.get($1).check()`},
+			{rePWLocatorUncheck, `cy.get($1).uncheck()`},
+			{rePWLocatorSelect, `cy.get($1).select($2)`},
+			{rePWLocatorFocus, `cy.get($1).focus()`},
+			{rePWLocatorBlur, `cy.get($1).blur()`},
+			{rePWLocatorScroll, `cy.get($1).scrollIntoView()`},
+			{rePWLocatorHover, `cy.get($1).trigger('mouseover')`},
+			{rePWGetByTextClick, `cy.contains($1).click()`},
+			{rePWGetByRoleClick, `cy.contains('[role=' + $1 + ']', $2).click()`},
+			{rePWGoto, `cy.visit($1)`},
+			{rePWReload, `cy.reload()`},
+			{rePWGoBack, `cy.go('back')`},
+			{rePWGoForward, `cy.go('forward')`},
+			{rePWWaitTimeout, `cy.wait($1)`},
+			{rePWSetViewport, `cy.viewport($1, $2)`},
+			{rePWScreenshotPath, `cy.screenshot($1)`},
+			{rePWScreenshot, `cy.screenshot()`},
+		}
+		for _, replacement := range actionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
 
-	result = rePWGetByRoleNamed.ReplaceAllString(result, `cy.contains('[role=' + $1 + ']', $2)`)
-	result = rePWGetByTextStandalone.ReplaceAllString(result, `cy.contains($1)`)
-	result = rePWLocatorStandalone.ReplaceAllString(result, `cy.get($1)`)
-	result = rePWNestedLocator.ReplaceAllString(result, `.find($1)`)
-	result = rePWNth.ReplaceAllString(result, `.eq($1)`)
+		result = rePWDescribeOnly.ReplaceAllString(result, "describe.only(")
+		result = rePWDescribeSkip.ReplaceAllString(result, "describe.skip(")
+		result = rePWDescribe.ReplaceAllString(result, "describe(")
+		result = rePWTestOnly.ReplaceAllString(result, "it.only(")
+		result = rePWTestSkip.ReplaceAllString(result, "it.skip(")
+		result = rePWBeforeAll.ReplaceAllString(result, "before(")
+		result = rePWAfterAll.ReplaceAllString(result, "after(")
+		result = rePWBeforeEach.ReplaceAllString(result, "beforeEach(")
+		result = rePWAfterEach.ReplaceAllString(result, "afterEach(")
+		result = rePWTestCall.ReplaceAllString(result, "it($1,")
+		result = rePWCallbackArgs.ReplaceAllString(result, "() =>")
+
+		result = rePWGetByRoleNamed.ReplaceAllString(result, `cy.contains('[role=' + $1 + ']', $2)`)
+		result = rePWGetByTextStandalone.ReplaceAllString(result, `cy.contains($1)`)
+		result = rePWLocatorStandalone.ReplaceAllString(result, `cy.get($1)`)
+		result = rePWNestedLocator.ReplaceAllString(result, `.find($1)`)
+		result = rePWNth.ReplaceAllString(result, `.eq($1)`)
+	}
 
 	result = commentUnsupportedPlaywrightLines(result)
 	result = cleanupConvertedCypressOutput(result)
@@ -184,6 +191,13 @@ func ConvertPlaywrightToCypressSource(source string) (string, error) {
 }
 
 func commentUnsupportedPlaywrightLines(source string) string {
+	if rows, ok := unsupportedPlaywrightLineRowsAST(source); ok {
+		if len(rows) == 0 {
+			return source
+		}
+		return commentSpecificLines(source, rows, "manual Playwright conversion required")
+	}
+
 	lines := strings.Split(source, "\n")
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)

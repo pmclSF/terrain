@@ -53,57 +53,64 @@ func ConvertTestCafeToCypressSource(source string) (string, error) {
 	result := strings.ReplaceAll(source, "\r\n", "\n")
 	result = reTcImport.ReplaceAllString(result, "")
 	result, suiteName, pageURL := extractTestCafeFixture(result)
-
-	result = reTcCySelectorAssignText.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
-	result = reTcCySelectorAssignFind.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
-	result = reTcCySelectorAssignNth.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
-	result = reTcCySelectorAssign.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
-
-	assertionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{reTcCyExpectExistsOk, `cy.get($1).should('exist')`},
-		{reTcCyExpectExistsNotOk, `cy.get($1).should('not.exist')`},
-		{reTcCyExpectVisibleOk, `cy.get($1).should('be.visible')`},
-		{reTcCyExpectVisibleNotOk, `cy.get($1).should('not.be.visible')`},
-		{reTcCyExpectCountEq, `cy.get($1).should('have.length', $2)`},
-		{reTcCyExpectTextEq, `cy.get($1).should('have.text', $2)`},
-		{reTcCyExpectTextIn, `cy.get($1).should('contain', $2)`},
-		{reTcCyExpectValueEq, `cy.get($1).should('have.value', $2)`},
-	}
-	for _, replacement := range assertionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
+	astApplied := false
+	if astResult, ok := convertTestCafeToCypressSourceAST(result); ok {
+		result = astResult
+		astApplied = true
 	}
 
-	actionReplacements := []struct {
-		re   *regexp.Regexp
-		repl string
-	}{
-		{reTcCyClickSelectorText, `cy.contains($1, $2).click()`},
-		{reTcCyClickSelectorNth, `cy.get($1).eq($2).click()`},
-		{reTcCyClickSelectorFind, `cy.get($1).find($2).click()`},
-		{reTcCyClickSelector, `cy.get($1).click()`},
-		{reTcCyTypeSelector, `cy.get($1).type($2)`},
-		{reTcCyDoubleClick, `cy.get($1).dblclick()`},
-		{reTcCyHover, `cy.get($1).trigger('mouseover')`},
-		{reTcCyNavigate, `cy.visit($1)`},
-		{reTcCyWait, `cy.wait($1)`},
-		{reTcCyScreenshot, `cy.screenshot()`},
-		{reTcCyClick, `cy.get($1).click()`},
-		{reTcCyTypeText, `cy.get($1).type($2)`},
-	}
-	for _, replacement := range actionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
-	}
+	if !astApplied {
+		result = reTcCySelectorAssignText.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
+		result = reTcCySelectorAssignFind.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
+		result = reTcCySelectorAssignNth.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
+		result = reTcCySelectorAssign.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
 
-	result = reTcCySelectorWithText.ReplaceAllString(result, `cy.contains($1, $2)`)
-	result = reTcCySelectorFind.ReplaceAllString(result, `cy.get($1).find($2)`)
-	result = reTcCySelectorNth.ReplaceAllString(result, `cy.get($1).eq($2)`)
-	result = reTcCySelectorStandalone.ReplaceAllString(result, `cy.get($1)`)
-	result = reTcCyTestCallback.ReplaceAllString(result, `it($1, () => {`)
+		assertionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{reTcCyExpectExistsOk, `cy.get($1).should('exist')`},
+			{reTcCyExpectExistsNotOk, `cy.get($1).should('not.exist')`},
+			{reTcCyExpectVisibleOk, `cy.get($1).should('be.visible')`},
+			{reTcCyExpectVisibleNotOk, `cy.get($1).should('not.be.visible')`},
+			{reTcCyExpectCountEq, `cy.get($1).should('have.length', $2)`},
+			{reTcCyExpectTextEq, `cy.get($1).should('have.text', $2)`},
+			{reTcCyExpectTextIn, `cy.get($1).should('contain', $2)`},
+			{reTcCyExpectValueEq, `cy.get($1).should('have.value', $2)`},
+		}
+		for _, replacement := range assertionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
 
-	result = commentUnsupportedTestCafeCypressLines(result)
+		actionReplacements := []struct {
+			re   *regexp.Regexp
+			repl string
+		}{
+			{reTcCyClickSelectorText, `cy.contains($1, $2).click()`},
+			{reTcCyClickSelectorNth, `cy.get($1).eq($2).click()`},
+			{reTcCyClickSelectorFind, `cy.get($1).find($2).click()`},
+			{reTcCyClickSelector, `cy.get($1).click()`},
+			{reTcCyTypeSelector, `cy.get($1).type($2)`},
+			{reTcCyDoubleClick, `cy.get($1).dblclick()`},
+			{reTcCyHover, `cy.get($1).trigger('mouseover')`},
+			{reTcCyNavigate, `cy.visit($1)`},
+			{reTcCyWait, `cy.wait($1)`},
+			{reTcCyScreenshot, `cy.screenshot()`},
+			{reTcCyClick, `cy.get($1).click()`},
+			{reTcCyTypeText, `cy.get($1).type($2)`},
+		}
+		for _, replacement := range actionReplacements {
+			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
+
+		result = reTcCySelectorWithText.ReplaceAllString(result, `cy.contains($1, $2)`)
+		result = reTcCySelectorFind.ReplaceAllString(result, `cy.get($1).find($2)`)
+		result = reTcCySelectorNth.ReplaceAllString(result, `cy.get($1).eq($2)`)
+		result = reTcCySelectorStandalone.ReplaceAllString(result, `cy.get($1)`)
+		result = reTcCyTestCallback.ReplaceAllString(result, `it($1, () => {`)
+
+		result = commentUnsupportedTestCafeCypressLines(result)
+	}
 	result = cleanupConvertedCypressOutput(result)
 	result = wrapTestCafeCypressSuite(result, suiteName, pageURL)
 	return ensureTrailingNewline(result), nil

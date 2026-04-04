@@ -120,3 +120,52 @@ func TestExecuteSeleniumToCypressDirectory_PreservesFileNamesAndHelpers(t *testi
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
 	}
 }
+
+func TestConvertSeleniumToCypressSource_HandlesSelectorParensAndPreservesComments(t *testing.T) {
+	t.Parallel()
+
+	input := `const { Builder, By } = require('selenium-webdriver');
+
+describe('Orders', () => {
+  it('handles selector parens', async () => {
+    // await driver.findElement(By.css('.btn:nth-child(2)')).click() should stay in this comment
+    const note = "await driver.findElement(By.css('.btn:nth-child(2)')).click() is only documentation";
+    await driver.findElement(By.css('.btn:nth-child(2)')).click();
+  });
+});
+`
+
+	got, err := ConvertSeleniumToCypressSource(input)
+	if err != nil {
+		t.Fatalf("ConvertSeleniumToCypressSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// await driver.findElement(By.css('.btn:nth-child(2)')).click() should stay in this comment") {
+		t.Fatalf("expected comment to be preserved, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "await driver.findElement(By.css('.btn:nth-child(2)')).click() is only documentation"`) {
+		t.Fatalf("expected string literal to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "cy.get('.btn:nth-child(2)').click()") {
+		t.Fatalf("expected selector with nested parens to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertSeleniumToCypressSource_CommentsUnsupportedByID(t *testing.T) {
+	t.Parallel()
+
+	input := `it('uses non-css selectors', async () => {
+  await driver.findElement(By.id('ready')).click();
+});
+`
+
+	got, err := ConvertSeleniumToCypressSource(input)
+	if err != nil {
+		t.Fatalf("ConvertSeleniumToCypressSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "TERRAIN-TODO: manual Selenium conversion required") {
+		t.Fatalf("expected TODO comment for unsupported Selenium helpers, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await driver.findElement(By.id('ready')).click();") {
+		t.Fatalf("expected original unsupported line to be commented out, got:\n%s", got)
+	}
+}

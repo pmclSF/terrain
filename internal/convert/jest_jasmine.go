@@ -38,6 +38,10 @@ func ConvertJestToJasmineSource(source string) (string, error) {
 	}
 
 	result := strings.ReplaceAll(source, "\r\n", "\n")
+	if astResult, ok := convertJestToJasmineSourceAST(result); ok {
+		return astResult, nil
+	}
+
 	result = reJestGlobalsImport.ReplaceAllString(result, "")
 	result = reJestGlobalsRequire.ReplaceAllString(result, "")
 	result = reJestSpyOnReturnValueJasmine.ReplaceAllString(result, "spyOn($1, $2).and.returnValue($3)")

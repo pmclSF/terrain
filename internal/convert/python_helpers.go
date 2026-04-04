@@ -387,3 +387,54 @@ func extractDecoratorArgs(line string) ([]string, bool) {
 	}
 	return splitTopLevelArgs(line[open+1 : close]), true
 }
+
+func parsePytestParametrizeDecorator(line string) ([]string, string, bool) {
+	trimmed := strings.TrimSpace(line)
+	if !strings.HasPrefix(trimmed, "@pytest.mark.parametrize(") {
+		return nil, "", false
+	}
+	args, ok := extractDecoratorArgs(trimmed)
+	if !ok || len(args) < 2 {
+		return nil, "", false
+	}
+	names, ok := parsePytestParamNames(args[0])
+	if !ok || len(names) == 0 {
+		return nil, "", false
+	}
+	return names, strings.TrimSpace(args[1]), true
+}
+
+func parsePytestParamNames(arg string) ([]string, bool) {
+	trimmed := strings.TrimSpace(arg)
+	switch {
+	case len(trimmed) >= 2 && ((trimmed[0] == '"' && trimmed[len(trimmed)-1] == '"') || (trimmed[0] == '\'' && trimmed[len(trimmed)-1] == '\'')):
+		raw := trimmed[1 : len(trimmed)-1]
+		parts := strings.Split(raw, ",")
+		names := make([]string, 0, len(parts))
+		for _, part := range parts {
+			name := strings.TrimSpace(part)
+			if name == "" {
+				continue
+			}
+			names = append(names, name)
+		}
+		return names, len(names) > 0
+	case len(trimmed) >= 2 && ((trimmed[0] == '(' && trimmed[len(trimmed)-1] == ')') || (trimmed[0] == '[' && trimmed[len(trimmed)-1] == ']')):
+		items := splitTopLevelArgs(trimmed[1 : len(trimmed)-1])
+		names := make([]string, 0, len(items))
+		for _, item := range items {
+			item = strings.TrimSpace(item)
+			if len(item) >= 2 && ((item[0] == '"' && item[len(item)-1] == '"') || (item[0] == '\'' && item[len(item)-1] == '\'')) {
+				item = item[1 : len(item)-1]
+			}
+			item = strings.TrimSpace(item)
+			if item == "" {
+				continue
+			}
+			names = append(names, item)
+		}
+		return names, len(names) > 0
+	default:
+		return nil, false
+	}
+}

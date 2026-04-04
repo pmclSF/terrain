@@ -214,6 +214,54 @@ describe('User', () => {
 	}
 }
 
+func TestConvertJestToVitestSource_DoesNotRewriteStringsOrComments(t *testing.T) {
+	t.Parallel()
+
+	input := `// jest.fn should stay in comments
+const hint = "jest.spyOn stays literal here";
+
+describe('User', () => {
+  it('creates a user', () => {
+    const callback = jest.fn();
+    expect(hint).toContain('jest.spyOn');
+  });
+});
+`
+
+	got, err := ConvertJestToVitestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertJestToVitestSource returned error: %v", err)
+	}
+	if !strings.Contains(got, `const hint = "jest.spyOn stays literal here";`) {
+		t.Fatalf("expected string literal to stay unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// jest.fn should stay in comments") {
+		t.Fatalf("expected comment to stay unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "const callback = vi.fn();") {
+		t.Fatalf("expected runtime call to change, got:\n%s", got)
+	}
+	if !strings.Contains(got, "import { describe, it, expect, vi } from 'vitest';") {
+		t.Fatalf("expected vitest import, got:\n%s", got)
+	}
+}
+
+func TestBuildVitestImport_PreservesExtraSpecifiers(t *testing.T) {
+	t.Parallel()
+
+	got := buildVitestImport(map[string]bool{
+		"test":         true,
+		"expect":       true,
+		"vi":           true,
+		"test as spec": true,
+	})
+
+	want := "import { test, expect, vi, test as spec } from 'vitest';"
+	if got != want {
+		t.Fatalf("buildVitestImport() = %q, want %q", got, want)
+	}
+}
+
 func TestExecuteJestToVitestDirectory_WritesConvertedAndUnchangedFiles(t *testing.T) {
 	t.Parallel()
 

@@ -95,3 +95,56 @@ test('opens', async t => {
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
 	}
 }
+
+func TestConvertTestCafeToPlaywrightSource_HandlesSelectorParensAndPreservesComments(t *testing.T) {
+	t.Parallel()
+
+	input := `import { Selector } from 'testcafe';
+
+fixture` + "`" + `Checkout` + "`" + `;
+
+test('complex selector', async t => {
+  // Selector('.btn:nth-child(2)') should stay in this comment
+  const note = "Selector('.btn:nth-child(2)') is only documentation";
+  await t.click(Selector('.btn:nth-child(2)'));
+});
+`
+
+	got, err := ConvertTestCafeToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertTestCafeToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// Selector('.btn:nth-child(2)') should stay in this comment") {
+		t.Fatalf("expected comment to be preserved, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "Selector('.btn:nth-child(2)') is only documentation"`) {
+		t.Fatalf("expected string literal to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.locator('.btn:nth-child(2)').click()") {
+		t.Fatalf("expected selector with nested parens to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertTestCafeToPlaywrightSource_CommentsUnsupportedUseRole(t *testing.T) {
+	t.Parallel()
+
+	input := `import { Role } from 'testcafe';
+
+fixture` + "`" + `Checkout` + "`" + `;
+
+test('role', async t => {
+  await t.useRole(adminRole);
+});
+`
+
+	got, err := ConvertTestCafeToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertTestCafeToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual TestCafe conversion required") {
+		t.Fatalf("expected unsupported useRole line to be commented, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await t.useRole(adminRole);") {
+		t.Fatalf("expected original useRole line to be preserved as comment, got:\n%s", got)
+	}
+}

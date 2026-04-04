@@ -135,3 +135,40 @@ func TestExecutePuppeteerToPlaywrightDirectory_PreservesFileNamesAndHelpers(t *t
 		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
 	}
 }
+
+func TestConvertPuppeteerToPlaywrightSource_DoesNotRewriteStringsOrComments(t *testing.T) {
+	t.Parallel()
+
+	input := `const puppeteer = require('puppeteer');
+
+describe('notes', () => {
+  let browser, page;
+
+  it('leaves prose alone', async () => {
+    // await page.click('#save') should stay in this comment
+    const note = "expect(page.url()).toBe('/docs') is only documentation";
+    const action = "await page.type('#email', 'user@test.com')";
+    await page.click('#save');
+    expect(note).toContain("toBe('/docs')");
+    expect(action).toContain("page.type('#email'");
+  });
+});
+`
+
+	got, err := ConvertPuppeteerToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPuppeteerToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// await page.click('#save') should stay in this comment") {
+		t.Fatalf("expected comment to be preserved, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "expect(page.url()).toBe('/docs') is only documentation"`) {
+		t.Fatalf("expected note string to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const action = "await page.type('#email', 'user@test.com')"`) {
+		t.Fatalf("expected action string to remain unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.locator('#save').click()") {
+		t.Fatalf("expected real Puppeteer action to convert, got:\n%s", got)
+	}
+}

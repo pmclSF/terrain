@@ -149,3 +149,37 @@ func isIdentifierChar(ch byte) bool {
 		(ch >= 'A' && ch <= 'Z') ||
 		(ch >= '0' && ch <= '9')
 }
+
+func countJavaBraces(line string) (open, close int) {
+	var quote byte
+	escaped := false
+
+	for i := 0; i < len(line); i++ {
+		ch := line[i]
+		if quote != 0 {
+			if escaped {
+				escaped = false
+				continue
+			}
+			if ch == '\\' {
+				escaped = true
+				continue
+			}
+			if ch == quote {
+				quote = 0
+			}
+			continue
+		}
+
+		switch ch {
+		case '\'', '"':
+			quote = ch
+		case '{':
+			open++
+		case '}':
+			close++
+		}
+	}
+
+	return open, close
+}

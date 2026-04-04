@@ -59,6 +59,12 @@ func ConvertJestToMochaSource(source string) (string, error) {
 
 	useESM := usesESModuleSyntax(source)
 	result := strings.ReplaceAll(source, "\r\n", "\n")
+	if astResult, ok := convertJestToMochaSourceAST(result); ok {
+		result = astResult
+		result = prependMochaPrelude(result, useESM, strings.Contains(result, "sinon.") || strings.Contains(result, "clock."))
+		return ensureTrailingNewline(result), nil
+	}
+
 	result = reJestGlobalsImport.ReplaceAllString(result, "")
 	result = reJestGlobalsRequire.ReplaceAllString(result, "")
 	result = stripMochaPreludeImports(result)

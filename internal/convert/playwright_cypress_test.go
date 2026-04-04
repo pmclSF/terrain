@@ -79,6 +79,65 @@ func TestConvertPlaywrightToCypressSource_CommentsUnsupportedPatterns(t *testing
 	}
 }
 
+func TestConvertPlaywrightToCypressSource_DoesNotRewriteStringsOrComments(t *testing.T) {
+	t.Parallel()
+
+	input := `// await page.locator('.panel').click() should stay in comments
+const note = "await page.goto('/dashboard') should stay literal";
+
+test('keeps literals intact', async ({ page }) => {
+  await page.goto('/login');
+  expect(note).toContain('page.goto');
+});
+`
+
+	got, err := ConvertPlaywrightToCypressSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToCypressSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// await page.locator('.panel').click() should stay in comments") {
+		t.Fatalf("expected comment to stay unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "await page.goto('/dashboard') should stay literal";`) {
+		t.Fatalf("expected string literal to stay unchanged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "cy.visit('/login')") {
+		t.Fatalf("expected runtime playwright call to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertPlaywrightToCypressSource_RemovesFixtureArgs(t *testing.T) {
+	t.Parallel()
+
+	input := `test.describe('Checkout', () => {
+  test.beforeEach(async ({ page, request }) => {
+    await page.goto('/checkout');
+  });
+
+  test('submits', async ({ page }) => {
+    await page.locator('button[type="submit"]').click();
+  });
+});
+`
+
+	got, err := ConvertPlaywrightToCypressSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToCypressSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "describe('Checkout', () => {") {
+		t.Fatalf("expected describe conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "beforeEach(() => {") {
+		t.Fatalf("expected fixture args to be removed from hook, got:\n%s", got)
+	}
+	if !strings.Contains(got, "it('submits', () => {") {
+		t.Fatalf("expected fixture args to be removed from test, got:\n%s", got)
+	}
+	if !strings.Contains(got, "cy.get('button[type=\"submit\"]').click()") {
+		t.Fatalf("expected click conversion inside fixture callback, got:\n%s", got)
+	}
+}
+
 func TestExecutePlaywrightToCypressDirectory_RenamesSpecFilesToCy(t *testing.T) {
 	t.Parallel()
 
