@@ -47,6 +47,12 @@ func Execute(source string, direction Direction, options ExecuteOptions) (Execut
 		return executeSourceConverter(source, direction, options, ConvertJestToJasmineSource)
 	case "jest-mocha":
 		return executeSourceConverter(source, direction, options, ConvertJestToMochaSource)
+	case "junit4-junit5":
+		return executeSourceConverter(source, direction, options, ConvertJUnit4ToJunit5Source)
+	case "junit5-testng":
+		return executeSourceConverter(source, direction, options, ConvertJUnit5ToTestNGSource)
+	case "nose2-pytest":
+		return executeSourceConverter(source, direction, options, ConvertNose2ToPytestSource)
 	case "playwright-cypress":
 		return executePlaywrightToCypress(source, direction, options)
 	case "playwright-puppeteer":
@@ -55,16 +61,22 @@ func Execute(source string, direction Direction, options ExecuteOptions) (Execut
 		return executePlaywrightToSelenium(source, direction, options)
 	case "playwright-webdriverio":
 		return executePlaywrightToWdio(source, direction, options)
+	case "pytest-unittest":
+		return executeSourceConverter(source, direction, options, ConvertPytestToUnittestSource)
 	case "puppeteer-playwright":
 		return executePuppeteerToPlaywright(source, direction, options)
 	case "selenium-cypress":
 		return executeSeleniumToCypress(source, direction, options)
 	case "selenium-playwright":
 		return executeSeleniumToPlaywright(source, direction, options)
+	case "testng-junit5":
+		return executeSourceConverter(source, direction, options, ConvertTestNGToJunit5Source)
 	case "testcafe-cypress":
 		return executeTestCafeToCypress(source, direction, options)
 	case "testcafe-playwright":
 		return executeTestCafeToPlaywright(source, direction, options)
+	case "unittest-pytest":
+		return executeSourceConverter(source, direction, options, ConvertUnittestToPytestSource)
 	case "mocha-jest":
 		return executeSourceConverter(source, direction, options, ConvertMochaToJestSource)
 	case "webdriverio-cypress":
@@ -2266,7 +2278,7 @@ func isConvertibleSourceFile(path string) bool {
 	}
 	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {
-	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts":
+	case ".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".mts", ".cts", ".java", ".py":
 		return true
 	default:
 		return false
