@@ -104,6 +104,19 @@ func TestParsePytestParametrizeDecorator_HandlesStringParamList(t *testing.T) {
 	}
 }
 
+func TestBuildUnittestDecoratorFromPytest_HandlesSkipIf(t *testing.T) {
+	t.Parallel()
+
+	got, ok := buildUnittestDecoratorFromPytest(`@pytest.mark.skipif(sys.platform == "win32", reason="windows-only")`)
+	if !ok {
+		t.Fatal("expected skipif decorator conversion")
+	}
+	want := `@unittest.skipIf(sys.platform == "win32", "windows-only")`
+	if got != want {
+		t.Fatalf("decorator = %q, want %q", got, want)
+	}
+}
+
 func TestSplitPythonBinaryExpr_RespectsNestingAndQuotes(t *testing.T) {
 	t.Parallel()
 

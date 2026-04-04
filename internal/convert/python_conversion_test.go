@@ -101,6 +101,38 @@ def test_param(value):
 	}
 }
 
+func TestConvertNose2ToPytestSource_ConvertsAdditionalAssertionVariants(t *testing.T) {
+	t.Parallel()
+
+	input := `from nose.tools import assert_not_equal, assert_not_in, assert_is_none, assert_is_not_none, assert_greater, assert_less
+
+def test_more():
+    assert_not_equal(left, right)
+    assert_not_in(item, collection)
+    assert_is_none(result)
+    assert_is_not_none(found)
+    assert_greater(total, 1)
+    assert_less(count, 10)
+`
+
+	got, err := ConvertNose2ToPytestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertNose2ToPytestSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"assert left != right",
+		"assert item not in collection",
+		"assert result is None",
+		"assert found is not None",
+		"assert total > 1",
+		"assert count < 10",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+}
+
 func TestExecuteUnittestToPytestDirectory_ConvertsPythonFilesAndPreservesHelpers(t *testing.T) {
 	t.Parallel()
 
@@ -172,6 +204,39 @@ def test_pairs(value, expected):
 	}
 	if strings.Contains(got, "manual pytest decorator migration required") {
 		t.Fatalf("expected parametrize decorator to convert without manual TODO, got:\n%s", got)
+	}
+}
+
+func TestConvertPytestToUnittestSource_ConvertsCommonPytestDecorators(t *testing.T) {
+	t.Parallel()
+
+	input := `import pytest
+
+@pytest.mark.skipif(sys.platform == "win32", reason="windows-only")
+def test_skip():
+    assert True
+
+@pytest.mark.xfail
+def test_xfail():
+    assert False
+`
+
+	got, err := ConvertPytestToUnittestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPytestToUnittestSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"@unittest.skipIf(sys.platform == \"win32\", \"windows-only\")",
+		"@unittest.expectedFailure",
+		"self.assertTrue(True)",
+		"self.assertFalse(False)",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "manual pytest decorator migration required") {
+		t.Fatalf("expected supported pytest decorators to convert without manual TODO, got:\n%s", got)
 	}
 }
 
