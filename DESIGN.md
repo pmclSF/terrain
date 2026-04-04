@@ -70,9 +70,9 @@ See [docs/engineering/detector-architecture.md](docs/engineering/detector-archit
 
 ## Migration Context
 
-Terrain originated as a multi-framework test converter (legacy). That converter engine (JavaScript ES modules, `src/`) remains in the repository and is fully functional. The current engine reframes migration as one dimension of broader test intelligence rather than the sole product.
+Terrain originated as a multi-framework test converter. That migration surface now lives directly in the Go CLI under `internal/convert` and `cmd/terrain`, so migration and analysis ship as one product runtime instead of separate stacks.
 
-The legacy converter architecture is documented in [docs/legacy/converter-architecture-legacy.md](docs/legacy/converter-architecture-legacy.md).
+The historical converter architecture remains documented in [docs/legacy/converter-architecture-legacy.md](docs/legacy/converter-architecture-legacy.md) for reference, but the supported implementation is now Go-native.
 
 ## Extension Architecture
 

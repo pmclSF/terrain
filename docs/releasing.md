@@ -16,16 +16,14 @@ git tag vX.Y.Z && git push origin vX.Y.Z
     │           │     ├── go test ./cmd/... ./internal/...
     │           │     ├── go build ./cmd/terrain
     │           │     └── go test ./cmd/terrain/ -run TestSnapshot -count=1 -v
-    │           ├── make js-release-verify
+    │           ├── make npm-release-verify
     │           │     ├── npm ci
     │           │     ├── format:check
     │           │     ├── lint
-    │           │     ├── test (all suites)
     │           │     └── verify-pack.js
     │           │           ├── npm pack → install in temp dir
-    │           │           ├── Verify JS exports (VERSION, convertFile, …)
-    │           │           ├── CLI smoke (`terrain-convert`, `terrain`, `mapterrain`)
-    │           │           └── Conversion smoke (jest→vitest)
+    │           │           ├── CLI smoke (`terrain`, `mapterrain`)
+    │           │           └── Conversion smoke (`terrain convert`, `terrain migrate`)
     │           └── make extension-verify
     │                 ├── npm --prefix extension/vscode ci
     │                 ├── npm --prefix extension/vscode run compile
@@ -117,9 +115,6 @@ Confirm only expected files are included:
 - `bin/terrain-cli.js`
 - `bin/terrain-installer.js`
 - `bin/postinstall.js`
-- `bin/terrain.js`
-- `src/**/*.js`
-- `src/types/*.d.ts`
 - `README.md`
 - `SECURITY.md`
 - `LICENSE`
