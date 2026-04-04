@@ -131,18 +131,117 @@ func TestRunConvert_PlanWithAutoDetect(t *testing.T) {
 	}
 }
 
-func TestRunConvert_RequiresPlanForExecution(t *testing.T) {
+func TestRunConvert_ExecutesPytestToUnittestNowThatGoRuntimeExists(t *testing.T) {
 	t.Parallel()
 
-	err := runConvert("tests/unit/example.test.ts", convertCommandOptions{
-		From: "pytest",
-		To:   "unittest",
-	})
-	if err == nil {
-		t.Fatal("expected error when execution is requested without --plan or --dry-run")
+	root := t.TempDir()
+	path := filepath.Join(root, "test_example.py")
+	input := `import pytest
+
+def test_example():
+    assert True
+`
+	if err := os.WriteFile(path, []byte(input), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
 	}
-	if !strings.Contains(err.Error(), "not implemented yet") {
-		t.Fatalf("unexpected error: %v", err)
+
+	out, err := captureRun(func() error {
+		return runConvert(path, convertCommandOptions{
+			From: "pytest",
+			To:   "unittest",
+		})
+	})
+	if err != nil {
+		t.Fatalf("runConvert returned error: %v", err)
+	}
+	text := string(out)
+	if !strings.Contains(text, "class TestExample(unittest.TestCase):") {
+		t.Fatalf("expected unittest class output, got:\n%s", text)
+	}
+	if !strings.Contains(text, "self.assertTrue(True)") {
+		t.Fatalf("expected unittest assertion output, got:\n%s", text)
+	}
+}
+
+func TestRunConvert_ExecutesJunit4ToJunit5ToOutputFile(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	inputPath := filepath.Join(root, "ExampleTest.java")
+	outputDir := filepath.Join(root, "converted")
+	input := `import org.junit.Test;
+import org.junit.Assert;
+
+public class ExampleTest {
+    @Test
+    public void testValue() {
+        Assert.assertEquals(42, getValue());
+    }
+}
+`
+	if err := os.WriteFile(inputPath, []byte(input), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	if err := runCaptured(func() error {
+		return runConvert(inputPath, convertCommandOptions{
+			From:   "junit4",
+			To:     "junit5",
+			Output: outputDir,
+		})
+	}); err != nil {
+		t.Fatalf("runConvert returned error: %v", err)
+	}
+
+	output, err := os.ReadFile(filepath.Join(outputDir, "ExampleTest.java"))
+	if err != nil {
+		t.Fatalf("read output: %v", err)
+	}
+	text := string(output)
+	if !strings.Contains(text, "org.junit.jupiter.api.Test") {
+		t.Fatalf("expected junit5 import, got:\n%s", text)
+	}
+	if !strings.Contains(text, "Assertions.assertEquals(42, getValue())") {
+		t.Fatalf("expected junit assertion conversion, got:\n%s", text)
+	}
+}
+
+func TestRunConvert_ExecutesUnittestToPytestToOutputFile(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	inputPath := filepath.Join(root, "test_example.py")
+	outputPath := filepath.Join(root, "converted", "test_example.py")
+	input := `import unittest
+
+class TestExample(unittest.TestCase):
+    def test_math(self):
+        self.assertEqual(2 + 2, 4)
+`
+	if err := os.WriteFile(inputPath, []byte(input), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	if err := runCaptured(func() error {
+		return runConvert(inputPath, convertCommandOptions{
+			From:   "unittest",
+			To:     "pytest",
+			Output: outputPath,
+		})
+	}); err != nil {
+		t.Fatalf("runConvert returned error: %v", err)
+	}
+
+	output, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("read output: %v", err)
+	}
+	text := string(output)
+	if !strings.Contains(text, "def test_math():") {
+		t.Fatalf("expected pytest function, got:\n%s", text)
+	}
+	if !strings.Contains(text, "assert 2 + 2 == 4") {
+		t.Fatalf("expected pytest assert, got:\n%s", text)
 	}
 }
 

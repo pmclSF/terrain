@@ -100,9 +100,9 @@ Inspect a conversion direction and the Go-native migration path for it.
 terrain convert <source> --from FRAMEWORK --to FRAMEWORK [--plan] [--dry-run] [--json]
 ```
 
-Current status: this command owns the Go-native contract, direction catalog, shorthand support, and source framework detection. Execution is still being ported from the legacy JavaScript runtime.
+Current status: this command now owns the Go-native contract, direction catalog, shorthand support, source framework detection, and executable runtime for every cataloged conversion direction.
 
-Current executable directions: `jasmine -> jest`, `jest -> jasmine`, `jest -> mocha`, `jest -> vitest`, `mocha -> jest`, `cypress -> playwright`, `cypress -> selenium`, `cypress -> webdriverio`, `playwright -> cypress`, `playwright -> puppeteer`, `playwright -> selenium`, `playwright -> webdriverio`, `puppeteer -> playwright`, `selenium -> cypress`, `selenium -> playwright`, `testcafe -> cypress`, `testcafe -> playwright`, `webdriverio -> cypress`, and `webdriverio -> playwright`. Other directions remain plan-only while they are ported.
+Current executable directions: `jasmine -> jest`, `jest -> jasmine`, `jest -> mocha`, `jest -> vitest`, `mocha -> jest`, `junit4 -> junit5`, `junit5 -> testng`, `testng -> junit5`, `pytest -> unittest`, `unittest -> pytest`, `nose2 -> pytest`, `cypress -> playwright`, `cypress -> selenium`, `cypress -> webdriverio`, `playwright -> cypress`, `playwright -> puppeteer`, `playwright -> selenium`, `playwright -> webdriverio`, `puppeteer -> playwright`, `selenium -> cypress`, `selenium -> playwright`, `testcafe -> cypress`, `testcafe -> playwright`, `webdriverio -> cypress`, and `webdriverio -> playwright`.
 
 ### `terrain convert-config`
 

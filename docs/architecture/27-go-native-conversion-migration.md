@@ -147,9 +147,8 @@ Implemented in this slice:
 - Go-native `terrain shorthands`
 - Go-native `terrain detect`
 
-Not yet implemented in this milestone:
+Still deferred after this milestone:
 
-- actual source-to-source conversion writes
 - migration orchestration
 - validation runtime
 
@@ -179,10 +178,21 @@ Current status:
 - `puppeteer -> playwright` is now executable in the Go CLI for the first Puppeteer modernization surface
 - `selenium -> cypress` is now executable in the Go CLI for the reverse Cypress migration surface from Selenium
 - `selenium -> playwright` is now executable in the Go CLI for the Selenium modernization surface
+- `junit4 -> junit5` is now executable in the Go CLI for the first Java modernization surface
+- `junit5 -> testng` is now executable in the Go CLI for the first JUnit-to-TestNG migration surface
+- `testng -> junit5` is now executable in the Go CLI for the reverse TestNG modernization surface
+- `pytest -> unittest` is now executable in the Go CLI for the first pytest-to-class-based migration surface
+- `unittest -> pytest` is now executable in the Go CLI for the primary Python modernization surface
+- `nose2 -> pytest` is now executable in the Go CLI for the nose2 retirement surface
 - `testcafe -> cypress` is now executable in the Go CLI for the first TestCafe migration surface into Cypress
 - `testcafe -> playwright` is now executable in the Go CLI for the first TestCafe modernization surface
 - `webdriverio -> cypress` is now executable in the Go CLI for the reverse Cypress migration surface
 - `webdriverio -> playwright` is now executable in the Go CLI for the first WebdriverIO migration surface
+
+Milestone result:
+
+- every cataloged `terrain convert` direction is now executable with the Go-native runtime
+- directory conversion now covers JavaScript, Java, and Python sources through the same execution path
 
 ### Milestone 3: Workflow parity
 
@@ -212,7 +222,7 @@ Target outcomes:
 
 After this slice, the recommended next implementation step is:
 
-1. Expand browser coverage for the remaining TestCafe migration paths
-2. Deepen Puppeteer/Cypress/Playwright/WebdriverIO/Selenium traversal and network helper coverage
-3. Port `migrate`, `estimate`, `status`, `checklist`, and `doctor`
+1. Port `migrate`, `estimate`, `status`, `checklist`, and `doctor`
+2. Add deeper parity coverage for advanced Java, Python, and browser framework features that still emit `TERRAIN-TODO`
+3. Move release verification off the legacy JS runtime for product behavior
 4. Retire the legacy JS runtime direction-by-direction as parity closes
