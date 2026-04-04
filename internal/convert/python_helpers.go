@@ -438,3 +438,38 @@ func parsePytestParamNames(arg string) ([]string, bool) {
 		return nil, false
 	}
 }
+
+func buildUnittestDecoratorFromPytest(line string) (string, bool) {
+	trimmed := strings.TrimSpace(line)
+	switch {
+	case strings.HasPrefix(trimmed, "@pytest.mark.xfail"):
+		return "@unittest.expectedFailure", true
+	case strings.HasPrefix(trimmed, "@pytest.mark.skipif("):
+		args, ok := extractDecoratorArgs(trimmed)
+		if !ok || len(args) == 0 {
+			return "", false
+		}
+		reason := `"skipif"`
+		if len(args) >= 2 {
+			for _, arg := range args[1:] {
+				arg = strings.TrimSpace(arg)
+				if strings.HasPrefix(arg, "reason=") {
+					reason = strings.TrimSpace(strings.TrimPrefix(arg, "reason="))
+				}
+			}
+		}
+		return fmt.Sprintf("@unittest.skipIf(%s, %s)", strings.TrimSpace(args[0]), reason), true
+	case strings.HasPrefix(trimmed, "@pytest.mark.skip("):
+		args, ok := extractDecoratorArgs(trimmed)
+		if !ok || len(args) == 0 {
+			return "", false
+		}
+		reason := strings.TrimSpace(args[0])
+		if strings.HasPrefix(reason, "reason=") {
+			reason = strings.TrimSpace(strings.TrimPrefix(reason, "reason="))
+		}
+		return fmt.Sprintf("@unittest.skip(%s)", reason), true
+	default:
+		return "", false
+	}
+}

@@ -79,6 +79,40 @@ public class ExampleTest {
 	}
 }
 
+func TestConvertJUnit5ToTestNGSource_ConvertsAssertThrowsToExpectedExceptions(t *testing.T) {
+	t.Parallel()
+
+	input := `import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Assertions;
+
+public class ExampleTest {
+    @Test
+    void testInvalid() {
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            parse("bad");
+        });
+    }
+}
+`
+
+	got, err := ConvertJUnit5ToTestNGSource(input)
+	if err != nil {
+		t.Fatalf("ConvertJUnit5ToTestNGSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"import org.testng.annotations.Test;",
+		"@Test(expectedExceptions = IllegalArgumentException.class)",
+		"parse(\"bad\");",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "assertThrows(") {
+		t.Fatalf("expected assertThrows wrapper to be removed, got:\n%s", got)
+	}
+}
+
 func TestConvertTestNGToJunit5Source_ReordersAssertEqualsAndDisabled(t *testing.T) {
 	t.Parallel()
 
@@ -107,6 +141,40 @@ public class ExampleTest {
 		if !strings.Contains(got, want) {
 			t.Fatalf("expected %q in output, got:\n%s", want, got)
 		}
+	}
+}
+
+func TestConvertTestNGToJunit5Source_ConvertsExpectedExceptionsToAssertThrows(t *testing.T) {
+	t.Parallel()
+
+	input := `import org.testng.annotations.Test;
+
+public class ExampleTest {
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testInvalid() {
+        parse("bad");
+    }
+}
+`
+
+	got, err := ConvertTestNGToJunit5Source(input)
+	if err != nil {
+		t.Fatalf("ConvertTestNGToJunit5Source returned error: %v", err)
+	}
+	for _, want := range []string{
+		"import org.junit.jupiter.api.Test;",
+		"import org.junit.jupiter.api.Assertions;",
+		"@Test",
+		"Assertions.assertThrows(IllegalArgumentException.class, () -> {",
+		"parse(\"bad\");",
+		"});",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "expectedExceptions") {
+		t.Fatalf("expected TestNG expectedExceptions annotation to be removed, got:\n%s", got)
 	}
 }
 

@@ -115,12 +115,24 @@ func convertNoseBodyToPytest(body []string) []string {
 			out = append(out, "")
 		case strings.HasPrefix(trimmed, "assert_equal("):
 			out = append(out, convertNoseAssertionInvocation(line, "assert_equal", "=="))
+		case strings.HasPrefix(trimmed, "assert_not_equal("):
+			out = append(out, convertNoseAssertionInvocation(line, "assert_not_equal", "!="))
 		case strings.HasPrefix(trimmed, "assert_true("):
 			out = append(out, convertNoseUnaryAssertionInvocation(line, "assert_true", false))
 		case strings.HasPrefix(trimmed, "assert_false("):
 			out = append(out, convertNoseUnaryAssertionInvocation(line, "assert_false", true))
 		case strings.HasPrefix(trimmed, "assert_in("):
 			out = append(out, convertNoseAssertionInvocation(line, "assert_in", "in"))
+		case strings.HasPrefix(trimmed, "assert_not_in("):
+			out = append(out, convertNoseAssertionInvocation(line, "assert_not_in", "not in"))
+		case strings.HasPrefix(trimmed, "assert_is_none("):
+			out = append(out, convertNoseUnaryAssertionInvocation(line, "assert_is_none", false))
+		case strings.HasPrefix(trimmed, "assert_is_not_none("):
+			out = append(out, convertNoseUnaryAssertionInvocation(line, "assert_is_not_none", false))
+		case strings.HasPrefix(trimmed, "assert_greater("):
+			out = append(out, convertNoseAssertionInvocation(line, "assert_greater", ">"))
+		case strings.HasPrefix(trimmed, "assert_less("):
+			out = append(out, convertNoseAssertionInvocation(line, "assert_less", "<"))
 		default:
 			out = append(out, line)
 		}
@@ -141,7 +153,7 @@ func convertNoseAssertionInvocation(line, method, operator string) string {
 		return indent + "# TERRAIN-TODO: manual nose assertion migration required"
 	}
 	switch operator {
-	case "==", "in":
+	case "==", "!=", "in", "not in", ">", "<":
 		return indent + fmt.Sprintf("assert %s %s %s", args[0], operator, args[1])
 	default:
 		return indent + "# TERRAIN-TODO: manual nose assertion migration required"
@@ -159,6 +171,12 @@ func convertNoseUnaryAssertionInvocation(line, method string, negate bool) strin
 	args := splitTopLevelArgs(trimmed[open+1 : close])
 	if len(args) < 1 {
 		return indent + "# TERRAIN-TODO: manual nose assertion migration required"
+	}
+	switch method {
+	case "assert_is_none":
+		return indent + fmt.Sprintf("assert %s is None", args[0])
+	case "assert_is_not_none":
+		return indent + fmt.Sprintf("assert %s is not None", args[0])
 	}
 	if negate {
 		return indent + fmt.Sprintf("assert not %s", args[0])

@@ -88,6 +88,7 @@ func buildUnittestClassFromPytest(fixtures, tests []pythonBlock) []string {
 		name, params, _ := extractPythonFuncParts(test.Signature)
 		paramNames := []string(nil)
 		paramExpr := ""
+		methodDecorators := make([]string, 0, len(test.Decorators))
 		body := make([]string, 0, len(test.Body)+8)
 
 		for _, decorator := range test.Decorators {
@@ -96,11 +97,18 @@ func buildUnittestClassFromPytest(fixtures, tests []pythonBlock) []string {
 				paramExpr = expr
 				continue
 			}
+			if converted, ok := buildUnittestDecoratorFromPytest(decorator); ok {
+				methodDecorators = append(methodDecorators, converted)
+				continue
+			}
 			body = append(body, "# TERRAIN-TODO: manual pytest decorator migration required")
 			body = append(body, "# "+decorator)
 		}
 
 		params = stripPytestParamNames(params, paramNames)
+		for _, decorator := range methodDecorators {
+			classLines = append(classLines, "    "+decorator)
+		}
 		classLines = append(classLines, fmt.Sprintf("    def %s(self):", name))
 		if len(params) > 0 {
 			body = append(body, "# TERRAIN-TODO: pytest fixture arguments require manual unittest setup")
