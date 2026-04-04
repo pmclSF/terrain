@@ -138,6 +138,58 @@ List shorthand aliases such as `cy2pw` and `jesttovt`.
 terrain shorthands [--json]
 ```
 
+### `terrain estimate`
+
+Estimate migration complexity without writing converted output.
+
+```bash
+terrain estimate <dir> --from FRAMEWORK --to FRAMEWORK [--json]
+```
+
+This command walks the source tree, classifies test/helper/config files, runs the Go-native converters in-memory, and reports confidence bands plus manual-review blockers.
+
+### `terrain migrate`
+
+Run the project-wide Go-native migration workflow.
+
+```bash
+terrain migrate <dir> --from FRAMEWORK --to FRAMEWORK [--output PATH] [--continue] [--retry-failed] [--dry-run] [--plan] [--json]
+```
+
+This workflow layers state tracking, checklist generation, and config conversion on top of the direct `terrain convert` runtime. Migration state is written under `.terrain/migration/`.
+
+### `terrain status`
+
+Show current conversion workflow progress.
+
+```bash
+terrain status [--dir PATH] [--json]
+```
+
+### `terrain checklist`
+
+Generate the current migration checklist from saved workflow state.
+
+```bash
+terrain checklist [--dir PATH] [--json]
+```
+
+### `terrain doctor`
+
+Run migration diagnostics for a target directory.
+
+```bash
+terrain doctor [path] [--json] [--verbose]
+```
+
+### `terrain reset`
+
+Clear conversion migration state.
+
+```bash
+terrain reset [--dir PATH] [--yes] [--json]
+```
+
 ### `terrain summary`
 
 Executive summary with posture, trends, and benchmark readiness.
