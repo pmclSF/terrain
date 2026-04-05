@@ -27,7 +27,21 @@ func TestLegacyAllDirectionsSmoke(t *testing.T) {
 			if len(trimWhitespace(output)) == 0 {
 				t.Fatalf("expected non-empty output for %s -> %s", direction.From, direction.To)
 			}
+			if err := ValidateSyntax(smokeOutputPath(direction), direction.Language, output); err != nil {
+				t.Fatalf("expected syntactically valid output for %s -> %s, got: %v\noutput:\n%s", direction.From, direction.To, err, output)
+			}
 		})
+	}
+}
+
+func smokeOutputPath(direction Direction) string {
+	switch direction.Language {
+	case "java":
+		return "ConvertedExample.java"
+	case "python":
+		return "converted_example.py"
+	default:
+		return "converted_example.js"
 	}
 }
 

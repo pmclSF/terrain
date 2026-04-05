@@ -246,6 +246,32 @@ describe('User', () => {
 	}
 }
 
+func TestConvertJestToVitestSource_MalformedFallbackPreservesStringsAndComments(t *testing.T) {
+	t.Parallel()
+
+	input := `// KEEP_COMMENT: jest.fn should stay in comments
+const hint = "KEEP_LITERAL: jest.spyOn stays literal here";
+
+describe('User', () => {
+  it('creates a user', () => {
+    const callback = jest.fn(
+`
+
+	got, err := ConvertJestToVitestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertJestToVitestSource returned error: %v", err)
+	}
+	if !strings.Contains(got, `const hint = "KEEP_LITERAL: jest.spyOn stays literal here";`) {
+		t.Fatalf("expected string literal to stay unchanged in fallback, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// KEEP_COMMENT: jest.fn should stay in comments") {
+		t.Fatalf("expected comment to stay unchanged in fallback, got:\n%s", got)
+	}
+	if !strings.Contains(got, "const callback = vi.fn(") {
+		t.Fatalf("expected malformed runtime call to still convert in fallback, got:\n%s", got)
+	}
+}
+
 func TestBuildVitestImport_PreservesExtraSpecifiers(t *testing.T) {
 	t.Parallel()
 

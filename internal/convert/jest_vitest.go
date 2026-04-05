@@ -14,28 +14,8 @@ var (
 	reJestGlobalsRequire = regexp.MustCompile(`(?m)^(?:const|let|var)\s+\{[^}]*\}\s*=\s*require\(\s*['"]@jest/globals['"]\s*\);\s*\n?`)
 	reVitestImport       = regexp.MustCompile(`(?m)^import\s+\{([^}]*)\}\s+from\s+['"]vitest['"];\s*\n?`)
 	reJestSetTimeout     = regexp.MustCompile(`\bjest\.setTimeout\s*\(\s*([^)]+?)\s*\)`)
+	reJestVitestMember   = regexp.MustCompile(`\bjest\.(fn|spyOn|mock|doMock|unmock|clearAllMocks|resetAllMocks|restoreAllMocks|useFakeTimers|useRealTimers|advanceTimersByTime|advanceTimersToNextTimer|runAllTimers|runOnlyPendingTimers|clearAllTimers|resetModules|isMockFunction|setSystemTime)\b`)
 	reVitestUsageVI      = regexp.MustCompile(`\bvi\.`)
-)
-
-var jestToVitestReplacer = strings.NewReplacer(
-	"jest.fn", "vi.fn",
-	"jest.spyOn", "vi.spyOn",
-	"jest.mock", "vi.mock",
-	"jest.doMock", "vi.doMock",
-	"jest.unmock", "vi.unmock",
-	"jest.clearAllMocks", "vi.clearAllMocks",
-	"jest.resetAllMocks", "vi.resetAllMocks",
-	"jest.restoreAllMocks", "vi.restoreAllMocks",
-	"jest.useFakeTimers", "vi.useFakeTimers",
-	"jest.useRealTimers", "vi.useRealTimers",
-	"jest.advanceTimersByTime", "vi.advanceTimersByTime",
-	"jest.advanceTimersToNextTimer", "vi.advanceTimersToNextTimer",
-	"jest.runAllTimers", "vi.runAllTimers",
-	"jest.runOnlyPendingTimers", "vi.runOnlyPendingTimers",
-	"jest.clearAllTimers", "vi.clearAllTimers",
-	"jest.resetModules", "vi.resetModules",
-	"jest.isMockFunction", "vi.isMockFunction",
-	"jest.setSystemTime", "vi.setSystemTime",
 )
 
 var vitestImportOrder = []string{
@@ -108,10 +88,9 @@ func ConvertJestToVitestSource(source string) (string, error) {
 
 	result := source
 	var existingVitestNames []string
-	result = reVitestImport.ReplaceAllStringFunc(result, func(match string) string {
-		submatches := reVitestImport.FindStringSubmatch(match)
-		if len(submatches) > 1 {
-			for _, name := range strings.Split(submatches[1], ",") {
+	result = replaceCodeRegexMatches(result, reVitestImport, func(match string, groups []string) string {
+		if len(groups) > 0 {
+			for _, name := range strings.Split(groups[0], ",") {
 				name = strings.TrimSpace(name)
 				if name != "" {
 					existingVitestNames = append(existingVitestNames, name)
@@ -121,10 +100,19 @@ func ConvertJestToVitestSource(source string) (string, error) {
 		return ""
 	})
 
-	result = reJestGlobalsImport.ReplaceAllString(result, "")
-	result = reJestGlobalsRequire.ReplaceAllString(result, "")
-	result = reJestSetTimeout.ReplaceAllString(result, "vi.setConfig({ testTimeout: $1 })")
-	result = jestToVitestReplacer.Replace(result)
+	result = replaceCodeRegexString(result, reJestGlobalsImport, "")
+	result = replaceCodeRegexString(result, reJestGlobalsRequire, "")
+	result = replaceCodeRegexString(result, reJestSetTimeout, "vi.setConfig({ testTimeout: $1 })")
+	result = replaceCodeRegexMatches(result, reJestVitestMember, func(match string, groups []string) string {
+		if len(groups) != 1 {
+			return match
+		}
+		replacement, ok := jestToVitestMembers[groups[0]]
+		if !ok {
+			return match
+		}
+		return "vi." + replacement
+	})
 
 	imports := detectVitestImports(result)
 	for _, name := range existingVitestNames {

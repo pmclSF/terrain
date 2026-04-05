@@ -104,11 +104,11 @@ var (
 		"retries": func(value any, _ map[string]any) *configAssignment {
 			return &configAssignment{KeyPath: "retries", Value: value}
 		},
-		"testMatch": func(value any, _ map[string]any) *configAssignment {
-			return &configAssignment{KeyPath: "specPattern", Value: value}
+		"testMatch": func(_ any, all map[string]any) *configAssignment {
+			return playwrightSpecAssignment("specPattern", all)
 		},
-		"testDir": func(value any, _ map[string]any) *configAssignment {
-			return &configAssignment{KeyPath: "specPattern", Value: value}
+		"testDir": func(_ any, all map[string]any) *configAssignment {
+			return playwrightSpecAssignment("specPattern", all)
 		},
 	}
 	wdioToPlaywrightKeys = map[string]configMapper{
@@ -132,8 +132,11 @@ var (
 		"timeout": func(value any, _ map[string]any) *configAssignment {
 			return &configAssignment{KeyPath: "waitforTimeout", Value: value}
 		},
-		"testMatch": func(value any, _ map[string]any) *configAssignment {
-			return &configAssignment{KeyPath: "specs", Value: value}
+		"testMatch": func(_ any, all map[string]any) *configAssignment {
+			return playwrightSpecAssignment("specs", all)
+		},
+		"testDir": func(_ any, all map[string]any) *configAssignment {
+			return playwrightSpecAssignment("specs", all)
 		},
 		"workers": func(value any, _ map[string]any) *configAssignment {
 			return &configAssignment{KeyPath: "maxInstances", Value: value}
@@ -195,8 +198,11 @@ var (
 		"timeout": func(value any, _ map[string]any) *configAssignment {
 			return &configAssignment{KeyPath: "implicitWait", Value: value}
 		},
-		"testMatch": func(value any, _ map[string]any) *configAssignment {
-			return &configAssignment{KeyPath: "specs", Value: value}
+		"testMatch": func(_ any, all map[string]any) *configAssignment {
+			return playwrightSpecAssignment("specs", all)
+		},
+		"testDir": func(_ any, all map[string]any) *configAssignment {
+			return playwrightSpecAssignment("specs", all)
 		},
 	}
 	seleniumToPlaywrightKeys = map[string]configMapper{
@@ -238,6 +244,117 @@ var (
 			return &configAssignment{KeyPath: "randomize", Value: value}
 		},
 	}
+	jestToMochaKeys = map[string]configMapper{
+		"testTimeout": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "timeout", Value: value}
+		},
+		"testMatch": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "spec", Value: value}
+		},
+		"setupFiles": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "require", Value: value}
+		},
+		"bail": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "bail", Value: value}
+		},
+	}
+	jestToJasmineKeys = map[string]configMapper{
+		"roots": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "spec_dir", Value: value}
+		},
+		"testMatch": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "spec_files", Value: value}
+		},
+		"setupFiles": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "helpers", Value: value}
+		},
+		"testTimeout": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "defaultTimeoutInterval", Value: value}
+		},
+	}
+	playwrightToPuppeteerKeys = map[string]configMapper{
+		"baseURL": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "baseURL", Value: value}
+		},
+		"timeout": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "timeout", Value: value}
+		},
+		"testMatch": func(_ any, all map[string]any) *configAssignment {
+			return playwrightSpecAssignment("specs", all)
+		},
+		"testDir": func(_ any, all map[string]any) *configAssignment {
+			return playwrightSpecAssignment("specs", all)
+		},
+		"viewport": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "defaultViewport", Value: value}
+		},
+		"headless": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "headless", Value: value}
+		},
+		"launchOptions": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "launch", Value: value}
+		},
+	}
+	puppeteerToPlaywrightKeys = map[string]configMapper{
+		"baseURL": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "use.baseURL", Value: value}
+		},
+		"timeout": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "timeout", Value: value}
+		},
+		"specs": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "testMatch", Value: value}
+		},
+		"defaultViewport": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "use.viewport", Value: value}
+		},
+		"headless": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "use.headless", Value: value}
+		},
+		"launch": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "use.launchOptions", Value: value}
+		},
+		"args": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "use.launchOptions.args", Value: value}
+		},
+		"executablePath": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "use.launchOptions.executablePath", Value: value}
+		},
+	}
+	testCafeToPlaywrightKeys = map[string]configMapper{
+		"baseUrl": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "use.baseURL", Value: value}
+		},
+		"src": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "testMatch", Value: value}
+		},
+		"selectorTimeout": func(_ any, all map[string]any) *configAssignment {
+			return testCafeTimeoutAssignment("timeout", all)
+		},
+		"assertionTimeout": func(_ any, all map[string]any) *configAssignment {
+			return testCafeTimeoutAssignment("timeout", all)
+		},
+		"pageLoadTimeout": func(_ any, all map[string]any) *configAssignment {
+			return testCafeTimeoutAssignment("timeout", all)
+		},
+	}
+	testCafeToCypressKeys = map[string]configMapper{
+		"baseUrl": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "baseUrl", Value: value}
+		},
+		"src": func(value any, _ map[string]any) *configAssignment {
+			return &configAssignment{KeyPath: "specPattern", Value: value}
+		},
+		"selectorTimeout": func(_ any, all map[string]any) *configAssignment {
+			return testCafeTimeoutAssignment("defaultCommandTimeout", all)
+		},
+		"assertionTimeout": func(_ any, all map[string]any) *configAssignment {
+			return testCafeTimeoutAssignment("defaultCommandTimeout", all)
+		},
+		"pageLoadTimeout": func(_ any, all map[string]any) *configAssignment {
+			return testCafeTimeoutAssignment("defaultCommandTimeout", all)
+		},
+	}
 	configKeyOrder = []string{
 		"environment",
 		"setupFiles",
@@ -260,11 +377,22 @@ var (
 		"waitforTimeout",
 		"specs",
 		"workers",
+		"launch",
+		"defaultViewport",
+		"headless",
+		"launchOptions",
+		"spec",
+		"require",
 		"implicitWait",
 		"windowSize",
 		"browser",
 		"browserName",
 		"roots",
+		"spec_dir",
+		"spec_files",
+		"helpers",
+		"defaultTimeoutInterval",
+		"src",
 		"bail",
 	}
 	defaultPlaywrightProjects = RawJS(`[
@@ -292,6 +420,10 @@ func DetectConfigFramework(path string) string {
 		return "mocha"
 	case strings.Contains(name, "jasmine.json") || strings.Contains(name, "jasmine.config"):
 		return "jasmine"
+	case strings.HasPrefix(name, ".puppeteerrc") || strings.Contains(name, "puppeteer.config"):
+		return "puppeteer"
+	case strings.HasPrefix(name, ".testcaferc") || strings.Contains(name, "testcafe.config"):
+		return "testcafe"
 	case strings.Contains(name, "selenium.config"):
 		return "selenium"
 	case name == "pytest.ini" || name == "pyproject.toml" || name == "setup.cfg":
@@ -317,6 +449,12 @@ func SupportsConfigConversion(fromFramework, toFramework string) bool {
 		"selenium-cypress",
 		"playwright-selenium",
 		"selenium-playwright",
+		"jest-mocha",
+		"jest-jasmine",
+		"playwright-puppeteer",
+		"puppeteer-playwright",
+		"testcafe-playwright",
+		"testcafe-cypress",
 		"mocha-jest",
 		"jasmine-jest":
 		return true
@@ -341,9 +479,11 @@ func TargetConfigFileName(toFramework, fallbackBase string) string {
 	case "webdriverio":
 		return "wdio.conf.js"
 	case "mocha":
-		return ".mocharc.yml"
+		return ".mocharc.cjs"
 	case "jasmine":
-		return "jasmine.json"
+		return "jasmine.config.js"
+	case "puppeteer":
+		return ".puppeteerrc.cjs"
 	case "pytest":
 		return "pytest.ini"
 	case "unittest":
@@ -407,6 +547,26 @@ func ConvertConfig(content, fromFramework, toFramework string) (string, error) {
 		return convertYAMLOrJSConfig(content, mochaToJestKeys, "Mocha", "jest")
 	case "jasmine-jest":
 		return convertYAMLOrJSConfig(content, jasmineToJestKeys, "Jasmine", "jest")
+	case "jest-mocha":
+		return convertJSConfig(content, jestToMochaKeys, "Jest", "mocha")
+	case "jest-jasmine":
+		return convertJSConfig(content, jestToJasmineKeys, "Jest", "jasmine")
+	case "playwright-puppeteer":
+		return convertJSConfig(content, playwrightToPuppeteerKeys, "Playwright", "puppeteer")
+	case "puppeteer-playwright":
+		out, err := convertJSConfig(content, puppeteerToPlaywrightKeys, "Puppeteer", "playwright")
+		if err != nil {
+			return "", err
+		}
+		return EnsureDefaultPlaywrightProjects(out), nil
+	case "testcafe-playwright":
+		out, err := convertJSConfig(content, testCafeToPlaywrightKeys, "TestCafe", "playwright")
+		if err != nil {
+			return "", err
+		}
+		return EnsureDefaultPlaywrightProjects(out), nil
+	case "testcafe-cypress":
+		return convertJSConfig(content, testCafeToCypressKeys, "TestCafe", "cypress")
 	default:
 		return addConfigTodoHeader(content, fromFramework, toFramework), nil
 	}
@@ -481,6 +641,12 @@ func renderConfig(keys map[string]any, keyMap map[string]configMapper, sourceNam
 		return renderWdioConfig(mapped, todos)
 	case "selenium":
 		return renderSeleniumConfig(mapped, todos)
+	case "mocha":
+		return renderMochaConfig(mapped, todos)
+	case "jasmine":
+		return renderJasmineConfig(mapped, todos)
+	case "puppeteer":
+		return renderPuppeteerConfig(mapped, todos)
 	default:
 		return addConfigTodoHeader("", strings.ToLower(sourceName), target)
 	}
@@ -564,6 +730,39 @@ func renderSeleniumConfig(mapped map[string]any, todos []string) string {
 	if _, ok := mapped["capabilities"]; !ok {
 		mapped["capabilities"] = RawJS("{ browserName: 'chrome' }")
 	}
+	lines = append(lines, renderObjectEntries(mapped, 1)...)
+	lines = append(lines, "};")
+	if len(todos) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, todos...)
+	}
+	return strings.Join(lines, "\n") + "\n"
+}
+
+func renderMochaConfig(mapped map[string]any, todos []string) string {
+	lines := []string{"module.exports = {"}
+	lines = append(lines, renderObjectEntries(mapped, 1)...)
+	lines = append(lines, "};")
+	if len(todos) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, todos...)
+	}
+	return strings.Join(lines, "\n") + "\n"
+}
+
+func renderJasmineConfig(mapped map[string]any, todos []string) string {
+	lines := []string{"module.exports = {"}
+	lines = append(lines, renderObjectEntries(mapped, 1)...)
+	lines = append(lines, "};")
+	if len(todos) > 0 {
+		lines = append(lines, "")
+		lines = append(lines, todos...)
+	}
+	return strings.Join(lines, "\n") + "\n"
+}
+
+func renderPuppeteerConfig(mapped map[string]any, todos []string) string {
+	lines := []string{"module.exports = {"}
 	lines = append(lines, renderObjectEntries(mapped, 1)...)
 	lines = append(lines, "};")
 	if len(todos) > 0 {
@@ -1031,6 +1230,52 @@ func intValue(value any, fallback int) int {
 		}
 	}
 	return fallback
+}
+
+func firstConfigValue(all map[string]any, keys ...string) (any, bool) {
+	for _, key := range keys {
+		value, ok := all[key]
+		if ok {
+			return value, true
+		}
+	}
+	return nil, false
+}
+
+func maxConfigTimeoutValue(all map[string]any, keys ...string) (int, bool) {
+	maxValue := 0
+	found := false
+	for _, key := range keys {
+		value, ok := all[key]
+		if !ok {
+			continue
+		}
+		timeout := intValue(value, 0)
+		if timeout <= 0 {
+			continue
+		}
+		if !found || timeout > maxValue {
+			maxValue = timeout
+			found = true
+		}
+	}
+	return maxValue, found
+}
+
+func testCafeTimeoutAssignment(targetKey string, all map[string]any) *configAssignment {
+	timeout, ok := maxConfigTimeoutValue(all, "selectorTimeout", "assertionTimeout", "pageLoadTimeout")
+	if !ok {
+		return nil
+	}
+	return &configAssignment{KeyPath: targetKey, Value: timeout}
+}
+
+func playwrightSpecAssignment(targetKey string, all map[string]any) *configAssignment {
+	value, ok := firstConfigValue(all, "testMatch", "testDir")
+	if !ok {
+		return nil
+	}
+	return &configAssignment{KeyPath: targetKey, Value: value}
 }
 
 func titleFramework(name string) string {
