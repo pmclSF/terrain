@@ -110,11 +110,22 @@ func TestLookupDirection_ReportsCapabilities(t *testing.T) {
 	if !ok {
 		t.Fatal("expected testcafe -> playwright direction")
 	}
-	if testCafePlaywright.Capabilities.ConfigMigration != CapabilityUnsupported {
-		t.Fatalf("config capability = %s, want %s", testCafePlaywright.Capabilities.ConfigMigration, CapabilityUnsupported)
+	if testCafePlaywright.Capabilities.ConfigMigration != CapabilitySupported {
+		t.Fatalf("config capability = %s, want %s", testCafePlaywright.Capabilities.ConfigMigration, CapabilitySupported)
 	}
-	if testCafePlaywright.Capabilities.ProjectMigration != CapabilityPartial {
-		t.Fatalf("project capability = %s, want %s", testCafePlaywright.Capabilities.ProjectMigration, CapabilityPartial)
+	if testCafePlaywright.Capabilities.ProjectMigration != CapabilitySupported {
+		t.Fatalf("project capability = %s, want %s", testCafePlaywright.Capabilities.ProjectMigration, CapabilitySupported)
+	}
+
+	pytestUnittest, ok := LookupDirection("pytest", "unittest")
+	if !ok {
+		t.Fatal("expected pytest -> unittest direction")
+	}
+	if pytestUnittest.Capabilities.ConfigMigration != CapabilityUnsupported {
+		t.Fatalf("config capability = %s, want %s", pytestUnittest.Capabilities.ConfigMigration, CapabilityUnsupported)
+	}
+	if pytestUnittest.Capabilities.ProjectMigration != CapabilityPartial {
+		t.Fatalf("project capability = %s, want %s", pytestUnittest.Capabilities.ProjectMigration, CapabilityPartial)
 	}
 }
 

@@ -26,8 +26,14 @@ func TestLegacyConfigConversionMatrix(t *testing.T) {
 		{name: "selenium-cypress", from: "selenium", to: "cypress", wantMarker: "defineConfig"},
 		{name: "playwright-selenium", from: "playwright", to: "selenium", wantMarker: "selenium-webdriver"},
 		{name: "selenium-playwright", from: "selenium", to: "playwright", wantMarker: "@playwright/test"},
+		{name: "jest-mocha", from: "jest", to: "mocha", wantMarker: "module.exports = {"},
+		{name: "jest-jasmine", from: "jest", to: "jasmine", wantMarker: "module.exports = {"},
 		{name: "mocha-jest", from: "mocha", to: "jest", wantMarker: "module.exports = {"},
 		{name: "jasmine-jest", from: "jasmine", to: "jest", wantMarker: "module.exports = {"},
+		{name: "playwright-puppeteer", from: "playwright", to: "puppeteer", wantMarker: "module.exports = {"},
+		{name: "puppeteer-playwright", from: "puppeteer", to: "playwright", wantMarker: "@playwright/test"},
+		{name: "testcafe-playwright", from: "testcafe", to: "playwright", wantMarker: "@playwright/test"},
+		{name: "testcafe-cypress", from: "testcafe", to: "cypress", wantMarker: "defineConfig"},
 	}
 
 	for _, tc := range cases {
@@ -111,11 +117,25 @@ export default defineConfig({
   browserName: 'chrome'
 };
 `,
+	"puppeteer": `module.exports = {
+  baseURL: 'http://localhost:3000',
+  timeout: 30000,
+  defaultViewport: { width: 1280, height: 720 },
+  headless: true
+};
+`,
 	"mocha": "timeout: 5000\nspec: ./test/**/*.spec.js\nrequire: ./test/setup.js\n",
 	"jasmine": `{
   "spec_dir": "spec",
   "spec_files": ["**/*[sS]pec.?(m)js"],
   "helpers": ["helpers/**/*.js"]
 }
+`,
+	"testcafe": `module.exports = {
+  src: ['tests/**/*.js'],
+  baseUrl: 'http://localhost:3000',
+  selectorTimeout: 5000,
+  assertionTimeout: 7000
+};
 `,
 }

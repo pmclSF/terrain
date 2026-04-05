@@ -15,7 +15,11 @@ func TestDetectConfigFramework(t *testing.T) {
 		"cypress.config.js":    "cypress",
 		"wdio.conf.js":         "webdriverio",
 		".mocharc.yml":         "mocha",
+		".mocharc.cjs":         "mocha",
 		"jasmine.json":         "jasmine",
+		"jasmine.config.js":    "jasmine",
+		".puppeteerrc.cjs":     "puppeteer",
+		"testcafe.config.js":   "testcafe",
 		"selenium.config.js":   "selenium",
 	}
 
@@ -108,5 +112,89 @@ func TestConvertConfig_WdioToPlaywright(t *testing.T) {
 	}
 	if !strings.Contains(output, "workers: 5") {
 		t.Fatalf("expected workers mapping, got:\n%s", output)
+	}
+}
+
+func TestConvertConfig_JestToMocha(t *testing.T) {
+	t.Parallel()
+
+	input := `module.exports = { testTimeout: 12000, testMatch: ['tests/**/*.spec.js'], setupFiles: ['./tests/setup.js'], bail: true };`
+	output, err := ConvertConfig(input, "jest", "mocha")
+	if err != nil {
+		t.Fatalf("ConvertConfig returned error: %v", err)
+	}
+
+	if !strings.Contains(output, "module.exports = {") {
+		t.Fatalf("expected JS mocha config output, got:\n%s", output)
+	}
+	if !strings.Contains(output, "timeout: 12000") {
+		t.Fatalf("expected timeout mapping, got:\n%s", output)
+	}
+	if !strings.Contains(output, "spec: ['tests/**/*.spec.js']") {
+		t.Fatalf("expected spec mapping, got:\n%s", output)
+	}
+	if !strings.Contains(output, "require: ['./tests/setup.js']") {
+		t.Fatalf("expected setupFiles mapping, got:\n%s", output)
+	}
+}
+
+func TestConvertConfig_PuppeteerToPlaywrightAddsProjects(t *testing.T) {
+	t.Parallel()
+
+	input := `module.exports = { baseURL: 'http://localhost:3000', timeout: 30000, defaultViewport: { width: 1280, height: 720 }, headless: true };`
+	output, err := ConvertConfig(input, "puppeteer", "playwright")
+	if err != nil {
+		t.Fatalf("ConvertConfig returned error: %v", err)
+	}
+
+	if !strings.Contains(output, "baseURL: 'http://localhost:3000'") {
+		t.Fatalf("expected baseURL mapping, got:\n%s", output)
+	}
+	if !strings.Contains(output, "viewport: { width: 1280, height: 720 }") {
+		t.Fatalf("expected viewport mapping, got:\n%s", output)
+	}
+	if !strings.Contains(output, "projects: [") {
+		t.Fatalf("expected default Playwright projects, got:\n%s", output)
+	}
+}
+
+func TestConvertConfig_TestCafeToCypress(t *testing.T) {
+	t.Parallel()
+
+	input := `module.exports = { src: ['tests/**/*.js'], baseUrl: 'http://localhost:3000', selectorTimeout: 5000, assertionTimeout: 7000 };`
+	output, err := ConvertConfig(input, "testcafe", "cypress")
+	if err != nil {
+		t.Fatalf("ConvertConfig returned error: %v", err)
+	}
+
+	if !strings.Contains(output, "specPattern: ['tests/**/*.js']") {
+		t.Fatalf("expected src mapping, got:\n%s", output)
+	}
+	if !strings.Contains(output, "baseUrl: 'http://localhost:3000'") {
+		t.Fatalf("expected baseUrl mapping, got:\n%s", output)
+	}
+	if !strings.Contains(output, "defaultCommandTimeout: 7000") {
+		t.Fatalf("expected max timeout mapping, got:\n%s", output)
+	}
+}
+
+func TestTargetConfigFileName_UsesJSNativeTargetsForSupportedJSConfigs(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]string{
+		"mocha":     ".mocharc.cjs",
+		"jasmine":   "jasmine.config.js",
+		"puppeteer": ".puppeteerrc.cjs",
+	}
+
+	for framework, want := range cases {
+		framework := framework
+		want := want
+		t.Run(framework, func(t *testing.T) {
+			t.Parallel()
+			if got := TargetConfigFileName(framework, "fallback.config"); got != want {
+				t.Fatalf("TargetConfigFileName(%q) = %q, want %q", framework, got, want)
+			}
+		})
 	}
 }
