@@ -163,6 +163,104 @@ def test_example():
 	}
 }
 
+func TestRunConvert_StrictValidateAllowsValidConvertedOutput(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	path := filepath.Join(root, "auth.test.js")
+	input := `describe('auth', () => {
+  it('works', () => {
+    expect(true).toBe(true);
+  });
+});
+`
+	if err := os.WriteFile(path, []byte(input), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	out, err := captureRun(func() error {
+		return runConvert(path, convertCommandOptions{
+			From:           "jest",
+			To:             "vitest",
+			StrictValidate: true,
+		})
+	})
+	if err != nil {
+		t.Fatalf("runConvert returned error: %v", err)
+	}
+	if !strings.Contains(string(out), "import { describe, it, expect } from 'vitest';") {
+		t.Fatalf("expected converted output, got:\n%s", out)
+	}
+}
+
+func TestRunConvert_ValidateAliasRejectsMalformedConvertedOutput(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	inputPath := filepath.Join(root, "broken.test.js")
+	outputDir := filepath.Join(root, "converted")
+	input := "describe('broken', () => {\n"
+	if err := os.WriteFile(inputPath, []byte(input), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	err := runCaptured(func() error {
+		return runConvert(inputPath, convertCommandOptions{
+			From:     "jest",
+			To:       "vitest",
+			Output:   outputDir,
+			Validate: true,
+		})
+	})
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+	if !strings.Contains(err.Error(), "syntax validation failed") {
+		t.Fatalf("expected syntax validation error, got: %v", err)
+	}
+	if _, statErr := os.Stat(filepath.Join(outputDir, "broken.test.js")); !os.IsNotExist(statErr) {
+		t.Fatalf("expected invalid converted output to be removed, got err=%v", statErr)
+	}
+}
+
+func TestRunConvert_DirectoryUsesBatchAndConcurrency(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	outputDir := filepath.Join(root, "converted")
+	if err := os.WriteFile(filepath.Join(root, "first.test.js"), []byte("describe('a', () => { expect(true).toBe(true) })\n"), 0o644); err != nil {
+		t.Fatalf("write first input: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "second.test.js"), []byte("describe('b', () => { expect(true).toBe(true) })\n"), 0o644); err != nil {
+		t.Fatalf("write second input: %v", err)
+	}
+
+	if err := runCaptured(func() error {
+		return runConvert(root, convertCommandOptions{
+			From:        "jest",
+			To:          "vitest",
+			Output:      outputDir,
+			BatchSize:   1,
+			Concurrency: 2,
+		})
+	}); err != nil {
+		t.Fatalf("runConvert returned error: %v", err)
+	}
+
+	for _, path := range []string{
+		filepath.Join(outputDir, "first.test.js"),
+		filepath.Join(outputDir, "second.test.js"),
+	} {
+		content, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatalf("read output %s: %v", path, readErr)
+		}
+		if !strings.Contains(string(content), "from 'vitest'") {
+			t.Fatalf("expected vitest import in %s, got:\n%s", path, content)
+		}
+	}
+}
+
 func TestRunConvert_ExecutesJunit4ToJunit5ToOutputFile(t *testing.T) {
 	t.Parallel()
 

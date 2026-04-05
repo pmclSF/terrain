@@ -16,7 +16,9 @@ var (
 	rePptrCloseLine        = regexp.MustCompile(`(?m)^\s*await\s+browser\.close\(\)\s*;?\s*$`)
 	rePptrExpectURL        = regexp.MustCompile(`expect\(page\.url\(\)\)\.toBe\(([^)]+)\)`)
 	rePptrExpectURLContain = regexp.MustCompile(`expect\(page\.url\(\)\)\.toContain\(([^)]+)\)`)
+	rePptrExpectURLMatch   = regexp.MustCompile(`expect\(page\.url\(\)\)\.toMatch\(([^)]+)\)`)
 	rePptrExpectTitle      = regexp.MustCompile(`expect\(await\s+page\.title\(\)\)\.toBe\(([^)]+)\)`)
+	rePptrExpectTitleMatch = regexp.MustCompile(`expect\(await\s+page\.title\(\)\)\.toMatch\(([^)]+)\)`)
 	rePptrExpectTruthy     = regexp.MustCompile(`expect\(await\s+page\.\$\(([^)]+)\)\)\.toBeTruthy\(\)`)
 	rePptrExpectFalsy      = regexp.MustCompile(`expect\(await\s+page\.\$\(([^)]+)\)\)\.toBeFalsy\(\)`)
 	rePptrExpectText       = regexp.MustCompile(`expect\(await\s+page\.\$eval\(([^,]+),\s*el\s*=>\s*el\.textContent\)\)\.toBe\(([^)]+)\)`)
@@ -40,6 +42,8 @@ var (
 	rePptrCookies          = regexp.MustCompile(`await page\.cookies\(\)`)
 	rePptrDeleteCookie     = regexp.MustCompile(`await page\.deleteCookie\(\)`)
 	rePptrStandaloneSingle = regexp.MustCompile(`page\.\$\(([^)]+)\)`)
+	rePptrBeforeAllCall    = regexp.MustCompile(`(?m)(^|[^\w.])beforeAll\(`)
+	rePptrAfterAllCall     = regexp.MustCompile(`(?m)(^|[^\w.])afterAll\(`)
 )
 
 // ConvertPuppeteerToPlaywrightSource rewrites the high-confidence Puppeteer
@@ -72,6 +76,25 @@ func ConvertPuppeteerToPlaywrightSource(source string) (string, error) {
 	result = rePptrLaunchLine.ReplaceAllString(result, "")
 	result = rePptrNewPageLine.ReplaceAllString(result, "")
 	result = rePptrCloseLine.ReplaceAllString(result, "")
+
+	if rePptrExpectURLMatch.MatchString(result) {
+		result = rePptrExpectURLMatch.ReplaceAllStringFunc(result, func(match string) string {
+			parts := rePptrExpectURLMatch.FindStringSubmatch(match)
+			if len(parts) != 2 {
+				return match
+			}
+			return "await expect(page).toHaveURL(" + playwrightPatternArg(parts[1]) + ")"
+		})
+	}
+	if rePptrExpectTitleMatch.MatchString(result) {
+		result = rePptrExpectTitleMatch.ReplaceAllStringFunc(result, func(match string) string {
+			parts := rePptrExpectTitleMatch.FindStringSubmatch(match)
+			if len(parts) != 2 {
+				return match
+			}
+			return "await expect(page).toHaveTitle(" + playwrightPatternArg(parts[1]) + ")"
+		})
+	}
 
 	assertionReplacements := []struct {
 		re   *regexp.Regexp
@@ -126,8 +149,8 @@ func ConvertPuppeteerToPlaywrightSource(source string) (string, error) {
 	result = reIt.ReplaceAllString(result, "${1}test(")
 	result = reBeforeEach.ReplaceAllString(result, "${1}test.beforeEach(")
 	result = reAfterEach.ReplaceAllString(result, "${1}test.afterEach(")
-	result = regexp.MustCompile(`(?m)(^|[^\w.])beforeAll\(`).ReplaceAllString(result, "${1}test.beforeAll(")
-	result = regexp.MustCompile(`(?m)(^|[^\w.])afterAll\(`).ReplaceAllString(result, "${1}test.afterAll(")
+	result = rePptrBeforeAllCall.ReplaceAllString(result, "${1}test.beforeAll(")
+	result = rePptrAfterAllCall.ReplaceAllString(result, "${1}test.afterAll(")
 
 	result = rePlaywrightDescribeCallback.ReplaceAllString(result, `${1}() => {`)
 	result = rePlaywrightTestEmptyCallback.ReplaceAllString(result, `${1}async ({ page }) => {`)
@@ -136,4 +159,11 @@ func ConvertPuppeteerToPlaywrightSource(source string) (string, error) {
 	result = cleanupConvertedPlaywrightOutput(result)
 	result = prependImportPreservingHeader(result, "import { test, expect } from '@playwright/test';")
 	return ensureTrailingNewline(result), nil
+}
+
+func playwrightPatternArg(value string) string {
+	if isJSRegexLiteral(value) {
+		return value
+	}
+	return "new RegExp(" + value + ")"
 }

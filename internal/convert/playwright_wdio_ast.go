@@ -19,14 +19,33 @@ var playwrightWdioStructuralCallees = map[string]string{
 	"test":               "it",
 }
 
-func convertPlaywrightToWdioSourceAST(source string) (string, bool) {
+type playwrightWdioASTResult struct {
+	source          string
+	unsupportedRows map[int]bool
+}
+
+func convertPlaywrightToWdioSourceAST(source string) (playwrightWdioASTResult, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
-		return "", false
+		return playwrightWdioASTResult{}, false
 	}
 	defer tree.Close()
 
+	analysis := analyzePlaywrightToWdioAST(tree)
+	return playwrightWdioASTResult{
+		source:          applyTextEdits(source, analysis.edits),
+		unsupportedRows: analysis.unsupportedRows,
+	}, true
+}
+
+type playwrightWdioASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
+func analyzePlaywrightToWdioAST(tree *jsSyntaxTree) playwrightWdioASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		switch node.Type() {
 		case "import_statement":
@@ -68,11 +87,19 @@ func convertPlaywrightToWdioSourceAST(source string) (string, bool) {
 				edits = append(edits, replacementEditForCall(node, replacement))
 				return false
 			}
+			root, _, chainOK := extractJSCallChain(node, tree.src)
+			if chainOK && (strings.HasPrefix(root, "page") || root == "request" || root == "context") {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
 		}
 		return true
 	})
 
-	return applyTextEdits(source, edits), true
+	return playwrightWdioASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
+	}
 }
 
 func convertPlaywrightCallToWdio(node *sitter.Node, src []byte) (string, bool) {
@@ -139,11 +166,17 @@ func convertPlaywrightPageCallToWdio(steps []jsCallStep) (string, bool) {
 		if len(steps) == 2 {
 			switch steps[1].method {
 			case "addCookies":
-				return "await browser.setCookies(" + strings.Join(steps[1].args, ", ") + ")", true
+				if len(steps[1].args) == 1 {
+					return "await browser.setCookies(" + steps[1].args[0] + ")", true
+				}
 			case "cookies":
-				return "await browser.getCookies()", true
+				if len(steps[1].args) == 0 {
+					return "await browser.getCookies()", true
+				}
 			case "clearCookies":
-				return "await browser.deleteCookies()", true
+				if len(steps[1].args) == 0 {
+					return "await browser.deleteCookies()", true
+				}
 			}
 		}
 	}
@@ -355,28 +388,7 @@ func unsupportedPlaywrightWdioLineRowsAST(source string) (map[int]bool, bool) {
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		switch node.Type() {
-		case "call_expression":
-			callee := jsCalleeNode(node)
-			calleeText := jsNodeText(callee, tree.src)
-			if _, ok := playwrightWdioStructuralCallees[calleeText]; ok {
-				return true
-			}
-			if _, handled := convertPlaywrightCallToWdio(node, tree.src); handled {
-				return false
-			}
-			root, _, chainOK := extractJSCallChain(node, tree.src)
-			if chainOK && (strings.HasPrefix(root, "page") || root == "request" || root == "context") {
-				rows[int(node.StartPoint().Row)] = true
-				return false
-			}
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzePlaywrightToWdioAST(tree).unsupportedRows, true
 }
 
 func parseNamedObjectField(arg, field string) (string, bool) {

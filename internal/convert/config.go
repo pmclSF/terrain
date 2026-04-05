@@ -20,6 +20,9 @@ type configAssignment struct {
 type configMapper func(value any, all map[string]any) *configAssignment
 
 var (
+	reConfigIntegerValue = regexp.MustCompile(`^\d+$`)
+	reJSIdentifierKey    = regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`)
+
 	jestToVitestKeys = map[string]configMapper{
 		"testEnvironment": func(value any, _ map[string]any) *configAssignment {
 			return &configAssignment{KeyPath: "environment", Value: value}
@@ -794,7 +797,7 @@ func parseConfigValue(value string) any {
 		return true
 	case value == "false":
 		return false
-	case regexp.MustCompile(`^\d+$`).MatchString(value):
+	case reConfigIntegerValue.MatchString(value):
 		n, _ := strconv.Atoi(value)
 		return n
 	case strings.HasPrefix(value, "{") && strings.HasSuffix(value, "}"):
@@ -851,7 +854,7 @@ func parseYAMLValue(value string) any {
 		return true
 	case value == "false":
 		return false
-	case regexp.MustCompile(`^\d+$`).MatchString(value):
+	case reConfigIntegerValue.MatchString(value):
 		n, _ := strconv.Atoi(value)
 		return n
 	case len(value) >= 2 && ((value[0] == '\'' && value[len(value)-1] == '\'') || (value[0] == '"' && value[len(value)-1] == '"')):
@@ -954,7 +957,7 @@ func renderInlineValue(value any) string {
 }
 
 func formatJSKey(key string) string {
-	if regexp.MustCompile(`^[A-Za-z_$][A-Za-z0-9_$]*$`).MatchString(key) {
+	if reJSIdentifierKey.MatchString(key) {
 		return key
 	}
 	return "'" + key + "'"

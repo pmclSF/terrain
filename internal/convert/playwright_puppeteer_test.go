@@ -197,3 +197,56 @@ test('manual', async ({ page }) => {
 		t.Fatalf("expected original getByRole line to be preserved as comment, got:\n%s", got)
 	}
 }
+
+func TestConvertPlaywrightToPuppeteerSource_ConvertsRegexExpectationsAndContextCookies(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test, expect } from '@playwright/test';
+
+test('cookies', async ({ page }) => {
+  await expect(page).toHaveURL(/dashboard\/\d+/);
+  await expect(page).toHaveTitle(/Dashboard/);
+  await page.context().addCookies([{ name: 'session', value: 'abc' }]);
+  await page.context().clearCookies();
+});
+`
+
+	got, err := ConvertPlaywrightToPuppeteerSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToPuppeteerSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "expect(page.url()).toMatch(/dashboard\\/\\d+/)") {
+		t.Fatalf("expected regex URL assertion to convert with toMatch, got:\n%s", got)
+	}
+	if !strings.Contains(got, "expect(await page.title()).toMatch(/Dashboard/)") {
+		t.Fatalf("expected regex title assertion to convert with toMatch, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.setCookie(...[{ name: 'session', value: 'abc' }])") {
+		t.Fatalf("expected context cookies to spread into page.setCookie, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.deleteCookie(...(await page.cookies()))") {
+		t.Fatalf("expected clearCookies to delete current page cookies, got:\n%s", got)
+	}
+}
+
+func TestConvertPlaywrightToPuppeteerSource_CommentsUnsupportedContextCookiesArgs(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test } from '@playwright/test';
+
+test('manual cookies', async ({ page }) => {
+  await page.context().cookies(urls);
+});
+`
+
+	got, err := ConvertPlaywrightToPuppeteerSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToPuppeteerSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual Playwright conversion required") {
+		t.Fatalf("expected TODO comment, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await page.context().cookies(urls);") {
+		t.Fatalf("expected original cookies call to be preserved as comment, got:\n%s", got)
+	}
+}

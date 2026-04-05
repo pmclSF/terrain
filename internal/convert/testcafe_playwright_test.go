@@ -148,3 +148,34 @@ test('role', async t => {
 		t.Fatalf("expected original useRole line to be preserved as comment, got:\n%s", got)
 	}
 }
+
+func TestConvertTestCafeToPlaywrightSource_SupportsLiteralFixtureCallSyntax(t *testing.T) {
+	t.Parallel()
+
+	input := `import { Selector } from 'testcafe';
+
+fixture('Checkout').page('/checkout');
+
+test('opens', async t => {
+  await t.click(Selector('#submit'));
+});
+`
+
+	got, err := ConvertTestCafeToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertTestCafeToPlaywrightSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"test.describe('Checkout', () => {",
+		"test.beforeEach(async ({ page }) => {",
+		"await page.goto('/checkout')",
+		"await page.locator('#submit').click()",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "fixture('Checkout').page('/checkout')") {
+		t.Fatalf("expected fixture call syntax to be removed, got:\n%s", got)
+	}
+}

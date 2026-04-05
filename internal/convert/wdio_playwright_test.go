@@ -158,6 +158,76 @@ func TestConvertWdioToPlaywrightSource_ConvertsTextSelectorsWithAstPath(t *testi
 	}
 }
 
+func TestConvertWdioToPlaywrightSource_ConvertsSafeCookiesAndFlagsFilteredCookieCalls(t *testing.T) {
+	t.Parallel()
+
+	input := `describe('cookies', () => {
+  it('handles cookies safely', async () => {
+    await browser.setCookies({ name: 'session', value: 'abc' });
+    await browser.getCookies();
+    await browser.getCookies(['session']);
+    await browser.deleteCookies(['session']);
+    await browser.deleteCookies();
+  });
+});
+`
+
+	got, err := ConvertWdioToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertWdioToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "await page.context().addCookies([{ name: 'session', value: 'abc' }])") {
+		t.Fatalf("expected single cookie object to be wrapped, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.context().cookies()") {
+		t.Fatalf("expected zero-arg getCookies conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.context().clearCookies()") {
+		t.Fatalf("expected zero-arg deleteCookies conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual WebdriverIO conversion required") {
+		t.Fatalf("expected filtered cookie calls to be flagged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await browser.getCookies(['session']);") {
+		t.Fatalf("expected filtered getCookies call to be preserved as comment, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await browser.deleteCookies(['session']);") {
+		t.Fatalf("expected filtered deleteCookies call to be preserved as comment, got:\n%s", got)
+	}
+}
+
+func TestConvertWdioToPlaywrightSource_FallbackConvertsSafeKeysAndCookies(t *testing.T) {
+	t.Parallel()
+
+	input := `describe('fallback', () => {
+  it('handles safe fallback rewrites', async () => {
+    await browser.setCookies({ name: 'session', value: 'abc' });
+    await browser.keys(['Enter']);
+    await browser.keys(['Meta', 'a']);
+    await browser.deleteCookies(['session']);
+`
+
+	got, err := ConvertWdioToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertWdioToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "await page.context().addCookies([{ name: 'session', value: 'abc' }])") {
+		t.Fatalf("expected fallback cookie conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.keyboard.press('Enter')") {
+		t.Fatalf("expected single-key array to convert, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual WebdriverIO conversion required") {
+		t.Fatalf("expected ambiguous fallback calls to be flagged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await browser.keys(['Meta', 'a']);") {
+		t.Fatalf("expected multi-key sequence to stay commented for manual review, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await browser.deleteCookies(['session']);") {
+		t.Fatalf("expected filtered deleteCookies to stay commented for manual review, got:\n%s", got)
+	}
+}
+
 func TestExecuteWdioToPlaywrightDirectory_PreservesFileNamesAndHelpers(t *testing.T) {
 	t.Parallel()
 

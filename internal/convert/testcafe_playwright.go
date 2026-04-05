@@ -52,7 +52,7 @@ func ConvertTestCafeToPlaywrightSource(source string) (string, error) {
 		return source, nil
 	}
 	if !strings.Contains(source, "testcafe") &&
-		!strings.Contains(source, "fixture`") &&
+		!strings.Contains(source, "fixture") &&
 		!strings.Contains(source, "await t.") &&
 		!strings.Contains(source, "Selector(") {
 		return ensureTrailingNewline(strings.ReplaceAll(source, "\r\n", "\n")), nil
@@ -60,15 +60,18 @@ func ConvertTestCafeToPlaywrightSource(source string) (string, error) {
 
 	result := strings.ReplaceAll(source, "\r\n", "\n")
 	result = rePlaywrightTestImport.ReplaceAllString(result, "")
-	result = reTcImport.ReplaceAllString(result, "")
-	result, suiteName, pageURL := extractTestCafeFixture(result)
+	suiteName, pageURL := "", ""
 	astApplied := false
-	if astResult, ok := convertTestCafeToPlaywrightSourceAST(result); ok {
+	if astResult, astSuiteName, astPageURL, ok := convertTestCafeToPlaywrightSourceAST(result); ok {
 		result = astResult
+		suiteName = astSuiteName
+		pageURL = astPageURL
 		astApplied = true
 	}
 
 	if !astApplied {
+		result = reTcImport.ReplaceAllString(result, "")
+		result, suiteName, pageURL = extractTestCafeFixture(result)
 		result = reTcSelectorAssignText.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4}).filter({ hasText: ${5} });`)
 		result = reTcSelectorAssignFind.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4}).locator(${5});`)
 		result = reTcSelectorAssignNth.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4}).nth(${5});`)

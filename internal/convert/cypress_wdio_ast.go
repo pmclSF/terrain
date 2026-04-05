@@ -21,6 +21,11 @@ var cypressWdioStructuralCallees = map[string]string{
 	"afterEach":     "afterEach",
 }
 
+type cypressWdioASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
 func convertCypressToWdioSourceAST(source string) (string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
@@ -28,7 +33,18 @@ func convertCypressToWdioSourceAST(source string) (string, bool) {
 	}
 	defer tree.Close()
 
+	analysis := analyzeCypressToWdioAST(tree)
+	result := applyTextEdits(source, analysis.edits)
+	if len(analysis.unsupportedRows) > 0 {
+		result = commentSpecificLines(result, analysis.unsupportedRows, "manual Cypress conversion required")
+	}
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), true
+}
+
+func analyzeCypressToWdioAST(tree *jsSyntaxTree) cypressWdioASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		switch node.Type() {
 		case "call_expression":
@@ -57,16 +73,23 @@ func convertCypressToWdioSourceAST(source string) (string, bool) {
 				edits = append(edits, replacementEditForCall(node, replacement))
 				return false
 			}
+			root, _, ok := extractJSCallChain(node, tree.src)
+			if ok && root == "cy" {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
+		case "member_expression":
+			if jsBaseIdentifier(node, tree.src) == "Cypress" {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+			}
 		}
 		return true
 	})
 
-	result := applyTextEdits(source, edits)
-	if rows, ok := unsupportedCypressWdioLineRowsAST(source); ok && len(rows) > 0 {
-		result = commentSpecificLines(result, rows, "manual Cypress conversion required")
+	return cypressWdioASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
 	}
-	result = collapseBlankLines(result)
-	return ensureTrailingNewline(result), true
 }
 
 func convertCypressCallToWdio(node *sitter.Node, src []byte) (string, bool) {
@@ -276,30 +299,5 @@ func unsupportedCypressWdioLineRowsAST(source string) (map[int]bool, bool) {
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		switch node.Type() {
-		case "call_expression":
-			callee := jsCalleeNode(node)
-			calleeText := jsNodeText(callee, tree.src)
-			if _, ok := cypressWdioStructuralCallees[calleeText]; ok {
-				return true
-			}
-			if _, handled := convertCypressCallToWdio(node, tree.src); handled {
-				return false
-			}
-			root, _, ok := extractJSCallChain(node, tree.src)
-			if ok && root == "cy" {
-				rows[int(node.StartPoint().Row)] = true
-				return false
-			}
-		case "member_expression":
-			if jsBaseIdentifier(node, tree.src) == "Cypress" {
-				rows[int(node.StartPoint().Row)] = true
-			}
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzeCypressToWdioAST(tree).unsupportedRows, true
 }

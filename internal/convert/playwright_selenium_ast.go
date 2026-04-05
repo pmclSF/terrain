@@ -19,6 +19,11 @@ var playwrightSeleniumStructuralCallees = map[string]string{
 	"test":               "it",
 }
 
+type playwrightSeleniumASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
 func convertPlaywrightToSeleniumSourceAST(source string) (string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
@@ -26,7 +31,18 @@ func convertPlaywrightToSeleniumSourceAST(source string) (string, bool) {
 	}
 	defer tree.Close()
 
+	analysis := analyzePlaywrightToSeleniumAST(tree)
+	result := applyTextEdits(source, analysis.edits)
+	if len(analysis.unsupportedRows) > 0 {
+		result = commentSpecificLines(result, analysis.unsupportedRows, "manual Playwright conversion required")
+	}
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), true
+}
+
+func analyzePlaywrightToSeleniumAST(tree *jsSyntaxTree) playwrightSeleniumASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		switch node.Type() {
 		case "import_statement":
@@ -67,16 +83,19 @@ func convertPlaywrightToSeleniumSourceAST(source string) (string, bool) {
 				edits = append(edits, replacementEditForCall(node, replacement))
 				return false
 			}
+			root, _, chainOK := extractJSCallChain(node, tree.src)
+			if chainOK && (strings.HasPrefix(root, "page") || root == "request" || root == "context") {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
 		}
 		return true
 	})
 
-	result := applyTextEdits(source, edits)
-	if rows, ok := unsupportedPlaywrightSeleniumLineRowsAST(source); ok && len(rows) > 0 {
-		result = commentSpecificLines(result, rows, "manual Playwright conversion required")
+	return playwrightSeleniumASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
 	}
-	result = collapseBlankLines(result)
-	return ensureTrailingNewline(result), true
 }
 
 func convertPlaywrightCallToSeleniumAST(node *sitter.Node, src []byte) (string, bool) {
@@ -324,26 +343,5 @@ func unsupportedPlaywrightSeleniumLineRowsAST(source string) (map[int]bool, bool
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		if node.Type() != "call_expression" {
-			return true
-		}
-		callee := jsCalleeNode(node)
-		calleeText := jsNodeText(callee, tree.src)
-		if _, ok := playwrightSeleniumStructuralCallees[calleeText]; ok {
-			return true
-		}
-		if _, handled := convertPlaywrightCallToSeleniumAST(node, tree.src); handled {
-			return false
-		}
-		root, _, chainOK := extractJSCallChain(node, tree.src)
-		if chainOK && (strings.HasPrefix(root, "page") || root == "request" || root == "context") {
-			rows[int(node.StartPoint().Row)] = true
-			return false
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzePlaywrightToSeleniumAST(tree).unsupportedRows, true
 }

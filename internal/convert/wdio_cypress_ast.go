@@ -6,6 +6,11 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+type wdioCypressASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
 func convertWdioToCypressSourceAST(source string) (string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
@@ -13,7 +18,18 @@ func convertWdioToCypressSourceAST(source string) (string, bool) {
 	}
 	defer tree.Close()
 
+	analysis := analyzeWdioToCypressAST(tree)
+	result := applyTextEdits(source, analysis.edits)
+	if len(analysis.unsupportedRows) > 0 {
+		result = commentSpecificLines(result, analysis.unsupportedRows, "manual WebdriverIO conversion required")
+	}
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), true
+}
+
+func analyzeWdioToCypressAST(tree *jsSyntaxTree) wdioCypressASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		switch node.Type() {
 		case "import_statement":
@@ -33,16 +49,19 @@ func convertWdioToCypressSourceAST(source string) (string, bool) {
 				edits = append(edits, replacementEditForCall(node, replacement))
 				return false
 			}
+			root, _, ok := extractJSCallChain(node, tree.src)
+			if ok && (root == "browser" || root == "$" || root == "$$") {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
 		}
 		return true
 	})
 
-	result := applyTextEdits(source, edits)
-	if rows, ok := unsupportedWdioCypressLineRowsAST(source); ok && len(rows) > 0 {
-		result = commentSpecificLines(result, rows, "manual WebdriverIO conversion required")
+	return wdioCypressASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
 	}
-	result = collapseBlankLines(result)
-	return ensureTrailingNewline(result), true
 }
 
 func convertWdioCallToCypress(node *sitter.Node, src []byte) (string, bool) {
@@ -315,21 +334,5 @@ func unsupportedWdioCypressLineRowsAST(source string) (map[int]bool, bool) {
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		if node.Type() != "call_expression" {
-			return true
-		}
-		if _, handled := convertWdioCallToCypress(node, tree.src); handled {
-			return false
-		}
-		root, _, ok := extractJSCallChain(node, tree.src)
-		if ok && (root == "browser" || root == "$" || root == "$$") {
-			rows[int(node.StartPoint().Row)] = true
-			return false
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzeWdioToCypressAST(tree).unsupportedRows, true
 }

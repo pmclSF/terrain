@@ -6,6 +6,11 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+type jestMochaASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
 func convertJestToMochaSourceAST(source string) (string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
@@ -13,7 +18,18 @@ func convertJestToMochaSourceAST(source string) (string, bool) {
 	}
 	defer tree.Close()
 
+	analysis := analyzeJestToMochaAST(tree)
+	result := applyTextEdits(source, analysis.edits)
+	if len(analysis.unsupportedRows) > 0 {
+		result = commentSpecificLines(result, analysis.unsupportedRows, "manual Jest module mock conversion required")
+	}
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), true
+}
+
+func analyzeJestToMochaAST(tree *jsSyntaxTree) jestMochaASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		switch node.Type() {
 		case "import_statement":
@@ -60,21 +76,31 @@ func convertJestToMochaSourceAST(source string) (string, bool) {
 			}
 
 			replacement, ok := convertJestCallToMocha(node, tree.src)
-			if !ok {
+			if ok {
+				edits = append(edits, replacementEditForCall(node, replacement))
+				return false
+			}
+
+			memberCallee := jsCalleeNode(node)
+			if memberCallee == nil || memberCallee.Type() != "member_expression" {
 				return true
 			}
-			edits = append(edits, replacementEditForCall(node, replacement))
-			return false
+			if jsBaseIdentifier(memberCallee, tree.src) != "jest" {
+				return true
+			}
+			property := jsNodeText(jsMemberProperty(memberCallee), tree.src)
+			if property == "mock" || property == "doMock" {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
 		}
 		return true
 	})
 
-	result := applyTextEdits(source, edits)
-	if rows, ok := unsupportedJestMockLineRowsAST(source); ok && len(rows) > 0 {
-		result = commentSpecificLines(result, rows, "manual Jest module mock conversion required")
+	return jestMochaASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
 	}
-	result = collapseBlankLines(result)
-	return ensureTrailingNewline(result), true
 }
 
 func convertJestCallToMocha(node *sitter.Node, src []byte) (string, bool) {

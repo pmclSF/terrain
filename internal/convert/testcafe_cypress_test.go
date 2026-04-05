@@ -148,3 +148,34 @@ test('role', async t => {
 		t.Fatalf("expected original useRole line to be preserved as comment, got:\n%s", got)
 	}
 }
+
+func TestConvertTestCafeToCypressSource_SupportsLiteralFixtureCallSyntax(t *testing.T) {
+	t.Parallel()
+
+	input := `import { Selector } from 'testcafe';
+
+fixture('Checkout').page('/checkout');
+
+test('opens', async t => {
+  await t.click(Selector('#submit'));
+});
+`
+
+	got, err := ConvertTestCafeToCypressSource(input)
+	if err != nil {
+		t.Fatalf("ConvertTestCafeToCypressSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"describe('Checkout', () => {",
+		"beforeEach(() => {",
+		"cy.visit('/checkout')",
+		"cy.get('#submit').click()",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "fixture('Checkout').page('/checkout')") {
+		t.Fatalf("expected fixture call syntax to be removed, got:\n%s", got)
+	}
+}

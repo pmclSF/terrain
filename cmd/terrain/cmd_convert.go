@@ -35,18 +35,6 @@ type convertCommandOptions struct {
 	Alias             string
 }
 
-type convertPlanResult struct {
-	Command         string          `json:"command"`
-	Mode            string          `json:"mode"`
-	Source          string          `json:"source"`
-	Output          string          `json:"output,omitempty"`
-	Alias           string          `json:"alias,omitempty"`
-	Direction       conv.Direction  `json:"direction"`
-	SourceDetection *conv.Detection `json:"sourceDetection,omitempty"`
-	ExecutionStatus string          `json:"executionStatus"`
-	NextStep        string          `json:"nextStep"`
-}
-
 type cliUsageError struct {
 	message string
 }
@@ -192,113 +180,45 @@ func runConvert(source string, opts convertCommandOptions) error {
 		return cliUsageError{message: "convert requires <source>"}
 	}
 
-	var detection *conv.Detection
-	from := conv.NormalizeFramework(opts.From)
-	to := conv.NormalizeFramework(opts.To)
-
-	if from == "" && opts.AutoDetect {
-		detected, err := conv.DetectSource(source)
-		if err != nil {
-			return err
-		}
-		detection = &detected
-		if detected.Framework == "" || detected.Framework == "unknown" {
-			return fmt.Errorf("could not auto-detect source framework from %s", source)
-		}
-		from = detected.Framework
-	}
-
-	if from == "" {
-		return cliUsageError{message: "--from <framework> is required unless --auto-detect is set"}
-	}
-	if to == "" {
-		return cliUsageError{message: "--to <framework> is required"}
-	}
-
-	if _, ok := conv.LookupFramework(from); !ok {
-		return cliUsageError{message: fmt.Sprintf("invalid source framework: %s. Valid options: %s", from, strings.Join(conv.FrameworkNames(), ", "))}
-	}
-	if _, ok := conv.LookupFramework(to); !ok {
-		return cliUsageError{message: fmt.Sprintf("invalid target framework: %s. Valid options: %s", to, strings.Join(conv.FrameworkNames(), ", "))}
-	}
-	if from == to {
-		return cliUsageError{message: "source and target frameworks must be different"}
-	}
-
-	direction, ok := conv.LookupDirection(from, to)
-	if !ok {
-		targets := conv.SupportedTargets(from)
-		if len(targets) == 0 {
-			return cliUsageError{message: fmt.Sprintf("unsupported source framework: %s", from)}
-		}
-		return cliUsageError{message: fmt.Sprintf("unsupported conversion: %s to %s. Supported targets for %s: %s", from, to, from, strings.Join(targets, ", "))}
-	}
-
-	if !opts.Plan && !opts.DryRun {
-		if direction.GoNativeState != conv.GoNativeStateImplemented {
-			return fmt.Errorf("go-native conversion execution for %s -> %s is not implemented yet; use --plan to inspect the migration path while the runtime is being ported", from, to)
-		}
-		return runConvertExecution(source, direction, opts)
-	}
-
-	mode := "plan"
-	if opts.DryRun && !opts.Plan {
-		mode = "dry-run"
-	}
-	result := convertPlanResult{
-		Command:         "convert",
-		Mode:            mode,
-		Source:          source,
-		Output:          opts.Output,
-		Alias:           opts.Alias,
-		Direction:       direction,
-		SourceDetection: detection,
-		ExecutionStatus: "cataloged-not-executable",
-		NextStep:        "The Go CLI now owns the conversion catalog, shorthands, and detection contract. Execution for this direction will land in follow-up migration slices.",
-	}
-	if direction.GoNativeState == conv.GoNativeStateImplemented {
-		result.ExecutionStatus = "executable"
-		result.NextStep = "Run the same command without --plan to execute the Go-native converter for this direction."
-	}
-
-	if opts.JSON {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		return enc.Encode(result)
-	}
-
-	fmt.Println("Go-native conversion plan")
-	fmt.Println()
-	fmt.Printf("  Source: %s\n", source)
-	fmt.Printf("  Direction: %s -> %s\n", direction.From, direction.To)
-	fmt.Printf("  Language: %s\n", direction.Language)
-	fmt.Printf("  Category: %s\n", direction.Category)
-	fmt.Printf("  Shorthands: %s\n", strings.Join(direction.Shorthands, ", "))
-	fmt.Printf("  Legacy runtime: %s\n", direction.LegacyRuntime)
-	fmt.Printf("  Go-native state: %s\n", humanizeGoNativeState(direction.GoNativeState))
-	fmt.Printf("  Execution: %s\n", result.ExecutionStatus)
-	if result.Output != "" {
-		fmt.Printf("  Output: %s\n", result.Output)
-	}
-	if detection != nil {
-		fmt.Printf("  Auto-detected source: %s (%.0f%% confidence via %s)\n", detection.Framework, detection.Confidence*100, detection.DetectionSource)
-	}
-	fmt.Println()
-	fmt.Println("Next:")
-	fmt.Printf("  %s\n", result.NextStep)
-	return nil
-}
-
-func runConvertExecution(source string, direction conv.Direction, opts convertCommandOptions) error {
-	result, err := conv.Execute(source, direction, conv.ExecuteOptions{
+	result, err := conv.RunTestMigration(source, conv.TestMigrationOptions{
+		Alias:             opts.Alias,
+		From:              opts.From,
+		To:                opts.To,
 		Output:            opts.Output,
 		PreserveStructure: opts.PreserveStructure,
+		BatchSize:         opts.BatchSize,
+		Concurrency:       opts.Concurrency,
+		AutoDetect:        opts.AutoDetect,
+		ValidateSyntax:    opts.Validate || opts.StrictValidate,
+		Plan:              opts.Plan,
+		DryRun:            opts.DryRun,
 	})
 	if err != nil {
+		var inputErr conv.ConversionInputError
+		if errors.As(err, &inputErr) {
+			message := inputErr.Error()
+			switch message {
+			case "source framework is required unless auto-detect is enabled":
+				message = "--from <framework> is required unless --auto-detect is set"
+			case "target framework is required":
+				message = "--to <framework> is required"
+			}
+			return cliUsageError{message: message}
+		}
 		return err
 	}
 
-	if opts.JSON {
+	if result.Plan != nil {
+		return renderConvertPlan(*result.Plan, opts.JSON)
+	}
+	if result.Execution != nil {
+		return renderConvertExecution(*result.Execution, result.Direction, opts.JSON)
+	}
+	return fmt.Errorf("native test migration produced no result")
+}
+
+func renderConvertExecution(result conv.ExecutionResult, direction conv.Direction, jsonOutput bool) error {
+	if jsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(result)
@@ -320,6 +240,40 @@ func runConvertExecution(source string, direction conv.Direction, opts convertCo
 	if result.UnchangedCount > 0 {
 		fmt.Printf("  Unchanged files: %d\n", result.UnchangedCount)
 	}
+	return nil
+}
+
+func renderConvertPlan(plan conv.TestMigrationPlan, jsonOutput bool) error {
+	if jsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(plan)
+	}
+
+	fmt.Println("Go-native conversion plan")
+	fmt.Println()
+	fmt.Printf("  Source: %s\n", plan.Source)
+	fmt.Printf("  Direction: %s -> %s\n", plan.Direction.From, plan.Direction.To)
+	fmt.Printf("  Language: %s\n", plan.Direction.Language)
+	fmt.Printf("  Category: %s\n", plan.Direction.Category)
+	fmt.Printf("  Shorthands: %s\n", strings.Join(plan.Direction.Shorthands, ", "))
+	fmt.Printf("  Legacy runtime: %s\n", plan.Direction.LegacyRuntime)
+	fmt.Printf("  Go-native state: %s\n", humanizeGoNativeState(plan.Direction.GoNativeState))
+	fmt.Printf("  Execution: %s\n", plan.ExecutionStatus)
+	if plan.Output != "" {
+		fmt.Printf("  Output: %s\n", plan.Output)
+	}
+	if plan.SourceDetection != nil {
+		fmt.Printf(
+			"  Auto-detected source: %s (%.0f%% confidence via %s)\n",
+			plan.SourceDetection.Framework,
+			plan.SourceDetection.Confidence*100,
+			plan.SourceDetection.DetectionSource,
+		)
+	}
+	fmt.Println()
+	fmt.Println("Next:")
+	fmt.Printf("  %s\n", plan.NextStep)
 	return nil
 }
 
@@ -347,7 +301,7 @@ func runListConversions(jsonOutput bool) error {
 		}
 		fmt.Println()
 	}
-	fmt.Println("Use `terrain convert <source> --from <framework> --to <framework> --plan` to inspect the Go-native migration path for a direction.")
+	fmt.Println("Use `terrain convert <source> --from <framework> --to <framework>` to run a Go-native conversion, or add `--plan` to preview.")
 	return nil
 }
 
@@ -369,7 +323,7 @@ func runShorthands(jsonOutput bool) error {
 		fmt.Printf("  %-18s %-14s %-14s %s\n", entry.Alias, entry.From, entry.To, humanizeGoNativeState(entry.GoNativeState))
 	}
 	fmt.Println()
-	fmt.Println("Use a shorthand with `--plan` or `--dry-run` while Go-native execution is being ported.")
+	fmt.Println("Use a shorthand directly to run the Go-native converter, or add `--plan`/`--dry-run` to preview.")
 	return nil
 }
 
@@ -474,17 +428,16 @@ func printConvertUsage() {
 	fmt.Fprintln(os.Stderr, "Usage: terrain convert <source> --from <framework> --to <framework> [flags]")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Current status:")
-	fmt.Fprintln(os.Stderr, "  This Go-native foundation supports direction cataloging, shorthands, framework detection,")
-	fmt.Fprintln(os.Stderr, "  and executable `jest -> vitest`, `cypress -> playwright`, `cypress -> webdriverio`,")
-	fmt.Fprintln(os.Stderr, "  `playwright -> cypress`, `playwright -> puppeteer`, `playwright -> webdriverio`,")
-	fmt.Fprintln(os.Stderr, "  `puppeteer -> playwright`, `webdriverio -> cypress`, plus `webdriverio -> playwright` conversion.")
-	fmt.Fprintln(os.Stderr, "  Other directions remain plan-only for now.")
+	fmt.Fprintln(os.Stderr, "  Supported directions listed by `terrain list-conversions` execute with Terrain's Go-native")
+	fmt.Fprintln(os.Stderr, "  conversion runtime. Use `--plan` or `--dry-run` when you want a no-write preview first.")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Key flags:")
 	fmt.Fprintln(os.Stderr, "  --from, -f         source framework")
 	fmt.Fprintln(os.Stderr, "  --to, -t           target framework")
 	fmt.Fprintln(os.Stderr, "  --output, -o       write converted output to a file or directory")
 	fmt.Fprintln(os.Stderr, "  --auto-detect      detect the source framework from the file or directory")
+	fmt.Fprintln(os.Stderr, "  --validate         validate converted output syntax (compatibility alias)")
+	fmt.Fprintln(os.Stderr, "  --strict-validate  enforce parser-based syntax validation of converted output")
 	fmt.Fprintln(os.Stderr, "  --plan             show the Go-native migration plan for this direction")
 	fmt.Fprintln(os.Stderr, "  --dry-run          same as plan, but framed as a no-write preview")
 	fmt.Fprintln(os.Stderr, "  --json             machine-readable output")
@@ -503,7 +456,7 @@ func printDetectUsage() {
 }
 
 func printShorthandUsage(alias string, direction conv.Direction) {
-	fmt.Fprintf(os.Stderr, "Usage: terrain %s <source> [--plan|--dry-run] [--json]\n", alias)
+	fmt.Fprintf(os.Stderr, "Usage: terrain %s <source> [flags]\n", alias)
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintf(os.Stderr, "Direction: %s -> %s\n", direction.From, direction.To)
 }

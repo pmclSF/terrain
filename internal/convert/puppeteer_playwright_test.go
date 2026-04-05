@@ -172,3 +172,125 @@ describe('notes', () => {
 		t.Fatalf("expected real Puppeteer action to convert, got:\n%s", got)
 	}
 }
+
+func TestConvertPuppeteerToPlaywrightSource_CommentsUnsupportedPatterns(t *testing.T) {
+	t.Parallel()
+
+	input := `const puppeteer = require('puppeteer');
+
+describe('notes', () => {
+  let browser, page;
+
+  beforeAll(async () => {
+    browser = await puppeteer.launch();
+    page = await browser.newPage();
+  });
+
+  it('flags unsupported calls', async () => {
+    const note = "page.waitForNavigation() should stay literal";
+    await page.waitForNavigation();
+  });
+});
+`
+
+	got, err := ConvertPuppeteerToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPuppeteerToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual Puppeteer conversion required") {
+		t.Fatalf("expected TODO comment, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await page.waitForNavigation();") {
+		t.Fatalf("expected unsupported line to be commented out, got:\n%s", got)
+	}
+	if !strings.Contains(got, `const note = "page.waitForNavigation() should stay literal";`) {
+		t.Fatalf("expected string literal to stay unchanged, got:\n%s", got)
+	}
+}
+
+func TestConvertPuppeteerToPlaywrightSource_ConvertsRegexURLAndTitleAssertions(t *testing.T) {
+	t.Parallel()
+
+	input := `const puppeteer = require('puppeteer');
+
+describe('regex assertions', () => {
+  let browser, page;
+
+  it('converts regex matchers', async () => {
+    expect(page.url()).toMatch(/dashboard\/\d+/);
+    expect(await page.title()).toMatch(/Checkout/);
+  });
+});
+`
+
+	got, err := ConvertPuppeteerToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPuppeteerToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "await expect(page).toHaveURL(/dashboard\\/\\d+/)") {
+		t.Fatalf("expected regex URL matcher to convert, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await expect(page).toHaveTitle(/Checkout/)") {
+		t.Fatalf("expected regex title matcher to convert, got:\n%s", got)
+	}
+}
+
+func TestConvertPuppeteerToPlaywrightSource_ConvertsViewportAndCookieShapesSafely(t *testing.T) {
+	t.Parallel()
+
+	input := `const puppeteer = require('puppeteer');
+
+describe('browser config', () => {
+  let browser, page;
+
+  it('converts viewport and cookies', async () => {
+    await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 2 });
+    await page.setCookie({ name: 'session', value: 'abc' });
+    await page.setCookie(
+      { name: 'a', value: '1' },
+      { name: 'b', value: '2' },
+    );
+  });
+});
+`
+
+	got, err := ConvertPuppeteerToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPuppeteerToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "await page.setViewportSize({ width: 1280, height: 720 })") {
+		t.Fatalf("expected safe viewport conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.context().addCookies([{ name: 'session', value: 'abc' }])") {
+		t.Fatalf("expected single cookie object to be wrapped, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await page.context().addCookies([{ name: 'a', value: '1' }, { name: 'b', value: '2' }])") {
+		t.Fatalf("expected multiple cookies to be wrapped as an array, got:\n%s", got)
+	}
+}
+
+func TestConvertPuppeteerToPlaywrightSource_CommentsAmbiguousCookieDeletion(t *testing.T) {
+	t.Parallel()
+
+	input := `const puppeteer = require('puppeteer');
+
+describe('cookies', () => {
+  let browser, page;
+
+  it('flags ambiguous cookie deletion', async () => {
+    await page.deleteCookie(cookie);
+  });
+});
+`
+
+	got, err := ConvertPuppeteerToPlaywrightSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPuppeteerToPlaywrightSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual Puppeteer conversion required") {
+		t.Fatalf("expected TODO comment, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await page.deleteCookie(cookie);") {
+		t.Fatalf("expected unsupported deleteCookie call to be commented out, got:\n%s", got)
+	}
+}

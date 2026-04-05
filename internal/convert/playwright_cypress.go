@@ -90,8 +90,10 @@ func ConvertPlaywrightToCypressSource(source string) (string, error) {
 	result = rePlaywrightImportRemove.ReplaceAllString(result, "")
 	result = reCypressReferenceLine.ReplaceAllString(result, "")
 	astApplied := false
+	var astUnsupportedRows map[int]bool
 	if astResult, ok := convertPlaywrightToCypressSourceAST(result); ok {
-		result = astResult
+		result = astResult.source
+		astUnsupportedRows = astResult.unsupportedRows
 		astApplied = true
 	}
 
@@ -184,7 +186,13 @@ func ConvertPlaywrightToCypressSource(source string) (string, error) {
 		result = rePWNth.ReplaceAllString(result, `.eq($1)`)
 	}
 
-	result = commentUnsupportedPlaywrightLines(result)
+	if astApplied {
+		if len(astUnsupportedRows) > 0 {
+			result = commentSpecificLines(result, astUnsupportedRows, "manual Playwright conversion required")
+		}
+	} else {
+		result = commentUnsupportedPlaywrightLines(result)
+	}
 	result = cleanupConvertedCypressOutput(result)
 	result = prependCypressReference(result)
 	return ensureTrailingNewline(result), nil

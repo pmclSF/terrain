@@ -27,58 +27,93 @@ var cypressPlaywrightStructuralCallees = map[string]string{
 	"afterEach":     "test.afterEach",
 }
 
-func convertCypressToPlaywrightSourceAST(source string) (string, bool, bool) {
+type cypressPlaywrightASTResult struct {
+	source          string
+	retryWarning    bool
+	unsupportedRows map[int]bool
+}
+
+func convertCypressToPlaywrightSourceAST(source string) (cypressPlaywrightASTResult, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
-		return "", false, false
+		return cypressPlaywrightASTResult{}, false
 	}
 	defer tree.Close()
 
+	analysis := analyzeCypressToPlaywrightAST(tree)
+	return cypressPlaywrightASTResult{
+		source:          applyTextEdits(source, analysis.edits),
+		retryWarning:    analysis.retryWarning,
+		unsupportedRows: analysis.unsupportedRows,
+	}, true
+}
+
+type cypressPlaywrightASTAnalysis struct {
+	edits           []textEdit
+	retryWarning    bool
+	unsupportedRows map[int]bool
+}
+
+func analyzeCypressToPlaywrightAST(tree *jsSyntaxTree) cypressPlaywrightASTAnalysis {
 	edits := make([]textEdit, 0, 16)
 	retryWarning := false
+	unsupportedRows := map[int]bool{}
 
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		if node.Type() != "call_expression" {
-			return true
-		}
-
-		callee := jsCalleeNode(node)
-		calleeText := jsNodeText(callee, tree.src)
-		if mapped, ok := cypressPlaywrightStructuralCallees[calleeText]; ok {
-			edits = append(edits, textEdit{
-				start:       int(callee.StartByte()),
-				end:         int(callee.EndByte()),
-				replacement: mapped,
-			})
-			if callback := jsLastFunctionArg(node); callback != nil {
-				if replacement, ok := cypressPlaywrightCallbackPrefix(mapped, callback, tree.src); ok {
-					body := jsFunctionBodyNode(callback)
-					if body != nil {
-						edits = append(edits, textEdit{
-							start:       int(callback.StartByte()),
-							end:         int(body.StartByte()),
-							replacement: replacement,
-						})
+		switch node.Type() {
+		case "call_expression":
+			callee := jsCalleeNode(node)
+			calleeText := jsNodeText(callee, tree.src)
+			if mapped, ok := cypressPlaywrightStructuralCallees[calleeText]; ok {
+				edits = append(edits, textEdit{
+					start:       int(callee.StartByte()),
+					end:         int(callee.EndByte()),
+					replacement: mapped,
+				})
+				if callback := jsLastFunctionArg(node); callback != nil {
+					if replacement, ok := cypressPlaywrightCallbackPrefix(mapped, callback, tree.src); ok {
+						body := jsFunctionBodyNode(callback)
+						if body != nil {
+							edits = append(edits, textEdit{
+								start:       int(callback.StartByte()),
+								end:         int(body.StartByte()),
+								replacement: replacement,
+							})
+						}
 					}
 				}
+				return true
 			}
-			return true
-		}
 
-		replacement, warn, ok := convertCypressCallToPlaywright(node, tree.src)
-		if !ok {
-			return true
+			replacement, warn, ok := convertCypressCallToPlaywright(node, tree.src)
+			if ok {
+				retryWarning = retryWarning || warn
+				edits = append(edits, textEdit{
+					start:       int(node.StartByte()),
+					end:         int(node.EndByte()),
+					replacement: replacement,
+				})
+				return false
+			}
+
+			root, _, chainOK := extractJSCallChain(node, tree.src)
+			if chainOK && root == "cy" {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
+		case "member_expression":
+			if jsBaseIdentifier(node, tree.src) == "Cypress" {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+			}
 		}
-		retryWarning = retryWarning || warn
-		edits = append(edits, textEdit{
-			start:       int(node.StartByte()),
-			end:         int(node.EndByte()),
-			replacement: replacement,
-		})
-		return false
+		return true
 	})
 
-	return applyTextEdits(source, edits), retryWarning, true
+	return cypressPlaywrightASTAnalysis{
+		edits:           edits,
+		retryWarning:    retryWarning,
+		unsupportedRows: unsupportedRows,
+	}
 }
 
 func unsupportedCypressLineRowsAST(source string) (map[int]bool, bool) {
@@ -88,26 +123,7 @@ func unsupportedCypressLineRowsAST(source string) (map[int]bool, bool) {
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		switch node.Type() {
-		case "call_expression":
-			root, _, chainOK := extractJSCallChain(node, tree.src)
-			if chainOK && root == "cy" {
-				if _, _, handled := convertCypressCallToPlaywright(node, tree.src); !handled {
-					rows[int(node.StartPoint().Row)] = true
-					return false
-				}
-			}
-		case "member_expression":
-			if jsBaseIdentifier(node, tree.src) == "Cypress" {
-				rows[int(node.StartPoint().Row)] = true
-			}
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzeCypressToPlaywrightAST(tree).unsupportedRows, true
 }
 
 func convertCypressCallToPlaywright(node *sitter.Node, src []byte) (string, bool, bool) {

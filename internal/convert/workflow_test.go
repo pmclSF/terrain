@@ -62,7 +62,10 @@ def test_example():
 		t.Fatalf("write input: %v", err)
 	}
 
-	result, err := MigrateProject(root, "pytest", "unittest", MigrationRunOptions{Output: outputDir})
+	result, err := MigrateProject(root, "pytest", "unittest", MigrationRunOptions{
+		Output:      outputDir,
+		Concurrency: 2,
+	})
 	if err != nil {
 		t.Fatalf("MigrateProject returned error: %v", err)
 	}
@@ -88,6 +91,44 @@ def test_example():
 	}
 	if !strings.Contains(result.Checklist, "# Migration Checklist") {
 		t.Fatalf("expected checklist header, got:\n%s", result.Checklist)
+	}
+}
+
+func TestMigrateProject_ConvertsConfigAlongsideTests(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	testDir := filepath.Join(root, "tests")
+	outputDir := filepath.Join(root, "converted")
+	if err := os.MkdirAll(testDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "jest.config.js"), []byte(`module.exports = { testEnvironment: 'node' };`), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(testDir, "auth.test.js"), []byte("describe('auth', () => { expect(true).toBe(true) })\n"), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+
+	result, err := MigrateProject(root, "jest", "vitest", MigrationRunOptions{
+		Output:         outputDir,
+		Concurrency:    2,
+		StrictValidate: true,
+	})
+	if err != nil {
+		t.Fatalf("MigrateProject returned error: %v", err)
+	}
+	if result.State.Converted != 2 {
+		t.Fatalf("converted = %d, want 2", result.State.Converted)
+	}
+
+	configOutput := filepath.Join(outputDir, "vitest.config.ts")
+	content, err := os.ReadFile(configOutput)
+	if err != nil {
+		t.Fatalf("read config output: %v", err)
+	}
+	if !strings.Contains(string(content), "defineConfig") {
+		t.Fatalf("expected vitest config output, got:\n%s", content)
 	}
 }
 

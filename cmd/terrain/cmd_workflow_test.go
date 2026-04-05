@@ -61,9 +61,10 @@ def test_example():
 
 	if err := runCaptured(func() error {
 		return runMigrate(root, migrateCommandOptions{
-			From:   "pytest",
-			To:     "unittest",
-			Output: outputDir,
+			From:        "pytest",
+			To:          "unittest",
+			Output:      outputDir,
+			Concurrency: 2,
 		})
 	}); err != nil {
 		t.Fatalf("runMigrate returned error: %v", err)
@@ -129,6 +130,53 @@ func TestRunDoctor_JSON(t *testing.T) {
 	}
 }
 
+func TestRunMigrate_StrictValidateMarksInvalidOutputsFailed(t *testing.T) {
+	root := t.TempDir()
+	testDir := filepath.Join(root, "tests")
+	outputDir := filepath.Join(root, "converted")
+	if err := os.MkdirAll(testDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(testDir, "broken.test.js"), []byte("describe('broken', () => {\n"), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	if err := runCaptured(func() error {
+		return runMigrate(root, migrateCommandOptions{
+			From:           "jest",
+			To:             "vitest",
+			Output:         outputDir,
+			Concurrency:    2,
+			StrictValidate: true,
+		})
+	}); err != nil {
+		t.Fatalf("runMigrate returned error: %v", err)
+	}
+
+	statusOut, err := captureRun(func() error {
+		return runStatus(root, true)
+	})
+	if err != nil {
+		t.Fatalf("runStatus returned error: %v", err)
+	}
+	var statusPayload struct {
+		Exists bool `json:"exists"`
+		Status struct {
+			Converted int `json:"converted"`
+			Failed    int `json:"failed"`
+		} `json:"status"`
+	}
+	if err := json.Unmarshal(statusOut, &statusPayload); err != nil {
+		t.Fatalf("invalid status JSON: %v\noutput: %s", err, statusOut)
+	}
+	if !statusPayload.Exists || statusPayload.Status.Converted != 0 || statusPayload.Status.Failed != 1 {
+		t.Fatalf("unexpected status payload: %+v", statusPayload)
+	}
+	if _, statErr := os.Stat(filepath.Join(outputDir, "tests", "broken.test.js")); !os.IsNotExist(statErr) {
+		t.Fatalf("expected invalid migrated output to be removed, got err=%v", statErr)
+	}
+}
+
 func TestRunReset_ClearsState(t *testing.T) {
 	root := t.TempDir()
 	testDir := filepath.Join(root, "tests")
@@ -141,9 +189,10 @@ func TestRunReset_ClearsState(t *testing.T) {
 	}
 	if err := runCaptured(func() error {
 		return runMigrate(root, migrateCommandOptions{
-			From:   "pytest",
-			To:     "unittest",
-			Output: outputDir,
+			From:        "pytest",
+			To:          "unittest",
+			Output:      outputDir,
+			Concurrency: 2,
 		})
 	}); err != nil {
 		t.Fatalf("runMigrate returned error: %v", err)

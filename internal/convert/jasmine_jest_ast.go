@@ -14,6 +14,11 @@ var jasmineExpectationMembers = map[string]string{
 	"any":              "any",
 }
 
+type jasmineJestASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
 func convertJasmineToJestSourceAST(source string) (string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
@@ -21,25 +26,43 @@ func convertJasmineToJestSourceAST(source string) (string, bool) {
 	}
 	defer tree.Close()
 
+	analysis := analyzeJasmineToJestAST(tree)
+	result := applyTextEdits(source, analysis.edits)
+	if len(analysis.unsupportedRows) > 0 {
+		result = commentSpecificLines(result, analysis.unsupportedRows, "manual Jasmine matcher migration required")
+	}
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), true
+}
+
+func analyzeJasmineToJestAST(tree *jsSyntaxTree) jasmineJestASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		if node.Type() != "call_expression" {
 			return true
 		}
 		replacement, ok := convertJasmineCallToJest(node, tree.src)
-		if !ok {
+		if ok {
+			edits = append(edits, replacementEditForCall(node, replacement))
+			return false
+		}
+
+		callee := jsCalleeNode(node)
+		if callee == nil || callee.Type() != "member_expression" {
 			return true
 		}
-		edits = append(edits, replacementEditForCall(node, replacement))
-		return false
+		if jsBaseIdentifier(callee, tree.src) == "jasmine" && jsNodeText(jsMemberProperty(callee), tree.src) == "addMatchers" {
+			unsupportedRows[int(node.StartPoint().Row)] = true
+			return false
+		}
+		return true
 	})
 
-	result := applyTextEdits(source, edits)
-	if rows, ok := unsupportedJasmineLineRowsAST(source); ok && len(rows) > 0 {
-		result = commentSpecificLines(result, rows, "manual Jasmine matcher migration required")
+	return jasmineJestASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
 	}
-	result = collapseBlankLines(result)
-	return ensureTrailingNewline(result), true
 }
 
 func convertJasmineCallToJest(node *sitter.Node, src []byte) (string, bool) {
@@ -209,21 +232,5 @@ func unsupportedJasmineLineRowsAST(source string) (map[int]bool, bool) {
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		if node.Type() != "call_expression" {
-			return true
-		}
-		callee := jsCalleeNode(node)
-		if callee == nil || callee.Type() != "member_expression" {
-			return true
-		}
-		if jsBaseIdentifier(callee, tree.src) == "jasmine" && jsNodeText(jsMemberProperty(callee), tree.src) == "addMatchers" {
-			rows[int(node.StartPoint().Row)] = true
-			return false
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzeJasmineToJestAST(tree).unsupportedRows, true
 }

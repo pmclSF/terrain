@@ -6,6 +6,11 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+type mochaJestASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
 func convertMochaToJestSourceAST(source string) (string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
@@ -13,7 +18,18 @@ func convertMochaToJestSourceAST(source string) (string, bool) {
 	}
 	defer tree.Close()
 
+	analysis := analyzeMochaToJestAST(tree)
+	result := applyTextEdits(source, analysis.edits)
+	if len(analysis.unsupportedRows) > 0 {
+		result = commentSpecificLines(result, analysis.unsupportedRows, "manual Mocha assertion conversion required")
+	}
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), true
+}
+
+func analyzeMochaToJestAST(tree *jsSyntaxTree) mochaJestASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		switch node.Type() {
 		case "import_statement":
@@ -58,11 +74,27 @@ func convertMochaToJestSourceAST(source string) (string, bool) {
 			}
 
 			replacement, ok := convertMochaCallToJest(node, tree.src)
-			if !ok {
+			if ok {
+				edits = append(edits, replacementEditForCall(node, replacement))
+				return false
+			}
+
+			memberCallee := jsCalleeNode(node)
+			if memberCallee == nil || memberCallee.Type() != "member_expression" {
 				return true
 			}
-			edits = append(edits, replacementEditForCall(node, replacement))
-			return false
+			base, parts, ok := jsMemberChainParts(memberCallee, tree.src)
+			if !ok || base == nil || len(parts) == 0 {
+				return true
+			}
+			switch {
+			case base.Type() == "identifier" && jsNodeText(base, tree.src) == "chai" && equalStrings(parts, "expect"):
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			case base.Type() == "identifier" && jsNodeText(base, tree.src) == "assert":
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
 		case "member_expression":
 			replacement, ok := convertMochaMemberExprToJest(node, tree.src)
 			if !ok {
@@ -78,12 +110,10 @@ func convertMochaToJestSourceAST(source string) (string, bool) {
 		return true
 	})
 
-	result := applyTextEdits(source, edits)
-	if rows, ok := unsupportedMochaLineRowsAST(source); ok && len(rows) > 0 {
-		result = commentSpecificLines(result, rows, "manual Mocha assertion conversion required")
+	return mochaJestASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
 	}
-	result = collapseBlankLines(result)
-	return ensureTrailingNewline(result), true
 }
 
 func convertMochaCallToJest(node *sitter.Node, src []byte) (string, bool) {
@@ -218,34 +248,7 @@ func unsupportedMochaLineRowsAST(source string) (map[int]bool, bool) {
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		if node.Type() != "call_expression" {
-			return true
-		}
-		callee := jsCalleeNode(node)
-		if callee == nil {
-			return true
-		}
-		if callee.Type() != "member_expression" {
-			return true
-		}
-		base, parts, ok := jsMemberChainParts(callee, tree.src)
-		if !ok || base == nil || len(parts) == 0 {
-			return true
-		}
-		switch {
-		case base.Type() == "identifier" && jsNodeText(base, tree.src) == "chai" && equalStrings(parts, "expect"):
-			rows[int(node.StartPoint().Row)] = true
-			return false
-		case base.Type() == "identifier" && jsNodeText(base, tree.src) == "assert":
-			rows[int(node.StartPoint().Row)] = true
-			return false
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzeMochaToJestAST(tree).unsupportedRows, true
 }
 
 func jsMemberChainParts(node *sitter.Node, src []byte) (*sitter.Node, []string, bool) {

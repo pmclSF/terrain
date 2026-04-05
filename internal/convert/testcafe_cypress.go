@@ -44,22 +44,25 @@ func ConvertTestCafeToCypressSource(source string) (string, error) {
 		return source, nil
 	}
 	if !strings.Contains(source, "testcafe") &&
-		!strings.Contains(source, "fixture`") &&
+		!strings.Contains(source, "fixture") &&
 		!strings.Contains(source, "await t.") &&
 		!strings.Contains(source, "Selector(") {
 		return ensureTrailingNewline(strings.ReplaceAll(source, "\r\n", "\n")), nil
 	}
 
 	result := strings.ReplaceAll(source, "\r\n", "\n")
-	result = reTcImport.ReplaceAllString(result, "")
-	result, suiteName, pageURL := extractTestCafeFixture(result)
+	suiteName, pageURL := "", ""
 	astApplied := false
-	if astResult, ok := convertTestCafeToCypressSourceAST(result); ok {
+	if astResult, astSuiteName, astPageURL, ok := convertTestCafeToCypressSourceAST(result); ok {
 		result = astResult
+		suiteName = astSuiteName
+		pageURL = astPageURL
 		astApplied = true
 	}
 
 	if !astApplied {
+		result = reTcImport.ReplaceAllString(result, "")
+		result, suiteName, pageURL = extractTestCafeFixture(result)
 		result = reTcCySelectorAssignText.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
 		result = reTcCySelectorAssignFind.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
 		result = reTcCySelectorAssignNth.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)

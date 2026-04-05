@@ -100,9 +100,11 @@ func ConvertCypressToPlaywrightSource(source string) (string, error) {
 
 	retryWarning := false
 	astApplied := false
-	if astResult, astRetryWarning, ok := convertCypressToPlaywrightSourceAST(result); ok {
-		result = astResult
-		retryWarning = retryWarning || astRetryWarning
+	var astUnsupportedRows map[int]bool
+	if astResult, ok := convertCypressToPlaywrightSourceAST(result); ok {
+		result = astResult.source
+		retryWarning = retryWarning || astResult.retryWarning
+		astUnsupportedRows = astResult.unsupportedRows
 		astApplied = true
 	}
 
@@ -198,7 +200,13 @@ func ConvertCypressToPlaywrightSource(source string) (string, error) {
 		result = rePlaywrightHookCallback.ReplaceAllString(result, `test.$1(async ({ page }) => {`)
 	}
 
-	result = commentUnsupportedCypressLines(result)
+	if astApplied {
+		if len(astUnsupportedRows) > 0 {
+			result = commentSpecificLines(result, astUnsupportedRows, "manual Cypress conversion required")
+		}
+	} else {
+		result = commentUnsupportedCypressLines(result)
+	}
 
 	prelude := "import { test, expect } from '@playwright/test';"
 	if retryWarning {

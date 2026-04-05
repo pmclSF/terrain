@@ -54,10 +54,10 @@ var (
 	reWdioBrowserForward       = regexp.MustCompile(`await browser\.forward\(\)`)
 	reWdioBrowserGetTitle      = regexp.MustCompile(`await browser\.getTitle\(\)`)
 	reWdioBrowserGetURL        = regexp.MustCompile(`await browser\.getUrl\(\)`)
-	reWdioBrowserKeys          = regexp.MustCompile(`await browser\.keys\(\[([^\]]+)\]\)`)
-	reWdioBrowserSetCookies    = regexp.MustCompile(`await browser\.setCookies\(`)
-	reWdioBrowserGetCookies    = regexp.MustCompile(`await browser\.getCookies\(\)`)
-	reWdioBrowserDeleteCookies = regexp.MustCompile(`await browser\.deleteCookies\(\)`)
+	reWdioBrowserKeysCall      = regexp.MustCompile(`await browser\.keys\(([^)]*)\)`)
+	reWdioBrowserSetCookies    = regexp.MustCompile(`await browser\.setCookies\(([^)]*)\)`)
+	reWdioBrowserGetCookies    = regexp.MustCompile(`await browser\.getCookies\(([^)]*)\)`)
+	reWdioBrowserDeleteCookies = regexp.MustCompile(`await browser\.deleteCookies\(([^)]*)\)`)
 	reWdioBrowserMock          = regexp.MustCompile(`await browser\.mock\(`)
 
 	reUnsupportedWdioLine = regexp.MustCompile(`(?:\bbrowser\.|expect\(\s*browser\s*\)|expect\(\s*\$\(|expect\(\s*\$\$\(|\$\(|\$\$\(|@wdio/|webdriverio\b)`)
@@ -83,8 +83,10 @@ func ConvertWdioToPlaywrightSource(source string) (string, error) {
 	result = reWdioGlobalsImport.ReplaceAllString(result, "")
 	result = reWdioImportLine.ReplaceAllString(result, "")
 	astApplied := false
-	if astResult, _, ok := convertWdioToPlaywrightSourceAST(result); ok {
-		result = astResult
+	var astUnsupportedRows map[int]bool
+	if astResult, ok := convertWdioToPlaywrightSourceAST(result); ok {
+		result = astResult.source
+		astUnsupportedRows = astResult.unsupportedRows
 		astApplied = true
 	}
 
@@ -146,13 +148,60 @@ func ConvertWdioToPlaywrightSource(source string) (string, error) {
 			{reWdioBrowserForward, `await page.goForward()`},
 			{reWdioBrowserGetTitle, `await page.title()`},
 			{reWdioBrowserGetURL, `page.url()`},
-			{reWdioBrowserKeys, `await page.keyboard.press($1)`},
-			{reWdioBrowserSetCookies, `await page.context().addCookies(`},
-			{reWdioBrowserGetCookies, `await page.context().cookies()`},
-			{reWdioBrowserDeleteCookies, `await page.context().clearCookies()`},
 		}
 		for _, replacement := range actionReplacements {
 			result = replacement.re.ReplaceAllString(result, replacement.repl)
+		}
+
+		if reWdioBrowserKeysCall.MatchString(result) {
+			result = reWdioBrowserKeysCall.ReplaceAllStringFunc(result, func(match string) string {
+				parts := reWdioBrowserKeysCall.FindStringSubmatch(match)
+				if len(parts) != 2 {
+					return match
+				}
+				replacement, ok := wdioBrowserKeysArgToPlaywright(parts[1])
+				if !ok {
+					return match
+				}
+				return replacement
+			})
+		}
+		if reWdioBrowserSetCookies.MatchString(result) {
+			result = reWdioBrowserSetCookies.ReplaceAllStringFunc(result, func(match string) string {
+				parts := reWdioBrowserSetCookies.FindStringSubmatch(match)
+				if len(parts) != 2 {
+					return match
+				}
+				cookies, ok := wdioCookieArgToPlaywright(parts[1])
+				if !ok {
+					return match
+				}
+				return "await page.context().addCookies(" + cookies + ")"
+			})
+		}
+		if reWdioBrowserGetCookies.MatchString(result) {
+			result = reWdioBrowserGetCookies.ReplaceAllStringFunc(result, func(match string) string {
+				parts := reWdioBrowserGetCookies.FindStringSubmatch(match)
+				if len(parts) != 2 {
+					return match
+				}
+				if strings.TrimSpace(parts[1]) != "" {
+					return match
+				}
+				return "await page.context().cookies()"
+			})
+		}
+		if reWdioBrowserDeleteCookies.MatchString(result) {
+			result = reWdioBrowserDeleteCookies.ReplaceAllStringFunc(result, func(match string) string {
+				parts := reWdioBrowserDeleteCookies.FindStringSubmatch(match)
+				if len(parts) != 2 {
+					return match
+				}
+				if strings.TrimSpace(parts[1]) != "" {
+					return match
+				}
+				return "await page.context().clearCookies()"
+			})
 		}
 
 		result = reWdioBrowserExecute.ReplaceAllString(result, `await page.evaluate(`)
@@ -180,7 +229,13 @@ func ConvertWdioToPlaywrightSource(source string) (string, error) {
 		}
 	}
 
-	result = commentUnsupportedWdioLines(result)
+	if astApplied {
+		if len(astUnsupportedRows) > 0 {
+			result = commentSpecificLines(result, astUnsupportedRows, "manual WebdriverIO conversion required")
+		}
+	} else {
+		result = commentUnsupportedWdioLines(result)
+	}
 	result = cleanupConvertedPlaywrightOutput(result)
 	result = prependImportPreservingHeader(result, "import { test, expect } from '@playwright/test';")
 	return ensureTrailingNewline(result), nil
@@ -206,4 +261,44 @@ func commentUnsupportedWdioLines(source string) string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+func wdioCookieArgToPlaywright(arg string) (string, bool) {
+	arg = strings.TrimSpace(arg)
+	switch {
+	case strings.HasPrefix(arg, "[") && strings.HasSuffix(arg, "]"):
+		return arg, true
+	case strings.HasPrefix(arg, "{") && strings.HasSuffix(arg, "}"):
+		return "[" + arg + "]", true
+	default:
+		return "", false
+	}
+}
+
+func wdioBrowserKeysArgToPlaywright(arg string) (string, bool) {
+	arg = strings.TrimSpace(arg)
+	if isJSStringLiteral(arg) {
+		return "await page.keyboard.press(" + arg + ")", true
+	}
+	if strings.HasPrefix(arg, "[") && strings.HasSuffix(arg, "]") {
+		items := splitTopLevelArgs(arg[1 : len(arg)-1])
+		if len(items) == 1 && isJSStringLiteral(strings.TrimSpace(items[0])) {
+			return "await page.keyboard.press(" + strings.TrimSpace(items[0]) + ")", true
+		}
+	}
+	return "", false
+}
+
+func isJSStringLiteral(value string) bool {
+	value = strings.TrimSpace(value)
+	if len(value) < 2 {
+		return false
+	}
+	quote := value[0]
+	switch quote {
+	case '\'', '"', '`':
+		return value[len(value)-1] == quote
+	default:
+		return false
+	}
 }

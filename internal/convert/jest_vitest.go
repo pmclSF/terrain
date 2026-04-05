@@ -14,6 +14,7 @@ var (
 	reJestGlobalsRequire = regexp.MustCompile(`(?m)^(?:const|let|var)\s+\{[^}]*\}\s*=\s*require\(\s*['"]@jest/globals['"]\s*\);\s*\n?`)
 	reVitestImport       = regexp.MustCompile(`(?m)^import\s+\{([^}]*)\}\s+from\s+['"]vitest['"];\s*\n?`)
 	reJestSetTimeout     = regexp.MustCompile(`\bjest\.setTimeout\s*\(\s*([^)]+?)\s*\)`)
+	reVitestUsageVI      = regexp.MustCompile(`\bvi\.`)
 )
 
 var jestToVitestReplacer = strings.NewReplacer(
@@ -79,6 +80,17 @@ var vitestGlobalNames = map[string]bool{
 	"afterEach":  true,
 	"beforeAll":  true,
 	"afterAll":   true,
+}
+
+var vitestUsagePatterns = map[string]*regexp.Regexp{
+	"describe":   regexp.MustCompile(`\bdescribe\b\s*(?:\(|\.)`),
+	"it":         regexp.MustCompile(`\bit\b\s*(?:\(|\.)`),
+	"test":       regexp.MustCompile(`\btest\b\s*(?:\(|\.)`),
+	"expect":     regexp.MustCompile(`\bexpect\b\s*(?:\(|\.)`),
+	"beforeEach": regexp.MustCompile(`\bbeforeEach\b\s*\(`),
+	"afterEach":  regexp.MustCompile(`\bafterEach\b\s*\(`),
+	"beforeAll":  regexp.MustCompile(`\bbeforeAll\b\s*\(`),
+	"afterAll":   regexp.MustCompile(`\bafterAll\b\s*\(`),
 }
 
 // ConvertJestToVitestSource rewrites common Jest test patterns to their
@@ -240,22 +252,12 @@ func convertJestToVitestSourceAST(source string) (string, bool) {
 func detectVitestImports(source string) map[string]bool {
 	imports := map[string]bool{}
 
-	patterns := map[string]*regexp.Regexp{
-		"describe":   regexp.MustCompile(`\bdescribe\b\s*(?:\(|\.)`),
-		"it":         regexp.MustCompile(`\bit\b\s*(?:\(|\.)`),
-		"test":       regexp.MustCompile(`\btest\b\s*(?:\(|\.)`),
-		"expect":     regexp.MustCompile(`\bexpect\b\s*(?:\(|\.)`),
-		"beforeEach": regexp.MustCompile(`\bbeforeEach\b\s*\(`),
-		"afterEach":  regexp.MustCompile(`\bafterEach\b\s*\(`),
-		"beforeAll":  regexp.MustCompile(`\bbeforeAll\b\s*\(`),
-		"afterAll":   regexp.MustCompile(`\bafterAll\b\s*\(`),
-	}
-	for name, pattern := range patterns {
+	for name, pattern := range vitestUsagePatterns {
 		if pattern.MatchString(source) {
 			imports[name] = true
 		}
 	}
-	if regexp.MustCompile(`\bvi\.`).MatchString(source) {
+	if reVitestUsageVI.MatchString(source) {
 		imports["vi"] = true
 	}
 	return imports

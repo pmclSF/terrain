@@ -69,8 +69,10 @@ func ConvertPlaywrightToWdioSource(source string) (string, error) {
 	result := strings.ReplaceAll(source, "\r\n", "\n")
 	result = rePlaywrightImportRemove.ReplaceAllString(result, "")
 	astApplied := false
+	var astUnsupportedRows map[int]bool
 	if astResult, ok := convertPlaywrightToWdioSourceAST(result); ok {
-		result = astResult
+		result = astResult.source
+		astUnsupportedRows = astResult.unsupportedRows
 		astApplied = true
 	}
 
@@ -81,18 +83,18 @@ func ConvertPlaywrightToWdioSource(source string) (string, error) {
 		}{
 			{rePWToWdioExpectURL, `await expect(browser).toHaveUrl($1)`},
 			{rePWToWdioExpectTitle, `await expect(browser).toHaveTitle($1)`},
-			{rePWToWdioExpectVisible, `await expect($$($1)).toBeDisplayed()`},
-			{rePWToWdioExpectHidden, `await expect($$($1)).not.toBeDisplayed()`},
-			{rePWToWdioExpectAttached, `await expect($$($1)).toExist()`},
-			{rePWToWdioExpectNotAttached, `await expect($$($1)).not.toExist()`},
-			{rePWToWdioExpectText, `await expect($$($1)).toHaveText($2)`},
-			{rePWToWdioExpectContainText, `await expect($$($1)).toHaveTextContaining($2)`},
-			{rePWToWdioExpectValue, `await expect($$($1)).toHaveValue($2)`},
+			{rePWToWdioExpectVisible, `await expect($($1)).toBeDisplayed()`},
+			{rePWToWdioExpectHidden, `await expect($($1)).not.toBeDisplayed()`},
+			{rePWToWdioExpectAttached, `await expect($($1)).toExist()`},
+			{rePWToWdioExpectNotAttached, `await expect($($1)).not.toExist()`},
+			{rePWToWdioExpectText, `await expect($($1)).toHaveText($2)`},
+			{rePWToWdioExpectContainText, `await expect($($1)).toHaveTextContaining($2)`},
+			{rePWToWdioExpectValue, `await expect($($1)).toHaveValue($2)`},
 			{rePWToWdioExpectCount, `await expect($$$$($1)).toBeElementsArrayOfSize($2)`},
-			{rePWToWdioExpectChecked, `await expect($$($1)).toBeSelected()`},
-			{rePWToWdioExpectEnabled, `await expect($$($1)).toBeEnabled()`},
-			{rePWToWdioExpectDisabled, `await expect($$($1)).toBeDisabled()`},
-			{rePWToWdioExpectAttribute, `await expect($$($1)).toHaveAttribute($2, $3)`},
+			{rePWToWdioExpectChecked, `await expect($($1)).toBeSelected()`},
+			{rePWToWdioExpectEnabled, `await expect($($1)).toBeEnabled()`},
+			{rePWToWdioExpectDisabled, `await expect($($1)).toBeDisabled()`},
+			{rePWToWdioExpectAttribute, `await expect($($1)).toHaveAttribute($2, $3)`},
 		}
 		for _, replacement := range assertionReplacements {
 			result = replacement.re.ReplaceAllString(result, replacement.repl)
@@ -102,19 +104,19 @@ func ConvertPlaywrightToWdioSource(source string) (string, error) {
 			re   *regexp.Regexp
 			repl string
 		}{
-			{rePWToWdioLocatorFill, `await $$($1).setValue($2)`},
-			{rePWToWdioLocatorClick, `await $$($1).click()`},
-			{rePWToWdioLocatorDoubleClick, `await $$($1).doubleClick()`},
-			{rePWToWdioLocatorHover, `await $$($1).moveTo()`},
-			{rePWToWdioLocatorText, `await $$($1).getText()`},
-			{rePWToWdioLocatorVisible, `await $$($1).isDisplayed()`},
-			{rePWToWdioLocatorWaitVisible, `await $$($1).waitForDisplayed()`},
-			{rePWToWdioLocatorWait, `await $$($1).waitForDisplayed()`},
-			{rePWToWdioLocatorClear, `await $$($1).clearValue()`},
-			{rePWToWdioSelectByLabel, `await $$($1).selectByVisibleText($2)`},
-			{rePWToWdioSelectByValue, `await $$($1).selectByAttribute('value', $2)`},
-			{rePWToWdioLocatorCheck, `await $$($1).click()`},
-			{rePWToWdioLocatorUncheck, `await $$($1).click()`},
+			{rePWToWdioLocatorFill, `await $($1).setValue($2)`},
+			{rePWToWdioLocatorClick, `await $($1).click()`},
+			{rePWToWdioLocatorDoubleClick, `await $($1).doubleClick()`},
+			{rePWToWdioLocatorHover, `await $($1).moveTo()`},
+			{rePWToWdioLocatorText, `await $($1).getText()`},
+			{rePWToWdioLocatorVisible, `await $($1).isDisplayed()`},
+			{rePWToWdioLocatorWaitVisible, `await $($1).waitForDisplayed()`},
+			{rePWToWdioLocatorWait, `await $($1).waitForDisplayed()`},
+			{rePWToWdioLocatorClear, `await $($1).clearValue()`},
+			{rePWToWdioSelectByLabel, `await $($1).selectByVisibleText($2)`},
+			{rePWToWdioSelectByValue, `await $($1).selectByAttribute('value', $2)`},
+			{rePWToWdioLocatorCheck, `await $($1).click()`},
+			{rePWToWdioLocatorUncheck, `await $($1).click()`},
 			{rePWToWdioGoto, `await browser.url($1)`},
 			{rePWToWdioWaitTimeout, `await browser.pause($1)`},
 			{rePWToWdioTitle, `await browser.getTitle()`},
@@ -136,7 +138,7 @@ func ConvertPlaywrightToWdioSource(source string) (string, error) {
 		result = rePWToWdioGetByTextClickD.ReplaceAllString(result, "await $(`*=$1`).click()")
 		result = rePWToWdioGetByTextS.ReplaceAllString(result, "$(`*=$1`)")
 		result = rePWToWdioGetByTextD.ReplaceAllString(result, "$(`*=$1`)")
-		result = rePWToWdioLocatorStandalone.ReplaceAllString(result, `$$($1)`)
+		result = rePWToWdioLocatorStandalone.ReplaceAllString(result, `$($1)`)
 
 		result = rePWDescribeOnly.ReplaceAllString(result, "describe.only(")
 		result = rePWDescribeSkip.ReplaceAllString(result, "describe.skip(")
@@ -151,7 +153,13 @@ func ConvertPlaywrightToWdioSource(source string) (string, error) {
 		result = rePWCallbackArgs.ReplaceAllString(result, "() =>")
 	}
 
-	result = commentUnsupportedPlaywrightWdioLines(result)
+	if astApplied {
+		if len(astUnsupportedRows) > 0 {
+			result = commentSpecificLines(result, astUnsupportedRows, "manual Playwright conversion required")
+		}
+	} else {
+		result = commentUnsupportedPlaywrightWdioLines(result)
+	}
 	result = cleanupConvertedWdioOutput(result)
 	return ensureTrailingNewline(result), nil
 }
