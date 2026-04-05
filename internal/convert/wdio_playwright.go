@@ -115,14 +115,14 @@ func ConvertWdioToPlaywrightSource(source string) (string, error) {
 		for _, replacement := range assertionReplacements {
 			if replacement.re.MatchString(result) {
 				retryWarning = true
-				result = replacement.re.ReplaceAllString(result, replacement.repl)
+				result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 			}
 		}
 
-		result = reWdioPartialTextSelectorSingle.ReplaceAllString(result, `page.getByText('$1')`)
-		result = reWdioPartialTextSelectorDouble.ReplaceAllString(result, `page.getByText("$1")`)
-		result = reWdioExactTextSelectorSingle.ReplaceAllString(result, `page.getByText('$1')`)
-		result = reWdioExactTextSelectorDouble.ReplaceAllString(result, `page.getByText("$1")`)
+		result = replaceCodeRegexString(result, reWdioPartialTextSelectorSingle, `page.getByText('$1')`)
+		result = replaceCodeRegexString(result, reWdioPartialTextSelectorDouble, `page.getByText("$1")`)
+		result = replaceCodeRegexString(result, reWdioExactTextSelectorSingle, `page.getByText('$1')`)
+		result = replaceCodeRegexString(result, reWdioExactTextSelectorDouble, `page.getByText("$1")`)
 
 		actionReplacements := []struct {
 			re   *regexp.Regexp
@@ -150,16 +150,15 @@ func ConvertWdioToPlaywrightSource(source string) (string, error) {
 			{reWdioBrowserGetURL, `page.url()`},
 		}
 		for _, replacement := range actionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
 		if reWdioBrowserKeysCall.MatchString(result) {
-			result = reWdioBrowserKeysCall.ReplaceAllStringFunc(result, func(match string) string {
-				parts := reWdioBrowserKeysCall.FindStringSubmatch(match)
-				if len(parts) != 2 {
+			result = replaceCodeRegexMatches(result, reWdioBrowserKeysCall, func(match string, groups []string) string {
+				if len(groups) != 1 {
 					return match
 				}
-				replacement, ok := wdioBrowserKeysArgToPlaywright(parts[1])
+				replacement, ok := wdioBrowserKeysArgToPlaywright(groups[0])
 				if !ok {
 					return match
 				}
@@ -167,12 +166,11 @@ func ConvertWdioToPlaywrightSource(source string) (string, error) {
 			})
 		}
 		if reWdioBrowserSetCookies.MatchString(result) {
-			result = reWdioBrowserSetCookies.ReplaceAllStringFunc(result, func(match string) string {
-				parts := reWdioBrowserSetCookies.FindStringSubmatch(match)
-				if len(parts) != 2 {
+			result = replaceCodeRegexMatches(result, reWdioBrowserSetCookies, func(match string, groups []string) string {
+				if len(groups) != 1 {
 					return match
 				}
-				cookies, ok := wdioCookieArgToPlaywright(parts[1])
+				cookies, ok := wdioCookieArgToPlaywright(groups[0])
 				if !ok {
 					return match
 				}
@@ -180,50 +178,48 @@ func ConvertWdioToPlaywrightSource(source string) (string, error) {
 			})
 		}
 		if reWdioBrowserGetCookies.MatchString(result) {
-			result = reWdioBrowserGetCookies.ReplaceAllStringFunc(result, func(match string) string {
-				parts := reWdioBrowserGetCookies.FindStringSubmatch(match)
-				if len(parts) != 2 {
+			result = replaceCodeRegexMatches(result, reWdioBrowserGetCookies, func(match string, groups []string) string {
+				if len(groups) != 1 {
 					return match
 				}
-				if strings.TrimSpace(parts[1]) != "" {
+				if strings.TrimSpace(groups[0]) != "" {
 					return match
 				}
 				return "await page.context().cookies()"
 			})
 		}
 		if reWdioBrowserDeleteCookies.MatchString(result) {
-			result = reWdioBrowserDeleteCookies.ReplaceAllStringFunc(result, func(match string) string {
-				parts := reWdioBrowserDeleteCookies.FindStringSubmatch(match)
-				if len(parts) != 2 {
+			result = replaceCodeRegexMatches(result, reWdioBrowserDeleteCookies, func(match string, groups []string) string {
+				if len(groups) != 1 {
 					return match
 				}
-				if strings.TrimSpace(parts[1]) != "" {
+				if strings.TrimSpace(groups[0]) != "" {
 					return match
 				}
 				return "await page.context().clearCookies()"
 			})
 		}
 
-		result = reWdioBrowserExecute.ReplaceAllString(result, `await page.evaluate(`)
-		result = reWdioManySelectors.ReplaceAllString(result, `page.locator($1)`)
-		result = reWdioSingleSelectors.ReplaceAllString(result, `page.locator($1)`)
+		result = replaceCodeRegexString(result, reWdioBrowserExecute, `await page.evaluate(`)
+		result = replaceCodeRegexString(result, reWdioManySelectors, `page.locator($1)`)
+		result = replaceCodeRegexString(result, reWdioSingleSelectors, `page.locator($1)`)
 
-		result = reDescribeOnly.ReplaceAllString(result, "${1}test.describe.only(")
-		result = reDescribeSkip.ReplaceAllString(result, "${1}test.describe.skip(")
-		result = reDescribe.ReplaceAllString(result, "${1}test.describe(")
-		result = reContext.ReplaceAllString(result, "${1}test.describe(")
-		result = reItOnly.ReplaceAllString(result, "${1}test.only(")
-		result = reItSkip.ReplaceAllString(result, "${1}test.skip(")
-		result = reSpecify.ReplaceAllString(result, "${1}test(")
-		result = reIt.ReplaceAllString(result, "${1}test(")
-		result = reBeforeEach.ReplaceAllString(result, "${1}test.beforeEach(")
-		result = reAfterEach.ReplaceAllString(result, "${1}test.afterEach(")
-		result = reBefore.ReplaceAllString(result, "${1}test.beforeAll(")
-		result = reAfter.ReplaceAllString(result, "${1}test.afterAll(")
+		result = replaceCodeRegexString(result, reDescribeOnly, "${1}test.describe.only(")
+		result = replaceCodeRegexString(result, reDescribeSkip, "${1}test.describe.skip(")
+		result = replaceCodeRegexString(result, reDescribe, "${1}test.describe(")
+		result = replaceCodeRegexString(result, reContext, "${1}test.describe(")
+		result = replaceCodeRegexString(result, reItOnly, "${1}test.only(")
+		result = replaceCodeRegexString(result, reItSkip, "${1}test.skip(")
+		result = replaceCodeRegexString(result, reSpecify, "${1}test(")
+		result = replaceCodeRegexString(result, reIt, "${1}test(")
+		result = replaceCodeRegexString(result, reBeforeEach, "${1}test.beforeEach(")
+		result = replaceCodeRegexString(result, reAfterEach, "${1}test.afterEach(")
+		result = replaceCodeRegexString(result, reBefore, "${1}test.beforeAll(")
+		result = replaceCodeRegexString(result, reAfter, "${1}test.afterAll(")
 
-		result = rePlaywrightDescribeCallback.ReplaceAllString(result, `${1}() => {`)
-		result = rePlaywrightTestEmptyCallback.ReplaceAllString(result, `${1}async ({ page }) => {`)
-		result = rePlaywrightHookCallback.ReplaceAllString(result, `test.$1(async ({ page }) => {`)
+		result = replaceCodeRegexString(result, rePlaywrightDescribeCallback, `${1}() => {`)
+		result = replaceCodeRegexString(result, rePlaywrightTestEmptyCallback, `${1}async ({ page }) => {`)
+		result = replaceCodeRegexString(result, rePlaywrightHookCallback, `test.$1(async ({ page }) => {`)
 		if retryWarning {
 			// Keep output stable for parity; the benchmark and tests carry the warning signal.
 		}

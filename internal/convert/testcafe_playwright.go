@@ -72,10 +72,10 @@ func ConvertTestCafeToPlaywrightSource(source string) (string, error) {
 	if !astApplied {
 		result = reTcImport.ReplaceAllString(result, "")
 		result, suiteName, pageURL = extractTestCafeFixture(result)
-		result = reTcSelectorAssignText.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4}).filter({ hasText: ${5} });`)
-		result = reTcSelectorAssignFind.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4}).locator(${5});`)
-		result = reTcSelectorAssignNth.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4}).nth(${5});`)
-		result = reTcSelectorAssign.ReplaceAllString(result, `${1}${2} ${3} = page.locator(${4});`)
+		result = replaceCodeRegexString(result, reTcSelectorAssignText, `${1}${2} ${3} = page.locator(${4}).filter({ hasText: ${5} });`)
+		result = replaceCodeRegexString(result, reTcSelectorAssignFind, `${1}${2} ${3} = page.locator(${4}).locator(${5});`)
+		result = replaceCodeRegexString(result, reTcSelectorAssignNth, `${1}${2} ${3} = page.locator(${4}).nth(${5});`)
+		result = replaceCodeRegexString(result, reTcSelectorAssign, `${1}${2} ${3} = page.locator(${4});`)
 
 		assertionReplacements := []struct {
 			re   *regexp.Regexp
@@ -91,7 +91,7 @@ func ConvertTestCafeToPlaywrightSource(source string) (string, error) {
 			{reTcExpectValueEq, `await expect(page.locator($1)).toHaveValue($2)`},
 		}
 		for _, replacement := range assertionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
 		actionReplacements := []struct {
@@ -114,16 +114,16 @@ func ConvertTestCafeToPlaywrightSource(source string) (string, error) {
 			{reTcTypeText, `await page.locator($1).fill($2)`},
 		}
 		for _, replacement := range actionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
-		result = reTcSelectorWithText.ReplaceAllString(result, `page.locator($1).filter({ hasText: $2 })`)
-		result = reTcSelectorFind.ReplaceAllString(result, `page.locator($1).locator($2)`)
-		result = reTcSelectorNth.ReplaceAllString(result, `page.locator($1).nth($2)`)
-		result = reTcSelectorStandalone.ReplaceAllString(result, `page.locator($1)`)
-		result = reTcPWExpectLocatorVar.ReplaceAllString(result, `await expect($1).`)
-		result = reTcPWActionLocatorVar.ReplaceAllString(result, `await $1.`)
-		result = reTcTestCallback.ReplaceAllString(result, `test($1, async ({ page }) => {`)
+		result = replaceCodeRegexString(result, reTcSelectorWithText, `page.locator($1).filter({ hasText: $2 })`)
+		result = replaceCodeRegexString(result, reTcSelectorFind, `page.locator($1).locator($2)`)
+		result = replaceCodeRegexString(result, reTcSelectorNth, `page.locator($1).nth($2)`)
+		result = replaceCodeRegexString(result, reTcSelectorStandalone, `page.locator($1)`)
+		result = replaceCodeRegexString(result, reTcPWExpectLocatorVar, `await expect($1).`)
+		result = replaceCodeRegexString(result, reTcPWActionLocatorVar, `await $1.`)
+		result = replaceCodeRegexString(result, reTcTestCallback, `test($1, async ({ page }) => {`)
 
 		result = commentUnsupportedTestCafePlaywrightLines(result)
 	}

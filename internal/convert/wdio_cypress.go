@@ -59,7 +59,7 @@ var (
 	reWdioToCyForward       = regexp.MustCompile(`await browser\.forward\(\)`)
 	reWdioToCyGetTitle      = regexp.MustCompile(`await browser\.getTitle\(\)`)
 	reWdioToCyGetURL        = regexp.MustCompile(`await browser\.getUrl\(\)`)
-	reWdioToCyKeys          = regexp.MustCompile(`await browser\.keys\(\[([^\]]+)\]\)`)
+	reWdioToCyKeysCall      = regexp.MustCompile(`await browser\.keys\(([^)]*)\)`)
 	reWdioToCyDeleteCookies = regexp.MustCompile(`await browser\.deleteCookies\(\)`)
 	reWdioToCyGetCookies    = regexp.MustCompile(`await browser\.getCookies\(\)`)
 	reWdioToCyConsoleLog    = regexp.MustCompile(`console\.log\(([^)]+)\)`)
@@ -112,13 +112,13 @@ func ConvertWdioToCypressSource(source string) (string, error) {
 			{reWdioToCyAttribute, `cy.get($1).should('have.attr', $2, $3)`},
 		}
 		for _, replacement := range assertionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
-		result = reWdioToCyExactClickS.ReplaceAllString(result, "cy.contains('$1').click()")
-		result = reWdioToCyExactClickD.ReplaceAllString(result, "cy.contains('$1').click()")
-		result = reWdioToCyPartialClickS.ReplaceAllString(result, "cy.contains('$1').click()")
-		result = reWdioToCyPartialClickD.ReplaceAllString(result, "cy.contains('$1').click()")
+		result = replaceCodeRegexString(result, reWdioToCyExactClickS, "cy.contains('$1').click()")
+		result = replaceCodeRegexString(result, reWdioToCyExactClickD, "cy.contains('$1').click()")
+		result = replaceCodeRegexString(result, reWdioToCyPartialClickS, "cy.contains('$1').click()")
+		result = replaceCodeRegexString(result, reWdioToCyPartialClickD, "cy.contains('$1').click()")
 
 		actionReplacements := []struct {
 			re   *regexp.Regexp
@@ -145,22 +145,34 @@ func ConvertWdioToCypressSource(source string) (string, error) {
 			{reWdioToCyForward, `cy.go('forward')`},
 			{reWdioToCyGetTitle, `cy.title()`},
 			{reWdioToCyGetURL, `cy.url()`},
-			{reWdioToCyKeys, `cy.get('body').type($1)`},
 			{reWdioToCyDeleteCookies, `cy.clearCookies()`},
 			{reWdioToCyGetCookies, `cy.getCookies()`},
 			{reWdioToCyConsoleLog, `cy.log($1)`},
 		}
 		for _, replacement := range actionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
-		result = reWdioToCyExec.ReplaceAllString(result, `cy.window().then($1)`)
-		result = reWdioToCyExactSelS.ReplaceAllString(result, "cy.contains('$1')")
-		result = reWdioToCyExactSelD.ReplaceAllString(result, "cy.contains('$1')")
-		result = reWdioToCyPartialSelS.ReplaceAllString(result, "cy.contains('$1')")
-		result = reWdioToCyPartialSelD.ReplaceAllString(result, "cy.contains('$1')")
-		result = reWdioToCyManySelectors.ReplaceAllString(result, `cy.get($1)`)
-		result = reWdioToCySingleSelectors.ReplaceAllString(result, `cy.get($1)`)
+		if reWdioToCyKeysCall.MatchString(result) {
+			result = replaceCodeRegexMatches(result, reWdioToCyKeysCall, func(match string, groups []string) string {
+				if len(groups) != 1 {
+					return match
+				}
+				replacement, ok := wdioBrowserKeysArgToCypress(groups[0])
+				if !ok {
+					return match
+				}
+				return replacement
+			})
+		}
+
+		result = replaceCodeRegexString(result, reWdioToCyExec, `cy.window().then($1)`)
+		result = replaceCodeRegexString(result, reWdioToCyExactSelS, "cy.contains('$1')")
+		result = replaceCodeRegexString(result, reWdioToCyExactSelD, "cy.contains('$1')")
+		result = replaceCodeRegexString(result, reWdioToCyPartialSelS, "cy.contains('$1')")
+		result = replaceCodeRegexString(result, reWdioToCyPartialSelD, "cy.contains('$1')")
+		result = replaceCodeRegexString(result, reWdioToCyManySelectors, `cy.get($1)`)
+		result = replaceCodeRegexString(result, reWdioToCySingleSelectors, `cy.get($1)`)
 
 		result = commentUnsupportedWdioCypressLines(result)
 	}
@@ -181,4 +193,21 @@ func commentUnsupportedWdioCypressLines(source string) string {
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+func wdioBrowserKeysArgToCypress(arg string) (string, bool) {
+	arg = strings.TrimSpace(arg)
+	if isJSStringLiteral(arg) {
+		return "cy.get('body').type(" + arg + ")", true
+	}
+	if strings.HasPrefix(arg, "[") && strings.HasSuffix(arg, "]") {
+		items := splitTopLevelArgs(arg[1 : len(arg)-1])
+		if len(items) == 1 {
+			item := strings.TrimSpace(items[0])
+			if isJSStringLiteral(item) && len(normalizeJSLiteral(item)) == 1 {
+				return "cy.get('body').type(" + item + ")", true
+			}
+		}
+	}
+	return "", false
 }

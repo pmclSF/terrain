@@ -225,6 +225,33 @@ test('cookies', async ({ page }) => {
 	}
 }
 
+func TestConvertPlaywrightToWdioSource_ConvertsStandaloneContextCookieCalls(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test } from '@playwright/test';
+
+test('context cookies', async ({ context }) => {
+  await context.addCookies([{ name: 'session', value: 'abc' }]);
+  await context.cookies();
+  await context.clearCookies();
+});
+`
+
+	got, err := ConvertPlaywrightToWdioSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToWdioSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "await browser.setCookies([{ name: 'session', value: 'abc' }])") {
+		t.Fatalf("expected standalone context.addCookies to convert, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await browser.getCookies()") {
+		t.Fatalf("expected standalone context.cookies to convert, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await browser.deleteCookies()") {
+		t.Fatalf("expected standalone context.clearCookies to convert, got:\n%s", got)
+	}
+}
+
 func TestExecutePlaywrightToWdioDirectory_PreservesFileNamesAndHelpers(t *testing.T) {
 	t.Parallel()
 

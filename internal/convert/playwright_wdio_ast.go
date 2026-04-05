@@ -120,6 +120,10 @@ func convertPlaywrightCallToWdio(node *sitter.Node, src []byte) (string, bool) {
 		if replacement, ok := convertPlaywrightQueryStepsToWdio(steps); ok {
 			return replacement, true
 		}
+	case "context":
+		if replacement, ok := convertPlaywrightContextCallToWdio(steps); ok {
+			return replacement, true
+		}
 	case "page.keyboard":
 		if len(steps) == 1 && steps[0].method == "press" && len(steps[0].args) == 1 {
 			return "await browser.keys([" + steps[0].args[0] + "])", true
@@ -180,6 +184,29 @@ func convertPlaywrightPageCallToWdio(steps []jsCallStep) (string, bool) {
 			}
 		}
 	}
+	return "", false
+}
+
+func convertPlaywrightContextCallToWdio(steps []jsCallStep) (string, bool) {
+	if len(steps) != 1 {
+		return "", false
+	}
+
+	switch steps[0].method {
+	case "addCookies":
+		if len(steps[0].args) == 1 {
+			return "await browser.setCookies(" + steps[0].args[0] + ")", true
+		}
+	case "cookies":
+		if len(steps[0].args) == 0 {
+			return "await browser.getCookies()", true
+		}
+	case "clearCookies":
+		if len(steps[0].args) == 0 {
+			return "await browser.deleteCookies()", true
+		}
+	}
+
 	return "", false
 }
 

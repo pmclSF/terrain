@@ -75,41 +75,41 @@ func ConvertCypressToWdioSource(source string) (string, error) {
 			re   *regexp.Regexp
 			repl string
 		}{
-			{reCyToWdioGetVisible, `await expect($$($1)).toBeDisplayed()`},
-			{reCyToWdioGetHidden, `await expect($$($1)).not.toBeDisplayed()`},
-			{reCyToWdioGetExist, `await expect($$($1)).toExist()`},
-			{reCyToWdioGetNotExist, `await expect($$($1)).not.toExist()`},
-			{reCyToWdioGetText, `await expect($$($1)).toHaveText($2)`},
-			{reCyToWdioGetContain, `await expect($$($1)).toHaveTextContaining($2)`},
-			{reCyToWdioGetValue, `await expect($$($1)).toHaveValue($2)`},
+			{reCyToWdioGetVisible, `await expect($($1)).toBeDisplayed()`},
+			{reCyToWdioGetHidden, `await expect($($1)).not.toBeDisplayed()`},
+			{reCyToWdioGetExist, `await expect($($1)).toExist()`},
+			{reCyToWdioGetNotExist, `await expect($($1)).not.toExist()`},
+			{reCyToWdioGetText, `await expect($($1)).toHaveText($2)`},
+			{reCyToWdioGetContain, `await expect($($1)).toHaveTextContaining($2)`},
+			{reCyToWdioGetValue, `await expect($($1)).toHaveValue($2)`},
 			{reCyToWdioGetLength, `await expect($$$$($1)).toBeElementsArrayOfSize($2)`},
-			{reCyToWdioGetChecked, `await expect($$($1)).toBeSelected()`},
-			{reCyToWdioGetDisabled, `await expect($$($1)).toBeDisabled()`},
-			{reCyToWdioGetEnabled, `await expect($$($1)).toBeEnabled()`},
-			{reCyToWdioGetAttribute, `await expect($$($1)).toHaveAttribute($2, $3)`},
+			{reCyToWdioGetChecked, `await expect($($1)).toBeSelected()`},
+			{reCyToWdioGetDisabled, `await expect($($1)).toBeDisabled()`},
+			{reCyToWdioGetEnabled, `await expect($($1)).toBeEnabled()`},
+			{reCyToWdioGetAttribute, `await expect($($1)).toHaveAttribute($2, $3)`},
 			{reCyToWdioURLInclude, `await expect(browser).toHaveUrlContaining($1)`},
 			{reCyToWdioURLEq, `await expect(browser).toHaveUrl($1)`},
 			{reCyToWdioTitleEq, `await expect(browser).toHaveTitle($1)`},
 		}
 		for _, replacement := range assertionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
 		actionReplacements := []struct {
 			re   *regexp.Regexp
 			repl string
 		}{
-			{reCyToWdioClearType, `await $$($1).setValue($2)`},
-			{reCyToWdioType, `await $$($1).setValue($2)`},
-			{reCyToWdioClick, `await $$($1).click()`},
-			{reCyToWdioDoubleClick, `await $$($1).doubleClick()`},
-			{reCyToWdioClear, `await $$($1).clearValue()`},
-			{reCyToWdioSelect, `await $$($1).selectByVisibleText($2)`},
-			{reCyToWdioCheck, `await $$($1).click()`},
-			{reCyToWdioUncheck, `await $$($1).click()`},
-			{reCyToWdioHover, `await $$($1).moveTo()`},
-			{reCyToWdioInvokeText, `await $$($1).getText()`},
-			{reCyToWdioInvokeAttr, `await $$($1).getAttribute($2)`},
+			{reCyToWdioClearType, `await $($1).setValue($2)`},
+			{reCyToWdioType, `await $($1).setValue($2)`},
+			{reCyToWdioClick, `await $($1).click()`},
+			{reCyToWdioDoubleClick, `await $($1).doubleClick()`},
+			{reCyToWdioClear, `await $($1).clearValue()`},
+			{reCyToWdioSelect, `await $($1).selectByVisibleText($2)`},
+			{reCyToWdioCheck, `await $($1).click()`},
+			{reCyToWdioUncheck, `await $($1).click()`},
+			{reCyToWdioHover, `await $($1).moveTo()`},
+			{reCyToWdioInvokeText, `await $($1).getText()`},
+			{reCyToWdioInvokeAttr, `await $($1).getAttribute($2)`},
 			{reCyToWdioVisit, `await browser.url($1)`},
 			{reCyToWdioReload, `await browser.refresh()`},
 			{reCyToWdioBack, `await browser.back()`},
@@ -122,17 +122,17 @@ func ConvertCypressToWdioSource(source string) (string, error) {
 			{reCyToWdioWindowThen, `await browser.execute($1)`},
 		}
 		for _, replacement := range actionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
-		result = reCyToWdioContainsClick.ReplaceAllString(result, "await $(`*=$1`).click()")
-		result = reCyToWdioContainsClickD.ReplaceAllString(result, "await $(`*=$1`).click()")
-		result = reCyToWdioContainsS.ReplaceAllString(result, "$(`*=$1`)")
-		result = reCyToWdioContainsD.ReplaceAllString(result, "$(`*=$1`)")
+		result = replaceCodeRegexString(result, reCyToWdioContainsClick, "await $(`*=$1`).click()")
+		result = replaceCodeRegexString(result, reCyToWdioContainsClickD, "await $(`*=$1`).click()")
+		result = replaceCodeRegexString(result, reCyToWdioContainsS, "$(`*=$1`)")
+		result = replaceCodeRegexString(result, reCyToWdioContainsD, "$(`*=$1`)")
 
 		result = commentUnsupportedCypressWdioLines(result)
-		result = reCyToWdioHookCallback.ReplaceAllString(result, `${1}async () => {`)
-		result = reCyToWdioTestCallback.ReplaceAllString(result, `${1}async () => {`)
+		result = replaceCodeRegexString(result, reCyToWdioHookCallback, `${1}async () => {`)
+		result = replaceCodeRegexString(result, reCyToWdioTestCallback, `${1}async () => {`)
 	}
 	result = cleanupConvertedWdioOutput(result)
 	return ensureTrailingNewline(result), nil

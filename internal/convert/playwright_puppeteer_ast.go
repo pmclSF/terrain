@@ -120,50 +120,78 @@ func convertPlaywrightCallToPuppeteer(node *sitter.Node, src []byte) (string, bo
 	}
 
 	root, steps, ok := extractJSCallChain(node, src)
-	if !ok || root != "page" || len(steps) == 0 {
+	if !ok || len(steps) == 0 {
+		return "", false
+	}
+
+	switch root {
+	case "page":
+		switch steps[0].method {
+		case "goto":
+			if len(steps) == 1 && len(steps[0].args) == 1 {
+				return "await page.goto(" + steps[0].args[0] + ")", true
+			}
+		case "reload":
+			if len(steps) == 1 {
+				return "await page.reload()", true
+			}
+		case "goBack":
+			if len(steps) == 1 {
+				return "await page.goBack()", true
+			}
+		case "goForward":
+			if len(steps) == 1 {
+				return "await page.goForward()", true
+			}
+		case "setViewportSize":
+			if len(steps) == 1 && len(steps[0].args) == 1 {
+				return "await page.setViewport(" + steps[0].args[0] + ")", true
+			}
+		case "context":
+			if len(steps) == 2 {
+				switch steps[1].method {
+				case "addCookies":
+					if len(steps[1].args) == 1 {
+						return "await page.setCookie(..." + steps[1].args[0] + ")", true
+					}
+				case "cookies":
+					if len(steps[1].args) == 0 {
+						return "await page.cookies()", true
+					}
+				case "clearCookies":
+					if len(steps[1].args) == 0 {
+						return "await page.deleteCookie(...(await page.cookies()))", true
+					}
+				}
+			}
+		case "locator":
+			return convertPlaywrightLocatorChainToPuppeteer(steps)
+		}
+	case "context":
+		return convertPlaywrightContextCallToPuppeteer(steps)
+	}
+
+	return "", false
+}
+
+func convertPlaywrightContextCallToPuppeteer(steps []jsCallStep) (string, bool) {
+	if len(steps) != 1 {
 		return "", false
 	}
 
 	switch steps[0].method {
-	case "goto":
-		if len(steps) == 1 && len(steps[0].args) == 1 {
-			return "await page.goto(" + steps[0].args[0] + ")", true
+	case "addCookies":
+		if len(steps[0].args) == 1 {
+			return "await page.setCookie(..." + steps[0].args[0] + ")", true
 		}
-	case "reload":
-		if len(steps) == 1 {
-			return "await page.reload()", true
+	case "cookies":
+		if len(steps[0].args) == 0 {
+			return "await page.cookies()", true
 		}
-	case "goBack":
-		if len(steps) == 1 {
-			return "await page.goBack()", true
+	case "clearCookies":
+		if len(steps[0].args) == 0 {
+			return "await page.deleteCookie(...(await page.cookies()))", true
 		}
-	case "goForward":
-		if len(steps) == 1 {
-			return "await page.goForward()", true
-		}
-	case "setViewportSize":
-		if len(steps) == 1 && len(steps[0].args) == 1 {
-			return "await page.setViewport(" + steps[0].args[0] + ")", true
-		}
-	case "context":
-		if len(steps) == 2 {
-			switch steps[1].method {
-			case "addCookies":
-				if len(steps[1].args) == 1 {
-					return "await page.setCookie(..." + steps[1].args[0] + ")", true
-				}
-			case "cookies":
-				if len(steps[1].args) == 0 {
-					return "await page.cookies()", true
-				}
-			case "clearCookies":
-				if len(steps[1].args) == 0 {
-					return "await page.deleteCookie(...(await page.cookies()))", true
-				}
-			}
-		}
-	case "locator":
-		return convertPlaywrightLocatorChainToPuppeteer(steps)
 	}
 
 	return "", false

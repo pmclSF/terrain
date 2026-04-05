@@ -20,11 +20,49 @@ func TestSplitTopLevelArgs_HandlesNestedCallsAndQuotedCommas(t *testing.T) {
 	}
 }
 
+func TestSplitTopLevelArgs_HandlesTemplateLiteralCommas(t *testing.T) {
+	t.Parallel()
+
+	got := splitTopLevelArgs("selector, `value,${count}`, { timeout: 5000 }")
+	want := []string{
+		"selector",
+		"`value,${count}`",
+		"{ timeout: 5000 }",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("splitTopLevelArgs() = %#v, want %#v", got, want)
+	}
+}
+
+func TestSplitTopLevelArgs_IgnoresTrailingComma(t *testing.T) {
+	t.Parallel()
+
+	got := splitTopLevelArgs("selector, { timeout: 5000 },")
+	want := []string{
+		"selector",
+		"{ timeout: 5000 }",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("splitTopLevelArgs() = %#v, want %#v", got, want)
+	}
+}
+
 func TestFindMatchingParenSameLine_HandlesQuotedParens(t *testing.T) {
 	t.Parallel()
 
 	line := `assertEquals("(", actual)`
 	open := len("assertEquals")
+	got := findMatchingParenSameLine(line, open)
+	if got != len(line)-1 {
+		t.Fatalf("findMatchingParenSameLine() = %d, want %d", got, len(line)-1)
+	}
+}
+
+func TestFindMatchingParenSameLine_HandlesTemplateLiteralParens(t *testing.T) {
+	t.Parallel()
+
+	line := "fill(`name,${user})`, value)"
+	open := len("fill")
 	got := findMatchingParenSameLine(line, open)
 	if got != len(line)-1 {
 		t.Fatalf("findMatchingParenSameLine() = %d, want %d", got, len(line)-1)

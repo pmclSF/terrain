@@ -138,6 +138,56 @@ func TestConvertPlaywrightToCypressSource_RemovesFixtureArgs(t *testing.T) {
 	}
 }
 
+func TestConvertPlaywrightToCypressSource_PreservesRegexURLAndTitleExpectations(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test, expect } from '@playwright/test';
+
+test('regex expectations', async ({ page }) => {
+  await expect(page).toHaveURL(/dashboard\/\d+/);
+  await expect(page).toHaveTitle(/Checkout/);
+});
+`
+
+	got, err := ConvertPlaywrightToCypressSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToCypressSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "cy.url().should('match', /dashboard\\/\\d+/)") {
+		t.Fatalf("expected regex URL assertion to convert with match, got:\n%s", got)
+	}
+	if !strings.Contains(got, "cy.title().should('match', /Checkout/)") {
+		t.Fatalf("expected regex title assertion to convert with match, got:\n%s", got)
+	}
+}
+
+func TestConvertPlaywrightToCypressSource_FallbackPreservesRegexURLAndTitleExpectations(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test, expect } from '@playwright/test';
+
+test('regex expectations', async ({ page }) => {
+  await expect(page).toHaveURL(/dashboard\/\d+/);
+  await expect(page).toHaveTitle(/Checkout/);
+  if (
+});
+`
+
+	got, err := ConvertPlaywrightToCypressSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToCypressSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "cy.url().should('match', /dashboard\\/\\d+/)") {
+		t.Fatalf("expected fallback regex URL assertion to convert with match, got:\n%s", got)
+	}
+	if !strings.Contains(got, "cy.title().should('match', /Checkout/)") {
+		t.Fatalf("expected fallback regex title assertion to convert with match, got:\n%s", got)
+	}
+	if strings.Contains(got, "cy.url().should('include', /dashboard") {
+		t.Fatalf("expected fallback path not to downgrade regex URL assertions to include, got:\n%s", got)
+	}
+}
+
 func TestExecutePlaywrightToCypressDirectory_RenamesSpecFilesToCy(t *testing.T) {
 	t.Parallel()
 

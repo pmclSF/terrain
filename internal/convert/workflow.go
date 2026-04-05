@@ -448,7 +448,7 @@ func MigrateProject(root, from, to string, options MigrationRunOptions) (Migrati
 		selected = append(selected, candidate)
 	}
 
-	outcomes := processMigrationCandidates(selected, direction, outputRoot, options.StrictValidate, options.Concurrency)
+	outcomes := processMigrationCandidates(selected, direction, outputRoot, true, options.Concurrency)
 	processed := make([]MigrationFileRecord, 0, len(outcomes))
 	for _, outcome := range outcomes {
 		candidate := outcome.candidate
@@ -1098,6 +1098,7 @@ func predictMigrationConfidence(output, fileType string) int {
 		base = 80
 	}
 	todos := countTODOs(output)
+	warnings := countWarnings(output)
 	confidence := base
 	switch {
 	case todos == 0:
@@ -1109,6 +1110,13 @@ func predictMigrationConfidence(output, fileType string) int {
 	default:
 		confidence = minInt(base, 55)
 	}
+	switch {
+	case warnings == 0:
+	case warnings == 1:
+		confidence = minInt(confidence, base-10)
+	default:
+		confidence = minInt(confidence, base-20)
+	}
 	if strings.Contains(output, "UNCONVERTIBLE") {
 		confidence = minInt(confidence, 60)
 	}
@@ -1116,15 +1124,62 @@ func predictMigrationConfidence(output, fileType string) int {
 }
 
 func warningsFromOutput(output, fileType string) []string {
-	warnings := make([]string, 0, 2)
+	warnings := make([]string, 0, 4)
 	todos := countTODOs(output)
 	if todos > 0 {
 		warnings = append(warnings, fmt.Sprintf("%d manual follow-up comment(s) inserted", todos))
 	}
-	if fileType == "config" && todos == 0 {
+	for _, warning := range extractTerrainWarnings(output) {
+		if warning != "" {
+			warnings = append(warnings, warning)
+		}
+	}
+	if strings.Contains(output, "UNCONVERTIBLE") {
+		warnings = append(warnings, "contains unconvertible output markers")
+	}
+	if fileType == "config" && todos == 0 && len(warnings) == 0 {
 		return warnings
 	}
+	return dedupeStrings(warnings)
+}
+
+func countWarnings(output string) int {
+	return len(extractTerrainWarnings(output))
+}
+
+func extractTerrainWarnings(output string) []string {
+	lines := strings.Split(output, "\n")
+	warnings := make([]string, 0, 2)
+	for _, line := range lines {
+		if !strings.Contains(line, "TERRAIN-WARNING") {
+			continue
+		}
+		message := strings.TrimSpace(line)
+		if idx := strings.Index(message, "TERRAIN-WARNING:"); idx >= 0 {
+			message = strings.TrimSpace(message[idx+len("TERRAIN-WARNING:"):])
+		}
+		if message != "" {
+			warnings = append(warnings, message)
+		}
+	}
 	return warnings
+}
+
+func dedupeStrings(values []string) []string {
+	if len(values) == 0 {
+		return nil
+	}
+	seen := make(map[string]bool, len(values))
+	deduped := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		deduped = append(deduped, value)
+	}
+	return deduped
 }
 
 func countTODOs(output string) int {

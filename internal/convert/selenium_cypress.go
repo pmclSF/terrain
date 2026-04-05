@@ -57,7 +57,7 @@ func ConvertSeleniumToCypressSource(source string) (string, error) {
 			{reSelExpectTitle, `cy.title().should('eq', $1)`},
 		}
 		for _, replacement := range assertionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
 		actionReplacements := []struct {
@@ -76,15 +76,15 @@ func ConvertSeleniumToCypressSource(source string) (string, error) {
 			{reSelLocalStorageClear, `cy.clearLocalStorage()`},
 		}
 		for _, replacement := range actionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 		result = commentUnsupportedSeleniumCypressLines(result)
 	}
 
-	result = reSelCyCheckboxCheck.ReplaceAllString(result, `cy.get($1).check()`)
-	result = reSelCyCheckboxUnchk.ReplaceAllString(result, `cy.get($1).uncheck()`)
-	result = reBefore.ReplaceAllString(result, "${1}before(")
-	result = reAfter.ReplaceAllString(result, "${1}after(")
+	result = replaceCodeRegexString(result, reSelCyCheckboxCheck, `cy.get($1).check()`)
+	result = replaceCodeRegexString(result, reSelCyCheckboxUnchk, `cy.get($1).uncheck()`)
+	result = replaceCodeRegexString(result, reBefore, "${1}before(")
+	result = replaceCodeRegexString(result, reAfter, "${1}after(")
 	result = cleanupConvertedCypressOutput(result)
 	result = prependCypressReference(result)
 	return ensureTrailingNewline(result), nil

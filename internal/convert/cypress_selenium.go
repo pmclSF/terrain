@@ -46,8 +46,8 @@ func ConvertCypressToSeleniumSource(source string) (string, error) {
 	}
 
 	if !astApplied {
-		result = reCyJoinChains.ReplaceAllString(result, "cy.$1($2).")
-		result = reCyJoinMethods.ReplaceAllString(result, ").$1")
+		result = replaceCodeRegexString(result, reCyJoinChains, "cy.$1($2).")
+		result = replaceCodeRegexString(result, reCyJoinMethods, ").$1")
 
 		assertionReplacements := []struct {
 			re   *regexp.Regexp
@@ -72,7 +72,7 @@ func ConvertCypressToSeleniumSource(source string) (string, error) {
 			{reCyTitleShouldEq, `expect(await driver.getTitle()).toBe($1)`},
 		}
 		for _, replacement := range assertionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
 		actionReplacements := []struct {
@@ -101,22 +101,22 @@ func ConvertCypressToSeleniumSource(source string) (string, error) {
 			{reCyToSelClearLocalStorage, `await driver.executeScript("localStorage.clear()")`},
 		}
 		for _, replacement := range actionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
-		result = reCyToSelNumericBack.ReplaceAllString(result, `await driver.navigate().back() /* cy.go($1) */`)
-		result = reContext.ReplaceAllString(result, "${1}describe(")
-		result = reSpecify.ReplaceAllString(result, "${1}it(")
-		result = reCyToSelHookBeforeArrow.ReplaceAllString(result, "${1}beforeAll(async () => {")
-		result = reCyToSelHookAfterArrow.ReplaceAllString(result, "${1}afterAll(async () => {")
-		result = reCyToSelHookBeforeEach.ReplaceAllString(result, "${1}beforeEach(async () => {")
-		result = reCyToSelHookAfterEach.ReplaceAllString(result, "${1}afterEach(async () => {")
-		result = reCyToSelHookBeforeFunc.ReplaceAllString(result, "${1}beforeAll(async function() {")
-		result = reCyToSelHookAfterFunc.ReplaceAllString(result, "${1}afterAll(async function() {")
-		result = reCyToSelHookBeforeEachFunc.ReplaceAllString(result, "${1}beforeEach(async function() {")
-		result = reCyToSelHookAfterEachFunc.ReplaceAllString(result, "${1}afterEach(async function() {")
-		result = reCyToSelItArrow.ReplaceAllString(result, "${1}${2}async () => {")
-		result = reCyToSelItFunc.ReplaceAllString(result, "${1}${2}async function() {")
+		result = replaceCodeRegexString(result, reCyToSelNumericBack, `await driver.navigate().back() /* cy.go($1) */`)
+		result = replaceCodeRegexString(result, reContext, "${1}describe(")
+		result = replaceCodeRegexString(result, reSpecify, "${1}it(")
+		result = replaceCodeRegexString(result, reCyToSelHookBeforeArrow, "${1}beforeAll(async () => {")
+		result = replaceCodeRegexString(result, reCyToSelHookAfterArrow, "${1}afterAll(async () => {")
+		result = replaceCodeRegexString(result, reCyToSelHookBeforeEach, "${1}beforeEach(async () => {")
+		result = replaceCodeRegexString(result, reCyToSelHookAfterEach, "${1}afterEach(async () => {")
+		result = replaceCodeRegexString(result, reCyToSelHookBeforeFunc, "${1}beforeAll(async function() {")
+		result = replaceCodeRegexString(result, reCyToSelHookAfterFunc, "${1}afterAll(async function() {")
+		result = replaceCodeRegexString(result, reCyToSelHookBeforeEachFunc, "${1}beforeEach(async function() {")
+		result = replaceCodeRegexString(result, reCyToSelHookAfterEachFunc, "${1}afterEach(async function() {")
+		result = replaceCodeRegexString(result, reCyToSelItArrow, "${1}${2}async () => {")
+		result = replaceCodeRegexString(result, reCyToSelItFunc, "${1}${2}async function() {")
 
 		result = commentUnsupportedCypressSeleniumLines(result)
 	}

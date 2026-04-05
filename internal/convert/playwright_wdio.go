@@ -97,7 +97,7 @@ func ConvertPlaywrightToWdioSource(source string) (string, error) {
 			{rePWToWdioExpectAttribute, `await expect($($1)).toHaveAttribute($2, $3)`},
 		}
 		for _, replacement := range assertionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
 		actionReplacements := []struct {
@@ -130,27 +130,27 @@ func ConvertPlaywrightToWdioSource(source string) (string, error) {
 			{rePWToWdioContextClear, `await browser.deleteCookies()`},
 		}
 		for _, replacement := range actionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
-		result = rePWToWdioEvaluate.ReplaceAllString(result, `await browser.execute(`)
-		result = rePWToWdioGetByTextClickS.ReplaceAllString(result, "await $(`*=$1`).click()")
-		result = rePWToWdioGetByTextClickD.ReplaceAllString(result, "await $(`*=$1`).click()")
-		result = rePWToWdioGetByTextS.ReplaceAllString(result, "$(`*=$1`)")
-		result = rePWToWdioGetByTextD.ReplaceAllString(result, "$(`*=$1`)")
-		result = rePWToWdioLocatorStandalone.ReplaceAllString(result, `$($1)`)
+		result = replaceCodeRegexString(result, rePWToWdioEvaluate, `await browser.execute(`)
+		result = replaceCodeRegexString(result, rePWToWdioGetByTextClickS, "await $(`*=$1`).click()")
+		result = replaceCodeRegexString(result, rePWToWdioGetByTextClickD, "await $(`*=$1`).click()")
+		result = replaceCodeRegexString(result, rePWToWdioGetByTextS, "$(`*=$1`)")
+		result = replaceCodeRegexString(result, rePWToWdioGetByTextD, "$(`*=$1`)")
+		result = replaceCodeRegexString(result, rePWToWdioLocatorStandalone, `$($1)`)
 
-		result = rePWDescribeOnly.ReplaceAllString(result, "describe.only(")
-		result = rePWDescribeSkip.ReplaceAllString(result, "describe.skip(")
-		result = rePWDescribe.ReplaceAllString(result, "describe(")
-		result = rePWTestOnly.ReplaceAllString(result, "it.only(")
-		result = rePWTestSkip.ReplaceAllString(result, "it.skip(")
-		result = rePWBeforeAll.ReplaceAllString(result, "before(")
-		result = rePWAfterAll.ReplaceAllString(result, "after(")
-		result = rePWBeforeEach.ReplaceAllString(result, "beforeEach(")
-		result = rePWAfterEach.ReplaceAllString(result, "afterEach(")
-		result = rePWTestCall.ReplaceAllString(result, "it($1,")
-		result = rePWCallbackArgs.ReplaceAllString(result, "() =>")
+		result = replaceCodeRegexString(result, rePWDescribeOnly, "describe.only(")
+		result = replaceCodeRegexString(result, rePWDescribeSkip, "describe.skip(")
+		result = replaceCodeRegexString(result, rePWDescribe, "describe(")
+		result = replaceCodeRegexString(result, rePWTestOnly, "it.only(")
+		result = replaceCodeRegexString(result, rePWTestSkip, "it.skip(")
+		result = replaceCodeRegexString(result, rePWBeforeAll, "before(")
+		result = replaceCodeRegexString(result, rePWAfterAll, "after(")
+		result = replaceCodeRegexString(result, rePWBeforeEach, "beforeEach(")
+		result = replaceCodeRegexString(result, rePWAfterEach, "afterEach(")
+		result = replaceCodeRegexString(result, rePWTestCall, "it($1,")
+		result = replaceCodeRegexString(result, rePWCallbackArgs, "() =>")
 	}
 
 	if astApplied {

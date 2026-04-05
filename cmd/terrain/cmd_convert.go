@@ -68,7 +68,7 @@ func runConvertCLI(args []string) error {
 	fs.StringVar(&opts.Output, "o", "", "output path for converted tests")
 	fs.StringVar(&opts.Config, "config", "", "custom configuration file path")
 	fs.StringVar(&opts.TestType, "test-type", "", "test type (e2e, component, api, etc.)")
-	fs.BoolVar(&opts.Validate, "validate", false, "validate converted tests")
+	fs.BoolVar(&opts.Validate, "validate", true, "validate converted tests")
 	fs.StringVar(&opts.Report, "report", "", "generate conversion report (html, json, markdown)")
 	fs.BoolVar(&opts.PreserveStructure, "preserve-structure", false, "maintain original directory structure")
 	fs.IntVar(&opts.BatchSize, "batch-size", 5, "number of files per batch")
@@ -189,7 +189,7 @@ func runConvert(source string, opts convertCommandOptions) error {
 		BatchSize:         opts.BatchSize,
 		Concurrency:       opts.Concurrency,
 		AutoDetect:        opts.AutoDetect,
-		ValidateSyntax:    opts.Validate || opts.StrictValidate,
+		ValidateSyntax:    true,
 		Plan:              opts.Plan,
 		DryRun:            opts.DryRun,
 	})
@@ -257,8 +257,15 @@ func renderConvertPlan(plan conv.TestMigrationPlan, jsonOutput bool) error {
 	fmt.Printf("  Language: %s\n", plan.Direction.Language)
 	fmt.Printf("  Category: %s\n", plan.Direction.Category)
 	fmt.Printf("  Shorthands: %s\n", strings.Join(plan.Direction.Shorthands, ", "))
-	fmt.Printf("  Legacy runtime: %s\n", plan.Direction.LegacyRuntime)
 	fmt.Printf("  Go-native state: %s\n", humanizeGoNativeState(plan.Direction.GoNativeState))
+	fmt.Printf("  Capabilities: tests=%s, config=%s, project=%s, detect=%s, validate=%s, confidence=%s\n",
+		plan.Direction.Capabilities.TestMigration,
+		plan.Direction.Capabilities.ConfigMigration,
+		plan.Direction.Capabilities.ProjectMigration,
+		plan.Direction.Capabilities.AutoDetect,
+		plan.Direction.Capabilities.SyntaxValidation,
+		plan.Direction.Capabilities.ConfidenceReport,
+	)
 	fmt.Printf("  Execution: %s\n", plan.ExecutionStatus)
 	if plan.Output != "" {
 		fmt.Printf("  Output: %s\n", plan.Output)
@@ -355,6 +362,15 @@ func runDetect(path string, jsonOutput bool) error {
 	}
 	if detection.Mode == "directory" {
 		fmt.Printf("  Files scanned: %d\n", detection.FilesScanned)
+		if detection.Mixed {
+			fmt.Println("  Mixed repo: yes")
+		}
+		if detection.Ambiguous {
+			fmt.Println("  Ambiguous: yes")
+		}
+		for _, candidate := range detection.Candidates {
+			fmt.Printf("  Candidate: %s (%.0f%% confidence across %d file(s))\n", candidate.Framework, candidate.Confidence*100, candidate.Files)
+		}
 	}
 	return nil
 }
@@ -436,7 +452,7 @@ func printConvertUsage() {
 	fmt.Fprintln(os.Stderr, "  --to, -t           target framework")
 	fmt.Fprintln(os.Stderr, "  --output, -o       write converted output to a file or directory")
 	fmt.Fprintln(os.Stderr, "  --auto-detect      detect the source framework from the file or directory")
-	fmt.Fprintln(os.Stderr, "  --validate         validate converted output syntax (compatibility alias)")
+	fmt.Fprintln(os.Stderr, "  --validate         validate converted output syntax (default: true; pass --validate=false to disable)")
 	fmt.Fprintln(os.Stderr, "  --strict-validate  enforce parser-based syntax validation of converted output")
 	fmt.Fprintln(os.Stderr, "  --plan             show the Go-native migration plan for this direction")
 	fmt.Fprintln(os.Stderr, "  --dry-run          same as plan, but framed as a no-write preview")

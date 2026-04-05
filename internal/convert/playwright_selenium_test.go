@@ -76,6 +76,29 @@ test.describe('assertions', () => {
 	}
 }
 
+func TestConvertPlaywrightToSeleniumSource_PreservesRegexURLAndTitleExpectations(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test, expect } from '@playwright/test';
+
+test('regex expectations', async ({ page }) => {
+  await expect(page).toHaveURL(/dashboard\/\d+/);
+  await expect(page).toHaveTitle(/Checkout/);
+});
+`
+
+	got, err := ConvertPlaywrightToSeleniumSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToSeleniumSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "expect(await driver.getCurrentUrl()).toMatch(/dashboard\\/\\d+/)") {
+		t.Fatalf("expected regex URL assertion to convert with toMatch, got:\n%s", got)
+	}
+	if !strings.Contains(got, "expect(await driver.getTitle()).toMatch(/Checkout/)") {
+		t.Fatalf("expected regex title assertion to convert with toMatch, got:\n%s", got)
+	}
+}
+
 func TestExecutePlaywrightToSeleniumDirectory_PreservesFileNamesAndHelpers(t *testing.T) {
 	t.Parallel()
 
@@ -168,5 +191,59 @@ test('unsupported', async ({ page }) => {
 	}
 	if !strings.Contains(got, "// await page.getByTestId('ready').click();") {
 		t.Fatalf("expected original unsupported line to be commented out, got:\n%s", got)
+	}
+}
+
+func TestConvertPlaywrightToSeleniumSource_ConvertsOnlySafeCookieClears(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test } from '@playwright/test';
+
+test('cookies', async ({ page, context }) => {
+  await context.clearCookies();
+  await page.context().clearCookies();
+  await page.context().clearCookies({ name: 'session' });
+});
+`
+
+	got, err := ConvertPlaywrightToSeleniumSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToSeleniumSource returned error: %v", err)
+	}
+	if strings.Count(got, "await driver.manage().deleteAllCookies()") != 2 {
+		t.Fatalf("expected both zero-arg clearCookies calls to convert, got:\n%s", got)
+	}
+	if !strings.Contains(got, "TERRAIN-TODO: manual Playwright conversion required") {
+		t.Fatalf("expected filtered clearCookies call to be flagged for manual review, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await page.context().clearCookies({ name: 'session' });") {
+		t.Fatalf("expected filtered clearCookies call to be preserved as a comment, got:\n%s", got)
+	}
+}
+
+func TestConvertPlaywrightToSeleniumSource_FallbackPreservesRegexURLAndTitleExpectations(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test, expect } from '@playwright/test';
+
+test('regex expectations', async ({ page }) => {
+  await expect(page).toHaveURL(/dashboard\/\d+/);
+  await expect(page).toHaveTitle(/Checkout/);
+  if (
+});
+`
+
+	got, err := ConvertPlaywrightToSeleniumSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToSeleniumSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "expect(await driver.getCurrentUrl()).toMatch(/dashboard\\/\\d+/)") {
+		t.Fatalf("expected fallback regex URL assertion to convert with toMatch, got:\n%s", got)
+	}
+	if !strings.Contains(got, "expect(await driver.getTitle()).toMatch(/Checkout/)") {
+		t.Fatalf("expected fallback regex title assertion to convert with toMatch, got:\n%s", got)
+	}
+	if strings.Contains(got, ".toContain(/dashboard") {
+		t.Fatalf("expected fallback path not to downgrade regex URL assertions to toContain, got:\n%s", got)
 	}
 }

@@ -66,21 +66,19 @@ func ConvertPlaywrightToPuppeteerSource(source string) (string, error) {
 	result = rePlaywrightImportRemove.ReplaceAllString(result, "")
 
 	if rePWToPptrExpectURL.MatchString(result) {
-		result = rePWToPptrExpectURL.ReplaceAllStringFunc(result, func(match string) string {
-			parts := rePWToPptrExpectURL.FindStringSubmatch(match)
-			if len(parts) != 2 {
+		result = replaceCodeRegexMatches(result, rePWToPptrExpectURL, func(match string, groups []string) string {
+			if len(groups) != 1 {
 				return match
 			}
-			return puppeteerExpectationAssertion("page.url()", parts[1])
+			return puppeteerExpectationAssertion("page.url()", groups[0])
 		})
 	}
 	if rePWToPptrExpectTitle.MatchString(result) {
-		result = rePWToPptrExpectTitle.ReplaceAllStringFunc(result, func(match string) string {
-			parts := rePWToPptrExpectTitle.FindStringSubmatch(match)
-			if len(parts) != 2 {
+		result = replaceCodeRegexMatches(result, rePWToPptrExpectTitle, func(match string, groups []string) string {
+			if len(groups) != 1 {
 				return match
 			}
-			return puppeteerExpectationAssertion("await page.title()", parts[1])
+			return puppeteerExpectationAssertion("await page.title()", groups[0])
 		})
 	}
 
@@ -99,7 +97,7 @@ func ConvertPlaywrightToPuppeteerSource(source string) (string, error) {
 		{rePWToPptrExpectAttribute, `expect(await page.$$eval($1, (el, a) => el.getAttribute(a), $2)).toBe($3)`},
 	}
 	for _, replacement := range assertionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
+		result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 	}
 
 	actionReplacements := []struct {
@@ -123,32 +121,31 @@ func ConvertPlaywrightToPuppeteerSource(source string) (string, error) {
 		{rePWToPptrClearCook, `await page.deleteCookie(...(await page.cookies()))`},
 	}
 	for _, replacement := range actionReplacements {
-		result = replacement.re.ReplaceAllString(result, replacement.repl)
+		result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 	}
 
 	if rePWToPptrClear.MatchString(result) {
-		result = rePWToPptrClear.ReplaceAllStringFunc(result, func(match string) string {
-			parts := rePWToPptrClear.FindStringSubmatch(match)
-			if len(parts) != 2 {
+		result = replaceCodeRegexMatches(result, rePWToPptrClear, func(match string, groups []string) string {
+			if len(groups) != 1 {
 				return match
 			}
-			return puppeteerClearSelector(parts[1])
+			return puppeteerClearSelector(groups[0])
 		})
 	}
 
-	result = rePWDescribeOnly.ReplaceAllString(result, "describe.only(")
-	result = rePWDescribeSkip.ReplaceAllString(result, "describe.skip(")
-	result = rePWDescribe.ReplaceAllString(result, "describe(")
-	result = rePWTestOnly.ReplaceAllString(result, "it.only(")
-	result = rePWTestSkip.ReplaceAllString(result, "it.skip(")
-	result = rePWBeforeAll.ReplaceAllString(result, "beforeAll(")
-	result = rePWAfterAll.ReplaceAllString(result, "afterAll(")
-	result = rePWBeforeEach.ReplaceAllString(result, "beforeEach(")
-	result = rePWAfterEach.ReplaceAllString(result, "afterEach(")
-	result = rePWTestCall.ReplaceAllString(result, "it($1,")
-	result = rePWCallbackArgs.ReplaceAllString(result, "() =>")
+	result = replaceCodeRegexString(result, rePWDescribeOnly, "describe.only(")
+	result = replaceCodeRegexString(result, rePWDescribeSkip, "describe.skip(")
+	result = replaceCodeRegexString(result, rePWDescribe, "describe(")
+	result = replaceCodeRegexString(result, rePWTestOnly, "it.only(")
+	result = replaceCodeRegexString(result, rePWTestSkip, "it.skip(")
+	result = replaceCodeRegexString(result, rePWBeforeAll, "beforeAll(")
+	result = replaceCodeRegexString(result, rePWAfterAll, "afterAll(")
+	result = replaceCodeRegexString(result, rePWBeforeEach, "beforeEach(")
+	result = replaceCodeRegexString(result, rePWAfterEach, "afterEach(")
+	result = replaceCodeRegexString(result, rePWTestCall, "it($1,")
+	result = replaceCodeRegexString(result, rePWCallbackArgs, "() =>")
 
-	result = rePWToPptrStandalone.ReplaceAllString(result, `page.$$($1)`)
+	result = replaceCodeRegexString(result, rePWToPptrStandalone, `page.$$($1)`)
 	result = commentUnsupportedPlaywrightPuppeteerLines(result)
 	result = addPuppeteerLifecycleBoilerplate(result)
 	result = cleanupConvertedPuppeteerOutput(result)

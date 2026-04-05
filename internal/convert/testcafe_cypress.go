@@ -63,10 +63,10 @@ func ConvertTestCafeToCypressSource(source string) (string, error) {
 	if !astApplied {
 		result = reTcImport.ReplaceAllString(result, "")
 		result, suiteName, pageURL = extractTestCafeFixture(result)
-		result = reTcCySelectorAssignText.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
-		result = reTcCySelectorAssignFind.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
-		result = reTcCySelectorAssignNth.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
-		result = reTcCySelectorAssign.ReplaceAllString(result, `${1}${2} ${3} = ${4};`)
+		result = replaceCodeRegexString(result, reTcCySelectorAssignText, `${1}${2} ${3} = ${4};`)
+		result = replaceCodeRegexString(result, reTcCySelectorAssignFind, `${1}${2} ${3} = ${4};`)
+		result = replaceCodeRegexString(result, reTcCySelectorAssignNth, `${1}${2} ${3} = ${4};`)
+		result = replaceCodeRegexString(result, reTcCySelectorAssign, `${1}${2} ${3} = ${4};`)
 
 		assertionReplacements := []struct {
 			re   *regexp.Regexp
@@ -82,7 +82,7 @@ func ConvertTestCafeToCypressSource(source string) (string, error) {
 			{reTcCyExpectValueEq, `cy.get($1).should('have.value', $2)`},
 		}
 		for _, replacement := range assertionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
 		actionReplacements := []struct {
@@ -103,14 +103,14 @@ func ConvertTestCafeToCypressSource(source string) (string, error) {
 			{reTcCyTypeText, `cy.get($1).type($2)`},
 		}
 		for _, replacement := range actionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
-		result = reTcCySelectorWithText.ReplaceAllString(result, `cy.contains($1, $2)`)
-		result = reTcCySelectorFind.ReplaceAllString(result, `cy.get($1).find($2)`)
-		result = reTcCySelectorNth.ReplaceAllString(result, `cy.get($1).eq($2)`)
-		result = reTcCySelectorStandalone.ReplaceAllString(result, `cy.get($1)`)
-		result = reTcCyTestCallback.ReplaceAllString(result, `it($1, () => {`)
+		result = replaceCodeRegexString(result, reTcCySelectorWithText, `cy.contains($1, $2)`)
+		result = replaceCodeRegexString(result, reTcCySelectorFind, `cy.get($1).find($2)`)
+		result = replaceCodeRegexString(result, reTcCySelectorNth, `cy.get($1).eq($2)`)
+		result = replaceCodeRegexString(result, reTcCySelectorStandalone, `cy.get($1)`)
+		result = replaceCodeRegexString(result, reTcCyTestCallback, `it($1, () => {`)
 
 		result = commentUnsupportedTestCafeCypressLines(result)
 	}

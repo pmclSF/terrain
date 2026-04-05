@@ -6,7 +6,6 @@ import (
 )
 
 var (
-	rePWToSelExpectURLRegex  = regexp.MustCompile(`await expect\(page\)\.toHaveURL\((/[^)]+/)\)`)
 	rePWToSelExpectURL       = regexp.MustCompile(`await expect\(page\)\.toHaveURL\(([^)]+)\)`)
 	rePWToSelExpectTitle     = regexp.MustCompile(`await expect\(page\)\.toHaveTitle\(([^)]+)\)`)
 	rePWToSelExpectVisible   = regexp.MustCompile(`await expect\(page\.locator\(([^)]+)\)\)\.toBeVisible\(\)`)
@@ -60,13 +59,27 @@ func ConvertPlaywrightToSeleniumSource(source string) (string, error) {
 	if !astApplied {
 		result = rePlaywrightImportRemove.ReplaceAllString(result, "")
 
+		if rePWToSelExpectURL.MatchString(result) {
+			result = replaceCodeRegexMatches(result, rePWToSelExpectURL, func(match string, groups []string) string {
+				if len(groups) != 1 {
+					return match
+				}
+				return seleniumExpectationAssertion("await driver.getCurrentUrl()", groups[0])
+			})
+		}
+		if rePWToSelExpectTitle.MatchString(result) {
+			result = replaceCodeRegexMatches(result, rePWToSelExpectTitle, func(match string, groups []string) string {
+				if len(groups) != 1 {
+					return match
+				}
+				return seleniumExpectationAssertion("await driver.getTitle()", groups[0])
+			})
+		}
+
 		assertionReplacements := []struct {
 			re   *regexp.Regexp
 			repl string
 		}{
-			{rePWToSelExpectURLRegex, `expect(await driver.getCurrentUrl()).toContain($1)`},
-			{rePWToSelExpectURL, `expect(await driver.getCurrentUrl()).toBe($1)`},
-			{rePWToSelExpectTitle, `expect(await driver.getTitle()).toBe($1)`},
 			{rePWToSelExpectVisible, `expect(await (await driver.findElement(By.css($1))).isDisplayed()).toBe(true)`},
 			{rePWToSelExpectHidden, `expect(await (await driver.findElement(By.css($1))).isDisplayed()).toBe(false)`},
 			{rePWToSelExpectAttached, `expect((await driver.findElements(By.css($1))).length).toBeGreaterThan(0)`},
@@ -80,7 +93,7 @@ func ConvertPlaywrightToSeleniumSource(source string) (string, error) {
 			{rePWToSelExpectCount, `expect((await driver.findElements(By.css($1))).length).toBe($2)`},
 		}
 		for _, replacement := range assertionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
 		actionReplacements := []struct {
@@ -101,30 +114,30 @@ func ConvertPlaywrightToSeleniumSource(source string) (string, error) {
 			{rePWToSelGetByTextClick, "await driver.findElement(By.xpath(`//*[contains(text(),$1)]`)).click()"},
 		}
 		for _, replacement := range actionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
 		if rePWToSelCheck.MatchString(result) {
-			result = rePWToSelCheck.ReplaceAllString(result, "const checkbox = await driver.findElement(By.css($1));\n    if (!(await checkbox.isSelected())) await checkbox.click()")
+			result = replaceCodeRegexString(result, rePWToSelCheck, "const checkbox = await driver.findElement(By.css($1));\n    if (!(await checkbox.isSelected())) await checkbox.click()")
 		}
 		if rePWToSelUncheck.MatchString(result) {
-			result = rePWToSelUncheck.ReplaceAllString(result, "const checkbox = await driver.findElement(By.css($1));\n    if (await checkbox.isSelected()) await checkbox.click()")
+			result = replaceCodeRegexString(result, rePWToSelUncheck, "const checkbox = await driver.findElement(By.css($1));\n    if (await checkbox.isSelected()) await checkbox.click()")
 		}
 		if rePWToSelSelectOption.MatchString(result) {
-			result = rePWToSelSelectOption.ReplaceAllString(result, "const select = await driver.findElement(By.css($1));\n    await select.findElement(By.css(`option[value=${$2}]`)).click()")
+			result = replaceCodeRegexString(result, rePWToSelSelectOption, "const select = await driver.findElement(By.css($1));\n    await select.findElement(By.css(`option[value=${$2}]`)).click()")
 		}
 
-		result = rePWDescribeOnly.ReplaceAllString(result, "describe.only(")
-		result = rePWDescribeSkip.ReplaceAllString(result, "describe.skip(")
-		result = rePWDescribe.ReplaceAllString(result, "describe(")
-		result = rePWTestOnly.ReplaceAllString(result, "it.only(")
-		result = rePWTestSkip.ReplaceAllString(result, "it.skip(")
-		result = rePWBeforeAll.ReplaceAllString(result, "beforeAll(")
-		result = rePWAfterAll.ReplaceAllString(result, "afterAll(")
-		result = rePWBeforeEach.ReplaceAllString(result, "beforeEach(")
-		result = rePWAfterEach.ReplaceAllString(result, "afterEach(")
-		result = rePWTestCall.ReplaceAllString(result, "it($1,")
-		result = rePWCallbackArgs.ReplaceAllString(result, "() =>")
+		result = replaceCodeRegexString(result, rePWDescribeOnly, "describe.only(")
+		result = replaceCodeRegexString(result, rePWDescribeSkip, "describe.skip(")
+		result = replaceCodeRegexString(result, rePWDescribe, "describe(")
+		result = replaceCodeRegexString(result, rePWTestOnly, "it.only(")
+		result = replaceCodeRegexString(result, rePWTestSkip, "it.skip(")
+		result = replaceCodeRegexString(result, rePWBeforeAll, "beforeAll(")
+		result = replaceCodeRegexString(result, rePWAfterAll, "afterAll(")
+		result = replaceCodeRegexString(result, rePWBeforeEach, "beforeEach(")
+		result = replaceCodeRegexString(result, rePWAfterEach, "afterEach(")
+		result = replaceCodeRegexString(result, rePWTestCall, "it($1,")
+		result = replaceCodeRegexString(result, rePWCallbackArgs, "() =>")
 
 		result = commentUnsupportedPlaywrightSeleniumLines(result)
 	}
@@ -156,4 +169,11 @@ func cleanupConvertedSeleniumOutput(source string) string {
 		source = strings.ReplaceAll(source, "\n\n\n", "\n\n")
 	}
 	return strings.TrimSpace(source) + "\n"
+}
+
+func seleniumExpectationAssertion(actual, expected string) string {
+	if isJSRegexLiteral(expected) {
+		return "expect(" + actual + ").toMatch(" + expected + ")"
+	}
+	return "expect(" + actual + ").toBe(" + expected + ")"
 }

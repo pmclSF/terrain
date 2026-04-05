@@ -41,7 +41,7 @@ func runMigrateCLI(args []string) error {
 	fs.BoolVar(&opts.DryRun, "dry-run", false, "preview migration without writing files")
 	fs.BoolVar(&opts.Plan, "plan", false, "show a structured migration plan")
 	fs.BoolVar(&opts.JSON, "json", false, "JSON output")
-	fs.BoolVar(&opts.StrictValidate, "strict-validate", false, "validate converted output syntax before recording files as converted")
+	fs.BoolVar(&opts.StrictValidate, "strict-validate", true, "validate converted output syntax before recording files as converted")
 
 	if err := fs.Parse(reorderCLIArgs(args, workflowFlagsWithValue)); err != nil {
 		printMigrateUsage()
@@ -174,7 +174,7 @@ func runMigrate(root string, opts migrateCommandOptions) error {
 		Concurrency:    opts.Concurrency,
 		Continue:       opts.Continue,
 		RetryFailed:    opts.RetryFailed,
-		StrictValidate: opts.StrictValidate,
+		StrictValidate: true,
 	})
 	if err != nil {
 		return err
@@ -447,7 +447,7 @@ func printMigrateUsage() {
 	fmt.Fprintln(os.Stderr, "      --dry-run         preview migration without writing files")
 	fmt.Fprintln(os.Stderr, "      --plan            show a structured migration plan")
 	fmt.Fprintln(os.Stderr, "      --json            machine-readable output")
-	fmt.Fprintln(os.Stderr, "      --strict-validate validate converted output syntax before keeping files")
+	fmt.Fprintln(os.Stderr, "      --strict-validate validate converted output syntax before keeping files (default: true)")
 }
 
 func printEstimateUsage() {
