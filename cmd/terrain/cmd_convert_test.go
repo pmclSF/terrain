@@ -223,6 +223,32 @@ func TestRunConvert_ValidateAliasRejectsMalformedConvertedOutput(t *testing.T) {
 	}
 }
 
+func TestRunConvert_DefaultValidationRejectsMalformedConvertedOutput(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	inputPath := filepath.Join(root, "broken.test.js")
+	outputDir := filepath.Join(root, "converted")
+	input := "describe('broken', () => {\n"
+	if err := os.WriteFile(inputPath, []byte(input), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	err := runCaptured(func() error {
+		return runConvert(inputPath, convertCommandOptions{
+			From:   "jest",
+			To:     "vitest",
+			Output: outputDir,
+		})
+	})
+	if err == nil {
+		t.Fatal("expected validation error, got nil")
+	}
+	if !strings.Contains(err.Error(), "syntax validation failed") {
+		t.Fatalf("expected syntax validation error, got: %v", err)
+	}
+}
+
 func TestRunConvert_DirectoryUsesBatchAndConcurrency(t *testing.T) {
 	t.Parallel()
 

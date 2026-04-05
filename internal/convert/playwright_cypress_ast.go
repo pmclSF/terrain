@@ -257,14 +257,14 @@ func convertPlaywrightExpectationCall(node *sitter.Node, src []byte) (string, bo
 		if target == "page" {
 			callArgs := jsArgumentTexts(node, src)
 			if len(callArgs) == 1 {
-				return "cy.url().should('include', " + callArgs[0] + ")", true
+				return playwrightURLAssertionToCypress(callArgs[0]), true
 			}
 		}
 	case "toHaveTitle":
 		if target == "page" {
 			callArgs := jsArgumentTexts(node, src)
 			if len(callArgs) == 1 {
-				return "cy.title().should('eq', " + callArgs[0] + ")", true
+				return playwrightTitleAssertionToCypress(callArgs[0]), true
 			}
 		}
 	}
@@ -397,6 +397,20 @@ func parseGetByRoleNameArg(arg string) (string, bool) {
 		return "", false
 	}
 	return strings.TrimSpace(match[1]), true
+}
+
+func playwrightURLAssertionToCypress(expected string) string {
+	if isJSRegexLiteral(expected) {
+		return "cy.url().should('match', " + expected + ")"
+	}
+	return "cy.url().should('include', " + expected + ")"
+}
+
+func playwrightTitleAssertionToCypress(expected string) string {
+	if isJSRegexLiteral(expected) {
+		return "cy.title().should('match', " + expected + ")"
+	}
+	return "cy.title().should('eq', " + expected + ")"
 }
 
 func unsupportedPlaywrightLineRowsAST(source string) (map[int]bool, bool) {

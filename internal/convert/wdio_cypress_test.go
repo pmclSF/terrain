@@ -174,3 +174,69 @@ func TestConvertWdioToCypressSource_HandlesSelectorParensAndPreservesComments(t 
 		t.Fatalf("expected selector with nested parens to convert, got:\n%s", got)
 	}
 }
+
+func TestConvertWdioToCypressSource_ConvertsSafeKeysAndFlagsAmbiguousKeysAndCookies(t *testing.T) {
+	t.Parallel()
+
+	input := `describe('keys and cookies', () => {
+  it('keeps ambiguous input explicit', async () => {
+    await browser.keys('abc');
+    await browser.keys(['Enter']);
+    await browser.getCookies();
+    await browser.getCookies(['session']);
+    await browser.deleteCookies(['session']);
+    await browser.deleteCookies();
+  });
+});
+`
+
+	got, err := ConvertWdioToCypressSource(input)
+	if err != nil {
+		t.Fatalf("ConvertWdioToCypressSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "cy.get('body').type('abc')") {
+		t.Fatalf("expected safe text keys conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "cy.getCookies()") {
+		t.Fatalf("expected zero-arg getCookies conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "cy.clearCookies()") {
+		t.Fatalf("expected zero-arg deleteCookies conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual WebdriverIO conversion required") {
+		t.Fatalf("expected ambiguous keys/cookies to be flagged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await browser.keys(['Enter']);") {
+		t.Fatalf("expected special key sequence to be preserved as comment, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await browser.getCookies(['session']);") {
+		t.Fatalf("expected filtered getCookies call to be preserved as comment, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await browser.deleteCookies(['session']);") {
+		t.Fatalf("expected filtered deleteCookies call to be preserved as comment, got:\n%s", got)
+	}
+}
+
+func TestConvertWdioToCypressSource_FallbackConvertsSafeTextKeysOnly(t *testing.T) {
+	t.Parallel()
+
+	input := `describe('fallback', () => {
+  it('keeps fallback safe', async () => {
+    await browser.keys('abc');
+    await browser.keys(['Enter']);
+`
+
+	got, err := ConvertWdioToCypressSource(input)
+	if err != nil {
+		t.Fatalf("ConvertWdioToCypressSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "cy.get('body').type('abc')") {
+		t.Fatalf("expected safe fallback text keys conversion, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual WebdriverIO conversion required") {
+		t.Fatalf("expected ambiguous fallback key call to be flagged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await browser.keys(['Enter']);") {
+		t.Fatalf("expected unsupported fallback key sequence to be preserved as comment, got:\n%s", got)
+	}
+}

@@ -90,7 +90,7 @@ func ConvertSeleniumToPlaywrightSource(source string) (string, error) {
 			{reSelExpectTitle, `await expect(page).toHaveTitle($1)`},
 		}
 		for _, replacement := range assertionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
 		actionReplacements := []struct {
@@ -110,28 +110,28 @@ func ConvertSeleniumToPlaywrightSource(source string) (string, error) {
 			{reSelXPathClick, "await page.locator(`xpath=$1`).click()"},
 		}
 		for _, replacement := range actionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
-		result = reSelFindElementsCSS.ReplaceAllString(result, `page.locator($1)`)
-		result = reSelFindElementCSS.ReplaceAllString(result, `page.locator($1)`)
+		result = replaceCodeRegexString(result, reSelFindElementsCSS, `page.locator($1)`)
+		result = replaceCodeRegexString(result, reSelFindElementCSS, `page.locator($1)`)
 
-		result = reDescribeOnly.ReplaceAllString(result, "${1}test.describe.only(")
-		result = reDescribeSkip.ReplaceAllString(result, "${1}test.describe.skip(")
-		result = reDescribe.ReplaceAllString(result, "${1}test.describe(")
-		result = reContext.ReplaceAllString(result, "${1}test.describe(")
-		result = reItOnly.ReplaceAllString(result, "${1}test.only(")
-		result = reItSkip.ReplaceAllString(result, "${1}test.skip(")
-		result = reSpecify.ReplaceAllString(result, "${1}test(")
-		result = reIt.ReplaceAllString(result, "${1}test(")
-		result = reBeforeEach.ReplaceAllString(result, "${1}test.beforeEach(")
-		result = reAfterEach.ReplaceAllString(result, "${1}test.afterEach(")
-		result = reBefore.ReplaceAllString(result, "${1}test.beforeAll(")
-		result = reAfter.ReplaceAllString(result, "${1}test.afterAll(")
+		result = replaceCodeRegexString(result, reDescribeOnly, "${1}test.describe.only(")
+		result = replaceCodeRegexString(result, reDescribeSkip, "${1}test.describe.skip(")
+		result = replaceCodeRegexString(result, reDescribe, "${1}test.describe(")
+		result = replaceCodeRegexString(result, reContext, "${1}test.describe(")
+		result = replaceCodeRegexString(result, reItOnly, "${1}test.only(")
+		result = replaceCodeRegexString(result, reItSkip, "${1}test.skip(")
+		result = replaceCodeRegexString(result, reSpecify, "${1}test(")
+		result = replaceCodeRegexString(result, reIt, "${1}test(")
+		result = replaceCodeRegexString(result, reBeforeEach, "${1}test.beforeEach(")
+		result = replaceCodeRegexString(result, reAfterEach, "${1}test.afterEach(")
+		result = replaceCodeRegexString(result, reBefore, "${1}test.beforeAll(")
+		result = replaceCodeRegexString(result, reAfter, "${1}test.afterAll(")
 
-		result = rePlaywrightDescribeCallback.ReplaceAllString(result, `${1}() => {`)
-		result = rePlaywrightTestEmptyCallback.ReplaceAllString(result, `${1}async ({ page }) => {`)
-		result = rePlaywrightHookCallback.ReplaceAllString(result, `test.$1(async ({ page }) => {`)
+		result = replaceCodeRegexString(result, rePlaywrightDescribeCallback, `${1}() => {`)
+		result = replaceCodeRegexString(result, rePlaywrightTestEmptyCallback, `${1}async ({ page }) => {`)
+		result = replaceCodeRegexString(result, rePlaywrightHookCallback, `test.$1(async ({ page }) => {`)
 
 		result = commentUnsupportedSeleniumLines(result)
 	}

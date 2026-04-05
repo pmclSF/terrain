@@ -109,8 +109,8 @@ func ConvertCypressToPlaywrightSource(source string) (string, error) {
 	}
 
 	if !astApplied {
-		result = reCyJoinChains.ReplaceAllString(result, "cy.$1($2).")
-		result = reCyJoinMethods.ReplaceAllString(result, ").$1")
+		result = replaceCodeRegexString(result, reCyJoinChains, "cy.$1($2).")
+		result = replaceCodeRegexString(result, reCyJoinMethods, ").$1")
 
 		assertionReplacements := []struct {
 			re   *regexp.Regexp
@@ -137,12 +137,12 @@ func ConvertCypressToPlaywrightSource(source string) (string, error) {
 		for _, replacement := range assertionReplacements {
 			if replacement.re.MatchString(result) {
 				retryWarning = true
-				result = replacement.re.ReplaceAllString(result, replacement.repl)
+				result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 			}
 		}
 		if reCyGetShouldLengthGT.MatchString(result) {
 			retryWarning = true
-			result = reCyGetShouldLengthGT.ReplaceAllString(result, `expect(await page.locator($1).count()).toBeGreaterThan($2)`)
+			result = replaceCodeRegexString(result, reCyGetShouldLengthGT, `expect(await page.locator($1).count()).toBeGreaterThan($2)`)
 		}
 
 		actionReplacements := []struct {
@@ -179,25 +179,25 @@ func ConvertCypressToPlaywrightSource(source string) (string, error) {
 			{reCyGetOnly, `page.locator($1)`},
 		}
 		for _, replacement := range actionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
-		result = reDescribeOnly.ReplaceAllString(result, "${1}test.describe.only(")
-		result = reDescribeSkip.ReplaceAllString(result, "${1}test.describe.skip(")
-		result = reDescribe.ReplaceAllString(result, "${1}test.describe(")
-		result = reContext.ReplaceAllString(result, "${1}test.describe(")
-		result = reItOnly.ReplaceAllString(result, "${1}test.only(")
-		result = reItSkip.ReplaceAllString(result, "${1}test.skip(")
-		result = reSpecify.ReplaceAllString(result, "${1}test(")
-		result = reIt.ReplaceAllString(result, "${1}test(")
-		result = reBeforeEach.ReplaceAllString(result, "${1}test.beforeEach(")
-		result = reAfterEach.ReplaceAllString(result, "${1}test.afterEach(")
-		result = reBefore.ReplaceAllString(result, "${1}test.beforeAll(")
-		result = reAfter.ReplaceAllString(result, "${1}test.afterAll(")
+		result = replaceCodeRegexString(result, reDescribeOnly, "${1}test.describe.only(")
+		result = replaceCodeRegexString(result, reDescribeSkip, "${1}test.describe.skip(")
+		result = replaceCodeRegexString(result, reDescribe, "${1}test.describe(")
+		result = replaceCodeRegexString(result, reContext, "${1}test.describe(")
+		result = replaceCodeRegexString(result, reItOnly, "${1}test.only(")
+		result = replaceCodeRegexString(result, reItSkip, "${1}test.skip(")
+		result = replaceCodeRegexString(result, reSpecify, "${1}test(")
+		result = replaceCodeRegexString(result, reIt, "${1}test(")
+		result = replaceCodeRegexString(result, reBeforeEach, "${1}test.beforeEach(")
+		result = replaceCodeRegexString(result, reAfterEach, "${1}test.afterEach(")
+		result = replaceCodeRegexString(result, reBefore, "${1}test.beforeAll(")
+		result = replaceCodeRegexString(result, reAfter, "${1}test.afterAll(")
 
-		result = rePlaywrightDescribeCallback.ReplaceAllString(result, `${1}() => {`)
-		result = rePlaywrightTestEmptyCallback.ReplaceAllString(result, `${1}async ({ page }) => {`)
-		result = rePlaywrightHookCallback.ReplaceAllString(result, `test.$1(async ({ page }) => {`)
+		result = replaceCodeRegexString(result, rePlaywrightDescribeCallback, `${1}() => {`)
+		result = replaceCodeRegexString(result, rePlaywrightTestEmptyCallback, `${1}async ({ page }) => {`)
+		result = replaceCodeRegexString(result, rePlaywrightHookCallback, `test.$1(async ({ page }) => {`)
 	}
 
 	if astApplied {

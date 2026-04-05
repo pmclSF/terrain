@@ -3,11 +3,16 @@ package convert
 import "strings"
 
 type GoNativeState string
+type CapabilityLevel string
 
 const (
 	GoNativeStateCataloged   GoNativeState = "cataloged"
 	GoNativeStatePrioritized GoNativeState = "prioritized"
 	GoNativeStateImplemented GoNativeState = "implemented"
+
+	CapabilityUnsupported CapabilityLevel = "unsupported"
+	CapabilityPartial     CapabilityLevel = "partial"
+	CapabilitySupported   CapabilityLevel = "supported"
 )
 
 type Framework struct {
@@ -18,15 +23,25 @@ type Framework struct {
 }
 
 type Direction struct {
-	From           string        `json:"from"`
-	To             string        `json:"to"`
-	Language       string        `json:"language"`
-	Category       string        `json:"category"`
-	Shorthands     []string      `json:"shorthands"`
-	LegacyRuntime  string        `json:"legacyRuntime"`
-	GoNativeState  GoNativeState `json:"goNativeState"`
-	GoNativeReady  bool          `json:"goNativeReady"`
-	Implementation string        `json:"implementation"`
+	From           string                `json:"from"`
+	To             string                `json:"to"`
+	Language       string                `json:"language"`
+	Category       string                `json:"category"`
+	Shorthands     []string              `json:"shorthands"`
+	LegacyRuntime  string                `json:"legacyRuntime,omitempty"`
+	GoNativeState  GoNativeState         `json:"goNativeState"`
+	GoNativeReady  bool                  `json:"goNativeReady"`
+	Implementation string                `json:"implementation"`
+	Capabilities   DirectionCapabilities `json:"capabilities"`
+}
+
+type DirectionCapabilities struct {
+	TestMigration    CapabilityLevel `json:"testMigration"`
+	ConfigMigration  CapabilityLevel `json:"configMigration"`
+	ProjectMigration CapabilityLevel `json:"projectMigration"`
+	AutoDetect       CapabilityLevel `json:"autoDetect"`
+	SyntaxValidation CapabilityLevel `json:"syntaxValidation"`
+	ConfidenceReport CapabilityLevel `json:"confidenceReport"`
 }
 
 type DirectionCategory struct {
@@ -284,7 +299,29 @@ func directionFromKey(key string) Direction {
 		GoNativeState:  state,
 		GoNativeReady:  state == GoNativeStateImplemented,
 		Implementation: implementation,
+		Capabilities: DirectionCapabilities{
+			TestMigration:    CapabilitySupported,
+			ConfigMigration:  configCapabilityLevel(from, to),
+			ProjectMigration: projectCapabilityLevel(from, to),
+			AutoDetect:       CapabilitySupported,
+			SyntaxValidation: CapabilitySupported,
+			ConfidenceReport: CapabilitySupported,
+		},
 	}
+}
+
+func configCapabilityLevel(from, to string) CapabilityLevel {
+	if SupportsConfigConversion(from, to) {
+		return CapabilitySupported
+	}
+	return CapabilityUnsupported
+}
+
+func projectCapabilityLevel(from, to string) CapabilityLevel {
+	if !SupportsConfigConversion(from, to) {
+		return CapabilityPartial
+	}
+	return CapabilitySupported
 }
 
 func buildAliases(from, to string) []string {

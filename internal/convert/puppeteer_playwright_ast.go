@@ -137,40 +137,48 @@ func convertPuppeteerCallToPlaywright(node *sitter.Node, src []byte) (string, bo
 			return "await page.goto(" + steps[0].args[0] + ")", true
 		}
 	case "type":
-		if len(steps) == 1 && len(steps[0].args) == 2 {
-			return "await page.locator(" + steps[0].args[0] + ").fill(" + steps[0].args[1] + ")", true
+		if len(steps) == 1 {
+			if replacement, ok := puppeteerTypeArgsToPlaywright(steps[0].args); ok {
+				return replacement, true
+			}
 		}
 	case "click":
-		if len(steps) == 1 && len(steps[0].args) >= 1 {
-			selector := steps[0].args[0]
-			if len(steps[0].args) == 2 && strings.Contains(steps[0].args[1], "clickCount: 2") {
-				return "await page.locator(" + selector + ").dblclick()", true
+		if len(steps) == 1 {
+			if replacement, ok := puppeteerClickArgsToPlaywright(steps[0].args); ok {
+				return replacement, true
 			}
-			return "await page.locator(" + selector + ").click()", true
 		}
 	case "hover":
 		if len(steps) == 1 && len(steps[0].args) == 1 {
 			return "await page.locator(" + steps[0].args[0] + ").hover()", true
 		}
 	case "select":
-		if len(steps) == 1 && len(steps[0].args) == 2 {
-			return "await page.locator(" + steps[0].args[0] + ").selectOption(" + steps[0].args[1] + ")", true
+		if len(steps) == 1 {
+			if replacement, ok := puppeteerSelectArgsToPlaywright(steps[0].args); ok {
+				return replacement, true
+			}
 		}
 	case "focus":
 		if len(steps) == 1 && len(steps[0].args) == 1 {
 			return "await page.locator(" + steps[0].args[0] + ").focus()", true
 		}
 	case "waitForSelector":
-		if len(steps) == 1 && len(steps[0].args) == 1 {
-			return "await page.locator(" + steps[0].args[0] + ").waitFor()", true
+		if len(steps) == 1 {
+			if replacement, ok := puppeteerWaitForSelectorArgsToPlaywright(steps[0].args); ok {
+				return replacement, true
+			}
 		}
 	case "$eval":
-		if len(steps) == 1 && len(steps[0].args) == 2 {
-			return "await page.locator(" + steps[0].args[0] + ").evaluate(" + steps[0].args[1] + ")", true
+		if len(steps) == 1 {
+			if replacement, ok := puppeteerEvalArgsToPlaywright(steps[0].args, false); ok {
+				return replacement, true
+			}
 		}
 	case "$$eval":
-		if len(steps) == 1 && len(steps[0].args) == 2 {
-			return "await page.locator(" + steps[0].args[0] + ").evaluateAll(" + steps[0].args[1] + ")", true
+		if len(steps) == 1 {
+			if replacement, ok := puppeteerEvalArgsToPlaywright(steps[0].args, true); ok {
+				return replacement, true
+			}
 		}
 	case "setViewport":
 		if len(steps) == 1 && len(steps[0].args) == 1 {
@@ -215,6 +223,153 @@ func puppeteerCookieArgsToPlaywright(args []string) (string, bool) {
 	return "[" + strings.Join(args, ", ") + "]", true
 }
 
+func puppeteerTypeArgsToPlaywright(args []string) (string, bool) {
+	if len(args) != 2 {
+		return "", false
+	}
+	return "await page.locator(" + args[0] + ").fill(" + args[1] + ")", true
+}
+
+func puppeteerClickArgsToPlaywright(args []string) (string, bool) {
+	if len(args) == 1 {
+		return "await page.locator(" + args[0] + ").click()", true
+	}
+	if len(args) == 2 && puppeteerClickIsDouble(args[1]) {
+		return "await page.locator(" + args[0] + ").dblclick()", true
+	}
+	return "", false
+}
+
+func puppeteerSelectArgsToPlaywright(args []string) (string, bool) {
+	if len(args) < 2 {
+		return "", false
+	}
+	selector := args[0]
+	values := args[1:]
+	if len(values) == 1 {
+		return "await page.locator(" + selector + ").selectOption(" + values[0] + ")", true
+	}
+	return "await page.locator(" + selector + ").selectOption([" + strings.Join(values, ", ") + "])", true
+}
+
+func puppeteerEvalArgsToPlaywright(args []string, evaluateAll bool) (string, bool) {
+	if len(args) != 2 {
+		return "", false
+	}
+	method := "evaluate"
+	if evaluateAll {
+		method = "evaluateAll"
+	}
+	return "await page.locator(" + args[0] + ")." + method + "(" + args[1] + ")", true
+}
+
+func puppeteerClickIsDouble(arg string) bool {
+	trimmed := strings.TrimSpace(arg)
+	if !strings.HasPrefix(trimmed, "{") || !strings.HasSuffix(trimmed, "}") {
+		return false
+	}
+	fields := splitTopLevelArgs(trimmed[1 : len(trimmed)-1])
+	if len(fields) != 1 {
+		return false
+	}
+	field := strings.TrimSpace(fields[0])
+	sep := strings.Index(field, ":")
+	if sep < 0 {
+		return false
+	}
+	key := strings.TrimSpace(field[:sep])
+	value := strings.TrimSpace(field[sep+1:])
+	return key == "clickCount" && value == "2"
+}
+
+func puppeteerWaitForSelectorArgsToPlaywright(args []string) (string, bool) {
+	if len(args) == 0 || len(args) > 2 {
+		return "", false
+	}
+
+	selector := strings.TrimSpace(args[0])
+	if selector == "" {
+		return "", false
+	}
+	if len(args) == 1 {
+		return "await page.locator(" + selector + ").waitFor()", true
+	}
+
+	options, ok := puppeteerWaitForSelectorOptionsToPlaywright(args[1])
+	if !ok {
+		return "", false
+	}
+	if options == "" {
+		return "await page.locator(" + selector + ").waitFor()", true
+	}
+	return "await page.locator(" + selector + ").waitFor(" + options + ")", true
+}
+
+func puppeteerWaitForSelectorOptionsToPlaywright(arg string) (string, bool) {
+	trimmed := strings.TrimSpace(arg)
+	if !strings.HasPrefix(trimmed, "{") || !strings.HasSuffix(trimmed, "}") {
+		return "", false
+	}
+
+	fields := splitTopLevelArgs(trimmed[1 : len(trimmed)-1])
+	parts := make([]string, 0, 2)
+	state := ""
+
+	for _, field := range fields {
+		field = strings.TrimSpace(field)
+		if field == "" {
+			continue
+		}
+		sep := strings.Index(field, ":")
+		if sep < 0 {
+			return "", false
+		}
+		key := strings.TrimSpace(field[:sep])
+		value := strings.TrimSpace(field[sep+1:])
+		switch key {
+		case "visible":
+			switch value {
+			case "true":
+				if state != "" && state != "'visible'" {
+					return "", false
+				}
+				state = "'visible'"
+			case "false":
+				continue
+			default:
+				return "", false
+			}
+		case "hidden":
+			switch value {
+			case "true":
+				if state != "" && state != "'hidden'" {
+					return "", false
+				}
+				state = "'hidden'"
+			case "false":
+				continue
+			default:
+				return "", false
+			}
+		case "timeout":
+			if value == "" {
+				return "", false
+			}
+			parts = append(parts, "timeout: "+value)
+		default:
+			return "", false
+		}
+	}
+
+	if state != "" {
+		parts = append([]string{"state: " + state}, parts...)
+	}
+	if len(parts) == 0 {
+		return "", true
+	}
+	return "{ " + strings.Join(parts, ", ") + " }", true
+}
+
 func convertPuppeteerExpectationToPlaywright(node *sitter.Node, src []byte) (string, bool) {
 	callee := jsCalleeNode(node)
 	if callee == nil || callee.Type() != "member_expression" {
@@ -243,6 +398,8 @@ func convertPuppeteerExpectationToPlaywright(node *sitter.Node, src []byte) (str
 					switch property {
 					case "toBe":
 						return "await expect(page).toHaveURL(" + callArgs[0] + ")", true
+					case "toContain":
+						return "await expect(page).toHaveURL(" + playwrightPatternArg(callArgs[0]) + ")", true
 					case "toMatch":
 						return "await expect(page).toHaveURL(" + playwrightPatternArg(callArgs[0]) + ")", true
 					}
@@ -252,6 +409,8 @@ func convertPuppeteerExpectationToPlaywright(node *sitter.Node, src []byte) (str
 					switch property {
 					case "toBe":
 						return "await expect(page).toHaveTitle(" + callArgs[0] + ")", true
+					case "toContain":
+						return "await expect(page).toHaveTitle(" + playwrightPatternArg(callArgs[0]) + ")", true
 					case "toMatch":
 						return "await expect(page).toHaveTitle(" + playwrightPatternArg(callArgs[0]) + ")", true
 					}

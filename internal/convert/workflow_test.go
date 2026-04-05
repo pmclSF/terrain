@@ -158,3 +158,25 @@ func TestRunMigrationDoctor_ReturnsChecks(t *testing.T) {
 		t.Fatalf("summary total = %d, want %d", result.Summary.Total, len(result.Checks))
 	}
 }
+
+func TestWarningsFromOutput_CollectsTerrainWarningsAndPenalizesConfidence(t *testing.T) {
+	t.Parallel()
+
+	output := `import { test, expect } from '@playwright/test';
+// TERRAIN-WARNING: Cypress .should() retries until timeout; review Playwright expect() semantics.
+test('example', async ({ page }) => {
+  await expect(page.locator('#status')).toBeVisible()
+})
+`
+
+	warnings := warningsFromOutput(output, "test")
+	if len(warnings) < 1 {
+		t.Fatalf("expected warning messages, got %v", warnings)
+	}
+	if !strings.Contains(strings.Join(warnings, "\n"), "Cypress .should() retries until timeout") {
+		t.Fatalf("expected TERRAIN-WARNING message, got %v", warnings)
+	}
+	if confidence := predictMigrationConfidence(output, "test"); confidence >= 95 {
+		t.Fatalf("confidence = %d, want penalty below 95", confidence)
+	}
+}

@@ -89,6 +89,35 @@ func TestLookupDirection_ImplementedDirectionsReportGoNativeRuntime(t *testing.T
 	}
 }
 
+func TestLookupDirection_ReportsCapabilities(t *testing.T) {
+	t.Parallel()
+
+	jestVitest, ok := LookupDirection("jest", "vitest")
+	if !ok {
+		t.Fatal("expected jest -> vitest direction")
+	}
+	if jestVitest.Capabilities.TestMigration != CapabilitySupported {
+		t.Fatalf("test capability = %s, want %s", jestVitest.Capabilities.TestMigration, CapabilitySupported)
+	}
+	if jestVitest.Capabilities.ConfigMigration != CapabilitySupported {
+		t.Fatalf("config capability = %s, want %s", jestVitest.Capabilities.ConfigMigration, CapabilitySupported)
+	}
+	if jestVitest.Capabilities.ProjectMigration != CapabilitySupported {
+		t.Fatalf("project capability = %s, want %s", jestVitest.Capabilities.ProjectMigration, CapabilitySupported)
+	}
+
+	testCafePlaywright, ok := LookupDirection("testcafe", "playwright")
+	if !ok {
+		t.Fatal("expected testcafe -> playwright direction")
+	}
+	if testCafePlaywright.Capabilities.ConfigMigration != CapabilityUnsupported {
+		t.Fatalf("config capability = %s, want %s", testCafePlaywright.Capabilities.ConfigMigration, CapabilityUnsupported)
+	}
+	if testCafePlaywright.Capabilities.ProjectMigration != CapabilityPartial {
+		t.Fatalf("project capability = %s, want %s", testCafePlaywright.Capabilities.ProjectMigration, CapabilityPartial)
+	}
+}
+
 func TestCategories_PreserveLegacyGroupingOrder(t *testing.T) {
 	t.Parallel()
 
@@ -160,5 +189,40 @@ func TestDetectSource_DirectoryChoosesStrongestMatch(t *testing.T) {
 	}
 	if detection.FilesScanned < 2 {
 		t.Fatalf("files scanned = %d, want at least 2", detection.FilesScanned)
+	}
+	if len(detection.Candidates) < 2 {
+		t.Fatalf("candidate count = %d, want at least 2", len(detection.Candidates))
+	}
+	if !detection.Mixed {
+		t.Fatal("expected mixed directory detection to be marked mixed")
+	}
+}
+
+func TestDetectSource_DirectoryMarksAmbiguousResults(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "tests"), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tests", "playwright.spec.ts"), []byte("import { test } from '@playwright/test'\n"), 0o644); err != nil {
+		t.Fatalf("write playwright file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tests", "cypress.spec.ts"), []byte("/// <reference types=\"cypress\" />\ncy.visit('/')\n"), 0o644); err != nil {
+		t.Fatalf("write cypress file: %v", err)
+	}
+
+	detection, err := DetectSource(root)
+	if err != nil {
+		t.Fatalf("DetectSource returned error: %v", err)
+	}
+	if !detection.Mixed {
+		t.Fatal("expected mixed repo detection")
+	}
+	if !detection.Ambiguous {
+		t.Fatalf("expected ambiguous detection, got %+v", detection)
+	}
+	if len(detection.Candidates) != 2 {
+		t.Fatalf("candidate count = %d, want 2", len(detection.Candidates))
 	}
 }

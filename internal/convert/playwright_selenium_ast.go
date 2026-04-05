@@ -107,15 +107,19 @@ func convertPlaywrightCallToSeleniumAST(node *sitter.Node, src []byte) (string, 
 	if !ok || len(steps) == 0 {
 		return "", false
 	}
-	if root != "page" {
-		return "", false
-	}
 
-	if replacement, ok := convertPlaywrightPageCallToSelenium(steps); ok {
-		return replacement, true
-	}
-	if replacement, ok := convertPlaywrightQueryStepsToSelenium(steps); ok {
-		return replacement, true
+	switch root {
+	case "page":
+		if replacement, ok := convertPlaywrightPageCallToSelenium(steps); ok {
+			return replacement, true
+		}
+		if replacement, ok := convertPlaywrightQueryStepsToSelenium(steps); ok {
+			return replacement, true
+		}
+	case "context":
+		if replacement, ok := convertPlaywrightContextCallToSelenium(steps); ok {
+			return replacement, true
+		}
 	}
 	return "", false
 }
@@ -150,13 +154,20 @@ func convertPlaywrightPageCallToSelenium(steps []jsCallStep) (string, bool) {
 			return "await driver.sleep(" + step.args[0] + ")", true
 		}
 	case "context":
-		if len(steps) == 2 && steps[1].method == "clearCookies" {
+		if len(steps) == 2 && steps[1].method == "clearCookies" && len(steps[1].args) == 0 {
 			return "await driver.manage().deleteAllCookies()", true
 		}
 	case "evaluate":
 		if len(steps) == 1 && len(step.args) == 1 && strings.Contains(step.args[0], "localStorage.clear()") {
 			return "await driver.executeScript(\"localStorage.clear()\")", true
 		}
+	}
+	return "", false
+}
+
+func convertPlaywrightContextCallToSelenium(steps []jsCallStep) (string, bool) {
+	if len(steps) == 1 && steps[0].method == "clearCookies" && len(steps[0].args) == 0 {
+		return "await driver.manage().deleteAllCookies()", true
 	}
 	return "", false
 }
@@ -190,14 +201,11 @@ func convertPlaywrightExpectationToSeleniumAST(node *sitter.Node, src []byte) (s
 		switch property {
 		case "toHaveURL":
 			if len(callArgs) == 1 {
-				if strings.HasPrefix(strings.TrimSpace(callArgs[0]), "/") && strings.HasSuffix(strings.TrimSpace(callArgs[0]), "/") {
-					return "expect(await driver.getCurrentUrl()).toContain(" + callArgs[0] + ")", true
-				}
-				return "expect(await driver.getCurrentUrl()).toBe(" + callArgs[0] + ")", true
+				return seleniumExpectationAssertion("await driver.getCurrentUrl()", callArgs[0]), true
 			}
 		case "toHaveTitle":
 			if len(callArgs) == 1 {
-				return "expect(await driver.getTitle()).toBe(" + callArgs[0] + ")", true
+				return seleniumExpectationAssertion("await driver.getTitle()", callArgs[0]), true
 			}
 		}
 		return "", false

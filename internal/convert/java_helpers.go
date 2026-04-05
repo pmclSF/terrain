@@ -28,7 +28,7 @@ func splitTopLevelArgs(input string) []string {
 		}
 
 		switch ch {
-		case '\'', '"':
+		case '\'', '"', '`':
 			quote = ch
 			current.WriteByte(ch)
 		case '(', '[', '{':
@@ -52,7 +52,7 @@ func splitTopLevelArgs(input string) []string {
 	}
 
 	tail := strings.TrimSpace(current.String())
-	if tail != "" || len(args) > 0 {
+	if tail != "" {
 		args = append(args, tail)
 	}
 	return args
@@ -85,7 +85,7 @@ func findMatchingParenSameLine(line string, open int) int {
 		}
 
 		switch ch {
-		case '\'', '"':
+		case '\'', '"', '`':
 			quote = ch
 		case '(':
 			depth++

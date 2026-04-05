@@ -117,14 +117,16 @@ func convertWdioBrowserCallToCypress(steps []jsCallStep) (string, bool) {
 		}
 	case "keys":
 		if len(steps) == 1 && len(step.args) == 1 {
-			return "cy.get('body').type(" + step.args[0] + ")", true
+			if replacement, ok := wdioBrowserKeysArgToCypress(step.args[0]); ok {
+				return replacement, true
+			}
 		}
 	case "deleteCookies":
-		if len(steps) == 1 {
+		if len(steps) == 1 && len(step.args) == 0 {
 			return "cy.clearCookies()", true
 		}
 	case "getCookies":
-		if len(steps) == 1 {
+		if len(steps) == 1 && len(step.args) == 0 {
 			return "cy.getCookies()", true
 		}
 	case "execute":

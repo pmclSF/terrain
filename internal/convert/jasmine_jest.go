@@ -43,18 +43,20 @@ func ConvertJasmineToJestSource(source string) (string, error) {
 		return astResult, nil
 	}
 
-	result = reJasmineCreateSpyObj.ReplaceAllStringFunc(result, convertJasmineCreateSpyObj)
-	result = reJasmineCreateSpyReturnValue.ReplaceAllString(result, "jest.fn().mockReturnValue($1)")
-	result = reJasmineCreateSpyCallFake.ReplaceAllString(result, "jest.fn().mockImplementation($1)")
-	result = reJasmineCreateSpy.ReplaceAllString(result, "jest.fn()")
-	result = reJasmineSpyOnReturnValue.ReplaceAllString(result, "jest.spyOn($1, $2).mockReturnValue($3)")
-	result = reJasmineSpyOnCallFake.ReplaceAllString(result, "jest.spyOn($1, $2).mockImplementation($3)")
-	result = reJasmineSpyOnCallThrough.ReplaceAllString(result, "jest.spyOn($1, $2)")
-	result = reJasmineSpyOn.ReplaceAllString(result, "jest.spyOn($1, $2)")
-	result = reJasmineClockInstall.ReplaceAllString(result, "jest.useFakeTimers()")
-	result = reJasmineClockUninstall.ReplaceAllString(result, "jest.useRealTimers()")
-	result = reJasmineClockTick.ReplaceAllString(result, "jest.advanceTimersByTime($1)")
-	result = reJasmineClockMockDate.ReplaceAllString(result, "jest.setSystemTime($1)")
+	result = replaceCodeRegexMatches(result, reJasmineCreateSpyObj, func(match string, _ []string) string {
+		return convertJasmineCreateSpyObj(match)
+	})
+	result = replaceCodeRegexString(result, reJasmineCreateSpyReturnValue, "jest.fn().mockReturnValue($1)")
+	result = replaceCodeRegexString(result, reJasmineCreateSpyCallFake, "jest.fn().mockImplementation($1)")
+	result = replaceCodeRegexString(result, reJasmineCreateSpy, "jest.fn()")
+	result = replaceCodeRegexString(result, reJasmineSpyOnReturnValue, "jest.spyOn($1, $2).mockReturnValue($3)")
+	result = replaceCodeRegexString(result, reJasmineSpyOnCallFake, "jest.spyOn($1, $2).mockImplementation($3)")
+	result = replaceCodeRegexString(result, reJasmineSpyOnCallThrough, "jest.spyOn($1, $2)")
+	result = replaceCodeRegexString(result, reJasmineSpyOn, "jest.spyOn($1, $2)")
+	result = replaceCodeRegexString(result, reJasmineClockInstall, "jest.useFakeTimers()")
+	result = replaceCodeRegexString(result, reJasmineClockUninstall, "jest.useRealTimers()")
+	result = replaceCodeRegexString(result, reJasmineClockTick, "jest.advanceTimersByTime($1)")
+	result = replaceCodeRegexString(result, reJasmineClockMockDate, "jest.setSystemTime($1)")
 	result = jasmineToJestReplacer.Replace(result)
 	result = commentMatchedLines(result, func(line string) bool {
 		return reJasmineAddMatchers.MatchString(line)

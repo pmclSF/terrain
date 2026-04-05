@@ -94,13 +94,11 @@ func RunTestMigration(source string, options TestMigrationOptions) (TestMigratio
 	if err != nil {
 		return result, err
 	}
-	if options.ValidateSyntax {
-		if err := ValidateExecutionResult(execution, direction.Language); err != nil {
-			if cleanupErr := CleanupExecutionOutputs(execution); cleanupErr != nil {
-				return result, fmt.Errorf("%v (cleanup failed: %w)", err, cleanupErr)
-			}
-			return result, err
+	if err := ValidateExecutionResult(execution, direction.Language); err != nil {
+		if cleanupErr := CleanupExecutionOutputs(execution); cleanupErr != nil {
+			return result, fmt.Errorf("%v (cleanup failed: %w)", err, cleanupErr)
 		}
+		return result, err
 	}
 
 	result.Execution = &execution

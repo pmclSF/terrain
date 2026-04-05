@@ -23,6 +23,7 @@ var (
 	rePWExpectCount        = regexp.MustCompile(`await expect\(page\.locator\(([^)]+)\)\)\.toHaveCount\(([^)]+)\)`)
 	rePWExpectPageURLRegex = regexp.MustCompile(`await expect\(page\)\.toHaveURL\((/[^)]+/)\)`)
 	rePWExpectPageURL      = regexp.MustCompile(`await expect\(page\)\.toHaveURL\(([^)]+)\)`)
+	rePWExpectTitleRegex   = regexp.MustCompile(`await expect\(page\)\.toHaveTitle\((/[^)]+/)\)`)
 	rePWExpectTitle        = regexp.MustCompile(`await expect\(page\)\.toHaveTitle\(([^)]+)\)`)
 
 	rePWGenericVisible     = regexp.MustCompile(`await expect\((.+?)\)\.toBeVisible\(\)`)
@@ -116,10 +117,11 @@ func ConvertPlaywrightToCypressSource(source string) (string, error) {
 			{rePWExpectCount, `cy.get($1).should('have.length', $2)`},
 			{rePWExpectPageURLRegex, `cy.url().should('match', $1)`},
 			{rePWExpectPageURL, `cy.url().should('include', $1)`},
+			{rePWExpectTitleRegex, `cy.title().should('match', $1)`},
 			{rePWExpectTitle, `cy.title().should('eq', $1)`},
 		}
 		for _, replacement := range assertionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
 		genericAssertionReplacements := []struct {
@@ -134,7 +136,7 @@ func ConvertPlaywrightToCypressSource(source string) (string, error) {
 			{rePWGenericCount, `$1.should('have.length', $2)`},
 		}
 		for _, replacement := range genericAssertionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
 		actionReplacements := []struct {
@@ -164,26 +166,26 @@ func ConvertPlaywrightToCypressSource(source string) (string, error) {
 			{rePWScreenshot, `cy.screenshot()`},
 		}
 		for _, replacement := range actionReplacements {
-			result = replacement.re.ReplaceAllString(result, replacement.repl)
+			result = replaceCodeRegexString(result, replacement.re, replacement.repl)
 		}
 
-		result = rePWDescribeOnly.ReplaceAllString(result, "describe.only(")
-		result = rePWDescribeSkip.ReplaceAllString(result, "describe.skip(")
-		result = rePWDescribe.ReplaceAllString(result, "describe(")
-		result = rePWTestOnly.ReplaceAllString(result, "it.only(")
-		result = rePWTestSkip.ReplaceAllString(result, "it.skip(")
-		result = rePWBeforeAll.ReplaceAllString(result, "before(")
-		result = rePWAfterAll.ReplaceAllString(result, "after(")
-		result = rePWBeforeEach.ReplaceAllString(result, "beforeEach(")
-		result = rePWAfterEach.ReplaceAllString(result, "afterEach(")
-		result = rePWTestCall.ReplaceAllString(result, "it($1,")
-		result = rePWCallbackArgs.ReplaceAllString(result, "() =>")
+		result = replaceCodeRegexString(result, rePWDescribeOnly, "describe.only(")
+		result = replaceCodeRegexString(result, rePWDescribeSkip, "describe.skip(")
+		result = replaceCodeRegexString(result, rePWDescribe, "describe(")
+		result = replaceCodeRegexString(result, rePWTestOnly, "it.only(")
+		result = replaceCodeRegexString(result, rePWTestSkip, "it.skip(")
+		result = replaceCodeRegexString(result, rePWBeforeAll, "before(")
+		result = replaceCodeRegexString(result, rePWAfterAll, "after(")
+		result = replaceCodeRegexString(result, rePWBeforeEach, "beforeEach(")
+		result = replaceCodeRegexString(result, rePWAfterEach, "afterEach(")
+		result = replaceCodeRegexString(result, rePWTestCall, "it($1,")
+		result = replaceCodeRegexString(result, rePWCallbackArgs, "() =>")
 
-		result = rePWGetByRoleNamed.ReplaceAllString(result, `cy.contains('[role=' + $1 + ']', $2)`)
-		result = rePWGetByTextStandalone.ReplaceAllString(result, `cy.contains($1)`)
-		result = rePWLocatorStandalone.ReplaceAllString(result, `cy.get($1)`)
-		result = rePWNestedLocator.ReplaceAllString(result, `.find($1)`)
-		result = rePWNth.ReplaceAllString(result, `.eq($1)`)
+		result = replaceCodeRegexString(result, rePWGetByRoleNamed, `cy.contains('[role=' + $1 + ']', $2)`)
+		result = replaceCodeRegexString(result, rePWGetByTextStandalone, `cy.contains($1)`)
+		result = replaceCodeRegexString(result, rePWLocatorStandalone, `cy.get($1)`)
+		result = replaceCodeRegexString(result, rePWNestedLocator, `.find($1)`)
+		result = replaceCodeRegexString(result, rePWNth, `.eq($1)`)
 	}
 
 	if astApplied {

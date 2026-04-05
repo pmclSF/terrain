@@ -172,3 +172,31 @@ func TestConvertCypressToWdioSource_HandlesSelectorParensAndPreservesComments(t 
 		t.Fatalf("expected selector with nested parens to convert, got:\n%s", got)
 	}
 }
+
+func TestConvertCypressToWdioSource_FallbackUsesSingularSelectors(t *testing.T) {
+	t.Parallel()
+
+	input := `describe('fallback selectors', () => {
+  it('uses broken syntax to force fallback', () => {
+    cy.get('#email').type('admin');
+    cy.get('#save').click();
+    cy.get('#save').should('be.visible');
+`
+
+	got, err := ConvertCypressToWdioSource(input)
+	if err != nil {
+		t.Fatalf("ConvertCypressToWdioSource returned error: %v", err)
+	}
+	if strings.Contains(got, "$$('#email')") || strings.Contains(got, "$$('#save')") {
+		t.Fatalf("expected fallback path to use singular WDIO selectors, got:\n%s", got)
+	}
+	for _, want := range []string{
+		"await $('#email').setValue('admin')",
+		"await $('#save').click()",
+		"await expect($('#save')).toBeDisplayed()",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+}
