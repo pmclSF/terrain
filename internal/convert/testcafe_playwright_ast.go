@@ -23,15 +23,47 @@ var testCafeUnsupportedTMethods = map[string]bool{
 	"eval":               true,
 }
 
-func convertTestCafeToPlaywrightSourceAST(source string) (string, bool) {
+var testCafePlaywrightTrackedTMethods = map[string]bool{
+	"expect":           true,
+	"click":            true,
+	"doubleClick":      true,
+	"hover":            true,
+	"typeText":         true,
+	"navigateTo":       true,
+	"wait":             true,
+	"takeScreenshot":   true,
+	"resizeWindow":     true,
+	"setFilesToUpload": true,
+}
+
+func convertTestCafeToPlaywrightSourceAST(source string) (string, string, string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
-		return "", false
+		return "", "", "", false
 	}
 	defer tree.Close()
 
 	edits := make([]textEdit, 0, 16)
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
+	unsupportedRows := map[int]bool{}
+	suiteName, pageURL := "", ""
+	root := tree.tree.RootNode()
+	for i := 0; i < int(root.NamedChildCount()); i++ {
+		child := root.NamedChild(i)
+		if child == nil || child.Type() != "expression_statement" {
+			continue
+		}
+		if extractedSuiteName, extractedPageURL, ok := testCafeFixtureStatementInfo(child, tree.src); ok {
+			suiteName = extractedSuiteName
+			pageURL = extractedPageURL
+			edits = append(edits, textEdit{
+				start: int(child.StartByte()),
+				end:   int(child.EndByte()),
+			})
+			break
+		}
+	}
+
+	walkJSNodes(root, func(node *sitter.Node) bool {
 		switch node.Type() {
 		case "import_statement":
 			module := jsNodeText(node, tree.src)
@@ -56,6 +88,8 @@ func convertTestCafeToPlaywrightSourceAST(source string) (string, bool) {
 					})
 					return false
 				}
+				unsupportedRows[int(value.StartPoint().Row)] = true
+				return false
 			}
 		case "call_expression":
 			callee := jsCalleeNode(node)
@@ -75,16 +109,36 @@ func convertTestCafeToPlaywrightSourceAST(source string) (string, bool) {
 				edits = append(edits, replacementEditForCall(node, replacement))
 				return false
 			}
+			if callee == nil {
+				return true
+			}
+			if callee.Type() == "identifier" {
+				name := jsNodeText(callee, tree.src)
+				if testCafeUnsupportedCallNames[name] {
+					unsupportedRows[int(node.StartPoint().Row)] = true
+					return false
+				}
+				return true
+			}
+			if callee.Type() != "member_expression" {
+				return true
+			}
+			root := jsBaseIdentifier(callee, tree.src)
+			property := jsNodeText(jsMemberProperty(callee), tree.src)
+			if root == "t" && (testCafeUnsupportedTMethods[property] || testCafePlaywrightTrackedTMethods[property]) {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
 		}
 		return true
 	})
 
 	result := applyTextEdits(source, edits)
-	if rows, ok := unsupportedTestCafePlaywrightLineRowsAST(source); ok && len(rows) > 0 {
-		result = commentSpecificLines(result, rows, "manual TestCafe conversion required")
+	if len(unsupportedRows) > 0 {
+		result = commentSpecificLines(result, unsupportedRows, "manual TestCafe conversion required")
 	}
 	result = collapseBlankLines(result)
-	return ensureTrailingNewline(result), true
+	return ensureTrailingNewline(result), suiteName, pageURL, true
 }
 
 func convertTestCafeCallToPlaywright(node *sitter.Node, src []byte) (string, bool) {

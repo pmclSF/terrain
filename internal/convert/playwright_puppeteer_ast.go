@@ -19,6 +19,11 @@ var playwrightPuppeteerStructuralCallees = map[string]string{
 	"test":               "it",
 }
 
+type playwrightPuppeteerASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
 func convertPlaywrightToPuppeteerSourceAST(source string) (string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
@@ -26,7 +31,18 @@ func convertPlaywrightToPuppeteerSourceAST(source string) (string, bool) {
 	}
 	defer tree.Close()
 
+	analysis := analyzePlaywrightToPuppeteerAST(tree)
+	result := applyTextEdits(source, analysis.edits)
+	if len(analysis.unsupportedRows) > 0 {
+		result = commentSpecificLines(result, analysis.unsupportedRows, "manual Playwright conversion required")
+	}
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), true
+}
+
+func analyzePlaywrightToPuppeteerAST(tree *jsSyntaxTree) playwrightPuppeteerASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		switch node.Type() {
 		case "import_statement":
@@ -65,16 +81,30 @@ func convertPlaywrightToPuppeteerSourceAST(source string) (string, bool) {
 				edits = append(edits, replacementEditForCall(node, replacement))
 				return false
 			}
+
+			root, steps, ok := extractJSCallChain(node, tree.src)
+			if !ok || len(steps) == 0 {
+				return true
+			}
+			switch root {
+			case "page":
+				switch steps[0].method {
+				case "route", "getByText", "getByRole", "getByTestId", "context":
+					unsupportedRows[int(node.StartPoint().Row)] = true
+					return false
+				}
+			case "request", "download", "context":
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
 		}
 		return true
 	})
 
-	result := applyTextEdits(source, edits)
-	if rows, ok := unsupportedPlaywrightPuppeteerLineRowsAST(source); ok && len(rows) > 0 {
-		result = commentSpecificLines(result, rows, "manual Playwright conversion required")
+	return playwrightPuppeteerASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
 	}
-	result = collapseBlankLines(result)
-	return ensureTrailingNewline(result), true
 }
 
 func playwrightPuppeteerCallbackPrefix(mapped string) (string, bool) {
@@ -120,12 +150,16 @@ func convertPlaywrightCallToPuppeteer(node *sitter.Node, src []byte) (string, bo
 			switch steps[1].method {
 			case "addCookies":
 				if len(steps[1].args) == 1 {
-					return "await page.setCookie(" + steps[1].args[0] + ")", true
+					return "await page.setCookie(..." + steps[1].args[0] + ")", true
 				}
 			case "cookies":
-				return "await page.cookies()", true
+				if len(steps[1].args) == 0 {
+					return "await page.cookies()", true
+				}
 			case "clearCookies":
-				return "await page.deleteCookie()", true
+				if len(steps[1].args) == 0 {
+					return "await page.deleteCookie(...(await page.cookies()))", true
+				}
 			}
 		}
 	case "locator":
@@ -163,11 +197,11 @@ func convertPlaywrightExpectationToPuppeteer(node *sitter.Node, src []byte) (str
 	switch property {
 	case "toHaveURL":
 		if targetText == "page" && len(callArgs) == 1 {
-			return "expect(page.url()).toBe(" + callArgs[0] + ")", true
+			return puppeteerExpectationAssertion("page.url()", callArgs[0]), true
 		}
 	case "toHaveTitle":
 		if targetText == "page" && len(callArgs) == 1 {
-			return "expect(await page.title()).toBe(" + callArgs[0] + ")", true
+			return puppeteerExpectationAssertion("await page.title()", callArgs[0]), true
 		}
 	}
 
@@ -291,30 +325,7 @@ func unsupportedPlaywrightPuppeteerLineRowsAST(source string) (map[int]bool, boo
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		if node.Type() != "call_expression" {
-			return true
-		}
-		root, steps, ok := extractJSCallChain(node, tree.src)
-		if !ok || len(steps) == 0 {
-			return true
-		}
-		switch root {
-		case "page":
-			switch steps[0].method {
-			case "route", "getByText", "getByRole", "getByTestId", "context":
-				rows[int(node.StartPoint().Row)] = true
-				return false
-			}
-		case "request", "download", "context":
-			rows[int(node.StartPoint().Row)] = true
-			return false
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzePlaywrightToPuppeteerAST(tree).unsupportedRows, true
 }
 
 func puppeteerClearSelector(selector string) string {

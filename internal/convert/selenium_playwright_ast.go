@@ -21,6 +21,11 @@ var seleniumPlaywrightStructuralCallees = map[string]string{
 	"afterEach":     "test.afterEach",
 }
 
+type seleniumPlaywrightASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
 func convertSeleniumToPlaywrightSourceAST(source string) (string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
@@ -28,7 +33,18 @@ func convertSeleniumToPlaywrightSourceAST(source string) (string, bool) {
 	}
 	defer tree.Close()
 
+	analysis := analyzeSeleniumToPlaywrightAST(tree)
+	result := applyTextEdits(source, analysis.edits)
+	if len(analysis.unsupportedRows) > 0 {
+		result = commentSpecificLines(result, analysis.unsupportedRows, "manual Selenium conversion required")
+	}
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), true
+}
+
+func analyzeSeleniumToPlaywrightAST(tree *jsSyntaxTree) seleniumPlaywrightASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		switch node.Type() {
 		case "import_statement":
@@ -86,16 +102,18 @@ func convertSeleniumToPlaywrightSourceAST(source string) (string, bool) {
 				edits = append(edits, replacementEditForCall(node, replacement))
 				return false
 			}
+			if seleniumCallNeedsManualReview(node, tree.src) {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
 		}
 		return true
 	})
 
-	result := applyTextEdits(source, edits)
-	if rows, ok := unsupportedSeleniumPlaywrightLineRowsAST(source); ok && len(rows) > 0 {
-		result = commentSpecificLines(result, rows, "manual Selenium conversion required")
+	return seleniumPlaywrightASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
 	}
-	result = collapseBlankLines(result)
-	return ensureTrailingNewline(result), true
 }
 
 func seleniumPlaywrightCallbackPrefix(mapped string) (string, bool) {
@@ -466,23 +484,5 @@ func unsupportedSeleniumPlaywrightLineRowsAST(source string) (map[int]bool, bool
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		if node.Type() != "call_expression" {
-			return true
-		}
-		if seleniumIsDriverSetupHook(node, tree.src) || seleniumIsDriverTeardownHook(node, tree.src) {
-			return false
-		}
-		if _, ok := convertSeleniumCallToPlaywrightAST(node, tree.src); ok {
-			return false
-		}
-		if seleniumCallNeedsManualReview(node, tree.src) {
-			rows[int(node.StartPoint().Row)] = true
-			return false
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzeSeleniumToPlaywrightAST(tree).unsupportedRows, true
 }

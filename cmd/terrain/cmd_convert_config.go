@@ -2,11 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 
 	conv "github.com/pmclSF/terrain/internal/convert"
@@ -18,19 +18,6 @@ type convertConfigCommandOptions struct {
 	Output string
 	DryRun bool
 	JSON   bool
-}
-
-type convertConfigResult struct {
-	Command      string         `json:"command"`
-	Source       string         `json:"source"`
-	Output       string         `json:"output,omitempty"`
-	Mode         string         `json:"mode"`
-	From         string         `json:"from"`
-	To           string         `json:"to"`
-	AutoDetected bool           `json:"autoDetected,omitempty"`
-	DryRun       bool           `json:"dryRun,omitempty"`
-	Direction    conv.Direction `json:"direction"`
-	Status       string         `json:"status"`
 }
 
 var convertConfigFlagsWithValue = map[string]bool{
@@ -76,76 +63,25 @@ func runConvertConfig(source string, opts convertConfigCommandOptions) error {
 		return cliUsageError{message: "convert-config requires <source>"}
 	}
 
-	to := conv.NormalizeFramework(opts.To)
-	if to == "" {
-		return cliUsageError{message: "--to <framework> is required"}
-	}
-
-	from := conv.NormalizeFramework(opts.From)
-	autoDetected := false
-	if from == "" {
-		from = conv.DetectConfigFramework(source)
-		autoDetected = from != ""
-		if from == "" {
-			return cliUsageError{message: "could not auto-detect source framework from config filename; use --from <framework>"}
-		}
-	}
-
-	if _, ok := conv.LookupFramework(from); !ok {
-		return cliUsageError{message: fmt.Sprintf("invalid source framework: %s. Valid options: %s", from, strings.Join(conv.FrameworkNames(), ", "))}
-	}
-	if _, ok := conv.LookupFramework(to); !ok {
-		return cliUsageError{message: fmt.Sprintf("invalid target framework: %s. Valid options: %s", to, strings.Join(conv.FrameworkNames(), ", "))}
-	}
-	if from == to {
-		return cliUsageError{message: "source and target frameworks must be different"}
-	}
-
-	direction, ok := conv.LookupDirection(from, to)
-	if !ok {
-		targets := conv.SupportedTargets(from)
-		if len(targets) == 0 {
-			return cliUsageError{message: fmt.Sprintf("unsupported source framework: %s", from)}
-		}
-		return cliUsageError{message: fmt.Sprintf("unsupported conversion: %s to %s. Supported targets for %s: %s", from, to, from, strings.Join(targets, ", "))}
-	}
-
-	content, err := os.ReadFile(source)
+	result, err := conv.RunConfigMigration(source, conv.ConfigMigrationOptions{
+		From:   opts.From,
+		To:     opts.To,
+		Output: opts.Output,
+		DryRun: opts.DryRun,
+	})
 	if err != nil {
-		return fmt.Errorf("read config: %w", err)
-	}
-	converted, err := conv.ConvertConfig(string(content), from, to)
-	if err != nil {
+		var inputErr conv.ConversionInputError
+		if errors.As(err, &inputErr) {
+			message := inputErr.Error()
+			switch message {
+			case "target framework is required":
+				message = "--to <framework> is required"
+			case "source is required":
+				message = "convert-config requires <source>"
+			}
+			return cliUsageError{message: message}
+		}
 		return err
-	}
-
-	mode := "stdout"
-	status := "printed"
-	outputPath := ""
-	if strings.TrimSpace(opts.Output) != "" {
-		mode = "file"
-		status = "written"
-		outputPath, err = resolveConfigOutputPath(source, opts.Output)
-		if err != nil {
-			return err
-		}
-	}
-	if opts.DryRun {
-		mode = "dry-run"
-		status = "previewed"
-	}
-
-	result := convertConfigResult{
-		Command:      "convert-config",
-		Source:       source,
-		Output:       outputPath,
-		Mode:         mode,
-		From:         from,
-		To:           to,
-		AutoDetected: autoDetected,
-		DryRun:       opts.DryRun,
-		Direction:    direction,
-		Status:       status,
 	}
 
 	if opts.JSON {
@@ -158,33 +94,26 @@ func runConvertConfig(source string, opts convertConfigCommandOptions) error {
 		fmt.Println("Dry run")
 		fmt.Println()
 		fmt.Printf("  Source: %s\n", source)
-		fmt.Printf("  Detected framework: %s\n", from)
-		fmt.Printf("  Target framework: %s\n", to)
-		if outputPath != "" {
-			fmt.Printf("  Output: %s\n", outputPath)
+		fmt.Printf("  Detected framework: %s\n", result.From)
+		fmt.Printf("  Target framework: %s\n", result.To)
+		if result.Output != "" {
+			fmt.Printf("  Output: %s\n", result.Output)
 		} else {
 			fmt.Println("  Output: (stdout)")
 		}
 		return nil
 	}
 
-	if outputPath == "" {
-		fmt.Print(converted)
+	if result.Output == "" {
+		fmt.Print(result.ConvertedContent)
 		return nil
-	}
-
-	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
-		return fmt.Errorf("create output directory: %w", err)
-	}
-	if err := os.WriteFile(outputPath, []byte(converted), 0o644); err != nil {
-		return fmt.Errorf("write config output: %w", err)
 	}
 
 	fmt.Println("Go-native config conversion complete")
 	fmt.Println()
 	fmt.Printf("  Source: %s\n", source)
-	fmt.Printf("  Direction: %s -> %s\n", from, to)
-	fmt.Printf("  Output: %s\n", outputPath)
+	fmt.Printf("  Direction: %s -> %s\n", result.From, result.To)
+	fmt.Printf("  Output: %s\n", result.Output)
 	return nil
 }
 
@@ -197,18 +126,4 @@ func printConvertConfigUsage() {
 	fmt.Fprintln(os.Stderr, "  --output, -o       write converted config to a file")
 	fmt.Fprintln(os.Stderr, "  --dry-run          preview without writing")
 	fmt.Fprintln(os.Stderr, "  --json             machine-readable output")
-}
-
-func resolveConfigOutputPath(source, output string) (string, error) {
-	output = strings.TrimSpace(output)
-	if output == "" {
-		return "", nil
-	}
-	if info, err := os.Stat(output); err == nil && info.IsDir() {
-		return filepath.Join(output, filepath.Base(source)), nil
-	}
-	if strings.HasSuffix(output, string(os.PathSeparator)) {
-		return filepath.Join(output, filepath.Base(source)), nil
-	}
-	return output, nil
 }

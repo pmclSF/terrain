@@ -26,6 +26,11 @@ type seleniumLocator struct {
 	listExpr    string
 }
 
+type cypressSeleniumASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
 func convertCypressToSeleniumSourceAST(source string) (string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
@@ -33,48 +38,66 @@ func convertCypressToSeleniumSourceAST(source string) (string, bool) {
 	}
 	defer tree.Close()
 
-	edits := make([]textEdit, 0, 16)
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		if node.Type() != "call_expression" {
-			return true
-		}
-
-		callee := jsCalleeNode(node)
-		calleeText := jsNodeText(callee, tree.src)
-		if mapped, ok := cypressSeleniumStructuralCallees[calleeText]; ok {
-			edits = append(edits, textEdit{
-				start:       int(callee.StartByte()),
-				end:         int(callee.EndByte()),
-				replacement: mapped,
-			})
-			if callback := jsLastFunctionArg(node); callback != nil {
-				if replacement, ok := cypressSeleniumCallbackPrefix(mapped, callback); ok {
-					if body := jsFunctionBodyNode(callback); body != nil {
-						edits = append(edits, textEdit{
-							start:       int(callback.StartByte()),
-							end:         int(body.StartByte()),
-							replacement: replacement,
-						})
-					}
-				}
-			}
-			return true
-		}
-
-		replacement, ok := convertCypressCallToSelenium(node, tree.src)
-		if !ok {
-			return true
-		}
-		edits = append(edits, replacementEditForCall(node, replacement))
-		return false
-	})
-
-	result := applyTextEdits(source, edits)
-	if rows, ok := unsupportedCypressSeleniumLineRowsAST(source); ok && len(rows) > 0 {
-		result = commentSpecificLines(result, rows, "manual Cypress conversion required")
+	analysis := analyzeCypressToSeleniumAST(tree)
+	result := applyTextEdits(source, analysis.edits)
+	if len(analysis.unsupportedRows) > 0 {
+		result = commentSpecificLines(result, analysis.unsupportedRows, "manual Cypress conversion required")
 	}
 	result = collapseBlankLines(result)
 	return ensureTrailingNewline(result), true
+}
+
+func analyzeCypressToSeleniumAST(tree *jsSyntaxTree) cypressSeleniumASTAnalysis {
+	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
+	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
+		switch node.Type() {
+		case "call_expression":
+			callee := jsCalleeNode(node)
+			calleeText := jsNodeText(callee, tree.src)
+			if mapped, ok := cypressSeleniumStructuralCallees[calleeText]; ok {
+				edits = append(edits, textEdit{
+					start:       int(callee.StartByte()),
+					end:         int(callee.EndByte()),
+					replacement: mapped,
+				})
+				if callback := jsLastFunctionArg(node); callback != nil {
+					if replacement, ok := cypressSeleniumCallbackPrefix(mapped, callback); ok {
+						if body := jsFunctionBodyNode(callback); body != nil {
+							edits = append(edits, textEdit{
+								start:       int(callback.StartByte()),
+								end:         int(body.StartByte()),
+								replacement: replacement,
+							})
+						}
+					}
+				}
+				return true
+			}
+
+			replacement, ok := convertCypressCallToSelenium(node, tree.src)
+			if ok {
+				edits = append(edits, replacementEditForCall(node, replacement))
+				return false
+			}
+
+			root, _, chainOK := extractJSCallChain(node, tree.src)
+			if chainOK && root == "cy" {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
+		case "member_expression":
+			if jsBaseIdentifier(node, tree.src) == "Cypress" {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+			}
+		}
+		return true
+	})
+
+	return cypressSeleniumASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
+	}
 }
 
 func cypressSeleniumCallbackPrefix(mappedCallee string, callback *sitter.Node) (string, bool) {
@@ -318,24 +341,5 @@ func unsupportedCypressSeleniumLineRowsAST(source string) (map[int]bool, bool) {
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		switch node.Type() {
-		case "call_expression":
-			root, _, chainOK := extractJSCallChain(node, tree.src)
-			if chainOK && root == "cy" {
-				if _, handled := convertCypressCallToSelenium(node, tree.src); !handled {
-					rows[int(node.StartPoint().Row)] = true
-					return false
-				}
-			}
-		case "member_expression":
-			if jsBaseIdentifier(node, tree.src) == "Cypress" {
-				rows[int(node.StartPoint().Row)] = true
-			}
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzeCypressToSeleniumAST(tree).unsupportedRows, true
 }

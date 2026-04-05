@@ -20,14 +20,40 @@ var playwrightCypressStructuralCallees = map[string]string{
 	"test":               "it",
 }
 
-func convertPlaywrightToCypressSourceAST(source string) (string, bool) {
+var (
+	reJSObjectWidthField  = regexp.MustCompile(`\bwidth\s*:\s*([^,}]+)`)
+	reJSObjectHeightField = regexp.MustCompile(`\bheight\s*:\s*([^,}]+)`)
+	reJSObjectPathField   = regexp.MustCompile(`\bpath\s*:\s*([^,}]+)`)
+	reJSObjectNameField   = regexp.MustCompile(`\bname\s*:\s*([^,}]+)`)
+)
+
+type playwrightCypressASTResult struct {
+	source          string
+	unsupportedRows map[int]bool
+}
+
+func convertPlaywrightToCypressSourceAST(source string) (playwrightCypressASTResult, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
-		return "", false
+		return playwrightCypressASTResult{}, false
 	}
 	defer tree.Close()
 
+	analysis := analyzePlaywrightToCypressAST(tree)
+	return playwrightCypressASTResult{
+		source:          applyTextEdits(source, analysis.edits),
+		unsupportedRows: analysis.unsupportedRows,
+	}, true
+}
+
+type playwrightCypressASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
+func analyzePlaywrightToCypressAST(tree *jsSyntaxTree) playwrightCypressASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		switch node.Type() {
 		case "import_statement":
@@ -65,11 +91,24 @@ func convertPlaywrightToCypressSourceAST(source string) (string, bool) {
 				edits = append(edits, replacementEditForCall(node, replacement))
 				return false
 			}
+			root, _, ok := extractJSCallChain(node, tree.src)
+			if ok && (root == "page" || root == "request" || root == "context") {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
+		case "member_expression":
+			base := jsBaseIdentifier(node, tree.src)
+			if base == "page" || base == "request" || base == "context" {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+			}
 		}
 		return true
 	})
 
-	return applyTextEdits(source, edits), true
+	return playwrightCypressASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
+	}
 }
 
 func convertPlaywrightCallToCypress(node *sitter.Node, src []byte) (string, bool) {
@@ -336,10 +375,8 @@ func playwrightExprToCypressChain(expr string) (string, bool) {
 }
 
 func parseViewportSizeArg(arg string) (string, string, bool) {
-	widthRe := regexp.MustCompile(`\bwidth\s*:\s*([^,}]+)`)
-	heightRe := regexp.MustCompile(`\bheight\s*:\s*([^,}]+)`)
-	width := widthRe.FindStringSubmatch(arg)
-	height := heightRe.FindStringSubmatch(arg)
+	width := reJSObjectWidthField.FindStringSubmatch(arg)
+	height := reJSObjectHeightField.FindStringSubmatch(arg)
 	if len(width) < 2 || len(height) < 2 {
 		return "", "", false
 	}
@@ -347,8 +384,7 @@ func parseViewportSizeArg(arg string) (string, string, bool) {
 }
 
 func parseScreenshotPathArg(arg string) (string, bool) {
-	pathRe := regexp.MustCompile(`\bpath\s*:\s*([^,}]+)`)
-	match := pathRe.FindStringSubmatch(arg)
+	match := reJSObjectPathField.FindStringSubmatch(arg)
 	if len(match) < 2 {
 		return "", false
 	}
@@ -356,8 +392,7 @@ func parseScreenshotPathArg(arg string) (string, bool) {
 }
 
 func parseGetByRoleNameArg(arg string) (string, bool) {
-	nameRe := regexp.MustCompile(`\bname\s*:\s*([^,}]+)`)
-	match := nameRe.FindStringSubmatch(arg)
+	match := reJSObjectNameField.FindStringSubmatch(arg)
 	if len(match) < 2 {
 		return "", false
 	}
@@ -371,31 +406,5 @@ func unsupportedPlaywrightLineRowsAST(source string) (map[int]bool, bool) {
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		switch node.Type() {
-		case "call_expression":
-			callee := jsCalleeNode(node)
-			calleeText := jsNodeText(callee, tree.src)
-			if _, ok := playwrightCypressStructuralCallees[calleeText]; ok {
-				return true
-			}
-			if _, handled := convertPlaywrightCallToCypress(node, tree.src); handled {
-				return false
-			}
-			root, _, ok := extractJSCallChain(node, tree.src)
-			if ok && (root == "page" || root == "request" || root == "context") {
-				rows[int(node.StartPoint().Row)] = true
-				return false
-			}
-		case "member_expression":
-			base := jsBaseIdentifier(node, tree.src)
-			if base == "page" || base == "request" || base == "context" {
-				rows[int(node.StartPoint().Row)] = true
-			}
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzePlaywrightToCypressAST(tree).unsupportedRows, true
 }

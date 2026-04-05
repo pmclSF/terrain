@@ -6,6 +6,11 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+type seleniumCypressASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
 func convertSeleniumToCypressSourceAST(source string) (string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
@@ -13,7 +18,18 @@ func convertSeleniumToCypressSourceAST(source string) (string, bool) {
 	}
 	defer tree.Close()
 
+	analysis := analyzeSeleniumToCypressAST(tree)
+	result := applyTextEdits(source, analysis.edits)
+	if len(analysis.unsupportedRows) > 0 {
+		result = commentSpecificLines(result, analysis.unsupportedRows, "manual Selenium conversion required")
+	}
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), true
+}
+
+func analyzeSeleniumToCypressAST(tree *jsSyntaxTree) seleniumCypressASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		if node.Type() != "call_expression" {
 			return true
@@ -22,15 +38,17 @@ func convertSeleniumToCypressSourceAST(source string) (string, bool) {
 			edits = append(edits, replacementEditForCall(node, replacement))
 			return false
 		}
+		if seleniumCallNeedsManualReview(node, tree.src) {
+			unsupportedRows[int(node.StartPoint().Row)] = true
+			return false
+		}
 		return true
 	})
 
-	result := applyTextEdits(source, edits)
-	if rows, ok := unsupportedSeleniumCypressLineRowsAST(source); ok && len(rows) > 0 {
-		result = commentSpecificLines(result, rows, "manual Selenium conversion required")
+	return seleniumCypressASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
 	}
-	result = collapseBlankLines(result)
-	return ensureTrailingNewline(result), true
 }
 
 func convertSeleniumCallToCypress(node *sitter.Node, src []byte) (string, bool) {
@@ -356,22 +374,7 @@ func unsupportedSeleniumCypressLineRowsAST(source string) (map[int]bool, bool) {
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		if node.Type() != "call_expression" {
-			return true
-		}
-		if _, ok := convertSeleniumCallToCypress(node, tree.src); ok {
-			return false
-		}
-		if seleniumCallNeedsManualReview(node, tree.src) {
-			rows[int(node.StartPoint().Row)] = true
-			return false
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzeSeleniumToCypressAST(tree).unsupportedRows, true
 }
 
 func seleniumCallNeedsManualReview(node *sitter.Node, src []byte) bool {

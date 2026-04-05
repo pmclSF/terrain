@@ -6,15 +6,37 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-func convertWdioToPlaywrightSourceAST(source string) (string, bool, bool) {
+type wdioPlaywrightASTResult struct {
+	source          string
+	retryWarning    bool
+	unsupportedRows map[int]bool
+}
+
+func convertWdioToPlaywrightSourceAST(source string) (wdioPlaywrightASTResult, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
-		return "", false, false
+		return wdioPlaywrightASTResult{}, false
 	}
 	defer tree.Close()
 
+	analysis := analyzeWdioToPlaywrightAST(tree)
+	return wdioPlaywrightASTResult{
+		source:          applyTextEdits(source, analysis.edits),
+		retryWarning:    analysis.retryWarning,
+		unsupportedRows: analysis.unsupportedRows,
+	}, true
+}
+
+type wdioPlaywrightASTAnalysis struct {
+	edits           []textEdit
+	retryWarning    bool
+	unsupportedRows map[int]bool
+}
+
+func analyzeWdioToPlaywrightAST(tree *jsSyntaxTree) wdioPlaywrightASTAnalysis {
 	edits := make([]textEdit, 0, 16)
 	warn := false
+	unsupportedRows := map[int]bool{}
 
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		switch node.Type() {
@@ -63,11 +85,20 @@ func convertWdioToPlaywrightSourceAST(source string) (string, bool, bool) {
 				edits = append(edits, replacementEditForCall(node, replacement))
 				return false
 			}
+			root, _, ok := extractJSCallChain(node, tree.src)
+			if ok && (root == "browser" || root == "$" || root == "$$") {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
 		}
 		return true
 	})
 
-	return applyTextEdits(source, edits), warn, true
+	return wdioPlaywrightASTAnalysis{
+		edits:           edits,
+		retryWarning:    warn,
+		unsupportedRows: unsupportedRows,
+	}
 }
 
 func convertWdioCallToPlaywright(node *sitter.Node, src []byte) (string, bool, bool) {
@@ -123,18 +154,22 @@ func convertWdioBrowserCall(steps []jsCallStep) (string, bool, bool) {
 		}
 	case "keys":
 		if len(steps) == 1 && len(step.args) == 1 {
-			return "await page.keyboard.press(" + step.args[0] + ")", false, true
+			if replacement, ok := wdioBrowserKeysArgToPlaywright(step.args[0]); ok {
+				return replacement, false, true
+			}
 		}
 	case "setCookies":
 		if len(steps) == 1 && len(step.args) == 1 {
-			return "await page.context().addCookies(" + step.args[0] + ")", false, true
+			if cookies, ok := wdioCookieArgToPlaywright(step.args[0]); ok {
+				return "await page.context().addCookies(" + cookies + ")", false, true
+			}
 		}
 	case "getCookies":
-		if len(steps) == 1 {
+		if len(steps) == 1 && len(step.args) == 0 {
 			return "await page.context().cookies()", false, true
 		}
 	case "deleteCookies":
-		if len(steps) == 1 {
+		if len(steps) == 1 && len(step.args) == 0 {
 			return "await page.context().clearCookies()", false, true
 		}
 	case "execute":
@@ -338,26 +373,5 @@ func unsupportedWdioLineRowsAST(source string) (map[int]bool, bool) {
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		switch node.Type() {
-		case "call_expression":
-			callee := jsCalleeNode(node)
-			calleeText := jsNodeText(callee, tree.src)
-			if _, ok := cypressPlaywrightStructuralCallees[calleeText]; ok {
-				return true
-			}
-			if _, _, handled := convertWdioCallToPlaywright(node, tree.src); handled {
-				return false
-			}
-			root, _, ok := extractJSCallChain(node, tree.src)
-			if ok && (root == "browser" || root == "$" || root == "$$") {
-				rows[int(node.StartPoint().Row)] = true
-				return false
-			}
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzeWdioToPlaywrightAST(tree).unsupportedRows, true
 }

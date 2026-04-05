@@ -15,6 +15,7 @@ type migrateCommandOptions struct {
 	From           string
 	To             string
 	Output         string
+	Concurrency    int
 	Continue       bool
 	RetryFailed    bool
 	DryRun         bool
@@ -34,12 +35,13 @@ func runMigrateCLI(args []string) error {
 	fs.StringVar(&opts.To, "t", "", "target framework")
 	fs.StringVar(&opts.Output, "output", "", "output directory for converted files")
 	fs.StringVar(&opts.Output, "o", "", "output directory for converted files")
+	fs.IntVar(&opts.Concurrency, "concurrency", 4, "number of files to convert in parallel during migration")
 	fs.BoolVar(&opts.Continue, "continue", false, "resume a previously started migration")
 	fs.BoolVar(&opts.RetryFailed, "retry-failed", false, "retry only previously failed files")
 	fs.BoolVar(&opts.DryRun, "dry-run", false, "preview migration without writing files")
 	fs.BoolVar(&opts.Plan, "plan", false, "show a structured migration plan")
 	fs.BoolVar(&opts.JSON, "json", false, "JSON output")
-	fs.BoolVar(&opts.StrictValidate, "strict-validate", false, "reserved for parser-based output validation")
+	fs.BoolVar(&opts.StrictValidate, "strict-validate", false, "validate converted output syntax before recording files as converted")
 
 	if err := fs.Parse(reorderCLIArgs(args, workflowFlagsWithValue)); err != nil {
 		printMigrateUsage()
@@ -169,6 +171,7 @@ func runMigrate(root string, opts migrateCommandOptions) error {
 
 	result, err := conv.MigrateProject(root, opts.From, opts.To, conv.MigrationRunOptions{
 		Output:         opts.Output,
+		Concurrency:    opts.Concurrency,
 		Continue:       opts.Continue,
 		RetryFailed:    opts.RetryFailed,
 		StrictValidate: opts.StrictValidate,
@@ -419,12 +422,13 @@ func emptyFallback(value, fallback string) string {
 }
 
 var workflowFlagsWithValue = map[string]bool{
-	"--from":   true,
-	"-f":       true,
-	"--to":     true,
-	"-t":       true,
-	"--output": true,
-	"-o":       true,
+	"--from":        true,
+	"-f":            true,
+	"--to":          true,
+	"-t":            true,
+	"--output":      true,
+	"-o":            true,
+	"--concurrency": true,
 }
 
 var workflowSimpleFlagsWithValue = map[string]bool{
@@ -437,11 +441,13 @@ func printMigrateUsage() {
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Flags:")
 	fmt.Fprintln(os.Stderr, "  -o, --output PATH     output directory for converted files")
+	fmt.Fprintln(os.Stderr, "      --concurrency N   number of files to convert in parallel")
 	fmt.Fprintln(os.Stderr, "      --continue        resume a previously started migration")
 	fmt.Fprintln(os.Stderr, "      --retry-failed    retry only previously failed files")
 	fmt.Fprintln(os.Stderr, "      --dry-run         preview migration without writing files")
 	fmt.Fprintln(os.Stderr, "      --plan            show a structured migration plan")
 	fmt.Fprintln(os.Stderr, "      --json            machine-readable output")
+	fmt.Fprintln(os.Stderr, "      --strict-validate validate converted output syntax before keeping files")
 }
 
 func printEstimateUsage() {

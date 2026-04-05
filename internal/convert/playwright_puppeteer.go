@@ -65,12 +65,29 @@ func ConvertPlaywrightToPuppeteerSource(source string) (string, error) {
 
 	result = rePlaywrightImportRemove.ReplaceAllString(result, "")
 
+	if rePWToPptrExpectURL.MatchString(result) {
+		result = rePWToPptrExpectURL.ReplaceAllStringFunc(result, func(match string) string {
+			parts := rePWToPptrExpectURL.FindStringSubmatch(match)
+			if len(parts) != 2 {
+				return match
+			}
+			return puppeteerExpectationAssertion("page.url()", parts[1])
+		})
+	}
+	if rePWToPptrExpectTitle.MatchString(result) {
+		result = rePWToPptrExpectTitle.ReplaceAllStringFunc(result, func(match string) string {
+			parts := rePWToPptrExpectTitle.FindStringSubmatch(match)
+			if len(parts) != 2 {
+				return match
+			}
+			return puppeteerExpectationAssertion("await page.title()", parts[1])
+		})
+	}
+
 	assertionReplacements := []struct {
 		re   *regexp.Regexp
 		repl string
 	}{
-		{rePWToPptrExpectURL, `expect(page.url()).toBe($1)`},
-		{rePWToPptrExpectTitle, `expect(await page.title()).toBe($1)`},
 		{rePWToPptrExpectVisible, `expect(await page.$$($1)).toBeTruthy()`},
 		{rePWToPptrExpectHidden, `expect(await page.$$($1)).toBeFalsy()`},
 		{rePWToPptrExpectAttached, `expect(await page.$$($1)).toBeTruthy()`},
@@ -101,9 +118,9 @@ func ConvertPlaywrightToPuppeteerSource(source string) (string, error) {
 		{rePWToPptrEvaluateAll, `await page.$$$$eval($1, $2)`},
 		{rePWToPptrSelect, `await page.select($1, $2)`},
 		{rePWToPptrViewport, `await page.setViewport({ width: $1, height: $2 })`},
-		{rePWToPptrAddCookies, `await page.setCookie(`},
+		{rePWToPptrAddCookies, `await page.setCookie(...`},
 		{rePWToPptrCookies, `await page.cookies()`},
-		{rePWToPptrClearCook, `await page.deleteCookie()`},
+		{rePWToPptrClearCook, `await page.deleteCookie(...(await page.cookies()))`},
 	}
 	for _, replacement := range actionReplacements {
 		result = replacement.re.ReplaceAllString(result, replacement.repl)
@@ -172,4 +189,53 @@ func cleanupConvertedPuppeteerOutput(source string) string {
 		source = strings.ReplaceAll(source, "\n\n\n", "\n\n")
 	}
 	return strings.TrimSpace(source) + "\n"
+}
+
+func puppeteerExpectationAssertion(actual, expected string) string {
+	if isJSRegexLiteral(expected) {
+		return "expect(" + actual + ").toMatch(" + expected + ")"
+	}
+	return "expect(" + actual + ").toBe(" + expected + ")"
+}
+
+func isJSRegexLiteral(value string) bool {
+	value = strings.TrimSpace(value)
+	if len(value) < 2 || value[0] != '/' {
+		return false
+	}
+	inClass := false
+	escaped := false
+	for i := 1; i < len(value); i++ {
+		ch := value[i]
+		if escaped {
+			escaped = false
+			continue
+		}
+		switch ch {
+		case '\\':
+			escaped = true
+		case '[':
+			if !inClass {
+				inClass = true
+			}
+		case ']':
+			if inClass {
+				inClass = false
+			}
+		case '/':
+			if inClass {
+				continue
+			}
+			for j := i + 1; j < len(value); j++ {
+				switch value[j] {
+				case 'd', 'g', 'i', 'm', 's', 'u', 'v', 'y':
+					continue
+				default:
+					return false
+				}
+			}
+			return true
+		}
+	}
+	return false
 }

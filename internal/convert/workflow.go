@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pmclSF/terrain/internal/analysis"
@@ -86,6 +87,7 @@ type MigrationRunOptions struct {
 	Continue       bool   `json:"continue,omitempty"`
 	RetryFailed    bool   `json:"retryFailed,omitempty"`
 	StrictValidate bool   `json:"strictValidate,omitempty"`
+	Concurrency    int    `json:"concurrency,omitempty"`
 }
 
 type MigrationResult struct {
@@ -435,7 +437,7 @@ func MigrateProject(root, from, to string, options MigrationRunOptions) (Migrati
 		return MigrationResult{}, err
 	}
 
-	processed := make([]MigrationFileRecord, 0, len(candidates))
+	selected := make([]migrationCandidate, 0, len(candidates))
 	for _, candidate := range candidates {
 		if options.Continue && !options.RetryFailed && state.IsConverted(candidate.RelPath) {
 			continue
@@ -443,8 +445,15 @@ func MigrateProject(root, from, to string, options MigrationRunOptions) (Migrati
 		if options.RetryFailed && !state.IsFailed(candidate.RelPath) {
 			continue
 		}
+		selected = append(selected, candidate)
+	}
 
-		record, err := migrateCandidate(candidate, direction, outputRoot)
+	outcomes := processMigrationCandidates(selected, direction, outputRoot, options.StrictValidate, options.Concurrency)
+	processed := make([]MigrationFileRecord, 0, len(outcomes))
+	for _, outcome := range outcomes {
+		candidate := outcome.candidate
+		record := outcome.record
+		err := outcome.err
 		if err != nil {
 			state.MarkFailed(candidate.RelPath, candidate.Type, record.OutputPath, err)
 			if saveErr := state.Save(); saveErr != nil {
@@ -480,6 +489,58 @@ func MigrateProject(root, from, to string, options MigrationRunOptions) (Migrati
 		Checklist: checklist,
 		State:     state.Status(),
 	}, nil
+}
+
+type migrationOutcome struct {
+	index     int
+	candidate migrationCandidate
+	record    MigrationFileRecord
+	err       error
+}
+
+func processMigrationCandidates(candidates []migrationCandidate, direction Direction, outputRoot string, strictValidate bool, concurrency int) []migrationOutcome {
+	if len(candidates) == 0 {
+		return nil
+	}
+
+	type candidateJob struct {
+		index     int
+		candidate migrationCandidate
+	}
+
+	workerCount := clampWorkerCount(concurrency, len(candidates))
+	jobs := make(chan candidateJob, len(candidates))
+	results := make(chan migrationOutcome, len(candidates))
+
+	var wg sync.WaitGroup
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for job := range jobs {
+				record, err := migrateCandidate(job.candidate, direction, outputRoot, strictValidate)
+				results <- migrationOutcome{
+					index:     job.index,
+					candidate: job.candidate,
+					record:    record,
+					err:       err,
+				}
+			}
+		}()
+	}
+
+	for index, candidate := range candidates {
+		jobs <- candidateJob{index: index, candidate: candidate}
+	}
+	close(jobs)
+	wg.Wait()
+	close(results)
+
+	ordered := make([]migrationOutcome, len(candidates))
+	for outcome := range results {
+		ordered[outcome.index] = outcome
+	}
+	return ordered
 }
 
 func LoadMigrationStatus(root string) (MigrationStatus, bool, error) {
@@ -694,7 +755,7 @@ func estimateCandidate(candidate migrationCandidate, direction Direction) (Migra
 	return record, extractBlockers(output, record)
 }
 
-func migrateCandidate(candidate migrationCandidate, direction Direction, outputRoot string) (MigrationFileRecord, error) {
+func migrateCandidate(candidate migrationCandidate, direction Direction, outputRoot string, strictValidate bool) (MigrationFileRecord, error) {
 	record := MigrationFileRecord{
 		InputPath: candidate.RelPath,
 		Type:      candidate.Type,
@@ -706,39 +767,48 @@ func migrateCandidate(candidate migrationCandidate, direction Direction, outputR
 			record.SkipReason = fmt.Sprintf("no Go-native config conversion for %s -> %s", direction.From, direction.To)
 			return record, nil
 		}
-		input, err := os.ReadFile(candidate.AbsPath)
-		if err != nil {
-			return record, fmt.Errorf("read source: %w", err)
-		}
-		converted, err := ConvertConfig(string(input), direction.From, direction.To)
+		targetName := TargetConfigFileName(direction.To, filepath.Base(candidate.RelPath))
+		targetDir := filepath.Join(outputRoot, filepath.Dir(candidate.RelPath))
+		outputPath := filepath.Join(targetDir, targetName)
+		result, err := RunConfigMigration(candidate.AbsPath, ConfigMigrationOptions{
+			From:           direction.From,
+			To:             direction.To,
+			Output:         outputPath,
+			ValidateSyntax: strictValidate,
+		})
 		if err != nil {
 			return record, err
 		}
-		targetName := TargetConfigFileName(direction.To, filepath.Base(candidate.RelPath))
-		targetDir := filepath.Join(outputRoot, filepath.Dir(candidate.RelPath))
-		if err := os.MkdirAll(targetDir, 0o755); err != nil {
-			return record, fmt.Errorf("create output dir: %w", err)
-		}
-		outputPath := filepath.Join(targetDir, targetName)
-		if err := os.WriteFile(outputPath, []byte(converted), 0o644); err != nil {
-			return record, fmt.Errorf("write output: %w", err)
-		}
 		record.Status = "converted"
-		record.OutputPath = outputPath
-		record.TodosAdded = countTODOs(converted)
-		record.Confidence = predictMigrationConfidence(converted, candidate.Type)
-		record.Warnings = warningsFromOutput(converted, candidate.Type)
+		record.OutputPath = result.Output
+		output, readErr := os.ReadFile(result.Output)
+		if readErr == nil {
+			record.TodosAdded = countTODOs(string(output))
+			record.Confidence = predictMigrationConfidence(string(output), candidate.Type)
+			record.Warnings = warningsFromOutput(string(output), candidate.Type)
+		}
+		if record.Confidence == 0 {
+			record.Confidence = 95
+		}
 		return record, nil
 	}
 
 	targetDir := filepath.Join(outputRoot, filepath.Dir(candidate.RelPath))
-	result, err := Execute(candidate.AbsPath, direction, ExecuteOptions{Output: targetDir})
+	result, err := RunTestMigration(candidate.AbsPath, TestMigrationOptions{
+		From:           direction.From,
+		To:             direction.To,
+		Output:         targetDir,
+		ValidateSyntax: strictValidate,
+	})
 	if err != nil {
 		return record, err
 	}
+	if result.Execution == nil {
+		return record, fmt.Errorf("native test migration produced no execution result for %s", candidate.RelPath)
+	}
 	record.Status = "converted"
-	if len(result.Files) > 0 {
-		record.OutputPath = result.Files[0].OutputPath
+	if len(result.Execution.Files) > 0 {
+		record.OutputPath = result.Execution.Files[0].OutputPath
 	}
 	if record.OutputPath != "" {
 		output, readErr := os.ReadFile(record.OutputPath)

@@ -14,6 +14,11 @@ var jestJasmineExpectationMembers = map[string]string{
 	"any":              "any",
 }
 
+type jestJasmineASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
 func convertJestToJasmineSourceAST(source string) (string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
@@ -21,7 +26,18 @@ func convertJestToJasmineSourceAST(source string) (string, bool) {
 	}
 	defer tree.Close()
 
+	analysis := analyzeJestToJasmineAST(tree)
+	result := applyTextEdits(source, analysis.edits)
+	if len(analysis.unsupportedRows) > 0 {
+		result = commentSpecificLines(result, analysis.unsupportedRows, "manual Jest module mock conversion required")
+	}
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), true
+}
+
+func analyzeJestToJasmineAST(tree *jsSyntaxTree) jestJasmineASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		switch node.Type() {
 		case "import_statement":
@@ -44,21 +60,31 @@ func convertJestToJasmineSourceAST(source string) (string, bool) {
 			}
 		case "call_expression":
 			replacement, ok := convertJestCallToJasmine(node, tree.src)
-			if !ok {
+			if ok {
+				edits = append(edits, replacementEditForCall(node, replacement))
+				return false
+			}
+
+			callee := jsCalleeNode(node)
+			if callee == nil || callee.Type() != "member_expression" {
 				return true
 			}
-			edits = append(edits, replacementEditForCall(node, replacement))
-			return false
+			if jsBaseIdentifier(callee, tree.src) != "jest" {
+				return true
+			}
+			property := jsNodeText(jsMemberProperty(callee), tree.src)
+			if property == "mock" || property == "doMock" {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
 		}
 		return true
 	})
 
-	result := applyTextEdits(source, edits)
-	if rows, ok := unsupportedJestMockLineRowsAST(source); ok && len(rows) > 0 {
-		result = commentSpecificLines(result, rows, "manual Jest module mock conversion required")
+	return jestJasmineASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
 	}
-	result = collapseBlankLines(result)
-	return ensureTrailingNewline(result), true
 }
 
 func convertJestCallToJasmine(node *sitter.Node, src []byte) (string, bool) {
@@ -195,25 +221,5 @@ func unsupportedJestMockLineRowsAST(source string) (map[int]bool, bool) {
 	}
 	defer tree.Close()
 
-	rows := map[int]bool{}
-	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
-		if node.Type() != "call_expression" {
-			return true
-		}
-		callee := jsCalleeNode(node)
-		if callee == nil || callee.Type() != "member_expression" {
-			return true
-		}
-		if jsBaseIdentifier(callee, tree.src) != "jest" {
-			return true
-		}
-		property := jsNodeText(jsMemberProperty(callee), tree.src)
-		if property == "mock" || property == "doMock" {
-			rows[int(node.StartPoint().Row)] = true
-			return false
-		}
-		return true
-	})
-
-	return rows, true
+	return analyzeJestToJasmineAST(tree).unsupportedRows, true
 }

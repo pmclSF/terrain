@@ -19,6 +19,11 @@ var puppeteerPlaywrightStructuralCallees = map[string]string{
 	"it":            "test",
 }
 
+type puppeteerPlaywrightASTAnalysis struct {
+	edits           []textEdit
+	unsupportedRows map[int]bool
+}
+
 func convertPuppeteerToPlaywrightSourceAST(source string) (string, bool) {
 	tree, ok := parseJSSyntaxTree(source)
 	if !ok {
@@ -26,7 +31,26 @@ func convertPuppeteerToPlaywrightSourceAST(source string) (string, bool) {
 	}
 	defer tree.Close()
 
+	analysis := analyzePuppeteerToPlaywrightAST(tree)
+	result := applyTextEdits(source, analysis.edits)
+	if len(analysis.unsupportedRows) > 0 {
+		result = commentSpecificLines(result, analysis.unsupportedRows, "manual Puppeteer conversion required")
+	}
+	result = rePptrRequireImport.ReplaceAllString(result, "")
+	result = rePptrESMImport.ReplaceAllString(result, "")
+	result = rePptrBrowserPageDecl.ReplaceAllString(result, "")
+	result = rePptrBeforeAllBlock.ReplaceAllString(result, "\n")
+	result = rePptrAfterAllBlock.ReplaceAllString(result, "\n")
+	result = rePptrLaunchLine.ReplaceAllString(result, "")
+	result = rePptrNewPageLine.ReplaceAllString(result, "")
+	result = rePptrCloseLine.ReplaceAllString(result, "")
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), true
+}
+
+func analyzePuppeteerToPlaywrightAST(tree *jsSyntaxTree) puppeteerPlaywrightASTAnalysis {
 	edits := make([]textEdit, 0, 16)
+	unsupportedRows := map[int]bool{}
 	walkJSNodes(tree.tree.RootNode(), func(node *sitter.Node) bool {
 		switch node.Type() {
 		case "import_statement":
@@ -74,21 +98,20 @@ func convertPuppeteerToPlaywrightSourceAST(source string) (string, bool) {
 				edits = append(edits, replacementEditForCall(node, replacement))
 				return false
 			}
+
+			root, _, ok := extractJSCallChain(node, tree.src)
+			if ok && strings.HasPrefix(root, "page") {
+				unsupportedRows[int(node.StartPoint().Row)] = true
+				return false
+			}
 		}
 		return true
 	})
 
-	result := applyTextEdits(source, edits)
-	result = rePptrRequireImport.ReplaceAllString(result, "")
-	result = rePptrESMImport.ReplaceAllString(result, "")
-	result = rePptrBrowserPageDecl.ReplaceAllString(result, "")
-	result = rePptrBeforeAllBlock.ReplaceAllString(result, "\n")
-	result = rePptrAfterAllBlock.ReplaceAllString(result, "\n")
-	result = rePptrLaunchLine.ReplaceAllString(result, "")
-	result = rePptrNewPageLine.ReplaceAllString(result, "")
-	result = rePptrCloseLine.ReplaceAllString(result, "")
-	result = collapseBlankLines(result)
-	return ensureTrailingNewline(result), true
+	return puppeteerPlaywrightASTAnalysis{
+		edits:           edits,
+		unsupportedRows: unsupportedRows,
+	}
 }
 
 func puppeteerPlaywrightCallbackPrefix(mapped string) (string, bool) {
@@ -151,23 +174,45 @@ func convertPuppeteerCallToPlaywright(node *sitter.Node, src []byte) (string, bo
 		}
 	case "setViewport":
 		if len(steps) == 1 && len(steps[0].args) == 1 {
-			return "await page.setViewportSize(" + steps[0].args[0] + ")", true
+			if width, height, ok := parseViewportSizeArg(steps[0].args[0]); ok {
+				return "await page.setViewportSize({ width: " + width + ", height: " + height + " })", true
+			}
 		}
 	case "setCookie":
-		if len(steps) == 1 && len(steps[0].args) == 1 {
-			return "await page.context().addCookies(" + steps[0].args[0] + ")", true
+		if len(steps) == 1 {
+			if cookies, ok := puppeteerCookieArgsToPlaywright(steps[0].args); ok {
+				return "await page.context().addCookies(" + cookies + ")", true
+			}
 		}
 	case "cookies":
-		if len(steps) == 1 {
+		if len(steps) == 1 && len(steps[0].args) == 0 {
 			return "await page.context().cookies()", true
 		}
 	case "deleteCookie":
-		if len(steps) == 1 {
+		if len(steps) == 1 && len(steps[0].args) == 0 {
 			return "await page.context().clearCookies()", true
 		}
 	}
 
 	return "", false
+}
+
+func puppeteerCookieArgsToPlaywright(args []string) (string, bool) {
+	if len(args) == 0 {
+		return "", false
+	}
+	if len(args) == 1 {
+		arg := strings.TrimSpace(args[0])
+		switch {
+		case strings.HasPrefix(arg, "[") && strings.HasSuffix(arg, "]"):
+			return arg, true
+		case strings.HasPrefix(arg, "{") && strings.HasSuffix(arg, "}"):
+			return "[" + arg + "]", true
+		default:
+			return "", false
+		}
+	}
+	return "[" + strings.Join(args, ", ") + "]", true
 }
 
 func convertPuppeteerExpectationToPlaywright(node *sitter.Node, src []byte) (string, bool) {
@@ -194,12 +239,22 @@ func convertPuppeteerExpectationToPlaywright(node *sitter.Node, src []byte) (str
 		if ok && root == "page" && len(steps) == 1 {
 			switch steps[0].method {
 			case "url":
-				if property == "toBe" && len(callArgs) == 1 {
-					return "await expect(page).toHaveURL(" + callArgs[0] + ")", true
+				if len(callArgs) == 1 {
+					switch property {
+					case "toBe":
+						return "await expect(page).toHaveURL(" + callArgs[0] + ")", true
+					case "toMatch":
+						return "await expect(page).toHaveURL(" + playwrightPatternArg(callArgs[0]) + ")", true
+					}
 				}
 			case "title":
-				if property == "toBe" && len(callArgs) == 1 {
-					return "await expect(page).toHaveTitle(" + callArgs[0] + ")", true
+				if len(callArgs) == 1 {
+					switch property {
+					case "toBe":
+						return "await expect(page).toHaveTitle(" + callArgs[0] + ")", true
+					case "toMatch":
+						return "await expect(page).toHaveTitle(" + playwrightPatternArg(callArgs[0]) + ")", true
+					}
 				}
 			case "$":
 				if len(steps[0].args) == 1 {
@@ -241,4 +296,14 @@ func convertPuppeteerExpectationToPlaywright(node *sitter.Node, src []byte) (str
 	}
 
 	return "", false
+}
+
+func unsupportedPuppeteerPlaywrightLineRowsAST(source string) (map[int]bool, bool) {
+	tree, ok := parseJSSyntaxTree(source)
+	if !ok {
+		return nil, false
+	}
+	defer tree.Close()
+
+	return analyzePuppeteerToPlaywrightAST(tree).unsupportedRows, true
 }

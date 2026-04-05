@@ -162,6 +162,69 @@ func TestConvertPlaywrightToWdioSource_RemovesFixtureArgsAndConvertsGetByText(t 
 	}
 }
 
+func TestConvertPlaywrightToWdioSource_FallbackUsesSingularSelectors(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test, expect } from '@playwright/test';
+
+test('broken fallback', async ({ page }) => {
+  await page.locator('#email').fill('user@example.com');
+  await page.locator('#save').click();
+  await expect(page.locator('#save')).toBeVisible();
+`
+
+	got, err := ConvertPlaywrightToWdioSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToWdioSource returned error: %v", err)
+	}
+	if strings.Contains(got, "$$('#email')") || strings.Contains(got, "$$('#save')") {
+		t.Fatalf("expected fallback path to use singular WDIO selectors, got:\n%s", got)
+	}
+	for _, want := range []string{
+		"await $('#email').setValue('user@example.com')",
+		"await $('#save').click()",
+		"await expect($('#save')).toBeDisplayed()",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+}
+
+func TestConvertPlaywrightToWdioSource_CommentsFilteredContextCookieCalls(t *testing.T) {
+	t.Parallel()
+
+	input := `import { test } from '@playwright/test';
+
+test('cookies', async ({ page }) => {
+  await page.context().addCookies([{ name: 'session', value: 'abc' }]);
+  await page.context().cookies(urls);
+  await page.context().clearCookies({ name: 'session' });
+  await page.context().clearCookies();
+});
+`
+
+	got, err := ConvertPlaywrightToWdioSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPlaywrightToWdioSource returned error: %v", err)
+	}
+	if !strings.Contains(got, "await browser.setCookies([{ name: 'session', value: 'abc' }])") {
+		t.Fatalf("expected addCookies to convert when safe, got:\n%s", got)
+	}
+	if !strings.Contains(got, "await browser.deleteCookies()") {
+		t.Fatalf("expected zero-arg clearCookies to convert, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// TERRAIN-TODO: manual Playwright conversion required") {
+		t.Fatalf("expected filtered cookie calls to be flagged, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await page.context().cookies(urls);") {
+		t.Fatalf("expected filtered cookies call to be preserved as comment, got:\n%s", got)
+	}
+	if !strings.Contains(got, "// await page.context().clearCookies({ name: 'session' });") {
+		t.Fatalf("expected filtered clearCookies call to be preserved as comment, got:\n%s", got)
+	}
+}
+
 func TestExecutePlaywrightToWdioDirectory_PreservesFileNamesAndHelpers(t *testing.T) {
 	t.Parallel()
 
