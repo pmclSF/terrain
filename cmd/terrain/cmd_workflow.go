@@ -174,7 +174,8 @@ func runMigrate(root string, opts migrateCommandOptions) error {
 		Concurrency:    opts.Concurrency,
 		Continue:       opts.Continue,
 		RetryFailed:    opts.RetryFailed,
-		StrictValidate: true,
+		StrictValidate: opts.StrictValidate,
+		ValidationMode: migrateValidationMode(opts),
 	})
 	if err != nil {
 		return err
@@ -201,6 +202,9 @@ func runMigrate(root string, opts migrateCommandOptions) error {
 			if record.Confidence > 0 {
 				line += fmt.Sprintf(" (%d%%)", record.Confidence)
 			}
+			if record.ValidationMode != "" {
+				line += fmt.Sprintf(" [%s]", record.ValidationMode)
+			}
 			if record.OutputPath != "" {
 				line += " -> " + record.OutputPath
 			}
@@ -214,6 +218,13 @@ func runMigrate(root string, opts migrateCommandOptions) error {
 		}
 	}
 	return nil
+}
+
+func migrateValidationMode(opts migrateCommandOptions) string {
+	if !opts.StrictValidate {
+		return string(conv.ValidationModeBestEffort)
+	}
+	return string(conv.ValidationModeStrict)
 }
 
 func runEstimate(root, from, to string, jsonOutput bool) error {
@@ -447,7 +458,7 @@ func printMigrateUsage() {
 	fmt.Fprintln(os.Stderr, "      --dry-run         preview migration without writing files")
 	fmt.Fprintln(os.Stderr, "      --plan            show a structured migration plan")
 	fmt.Fprintln(os.Stderr, "      --json            machine-readable output")
-	fmt.Fprintln(os.Stderr, "      --strict-validate validate converted output syntax before keeping files (default: true)")
+	fmt.Fprintln(os.Stderr, "      --strict-validate validate converted output before keeping files (default: true; pass --strict-validate=false for best-effort mode)")
 }
 
 func printEstimateUsage() {

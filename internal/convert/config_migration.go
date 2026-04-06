@@ -14,6 +14,7 @@ type ConfigMigrationOptions struct {
 	Output         string `json:"output,omitempty"`
 	DryRun         bool   `json:"dryRun,omitempty"`
 	ValidateSyntax bool   `json:"validateSyntax,omitempty"`
+	ValidationMode string `json:"validationMode,omitempty"`
 }
 
 // ConfigMigrationResult is the native Terrain result for a config migration request.
@@ -24,10 +25,13 @@ type ConfigMigrationResult struct {
 	Mode             string    `json:"mode"`
 	From             string    `json:"from"`
 	To               string    `json:"to"`
+	ValidationMode   string    `json:"validationMode,omitempty"`
+	Validated        bool      `json:"validated,omitempty"`
 	AutoDetected     bool      `json:"autoDetected,omitempty"`
 	DryRun           bool      `json:"dryRun,omitempty"`
 	Direction        Direction `json:"direction"`
 	Status           string    `json:"status"`
+	Warnings         []string  `json:"warnings,omitempty"`
 	ConvertedContent string    `json:"-"`
 }
 
@@ -76,16 +80,17 @@ func RunConfigMigration(source string, options ConfigMigrationOptions) (ConfigMi
 	}
 
 	result := ConfigMigrationResult{
-		Command:      "convert-config",
-		Source:       source,
-		Output:       outputPath,
-		Mode:         "stdout",
-		From:         direction.From,
-		To:           direction.To,
-		AutoDetected: autoDetected,
-		DryRun:       options.DryRun,
-		Direction:    direction,
-		Status:       "printed",
+		Command:        "convert-config",
+		Source:         source,
+		Output:         outputPath,
+		Mode:           "stdout",
+		From:           direction.From,
+		To:             direction.To,
+		ValidationMode: string(normalizeValidationMode(options.ValidationMode)),
+		AutoDetected:   autoDetected,
+		DryRun:         options.DryRun,
+		Direction:      direction,
+		Status:         "printed",
 	}
 
 	if outputPath != "" {
@@ -102,8 +107,17 @@ func RunConfigMigration(source string, options ConfigMigrationOptions) (ConfigMi
 	if validationPath == "" {
 		validationPath = TargetConfigFileName(direction.To, filepath.Base(source))
 	}
-	if err := ValidateConvertedOutput(validationPath, direction, converted); err != nil {
-		return ConfigMigrationResult{}, err
+	validationMode := normalizeValidationMode(options.ValidationMode)
+	validationErr := ValidateConvertedOutput(validationPath, direction, converted)
+	switch validationMode {
+	case ValidationModeStrict:
+		if validationErr != nil {
+			return ConfigMigrationResult{}, validationErr
+		}
+		result.Validated = true
+	case ValidationModeBestEffort:
+		result.Validated = validationErr == nil
+		result.Warnings = append(result.Warnings, validationWarningsForError(validationMode, validationErr)...)
 	}
 
 	if outputPath == "" {

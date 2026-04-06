@@ -25,6 +25,7 @@ type TestMigrationOptions struct {
 	Concurrency       int    `json:"concurrency,omitempty"`
 	AutoDetect        bool   `json:"autoDetect,omitempty"`
 	ValidateSyntax    bool   `json:"validateSyntax,omitempty"`
+	ValidationMode    string `json:"validationMode,omitempty"`
 	Plan              bool   `json:"plan,omitempty"`
 	DryRun            bool   `json:"dryRun,omitempty"`
 }
@@ -36,6 +37,7 @@ type TestMigrationPlan struct {
 	Source          string     `json:"source"`
 	Output          string     `json:"output,omitempty"`
 	Alias           string     `json:"alias,omitempty"`
+	ValidationMode  string     `json:"validationMode,omitempty"`
 	Direction       Direction  `json:"direction"`
 	SourceDetection *Detection `json:"sourceDetection,omitempty"`
 	ExecutionStatus string     `json:"executionStatus"`
@@ -46,6 +48,7 @@ type TestMigrationPlan struct {
 type TestMigrationResult struct {
 	Source          string             `json:"source"`
 	Alias           string             `json:"alias,omitempty"`
+	ValidationMode  string             `json:"validationMode,omitempty"`
 	Direction       Direction          `json:"direction"`
 	SourceDetection *Detection         `json:"sourceDetection,omitempty"`
 	Plan            *TestMigrationPlan `json:"plan,omitempty"`
@@ -67,6 +70,7 @@ func RunTestMigration(source string, options TestMigrationOptions) (TestMigratio
 	result := TestMigrationResult{
 		Source:          source,
 		Alias:           alias,
+		ValidationMode:  string(normalizeValidationMode(options.ValidationMode)),
 		Direction:       direction,
 		SourceDetection: detection,
 	}
@@ -94,11 +98,21 @@ func RunTestMigration(source string, options TestMigrationOptions) (TestMigratio
 	if err != nil {
 		return result, err
 	}
-	if err := ValidateExecutionResultForDirection(execution, direction); err != nil {
-		if cleanupErr := CleanupExecutionOutputs(execution); cleanupErr != nil {
-			return result, fmt.Errorf("%v (cleanup failed: %w)", err, cleanupErr)
+	validationMode := normalizeValidationMode(options.ValidationMode)
+	execution.ValidationMode = string(validationMode)
+	validationErr := ValidateExecutionResultForDirection(execution, direction)
+	switch validationMode {
+	case ValidationModeStrict:
+		if validationErr != nil {
+			if cleanupErr := CleanupExecutionOutputs(execution); cleanupErr != nil {
+				return result, fmt.Errorf("%v (cleanup failed: %w)", validationErr, cleanupErr)
+			}
+			return result, validationErr
 		}
-		return result, err
+		execution.Validated = true
+	case ValidationModeBestEffort:
+		execution.Warnings = append(execution.Warnings, validationWarningsForError(validationMode, validationErr)...)
+		execution.Validated = validationErr == nil
 	}
 
 	result.Execution = &execution
@@ -188,6 +202,7 @@ func buildTestMigrationPlan(source string, direction Direction, detection *Detec
 		Source:          source,
 		Output:          options.Output,
 		Alias:           alias,
+		ValidationMode:  string(normalizeValidationMode(options.ValidationMode)),
 		Direction:       direction,
 		SourceDetection: detection,
 		ExecutionStatus: "cataloged-not-executable",

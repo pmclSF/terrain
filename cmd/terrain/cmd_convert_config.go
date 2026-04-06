@@ -96,6 +96,9 @@ func runConvertConfig(source string, opts convertConfigCommandOptions) error {
 		fmt.Printf("  Source: %s\n", source)
 		fmt.Printf("  Detected framework: %s\n", result.From)
 		fmt.Printf("  Target framework: %s\n", result.To)
+		if result.ValidationMode != "" {
+			fmt.Printf("  Validation: %s\n", result.ValidationMode)
+		}
 		if result.Output != "" {
 			fmt.Printf("  Output: %s\n", result.Output)
 		} else {
@@ -105,6 +108,9 @@ func runConvertConfig(source string, opts convertConfigCommandOptions) error {
 	}
 
 	if result.Output == "" {
+		for _, warning := range result.Warnings {
+			fmt.Fprintf(os.Stderr, "warning: %s\n", warning)
+		}
 		fmt.Print(result.ConvertedContent)
 		return nil
 	}
@@ -113,7 +119,17 @@ func runConvertConfig(source string, opts convertConfigCommandOptions) error {
 	fmt.Println()
 	fmt.Printf("  Source: %s\n", source)
 	fmt.Printf("  Direction: %s -> %s\n", result.From, result.To)
+	if result.ValidationMode != "" {
+		fmt.Printf("  Validation: %s", result.ValidationMode)
+		if result.Validated {
+			fmt.Printf(" (passed)")
+		}
+		fmt.Println()
+	}
 	fmt.Printf("  Output: %s\n", result.Output)
+	for _, warning := range result.Warnings {
+		fmt.Printf("  Warning: %s\n", warning)
+	}
 	return nil
 }
 

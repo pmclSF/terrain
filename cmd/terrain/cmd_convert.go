@@ -68,7 +68,7 @@ func runConvertCLI(args []string) error {
 	fs.StringVar(&opts.Output, "o", "", "output path for converted tests")
 	fs.StringVar(&opts.Config, "config", "", "custom configuration file path")
 	fs.StringVar(&opts.TestType, "test-type", "", "test type (e2e, component, api, etc.)")
-	fs.BoolVar(&opts.Validate, "validate", true, "validate converted tests")
+	fs.BoolVar(&opts.Validate, "validate", true, "validate converted output before returning or writing it")
 	fs.StringVar(&opts.Report, "report", "", "generate conversion report (html, json, markdown)")
 	fs.BoolVar(&opts.PreserveStructure, "preserve-structure", false, "maintain original directory structure")
 	fs.IntVar(&opts.BatchSize, "batch-size", 5, "number of files per batch")
@@ -76,7 +76,7 @@ func runConvertCLI(args []string) error {
 	fs.BoolVar(&opts.DryRun, "dry-run", false, "show what would be converted without making changes")
 	fs.BoolVar(&opts.Plan, "plan", false, "show structured conversion plan")
 	fs.BoolVar(&opts.AutoDetect, "auto-detect", false, "auto-detect source framework from source content")
-	fs.BoolVar(&opts.StrictValidate, "strict-validate", false, "enable parser-based syntax validation of converted output")
+	fs.BoolVar(&opts.StrictValidate, "strict-validate", false, "force strict validation even when best-effort handling is requested")
 	fs.BoolVar(&opts.Quiet, "quiet", false, "suppress non-error output")
 	fs.BoolVar(&opts.Quiet, "q", false, "suppress non-error output")
 	fs.BoolVar(&opts.Verbose, "verbose", false, "detailed output")
@@ -87,6 +87,9 @@ func runConvertCLI(args []string) error {
 	if err := fs.Parse(reorderCLIArgs(args, convertFlagsWithValue)); err != nil {
 		printConvertUsage()
 		return cliUsageError{message: err.Error()}
+	}
+	if !opts.Validate && !opts.StrictValidate {
+		opts.OnError = "best-effort"
 	}
 
 	positionals := fs.Args()
@@ -180,6 +183,11 @@ func runConvert(source string, opts convertCommandOptions) error {
 		return cliUsageError{message: "convert requires <source>"}
 	}
 
+	validationMode, err := resolveConvertValidationMode(opts)
+	if err != nil {
+		return cliUsageError{message: err.Error()}
+	}
+
 	result, err := conv.RunTestMigration(source, conv.TestMigrationOptions{
 		Alias:             opts.Alias,
 		From:              opts.From,
@@ -189,7 +197,8 @@ func runConvert(source string, opts convertCommandOptions) error {
 		BatchSize:         opts.BatchSize,
 		Concurrency:       opts.Concurrency,
 		AutoDetect:        opts.AutoDetect,
-		ValidateSyntax:    true,
+		ValidateSyntax:    validationMode == conv.ValidationModeStrict,
+		ValidationMode:    string(validationMode),
 		Plan:              opts.Plan,
 		DryRun:            opts.DryRun,
 	})
@@ -225,6 +234,9 @@ func renderConvertExecution(result conv.ExecutionResult, direction conv.Directio
 	}
 
 	if result.Mode == "stdout" {
+		for _, warning := range result.Warnings {
+			fmt.Fprintf(os.Stderr, "warning: %s\n", warning)
+		}
 		fmt.Print(result.StdoutContent)
 		return nil
 	}
@@ -233,12 +245,24 @@ func renderConvertExecution(result conv.ExecutionResult, direction conv.Directio
 	fmt.Println()
 	fmt.Printf("  Direction: %s -> %s\n", direction.From, direction.To)
 	fmt.Printf("  Mode: %s\n", result.Mode)
+	if result.ValidationMode != "" {
+		fmt.Printf("  Validation: %s", result.ValidationMode)
+		if result.Validated {
+			fmt.Printf(" (passed)")
+		} else if result.ValidationMode == string(conv.ValidationModeBestEffort) {
+			fmt.Printf(" (best-effort)")
+		}
+		fmt.Println()
+	}
 	if result.Output != "" {
 		fmt.Printf("  Output: %s\n", result.Output)
 	}
 	fmt.Printf("  Converted files: %d\n", result.ConvertedCount)
 	if result.UnchangedCount > 0 {
 		fmt.Printf("  Unchanged files: %d\n", result.UnchangedCount)
+	}
+	for _, warning := range result.Warnings {
+		fmt.Printf("  Warning: %s\n", warning)
 	}
 	return nil
 }
@@ -258,6 +282,9 @@ func renderConvertPlan(plan conv.TestMigrationPlan, jsonOutput bool) error {
 	fmt.Printf("  Category: %s\n", plan.Direction.Category)
 	fmt.Printf("  Shorthands: %s\n", strings.Join(plan.Direction.Shorthands, ", "))
 	fmt.Printf("  Go-native state: %s\n", humanizeGoNativeState(plan.Direction.GoNativeState))
+	if plan.ValidationMode != "" {
+		fmt.Printf("  Validation: %s\n", plan.ValidationMode)
+	}
 	fmt.Printf("  Capabilities: tests=%s, config=%s, project=%s, detect=%s, validate=%s, confidence=%s\n",
 		plan.Direction.Capabilities.TestMigration,
 		plan.Direction.Capabilities.ConfigMigration,
@@ -282,6 +309,20 @@ func renderConvertPlan(plan conv.TestMigrationPlan, jsonOutput bool) error {
 	fmt.Println("Next:")
 	fmt.Printf("  %s\n", plan.NextStep)
 	return nil
+}
+
+func resolveConvertValidationMode(opts convertCommandOptions) (conv.ValidationMode, error) {
+	switch strings.ToLower(strings.TrimSpace(opts.OnError)) {
+	case "", "skip", "fail":
+	case "best-effort":
+		return conv.ValidationModeBestEffort, nil
+	default:
+		return "", fmt.Errorf("--on-error must be one of skip, fail, or best-effort")
+	}
+	if opts.StrictValidate {
+		return conv.ValidationModeStrict, nil
+	}
+	return conv.ValidationModeStrict, nil
 }
 
 func runListConversions(jsonOutput bool) error {
@@ -452,8 +493,9 @@ func printConvertUsage() {
 	fmt.Fprintln(os.Stderr, "  --to, -t           target framework")
 	fmt.Fprintln(os.Stderr, "  --output, -o       write converted output to a file or directory")
 	fmt.Fprintln(os.Stderr, "  --auto-detect      detect the source framework from the file or directory")
-	fmt.Fprintln(os.Stderr, "  --validate         validate converted output syntax (default: true; pass --validate=false to disable)")
-	fmt.Fprintln(os.Stderr, "  --strict-validate  enforce parser-based syntax validation of converted output")
+	fmt.Fprintln(os.Stderr, "  --validate         validate converted output before returning or writing it (default: true)")
+	fmt.Fprintln(os.Stderr, "  --strict-validate  force strict validation, including when paired with best-effort handling")
+	fmt.Fprintln(os.Stderr, "  --on-error         fail|skip|best-effort (best-effort keeps output even if validation fails)")
 	fmt.Fprintln(os.Stderr, "  --plan             show the Go-native migration plan for this direction")
 	fmt.Fprintln(os.Stderr, "  --dry-run          same as plan, but framed as a no-write preview")
 	fmt.Fprintln(os.Stderr, "  --json             machine-readable output")
