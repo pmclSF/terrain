@@ -304,6 +304,16 @@ func renderConvertPlan(plan conv.TestMigrationPlan, jsonOutput bool) error {
 			plan.SourceDetection.Confidence*100,
 			plan.SourceDetection.DetectionSource,
 		)
+		if plan.SourceDetection.Recommendation != "" {
+			fmt.Printf("  Detection recommendation: %s\n", plan.SourceDetection.Recommendation)
+		}
+		if plan.SourceDetection.Mode == "directory" {
+			if plan.SourceDetection.AutoDetectSafe {
+				fmt.Println("  Auto-detect safe: yes")
+			} else {
+				fmt.Println("  Auto-detect safe: no")
+			}
+		}
 	}
 	fmt.Println()
 	fmt.Println("Next:")
@@ -403,6 +413,14 @@ func runDetect(path string, jsonOutput bool) error {
 	}
 	if detection.Mode == "directory" {
 		fmt.Printf("  Files scanned: %d\n", detection.FilesScanned)
+		if detection.Recommendation != "" {
+			fmt.Printf("  Recommendation: %s\n", detection.Recommendation)
+		}
+		if detection.AutoDetectSafe {
+			fmt.Println("  Auto-detect safe: yes")
+		} else {
+			fmt.Println("  Auto-detect safe: no")
+		}
 		if detection.Mixed {
 			fmt.Println("  Mixed repo: yes")
 		}
@@ -410,7 +428,11 @@ func runDetect(path string, jsonOutput bool) error {
 			fmt.Println("  Ambiguous: yes")
 		}
 		for _, candidate := range detection.Candidates {
-			fmt.Printf("  Candidate: %s (%.0f%% confidence across %d file(s))\n", candidate.Framework, candidate.Confidence*100, candidate.Files)
+			label := ""
+			if candidate.Primary {
+				label = " [primary]"
+			}
+			fmt.Printf("  Candidate: %s (%.0f%% confidence across %d file(s), %.0f%% share)%s\n", candidate.Framework, candidate.Confidence*100, candidate.Files, candidate.FileShare*100, label)
 		}
 	}
 	return nil

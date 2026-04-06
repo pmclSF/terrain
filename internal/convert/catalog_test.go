@@ -172,9 +172,15 @@ func TestDetectSource_File(t *testing.T) {
 	if detection.Language != "javascript" {
 		t.Fatalf("language = %q, want javascript", detection.Language)
 	}
+	if !detection.AutoDetectSafe {
+		t.Fatal("expected file detection to be auto-detect safe")
+	}
+	if detection.Recommendation != "safe" {
+		t.Fatalf("recommendation = %q, want safe", detection.Recommendation)
+	}
 }
 
-func TestDetectSource_DirectoryChoosesStrongestMatch(t *testing.T) {
+func TestDetectSource_DirectoryMarksDominantMixedResultsSafe(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
@@ -183,6 +189,9 @@ func TestDetectSource_DirectoryChoosesStrongestMatch(t *testing.T) {
 	}
 	if err := os.WriteFile(filepath.Join(root, "tests", "auth.spec.ts"), []byte("import { test } from '@playwright/test'\n"), 0o644); err != nil {
 		t.Fatalf("write playwright file: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "tests", "checkout.spec.ts"), []byte("import { test } from '@playwright/test'\n"), 0o644); err != nil {
+		t.Fatalf("write second playwright file: %v", err)
 	}
 	if err := os.WriteFile(filepath.Join(root, "tests", "legacy.test.js"), []byte("describe('x', () => { expect(true).toBe(true) })\n"), 0o644); err != nil {
 		t.Fatalf("write jest file: %v", err)
@@ -206,6 +215,21 @@ func TestDetectSource_DirectoryChoosesStrongestMatch(t *testing.T) {
 	}
 	if !detection.Mixed {
 		t.Fatal("expected mixed directory detection to be marked mixed")
+	}
+	if detection.Ambiguous {
+		t.Fatalf("expected dominant detection, got ambiguous %+v", detection)
+	}
+	if !detection.AutoDetectSafe {
+		t.Fatal("expected dominant mixed detection to be auto-detect safe")
+	}
+	if detection.Recommendation != "dominant" {
+		t.Fatalf("recommendation = %q, want dominant", detection.Recommendation)
+	}
+	if !detection.Candidates[0].Primary {
+		t.Fatal("expected top candidate to be marked primary")
+	}
+	if detection.Candidates[0].Framework != "playwright" || detection.Candidates[0].FileShare < 0.60 {
+		t.Fatalf("unexpected primary candidate: %+v", detection.Candidates[0])
 	}
 }
 
@@ -232,6 +256,12 @@ func TestDetectSource_DirectoryMarksAmbiguousResults(t *testing.T) {
 	}
 	if !detection.Ambiguous {
 		t.Fatalf("expected ambiguous detection, got %+v", detection)
+	}
+	if detection.AutoDetectSafe {
+		t.Fatal("expected ambiguous detection not to be auto-detect safe")
+	}
+	if detection.Recommendation != "ambiguous" {
+		t.Fatalf("recommendation = %q, want ambiguous", detection.Recommendation)
 	}
 	if len(detection.Candidates) != 2 {
 		t.Fatalf("candidate count = %d, want 2", len(detection.Candidates))

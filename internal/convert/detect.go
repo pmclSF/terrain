@@ -16,6 +16,8 @@ type Detection struct {
 	Mode            string               `json:"mode"`
 	Framework       string               `json:"framework"`
 	Confidence      float64              `json:"confidence"`
+	Recommendation  string               `json:"recommendation,omitempty"`
+	AutoDetectSafe  bool                 `json:"autoDetectSafe,omitempty"`
 	DetectionSource string               `json:"detectionSource,omitempty"`
 	Language        string               `json:"language,omitempty"`
 	Category        string               `json:"category,omitempty"`
@@ -29,6 +31,8 @@ type DetectionCandidate struct {
 	Framework  string  `json:"framework"`
 	Confidence float64 `json:"confidence"`
 	Files      int     `json:"files"`
+	FileShare  float64 `json:"fileShare,omitempty"`
+	Primary    bool    `json:"primary,omitempty"`
 	Source     string  `json:"source,omitempty"`
 }
 
@@ -57,11 +61,17 @@ func detectFile(path string) (Detection, error) {
 	}
 
 	result := analysis.DetectFrameworkForFile(absPath)
+	candidateCount := 0
+	if result.Framework != "" && result.Framework != "unknown" {
+		candidateCount = 1
+	}
 	detection := Detection{
 		Path:            path,
 		Mode:            "file",
 		Framework:       result.Framework,
 		Confidence:      result.Confidence,
+		Recommendation:  detectionRecommendation(false, false, result.Framework != "" && result.Framework != "unknown", candidateCount),
+		AutoDetectSafe:  result.Framework != "" && result.Framework != "unknown",
 		DetectionSource: result.Source,
 		FilesScanned:    1,
 	}
@@ -70,6 +80,8 @@ func detectFile(path string) (Detection, error) {
 			Framework:  result.Framework,
 			Confidence: result.Confidence,
 			Files:      1,
+			FileShare:  1,
+			Primary:    true,
 			Source:     result.Source,
 		}}
 	}
@@ -122,13 +134,6 @@ func detectDirectory(root string) (Detection, error) {
 			summary.source = detection.DetectionSource
 		}
 
-		if detection.Confidence > best.Confidence {
-			best.Framework = detection.Framework
-			best.Confidence = detection.Confidence
-			best.DetectionSource = detection.DetectionSource
-			best.Language = detection.Language
-			best.Category = detection.Category
-		}
 		return nil
 	})
 	if walkErr != nil {
@@ -137,28 +142,52 @@ func detectDirectory(root string) (Detection, error) {
 	best.Candidates = buildDetectionCandidates(summaries)
 	best.Mixed = len(best.Candidates) > 1
 	best.Ambiguous = detectionIsAmbiguous(best.Candidates)
+	best.AutoDetectSafe = detectionAutoDetectSafe(best.Candidates, best.Ambiguous)
+	best.Recommendation = detectionRecommendation(best.Mixed, best.Ambiguous, best.AutoDetectSafe, len(best.Candidates))
+	if len(best.Candidates) > 0 {
+		top := best.Candidates[0]
+		best.Framework = top.Framework
+		best.Confidence = top.Confidence
+		best.DetectionSource = top.Source
+		if framework, ok := LookupFramework(top.Framework); ok {
+			best.Language = framework.Language
+			best.Category = framework.Category
+		}
+	}
 	return best, nil
 }
 
 func buildDetectionCandidates(summaries map[string]*detectionCandidateSummary) []DetectionCandidate {
 	items := make([]DetectionCandidate, 0, len(summaries))
+	totalFiles := 0
 	for _, summary := range summaries {
+		totalFiles += summary.files
+	}
+	for _, summary := range summaries {
+		share := 0.0
+		if totalFiles > 0 {
+			share = float64(summary.files) / float64(totalFiles)
+		}
 		items = append(items, DetectionCandidate{
 			Framework:  summary.framework,
 			Confidence: summary.confidence,
 			Files:      summary.files,
+			FileShare:  share,
 			Source:     summary.source,
 		})
 	}
 	sort.Slice(items, func(i, j int) bool {
-		if items[i].Confidence == items[j].Confidence {
-			if items[i].Files == items[j].Files {
+		if items[i].Files == items[j].Files {
+			if items[i].Confidence == items[j].Confidence {
 				return items[i].Framework < items[j].Framework
 			}
-			return items[i].Files > items[j].Files
+			return items[i].Confidence > items[j].Confidence
 		}
-		return items[i].Confidence > items[j].Confidence
+		return items[i].Files > items[j].Files
 	})
+	if len(items) > 0 {
+		items[0].Primary = true
+	}
 	return items
 }
 
@@ -171,7 +200,37 @@ func detectionIsAmbiguous(candidates []DetectionCandidate) bool {
 	if top.Framework == next.Framework {
 		return false
 	}
-	return top.Confidence-next.Confidence <= 0.10
+	return top.FileShare-next.FileShare <= 0.15 && top.Confidence-next.Confidence <= 0.10
+}
+
+func detectionAutoDetectSafe(candidates []DetectionCandidate, ambiguous bool) bool {
+	if len(candidates) == 0 {
+		return false
+	}
+	if len(candidates) == 1 {
+		return true
+	}
+	if ambiguous {
+		return false
+	}
+	return candidates[0].FileShare >= 0.60
+}
+
+func detectionRecommendation(mixed, ambiguous, autoDetectSafe bool, candidateCount int) string {
+	switch {
+	case candidateCount == 0:
+		return "unknown"
+	case !autoDetectSafe && candidateCount == 1:
+		return "unknown"
+	case !mixed:
+		return "safe"
+	case ambiguous:
+		return "ambiguous"
+	case autoDetectSafe:
+		return "dominant"
+	default:
+		return "mixed"
+	}
 }
 
 func shouldSkipDir(name string) bool {

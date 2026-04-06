@@ -167,10 +167,11 @@ func resolveTestMigrationDirection(source string, options TestMigrationOptions) 
 		if detected.Framework == "" || detected.Framework == "unknown" {
 			return Direction{}, nil, alias, fmt.Errorf("could not auto-detect source framework from %s", source)
 		}
-		if detected.Mode == "directory" && detected.Mixed {
+		if detected.Mode == "directory" && !detected.AutoDetectSafe {
 			return Direction{}, detection, alias, fmt.Errorf(
-				"auto-detect found mixed source frameworks in %s; use --from explicitly. Candidates: %s",
+				"auto-detect is not safe for %s (%s); use --from explicitly. Candidates: %s",
 				source,
+				detected.Recommendation,
 				formatDetectionCandidates(detected.Candidates),
 			)
 		}
@@ -272,7 +273,7 @@ func formatDetectionCandidates(candidates []DetectionCandidate) string {
 
 	parts := make([]string, 0, len(candidates))
 	for _, candidate := range candidates {
-		parts = append(parts, fmt.Sprintf("%s (%.0f%%, %d file(s))", candidate.Framework, candidate.Confidence*100, candidate.Files))
+		parts = append(parts, fmt.Sprintf("%s (%.0f%%, %d file(s), %.0f%% share)", candidate.Framework, candidate.Confidence*100, candidate.Files, candidate.FileShare*100))
 	}
 	return strings.Join(parts, ", ")
 }
