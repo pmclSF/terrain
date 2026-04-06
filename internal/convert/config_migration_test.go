@@ -29,6 +29,12 @@ func TestRunConfigMigration_AutoDetectsAndPrintsToStdout(t *testing.T) {
 	if result.From != "jest" || result.To != "vitest" {
 		t.Fatalf("direction = %s -> %s, want jest -> vitest", result.From, result.To)
 	}
+	if result.ValidationMode != string(ValidationModeStrict) {
+		t.Fatalf("validation mode = %q, want %q", result.ValidationMode, ValidationModeStrict)
+	}
+	if !result.Validated {
+		t.Fatal("expected strict config migration to validate successfully")
+	}
 	if !result.AutoDetected {
 		t.Fatal("expected autoDetected = true")
 	}
@@ -71,5 +77,36 @@ func TestRunConfigMigration_WritesValidatedOutput(t *testing.T) {
 	}
 	if !strings.Contains(text, "projects: [") {
 		t.Fatalf("expected default projects, got:\n%s", text)
+	}
+}
+
+func TestRunConfigMigration_BestEffortKeepsInvalidOutputAndReportsWarning(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	sourcePath := filepath.Join(root, "broken.config.js")
+	outputPath := filepath.Join(root, "converted", "vitest.config.ts")
+	input := `module.exports = { testEnvironment: 'node };`
+	if err := os.WriteFile(sourcePath, []byte(input), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+
+	result, err := RunConfigMigration(sourcePath, ConfigMigrationOptions{
+		From:           "jest",
+		To:             "vitest",
+		Output:         outputPath,
+		ValidationMode: string(ValidationModeBestEffort),
+	})
+	if err != nil {
+		t.Fatalf("RunConfigMigration returned error: %v", err)
+	}
+	if result.Validated {
+		t.Fatal("expected best-effort config migration to report failed validation")
+	}
+	if len(result.Warnings) == 0 || !strings.Contains(strings.Join(result.Warnings, "\n"), "best-effort mode kept output despite validation failure") {
+		t.Fatalf("expected best-effort warning, got %v", result.Warnings)
+	}
+	if _, statErr := os.Stat(outputPath); statErr != nil {
+		t.Fatalf("expected best-effort config output to remain on disk, got %v", statErr)
 	}
 }

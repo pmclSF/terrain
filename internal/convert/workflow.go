@@ -22,17 +22,19 @@ const (
 )
 
 type MigrationFileRecord struct {
-	InputPath   string   `json:"inputPath"`
-	OutputPath  string   `json:"outputPath,omitempty"`
-	Type        string   `json:"type"`
-	Framework   string   `json:"framework,omitempty"`
-	Status      string   `json:"status"`
-	Confidence  int      `json:"confidence"`
-	TodosAdded  int      `json:"todosAdded,omitempty"`
-	Warnings    []string `json:"warnings,omitempty"`
-	Error       string   `json:"error,omitempty"`
-	SkipReason  string   `json:"skipReason,omitempty"`
-	ConvertedAt string   `json:"convertedAt,omitempty"`
+	InputPath      string   `json:"inputPath"`
+	OutputPath     string   `json:"outputPath,omitempty"`
+	Type           string   `json:"type"`
+	Framework      string   `json:"framework,omitempty"`
+	Status         string   `json:"status"`
+	Confidence     int      `json:"confidence"`
+	ValidationMode string   `json:"validationMode,omitempty"`
+	Validated      bool     `json:"validated,omitempty"`
+	TodosAdded     int      `json:"todosAdded,omitempty"`
+	Warnings       []string `json:"warnings,omitempty"`
+	Error          string   `json:"error,omitempty"`
+	SkipReason     string   `json:"skipReason,omitempty"`
+	ConvertedAt    string   `json:"convertedAt,omitempty"`
 }
 
 type MigrationEstimateSummary struct {
@@ -87,6 +89,7 @@ type MigrationRunOptions struct {
 	Continue       bool   `json:"continue,omitempty"`
 	RetryFailed    bool   `json:"retryFailed,omitempty"`
 	StrictValidate bool   `json:"strictValidate,omitempty"`
+	ValidationMode string `json:"validationMode,omitempty"`
 	Concurrency    int    `json:"concurrency,omitempty"`
 }
 
@@ -448,7 +451,8 @@ func MigrateProject(root, from, to string, options MigrationRunOptions) (Migrati
 		selected = append(selected, candidate)
 	}
 
-	outcomes := processMigrationCandidates(selected, direction, outputRoot, true, options.Concurrency)
+	validationMode := effectiveMigrationValidationMode(options)
+	outcomes := processMigrationCandidates(selected, direction, outputRoot, validationMode, options.Concurrency)
 	processed := make([]MigrationFileRecord, 0, len(outcomes))
 	for _, outcome := range outcomes {
 		candidate := outcome.candidate
@@ -498,7 +502,7 @@ type migrationOutcome struct {
 	err       error
 }
 
-func processMigrationCandidates(candidates []migrationCandidate, direction Direction, outputRoot string, strictValidate bool, concurrency int) []migrationOutcome {
+func processMigrationCandidates(candidates []migrationCandidate, direction Direction, outputRoot string, validationMode ValidationMode, concurrency int) []migrationOutcome {
 	if len(candidates) == 0 {
 		return nil
 	}
@@ -518,7 +522,7 @@ func processMigrationCandidates(candidates []migrationCandidate, direction Direc
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				record, err := migrateCandidate(job.candidate, direction, outputRoot, strictValidate)
+				record, err := migrateCandidate(job.candidate, direction, outputRoot, validationMode)
 				results <- migrationOutcome{
 					index:     job.index,
 					candidate: job.candidate,
@@ -655,6 +659,18 @@ func GenerateMigrationChecklist(records []MigrationFileRecord) string {
 			if record.TodosAdded > 0 {
 				lines = append(lines, fmt.Sprintf("  - TODO comments inserted: %d", record.TodosAdded))
 			}
+			if record.ValidationMode != "" && (record.ValidationMode != string(ValidationModeStrict) || !record.Validated) {
+				detail := "  - Validation mode: " + record.ValidationMode
+				if record.Validated {
+					detail += " (passed)"
+				} else {
+					detail += " (not fully validated)"
+				}
+				lines = append(lines, detail)
+			}
+			for _, warning := range record.Warnings {
+				lines = append(lines, "  - Warning: "+warning)
+			}
 		}
 	}
 
@@ -721,13 +737,21 @@ func prepareMigrationState(state *MigrationStateManager, from, to, root string, 
 	return outputRoot, nil
 }
 
+func effectiveMigrationValidationMode(options MigrationRunOptions) ValidationMode {
+	if strings.TrimSpace(options.ValidationMode) != "" {
+		return normalizeValidationMode(options.ValidationMode)
+	}
+	return ValidationModeStrict
+}
+
 func estimateCandidate(candidate migrationCandidate, direction Direction) (MigrationFileRecord, []string) {
 	record := MigrationFileRecord{
-		InputPath:  candidate.RelPath,
-		Type:       candidate.Type,
-		Framework:  candidate.Framework,
-		Status:     "estimated",
-		Confidence: 0,
+		InputPath:      candidate.RelPath,
+		Type:           candidate.Type,
+		Framework:      candidate.Framework,
+		Status:         "estimated",
+		Confidence:     0,
+		ValidationMode: string(ValidationModeStrict),
 	}
 
 	input, err := os.ReadFile(candidate.AbsPath)
@@ -750,16 +774,17 @@ func estimateCandidate(candidate migrationCandidate, direction Direction) (Migra
 	}
 
 	record.TodosAdded = countTODOs(output)
-	record.Confidence = predictMigrationConfidence(output, candidate.Type, direction)
-	record.Warnings = warningsFromOutput(output, candidate.Type, direction)
+	record.Confidence = predictMigrationConfidence(output, candidate.Type, direction, ValidationModeStrict)
+	record.Warnings = warningsFromOutput(output, candidate.Type, direction, ValidationModeStrict)
 	return record, extractBlockers(output, record)
 }
 
-func migrateCandidate(candidate migrationCandidate, direction Direction, outputRoot string, strictValidate bool) (MigrationFileRecord, error) {
+func migrateCandidate(candidate migrationCandidate, direction Direction, outputRoot string, validationMode ValidationMode) (MigrationFileRecord, error) {
 	record := MigrationFileRecord{
-		InputPath: candidate.RelPath,
-		Type:      candidate.Type,
-		Framework: candidate.Framework,
+		InputPath:      candidate.RelPath,
+		Type:           candidate.Type,
+		Framework:      candidate.Framework,
+		ValidationMode: string(validationMode),
 	}
 	if candidate.IsConfig {
 		if !SupportsConfigConversion(direction.From, direction.To) {
@@ -774,19 +799,22 @@ func migrateCandidate(candidate migrationCandidate, direction Direction, outputR
 			From:           direction.From,
 			To:             direction.To,
 			Output:         outputPath,
-			ValidateSyntax: strictValidate,
+			ValidateSyntax: validationMode == ValidationModeStrict,
+			ValidationMode: string(validationMode),
 		})
 		if err != nil {
 			return record, err
 		}
 		record.Status = "converted"
 		record.OutputPath = result.Output
+		record.Validated = result.Validated
 		output, readErr := os.ReadFile(result.Output)
 		if readErr == nil {
 			record.TodosAdded = countTODOs(string(output))
-			record.Confidence = predictMigrationConfidence(string(output), candidate.Type, direction)
-			record.Warnings = warningsFromOutput(string(output), candidate.Type, direction)
+			record.Confidence = predictMigrationConfidence(string(output), candidate.Type, direction, validationMode)
+			record.Warnings = warningsFromOutput(string(output), candidate.Type, direction, validationMode)
 		}
+		record.Warnings = dedupeStrings(append(record.Warnings, result.Warnings...))
 		if record.Confidence == 0 {
 			record.Confidence = 95
 		}
@@ -798,7 +826,8 @@ func migrateCandidate(candidate migrationCandidate, direction Direction, outputR
 		From:           direction.From,
 		To:             direction.To,
 		Output:         targetDir,
-		ValidateSyntax: strictValidate,
+		ValidateSyntax: validationMode == ValidationModeStrict,
+		ValidationMode: string(validationMode),
 	})
 	if err != nil {
 		return record, err
@@ -807,6 +836,7 @@ func migrateCandidate(candidate migrationCandidate, direction Direction, outputR
 		return record, fmt.Errorf("native test migration produced no execution result for %s", candidate.RelPath)
 	}
 	record.Status = "converted"
+	record.Validated = result.Execution.Validated
 	if len(result.Execution.Files) > 0 {
 		record.OutputPath = result.Execution.Files[0].OutputPath
 	}
@@ -814,10 +844,11 @@ func migrateCandidate(candidate migrationCandidate, direction Direction, outputR
 		output, readErr := os.ReadFile(record.OutputPath)
 		if readErr == nil {
 			record.TodosAdded = countTODOs(string(output))
-			record.Confidence = predictMigrationConfidence(string(output), candidate.Type, direction)
-			record.Warnings = warningsFromOutput(string(output), candidate.Type, direction)
+			record.Confidence = predictMigrationConfidence(string(output), candidate.Type, direction, validationMode)
+			record.Warnings = warningsFromOutput(string(output), candidate.Type, direction, validationMode)
 		}
 	}
+	record.Warnings = dedupeStrings(append(record.Warnings, result.Execution.Warnings...))
 	if record.Confidence == 0 {
 		record.Confidence = 95
 	}
@@ -1092,7 +1123,7 @@ func estimateEffort(records []MigrationFileRecord) MigrationEffortEstimate {
 	return estimate
 }
 
-func predictMigrationConfidence(output, fileType string, direction Direction) int {
+func predictMigrationConfidence(output, fileType string, direction Direction, validationMode ValidationMode) int {
 	base := 95
 	if fileType == "config" {
 		base = 80
@@ -1123,10 +1154,13 @@ func predictMigrationConfidence(output, fileType string, direction Direction) in
 	if warning := semanticValidationWarning(direction, output); warning != "" {
 		confidence = minInt(confidence, 60)
 	}
+	if validationMode == ValidationModeBestEffort {
+		confidence = minInt(confidence, base-15)
+	}
 	return confidence
 }
 
-func warningsFromOutput(output, fileType string, direction Direction) []string {
+func warningsFromOutput(output, fileType string, direction Direction, validationMode ValidationMode) []string {
 	warnings := make([]string, 0, 4)
 	todos := countTODOs(output)
 	if todos > 0 {
@@ -1141,6 +1175,9 @@ func warningsFromOutput(output, fileType string, direction Direction) []string {
 		warnings = append(warnings, "contains unconvertible output markers")
 	}
 	warnings = append(warnings, semanticValidationWarnings(direction, output)...)
+	if validationMode == ValidationModeBestEffort {
+		warnings = append(warnings, "best-effort mode bypassed strict validation gating")
+	}
 	if fileType == "config" && todos == 0 && len(warnings) == 0 {
 		return warnings
 	}

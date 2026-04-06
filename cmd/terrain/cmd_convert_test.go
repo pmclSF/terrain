@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	conv "github.com/pmclSF/terrain/internal/convert"
 )
 
 func TestRunListConversions_JSON(t *testing.T) {
@@ -108,7 +110,8 @@ func TestRunConvert_PlanWithAutoDetect(t *testing.T) {
 	}
 
 	var payload struct {
-		Direction struct {
+		ValidationMode string `json:"validationMode"`
+		Direction      struct {
 			From string `json:"from"`
 			To   string `json:"to"`
 		} `json:"direction"`
@@ -128,6 +131,9 @@ func TestRunConvert_PlanWithAutoDetect(t *testing.T) {
 	}
 	if payload.ExecutionStatus == "" {
 		t.Fatal("expected execution status to be populated")
+	}
+	if payload.ValidationMode != string(conv.ValidationModeStrict) {
+		t.Fatalf("validation mode = %q, want %q", payload.ValidationMode, conv.ValidationModeStrict)
 	}
 }
 
@@ -272,6 +278,76 @@ func TestRunConvert_AutoDetectRejectsMixedDirectory(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "mixed source frameworks") {
 		t.Fatalf("expected mixed-directory error, got %v", err)
+	}
+}
+
+func TestRunConvert_BestEffortReturnsJSONWarningForInvalidSource(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	inputPath := filepath.Join(root, "broken.test.js")
+	outputDir := filepath.Join(root, "converted")
+	input := "describe('broken', () => {\n"
+	if err := os.WriteFile(inputPath, []byte(input), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	out, err := captureRun(func() error {
+		return runConvert(inputPath, convertCommandOptions{
+			From:    "jest",
+			To:      "vitest",
+			Output:  outputDir,
+			JSON:    true,
+			OnError: "best-effort",
+		})
+	})
+	if err != nil {
+		t.Fatalf("runConvert returned error: %v", err)
+	}
+
+	var payload struct {
+		ValidationMode string   `json:"validationMode"`
+		Validated      bool     `json:"validated"`
+		Warnings       []string `json:"warnings"`
+	}
+	if err := json.Unmarshal(out, &payload); err != nil {
+		t.Fatalf("invalid JSON: %v\noutput: %s", err, out)
+	}
+	if payload.ValidationMode != string(conv.ValidationModeBestEffort) {
+		t.Fatalf("validation mode = %q, want %q", payload.ValidationMode, conv.ValidationModeBestEffort)
+	}
+	if payload.Validated {
+		t.Fatal("expected best-effort payload to report failed validation")
+	}
+	if !strings.Contains(strings.Join(payload.Warnings, "\n"), "best-effort mode kept output despite validation failure") {
+		t.Fatalf("expected best-effort warning, got %v", payload.Warnings)
+	}
+	if _, statErr := os.Stat(filepath.Join(outputDir, "broken.test.js")); statErr != nil {
+		t.Fatalf("expected best-effort output to remain on disk, got %v", statErr)
+	}
+}
+
+func TestRunConvert_InvalidOnErrorValueReturnsUsageError(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	inputPath := filepath.Join(root, "auth.test.js")
+	if err := os.WriteFile(inputPath, []byte("describe('auth', () => { expect(true).toBe(true) })\n"), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	err := runCaptured(func() error {
+		return runConvert(inputPath, convertCommandOptions{
+			From:    "jest",
+			To:      "vitest",
+			OnError: "explode",
+		})
+	})
+	if err == nil {
+		t.Fatal("expected usage error, got nil")
+	}
+	if !strings.Contains(err.Error(), "--on-error must be one of skip, fail, or best-effort") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

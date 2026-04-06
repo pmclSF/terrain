@@ -29,6 +29,9 @@ type ExecutionResult struct {
 	Output         string       `json:"output,omitempty"`
 	Mode           string       `json:"mode"`
 	Direction      Direction    `json:"direction"`
+	ValidationMode string       `json:"validationMode,omitempty"`
+	Validated      bool         `json:"validated,omitempty"`
+	Warnings       []string     `json:"warnings,omitempty"`
 	Files          []FileResult `json:"files,omitempty"`
 	ConvertedCount int          `json:"convertedCount"`
 	UnchangedCount int          `json:"unchangedCount"`

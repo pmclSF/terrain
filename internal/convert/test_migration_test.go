@@ -43,6 +43,12 @@ func TestRunTestMigration_AutoDetectPlan(t *testing.T) {
 	if result.Plan.ExecutionStatus != "executable" {
 		t.Fatalf("execution status = %q, want executable", result.Plan.ExecutionStatus)
 	}
+	if result.ValidationMode != string(ValidationModeStrict) {
+		t.Fatalf("validation mode = %q, want %q", result.ValidationMode, ValidationModeStrict)
+	}
+	if result.Plan.ValidationMode != string(ValidationModeStrict) {
+		t.Fatalf("plan validation mode = %q, want %q", result.Plan.ValidationMode, ValidationModeStrict)
+	}
 }
 
 func TestRunTestMigration_UsesShorthandAliasForExecution(t *testing.T) {
@@ -68,6 +74,12 @@ func TestRunTestMigration_UsesShorthandAliasForExecution(t *testing.T) {
 	}
 	if result.Execution == nil {
 		t.Fatal("expected execution result, got nil")
+	}
+	if result.Execution.ValidationMode != string(ValidationModeStrict) {
+		t.Fatalf("execution validation mode = %q, want %q", result.Execution.ValidationMode, ValidationModeStrict)
+	}
+	if !result.Execution.Validated {
+		t.Fatal("expected strict execution to validate successfully")
 	}
 	if result.Direction.From != "jest" || result.Direction.To != "vitest" {
 		t.Fatalf("direction = %s -> %s, want jest -> vitest", result.Direction.From, result.Direction.To)
@@ -175,5 +187,42 @@ func TestRunTestMigration_AutoDetectRejectsMixedDirectory(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "playwright") || !strings.Contains(err.Error(), "jest") {
 		t.Fatalf("expected candidate list in error, got %v", err)
+	}
+}
+
+func TestRunTestMigration_BestEffortKeepsInvalidOutputAndReportsWarning(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	inputPath := filepath.Join(root, "broken.test.js")
+	outputDir := filepath.Join(root, "converted")
+	input := "describe('broken', () => {\n"
+	if err := os.WriteFile(inputPath, []byte(input), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	result, err := RunTestMigration(inputPath, TestMigrationOptions{
+		From:           "jest",
+		To:             "vitest",
+		Output:         outputDir,
+		ValidationMode: string(ValidationModeBestEffort),
+	})
+	if err != nil {
+		t.Fatalf("RunTestMigration returned error: %v", err)
+	}
+	if result.Execution == nil {
+		t.Fatal("expected execution result, got nil")
+	}
+	if result.ValidationMode != string(ValidationModeBestEffort) {
+		t.Fatalf("validation mode = %q, want %q", result.ValidationMode, ValidationModeBestEffort)
+	}
+	if result.Execution.Validated {
+		t.Fatal("expected best-effort execution to report failed validation")
+	}
+	if len(result.Execution.Warnings) == 0 || !strings.Contains(strings.Join(result.Execution.Warnings, "\n"), "best-effort mode kept output despite validation failure") {
+		t.Fatalf("expected best-effort validation warning, got %v", result.Execution.Warnings)
+	}
+	if _, statErr := os.Stat(filepath.Join(outputDir, "broken.test.js")); statErr != nil {
+		t.Fatalf("expected best-effort output to remain on disk, got %v", statErr)
 	}
 }

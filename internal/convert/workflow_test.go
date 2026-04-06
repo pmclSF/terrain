@@ -174,14 +174,14 @@ test('example', async ({ page }) => {
 })
 `
 
-	warnings := warningsFromOutput(output, "test", direction)
+	warnings := warningsFromOutput(output, "test", direction, ValidationModeStrict)
 	if len(warnings) < 1 {
 		t.Fatalf("expected warning messages, got %v", warnings)
 	}
 	if !strings.Contains(strings.Join(warnings, "\n"), "Cypress .should() retries until timeout") {
 		t.Fatalf("expected TERRAIN-WARNING message, got %v", warnings)
 	}
-	if confidence := predictMigrationConfidence(output, "test", direction); confidence >= 95 {
+	if confidence := predictMigrationConfidence(output, "test", direction, ValidationModeStrict); confidence >= 95 {
 		t.Fatalf("confidence = %d, want penalty below 95", confidence)
 	}
 }
@@ -202,12 +202,80 @@ test('example', async ({ page }) => {
 })
 `
 
-	warnings := warningsFromOutput(output, "test", direction)
+	warnings := warningsFromOutput(output, "test", direction, ValidationModeStrict)
 	joined := strings.Join(warnings, "\n")
 	if !strings.Contains(joined, "leftover Cypress API detected") {
 		t.Fatalf("expected semantic warning, got %v", warnings)
 	}
-	if confidence := predictMigrationConfidence(output, "test", direction); confidence > 60 {
+	if confidence := predictMigrationConfidence(output, "test", direction, ValidationModeStrict); confidence > 60 {
 		t.Fatalf("confidence = %d, want severe semantic penalty", confidence)
+	}
+}
+
+func TestWarningsFromOutput_BestEffortAddsExplicitWarningAndConfidencePenalty(t *testing.T) {
+	t.Parallel()
+
+	direction, ok := LookupDirection("jest", "vitest")
+	if !ok {
+		t.Fatal("expected jest -> vitest direction")
+	}
+
+	output := `import { describe, it, expect } from 'vitest';
+describe('example', () => {
+  it('works', () => {
+    expect(true).toBe(true)
+  })
+})
+`
+
+	warnings := warningsFromOutput(output, "test", direction, ValidationModeBestEffort)
+	joined := strings.Join(warnings, "\n")
+	if !strings.Contains(joined, "best-effort mode bypassed strict validation gating") {
+		t.Fatalf("expected best-effort warning, got %v", warnings)
+	}
+	if confidence := predictMigrationConfidence(output, "test", direction, ValidationModeBestEffort); confidence >= 95 {
+		t.Fatalf("confidence = %d, want best-effort penalty below 95", confidence)
+	}
+}
+
+func TestMigrateProject_BestEffortKeepsInvalidOutputsAndMarksWarnings(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	testDir := filepath.Join(root, "tests")
+	outputDir := filepath.Join(root, "converted")
+	if err := os.MkdirAll(testDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(testDir, "broken.test.js"), []byte("describe('broken', () => {\n"), 0o644); err != nil {
+		t.Fatalf("write input: %v", err)
+	}
+
+	result, err := MigrateProject(root, "jest", "vitest", MigrationRunOptions{
+		Output:         outputDir,
+		Concurrency:    2,
+		ValidationMode: string(ValidationModeBestEffort),
+	})
+	if err != nil {
+		t.Fatalf("MigrateProject returned error: %v", err)
+	}
+	if result.State.Converted != 1 || result.State.Failed != 0 {
+		t.Fatalf("unexpected migration state: %+v", result.State)
+	}
+	if len(result.Processed) != 1 {
+		t.Fatalf("processed count = %d, want 1", len(result.Processed))
+	}
+	record := result.Processed[0]
+	if record.ValidationMode != string(ValidationModeBestEffort) {
+		t.Fatalf("validation mode = %q, want %q", record.ValidationMode, ValidationModeBestEffort)
+	}
+	if record.Validated {
+		t.Fatal("expected best-effort migrated file to report failed validation")
+	}
+	if !strings.Contains(strings.Join(record.Warnings, "\n"), "best-effort mode kept output despite validation failure") {
+		t.Fatalf("expected best-effort warning, got %v", record.Warnings)
+	}
+	if _, statErr := os.Stat(filepath.Join(outputDir, "tests", "broken.test.js")); statErr != nil {
+		t.Fatalf("expected invalid best-effort output to remain on disk, got %v", statErr)
 	}
 }
