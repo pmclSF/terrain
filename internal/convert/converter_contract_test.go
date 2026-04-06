@@ -71,6 +71,11 @@ func TestConverters_MalformedInputDoesNotReturnError(t *testing.T) {
 			if !strings.Contains(got, fixture.literal) {
 				t.Fatalf("expected fallback to preserve literal %q, got:\n%s", fixture.literal, got)
 			}
+			if err := ValidateSyntax("fallback_output.js", direction.Language, got); err == nil {
+				if err := ValidateConvertedOutput("fallback_output.js", direction, got); err != nil {
+					t.Fatalf("expected parseable fallback output to pass validation, got: %v\noutput:\n%s", err, got)
+				}
+			}
 		})
 	}
 }

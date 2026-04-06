@@ -150,3 +150,30 @@ func TestRunTestMigration_DirectoryUsesBatchAndConcurrencyOptions(t *testing.T) 
 		}
 	}
 }
+
+func TestRunTestMigration_AutoDetectRejectsMixedDirectory(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "playwright.spec.ts"), []byte("import { test } from '@playwright/test';\n"), 0o644); err != nil {
+		t.Fatalf("write playwright input: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "legacy.test.js"), []byte("describe('legacy', () => { expect(true).toBe(true) })\n"), 0o644); err != nil {
+		t.Fatalf("write jest input: %v", err)
+	}
+
+	_, err := RunTestMigration(root, TestMigrationOptions{
+		To:         "vitest",
+		AutoDetect: true,
+		Plan:       true,
+	})
+	if err == nil {
+		t.Fatal("expected mixed-directory auto-detect error, got nil")
+	}
+	if !strings.Contains(err.Error(), "mixed source frameworks") {
+		t.Fatalf("expected mixed-directory error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), "playwright") || !strings.Contains(err.Error(), "jest") {
+		t.Fatalf("expected candidate list in error, got %v", err)
+	}
+}

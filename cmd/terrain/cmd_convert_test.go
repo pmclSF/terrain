@@ -249,6 +249,32 @@ func TestRunConvert_DefaultValidationRejectsMalformedConvertedOutput(t *testing.
 	}
 }
 
+func TestRunConvert_AutoDetectRejectsMixedDirectory(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "playwright.spec.ts"), []byte("import { test } from '@playwright/test';\n"), 0o644); err != nil {
+		t.Fatalf("write playwright input: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "legacy.test.js"), []byte("describe('legacy', () => { expect(true).toBe(true) })\n"), 0o644); err != nil {
+		t.Fatalf("write jest input: %v", err)
+	}
+
+	err := runCaptured(func() error {
+		return runConvert(root, convertCommandOptions{
+			To:         "vitest",
+			Plan:       true,
+			AutoDetect: true,
+		})
+	})
+	if err == nil {
+		t.Fatal("expected mixed-directory auto-detect error, got nil")
+	}
+	if !strings.Contains(err.Error(), "mixed source frameworks") {
+		t.Fatalf("expected mixed-directory error, got %v", err)
+	}
+}
+
 func TestRunConvert_DirectoryUsesBatchAndConcurrency(t *testing.T) {
 	t.Parallel()
 

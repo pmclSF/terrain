@@ -750,8 +750,8 @@ func estimateCandidate(candidate migrationCandidate, direction Direction) (Migra
 	}
 
 	record.TodosAdded = countTODOs(output)
-	record.Confidence = predictMigrationConfidence(output, candidate.Type)
-	record.Warnings = warningsFromOutput(output, candidate.Type)
+	record.Confidence = predictMigrationConfidence(output, candidate.Type, direction)
+	record.Warnings = warningsFromOutput(output, candidate.Type, direction)
 	return record, extractBlockers(output, record)
 }
 
@@ -784,8 +784,8 @@ func migrateCandidate(candidate migrationCandidate, direction Direction, outputR
 		output, readErr := os.ReadFile(result.Output)
 		if readErr == nil {
 			record.TodosAdded = countTODOs(string(output))
-			record.Confidence = predictMigrationConfidence(string(output), candidate.Type)
-			record.Warnings = warningsFromOutput(string(output), candidate.Type)
+			record.Confidence = predictMigrationConfidence(string(output), candidate.Type, direction)
+			record.Warnings = warningsFromOutput(string(output), candidate.Type, direction)
 		}
 		if record.Confidence == 0 {
 			record.Confidence = 95
@@ -814,8 +814,8 @@ func migrateCandidate(candidate migrationCandidate, direction Direction, outputR
 		output, readErr := os.ReadFile(record.OutputPath)
 		if readErr == nil {
 			record.TodosAdded = countTODOs(string(output))
-			record.Confidence = predictMigrationConfidence(string(output), candidate.Type)
-			record.Warnings = warningsFromOutput(string(output), candidate.Type)
+			record.Confidence = predictMigrationConfidence(string(output), candidate.Type, direction)
+			record.Warnings = warningsFromOutput(string(output), candidate.Type, direction)
 		}
 	}
 	if record.Confidence == 0 {
@@ -1092,13 +1092,13 @@ func estimateEffort(records []MigrationFileRecord) MigrationEffortEstimate {
 	return estimate
 }
 
-func predictMigrationConfidence(output, fileType string) int {
+func predictMigrationConfidence(output, fileType string, direction Direction) int {
 	base := 95
 	if fileType == "config" {
 		base = 80
 	}
 	todos := countTODOs(output)
-	warnings := countWarnings(output)
+	warnings := countWarnings(output, direction)
 	confidence := base
 	switch {
 	case todos == 0:
@@ -1120,10 +1120,13 @@ func predictMigrationConfidence(output, fileType string) int {
 	if strings.Contains(output, "UNCONVERTIBLE") {
 		confidence = minInt(confidence, 60)
 	}
+	if warning := semanticValidationWarning(direction, output); warning != "" {
+		confidence = minInt(confidence, 60)
+	}
 	return confidence
 }
 
-func warningsFromOutput(output, fileType string) []string {
+func warningsFromOutput(output, fileType string, direction Direction) []string {
 	warnings := make([]string, 0, 4)
 	todos := countTODOs(output)
 	if todos > 0 {
@@ -1137,14 +1140,15 @@ func warningsFromOutput(output, fileType string) []string {
 	if strings.Contains(output, "UNCONVERTIBLE") {
 		warnings = append(warnings, "contains unconvertible output markers")
 	}
+	warnings = append(warnings, semanticValidationWarnings(direction, output)...)
 	if fileType == "config" && todos == 0 && len(warnings) == 0 {
 		return warnings
 	}
 	return dedupeStrings(warnings)
 }
 
-func countWarnings(output string) int {
-	return len(extractTerrainWarnings(output))
+func countWarnings(output string, direction Direction) int {
+	return len(extractTerrainWarnings(output)) + len(semanticValidationWarnings(direction, output))
 }
 
 func extractTerrainWarnings(output string) []string {
