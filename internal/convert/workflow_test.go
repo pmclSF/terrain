@@ -162,6 +162,11 @@ func TestRunMigrationDoctor_ReturnsChecks(t *testing.T) {
 func TestWarningsFromOutput_CollectsTerrainWarningsAndPenalizesConfidence(t *testing.T) {
 	t.Parallel()
 
+	direction, ok := LookupDirection("cypress", "playwright")
+	if !ok {
+		t.Fatal("expected cypress -> playwright direction")
+	}
+
 	output := `import { test, expect } from '@playwright/test';
 // TERRAIN-WARNING: Cypress .should() retries until timeout; review Playwright expect() semantics.
 test('example', async ({ page }) => {
@@ -169,14 +174,40 @@ test('example', async ({ page }) => {
 })
 `
 
-	warnings := warningsFromOutput(output, "test")
+	warnings := warningsFromOutput(output, "test", direction)
 	if len(warnings) < 1 {
 		t.Fatalf("expected warning messages, got %v", warnings)
 	}
 	if !strings.Contains(strings.Join(warnings, "\n"), "Cypress .should() retries until timeout") {
 		t.Fatalf("expected TERRAIN-WARNING message, got %v", warnings)
 	}
-	if confidence := predictMigrationConfidence(output, "test"); confidence >= 95 {
+	if confidence := predictMigrationConfidence(output, "test", direction); confidence >= 95 {
 		t.Fatalf("confidence = %d, want penalty below 95", confidence)
+	}
+}
+
+func TestWarningsFromOutput_CollectsSemanticWarningsAndIgnoresCommentsAndStrings(t *testing.T) {
+	t.Parallel()
+
+	direction, ok := LookupDirection("cypress", "playwright")
+	if !ok {
+		t.Fatal("expected cypress -> playwright direction")
+	}
+
+	output := `import { test, expect } from '@playwright/test';
+// cy.get('#danger') should stay in comments
+const keep = "cy.get('#danger') should stay literal";
+test('example', async ({ page }) => {
+  cy.get('#danger').click()
+})
+`
+
+	warnings := warningsFromOutput(output, "test", direction)
+	joined := strings.Join(warnings, "\n")
+	if !strings.Contains(joined, "leftover Cypress API detected") {
+		t.Fatalf("expected semantic warning, got %v", warnings)
+	}
+	if confidence := predictMigrationConfidence(output, "test", direction); confidence > 60 {
+		t.Fatalf("confidence = %d, want severe semantic penalty", confidence)
 	}
 }

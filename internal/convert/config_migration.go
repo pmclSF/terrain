@@ -102,7 +102,7 @@ func RunConfigMigration(source string, options ConfigMigrationOptions) (ConfigMi
 	if validationPath == "" {
 		validationPath = TargetConfigFileName(direction.To, filepath.Base(source))
 	}
-	if err := ValidateSyntax(validationPath, direction.Language, converted); err != nil {
+	if err := ValidateConvertedOutput(validationPath, direction, converted); err != nil {
 		return ConfigMigrationResult{}, err
 	}
 

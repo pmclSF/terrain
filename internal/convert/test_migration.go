@@ -94,7 +94,7 @@ func RunTestMigration(source string, options TestMigrationOptions) (TestMigratio
 	if err != nil {
 		return result, err
 	}
-	if err := ValidateExecutionResult(execution, direction.Language); err != nil {
+	if err := ValidateExecutionResultForDirection(execution, direction); err != nil {
 		if cleanupErr := CleanupExecutionOutputs(execution); cleanupErr != nil {
 			return result, fmt.Errorf("%v (cleanup failed: %w)", err, cleanupErr)
 		}
@@ -152,6 +152,13 @@ func resolveTestMigrationDirection(source string, options TestMigrationOptions) 
 		detection = &detected
 		if detected.Framework == "" || detected.Framework == "unknown" {
 			return Direction{}, nil, alias, fmt.Errorf("could not auto-detect source framework from %s", source)
+		}
+		if detected.Mode == "directory" && detected.Mixed {
+			return Direction{}, detection, alias, fmt.Errorf(
+				"auto-detect found mixed source frameworks in %s; use --from explicitly. Candidates: %s",
+				source,
+				formatDetectionCandidates(detected.Candidates),
+			)
 		}
 		from = detected.Framework
 	}
@@ -241,4 +248,16 @@ func emptyOrUnknown(value string) string {
 		return "unknown"
 	}
 	return value
+}
+
+func formatDetectionCandidates(candidates []DetectionCandidate) string {
+	if len(candidates) == 0 {
+		return "none"
+	}
+
+	parts := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		parts = append(parts, fmt.Sprintf("%s (%.0f%%, %d file(s))", candidate.Framework, candidate.Confidence*100, candidate.Files))
+	}
+	return strings.Join(parts, ", ")
 }
