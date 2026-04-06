@@ -13,20 +13,24 @@ import (
 )
 
 type convertConfigCommandOptions struct {
-	From   string
-	To     string
-	Output string
-	DryRun bool
-	JSON   bool
+	From           string
+	To             string
+	Output         string
+	Validate       bool
+	StrictValidate bool
+	DryRun         bool
+	JSON           bool
+	OnError        string
 }
 
 var convertConfigFlagsWithValue = map[string]bool{
-	"--from":   true,
-	"-f":       true,
-	"--to":     true,
-	"-t":       true,
-	"--output": true,
-	"-o":       true,
+	"--from":     true,
+	"-f":         true,
+	"--to":       true,
+	"-t":         true,
+	"--output":   true,
+	"-o":         true,
+	"--on-error": true,
 }
 
 func runConvertConfigCLI(args []string) error {
@@ -40,12 +44,18 @@ func runConvertConfigCLI(args []string) error {
 	fs.StringVar(&opts.To, "t", "", "target framework")
 	fs.StringVar(&opts.Output, "output", "", "output config path")
 	fs.StringVar(&opts.Output, "o", "", "output config path")
+	fs.BoolVar(&opts.Validate, "validate", true, "validate converted config before returning or writing it")
+	fs.BoolVar(&opts.StrictValidate, "strict-validate", false, "force strict validation even when paired with best-effort handling")
 	fs.BoolVar(&opts.DryRun, "dry-run", false, "preview without writing")
 	fs.BoolVar(&opts.JSON, "json", false, "JSON output")
+	fs.StringVar(&opts.OnError, "on-error", "skip", "error handling: skip|fail|best-effort")
 
 	if err := fs.Parse(reorderCLIArgs(args, convertConfigFlagsWithValue)); err != nil {
 		printConvertConfigUsage()
 		return cliUsageError{message: err.Error()}
+	}
+	if !opts.Validate && !opts.StrictValidate {
+		opts.OnError = "best-effort"
 	}
 
 	positionals := fs.Args()
@@ -63,11 +73,18 @@ func runConvertConfig(source string, opts convertConfigCommandOptions) error {
 		return cliUsageError{message: "convert-config requires <source>"}
 	}
 
+	validationMode, err := resolveConfigValidationMode(opts)
+	if err != nil {
+		return cliUsageError{message: err.Error()}
+	}
+
 	result, err := conv.RunConfigMigration(source, conv.ConfigMigrationOptions{
-		From:   opts.From,
-		To:     opts.To,
-		Output: opts.Output,
-		DryRun: opts.DryRun,
+		From:           opts.From,
+		To:             opts.To,
+		Output:         opts.Output,
+		DryRun:         opts.DryRun,
+		ValidateSyntax: validationMode == conv.ValidationModeStrict,
+		ValidationMode: string(validationMode),
 	})
 	if err != nil {
 		var inputErr conv.ConversionInputError
@@ -140,6 +157,23 @@ func printConvertConfigUsage() {
 	fmt.Fprintln(os.Stderr, "  --from, -f         source framework (auto-detected from filename if omitted)")
 	fmt.Fprintln(os.Stderr, "  --to, -t           target framework")
 	fmt.Fprintln(os.Stderr, "  --output, -o       write converted config to a file")
+	fmt.Fprintln(os.Stderr, "  --validate         validate converted config before returning or writing it (default: true)")
+	fmt.Fprintln(os.Stderr, "  --strict-validate  force strict validation, including when paired with best-effort handling")
+	fmt.Fprintln(os.Stderr, "  --on-error         fail|skip|best-effort (best-effort keeps output even if validation fails)")
 	fmt.Fprintln(os.Stderr, "  --dry-run          preview without writing")
 	fmt.Fprintln(os.Stderr, "  --json             machine-readable output")
+}
+
+func resolveConfigValidationMode(opts convertConfigCommandOptions) (conv.ValidationMode, error) {
+	switch strings.ToLower(strings.TrimSpace(opts.OnError)) {
+	case "", "skip", "fail":
+	case "best-effort":
+		return conv.ValidationModeBestEffort, nil
+	default:
+		return "", fmt.Errorf("--on-error must be one of skip, fail, or best-effort")
+	}
+	if opts.StrictValidate {
+		return conv.ValidationModeStrict, nil
+	}
+	return conv.ValidationModeStrict, nil
 }

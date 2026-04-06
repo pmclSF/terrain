@@ -182,11 +182,44 @@ func TestRunTestMigration_AutoDetectRejectsMixedDirectory(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected mixed-directory auto-detect error, got nil")
 	}
-	if !strings.Contains(err.Error(), "mixed source frameworks") {
+	if !strings.Contains(err.Error(), "auto-detect is not safe") {
 		t.Fatalf("expected mixed-directory error, got %v", err)
 	}
 	if !strings.Contains(err.Error(), "playwright") || !strings.Contains(err.Error(), "jest") {
 		t.Fatalf("expected candidate list in error, got %v", err)
+	}
+}
+
+func TestRunTestMigration_AutoDetectAllowsDominantMixedDirectory(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "auth.spec.ts"), []byte("import { test } from '@playwright/test';\n"), 0o644); err != nil {
+		t.Fatalf("write first playwright input: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "checkout.spec.ts"), []byte("import { test } from '@playwright/test';\n"), 0o644); err != nil {
+		t.Fatalf("write second playwright input: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "legacy.test.js"), []byte("describe('legacy', () => { expect(true).toBe(true) })\n"), 0o644); err != nil {
+		t.Fatalf("write jest input: %v", err)
+	}
+
+	result, err := RunTestMigration(root, TestMigrationOptions{
+		To:         "cypress",
+		AutoDetect: true,
+		Plan:       true,
+	})
+	if err != nil {
+		t.Fatalf("RunTestMigration returned error: %v", err)
+	}
+	if result.SourceDetection == nil {
+		t.Fatal("expected source detection")
+	}
+	if !result.SourceDetection.AutoDetectSafe || result.SourceDetection.Recommendation != "dominant" {
+		t.Fatalf("unexpected detection: %+v", result.SourceDetection)
+	}
+	if result.Direction.From != "playwright" || result.Direction.To != "cypress" {
+		t.Fatalf("direction = %s -> %s, want playwright -> cypress", result.Direction.From, result.Direction.To)
 	}
 }
 

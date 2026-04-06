@@ -73,8 +73,10 @@ func TestRunDetect_JSON(t *testing.T) {
 	}
 
 	var detection struct {
-		Framework string `json:"framework"`
-		Mode      string `json:"mode"`
+		Framework      string `json:"framework"`
+		Mode           string `json:"mode"`
+		AutoDetectSafe bool   `json:"autoDetectSafe"`
+		Recommendation string `json:"recommendation"`
 	}
 	if err := json.Unmarshal(out, &detection); err != nil {
 		t.Fatalf("invalid JSON: %v\noutput: %s", err, out)
@@ -84,6 +86,12 @@ func TestRunDetect_JSON(t *testing.T) {
 	}
 	if detection.Mode != "file" {
 		t.Fatalf("mode = %q, want file", detection.Mode)
+	}
+	if !detection.AutoDetectSafe {
+		t.Fatal("expected file detection to be auto-detect safe")
+	}
+	if detection.Recommendation != "safe" {
+		t.Fatalf("recommendation = %q, want safe", detection.Recommendation)
 	}
 }
 
@@ -276,8 +284,55 @@ func TestRunConvert_AutoDetectRejectsMixedDirectory(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected mixed-directory auto-detect error, got nil")
 	}
-	if !strings.Contains(err.Error(), "mixed source frameworks") {
+	if !strings.Contains(err.Error(), "auto-detect is not safe") {
 		t.Fatalf("expected mixed-directory error, got %v", err)
+	}
+}
+
+func TestRunConvert_PlanWithDominantMixedAutoDetect(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "auth.spec.ts"), []byte("import { test } from '@playwright/test';\n"), 0o644); err != nil {
+		t.Fatalf("write first playwright input: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "checkout.spec.ts"), []byte("import { test } from '@playwright/test';\n"), 0o644); err != nil {
+		t.Fatalf("write second playwright input: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "legacy.test.js"), []byte("describe('legacy', () => { expect(true).toBe(true) })\n"), 0o644); err != nil {
+		t.Fatalf("write jest input: %v", err)
+	}
+
+	out, err := captureRun(func() error {
+		return runConvert(root, convertCommandOptions{
+			To:         "cypress",
+			Plan:       true,
+			AutoDetect: true,
+			JSON:       true,
+		})
+	})
+	if err != nil {
+		t.Fatalf("runConvert returned error: %v", err)
+	}
+
+	var payload struct {
+		Direction struct {
+			From string `json:"from"`
+			To   string `json:"to"`
+		} `json:"direction"`
+		SourceDetection struct {
+			AutoDetectSafe bool   `json:"autoDetectSafe"`
+			Recommendation string `json:"recommendation"`
+		} `json:"sourceDetection"`
+	}
+	if err := json.Unmarshal(out, &payload); err != nil {
+		t.Fatalf("invalid JSON: %v\noutput: %s", err, out)
+	}
+	if payload.Direction.From != "playwright" || payload.Direction.To != "cypress" {
+		t.Fatalf("direction = %s -> %s, want playwright -> cypress", payload.Direction.From, payload.Direction.To)
+	}
+	if !payload.SourceDetection.AutoDetectSafe || payload.SourceDetection.Recommendation != "dominant" {
+		t.Fatalf("unexpected source detection: %+v", payload.SourceDetection)
 	}
 }
 
