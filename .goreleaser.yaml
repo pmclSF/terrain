@@ -6,14 +6,11 @@ builds:
   - main: ./cmd/terrain
     binary: terrain
     env:
-      - CGO_ENABLED=0
+      - CGO_ENABLED=1
     goos:
       - linux
-      - darwin
-      - windows
     goarch:
       - amd64
-      - arm64
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
