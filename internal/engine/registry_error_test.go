@@ -38,7 +38,7 @@ func TestRegistry_OrderingViolationReturnsError(t *testing.T) {
 		Meta: signals.DetectorMeta{
 			ID:               "test.dependent",
 			Domain:           signals.DomainGovernance,
-			SignalTypes:       []models.SignalType{"test-signal"},
+			SignalTypes:      []models.SignalType{"test-signal"},
 			DependsOnSignals: true,
 		},
 		Detector: &stubDetector{},
@@ -53,7 +53,7 @@ func TestRegistry_OrderingViolationReturnsError(t *testing.T) {
 		Meta: signals.DetectorMeta{
 			ID:               "test.non-dependent",
 			Domain:           signals.DomainQuality,
-			SignalTypes:       []models.SignalType{"test-signal-2"},
+			SignalTypes:      []models.SignalType{"test-signal-2"},
 			DependsOnSignals: false,
 		},
 		Detector: &stubDetector{},

@@ -561,7 +561,7 @@ func TestAssessCommand_Timeout(t *testing.T) {
 		Command:   "analyze",
 		RepoName:  "test-repo",
 		ExitCode:  -1,
-		TimedOut:   true,
+		TimedOut:  true,
 		RuntimeMs: 60000,
 		Error:     "timed out after 1m0s",
 	}

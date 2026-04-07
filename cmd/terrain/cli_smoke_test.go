@@ -29,7 +29,7 @@ func TestCLISmoke_ReportingCommands(t *testing.T) {
 		{"portfolio", func() error { return runPortfolio(root, true, false) }},
 		{"focus", func() error { return runFocus(root, true, false) }},
 		{"migration", func() error { return runMigration("readiness", root, true, "", "") }},
-		{"benchmark", func() error { return runExportBenchmark(root, true) }},
+		{"benchmark", func() error { return runExportBenchmark(root) }},
 	}
 
 	for _, tt := range tests {

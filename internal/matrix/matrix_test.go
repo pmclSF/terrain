@@ -402,3 +402,170 @@ func searchSubstring(s, substr string) bool {
 	}
 	return false
 }
+
+// ---------------------------------------------------------------------------
+// Mobile device matrix E2E integration tests
+// ---------------------------------------------------------------------------
+
+// buildMobileDeviceMatrix constructs a realistic mobile test scenario:
+// tests targeting iOS and Android devices with coverage gaps.
+func buildMobileDeviceMatrix() *depgraph.Graph {
+	snap := &models.TestSuiteSnapshot{
+		TestFiles: []models.TestFile{
+			{
+				Path:      "tests/e2e/login.test.ts",
+				Framework: "playwright",
+				TestCount: 4,
+				DeviceIDs: []string{"device:iphone-15-ios17", "device:pixel-8-android14"},
+			},
+			{
+				Path:      "tests/e2e/purchase.test.ts",
+				Framework: "playwright",
+				TestCount: 6,
+				DeviceIDs: []string{"device:iphone-15-ios17"},
+			},
+			{
+				Path:      "tests/e2e/checkout.test.ts",
+				Framework: "playwright",
+				TestCount: 3,
+				DeviceIDs: []string{"device:iphone-15-ios17"},
+			},
+		},
+		DeviceConfigs: []models.DeviceConfig{
+			{DeviceID: "device:iphone-15-ios17", Name: "iPhone 15", Platform: "ios", FormFactor: "phone", OSVersion: "17.0", ClassID: "envclass:mobile-device"},
+			{DeviceID: "device:pixel-8-android14", Name: "Pixel 8", Platform: "android", FormFactor: "phone", OSVersion: "14", ClassID: "envclass:mobile-device"},
+			{DeviceID: "device:ipad-pro-ios17", Name: "iPad Pro", Platform: "ios", FormFactor: "tablet", OSVersion: "17.0", ClassID: "envclass:mobile-device"},
+			{DeviceID: "device:galaxy-s24-android14", Name: "Galaxy S24", Platform: "android", FormFactor: "phone", OSVersion: "14", ClassID: "envclass:mobile-device"},
+		},
+		EnvironmentClasses: []models.EnvironmentClass{
+			{
+				ClassID:   "envclass:mobile-device",
+				Name:      "Mobile Devices",
+				Dimension: "device",
+				MemberIDs: []string{
+					"device:iphone-15-ios17",
+					"device:pixel-8-android14",
+					"device:ipad-pro-ios17",
+					"device:galaxy-s24-android14",
+				},
+			},
+		},
+	}
+	return depgraph.Build(snap)
+}
+
+func TestAnalyze_MobileDeviceMatrix_DetectsGaps(t *testing.T) {
+	t.Parallel()
+	g := buildMobileDeviceMatrix()
+	result := Analyze(g)
+
+	if result.ClassesAnalyzed != 1 {
+		t.Fatalf("expected 1 class (mobile-device), got %d", result.ClassesAnalyzed)
+	}
+
+	// 2 of 4 devices have no test coverage (iPad Pro, Galaxy S24).
+	if len(result.Gaps) != 2 {
+		t.Fatalf("expected 2 gaps (iPad Pro, Galaxy S24), got %d", len(result.Gaps))
+	}
+
+	gapNames := map[string]bool{}
+	for _, gap := range result.Gaps {
+		gapNames[gap.MemberName] = true
+	}
+	if !gapNames["iPad Pro"] {
+		t.Error("expected iPad Pro in gaps")
+	}
+	if !gapNames["Galaxy S24"] {
+		t.Error("expected Galaxy S24 in gaps")
+	}
+}
+
+func TestAnalyze_MobileDeviceMatrix_DetectsConcentration(t *testing.T) {
+	t.Parallel()
+	g := buildMobileDeviceMatrix()
+	result := Analyze(g)
+
+	// iPhone 15 is targeted by 3/3 test files; Pixel 8 by only 1/3.
+	// iPhone 15 share = 3 / (3+1) = 75% > 70% threshold.
+	// And 2 of 4 members uncovered, so concentration should fire.
+	if len(result.Concentrations) != 1 {
+		t.Fatalf("expected 1 concentration, got %d", len(result.Concentrations))
+	}
+	conc := result.Concentrations[0]
+	if conc.DominantName != "iPhone 15" {
+		t.Errorf("dominant = %q, want 'iPhone 15'", conc.DominantName)
+	}
+	if conc.DominantShare < 0.70 {
+		t.Errorf("dominant share = %.2f, want > 0.70", conc.DominantShare)
+	}
+}
+
+func TestAnalyze_MobileDeviceMatrix_ProducesRecommendations(t *testing.T) {
+	t.Parallel()
+	g := buildMobileDeviceMatrix()
+	result := Analyze(g)
+
+	if len(result.Recommendations) == 0 {
+		t.Fatal("expected recommendations for uncovered mobile devices")
+	}
+
+	recNames := map[string]bool{}
+	for _, rec := range result.Recommendations {
+		recNames[rec.MemberName] = true
+		if rec.Priority < 1 {
+			t.Errorf("recommendation %q has invalid priority %d", rec.MemberName, rec.Priority)
+		}
+		if rec.Reason == "" {
+			t.Errorf("recommendation %q has empty reason", rec.MemberName)
+		}
+	}
+
+	// iPad Pro and Galaxy S24 should be recommended.
+	if !recNames["iPad Pro"] {
+		t.Error("expected iPad Pro in recommendations")
+	}
+	if !recNames["Galaxy S24"] {
+		t.Error("expected Galaxy S24 in recommendations")
+	}
+}
+
+func TestAnalyze_MobileDeviceMatrix_CoverageRatio(t *testing.T) {
+	t.Parallel()
+	g := buildMobileDeviceMatrix()
+	result := Analyze(g)
+
+	if len(result.Classes) != 1 {
+		t.Fatalf("expected 1 class, got %d", len(result.Classes))
+	}
+	cc := result.Classes[0]
+	if cc.TotalMembers != 4 {
+		t.Errorf("total members = %d, want 4", cc.TotalMembers)
+	}
+	if cc.CoveredMembers != 2 {
+		t.Errorf("covered members = %d, want 2", cc.CoveredMembers)
+	}
+	// 2/4 = 0.50
+	if cc.CoverageRatio != 0.5 {
+		t.Errorf("coverage ratio = %.2f, want 0.50", cc.CoverageRatio)
+	}
+}
+
+func TestFormatSummary_MobileMatrix(t *testing.T) {
+	t.Parallel()
+	g := buildMobileDeviceMatrix()
+	result := Analyze(g)
+	summary := FormatSummary(result)
+
+	if !contains(summary, "Mobile Devices") {
+		t.Error("expected 'Mobile Devices' in summary")
+	}
+	if !contains(summary, "2/4 members covered") {
+		t.Error("expected '2/4 members covered' in summary")
+	}
+	if !contains(summary, "Gaps") {
+		t.Error("expected 'Gaps' in summary")
+	}
+	if !contains(summary, "iPad Pro") {
+		t.Error("expected 'iPad Pro' in gap list")
+	}
+}

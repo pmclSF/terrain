@@ -228,6 +228,10 @@ func TestRunInit_Deterministic(t *testing.T) {
 		t.Fatalf("first run: %v", err)
 	}
 
+	// Save first-run content before deleting.
+	policy1, _ := os.ReadFile(r1.PolicyPath)
+	config1, _ := os.ReadFile(r1.ConfigPath)
+
 	// Delete generated files, run again.
 	os.Remove(r1.PolicyPath)
 	os.Remove(r1.ConfigPath)
@@ -237,11 +241,15 @@ func TestRunInit_Deterministic(t *testing.T) {
 		t.Fatalf("second run: %v", err)
 	}
 
-	// Generated config should be identical.
-	d1, _ := os.ReadFile(r2.PolicyPath)
-	d2, _ := os.ReadFile(r2.PolicyPath)
-	if string(d1) != string(d2) {
-		t.Error("policy.yaml should be deterministic")
+	// Generated files should be identical across runs.
+	policy2, _ := os.ReadFile(r2.PolicyPath)
+	config2, _ := os.ReadFile(r2.ConfigPath)
+
+	if string(policy1) != string(policy2) {
+		t.Error("policy.yaml should be deterministic across runs")
+	}
+	if string(config1) != string(config2) {
+		t.Error("terrain.yaml should be deterministic across runs")
 	}
 
 	if r1.TestFileCount != r2.TestFileCount {

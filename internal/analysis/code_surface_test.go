@@ -12,7 +12,7 @@ import (
 
 func TestJSSurfaceExtractor_Routes(t *testing.T) {
 	t.Parallel()
-	root := surfaceFixtureRoot(t,"js-app")
+	root := surfaceFixtureRoot(t, "js-app")
 
 	ext := &jsSurfaceExtractor{}
 	surfaces := ext.ExtractSurfaces(root, "src/routes/api.ts")
@@ -42,7 +42,7 @@ func TestJSSurfaceExtractor_Routes(t *testing.T) {
 
 func TestJSSurfaceExtractor_HandlersAndFunctions(t *testing.T) {
 	t.Parallel()
-	root := surfaceFixtureRoot(t,"js-app")
+	root := surfaceFixtureRoot(t, "js-app")
 
 	ext := &jsSurfaceExtractor{}
 	surfaces := ext.ExtractSurfaces(root, "src/handlers/auth.ts")
@@ -64,7 +64,7 @@ func TestJSSurfaceExtractor_HandlersAndFunctions(t *testing.T) {
 
 func TestJSSurfaceExtractor_ExportedFunctionsAndClasses(t *testing.T) {
 	t.Parallel()
-	root := surfaceFixtureRoot(t,"js-app")
+	root := surfaceFixtureRoot(t, "js-app")
 
 	ext := &jsSurfaceExtractor{}
 	surfaces := ext.ExtractSurfaces(root, "src/utils/validation.ts")
@@ -90,7 +90,7 @@ func TestJSSurfaceExtractor_ExportedFunctionsAndClasses(t *testing.T) {
 
 func TestGoSurfaceExtractor_HandlersAndMethods(t *testing.T) {
 	t.Parallel()
-	root := surfaceFixtureRoot(t,"go-app")
+	root := surfaceFixtureRoot(t, "go-app")
 
 	ext := &goSurfaceExtractor{}
 	surfaces := ext.ExtractSurfaces(root, "handlers/auth.go")
@@ -114,7 +114,7 @@ func TestGoSurfaceExtractor_HandlersAndMethods(t *testing.T) {
 
 func TestGoSurfaceExtractor_ExportedFunctions(t *testing.T) {
 	t.Parallel()
-	root := surfaceFixtureRoot(t,"go-app")
+	root := surfaceFixtureRoot(t, "go-app")
 
 	ext := &goSurfaceExtractor{}
 	surfaces := ext.ExtractSurfaces(root, "services/user.go")
@@ -133,7 +133,7 @@ func TestGoSurfaceExtractor_ExportedFunctions(t *testing.T) {
 
 func TestPythonSurfaceExtractor_Routes(t *testing.T) {
 	t.Parallel()
-	root := surfaceFixtureRoot(t,"python-app")
+	root := surfaceFixtureRoot(t, "python-app")
 
 	ext := &pythonSurfaceExtractor{}
 	surfaces := ext.ExtractSurfaces(root, "views/auth.py")
@@ -151,7 +151,7 @@ func TestPythonSurfaceExtractor_Routes(t *testing.T) {
 
 func TestPythonSurfaceExtractor_PublicFunctions(t *testing.T) {
 	t.Parallel()
-	root := surfaceFixtureRoot(t,"python-app")
+	root := surfaceFixtureRoot(t, "python-app")
 
 	ext := &pythonSurfaceExtractor{}
 	surfaces := ext.ExtractSurfaces(root, "utils/crypto.py")
@@ -174,7 +174,7 @@ func TestPythonSurfaceExtractor_PublicFunctions(t *testing.T) {
 
 func TestJavaSurfaceExtractor_ControllerAndRoutes(t *testing.T) {
 	t.Parallel()
-	root := surfaceFixtureRoot(t,"java-app")
+	root := surfaceFixtureRoot(t, "java-app")
 
 	ext := &javaSurfaceExtractor{}
 	surfaces := ext.ExtractSurfaces(root, "src/AuthController.java")
@@ -196,7 +196,7 @@ func TestJavaSurfaceExtractor_ControllerAndRoutes(t *testing.T) {
 
 func TestInferCodeSurfaces_JSApp(t *testing.T) {
 	t.Parallel()
-	root := surfaceFixtureRoot(t,"js-app")
+	root := surfaceFixtureRoot(t, "js-app")
 
 	surfaces := InferCodeSurfaces(root, nil)
 

@@ -13,7 +13,7 @@ type mockFrameworkDetector struct {
 	frameworks []DetectedFramework
 }
 
-func (m *mockFrameworkDetector) Name() string          { return m.name }
+func (m *mockFrameworkDetector) Name() string                      { return m.name }
 func (m *mockFrameworkDetector) Detect(string) []DetectedFramework { return m.frameworks }
 
 type mockScenarioDeriver struct {
@@ -27,9 +27,9 @@ func (m *mockScenarioDeriver) DeriveScenarios(string, []models.CodeSurface, []mo
 }
 
 type mockSignalClassifier struct {
-	name           string
-	failureMap     map[string]models.SignalType
-	regressionMap  map[string]models.SignalType
+	name          string
+	failureMap    map[string]models.SignalType
+	regressionMap map[string]models.SignalType
 }
 
 func (m *mockSignalClassifier) Name() string { return m.name }
@@ -102,7 +102,7 @@ func TestRegistry_SignalClassifier(t *testing.T) {
 	t.Parallel()
 	r := NewRegistry()
 	r.RegisterSignalClassifier(&mockSignalClassifier{
-		name: "domain-specific",
+		name:          "domain-specific",
 		failureMap:    map[string]models.SignalType{"custom-safety": "safetyFailure"},
 		regressionMap: map[string]models.SignalType{"custom_accuracy": "accuracyRegression"},
 	})

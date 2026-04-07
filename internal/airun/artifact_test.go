@@ -58,6 +58,8 @@ func TestComputeHashes_AllSurfaceKinds(t *testing.T) {
 	writeFile(t, root, "src/c.ts", "dataset")
 	writeFile(t, root, "src/d.ts", "tool")
 	writeFile(t, root, "src/e.ts", "retrieval")
+	writeFile(t, root, "src/f.ts", "agent router")
+	writeFile(t, root, "src/g.ts", "eval metric")
 
 	surfaces := []models.CodeSurface{
 		{SurfaceID: "s1", Path: "src/a.ts", Kind: models.SurfacePrompt},
@@ -65,11 +67,19 @@ func TestComputeHashes_AllSurfaceKinds(t *testing.T) {
 		{SurfaceID: "s3", Path: "src/c.ts", Kind: models.SurfaceDataset},
 		{SurfaceID: "s4", Path: "src/d.ts", Kind: models.SurfaceToolDef},
 		{SurfaceID: "s5", Path: "src/e.ts", Kind: models.SurfaceRetrieval},
+		{SurfaceID: "s6", Path: "src/f.ts", Kind: models.SurfaceAgent},
+		{SurfaceID: "s7", Path: "src/g.ts", Kind: models.SurfaceEvalDef},
 	}
 	h := ComputeHashes(root, surfaces)
 
-	if h.TotalHashCount() != 5 {
-		t.Errorf("expected 5 hashes, got %d", h.TotalHashCount())
+	if h.TotalHashCount() != 7 {
+		t.Errorf("expected 7 hashes, got %d", h.TotalHashCount())
+	}
+	if len(h.Agents) != 1 {
+		t.Errorf("expected 1 agent hash, got %d", len(h.Agents))
+	}
+	if len(h.EvalDefs) != 1 {
+		t.Errorf("expected 1 eval_definition hash, got %d", len(h.EvalDefs))
 	}
 }
 
@@ -138,8 +148,15 @@ func TestReplay_DetectsContentChange(t *testing.T) {
 	if len(result.Mismatches) != 1 {
 		t.Fatalf("expected 1 mismatch, got %d", len(result.Mismatches))
 	}
-	if result.Mismatches[0].Kind != "hash" {
-		t.Errorf("expected hash mismatch, got %s", result.Mismatches[0].Kind)
+	m := result.Mismatches[0]
+	if m.Kind != "hash" {
+		t.Errorf("expected hash mismatch kind, got %s", m.Kind)
+	}
+	if m.Surface != "s1" {
+		t.Errorf("expected surface s1, got %s", m.Surface)
+	}
+	if m.Detail == "" {
+		t.Error("expected non-empty mismatch detail")
 	}
 }
 
@@ -150,7 +167,7 @@ func TestReplay_DetectsScenarioCountChange(t *testing.T) {
 	art := &Artifact{
 		Version:  "1",
 		Selected: []ScenarioEntry{{ID: "sc1"}, {ID: "sc2"}},
-		Hashes:   ContentHashes{Prompts: map[string]string{}, Contexts: map[string]string{}, Datasets: map[string]string{}, ToolDefs: map[string]string{}, Retrievals: map[string]string{}},
+		Hashes:   ContentHashes{Prompts: map[string]string{}, Contexts: map[string]string{}, Datasets: map[string]string{}, ToolDefs: map[string]string{}, Retrievals: map[string]string{}, Agents: map[string]string{}, EvalDefs: map[string]string{}},
 	}
 	artPath := filepath.Join(t.TempDir(), "artifact.json")
 	data, _ := json.MarshalIndent(art, "", "  ")
@@ -171,6 +188,92 @@ func TestReplay_DetectsScenarioCountChange(t *testing.T) {
 	}
 	if !found {
 		t.Error("expected scenario mismatch kind")
+	}
+}
+
+func TestReplay_DetectsSurfaceRemoved(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writeFile(t, root, "src/prompt.ts", "original prompt")
+
+	surfaces := []models.CodeSurface{
+		{SurfaceID: "s1", Path: "src/prompt.ts", Kind: models.SurfacePrompt},
+	}
+
+	// Record artifact with one prompt surface.
+	hashes := ComputeHashes(root, surfaces)
+	art := &Artifact{
+		Version:  "1",
+		Selected: []ScenarioEntry{{ID: "sc1"}},
+		Hashes:   hashes,
+	}
+	artPath := filepath.Join(t.TempDir(), "artifact.json")
+	data, _ := json.MarshalIndent(art, "", "  ")
+	if err := os.WriteFile(artPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Replay with empty surfaces (surface removed).
+	result, err := Replay(artPath, root, nil, 1)
+	if err != nil {
+		t.Fatalf("replay: %v", err)
+	}
+	if result.Match {
+		t.Error("expected mismatch when surface removed")
+	}
+	found := false
+	for _, m := range result.Mismatches {
+		if m.Kind == "hash" && m.Current == "(removed)" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected removal mismatch with Current='(removed)'")
+	}
+}
+
+func TestReplay_DetectsSurfaceAdded(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writeFile(t, root, "src/prompt.ts", "prompt content")
+	writeFile(t, root, "src/new.ts", "new surface content")
+
+	// Record artifact with no surfaces.
+	art := &Artifact{
+		Version:  "1",
+		Selected: []ScenarioEntry{{ID: "sc1"}},
+		Hashes: ContentHashes{
+			Prompts: map[string]string{}, Contexts: map[string]string{},
+			Datasets: map[string]string{}, ToolDefs: map[string]string{},
+			Retrievals: map[string]string{}, Agents: map[string]string{},
+			EvalDefs: map[string]string{},
+		},
+	}
+	artPath := filepath.Join(t.TempDir(), "artifact.json")
+	data, _ := json.MarshalIndent(art, "", "  ")
+	if err := os.WriteFile(artPath, data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Replay with a new surface that didn't exist before.
+	newSurfaces := []models.CodeSurface{
+		{SurfaceID: "s1", Path: "src/new.ts", Kind: models.SurfacePrompt},
+	}
+	result, err := Replay(artPath, root, newSurfaces, 1)
+	if err != nil {
+		t.Fatalf("replay: %v", err)
+	}
+	if result.Match {
+		t.Error("expected mismatch when surface added")
+	}
+	found := false
+	for _, m := range result.Mismatches {
+		if m.Kind == "hash" && m.Original == "(absent)" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected addition mismatch with Original='(absent)'")
 	}
 }
 
