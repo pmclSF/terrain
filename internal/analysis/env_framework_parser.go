@@ -20,6 +20,94 @@ type FrameworkMatrixResult struct {
 	EnvironmentClasses []models.EnvironmentClass
 }
 
+// WireMatrixToTestFiles connects parsed device configs and environment IDs to
+// test files based on framework affinity. For example, Playwright devices from
+// playwright.config apply to all Playwright test files; BrowserStack/Appium/
+// Sauce Labs/Firebase devices apply to all E2E test files since those are
+// project-wide CI configs. Similarly, Playwright browser environments
+// (chromium, firefox, webkit) are wired to all Playwright test files.
+//
+// This bridges the gap between config-level parsing and per-file targeting,
+// enabling the matrix analysis engine to compute real coverage.
+func WireMatrixToTestFiles(testFiles []models.TestFile, result *FrameworkMatrixResult) {
+	if result == nil {
+		return
+	}
+
+	// Group device IDs by provenance prefix.
+	var playwrightDeviceIDs []string
+	var ciPlatformDeviceIDs []string // BrowserStack, Appium, Sauce Labs, Firebase
+
+	for _, dc := range result.DeviceConfigs {
+		switch {
+		case strings.HasPrefix(dc.InferredFrom, "playwright"):
+			playwrightDeviceIDs = append(playwrightDeviceIDs, dc.DeviceID)
+		case strings.HasPrefix(dc.InferredFrom, "browserstack"),
+			strings.HasPrefix(dc.InferredFrom, "appium"),
+			strings.HasPrefix(dc.InferredFrom, "saucelabs"),
+			strings.HasPrefix(dc.InferredFrom, "firebase"):
+			ciPlatformDeviceIDs = append(ciPlatformDeviceIDs, dc.DeviceID)
+		}
+	}
+
+	// Group environment IDs by provenance prefix.
+	var playwrightEnvIDs []string
+	// pytest-parametrize environments map back to the specific test file that
+	// contains the decorator: InferredFrom = "pytest-parametrize:<path>".
+	pytestEnvsByFile := map[string][]string{} // file path → environment IDs
+	for _, env := range result.Environments {
+		switch {
+		case strings.HasPrefix(env.InferredFrom, "playwright"):
+			playwrightEnvIDs = append(playwrightEnvIDs, env.EnvironmentID)
+		case strings.HasPrefix(env.InferredFrom, "pytest-parametrize:"):
+			filePath := strings.TrimPrefix(env.InferredFrom, "pytest-parametrize:")
+			pytestEnvsByFile[filePath] = append(pytestEnvsByFile[filePath], env.EnvironmentID)
+		}
+	}
+
+	hasDevices := len(playwrightDeviceIDs) > 0 || len(ciPlatformDeviceIDs) > 0
+	hasEnvs := len(playwrightEnvIDs) > 0 || len(pytestEnvsByFile) > 0
+	if !hasDevices && !hasEnvs {
+		return
+	}
+
+	for i := range testFiles {
+		tf := &testFiles[i]
+		switch tf.Framework {
+		case "playwright":
+			tf.DeviceIDs = appendUniqueStrings(tf.DeviceIDs, playwrightDeviceIDs)
+			tf.EnvironmentIDs = appendUniqueStrings(tf.EnvironmentIDs, playwrightEnvIDs)
+		case "cypress", "selenium", "webdriverio", "puppeteer", "testcafe":
+			tf.DeviceIDs = appendUniqueStrings(tf.DeviceIDs, ciPlatformDeviceIDs)
+		}
+
+		// Playwright tests also get CI platform devices if present.
+		if tf.Framework == "playwright" && len(ciPlatformDeviceIDs) > 0 {
+			tf.DeviceIDs = appendUniqueStrings(tf.DeviceIDs, ciPlatformDeviceIDs)
+		}
+
+		// pytest-parametrize environments are per-file: wire them back to
+		// the specific test file that contains the decorator.
+		if envIDs, ok := pytestEnvsByFile[tf.Path]; ok {
+			tf.EnvironmentIDs = appendUniqueStrings(tf.EnvironmentIDs, envIDs)
+		}
+	}
+}
+
+func appendUniqueStrings(dst, src []string) []string {
+	seen := make(map[string]bool, len(dst))
+	for _, s := range dst {
+		seen[s] = true
+	}
+	for _, s := range src {
+		if !seen[s] {
+			seen[s] = true
+			dst = append(dst, s)
+		}
+	}
+	return dst
+}
+
 // ParseFrameworkMatrices scans repository configuration files and test files
 // for test framework matrix definitions — Playwright browser configs, mobile
 // device matrices, and pytest parametrize markers.
@@ -50,8 +138,10 @@ var (
 func parsePlaywrightConfig(root string, result *FrameworkMatrixResult) {
 	configPaths := []string{
 		"playwright.config.ts",
+		"playwright.config.mts",
 		"playwright.config.js",
 		"playwright.config.mjs",
+		"playwright.config.cjs",
 	}
 
 	var content string
@@ -80,10 +170,17 @@ func parsePlaywrightConfig(root string, result *FrameworkMatrixResult) {
 		browsers[m[1]] = true
 	}
 
-	// Extract device references.
+	// Extract device references, separating desktop browsers from real devices.
 	devices := map[string]bool{}
 	for _, m := range pwDevicePattern.FindAllStringSubmatch(content, -1) {
-		devices[m[1]] = true
+		ref := m[1]
+		if isPWDesktopBrowserRef(ref) {
+			// Desktop browser references like "Desktop Chrome" are environments,
+			// not device configs. Add them to the browser set instead.
+			browsers[ref] = true
+			continue
+		}
+		devices[ref] = true
 	}
 
 	// Create browser environment class + environments.
@@ -144,9 +241,20 @@ func parsePlaywrightConfig(root string, result *FrameworkMatrixResult) {
 
 func isPWBrowser(name string) bool {
 	lower := strings.ToLower(name)
+	// "Mobile Chrome" and "Mobile Safari" are device-emulating project names
+	// in Playwright (they correspond to devices['Pixel 5'] etc.), not browsers.
+	if strings.Contains(lower, "mobile") {
+		return false
+	}
 	return lower == "chromium" || lower == "firefox" || lower == "webkit" ||
-		lower == "chrome" || lower == "msedge" || lower == "safari" ||
-		strings.Contains(lower, "mobile chrome") || strings.Contains(lower, "mobile safari")
+		lower == "chrome" || lower == "msedge" || lower == "safari"
+}
+
+// isPWDesktopBrowserRef returns true for Playwright devices[...] references
+// that represent desktop browsers rather than mobile devices.
+// Examples: "Desktop Chrome", "Desktop Firefox", "Desktop Safari".
+func isPWDesktopBrowserRef(ref string) bool {
+	return strings.HasPrefix(ref, "Desktop ")
 }
 
 // --- pytest configuration and parametrize ---
@@ -175,9 +283,10 @@ func parsePytestIni(root string, result *FrameworkMatrixResult) {
 
 var pytestMarkerPattern = regexp.MustCompile(`(?m)^\s*(\w+):\s*(?:mark\s+for\s+)?(?:run(?:ning)?\s+(?:on|in|with)\s+)?(.+)$`)
 
-func extractPytestEnvMarkers(content string, result *FrameworkMatrixResult) {
-	// Look for marker patterns like: linux: run on Linux, browser_chrome: Chrome browser tests
-	envMarkers := map[string]string{} // marker → description
+func extractPytestEnvMarkers(content string, _ *FrameworkMatrixResult) {
+	// Scan for environment-related pytest markers. Currently informational only:
+	// markers become actionable when pytest.parametrize or conftest fixtures
+	// reference them. This function exists as scaffolding for that future wiring.
 	lines := strings.Split(content, "\n")
 	inMarkers := false
 
@@ -188,24 +297,16 @@ func extractPytestEnvMarkers(content string, result *FrameworkMatrixResult) {
 			continue
 		}
 		if inMarkers {
-			if trimmed == "" || (!strings.HasPrefix(trimmed, " ") && !strings.HasPrefix(line, "\t") && !strings.HasPrefix(trimmed, "\"") && trimmed != "" && !strings.Contains(trimmed, ":")) {
-				inMarkers = false
-				continue
+			if trimmed == "" || (!strings.HasPrefix(trimmed, " ") && !strings.HasPrefix(line, "\t") && !strings.HasPrefix(trimmed, "\"") && !strings.Contains(trimmed, ":")) {
+				break
 			}
 			// Clean up TOML multiline string markers.
 			cleaned := strings.Trim(trimmed, "\"',")
 			if m := pytestMarkerPattern.FindStringSubmatch(cleaned); m != nil {
-				marker := m[1]
-				if isEnvironmentMarker(marker) {
-					envMarkers[marker] = strings.TrimSpace(m[2])
-				}
+				_ = isEnvironmentMarker(m[1]) // validate but don't store yet
 			}
 		}
 	}
-
-	// We don't create environments from markers alone — they're informational.
-	// They become relevant when pytest.parametrize or conftest fixtures reference them.
-	_ = envMarkers
 }
 
 func isEnvironmentMarker(marker string) bool {
@@ -309,12 +410,10 @@ func parseBrowserStackConfig(root string, result *FrameworkMatrixResult) {
 	}
 
 	var data []byte
-	var isYAML bool
 	for _, p := range paths {
 		d, err := os.ReadFile(p)
 		if err == nil {
 			data = d
-			isYAML = strings.HasSuffix(p, ".yml") || strings.HasSuffix(p, ".yaml")
 			break
 		}
 	}
@@ -324,16 +423,10 @@ func parseBrowserStackConfig(root string, result *FrameworkMatrixResult) {
 
 	provenance := "browserstack"
 
+	// yaml.Unmarshal handles both YAML and JSON.
 	var raw map[string]interface{}
-	if isYAML {
-		if err := yaml.Unmarshal(data, &raw); err != nil {
-			return
-		}
-	} else {
-		// JSON is valid YAML.
-		if err := yaml.Unmarshal(data, &raw); err != nil {
-			return
-		}
+	if err := yaml.Unmarshal(data, &raw); err != nil {
+		return
 	}
 
 	// Extract platforms array: [{os, os_version, browser, browser_version, device}, ...]
@@ -371,10 +464,17 @@ func parseBrowserStackConfig(root string, result *FrameworkMatrixResult) {
 		deviceID := "device:bs-" + sanitizeID(name)
 		memberIDs = append(memberIDs, deviceID)
 
+		platform := inferDevicePlatform(name)
+		if platform == "" && osName != "" {
+			// Fall back to the explicit OS field when the device/browser
+			// name alone doesn't reveal the platform.
+			platform = inferDevicePlatform(osName)
+		}
+
 		dc := models.DeviceConfig{
 			DeviceID:     deviceID,
 			Name:         name,
-			Platform:     inferDevicePlatform(name),
+			Platform:     platform,
 			FormFactor:   inferFormFactor(name),
 			OSVersion:    osVersion,
 			ClassID:      classID,
@@ -421,8 +521,8 @@ var (
 )
 
 func extractAppiumDevices(content, filename string, result *FrameworkMatrixResult) {
-	deviceNames := appiumDeviceNamePattern.FindAllStringSubmatch(content, -1)
-	if len(deviceNames) == 0 {
+	deviceMatches := appiumDeviceNamePattern.FindAllStringSubmatchIndex(content, -1)
+	if len(deviceMatches) == 0 {
 		return
 	}
 
@@ -430,11 +530,11 @@ func extractAppiumDevices(content, filename string, result *FrameworkMatrixResul
 	classID := "envclass:appium-device"
 	var memberIDs []string
 
-	platforms := appiumPlatformPattern.FindAllStringSubmatch(content, -1)
-	versions := appiumPlatformVerPattern.FindAllStringSubmatch(content, -1)
+	platformMatches := appiumPlatformPattern.FindAllStringSubmatchIndex(content, -1)
+	versionMatches := appiumPlatformVerPattern.FindAllStringSubmatchIndex(content, -1)
 
-	for i, m := range deviceNames {
-		name := m[1]
+	for _, dm := range deviceMatches {
+		name := content[dm[2]:dm[3]]
 		deviceID := "device:appium-" + sanitizeID(name)
 		memberIDs = append(memberIDs, deviceID)
 
@@ -447,11 +547,13 @@ func extractAppiumDevices(content, filename string, result *FrameworkMatrixResul
 			InferredFrom: provenance,
 		}
 
-		if i < len(platforms) {
-			dc.Platform = strings.ToLower(platforms[i][1])
+		// Find the nearest platformName and platformVersion within 500 chars
+		// of this deviceName match, rather than relying on array-index alignment.
+		if pm := nearestMatch(platformMatches, dm[0], 500); pm != nil {
+			dc.Platform = strings.ToLower(content[pm[2]:pm[3]])
 		}
-		if i < len(versions) {
-			dc.OSVersion = versions[i][1]
+		if vm := nearestMatch(versionMatches, dm[0], 500); vm != nil {
+			dc.OSVersion = content[vm[2]:vm[3]]
 		}
 
 		result.DeviceConfigs = appendDeviceIfNew(result.DeviceConfigs, dc)
@@ -621,10 +723,17 @@ func parseFirebaseTestLabConfig(root string, result *FrameworkMatrixResult) {
 		deviceID := "device:ftl-" + sanitizeID(model)
 		memberIDs = append(memberIDs, deviceID)
 
+		platform := inferDevicePlatform(model)
+		if platform == "" {
+			// Firebase Test Lab devices are Android; codenames like
+			// "redfin" or "oriole" won't match inferDevicePlatform.
+			platform = "android"
+		}
+
 		dc := models.DeviceConfig{
 			DeviceID:     deviceID,
 			Name:         name,
-			Platform:     inferDevicePlatform(model),
+			Platform:     platform,
 			FormFactor:   inferFormFactor(model),
 			OSVersion:    version,
 			ClassID:      classID,
@@ -651,7 +760,13 @@ func inferDevicePlatform(name string) string {
 	switch {
 	case strings.Contains(lower, "iphone") || strings.Contains(lower, "ipad") || strings.Contains(lower, "ios"):
 		return "ios"
-	case strings.Contains(lower, "pixel") || strings.Contains(lower, "galaxy") || strings.Contains(lower, "android"):
+	case strings.Contains(lower, "pixel") || strings.Contains(lower, "galaxy") ||
+		strings.Contains(lower, "android") || strings.Contains(lower, "oneplus") ||
+		strings.Contains(lower, "xiaomi") || strings.Contains(lower, "redmi") ||
+		strings.Contains(lower, "huawei") || strings.Contains(lower, "motorola") ||
+		strings.Contains(lower, "moto ") || lower == "moto" || strings.Contains(lower, "oppo") ||
+		strings.Contains(lower, "vivo") || strings.Contains(lower, "realme") ||
+		strings.Contains(lower, "xperia") || strings.Contains(lower, "nokia"):
 		return "android"
 	case strings.Contains(lower, "chrome") || strings.Contains(lower, "firefox") ||
 		strings.Contains(lower, "safari") || strings.Contains(lower, "edge") ||
@@ -665,13 +780,23 @@ func inferDevicePlatform(name string) string {
 func inferFormFactor(name string) string {
 	lower := strings.ToLower(name)
 	switch {
-	case strings.Contains(lower, "ipad") || strings.Contains(lower, "tablet") || strings.Contains(lower, "tab "):
+	case strings.Contains(lower, "ipad") || strings.Contains(lower, "tablet") ||
+		strings.Contains(lower, "tab ") || strings.HasSuffix(lower, " tab") ||
+		strings.Contains(lower, "surface"):
 		return "tablet"
 	case strings.Contains(lower, "desktop"):
 		return "desktop"
 	case strings.Contains(lower, "iphone") || strings.Contains(lower, "pixel") ||
-		strings.Contains(lower, "galaxy") || strings.Contains(lower, "phone") ||
-		strings.Contains(lower, "mobile"):
+		strings.Contains(lower, "phone") || strings.Contains(lower, "mobile") ||
+		strings.Contains(lower, "oneplus") || strings.Contains(lower, "xiaomi") ||
+		strings.Contains(lower, "redmi") || strings.Contains(lower, "huawei") ||
+		strings.Contains(lower, "motorola") || strings.Contains(lower, "moto ") || lower == "moto" ||
+		strings.Contains(lower, "oppo") || strings.Contains(lower, "vivo") ||
+		strings.Contains(lower, "realme") || strings.Contains(lower, "xperia") ||
+		strings.Contains(lower, "nokia"):
+		return "phone"
+	// Galaxy without "tab" is a phone (Galaxy S, A, Z series).
+	case strings.Contains(lower, "galaxy"):
 		return "phone"
 	default:
 		return ""
@@ -714,6 +839,39 @@ func stringFromMap(m map[string]interface{}, key string) string {
 		return fmt.Sprintf("%v", v)
 	}
 	return s
+}
+
+// nearestMatch finds the regex submatch index closest to pos within maxDist.
+// Each entry in matches is a []int from FindAllStringSubmatchIndex.
+// It prefers the nearest forward match (same config block) and falls back
+// to the nearest match in either direction.
+// Returns nil if no match is within range.
+func nearestMatch(matches [][]int, pos, maxDist int) []int {
+	var bestForward, bestAny []int
+	bestForwardDist := maxDist + 1
+	bestAnyDist := maxDist + 1
+	for _, m := range matches {
+		d := m[0] - pos
+		absDist := d
+		if absDist < 0 {
+			absDist = -absDist
+		}
+		if absDist < bestAnyDist {
+			bestAnyDist = absDist
+			bestAny = m
+		}
+		if d >= 0 && d < bestForwardDist {
+			bestForwardDist = d
+			bestForward = m
+		}
+	}
+	if bestForward != nil && bestForwardDist <= maxDist {
+		return bestForward
+	}
+	if bestAnyDist <= maxDist {
+		return bestAny
+	}
+	return nil
 }
 
 func appendDeviceIfNew(devices []models.DeviceConfig, dc models.DeviceConfig) []models.DeviceConfig {

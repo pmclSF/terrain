@@ -6,6 +6,7 @@
 package heatmap
 
 import (
+	"path/filepath"
 	"sort"
 
 	"github.com/pmclSF/terrain/internal/graph"
@@ -234,17 +235,7 @@ func normalizedRiskScore(weight float64, fileCount int) float64 {
 }
 
 func filepathDir(path string) string {
-	// Lightweight directory extraction without importing filepath.
-	lastSlash := -1
-	for i := 0; i < len(path); i++ {
-		if path[i] == '/' {
-			lastSlash = i
-		}
-	}
-	if lastSlash <= 0 {
-		return "."
-	}
-	return path[:lastSlash]
+	return filepath.Dir(filepath.ToSlash(path))
 }
 
 var severityWeight = map[models.SignalSeverity]float64{

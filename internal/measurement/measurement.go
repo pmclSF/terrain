@@ -28,6 +28,42 @@ const (
 	DimensionOperationalRisk   Dimension = "operational_risk"
 )
 
+// DimensionDisplayName returns a human-readable label for a dimension.
+func DimensionDisplayName(dim Dimension) string {
+	switch dim {
+	case DimensionHealth:
+		return "Health"
+	case DimensionCoverageDepth:
+		return "Coverage Depth"
+	case DimensionCoverageDiversity:
+		return "Coverage Diversity"
+	case DimensionStructuralRisk:
+		return "Structural Risk"
+	case DimensionOperationalRisk:
+		return "Operational Risk"
+	default:
+		return string(dim)
+	}
+}
+
+// DimensionQuestion returns the key question each dimension answers.
+func DimensionQuestion(dim Dimension) string {
+	switch dim {
+	case DimensionHealth:
+		return "Are our tests themselves reliable?"
+	case DimensionCoverageDepth:
+		return "Is our exported code actually tested?"
+	case DimensionCoverageDiversity:
+		return "Are we testing with the right mix of test types?"
+	case DimensionStructuralRisk:
+		return "Are we blocked from modernizing?"
+	case DimensionOperationalRisk:
+		return "Are we following our own rules?"
+	default:
+		return ""
+	}
+}
+
 // EvidenceStrength describes how much concrete evidence backs a measurement.
 // Reuses the canonical model enum for consistency across signal and
 // measurement layers.

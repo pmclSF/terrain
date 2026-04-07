@@ -300,7 +300,8 @@ func Build(input *BuildInput) *Report {
 		Snapshot:   BuildSnapshotProfileData(snap),
 	}
 	dgProfile := depgraph.AnalyzeProfile(dg, profileInsights)
-	depgraph.EnrichProfileWithSkipRatio(&dgProfile, skipstats.Summarize(snap).TestRatio)
+	skipSummary := skipstats.Summarize(snap)
+	depgraph.EnrichProfileWithSkipRatio(&dgProfile, skipSummary.TestRatio)
 
 	// Edge cases and policy.
 	dgEdgeCases := depgraph.DetectEdgeCases(dgProfile, dg, profileInsights)
@@ -333,13 +334,17 @@ func Build(input *BuildInput) *Report {
 	r.HighFanout = buildFanoutSummary(&dgFanout)
 
 	// Skipped test burden.
-	r.SkippedTestBurden = buildSkipSummary(snap)
+	r.SkippedTestBurden = SkipSummary{
+		SkippedCount: skipSummary.SkippedTests,
+		TotalTests:   skipSummary.TotalTests,
+		SkipRatio:    skipSummary.TestRatio,
+	}
 
 	// Weak coverage areas.
 	r.WeakCoverageAreas = buildWeakAreas(&dgCov)
 
 	// CI optimization.
-	r.CIOptimization = buildCIOptimization(&dgDupes, &dgFanout, snap)
+	r.CIOptimization = buildCIOptimization(&dgDupes, &dgFanout, skipSummary.SkippedTests)
 
 	// Behavior redundancy.
 	dgRedundancy := depgraph.AnalyzeRedundancy(dg)
@@ -551,15 +556,6 @@ func buildFanoutSummary(fanout *depgraph.FanoutResult) FanoutSummary {
 	return fs
 }
 
-func buildSkipSummary(snap *models.TestSuiteSnapshot) SkipSummary {
-	stats := skipstats.Summarize(snap)
-	return SkipSummary{
-		SkippedCount: stats.SkippedTests,
-		TotalTests:   stats.TotalTests,
-		SkipRatio:    stats.TestRatio,
-	}
-}
-
 func buildWeakAreas(cov *depgraph.CoverageResult) []WeakArea {
 	var areas []WeakArea
 	for _, src := range cov.Sources {
@@ -571,18 +567,21 @@ func buildWeakAreas(cov *depgraph.CoverageResult) []WeakArea {
 			})
 		}
 	}
-	// Limit to top 10 weakest areas.
+	// Sort by test count ascending (weakest first) before capping.
+	sort.Slice(areas, func(i, j int) bool {
+		return areas[i].TestCount < areas[j].TestCount
+	})
 	if len(areas) > 10 {
 		areas = areas[:10]
 	}
 	return areas
 }
 
-func buildCIOptimization(dupes *depgraph.DuplicateResult, fanout *depgraph.FanoutResult, snap *models.TestSuiteSnapshot) CIOptimizationSummary {
+func buildCIOptimization(dupes *depgraph.DuplicateResult, fanout *depgraph.FanoutResult, skippedTests int) CIOptimizationSummary {
 	ci := CIOptimizationSummary{
 		DuplicateTestsRemovable: dupes.DuplicateCount,
 		HighFanoutNodes:         fanout.FlaggedCount,
-		SkippedTestsReviewable:  skipstats.Summarize(snap).SkippedTests,
+		SkippedTestsReviewable:  skippedTests,
 	}
 
 	// Build recommendation.
@@ -876,13 +875,6 @@ func deriveKeyFindings(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph
 		findings[i] = c.finding
 	}
 	return findings, total
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }
 
 // BuildSnapshotProfileData extracts aggregates from the snapshot for

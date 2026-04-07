@@ -11,6 +11,7 @@ import (
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/governance"
 	"github.com/pmclSF/terrain/internal/logging"
+	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/policy"
 	"github.com/pmclSF/terrain/internal/reporting"
 	"github.com/pmclSF/terrain/internal/sarif"
@@ -51,13 +52,17 @@ func runInit(root string, jsonOutput bool) error {
 	// Section 2: Artifacts.
 	if result.Artifacts != nil {
 		if result.Artifacts.CoveragePath != "" {
-			fmt.Printf("Coverage:  %s (%s)\n", result.Artifacts.CoveragePath, result.Artifacts.CoverageFormat)
+			fmt.Printf("Coverage:  %s (%s)\n", relativeToRoot(result.Artifacts.CoveragePath, result.Root), result.Artifacts.CoverageFormat)
 		} else {
 			fmt.Println("Coverage:  not found")
 		}
 		if len(result.Artifacts.RuntimePaths) > 0 {
 			for i, p := range result.Artifacts.RuntimePaths {
-				fmt.Printf("Runtime:   %s (%s)\n", p, result.Artifacts.RuntimeFormats[i])
+				rtFormat := ""
+				if i < len(result.Artifacts.RuntimeFormats) {
+					rtFormat = result.Artifacts.RuntimeFormats[i]
+				}
+				fmt.Printf("Runtime:   %s (%s)\n", relativeToRoot(p, result.Root), rtFormat)
 			}
 		} else {
 			fmt.Println("Runtime:   not found")
@@ -121,22 +126,10 @@ func relativeToRoot(path, root string) string {
 	return path
 }
 
-// detectFirstExisting checks a list of candidate relative paths against root.
-// Returns the first path that exists as a non-empty file, or "".
-func detectFirstExisting(root string, candidates []string) string {
-	for _, rel := range candidates {
-		p := filepath.Join(root, rel)
-		if info, err := os.Stat(p); err == nil && !info.IsDir() {
-			return p
-		}
-	}
-	return ""
-}
-
 func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, slowThreshold float64) error {
 	parsedRuntime := parseRuntimePaths(runtimePaths)
 	parsedGauntlet := parseRuntimePaths(gauntletPaths) // same comma-split logic
-	if err := validateCommandInputs(root, coveragePath, parsedRuntime); err != nil {
+	if err := validateCommandInputs(root, coveragePath, parsedRuntime, parsedGauntlet); err != nil {
 		return err
 	}
 	var sarifOutput, annotationOutput bool
@@ -181,8 +174,12 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		}
 		if d.RuntimeAutoDetected {
 			for i, p := range d.RuntimePaths {
+				rtFormat := ""
+				if i < len(d.RuntimeFormats) {
+					rtFormat = d.RuntimeFormats[i]
+				}
 				discovered = append(discovered, analyze.DiscoveredArtifact{
-					Kind: "runtime", Path: engine.RelativePath(p), Format: d.RuntimeFormats[i],
+					Kind: "runtime", Path: engine.RelativePath(p), Format: rtFormat,
 				})
 			}
 		}
@@ -250,7 +247,7 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 //   - 2: policy violations found
 func runPolicyCheck(root string, jsonOutput bool, coveragePath, coverageRunLabel string, runtimePaths string, slowThreshold float64) int {
 	parsedRuntime := parseRuntimePaths(runtimePaths)
-	if err := validateCommandInputs(root, coveragePath, parsedRuntime); err != nil {
+	if err := validateCommandInputs(root, coveragePath, parsedRuntime, nil); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return exitError
 	}
@@ -285,6 +282,7 @@ func runPolicyCheck(root string, jsonOutput bool, coveragePath, coverageRunLabel
 	}
 
 	opt := analysisPipelineOptions(coveragePath, coverageRunLabel, parsedRuntime, slowThreshold)
+	opt.OnProgress = newProgressFunc(jsonOutput)
 
 	// Reuse the main analysis pipeline so policy evaluation can use runtime and
 	// coverage artifacts when provided.
@@ -300,10 +298,14 @@ func runPolicyCheck(root string, jsonOutput bool, coveragePath, coverageRunLabel
 	if jsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
+		violations := govResult.Violations
+		if violations == nil {
+			violations = []models.Signal{}
+		}
 		if err := enc.Encode(map[string]any{
 			"policyFile": policyResult.Path,
 			"pass":       govResult.Pass,
-			"violations": govResult.Violations,
+			"violations": violations,
 			"message":    policyStatusMessage(govResult.Pass),
 		}); err != nil {
 			fmt.Fprintf(os.Stderr, "error: failed to render policy output: %v\n", err)
@@ -333,7 +335,7 @@ func parseRuntimePaths(runtimePaths string) []string {
 	return paths
 }
 
-func validateCommandInputs(root, coveragePath string, runtimePaths []string) error {
+func validateCommandInputs(root, coveragePath string, runtimePaths, gauntletPaths []string) error {
 	rootInfo, err := os.Stat(root)
 	if err != nil {
 		return fmt.Errorf("invalid --root %q: %w", root, err)
@@ -351,6 +353,12 @@ func validateCommandInputs(root, coveragePath string, runtimePaths []string) err
 	for _, p := range runtimePaths {
 		if _, err := os.Stat(p); err != nil {
 			return fmt.Errorf("invalid --runtime path %q: %w", p, err)
+		}
+	}
+
+	for _, p := range gauntletPaths {
+		if _, err := os.Stat(p); err != nil {
+			return fmt.Errorf("invalid --gauntlet path %q: %w", p, err)
 		}
 	}
 	return nil

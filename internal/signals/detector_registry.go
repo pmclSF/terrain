@@ -17,8 +17,8 @@ const (
 	DomainMigration  Domain = "migration"
 	DomainGovernance Domain = "governance"
 	DomainHealth     Domain = "health"
-	DomainCoverage    Domain = "coverage"
-	DomainStructural  Domain = "structural"
+	DomainCoverage   Domain = "coverage"
+	DomainStructural Domain = "structural"
 )
 
 // EvidenceType describes how a detector obtains its evidence.
@@ -190,12 +190,12 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 	}
 
 	var (
-		wg          sync.WaitGroup
-		mu          sync.Mutex
-		results     []result
-		graphRegs   []DetectorRegistration
-		graphIdxs   []int
-		dependents  []DetectorRegistration
+		wg         sync.WaitGroup
+		mu         sync.Mutex
+		results    []result
+		graphRegs  []DetectorRegistration
+		graphIdxs  []int
+		dependents []DetectorRegistration
 	)
 
 	// Phase 1: Independent flat detectors (concurrent).

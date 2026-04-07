@@ -12,11 +12,7 @@ import (
 // was selected. When verbose is true, additional evidence metadata is shown.
 func RenderTestExplanation(w io.Writer, te *explain.TestExplanation, verbose ...bool) {
 	isVerbose := len(verbose) > 0 && verbose[0]
-	_ = isVerbose
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Terrain Explain")
 	line(strings.Repeat("=", 60))
@@ -123,11 +119,7 @@ func RenderTestExplanation(w io.Writer, te *explain.TestExplanation, verbose ...
 // overall test selection strategy. When verbose is true, per-test evidence is shown.
 func RenderSelectionExplanation(w io.Writer, sel *explain.SelectionExplanation, verbose ...bool) {
 	isVerbose := len(verbose) > 0 && verbose[0]
-	_ = isVerbose
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Terrain Explain — Test Selection")
 	line(strings.Repeat("=", 60))
@@ -154,8 +146,9 @@ func RenderSelectionExplanation(w io.Writer, sel *explain.SelectionExplanation, 
 	}
 	if hasReasons {
 		line("Reason breakdown:")
-		for reason, count := range sel.ReasonBreakdown {
-			if count > 0 {
+		// Stable iteration order for deterministic output.
+		for _, reason := range []string{"directDependency", "fixtureDependency", "directlyChanged", "directoryProximity"} {
+			if count := sel.ReasonBreakdown[reason]; count > 0 {
 				line("  %-24s %d", reasonCategoryLabel(reason)+":", count)
 			}
 		}

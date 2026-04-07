@@ -5,17 +5,29 @@ import "strings"
 // FilterByOwner returns a new ImpactResult filtered to only include
 // units and related data for the specified owner.
 func FilterByOwner(result *ImpactResult, owner string) *ImpactResult {
-	owner = strings.ToLower(owner)
+	ownerLower := strings.ToLower(owner)
 
 	filtered := &ImpactResult{
-		Scope:   result.Scope,
-		Posture: result.Posture,
+		ChangeSet:          result.ChangeSet,
+		Scope:              result.Scope,
+		ChangedAreas:       result.ChangedAreas,
+		AffectedBehaviors:  result.AffectedBehaviors,
+		ImpactedScenarios:  result.ImpactedScenarios,
+		Graph:              result.Graph,
+		Posture:            result.Posture,
+		CoverageConfidence: result.CoverageConfidence,
+		ReasonCategories:   result.ReasonCategories,
+		Fallback:           result.Fallback,
+		TotalTestCount:     result.TotalTestCount,
+		HasCoverageData:    result.HasCoverageData,
+		PolicyApplied:      result.PolicyApplied,
+		PolicyNotes:        result.PolicyNotes,
 	}
 
 	// Filter impacted units.
 	coveredPaths := map[string]bool{}
 	for _, iu := range result.ImpactedUnits {
-		if strings.ToLower(iu.Owner) == owner {
+		if strings.ToLower(iu.Owner) == ownerLower {
 			filtered.ImpactedUnits = append(filtered.ImpactedUnits, iu)
 			for _, tp := range iu.CoveringTests {
 				coveredPaths[tp] = true
@@ -42,7 +54,8 @@ func FilterByOwner(result *ImpactResult, owner string) *ImpactResult {
 	}
 
 	filtered.SelectedTests = selectProtectiveTests(filtered.ImpactedTests, filtered.ImpactedUnits)
-	filtered.ImpactedOwners = []string{owner}
+	filtered.ProtectiveSet = buildProtectiveSet(filtered)
+	filtered.ImpactedOwners = []string{owner} // preserve original casing
 	filtered.Summary = buildImpactSummary(filtered)
 	filtered.Limitations = result.Limitations
 

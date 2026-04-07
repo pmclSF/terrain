@@ -8,6 +8,25 @@ import (
 	"github.com/pmclSF/terrain/internal/signals"
 )
 
+// Fixture fragility thresholds.
+const (
+	// minFixtureDependents is the minimum direct-test count before a fixture
+	// is considered fragile.
+	minFixtureDependents = 5
+
+	// fixtureHighTestThreshold flags SeverityHigh when direct tests exceed this.
+	fixtureHighTestThreshold = 20
+
+	// fixtureMediumTestThreshold flags SeverityMedium when direct tests exceed this.
+	fixtureMediumTestThreshold = 10
+
+	// fixtureHighFileThreshold flags SeverityHigh when distinct test files exceed this.
+	fixtureHighFileThreshold = 5
+
+	// fixtureMediumFileThreshold flags SeverityMedium when distinct test files exceed this.
+	fixtureMediumFileThreshold = 3
+)
+
 // FixtureFragilityHotspotDetector finds fixtures depended on by many tests,
 // where a single fixture change cascades widely.
 type FixtureFragilityHotspotDetector struct{}
@@ -37,14 +56,14 @@ func (d *FixtureFragilityHotspotDetector) DetectWithGraph(snap *models.TestSuite
 			}
 		}
 
-		if directTests < 5 {
+		if directTests < minFixtureDependents {
 			continue
 		}
 
 		severity := models.SeverityLow
-		if directTests > 20 || len(testFiles) > 5 {
+		if directTests > fixtureHighTestThreshold || len(testFiles) > fixtureHighFileThreshold {
 			severity = models.SeverityHigh
-		} else if directTests > 10 || len(testFiles) > 3 {
+		} else if directTests > fixtureMediumTestThreshold || len(testFiles) > fixtureMediumFileThreshold {
 			severity = models.SeverityMedium
 		}
 
@@ -66,9 +85,9 @@ func (d *FixtureFragilityHotspotDetector) DetectWithGraph(snap *models.TestSuite
 				name, directTests, len(testFiles)),
 			SuggestedAction: "Extract smaller, focused fixtures to reduce cascading test failures.",
 			Metadata: map[string]any{
-				"fixtureName":    name,
+				"fixtureName":     name,
 				"directTestCount": directTests,
-				"testFileCount":  len(testFiles),
+				"testFileCount":   len(testFiles),
 			},
 		})
 	}

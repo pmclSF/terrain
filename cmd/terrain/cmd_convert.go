@@ -16,10 +16,6 @@ type convertCommandOptions struct {
 	From              string
 	To                string
 	Output            string
-	Config            string
-	TestType          string
-	Report            string
-	ReportJSON        string
 	PreserveStructure bool
 	BatchSize         int
 	Concurrency       int
@@ -28,8 +24,6 @@ type convertCommandOptions struct {
 	Plan              bool
 	AutoDetect        bool
 	StrictValidate    bool
-	Quiet             bool
-	Verbose           bool
 	JSON              bool
 	OnError           string
 	Alias             string
@@ -43,16 +37,27 @@ func (e cliUsageError) Error() string {
 	return e.message
 }
 
+// cliExitError carries a specific exit code through the error return path,
+// allowing functions to signal non-zero exit without calling os.Exit() directly.
+type cliExitError struct {
+	code    int
+	message string
+}
+
+func (e cliExitError) Error() string {
+	return e.message
+}
+
 func exitCodeForCLIError(err error) int {
+	var exitErr cliExitError
+	if errors.As(err, &exitErr) {
+		return exitErr.code
+	}
 	var usageErr cliUsageError
 	if errors.As(err, &usageErr) {
 		return 2
 	}
 	return 1
-}
-
-func lookupConvertShorthand(alias string) (conv.Direction, bool) {
-	return conv.LookupShorthand(alias)
 }
 
 func runConvertCLI(args []string) error {
@@ -66,10 +71,7 @@ func runConvertCLI(args []string) error {
 	fs.StringVar(&opts.To, "t", "", "target framework")
 	fs.StringVar(&opts.Output, "output", "", "output path for converted tests")
 	fs.StringVar(&opts.Output, "o", "", "output path for converted tests")
-	fs.StringVar(&opts.Config, "config", "", "custom configuration file path")
-	fs.StringVar(&opts.TestType, "test-type", "", "test type (e2e, component, api, etc.)")
 	fs.BoolVar(&opts.Validate, "validate", true, "validate converted output before returning or writing it")
-	fs.StringVar(&opts.Report, "report", "", "generate conversion report (html, json, markdown)")
 	fs.BoolVar(&opts.PreserveStructure, "preserve-structure", false, "maintain original directory structure")
 	fs.IntVar(&opts.BatchSize, "batch-size", 5, "number of files per batch")
 	fs.IntVar(&opts.Concurrency, "concurrency", 4, "number of files to convert in parallel in batch mode")
@@ -77,12 +79,8 @@ func runConvertCLI(args []string) error {
 	fs.BoolVar(&opts.Plan, "plan", false, "show structured conversion plan")
 	fs.BoolVar(&opts.AutoDetect, "auto-detect", false, "auto-detect source framework from source content")
 	fs.BoolVar(&opts.StrictValidate, "strict-validate", false, "force strict validation even when best-effort handling is requested")
-	fs.BoolVar(&opts.Quiet, "quiet", false, "suppress non-error output")
-	fs.BoolVar(&opts.Quiet, "q", false, "suppress non-error output")
-	fs.BoolVar(&opts.Verbose, "verbose", false, "detailed output")
 	fs.BoolVar(&opts.JSON, "json", false, "JSON output")
 	fs.StringVar(&opts.OnError, "on-error", "skip", "error handling: skip|fail|best-effort")
-	fs.StringVar(&opts.ReportJSON, "report-json", "", "write a structured JSON conversion report to the given file")
 
 	if err := fs.Parse(reorderCLIArgs(args, convertFlagsWithValue)); err != nil {
 		printConvertUsage()
@@ -121,9 +119,6 @@ func runShorthandCLI(alias string, args []string) error {
 	fs.IntVar(&opts.Concurrency, "concurrency", 4, "number of files to convert in parallel in batch mode")
 	fs.StringVar(&opts.OnError, "on-error", "skip", "error handling: skip|fail|best-effort")
 	fs.BoolVar(&opts.JSON, "json", false, "JSON output")
-	fs.BoolVar(&opts.Verbose, "verbose", false, "detailed output")
-	fs.BoolVar(&opts.Quiet, "quiet", false, "suppress non-error output")
-	fs.BoolVar(&opts.Quiet, "q", false, "suppress non-error output")
 
 	if err := fs.Parse(reorderCLIArgs(args, shorthandFlagsWithValue)); err != nil {
 		printShorthandUsage(alias, direction)
@@ -324,15 +319,19 @@ func renderConvertPlan(plan conv.TestMigrationPlan, jsonOutput bool) error {
 func resolveConvertValidationMode(opts convertCommandOptions) (conv.ValidationMode, error) {
 	switch strings.ToLower(strings.TrimSpace(opts.OnError)) {
 	case "", "skip", "fail":
+		// Both "skip" and "fail" use strict validation. The distinction is
+		// handled by the execution pipeline: strict mode removes invalid
+		// output and returns an error that the caller can act on.
+		return conv.ValidationModeStrict, nil
 	case "best-effort":
+		if opts.StrictValidate {
+			// --strict-validate overrides --on-error best-effort.
+			return conv.ValidationModeStrict, nil
+		}
 		return conv.ValidationModeBestEffort, nil
 	default:
 		return "", fmt.Errorf("--on-error must be one of skip, fail, or best-effort")
 	}
-	if opts.StrictValidate {
-		return conv.ValidationModeStrict, nil
-	}
-	return conv.ValidationModeStrict, nil
 }
 
 func runListConversions(jsonOutput bool) error {
@@ -445,13 +444,9 @@ var convertFlagsWithValue = map[string]bool{
 	"-t":            true,
 	"--output":      true,
 	"-o":            true,
-	"--config":      true,
-	"--test-type":   true,
-	"--report":      true,
 	"--batch-size":  true,
 	"--concurrency": true,
 	"--on-error":    true,
-	"--report-json": true,
 }
 
 var shorthandFlagsWithValue = map[string]bool{

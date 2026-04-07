@@ -11,10 +11,7 @@ import (
 // RenderAnalyzeReportV2 writes a human-readable analysis report from the
 // structured analyze.Report. This is the "wow moment" first-run output.
 func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	// Header
 	line("Terrain — Test Suite Analysis")

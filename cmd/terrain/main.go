@@ -41,6 +41,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	conv "github.com/pmclSF/terrain/internal/convert"
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/server"
@@ -243,7 +244,10 @@ func main() {
 		baseRef := explainCmd.String("base", "", "git base ref for diff (default: HEAD~1)")
 		jsonFlag := explainCmd.Bool("json", false, "output JSON")
 		verboseFlag := explainCmd.Bool("verbose", false, "show detection evidence, tiers, and confidence details")
-		_ = explainCmd.Parse(os.Args[2:])
+		explainFlagsWithValue := map[string]bool{
+			"--root": true, "--base": true,
+		}
+		_ = explainCmd.Parse(reorderCLIArgs(os.Args[2:], explainFlagsWithValue))
 		explainArgs := explainCmd.Args()
 		if len(explainArgs) == 0 {
 			fmt.Fprintln(os.Stderr, "Usage: terrain explain <target> [flags]")
@@ -372,16 +376,48 @@ func main() {
 			printShowUsage()
 			os.Exit(2)
 		}
-		showSubCmd := os.Args[2]
-		showCmd := flag.NewFlagSet("show", flag.ExitOnError)
-		rootFlag := showCmd.String("root", ".", "repository root to analyze")
-		jsonFlag := showCmd.Bool("json", false, "output JSON")
-		_ = showCmd.Parse(os.Args[3:])
-		showArgs := showCmd.Args()
-		showID := ""
-		if len(showArgs) > 0 {
-			showID = showArgs[0]
+		// Separate flags from positional args manually so flags can appear
+		// in any position (e.g., "terrain show --json test foo",
+		// "terrain show test foo --json", or "terrain show test --json foo").
+		var showPositional []string
+		showJSON := false
+		showRoot := "."
+		for _, arg := range os.Args[2:] {
+			switch {
+			case arg == "--json" || arg == "-json":
+				showJSON = true
+			case strings.HasPrefix(arg, "--root="):
+				showRoot = strings.TrimPrefix(arg, "--root=")
+			case strings.HasPrefix(arg, "-root="):
+				showRoot = strings.TrimPrefix(arg, "-root=")
+			case arg == "--root" || arg == "-root":
+				// Next arg would be the root value — handled below.
+				showRoot = ""
+			default:
+				if showRoot == "" {
+					showRoot = arg // consume the value after --root
+				} else {
+					showPositional = append(showPositional, arg)
+				}
+			}
 		}
+		if showRoot == "" {
+			showRoot = "." // --root provided without value; fall back to cwd
+		}
+		showSubCmd := ""
+		showID := ""
+		if len(showPositional) > 0 {
+			showSubCmd = showPositional[0]
+		}
+		if len(showPositional) > 1 {
+			showID = showPositional[1]
+		}
+		if showSubCmd == "" {
+			printShowUsage()
+			os.Exit(2)
+		}
+		rootFlag := &showRoot
+		jsonFlag := &showJSON
 		if err := runShow(showSubCmd, showID, *rootFlag, *jsonFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -403,9 +439,8 @@ func main() {
 		}
 		exportCmd := flag.NewFlagSet("export benchmark", flag.ExitOnError)
 		rootFlag := exportCmd.String("root", ".", "repository root to analyze")
-		jsonFlag := exportCmd.Bool("json", false, "output JSON benchmark export")
 		_ = exportCmd.Parse(os.Args[3:])
-		if err := runExportBenchmark(*rootFlag, *jsonFlag); err != nil {
+		if err := runExportBenchmark(*rootFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -533,6 +568,15 @@ func main() {
 			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
 			jsonFlag := aiCmd.Bool("json", false, "output JSON")
 			_ = aiCmd.Parse(os.Args[3:])
+			// Check for sub-subcommand: terrain ai baseline compare
+			baselineArgs := aiCmd.Args()
+			if len(baselineArgs) > 0 && baselineArgs[0] == "compare" {
+				if err := runAIBaselineCompare(*rootFlag, *jsonFlag); err != nil {
+					fmt.Fprintf(os.Stderr, "error: %v\n", err)
+					os.Exit(1)
+				}
+				return
+			}
 			if err := runAIBaseline(*rootFlag, *jsonFlag); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
@@ -624,7 +668,7 @@ func main() {
 	case "--help", "-h", "help":
 		printUsage()
 	default:
-		if _, ok := lookupConvertShorthand(os.Args[1]); ok {
+		if _, ok := conv.LookupShorthand(os.Args[1]); ok {
 			if err := runShorthandCLI(os.Args[1], os.Args[2:]); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(exitCodeForCLIError(err))
@@ -762,7 +806,7 @@ func printDebugUsage() {
 	fmt.Fprintln(os.Stderr, "  coverage    structural coverage analysis")
 	fmt.Fprintln(os.Stderr, "  fanout      high-fanout node analysis")
 	fmt.Fprintln(os.Stderr, "  duplicates  duplicate test cluster analysis")
-	fmt.Fprintln(os.Stderr, "  depgraph    full dependency graph analysis")
+	fmt.Fprintln(os.Stderr, "  depgraph    full dependency graph analysis (supports --show: stats, coverage, duplicates, fanout, impact, profile)")
 }
 
 func printAIUsage() {

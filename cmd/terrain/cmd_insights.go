@@ -22,7 +22,7 @@ import (
 )
 
 func runPortfolio(root string, jsonOutput, verbose bool) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptions())
+	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -33,7 +33,7 @@ func runPortfolio(root string, jsonOutput, verbose bool) error {
 		return enc.Encode(result.Snapshot.Portfolio)
 	}
 
-	reporting.RenderPortfolioReport(os.Stdout, result.Snapshot)
+	reporting.RenderPortfolioReport(os.Stdout, result.Snapshot, reporting.ReportOptions{Verbose: verbose})
 	return nil
 }
 
@@ -45,19 +45,22 @@ func runPosture(root string, jsonOutput, verbose bool) error {
 	}
 
 	if jsonOutput {
+		if result.Snapshot.Measurements == nil {
+			return fmt.Errorf("no measurement data available; run terrain analyze first")
+		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(result.Snapshot.Measurements)
 	}
 
-	reporting.RenderPostureReport(os.Stdout, result.Snapshot)
+	reporting.RenderPostureReport(os.Stdout, result.Snapshot, reporting.ReportOptions{Verbose: verbose})
 	reporting.WriteHealthGuidance(os.Stdout, result.Snapshot)
 	return nil
 }
 
 // runMetrics performs analysis and outputs aggregate metrics.
 func runMetrics(root string, jsonOutput, verbose bool) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptions())
+	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -70,7 +73,7 @@ func runMetrics(root string, jsonOutput, verbose bool) error {
 		return enc.Encode(ms)
 	}
 
-	reporting.RenderMetricsReport(os.Stdout, ms)
+	reporting.RenderMetricsReport(os.Stdout, ms, reporting.ReportOptions{Verbose: verbose})
 	reporting.WriteHealthGuidance(os.Stdout, result.Snapshot)
 	return nil
 }
@@ -91,7 +94,10 @@ func runSummary(root string, jsonOutput, verbose bool) error {
 
 	// Attempt to load prior snapshot for trend comparison.
 	var comp *comparison.SnapshotComparison
-	absRoot, _ := filepath.Abs(root)
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return fmt.Errorf("resolving root path: %w", err)
+	}
 	snapDir := filepath.Join(absRoot, ".terrain", "snapshots")
 	latest, previous, snapErr := findRecentSnapshots(snapDir)
 	if snapErr == nil && latest != "" && previous != "" {
@@ -147,12 +153,21 @@ func runFocus(root string, jsonOutput, verbose bool) error {
 	})
 
 	if jsonOutput {
+		// Ensure slices serialize as [] not null.
+		topRisk := es.TopRiskAreas
+		if topRisk == nil {
+			topRisk = []summary.FocusArea{}
+		}
+		recs := es.Recommendations
+		if recs == nil {
+			recs = []summary.Recommendation{}
+		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(map[string]any{
 			"recommendedFocus": es.RecommendedFocus,
-			"topRiskAreas":     es.TopRiskAreas,
-			"recommendations":  es.Recommendations,
+			"topRiskAreas":     topRisk,
+			"recommendations":  recs,
 			"posture":          es.Posture,
 		})
 	}
@@ -186,6 +201,17 @@ func runFocus(root string, jsonOutput, verbose bool) error {
 			}
 			if r.Where != "" {
 				fmt.Printf("     where: %s\n", r.Where)
+			}
+		}
+	}
+
+	if verbose && len(es.BlindSpots) > 0 {
+		fmt.Println()
+		fmt.Println("Blind Spots")
+		for _, bs := range es.BlindSpots {
+			fmt.Printf("  - %s: %s\n", bs.Area, bs.Reason)
+			if bs.Remediation != "" {
+				fmt.Printf("    fix: %s\n", bs.Remediation)
 			}
 		}
 	}
@@ -295,4 +321,3 @@ func runInsights(root string, jsonOutput, verbose bool) error {
 	reporting.WriteHealthGuidance(os.Stdout, snapshot)
 	return nil
 }
-

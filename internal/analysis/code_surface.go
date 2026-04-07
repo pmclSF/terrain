@@ -484,8 +484,8 @@ func (e *goSurfaceExtractor) Language() string { return "go" }
 
 // Go handler patterns: http.HandleFunc, mux.Handle, router.HandleFunc, etc.
 var (
-	goRoutePattern   = regexp.MustCompile(`\b(?:http\.HandleFunc|(?:mux|router|r|e|app)\.(?:HandleFunc|Handle|Get|Post|Put|Patch|Delete|Group|Route))\s*\(\s*"([^"]+)"`)
-	goHandlerPattern = regexp.MustCompile(`^\s*func\s+([A-Z]\w*(?:Handler|Middleware|Controller)\w*)\s*\(`)
+	goRoutePattern       = regexp.MustCompile(`\b(?:http\.HandleFunc|(?:mux|router|r|e|app)\.(?:HandleFunc|Handle|Get|Post|Put|Patch|Delete|Group|Route))\s*\(\s*"([^"]+)"`)
+	goHandlerPattern     = regexp.MustCompile(`^\s*func\s+([A-Z]\w*(?:Handler|Middleware|Controller)\w*)\s*\(`)
 	goHTTPHandlerPattern = regexp.MustCompile(`^\s*func\s+\(\s*\w+\s+\*?\s*(\w+)\s*\)\s*([A-Z]\w*)\s*\(\s*\w+\s+http\.ResponseWriter`)
 )
 
@@ -631,14 +631,14 @@ var (
 	pyRouteDecoratorPattern = regexp.MustCompile(`@(?:app|router|blueprint|bp)\.(route|get|post|put|patch|delete)\s*\(\s*['"]([^'"]+)['"]`)
 	pyHandlerPattern        = regexp.MustCompile(`^def\s+(\w*(?:handler|view|endpoint|controller)\w*)\s*\(`)
 	// Python prompt: template requires AI prefix (prompt_template, chat_template, etc.).
-	pyPromptPattern         = regexp.MustCompile(`^(?:def\s+(\w*(?:prompt|PROMPT|(?:prompt|chat|system|user|completion|llm|ai|model)_template)\w*)|(\w*(?:prompt|PROMPT|(?:prompt|chat|system|user|completion|llm|ai|model)_template)\w*)\s*=)`)
+	pyPromptPattern = regexp.MustCompile(`^(?:def\s+(\w*(?:prompt|PROMPT|(?:prompt|chat|system|user|completion|llm|ai|model)_template)\w*)|(\w*(?:prompt|PROMPT|(?:prompt|chat|system|user|completion|llm|ai|model)_template)\w*)\s*=)`)
 	// Python context: persona requires ai_ prefix, instruction requires dynamic_/system_.
-	pyContextPattern        = regexp.MustCompile(`^(?:def\s+(\w*(?:system_message|system_prompt|user_message|few_shot|safety_overlay|policy_text|policy_block|ai_persona|system_persona|chat_persona|context_builder|ai_context|prompt_context|customer_context|account_context|dynamic_instruction|system_instruction)\w*)|(\w*(?:system_message|system_prompt|few_shot|safety_overlay|policy_text|policy_block|ai_persona|system_persona|context_builder|ai_context|prompt_context)\w*)\s*=)`)
-	pyDatasetPattern        = regexp.MustCompile(`^(?:def\s+(\w*(?:dataset|dataloader|training_data|eval_data|load_data)\w*)|(\w*(?:dataset|dataloader|training_data|eval_data)\w*)\s*=)`)
-	pyToolDefPattern        = regexp.MustCompile(`^(?:def\s+(\w*(?:tool_schema|tool_def|function_schema|function_def|tool_description|output_schema|structured_output|tool_routing|parser_schema|validator_schema|tool_guardrail|tool_availability|tool_budget|tool_retry|tool_fallback|tool_filter|tool_permission|allowed_tool)\w*)|(\w*(?:tool_schema|tool_def|function_schema|output_schema|structured_output|tool_guardrail|allowed_tool)\w*)\s*=)`)
-	pyRetrievalPattern      = regexp.MustCompile(`^(?:def\s+(\w*(?:retriever|retrieval|vector_store|embedding_config|embedding_model|chunking|chunk_size|chunk_config|chunk_overlap|doc_split|document_split|reranker|rerank_config|document_loader|context_assembl|context_window|rag_config|rag_pipeline|search_query|query_rewrit|query_build|index_builder|citation|top_k|recall_setting|retrieval_filter|source_select)\w*)|(\w*(?:retriever|vector_store|embedding_config|chunk_config|chunk_size|rerank_config|rag_config|top_k|retrieval_filter)\w*)\s*=)`)
-	pyAgentPattern          = regexp.MustCompile(`^(?:def\s+(\w*(?:agent_router|agent_planner|tool_choice|step_budget|step_limit|memory_window|handoff|fallback_model|fallback_provider|fallback_strategy|orchestrat|planner_config|retry_policy|retry_config|max_recursion|max_steps|agent_config|agent_guardrail|execution_budget)\w*)|(\w*(?:agent_config|planner_config|tool_choice|agent_guardrail|execution_budget)\w*)\s*=)`)
-	pyEvalDefPattern        = regexp.MustCompile(`^(?:def\s+(\w*(?:rubric|eval_metric|eval_config|baseline_schema|expected_output|grading_criteria|scoring_func|eval_suite|eval_runner)\w*)|(\w*(?:rubric|eval_config|grading_criteria|scoring_func)\w*)\s*=)`)
+	pyContextPattern   = regexp.MustCompile(`^(?:def\s+(\w*(?:system_message|system_prompt|user_message|few_shot|safety_overlay|policy_text|policy_block|ai_persona|system_persona|chat_persona|context_builder|ai_context|prompt_context|customer_context|account_context|dynamic_instruction|system_instruction)\w*)|(\w*(?:system_message|system_prompt|few_shot|safety_overlay|policy_text|policy_block|ai_persona|system_persona|context_builder|ai_context|prompt_context)\w*)\s*=)`)
+	pyDatasetPattern   = regexp.MustCompile(`^(?:def\s+(\w*(?:dataset|dataloader|training_data|eval_data|load_data)\w*)|(\w*(?:dataset|dataloader|training_data|eval_data)\w*)\s*=)`)
+	pyToolDefPattern   = regexp.MustCompile(`^(?:def\s+(\w*(?:tool_schema|tool_def|function_schema|function_def|tool_description|output_schema|structured_output|tool_routing|parser_schema|validator_schema|tool_guardrail|tool_availability|tool_budget|tool_retry|tool_fallback|tool_filter|tool_permission|allowed_tool)\w*)|(\w*(?:tool_schema|tool_def|function_schema|output_schema|structured_output|tool_guardrail|allowed_tool)\w*)\s*=)`)
+	pyRetrievalPattern = regexp.MustCompile(`^(?:def\s+(\w*(?:retriever|retrieval|vector_store|embedding_config|embedding_model|chunking|chunk_size|chunk_config|chunk_overlap|doc_split|document_split|reranker|rerank_config|document_loader|context_assembl|context_window|rag_config|rag_pipeline|search_query|query_rewrit|query_build|index_builder|citation|top_k|recall_setting|retrieval_filter|source_select)\w*)|(\w*(?:retriever|vector_store|embedding_config|chunk_config|chunk_size|rerank_config|rag_config|top_k|retrieval_filter)\w*)\s*=)`)
+	pyAgentPattern     = regexp.MustCompile(`^(?:def\s+(\w*(?:agent_router|agent_planner|tool_choice|step_budget|step_limit|memory_window|handoff|fallback_model|fallback_provider|fallback_strategy|orchestrat|planner_config|retry_policy|retry_config|max_recursion|max_steps|agent_config|agent_guardrail|execution_budget)\w*)|(\w*(?:agent_config|planner_config|tool_choice|agent_guardrail|execution_budget)\w*)\s*=)`)
+	pyEvalDefPattern   = regexp.MustCompile(`^(?:def\s+(\w*(?:rubric|eval_metric|eval_config|baseline_schema|expected_output|grading_criteria|scoring_func|eval_suite|eval_runner)\w*)|(\w*(?:rubric|eval_config|grading_criteria|scoring_func)\w*)\s*=)`)
 )
 
 func (e *pythonSurfaceExtractor) ExtractSurfaces(root, relPath string) []models.CodeSurface {
@@ -792,16 +792,16 @@ func (e *javaSurfaceExtractor) ExtractSurfaces(root, relPath string) []models.Co
 		if m := javaRequestMappingPattern.FindStringSubmatch(line); m != nil {
 			route := m[1]
 			add(models.CodeSurface{
-				SurfaceID: models.BuildSurfaceID(relPath, route, currentType),
-				Name:      route,
-				Path:      relPath,
-				Kind:      models.SurfaceRoute,
+				SurfaceID:  models.BuildSurfaceID(relPath, route, currentType),
+				Name:       route,
+				Path:       relPath,
+				Kind:       models.SurfaceRoute,
 				ParentName: currentType,
-				Language:  "java",
-				Package:   pkg,
-				Line:      i + 1,
-				Route:     route,
-				Exported:  true,
+				Language:   "java",
+				Package:    pkg,
+				Line:       i + 1,
+				Route:      route,
+				Exported:   true,
 			})
 		}
 	}

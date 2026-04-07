@@ -10,6 +10,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/policy"
+	sigtypes "github.com/pmclSF/terrain/internal/signals"
 )
 
 // Result holds the outcome of a policy evaluation.
@@ -60,7 +61,7 @@ func checkDisallowedFrameworks(snap *models.TestSuiteSnapshot, cfg *policy.Confi
 	for _, fw := range snap.Frameworks {
 		if disallowed[strings.ToLower(fw.Name)] {
 			signals = append(signals, models.Signal{
-				Type:       "legacyFrameworkUsage",
+				Type:       sigtypes.SignalLegacyFrameworkUsage,
 				Category:   models.CategoryGovernance,
 				Severity:   models.SeverityHigh,
 				Confidence: 1.0,
@@ -92,16 +93,16 @@ func checkSkippedTests(snap *models.TestSuiteSnapshot, cfg *policy.Config) []mod
 		return nil
 	}
 
-	topFiles := topFilesForType(snap.Signals, "skippedTest", 5)
+	topFiles := topFilesForType(snap.Signals, sigtypes.SignalSkippedTest, 5)
 	if len(topFiles) == 0 {
 		return nil
 	}
 
 	// Count across all skippedTest signals, not just top files.
-	skippedCount := countSignalsForType(snap.Signals, "skippedTest")
+	skippedCount := countSignalsForType(snap.Signals, sigtypes.SignalSkippedTest)
 
 	return []models.Signal{{
-		Type:       "skippedTestsInCI",
+		Type:       sigtypes.SignalSkippedTestsInCI,
 		Category:   models.CategoryGovernance,
 		Severity:   models.SeverityMedium,
 		Confidence: 1.0,
@@ -133,7 +134,7 @@ func checkRuntimeBudget(snap *models.TestSuiteSnapshot, cfg *policy.Config) []mo
 	for _, tf := range snap.TestFiles {
 		if tf.RuntimeStats != nil && tf.RuntimeStats.AvgRuntimeMs > 0 && tf.RuntimeStats.AvgRuntimeMs > maxMs {
 			signals = append(signals, models.Signal{
-				Type:       "runtimeBudgetExceeded",
+				Type:       sigtypes.SignalRuntimeBudgetExceeded,
 				Category:   models.CategoryGovernance,
 				Severity:   models.SeverityMedium,
 				Confidence: 1.0,
@@ -165,7 +166,7 @@ func checkCoverageThreshold(snap *models.TestSuiteSnapshot, cfg *policy.Config) 
 
 	var coverageBreaks int
 	for _, s := range snap.Signals {
-		if s.Type == "coverageThresholdBreak" {
+		if s.Type == sigtypes.SignalCoverageThresholdBreak {
 			coverageBreaks++
 		}
 	}
@@ -175,7 +176,7 @@ func checkCoverageThreshold(snap *models.TestSuiteSnapshot, cfg *policy.Config) 
 	}
 
 	return []models.Signal{{
-		Type:       "policyViolation",
+		Type:       sigtypes.SignalPolicyViolation,
 		Category:   models.CategoryGovernance,
 		Severity:   models.SeverityHigh,
 		Confidence: 1.0,
@@ -202,8 +203,8 @@ func checkWeakAssertionThreshold(snap *models.TestSuiteSnapshot, cfg *policy.Con
 		return nil
 	}
 
-	count := countSignalsForType(snap.Signals, "weakAssertion")
-	topFiles := topFilesForType(snap.Signals, "weakAssertion", 5)
+	count := countSignalsForType(snap.Signals, sigtypes.SignalWeakAssertion)
+	topFiles := topFilesForType(snap.Signals, sigtypes.SignalWeakAssertion, 5)
 	baseMax := *cfg.Rules.MaxWeakAssertions
 	effectiveMax := sizeAdjustedThreshold(baseMax, len(snap.TestFiles))
 	if count <= effectiveMax {
@@ -211,7 +212,7 @@ func checkWeakAssertionThreshold(snap *models.TestSuiteSnapshot, cfg *policy.Con
 	}
 
 	return []models.Signal{{
-		Type:       "policyViolation",
+		Type:       sigtypes.SignalPolicyViolation,
 		Category:   models.CategoryGovernance,
 		Severity:   models.SeverityMedium,
 		Confidence: 1.0,
@@ -242,8 +243,8 @@ func checkMockHeavyThreshold(snap *models.TestSuiteSnapshot, cfg *policy.Config)
 		return nil
 	}
 
-	count := countSignalsForType(snap.Signals, "mockHeavyTest")
-	topFiles := topFilesForType(snap.Signals, "mockHeavyTest", 5)
+	count := countSignalsForType(snap.Signals, sigtypes.SignalMockHeavyTest)
+	topFiles := topFilesForType(snap.Signals, sigtypes.SignalMockHeavyTest, 5)
 	baseMax := *cfg.Rules.MaxMockHeavyTests
 	effectiveMax := sizeAdjustedThreshold(baseMax, len(snap.TestFiles))
 	if count <= effectiveMax {
@@ -251,7 +252,7 @@ func checkMockHeavyThreshold(snap *models.TestSuiteSnapshot, cfg *policy.Config)
 	}
 
 	return []models.Signal{{
-		Type:       "policyViolation",
+		Type:       sigtypes.SignalPolicyViolation,
 		Category:   models.CategoryGovernance,
 		Severity:   models.SeverityMedium,
 		Confidence: 1.0,
@@ -294,9 +295,9 @@ func checkAIPolicy(snap *models.TestSuiteSnapshot, cfg *policy.Config) []models.
 
 	// Rule: block on safety failure.
 	if ai.BlockOnSafetyFailure != nil && *ai.BlockOnSafetyFailure {
-		if count := aiSignalCounts["safetyFailure"]; count > 0 {
+		if count := aiSignalCounts[sigtypes.SignalSafetyFailure]; count > 0 {
 			signals = append(signals, models.Signal{
-				Type:       "policyViolation",
+				Type:       sigtypes.SignalPolicyViolation,
 				Category:   models.CategoryGovernance,
 				Severity:   models.SeverityCritical,
 				Confidence: 1.0,
@@ -316,10 +317,10 @@ func checkAIPolicy(snap *models.TestSuiteSnapshot, cfg *policy.Config) []models.
 	// Rule: block on accuracy regression above threshold.
 	if ai.BlockOnAccuracyRegression != nil {
 		threshold := *ai.BlockOnAccuracyRegression
-		count := aiSignalCounts["accuracyRegression"]
+		count := aiSignalCounts[sigtypes.SignalAccuracyRegression]
 		if count > threshold {
 			signals = append(signals, models.Signal{
-				Type:       "policyViolation",
+				Type:       sigtypes.SignalPolicyViolation,
 				Category:   models.CategoryGovernance,
 				Severity:   models.SeverityHigh,
 				Confidence: 1.0,
@@ -353,7 +354,7 @@ func checkAIPolicy(snap *models.TestSuiteSnapshot, cfg *policy.Config) []models.
 		}
 		if uncoveredCount > 0 {
 			signals = append(signals, models.Signal{
-				Type:       "policyViolation",
+				Type:       sigtypes.SignalPolicyViolation,
 				Category:   models.CategoryGovernance,
 				Severity:   models.SeverityHigh,
 				Confidence: 1.0,
@@ -372,9 +373,9 @@ func checkAIPolicy(snap *models.TestSuiteSnapshot, cfg *policy.Config) []models.
 
 	// Rule: warn on latency regression.
 	if ai.WarnOnLatencyRegression == nil || *ai.WarnOnLatencyRegression {
-		if count := aiSignalCounts["latencyRegression"]; count > 0 && ai != nil {
+		if count := aiSignalCounts[sigtypes.SignalLatencyRegression]; count > 0 {
 			signals = append(signals, models.Signal{
-				Type:       "policyViolation",
+				Type:       sigtypes.SignalPolicyViolation,
 				Category:   models.CategoryGovernance,
 				Severity:   models.SeverityMedium,
 				Confidence: 1.0,
@@ -393,9 +394,9 @@ func checkAIPolicy(snap *models.TestSuiteSnapshot, cfg *policy.Config) []models.
 
 	// Rule: warn on cost regression.
 	if ai.WarnOnCostRegression == nil || *ai.WarnOnCostRegression {
-		if count := aiSignalCounts["costRegression"]; count > 0 && ai != nil {
+		if count := aiSignalCounts[sigtypes.SignalCostRegression]; count > 0 {
 			signals = append(signals, models.Signal{
-				Type:       "policyViolation",
+				Type:       sigtypes.SignalPolicyViolation,
 				Category:   models.CategoryGovernance,
 				Severity:   models.SeverityMedium,
 				Confidence: 1.0,
@@ -417,10 +418,19 @@ func checkAIPolicy(snap *models.TestSuiteSnapshot, cfg *policy.Config) []models.
 	for _, t := range ai.BlockingSignalTypes {
 		blockSet[t] = true
 	}
-	for sigType, count := range aiSignalCounts {
+	// Sort signal types for deterministic violation order.
+	var sortedSigTypes []models.SignalType
+	for sigType := range aiSignalCounts {
+		sortedSigTypes = append(sortedSigTypes, sigType)
+	}
+	sort.Slice(sortedSigTypes, func(i, j int) bool {
+		return string(sortedSigTypes[i]) < string(sortedSigTypes[j])
+	})
+	for _, sigType := range sortedSigTypes {
+		count := aiSignalCounts[sigType]
 		if blockSet[string(sigType)] {
 			signals = append(signals, models.Signal{
-				Type:       "policyViolation",
+				Type:       sigtypes.SignalPolicyViolation,
 				Category:   models.CategoryGovernance,
 				Severity:   models.SeverityHigh,
 				Confidence: 1.0,
@@ -477,16 +487,14 @@ func countSignalsForType(signals []models.Signal, signalType models.SignalType) 
 // topFilesForType returns the top N files with the most signals of the given type.
 func topFilesForType(signals []models.Signal, signalType models.SignalType, limit int) []fileCount {
 	counts := map[string]int{}
-	for _, s := range signals {
-		if s.Type == signalType && s.Location.File != "" {
-			counts[s.Location.File]++
-		}
-	}
-	// Also count signals without file location.
 	total := 0
 	for _, s := range signals {
-		if s.Type == signalType {
-			total++
+		if s.Type != signalType {
+			continue
+		}
+		total++
+		if s.Location.File != "" {
+			counts[s.Location.File]++
 		}
 	}
 

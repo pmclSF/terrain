@@ -47,7 +47,7 @@ var (
 	pyTestPattern   = regexp.MustCompile(`\bdef\s+test_\w+`)
 	pyAssertPattern = regexp.MustCompile(`\b(assert\s|self\.assert|pytest\.raises)\b`)
 	pyMockPattern   = regexp.MustCompile(`\b(mock\.patch|Mock\(|MagicMock\(|@patch)\b`)
-	pySkipPattern = regexp.MustCompile(`(@pytest\.mark\.skip|@unittest\.skip|@skip\b|pytest\.skip\s*\()`)
+	pySkipPattern   = regexp.MustCompile(`(@pytest\.mark\.skip|@unittest\.skip|@skip\b|pytest\.skip\s*\()`)
 
 	// Java skip patterns
 	javaSkipPattern = regexp.MustCompile(`(@Disabled|@Ignore)\b`)

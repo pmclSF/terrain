@@ -1,7 +1,6 @@
 package reporting
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -13,10 +12,7 @@ import (
 // prioritized, categorized view.
 func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions) {
 	verbose := isVerbose(opts)
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	// Header with health grade.
 	line("Terrain — Test System Health Report")
@@ -54,10 +50,10 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 		insights.CategoryOptimization,
 	}
 	categoryLabels := map[insights.Category]string{
-		insights.CategoryReliability:     "Reliability Problems",
+		insights.CategoryReliability:      "Reliability Problems",
 		insights.CategoryArchitectureDebt: "Architecture Debt",
-		insights.CategoryCoverageDebt:    "Coverage Debt",
-		insights.CategoryOptimization:    "Optimization Opportunities",
+		insights.CategoryCoverageDebt:     "Coverage Debt",
+		insights.CategoryOptimization:     "Optimization Opportunities",
 	}
 
 	for _, cat := range categoryOrder {

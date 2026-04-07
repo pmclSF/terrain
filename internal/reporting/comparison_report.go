@@ -1,7 +1,6 @@
 package reporting
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -10,10 +9,7 @@ import (
 
 // RenderComparisonReport writes a human-readable comparison report to w.
 func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Terrain Snapshot Comparison")
 	line(strings.Repeat("=", 40))

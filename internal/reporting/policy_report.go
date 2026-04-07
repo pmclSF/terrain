@@ -1,7 +1,6 @@
 package reporting
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -10,10 +9,7 @@ import (
 
 // RenderPolicyReport writes a human-readable policy check report to w.
 func RenderPolicyReport(w io.Writer, policyPath string, result *governance.Result) {
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Terrain Policy Check")
 	line(strings.Repeat("=", 40))

@@ -10,7 +10,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/pmclSF/terrain/internal/models"
@@ -81,6 +80,12 @@ type ContentHashes struct {
 	// Retrievals maps surface ID → SHA256.
 	Retrievals map[string]string `json:"retrievalSurfaces,omitempty"`
 
+	// Agents maps surface ID → SHA256.
+	Agents map[string]string `json:"agents,omitempty"`
+
+	// EvalDefs maps surface ID → SHA256.
+	EvalDefs map[string]string `json:"evalDefinitions,omitempty"`
+
 	// Config is the SHA256 of .terrain/terrain.yaml if present.
 	Config string `json:"config,omitempty"`
 
@@ -139,6 +144,8 @@ func ComputeHashes(root string, surfaces []models.CodeSurface) ContentHashes {
 		Datasets:   map[string]string{},
 		ToolDefs:   map[string]string{},
 		Retrievals: map[string]string{},
+		Agents:     map[string]string{},
+		EvalDefs:   map[string]string{},
 	}
 
 	for _, cs := range surfaces {
@@ -157,6 +164,10 @@ func ComputeHashes(root string, surfaces []models.CodeSurface) ContentHashes {
 			h.ToolDefs[cs.SurfaceID] = hash
 		case models.SurfaceRetrieval:
 			h.Retrievals[cs.SurfaceID] = hash
+		case models.SurfaceAgent:
+			h.Agents[cs.SurfaceID] = hash
+		case models.SurfaceEvalDef:
+			h.EvalDefs[cs.SurfaceID] = hash
 		}
 	}
 
@@ -206,6 +217,8 @@ func Replay(artifactPath, root string, currentSurfaces []models.CodeSurface, cur
 	compareHashMaps(art.Hashes.Datasets, currentHashes.Datasets, "dataset", result)
 	compareHashMaps(art.Hashes.ToolDefs, currentHashes.ToolDefs, "tool_definition", result)
 	compareHashMaps(art.Hashes.Retrievals, currentHashes.Retrievals, "retrieval", result)
+	compareHashMaps(art.Hashes.Agents, currentHashes.Agents, "agent", result)
+	compareHashMaps(art.Hashes.EvalDefs, currentHashes.EvalDefs, "eval_definition", result)
 
 	// Compare config hash.
 	if art.Hashes.Config != "" && currentHashes.Config != "" && art.Hashes.Config != currentHashes.Config {
@@ -213,8 +226,8 @@ func Replay(artifactPath, root string, currentSurfaces []models.CodeSurface, cur
 		result.Mismatches = append(result.Mismatches, Mismatch{
 			Kind:     "config",
 			Surface:  ".terrain/terrain.yaml",
-			Original: art.Hashes.Config[:12],
-			Current:  currentHashes.Config[:12],
+			Original: truncHash(art.Hashes.Config),
+			Current:  truncHash(currentHashes.Config),
 			Detail:   "terrain config changed since original run",
 		})
 	}
@@ -277,29 +290,29 @@ func compareHashMaps(original, current map[string]string, kind string, result *R
 		if hasOrig && !hasCurr {
 			result.Match = false
 			result.Mismatches = append(result.Mismatches, Mismatch{
-				Kind:    "hash",
-				Surface: key,
+				Kind:     "hash",
+				Surface:  key,
 				Original: truncHash(orig),
-				Current: "(removed)",
-				Detail:  fmt.Sprintf("%s surface removed since original run", kind),
+				Current:  "(removed)",
+				Detail:   fmt.Sprintf("%s surface removed since original run", kind),
 			})
 		} else if !hasOrig && hasCurr {
 			result.Match = false
 			result.Mismatches = append(result.Mismatches, Mismatch{
-				Kind:    "hash",
-				Surface: key,
+				Kind:     "hash",
+				Surface:  key,
 				Original: "(absent)",
-				Current: truncHash(curr),
-				Detail:  fmt.Sprintf("new %s surface added since original run", kind),
+				Current:  truncHash(curr),
+				Detail:   fmt.Sprintf("new %s surface added since original run", kind),
 			})
 		} else if orig != curr {
 			result.Match = false
 			result.Mismatches = append(result.Mismatches, Mismatch{
-				Kind:    "hash",
-				Surface: key,
+				Kind:     "hash",
+				Surface:  key,
 				Original: truncHash(orig),
-				Current: truncHash(curr),
-				Detail:  fmt.Sprintf("%s content changed since original run", kind),
+				Current:  truncHash(curr),
+				Detail:   fmt.Sprintf("%s content changed since original run", kind),
 			})
 		}
 	}
@@ -312,43 +325,8 @@ func truncHash(h string) string {
 	return h
 }
 
-// ShortHash returns a truncated hash for display.
-func ShortHash(h string) string {
-	return truncHash(h)
-}
-
-// FlattenHashMap returns all hashes sorted for deterministic display.
-func FlattenHashMap(m map[string]string) []string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	result := make([]string, len(keys))
-	for i, k := range keys {
-		result[i] = k + "=" + truncHash(m[k])
-	}
-	return result
-}
-
 // TotalHashCount returns the total number of hashed surfaces.
 func (h ContentHashes) TotalHashCount() int {
 	return len(h.Prompts) + len(h.Contexts) + len(h.Datasets) +
-		len(h.ToolDefs) + len(h.Retrievals)
-}
-
-// SurfaceIDsFromHashes collects surface IDs into a string for display.
-func SurfaceIDsFromHashes(m map[string]string) string {
-	keys := make([]string, 0, len(m))
-	for k := range m {
-		// Extract just the name part from "surface:path:name".
-		parts := strings.SplitN(k, ":", 3)
-		if len(parts) >= 3 {
-			keys = append(keys, parts[2])
-		} else {
-			keys = append(keys, k)
-		}
-	}
-	sort.Strings(keys)
-	return strings.Join(keys, ", ")
+		len(h.ToolDefs) + len(h.Retrievals) + len(h.Agents) + len(h.EvalDefs)
 }

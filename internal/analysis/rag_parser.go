@@ -14,20 +14,20 @@ import (
 //
 // Detections:
 //
-//   JS/TS:
-//   - Vector store constructors (new PineconeClient, new ChromaClient, etc.)
-//   - Text splitter instantiation with config (chunkSize, chunkOverlap)
-//   - Retriever construction (.asRetriever, createRetriever)
-//   - Reranker setup (CohereRerank, cross-encoder config)
-//   - Embedding model configuration
-//   - Citation/context assembly functions
+//	JS/TS:
+//	- Vector store constructors (new PineconeClient, new ChromaClient, etc.)
+//	- Text splitter instantiation with config (chunkSize, chunkOverlap)
+//	- Retriever construction (.asRetriever, createRetriever)
+//	- Reranker setup (CohereRerank, cross-encoder config)
+//	- Embedding model configuration
+//	- Citation/context assembly functions
 //
-//   Python:
-//   - Vector store factory methods (Chroma.from_documents, FAISS.from_texts)
-//   - Text splitter with parameters (chunk_size=, chunk_overlap=)
-//   - .as_retriever(search_kwargs={...}) with top-k extraction
-//   - Reranker instantiation (CohereRerank, CrossEncoder)
-//   - Embedding model construction (OpenAIEmbeddings, HuggingFaceEmbeddings)
+//	Python:
+//	- Vector store factory methods (Chroma.from_documents, FAISS.from_texts)
+//	- Text splitter with parameters (chunk_size=, chunk_overlap=)
+//	- .as_retriever(search_kwargs={...}) with top-k extraction
+//	- Reranker instantiation (CohereRerank, CrossEncoder)
+//	- Embedding model construction (OpenAIEmbeddings, HuggingFaceEmbeddings)
 //
 // Each detection carries TierSemantic with evidence metadata.
 func ParseRAGPipeline(relPath, src, lang string) []models.CodeSurface {

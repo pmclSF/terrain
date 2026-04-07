@@ -34,7 +34,7 @@ type FrameworkDetector interface {
 // DetectedFramework represents a framework found by a FrameworkDetector.
 type DetectedFramework struct {
 	Name       string  `json:"name"`
-	Source     string  `json:"source"`     // "config", "dependency", "import"
+	Source     string  `json:"source"` // "config", "dependency", "import"
 	ConfigFile string  `json:"configFile,omitempty"`
 	Version    string  `json:"version,omitempty"`
 	Confidence float64 `json:"confidence"`

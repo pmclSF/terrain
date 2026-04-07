@@ -55,12 +55,12 @@ type ValidationTarget interface {
 
 // --- TestCase implements ValidationTarget ---
 
-func (tc TestCase) ValidationID() string        { return tc.TestID }
-func (tc TestCase) ValidationName() string      { return tc.TestName }
+func (tc TestCase) ValidationID() string             { return tc.TestID }
+func (tc TestCase) ValidationName() string           { return tc.TestName }
 func (tc TestCase) ValidationKindOf() ValidationKind { return ValidationKindTest }
-func (tc TestCase) ValidationPath() string      { return tc.FilePath }
-func (tc TestCase) ValidationOwner() string     { return "" } // Ownership resolved via TestFile.Owner
-func (tc TestCase) IsExecutable() bool          { return true }
+func (tc TestCase) ValidationPath() string           { return tc.FilePath }
+func (tc TestCase) ValidationOwner() string          { return "" } // Ownership resolved via TestFile.Owner
+func (tc TestCase) IsExecutable() bool               { return true }
 
 // Scenario represents a behavioral scenario — a multi-step workflow,
 // AI evaluation case, or derived behavior specification that validates
@@ -117,12 +117,12 @@ type Scenario struct {
 
 // --- Scenario implements ValidationTarget ---
 
-func (s Scenario) ValidationID() string        { return s.ScenarioID }
-func (s Scenario) ValidationName() string      { return s.Name }
+func (s Scenario) ValidationID() string             { return s.ScenarioID }
+func (s Scenario) ValidationName() string           { return s.Name }
 func (s Scenario) ValidationKindOf() ValidationKind { return ValidationKindScenario }
-func (s Scenario) ValidationPath() string      { return s.Path }
-func (s Scenario) ValidationOwner() string     { return s.Owner }
-func (s Scenario) IsExecutable() bool          { return s.Executable }
+func (s Scenario) ValidationPath() string           { return s.Path }
+func (s Scenario) ValidationOwner() string          { return s.Owner }
+func (s Scenario) IsExecutable() bool               { return s.Executable }
 
 // ManualCoverageArtifact represents a validation activity that exists
 // outside automated CI — a QA checklist, TestRail regression suite,
@@ -169,12 +169,12 @@ type ManualCoverageArtifact struct {
 
 // --- ManualCoverageArtifact implements ValidationTarget ---
 
-func (m ManualCoverageArtifact) ValidationID() string        { return m.ArtifactID }
-func (m ManualCoverageArtifact) ValidationName() string      { return m.Name }
+func (m ManualCoverageArtifact) ValidationID() string             { return m.ArtifactID }
+func (m ManualCoverageArtifact) ValidationName() string           { return m.Name }
 func (m ManualCoverageArtifact) ValidationKindOf() ValidationKind { return ValidationKindManual }
-func (m ManualCoverageArtifact) ValidationPath() string      { return "" }
-func (m ManualCoverageArtifact) ValidationOwner() string     { return m.Owner }
-func (m ManualCoverageArtifact) IsExecutable() bool          { return false }
+func (m ManualCoverageArtifact) ValidationPath() string           { return "" }
+func (m ManualCoverageArtifact) ValidationOwner() string          { return m.Owner }
+func (m ManualCoverageArtifact) IsExecutable() bool               { return false }
 
 // CollectValidationTargets aggregates all validation-bearing entities from
 // a snapshot into a single slice. This is the canonical way to iterate over

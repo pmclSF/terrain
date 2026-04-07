@@ -29,7 +29,7 @@ var skipDirs = map[string]bool{
 	"venv":          true,
 	".idea":         true,
 	".vscode":       true,
-	".terrain":       true,
+	".terrain":      true,
 	"target":        true,
 }
 
