@@ -132,23 +132,6 @@ terrain policy check --json
 # Exit 0 = pass, 2 = violations
 ```
 
-### AI surface validation
-
-If your codebase has AI components (prompts, RAG pipelines, eval suites), Terrain maps them automatically:
-
-```bash
-# See what AI surfaces exist and what's covered
-terrain ai list
-
-# Check which eval scenarios a change affects
-terrain ai run --base main --dry-run
-
-# Validate AI setup
-terrain ai doctor
-```
-
-Terrain gives AI surfaces the same CI treatment as regular tests — impact-scoped selection, protection gap detection, and policy enforcement.
-
 ## The four primary questions
 
 Everything in Terrain maps to one of four questions:

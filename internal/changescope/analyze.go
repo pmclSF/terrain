@@ -289,17 +289,9 @@ func buildAIValidationSummary(result *impact.ImpactResult, snap *models.TestSuit
 	for _, cf := range result.Scope.ChangedFiles {
 		changedPaths[cf.Path] = true
 	}
-	aiKinds := map[models.CodeSurfaceKind]bool{
-		models.SurfacePrompt:    true,
-		models.SurfaceContext:   true,
-		models.SurfaceDataset:   true,
-		models.SurfaceToolDef:   true,
-		models.SurfaceRetrieval: true,
-		models.SurfaceAgent:     true,
-	}
 	for _, cs := range snap.CodeSurfaces {
-		if aiKinds[cs.Kind] && changedPaths[cs.Path] && !coveredIDs[cs.SurfaceID] {
-			ai.UncoveredContexts = append(ai.UncoveredContexts, string(cs.Kind)+": "+cs.Name+" ("+cs.Path+")")
+		if cs.Kind == models.SurfaceContext && changedPaths[cs.Path] && !coveredIDs[cs.SurfaceID] {
+			ai.UncoveredContexts = append(ai.UncoveredContexts, cs.Name+" ("+cs.Path+")")
 		}
 	}
 	sort.Strings(ai.UncoveredContexts)

@@ -83,26 +83,6 @@ packages, all passing. Zero `go vet` warnings. Zero `gofmt` issues.**
 **Debug:**
 - `terrain debug graph|coverage|fanout|duplicates|depgraph` — internal analysis inspection
 
-### AI / Regular Test Parity
-
-AI surfaces receive the same CI treatment as regular tests:
-
-- Discovery: prompts, contexts, datasets, tool definitions, RAG pipelines, agents, eval definitions
-- Impact selection: `terrain ai run --base main` selects only impacted eval scenarios
-- Protection gaps: changed AI surfaces without eval coverage appear in `terrain impact` and `terrain pr`
-- Policy enforcement: 7 AI-specific policy rules (`block_on_safety_failure`, `block_on_uncovered_context`, etc.)
-- PR comments: AI Validation section in `terrain pr` output (markdown + text)
-- GitHub Action: `terrain-ai.yml` template for AI CI gates
-- Health insights: uncovered AI surfaces appear in `terrain insights`
-
-### Structural Intelligence
-
-Three features that use the dependency graph and surface model to produce recommendations no individual tool can generate:
-
-- **"What to test next"**: ranks untested source files by import graph dependency count — files with more dependents create larger blind spots for change-scoped test selection
-- **AI behavior impact chains**: detects files with multiple AI surface types where some are covered and others aren't — a change to the untested surface can alter downstream AI behavior undetected
-- **Capability gap detection**: identifies AI capabilities with only positive/accuracy scenarios but no adversarial, safety, or robustness scenarios
-
 ### Impact Analysis
 
 - Change-scope analysis against git diff with structural dependency tracing
@@ -111,7 +91,6 @@ Three features that use the dependency graph and surface model to produce recomm
 - Drill-down views: units, gaps, tests, owners, graph, selected
 - Manual coverage overlay for untestable paths
 - PR-scoped output: markdown, CI comment, GitHub annotations
-- AI protection gaps: changed AI surfaces without eval coverage
 
 ### Dependency Graph Engine
 
@@ -119,7 +98,6 @@ Three features that use the dependency graph and surface model to produce recomm
 - Edge-case detection (14 types) with policy recommendations
 - Stability clustering for shared root-cause detection
 - Environment/device matrix coverage analysis
-- Language-aware fanout threshold (25, calibrated across Go/Python/JS/Java)
 
 ### Go-Native Conversion Runtime
 

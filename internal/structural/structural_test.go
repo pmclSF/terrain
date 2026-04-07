@@ -75,7 +75,7 @@ func TestUncoveredAISurface_UncoveredPromptFlagged(t *testing.T) {
 	if s.Type != signals.SignalUncoveredAISurface {
 		t.Errorf("type = %q, want %q", s.Type, signals.SignalUncoveredAISurface)
 	}
-	if s.Severity != models.SeverityHigh {
+	if s.Severity != models.SeverityCritical {
 		t.Errorf("severity = %q, want Critical (prompt)", s.Severity)
 	}
 	if s.Location.File != "src/prompts/sys.ts" {
@@ -140,7 +140,7 @@ func TestUncoveredAISurface_SeverityVariesByType(t *testing.T) {
 	}
 
 	expected := map[string]models.SignalSeverity{
-		"a.ts": models.SeverityHigh, // prompt
+		"a.ts": models.SeverityCritical, // prompt
 		"b.ts": models.SeverityHigh,     // model
 		"c.ts": models.SeverityMedium,   // dataset
 		"d.ts": models.SeverityLow,      // eval metric

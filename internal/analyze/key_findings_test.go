@@ -155,8 +155,8 @@ func TestDeriveKeyFindings_CriticalSignalsRankFirst(t *testing.T) {
 	if len(findings) == 0 {
 		t.Fatal("expected findings")
 	}
-	if findings[0].Severity != "high" {
-		t.Errorf("high-priority signals should rank first, got %s: %s", findings[0].Severity, findings[0].Title)
+	if findings[0].Severity != "critical" {
+		t.Errorf("critical signals should rank first, got %s: %s", findings[0].Severity, findings[0].Title)
 	}
 }
 

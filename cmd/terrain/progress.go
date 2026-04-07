@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/logging"
@@ -47,17 +46,12 @@ func newProgressFunc(jsonOutput bool) engine.ProgressFunc {
 		}
 	}
 	return func(step, total int, label string) {
-		// Pad with spaces to clear any leftover characters from longer
-		// previous labels when overwriting with \r.
-		const clearWidth = 60
-		line := fmt.Sprintf("[%d/%d] %s", step, total, label)
-		if len(line) < clearWidth {
-			line += strings.Repeat(" ", clearWidth-len(line))
-		}
 		if step < total {
-			fmt.Fprintf(os.Stderr, "\r%s", line)
+			// Overwrite current line with \r for TTY.
+			fmt.Fprintf(os.Stderr, "\r[%d/%d] %s", step, total, label)
 		} else {
-			fmt.Fprintf(os.Stderr, "\r%s\n", line)
+			// Final step: clear the progress line.
+			fmt.Fprintf(os.Stderr, "\r[%d/%d] %s\n", step, total, label)
 		}
 	}
 }

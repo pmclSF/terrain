@@ -1,12 +1,8 @@
 {
-  "healthGrade": "B",
-  "findingCount": 1,
-  "recCount": 1,
-  "categories": {
-    "coverage_debt": 1
-  },
-  "topFinding": "2 untested source file(s) — start with src/auth.js",
-  "topRec": "2 untested source file(s) — start with src/auth.js",
+  "healthGrade": "A",
+  "findingCount": 0,
+  "recCount": 0,
+  "categories": {},
   "limitationCount": 4,
   "dataSources": 4
 }

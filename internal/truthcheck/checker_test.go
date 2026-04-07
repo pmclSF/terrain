@@ -202,16 +202,13 @@ func TestComputeScores_EmptyExpected(t *testing.T) {
 	t.Parallel()
 	r := TruthCategoryResult{Expected: 0, Matched: 0}
 	computeScores(&r)
-	// No expectations means recall=1.0 (vacuously true), precision=1.0 (no false positives).
-	// Passed = true (nothing expected, nothing spurious).
+	// No expectations means recall=0 (nothing to match), precision=1.0 (no false positives).
+	// F1 = 0 (no recall). Passed = false (recall < 0.5).
 	if r.Precision != 1.0 {
 		t.Errorf("empty expected precision = %.2f, want 1.0", r.Precision)
 	}
-	if r.Recall != 1.0 {
-		t.Errorf("empty expected recall = %.2f, want 1.0", r.Recall)
-	}
-	if !r.Passed {
-		t.Error("empty expected should pass")
+	if r.Recall != 0.0 {
+		t.Errorf("empty expected recall = %.2f, want 0.0", r.Recall)
 	}
 }
 

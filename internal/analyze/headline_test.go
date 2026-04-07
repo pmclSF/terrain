@@ -12,8 +12,8 @@ func TestDeriveHeadline_CriticalSignals(t *testing.T) {
 		SignalSummary: SignalBreakdown{Critical: 5},
 	}
 	h := deriveHeadline(r)
-	if !strings.Contains(h, "5 high-priority") {
-		t.Errorf("expected high-priority mention, got: %s", h)
+	if !strings.Contains(h, "5 critical") {
+		t.Errorf("expected critical mention, got: %s", h)
 	}
 }
 
@@ -80,14 +80,14 @@ func TestDeriveHeadline_Healthy(t *testing.T) {
 }
 
 func TestDeriveHeadline_PriorityOrder(t *testing.T) {
-	// When multiple conditions match, high-priority signals should win.
+	// When multiple conditions match, critical signals should win.
 	r := &Report{
 		SignalSummary:     SignalBreakdown{Critical: 2},
 		DuplicateClusters: DuplicateSummary{RedundantTestCount: 100, ClusterCount: 5},
 		HighFanout:        FanoutSummary{FlaggedCount: 3},
 	}
 	h := deriveHeadline(r)
-	if !strings.Contains(h, "high-priority") {
-		t.Errorf("high-priority should take priority, got: %s", h)
+	if !strings.Contains(h, "critical") {
+		t.Errorf("critical should take priority, got: %s", h)
 	}
 }

@@ -328,29 +328,6 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 		blank()
 	}
 
-	// AI validation summary.
-	if ai := pr.AI; ai != nil {
-		line("AI Validation")
-		line(strings.Repeat("-", 40))
-		line("  Scenarios: %d of %d selected", ai.SelectedScenarios, ai.TotalScenarios)
-		if len(ai.ImpactedCapabilities) > 0 {
-			line("  Capabilities: %s", strings.Join(ai.ImpactedCapabilities, ", "))
-		}
-		if len(ai.BlockingSignals) > 0 {
-			line("  Blocking: %d signal(s)", len(ai.BlockingSignals))
-			for _, s := range ai.BlockingSignals {
-				line("    [%s] %s: %s", strings.ToUpper(s.Severity), s.Type, s.Explanation)
-			}
-		}
-		if len(ai.UncoveredContexts) > 0 {
-			line("  Uncovered AI surfaces: %d", len(ai.UncoveredContexts))
-			for _, c := range ai.UncoveredContexts {
-				line("    - %s", c)
-			}
-		}
-		blank()
-	}
-
 	if len(pr.Limitations) > 0 {
 		line("Limitations")
 		line(strings.Repeat("-", 40))
@@ -442,9 +419,9 @@ func renderAISection(line func(string, ...any), pr *PRAnalysis) {
 		}
 	}
 
-	// Uncovered AI surfaces.
+	// Uncovered contexts.
 	if len(ai.UncoveredContexts) > 0 {
-		line("**Changed AI surfaces without eval coverage (%d):**", len(ai.UncoveredContexts))
+		line("**Changed AI contexts without evaluation (%d):**", len(ai.UncoveredContexts))
 		line("")
 		for _, c := range ai.UncoveredContexts {
 			line("- `%s`", c)

@@ -215,18 +215,6 @@ Terrain is framework-agnostic and language-aware. The same analysis model applie
 
 The structural model is the same. The signals and recommendations adapt to the framework and test patterns detected.
 
-## AI Testing in CI
-
-Terrain gives AI components the same CI safety net as regular tests:
-
-- **Surface discovery** — automatically detects prompts, contexts, datasets, tool definitions, RAG pipelines, and eval scenarios in your code
-- **Impact-scoped selection** — `terrain ai run --base main` runs only the eval scenarios affected by your change
-- **Protection gaps** — `terrain pr` flags changed AI surfaces that have no eval scenario covering them
-- **Policy enforcement** — block PRs that modify uncovered AI surfaces, regress accuracy, or trigger safety failures
-- **GitHub Action** — drop-in `terrain-ai.yml` workflow template for AI CI gates
-
-The same structural graph that powers test selection for regular code also traces AI surface dependencies, so a change to a prompt template triggers the right eval scenarios automatically.
-
 ## How CI Optimization Emerges
 
 Terrain does not start with CI optimization. It starts with understanding.
@@ -237,7 +225,6 @@ When you run `terrain analyze`, Terrain builds a structural model: which tests e
 - **Redundancy reduction** — `terrain insights` surfaces duplicate test clusters. Removing or consolidating them directly reduces CI time without reducing coverage.
 - **Fanout control** — High-fanout fixtures that trigger thousands of tests on any change are identified and prioritized for splitting.
 - **Confidence-based runs** — Impact analysis assigns confidence scores. CI pipelines can run high-confidence tests immediately and defer low-confidence tests to nightly runs.
-- **What to test next** — `terrain insights` ranks untested source files by dependency count, telling you which test to write first for maximum impact.
 
 The result is faster CI that comes from *understanding the test system*, not from skipping tests and hoping for the best.
 

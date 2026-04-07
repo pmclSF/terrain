@@ -81,7 +81,7 @@ Terrain Posture Report
   Measurements:
     structural_risk.migration_blocker_density 0.0% [strong]
       Evidence: strong
-      0 test file(s) with migration blocker(s) out of 1 (0%).
+      0 migration blocker(s) across 1 test file(s) (0%).
     structural_risk.deprecated_pattern_share 0.0% [strong]
       Evidence: strong
       0 of 1 test file(s) use deprecated patterns (0%).
@@ -98,13 +98,13 @@ Terrain Posture Report
   Measurements:
     operational_risk.policy_violation_density 0.0% [strong]
       Evidence: strong
-      0 test file(s) with policy violation(s) out of 1 (0%).
+      0 policy violation(s) across 1 test file(s) (0%).
     operational_risk.legacy_framework_share  0.0% [strong]
       Evidence: strong
       0 of 1 test file(s) use legacy frameworks (0%).
-    operational_risk.runtime_budget_breach_share 0.0% [unknown]
+    operational_risk.runtime_budget_breach_share 0.0% [strong]
       Evidence: weak
-      No runtime data available; cannot assess budget compliance.
+      0 of 1 test file(s) exceed runtime budgets (0%).
       * No runtime data available; result is based on static analysis only.
 
 ------------------------------------------------------------

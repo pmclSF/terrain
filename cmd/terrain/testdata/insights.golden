@@ -2,7 +2,7 @@
   "duplicateClusters": 0,
   "findingCount": 3,
   "healthGrade": "D",
-  "highFanoutNodes": 0,
+  "highFanoutNodes": 5,
   "recommendationCount": 3,
   "repoProfile": {
     "testVolume": "small",

@@ -53,10 +53,11 @@ redundancy:
       reason: "Overlapping e2e flows with same import graph"
 
 fanout:
-  description: "Fanout analysis should flag high-dependency nodes (threshold: 50)"
-  expected_flagged: []
-  # Note: shared-db.ts has ~6 dependents, below the 50-node threshold.
-  # This fixture is too small to trigger fanout warnings.
+  description: "Fanout analysis should flag high-dependency nodes"
+  expected_flagged:
+    - node: "src/shared-db.ts"
+      reason: "Imported by 6+ test files across integration and e2e layers"
+      expected_min_dependents: 6
 
 stability:
   description: "Stability signals should detect skipped and flaky patterns"

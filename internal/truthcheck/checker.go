@@ -455,12 +455,7 @@ func computeScores(r *TruthCategoryResult) {
 	if r.Precision+r.Recall > 0 {
 		r.Score = 2 * r.Precision * r.Recall / (r.Precision + r.Recall) // F1
 	}
-	if r.Expected == 0 {
-		r.Passed = len(r.Unexpected) == 0 // nothing expected, pass if nothing spurious
-		r.Recall = 1.0                     // vacuously true
-	} else {
-		r.Passed = r.Recall >= 0.5 // pass if at least half of expectations met
-	}
+	r.Passed = r.Recall >= 0.5 // pass if at least half of expectations met
 
 	sort.Strings(r.Missing)
 	sort.Strings(r.Unexpected)
