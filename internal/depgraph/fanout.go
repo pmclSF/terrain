@@ -48,7 +48,9 @@ type FanoutEntry struct {
 }
 
 // DefaultFanoutThreshold is the default threshold for flagging excessive fanout.
-const DefaultFanoutThreshold = 10
+// Set to 50 to avoid flagging normal package dependency patterns in Go and
+// monorepo projects where shared utility packages naturally have many dependents.
+const DefaultFanoutThreshold = 50
 
 // maxFanoutNodes is the safety threshold for transitive fanout analysis.
 // Above this size, exact transitive analysis is too expensive for interactive

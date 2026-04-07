@@ -80,7 +80,7 @@ func (d *UncoveredAISurfaceDetector) DetectWithGraph(snap *models.TestSuiteSnaps
 func severityForAISurfaceType(nt depgraph.NodeType) models.SignalSeverity {
 	switch nt {
 	case depgraph.NodePrompt:
-		return models.SeverityCritical
+		return models.SeverityHigh
 	case depgraph.NodeModel:
 		return models.SeverityHigh
 	case depgraph.NodeDataset:
