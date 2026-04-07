@@ -34,7 +34,7 @@ brews:
   - name: mapterrain
     homepage: "https://github.com/pmclSF/terrain"
     description: "Signal-first test intelligence CLI"
-    license: "MIT"
+    license: "Apache-2.0"
     directory: Formula
     repository:
       owner: pmclSF
