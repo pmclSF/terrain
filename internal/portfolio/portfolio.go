@@ -97,12 +97,12 @@ func computeAggregates(assets []TestAsset, findings []Finding, snap *models.Test
 // computeOwnerAggregates groups portfolio data by owner.
 func computeOwnerAggregates(assets []TestAsset, findings []Finding) []OwnerPortfolioSummary {
 	type ownerData struct {
-		assetCount  int
-		runtimeMs   float64
-		redundancy  int
-		overbroad   int
-		lowValue    int
-		highLev     int
+		assetCount int
+		runtimeMs  float64
+		redundancy int
+		overbroad  int
+		lowValue   int
+		highLev    int
 	}
 
 	byOwner := map[string]*ownerData{}
@@ -165,12 +165,12 @@ func BuildBenchmarkAggregate(summary *PortfolioSummary) *BenchmarkAggregate {
 	total := float64(summary.Aggregates.TotalAssets)
 
 	return &BenchmarkAggregate{
-		RuntimeConcentrationBand:    concentrationBand(summary.Aggregates.RuntimeConcentration),
+		RuntimeConcentrationBand:     concentrationBand(summary.Aggregates.RuntimeConcentration),
 		RedundancyCandidateShareBand: shareBand(float64(summary.Aggregates.RedundancyCandidateCount) / total),
-		OverbroadShareBand:          shareBand(float64(summary.Aggregates.OverbroadCount) / total),
-		LowValueHighCostShareBand:   shareBand(float64(summary.Aggregates.LowValueHighCostCount) / total),
-		HighLeverageShareBand:       shareBand(float64(summary.Aggregates.HighLeverageCount) / total),
-		PortfolioPostureBand:        computePortfolioPosture(summary),
+		OverbroadShareBand:           shareBand(float64(summary.Aggregates.OverbroadCount) / total),
+		LowValueHighCostShareBand:    shareBand(float64(summary.Aggregates.LowValueHighCostCount) / total),
+		HighLeverageShareBand:        shareBand(float64(summary.Aggregates.HighLeverageCount) / total),
+		PortfolioPostureBand:         computePortfolioPosture(summary),
 	}
 }
 

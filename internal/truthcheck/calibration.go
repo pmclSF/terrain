@@ -59,7 +59,7 @@ type TierCalibration struct {
 
 // ConfidenceBand shows observed correctness within a confidence range.
 type ConfidenceBand struct {
-	RangeLabel        string  `json:"rangeLabel"`        // e.g., "0.90-1.00"
+	RangeLabel        string  `json:"rangeLabel"` // e.g., "0.90-1.00"
 	Min               float64 `json:"min"`
 	Max               float64 `json:"max"`
 	Count             int     `json:"count"`             // surfaces in this band

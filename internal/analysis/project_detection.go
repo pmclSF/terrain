@@ -114,19 +114,19 @@ func detectJSProjectFrameworks(root string, ctx *ProjectContext) {
 	devDeps := readDevDependencies(pkgPath)
 
 	depIndicators := map[string]string{
-		"jest":              "jest",
-		"@jest/core":        "jest",
-		"vitest":            "vitest",
-		"@playwright/test":  "playwright",
-		"cypress":           "cypress",
-		"mocha":             "mocha",
-		"jasmine":           "jasmine",
+		"jest":                      "jest",
+		"@jest/core":                "jest",
+		"vitest":                    "vitest",
+		"@playwright/test":          "playwright",
+		"cypress":                   "cypress",
+		"mocha":                     "mocha",
+		"jasmine":                   "jasmine",
 		"@testing-library/jest-dom": "jest",
-		"ts-jest":           "jest",
-		"puppeteer":         "puppeteer",
-		"webdriverio":       "webdriverio",
-		"@wdio/cli":         "webdriverio",
-		"testcafe":          "testcafe",
+		"ts-jest":                   "jest",
+		"puppeteer":                 "puppeteer",
+		"webdriverio":               "webdriverio",
+		"@wdio/cli":                 "webdriverio",
+		"testcafe":                  "testcafe",
 	}
 
 	for dep, framework := range depIndicators {

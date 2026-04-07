@@ -34,12 +34,12 @@ const DefaultEngineVersion = "dev"
 // PipelineResult holds the output of a full analysis pipeline run.
 type PipelineResult struct {
 	Snapshot          *models.TestSuiteSnapshot
-	Graph             *depgraph.Graph       // sealed graph built during analysis; reusable by downstream commands
+	Graph             *depgraph.Graph // sealed graph built during analysis; reusable by downstream commands
 	HasPolicy         bool
 	DataCompleteness  DataCompleteness
-	Diagnostics       *PipelineDiagnostics  // populated when CollectDiagnostics is true
-	ArtifactDiscovery *ArtifactDiscovery    // populated when auto-discovery runs
-	DiscoveryMessages []string              // user-facing messages about auto-detected artifacts
+	Diagnostics       *PipelineDiagnostics // populated when CollectDiagnostics is true
+	ArtifactDiscovery *ArtifactDiscovery   // populated when auto-discovery runs
+	DiscoveryMessages []string             // user-facing messages about auto-detected artifacts
 }
 
 // DataCompleteness captures which analysis inputs were present and usable.

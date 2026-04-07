@@ -1,4 +1,4 @@
-# Stage 119 -- UI Filtering, Scoping, and Confidence Cues
+# UI Filtering, Scoping, and Confidence Cues
 
 Design specification for the Terrain extension UI's filtering system and
 confidence communication. This document describes views and interaction
@@ -42,7 +42,7 @@ matching `Signal.Location.File` against the impacted file set.
 
 Filter by `SignalCategory` (structure, health, quality, migration, governance)
 or by the `DimensionPostureResult.Dimension` names from the measurement layer.
-This maps to the Level 1 drill-down from Stage 117, but as a filter rather
+This maps to the Level 1 drill-down from the drill-down hierarchy, but as a filter rather
 than a navigation action.
 
 ### Test Type
@@ -66,13 +66,13 @@ common use is filtering to high and critical to focus on urgent findings.
 
 Filters compose with all views from Stages 117 and 118:
 
-- **Triage queue** (Stage 117): filters narrow the finding list before
+- **Triage queue** (the drill-down hierarchy): filters narrow the finding list before
   batch triage operations. Example: triage all `weakAssertion` signals
   owned by `@team-payments` as "Add unit coverage."
-- **Trend views** (Stage 118): filters scope trend comparisons. Example:
+- **Trend views** (the history and trends view): filters scope trend comparisons. Example:
   show posture movement only for the `coverage` dimension in packages
   owned by `@team-auth`.
-- **Drill-down hierarchy** (Stage 117): filters applied at Level 1 propagate
+- **Drill-down hierarchy** (the drill-down hierarchy): filters applied at Level 1 propagate
   down. Setting an owner filter at the dimension level means Levels 2-4
   only show findings for that owner.
 
@@ -171,7 +171,7 @@ so users return to their last working context. The state includes:
 
 - Active filter values (owner, package, dimension, severity, etc.)
 - Drill-down path (which levels are expanded)
-- Pinned comparison snapshot (from Stage 118)
+- Pinned comparison snapshot (from the history and trends view)
 - Sort order for list views
 
 This file is local-only and excluded from version control.

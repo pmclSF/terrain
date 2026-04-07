@@ -371,11 +371,11 @@ func TestIsTestFilePath(t *testing.T) {
 		{"src/auth/service.js", false},
 		{"src/__tests__/auth.test.js", true},
 		{"test/foo.test.js", true},
-		{"test/res.type.js", true},            // top-level test/ dir, no .test. in name
-		{"tests/integration/api.js", true},    // top-level tests/ dir
+		{"test/res.type.js", true},         // top-level test/ dir, no .test. in name
+		{"tests/integration/api.js", true}, // top-level tests/ dir
 		{"src/foo.spec.js", true},
 		{"internal/auth/auth_test.go", true},
-		{"e2e/login.spec.js", true},           // top-level e2e/ dir
+		{"e2e/login.spec.js", true}, // top-level e2e/ dir
 		{"src/utils/helpers.js", false},
 		{"cypress/e2e/flow.cy.js", true},
 	}
@@ -496,6 +496,53 @@ func TestFilterByOwner(t *testing.T) {
 	}
 	if len(filtered.ProtectionGaps) != 0 {
 		t.Errorf("expected 0 filtered gaps, got %d", len(filtered.ProtectionGaps))
+	}
+}
+
+func TestFilterByOwner_PreservesContext(t *testing.T) {
+	t.Parallel()
+	result := &ImpactResult{
+		ChangeSet:          &models.ChangeSet{Source: "git-diff", BaseRef: "main"},
+		Scope:              ChangeScope{Source: "git-diff"},
+		ChangedAreas:       []ChangedArea{{Area: "auth"}},
+		Posture:            ChangeRiskPosture{Band: "partially_protected"},
+		CoverageConfidence: "medium",
+		Fallback:           FallbackInfo{Level: "exact"},
+		TotalTestCount:     42,
+		HasCoverageData:    true,
+		PolicyApplied:      true,
+		PolicyNotes:        []string{"adjusted"},
+		Limitations:        []string{"no ownership data"},
+		ImpactedUnits: []ImpactedCodeUnit{
+			{UnitID: "u1", Owner: "alice"},
+		},
+	}
+
+	filtered := FilterByOwner(result, "alice")
+
+	if filtered.TotalTestCount != 42 {
+		t.Errorf("TotalTestCount = %d, want 42", filtered.TotalTestCount)
+	}
+	if !filtered.HasCoverageData {
+		t.Error("HasCoverageData should be preserved as true")
+	}
+	if filtered.CoverageConfidence != "medium" {
+		t.Errorf("CoverageConfidence = %q, want 'medium'", filtered.CoverageConfidence)
+	}
+	if filtered.ChangeSet == nil || filtered.ChangeSet.Source != "git-diff" {
+		t.Error("ChangeSet should be preserved")
+	}
+	if !filtered.PolicyApplied {
+		t.Error("PolicyApplied should be preserved as true")
+	}
+	if len(filtered.PolicyNotes) != 1 {
+		t.Errorf("PolicyNotes = %d, want 1", len(filtered.PolicyNotes))
+	}
+	if len(filtered.ChangedAreas) != 1 {
+		t.Errorf("ChangedAreas = %d, want 1", len(filtered.ChangedAreas))
+	}
+	if len(filtered.Limitations) != 1 {
+		t.Errorf("Limitations = %d, want 1", len(filtered.Limitations))
 	}
 }
 
@@ -1157,7 +1204,7 @@ func TestAnalyze_NonTestableFilesExcluded(t *testing.T) {
 			{Path: "src/auth.js", ChangeKind: ChangeModified},
 			{Path: "README.md", ChangeKind: ChangeModified},
 			{Path: ".github/workflows/ci.yml", ChangeKind: ChangeModified},
-			{Path: "CLAUDE.md", ChangeKind: ChangeModified},
+			{Path: "docs/README.md", ChangeKind: ChangeModified},
 			{Path: "Makefile", ChangeKind: ChangeModified},
 			{Path: ".goreleaser.yaml", ChangeKind: ChangeModified},
 			{Path: "package.json", ChangeKind: ChangeModified},
@@ -1885,8 +1932,8 @@ func TestAnalyze_MultipleAISurfaceChangesMerge(t *testing.T) {
 		},
 		Scenarios: []models.Scenario{
 			{
-				ScenarioID:        "scenario:custom:enterprise-search",
-				Name:              "enterprise-search-citations",
+				ScenarioID: "scenario:custom:enterprise-search",
+				Name:       "enterprise-search-citations",
 				CoveredSurfaceIDs: []string{
 					"surface:src/rag/chunking.ts:chunkConfig",
 					"surface:src/ai/prompt.ts:searchPrompt",

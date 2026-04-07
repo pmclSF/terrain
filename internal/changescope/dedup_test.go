@@ -25,7 +25,7 @@ func TestDeduplicateFindings_NormalizesExplanation(t *testing.T) {
 	t.Parallel()
 	findings := []ChangeScopedFinding{
 		{Type: "protection_gap", Path: "src/a.ts", Severity: "high", Explanation: "No test coverage."},
-		{Type: "protection_gap", Path: "src/a.ts", Severity: "high", Explanation: "No test coverage"},  // missing period
+		{Type: "protection_gap", Path: "src/a.ts", Severity: "high", Explanation: "No test coverage"},     // missing period
 		{Type: "protection_gap", Path: "src/a.ts", Severity: "high", Explanation: "  No test coverage. "}, // extra whitespace
 	}
 

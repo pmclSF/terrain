@@ -6,20 +6,20 @@ import "fmt"
 type EdgeCaseType string
 
 const (
-	EdgeCaseFewTests            EdgeCaseType = "FEW_TESTS"
-	EdgeCaseFastCIAlready       EdgeCaseType = "FAST_CI_ALREADY"
-	EdgeCaseRedundantSuite      EdgeCaseType = "REDUNDANT_TEST_SUITE"
-	EdgeCaseHighSkipBurden      EdgeCaseType = "HIGH_SKIP_BURDEN"
-	EdgeCaseHighFlakeBurden     EdgeCaseType = "HIGH_FLAKE_BURDEN"
-	EdgeCaseHighFanoutFixture   EdgeCaseType = "HIGH_FANOUT_FIXTURE"
-	EdgeCaseLowGraphVisibility  EdgeCaseType = "LOW_GRAPH_VISIBILITY"
+	EdgeCaseFewTests             EdgeCaseType = "FEW_TESTS"
+	EdgeCaseFastCIAlready        EdgeCaseType = "FAST_CI_ALREADY"
+	EdgeCaseRedundantSuite       EdgeCaseType = "REDUNDANT_TEST_SUITE"
+	EdgeCaseHighSkipBurden       EdgeCaseType = "HIGH_SKIP_BURDEN"
+	EdgeCaseHighFlakeBurden      EdgeCaseType = "HIGH_FLAKE_BURDEN"
+	EdgeCaseHighFanoutFixture    EdgeCaseType = "HIGH_FANOUT_FIXTURE"
+	EdgeCaseLowGraphVisibility   EdgeCaseType = "LOW_GRAPH_VISIBILITY"
 	EdgeCaseExternalServiceHeavy EdgeCaseType = "EXTERNAL_SERVICE_HEAVY"
-	EdgeCaseGeneratedArtifacts  EdgeCaseType = "GENERATED_ARTIFACT_CHANGES"
-	EdgeCaseMigrationOverlap    EdgeCaseType = "MIGRATION_OVERLAP"
-	EdgeCaseSnapshotHeavy       EdgeCaseType = "SNAPSHOT_HEAVY_SUITE"
-	EdgeCaseLegacyZone          EdgeCaseType = "LEGACY_ZONE"
-	EdgeCaseMixedTestCultures   EdgeCaseType = "MIXED_TEST_CULTURES"
-	EdgeCaseLargeManualSuite    EdgeCaseType = "LARGE_MANUAL_SUITE"
+	EdgeCaseGeneratedArtifacts   EdgeCaseType = "GENERATED_ARTIFACT_CHANGES"
+	EdgeCaseMigrationOverlap     EdgeCaseType = "MIGRATION_OVERLAP"
+	EdgeCaseSnapshotHeavy        EdgeCaseType = "SNAPSHOT_HEAVY_SUITE"
+	EdgeCaseLegacyZone           EdgeCaseType = "LEGACY_ZONE"
+	EdgeCaseMixedTestCultures    EdgeCaseType = "MIXED_TEST_CULTURES"
+	EdgeCaseLargeManualSuite     EdgeCaseType = "LARGE_MANUAL_SUITE"
 )
 
 // EdgeCase represents a detected edge case condition.
@@ -52,11 +52,11 @@ var fallbackLevelNames = map[FallbackLevel]string{
 
 // fallbackLevelValues maps JSON string representations to FallbackLevel values.
 var fallbackLevelValues = map[string]FallbackLevel{
-	"DirectDeps":      FallbackDirectDeps,
+	"DirectDeps":       FallbackDirectDeps,
 	"FixtureExpansion": FallbackFixtureExpand,
-	"PackageTests":    FallbackPackageTests,
-	"SmokeRegression": FallbackSmokeRegression,
-	"FullSuite":       FallbackFullSuite,
+	"PackageTests":     FallbackPackageTests,
+	"SmokeRegression":  FallbackSmokeRegression,
+	"FullSuite":        FallbackFullSuite,
 }
 
 // String returns the string representation of a FallbackLevel.
@@ -106,6 +106,9 @@ type Policy struct {
 // DetectEdgeCases identifies edge case conditions based on the repo profile,
 // graph structure, and engine insights.
 func DetectEdgeCases(profile RepoProfile, g *Graph, insights ProfileInsights) []EdgeCase {
+	if g == nil {
+		return nil
+	}
 	var cases []EdgeCase
 	stats := g.Stats()
 	testCount := stats.NodesByType[string(NodeTest)]
@@ -246,8 +249,8 @@ func DetectEdgeCases(profile RepoProfile, g *Graph, insights ProfileInsights) []
 	// Large manual test suite.
 	if profile.ManualCoveragePresence == "significant" {
 		cases = append(cases, EdgeCase{
-			Type:     EdgeCaseLargeManualSuite,
-			Severity: "warning",
+			Type:        EdgeCaseLargeManualSuite,
+			Severity:    "warning",
 			Description: "Significant manual test coverage — automated analysis may underestimate total protection.",
 		})
 	}

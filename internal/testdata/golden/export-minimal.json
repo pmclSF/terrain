@@ -68,7 +68,7 @@
   },
   "postureBands": {
     "coverage_depth": "strong",
-    "coverage_diversity": "weak",
+    "coverage_diversity": "strong",
     "health": "strong",
     "operational_risk": "strong",
     "structural_risk": "strong"

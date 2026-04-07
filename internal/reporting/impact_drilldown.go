@@ -1,7 +1,6 @@
 package reporting
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -10,8 +9,7 @@ import (
 
 // RenderImpactUnits writes a focused view of impacted code units.
 func RenderImpactUnits(w io.Writer, result *impact.ImpactResult) {
-	line := func(format string, args ...any) { fmt.Fprintf(w, format+"\n", args...) }
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Impacted Code Units (%d)", len(result.ImpactedUnits))
 	line(strings.Repeat("=", 60))
@@ -43,8 +41,7 @@ func RenderImpactUnits(w io.Writer, result *impact.ImpactResult) {
 
 // RenderImpactGaps writes a focused view of protection gaps.
 func RenderImpactGaps(w io.Writer, result *impact.ImpactResult) {
-	line := func(format string, args ...any) { fmt.Fprintf(w, format+"\n", args...) }
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Protection Gaps (%d)", len(result.ProtectionGaps))
 	line(strings.Repeat("=", 60))
@@ -82,8 +79,7 @@ func RenderImpactGaps(w io.Writer, result *impact.ImpactResult) {
 
 // RenderImpactTests writes a focused view of impacted and selected tests.
 func RenderImpactTests(w io.Writer, result *impact.ImpactResult) {
-	line := func(format string, args ...any) { fmt.Fprintf(w, format+"\n", args...) }
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Impacted Tests (%d total, %d selected)", len(result.ImpactedTests), len(result.SelectedTests))
 	line(strings.Repeat("=", 60))
@@ -136,8 +132,7 @@ func RenderImpactTests(w io.Writer, result *impact.ImpactResult) {
 
 // RenderImpactGraph writes a summary of the impact graph.
 func RenderImpactGraph(w io.Writer, result *impact.ImpactResult) {
-	line := func(format string, args ...any) { fmt.Fprintf(w, format+"\n", args...) }
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Impact Graph")
 	line(strings.Repeat("=", 60))
@@ -183,8 +178,7 @@ func RenderImpactGraph(w io.Writer, result *impact.ImpactResult) {
 
 // RenderProtectiveSet writes the enhanced protective test set.
 func RenderProtectiveSet(w io.Writer, result *impact.ImpactResult) {
-	line := func(format string, args ...any) { fmt.Fprintf(w, format+"\n", args...) }
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Protective Test Set")
 	line(strings.Repeat("=", 60))
@@ -236,8 +230,7 @@ func RenderProtectiveSet(w io.Writer, result *impact.ImpactResult) {
 
 // RenderImpactOwners writes a focused view of impacted owners.
 func RenderImpactOwners(w io.Writer, result *impact.ImpactResult) {
-	line := func(format string, args ...any) { fmt.Fprintf(w, format+"\n", args...) }
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Impacted Owners (%d)", len(result.ImpactedOwners))
 	line(strings.Repeat("=", 60))

@@ -355,14 +355,14 @@ type TestHealthSummary struct {
 
 // OwnerRiskSummary aggregates risk data for a single owner.
 type OwnerRiskSummary struct {
-	Owner                string `json:"owner"`
-	TotalSignals         int    `json:"totalSignals"`
-	HealthSignals        int    `json:"healthSignals"`
-	QualitySignals       int    `json:"qualitySignals"`
-	UncoveredExported    int    `json:"uncoveredExported"`
-	E2EOnlyUnits         int    `json:"e2eOnlyUnits"`
-	TestCount            int    `json:"testCount"`
-	CodeUnitCount        int    `json:"codeUnitCount"`
+	Owner             string `json:"owner"`
+	TotalSignals      int    `json:"totalSignals"`
+	HealthSignals     int    `json:"healthSignals"`
+	QualitySignals    int    `json:"qualitySignals"`
+	UncoveredExported int    `json:"uncoveredExported"`
+	E2EOnlyUnits      int    `json:"e2eOnlyUnits"`
+	TestCount         int    `json:"testCount"`
+	CodeUnitCount     int    `json:"codeUnitCount"`
 }
 
 // OwnerRiskSummaries returns per-owner risk aggregations, sorted by total

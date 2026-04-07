@@ -39,15 +39,15 @@ type githubWorkflow struct {
 }
 
 type githubJob struct {
-	RunsOn   interface{}            `yaml:"runs-on"`
-	Strategy *githubStrategy        `yaml:"strategy"`
+	RunsOn   interface{}              `yaml:"runs-on"`
+	Strategy *githubStrategy          `yaml:"strategy"`
 	Steps    []map[string]interface{} `yaml:"steps"`
 }
 
 type githubStrategy struct {
-	Matrix    map[string]interface{} `yaml:"matrix"`
-	FailFast  *bool                  `yaml:"fail-fast"`
-	MaxParallel *int                 `yaml:"max-parallel"`
+	Matrix      map[string]interface{} `yaml:"matrix"`
+	FailFast    *bool                  `yaml:"fail-fast"`
+	MaxParallel *int                   `yaml:"max-parallel"`
 }
 
 func parseGitHubActions(root string, result *CIMatrixResult) {

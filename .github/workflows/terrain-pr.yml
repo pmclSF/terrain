@@ -23,15 +23,6 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22.x
-          cache: npm
-
-      - name: Install JS dependencies
-        run: npm ci
-
       - name: Build Terrain
         run: go build -o terrain ./cmd/terrain
 
@@ -52,12 +43,6 @@ jobs:
             | tr '\n' ' ')
           echo "go_packages=$GO_PKGS" >> "$GITHUB_OUTPUT"
 
-          # Extract JS test files
-          JS_TESTS=$(jq -r '.testSelections[]?.path // empty' /tmp/terrain-pr.json \
-            | grep '\.test\.js$' \
-            | tr '\n' ' ')
-          echo "js_tests=$JS_TESTS" >> "$GITHUB_OUTPUT"
-
           # Count totals
           TOTAL=$(jq '.testSelections | length' /tmp/terrain-pr.json)
           echo "total_selected=$TOTAL" >> "$GITHUB_OUTPUT"
@@ -74,16 +59,6 @@ jobs:
           echo "::group::Terrain-selected Go tests"
           echo "Running: go test ${{ steps.tests.outputs.go_packages }} -count=1 -race"
           go test ${{ steps.tests.outputs.go_packages }} -count=1 -race -v 2>&1 | tee /tmp/go-test-output.txt
-          echo "::endgroup::"
-
-      - name: Run selected JS tests
-        id: js-tests
-        if: steps.tests.outputs.js_tests != ''
-        continue-on-error: true
-        run: |
-          echo "::group::Terrain-selected JS tests"
-          echo "Running: npx jest ${{ steps.tests.outputs.js_tests }}"
-          NODE_OPTIONS='--experimental-vm-modules' npx jest ${{ steps.tests.outputs.js_tests }} 2>&1 | tee /tmp/js-test-output.txt
           echo "::endgroup::"
 
       - name: Generate PR comment
@@ -109,14 +84,6 @@ jobs:
                   echo '- Go tests: **failed** (see logs)'
                 fi
               fi
-              # JS results
-              if [ -n "${{ steps.tests.outputs.js_tests }}" ]; then
-                if [ "${{ steps.js-tests.outcome }}" = "success" ]; then
-                  echo '- JS tests: **passed**'
-                else
-                  echo '- JS tests: **failed** (see logs)'
-                fi
-              fi
             fi
             echo 'TERRAIN_EOF'
           } >> "$GITHUB_OUTPUT"
@@ -140,7 +107,7 @@ jobs:
             ${{ steps.terrain-comment.outputs.body }}
 
       - name: Fail if selected tests failed
-        if: steps.go-tests.outcome == 'failure' || steps.js-tests.outcome == 'failure'
+        if: steps.go-tests.outcome == 'failure'
         run: |
           echo "::error::Terrain-selected tests failed. See above for details."
           exit 1

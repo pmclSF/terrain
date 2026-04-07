@@ -11,32 +11,32 @@ import (
 
 // OwnerHealthSummary aggregates health findings for a single owner.
 type OwnerHealthSummary struct {
-	Owner          string `json:"owner"`
-	FlakyCount     int    `json:"flakyCount"`
-	SlowCount      int    `json:"slowCount"`
-	SkippedCount   int    `json:"skippedCount"`
-	TotalHealth    int    `json:"totalHealth"`
-	Concentration  string `json:"concentration"` // "localized", "distributed", "none"
-	TopFiles       []string `json:"topFiles,omitempty"`
+	Owner         string   `json:"owner"`
+	FlakyCount    int      `json:"flakyCount"`
+	SlowCount     int      `json:"slowCount"`
+	SkippedCount  int      `json:"skippedCount"`
+	TotalHealth   int      `json:"totalHealth"`
+	Concentration string   `json:"concentration"` // "localized", "distributed", "none"
+	TopFiles      []string `json:"topFiles,omitempty"`
 }
 
 // OwnerQualitySummary aggregates quality and coverage findings for a single owner.
 type OwnerQualitySummary struct {
-	Owner                string `json:"owner"`
-	UncoveredExported    int    `json:"uncoveredExported"`
-	E2EOnlyUnits         int    `json:"e2eOnlyUnits"`
-	WeakAssertionCount   int    `json:"weakAssertionCount"`
-	MockHeavyCount       int    `json:"mockHeavyCount"`
-	TotalQualitySignals  int    `json:"totalQualitySignals"`
-	QualityPosture       string `json:"qualityPosture"` // "strong", "moderate", "weak"
+	Owner               string `json:"owner"`
+	UncoveredExported   int    `json:"uncoveredExported"`
+	E2EOnlyUnits        int    `json:"e2eOnlyUnits"`
+	WeakAssertionCount  int    `json:"weakAssertionCount"`
+	MockHeavyCount      int    `json:"mockHeavyCount"`
+	TotalQualitySignals int    `json:"totalQualitySignals"`
+	QualityPosture      string `json:"qualityPosture"` // "strong", "moderate", "weak"
 }
 
 // OwnerMigrationSummary aggregates migration findings for a single owner.
 type OwnerMigrationSummary struct {
-	Owner          string `json:"owner"`
-	BlockerCount   int    `json:"blockerCount"`
+	Owner          string   `json:"owner"`
+	BlockerCount   int      `json:"blockerCount"`
 	BlockerTypes   []string `json:"blockerTypes,omitempty"`
-	RiskyAreaCount int    `json:"riskyAreaCount"`
+	RiskyAreaCount int      `json:"riskyAreaCount"`
 }
 
 // BuildHealthSummaries aggregates health signals by owner.
@@ -78,12 +78,12 @@ func BuildHealthSummaries(snap *models.TestSuiteSnapshot) []OwnerHealthSummary {
 	for owner, d := range byOwner {
 		total := d.flaky + d.slow + d.skipped
 		s := OwnerHealthSummary{
-			Owner:       owner,
-			FlakyCount:  d.flaky,
-			SlowCount:   d.slow,
+			Owner:        owner,
+			FlakyCount:   d.flaky,
+			SlowCount:    d.slow,
 			SkippedCount: d.skipped,
-			TotalHealth: total,
-			TopFiles:    topFilesByCount(d.files, 3),
+			TotalHealth:  total,
+			TopFiles:     topFilesByCount(d.files, 3),
 		}
 
 		// Determine concentration.

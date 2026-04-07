@@ -19,7 +19,7 @@ import (
 )
 
 func runMigration(subCmd, root string, jsonOutput bool, file, scope string) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptions())
+	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -82,7 +82,7 @@ func runMigration(subCmd, root string, jsonOutput bool, file, scope string) erro
 }
 
 // runExportBenchmark performs analysis and outputs a benchmark-safe JSON export.
-func runExportBenchmark(root string, _ bool) error {
+func runExportBenchmark(root string) error {
 	result, err := engine.RunPipeline(root, defaultPipelineOptions())
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)

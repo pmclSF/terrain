@@ -41,8 +41,8 @@ jobs:
       run: make release-verify
 
   # Only runs if verify passes
-  release:
-    needs: verify
+  npm-release:
+    needs: [verify, go-release]
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v6
@@ -58,11 +58,6 @@ jobs:
       run: npm publish --provenance
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-    - name: Create GitHub Release (npm)
-      uses: softprops/action-gh-release@v2
-      with:
-        generate_release_notes: true
 
   # Build and attach Go binaries, SBOMs, and signatures to the GitHub Release
   go-release:
@@ -95,3 +90,4 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COSIGN_ENABLED: "1"
+        HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}

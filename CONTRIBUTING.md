@@ -1,103 +1,94 @@
 # Contributing to Terrain
 
-## Quick Start (Go Engine)
+## Quick Start
 
 ```bash
 git clone https://github.com/pmclSF/terrain.git
 cd terrain
-make build
-make test
+go build -o terrain ./cmd/terrain
+go test ./cmd/... ./internal/...
 ./terrain analyze
 ```
 
-## Quick Start (Legacy Converter)
+## Project Structure
 
-The JavaScript converter engine is still functional for framework conversion work:
+```
+cmd/terrain/          CLI entry point (30+ commands)
+cmd/terrain-bench/    Benchmark harness
+internal/             47 Go packages (83k lines)
+├── analysis/        Repository scanning and code surface inference
+├── convert/         Go-native test conversion (25 directions)
+├── depgraph/        Dependency graph with 5 reasoning engines
+├── engine/          Pipeline orchestration
+├── impact/          Change-scope analysis
+├── insights/        Prioritized health report
+├── measurement/     5 posture dimensions, 18 measurements
+├── reporting/       14 report renderers
+└── ...              See README.md for full package list
+```
+
+## Development Workflow
 
 ```bash
-npm install
-npm test
+# Build
+go build -o terrain ./cmd/terrain
+
+# Test all Go packages (48 packages)
+go test ./cmd/... ./internal/...
+
+# Verify formatting
+gofmt -l cmd/ internal/
+
+# Run vet
+go vet ./...
+
+# Full release verification (Go + npm + VS Code extension)
+make release-verify
 ```
 
-## Adding a New Framework (Legacy Converter)
+## Adding a New Command
 
-### 1. Create Framework Definition
+1. Create `cmd/terrain/cmd_<name>.go` with the handler function
+2. Add the case to the switch statement in `cmd/terrain/main.go`
+3. Add usage text to `printUsage()` in `main.go`
+4. Add the command to the CLI spec in `docs/cli-spec.md`
+5. Add smoke tests in `cmd/terrain/cli_smoke_test.go`
 
-Create `src/languages/{lang}/frameworks/{name}.js`:
+### Command conventions
 
-```javascript
-export default {
-  name: 'myframework',
-  language: 'javascript',
-  paradigm: 'bdd',       // 'bdd', 'xunit', or 'functional'
-  detect: {
-    imports: [/from ['"]myframework['"]/],
-    globals: [/\bmyGlobal\b/],
-    patterns: [/myFramework\.specific\(/],
-  },
-  parse(content) {
-    // Return IR (intermediate representation) nodes
-    // See existing frameworks for IR node types
-  },
-  emit(irNodes, options) {
-    // Convert IR nodes to target framework code
-    // Return { code, imports }
-  },
-  imports: {
-    default: "import { test } from 'myframework';",
-  },
-};
-```
+- All analysis commands use `defaultPipelineOptionsWithProgress(jsonOutput)` for progress reporting
+- JSON output uses `json.NewEncoder(os.Stdout)` with `SetIndent("", "  ")`
+- Nil slices should be converted to empty slices before JSON encoding (serialize as `[]` not `null`)
+- Error messages go to stderr: `fmt.Fprintf(os.Stderr, "error: %v\n", err)`
+- Exit codes: 0 = success, 1 = error, 2 = usage error / policy violation
+- Commands with positional args use `reorderCLIArgs()` to support flags in any position
 
-### 2. Register in ConverterFactory
+## Adding a New Conversion Direction
 
-In `src/core/ConverterFactory.js`:
+Extend the conversion runtime under `internal/convert`:
 
-- Add to `FRAMEWORKS` constant
-- Add to `FRAMEWORK_LANGUAGE` map
-- Add conversion directions to `PIPELINE_DIRECTIONS`
-
-### 3. Write Fixture Tests
-
-Create test fixtures as triplets:
-
-```
-test/{lang}/{from}-to-{to}/{category}/{ID}.test.js  # Test file
-test/{lang}/{from}-to-{to}/{category}/{ID}.input.ext # Input fixture
-test/{lang}/{from}-to-{to}/{category}/{ID}.expected.ext # (optional) Expected output
-```
-
-Each test should:
-- Import from the direct file path (not barrels)
-- Use `ConverterFactory.createConverter(from, to)`
-- Test the actual conversion output (no mocks)
-- Cover happy path, edge cases, and error conditions
-
-### 4. Add CLI Shorthands
-
-In `src/cli/shorthands.js`:
-- Add abbreviation to `FRAMEWORK_ABBREV`
-- Add direction entries to `DIRECTIONS`
-- Add to appropriate `CONVERSION_CATEGORIES` group
-
-### 5. Add Config Conversion (if applicable)
-
-If the framework has config files, add conversion rules to `src/core/ConfigConverter.js`.
+1. Add or update the direction entry in `internal/convert/catalog.go`
+2. Implement the source conversion function in `internal/convert/*.go`
+3. Wire directory execution in `internal/convert/execute.go`
+4. Add config conversion support in `internal/convert/config.go` when needed
+5. Add tests alongside the implementation
 
 ## Code Style
 
-- **ES modules** (`import`/`export`) with `.js` extensions on all relative imports
-- **Single quotes**, **2-space indent**, **semicolons always**
-- **No mocks** — test real implementations exclusively
-- **No `require()`** — except `commitlint.config.js`
+- Product logic lives in Go under `cmd/` and `internal/`
+- Keep the npm wrapper thin; `bin/*.js` and `scripts/*.js` are packaging helpers
+- All files must pass `gofmt`
+- All packages must pass `go vet`
+- Prefer deterministic golden and contract tests over broad integration drift
 
 ## Testing Conventions
 
-- Test file naming: `ClassName.test.js` in matching `test/` subdirectory
-- Use `beforeEach` for fresh instances, never share mutable state
-- Jest `expect()` assertions only
-- Async tests use `async/await`
-- Every new public class/function must have test coverage
+- Go tests live next to the package they exercise as `*_test.go`
+- Prefer table-driven tests for catalog, parser, and command-contract coverage
+- Use inline fixtures for focused conversion cases; use `tests/fixtures/` only when repo shape matters
+- Test file write helpers must check errors: `if err := os.WriteFile(...); err != nil { t.Fatal(err) }`
+- Use `t.TempDir()` for temporary directories, not hardcoded `/tmp` paths
+- Keep `go test ./cmd/... ./internal/...` green for product changes
 
 ## Commit Messages
 
@@ -109,18 +100,8 @@ type(scope): description
 
 ## Architecture
 
-### Go Engine (current product direction)
-
 ```
 Repository scan → Signal detection → Risk scoring → Snapshot → Reporting
 ```
 
-See [DESIGN.md](DESIGN.md) for the full architecture overview and [docs/architecture.md](docs/architecture.md) for the layered design.
-
-### Legacy JavaScript converter engine (still functional)
-
-```
-Source Code → Framework Parser → IR Nodes → Framework Emitter → Target Code
-```
-
-See [docs/legacy/converter-architecture-legacy.md](docs/legacy/converter-architecture-legacy.md) for the converter architecture.
+See [DESIGN.md](DESIGN.md) for the full architecture overview, [docs/architecture/](docs/architecture/) for detailed design documents, and the [CLI spec](docs/cli-spec.md) for the complete command reference.

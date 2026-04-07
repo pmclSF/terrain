@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"sync"
 	"testing"
 )
+
+var captureRunMu sync.Mutex
 
 // TestCLISmoke_ReportingCommands runs every reporting command against the
 // fixture repo and verifies no errors or panics. These are smoke tests
@@ -26,7 +29,7 @@ func TestCLISmoke_ReportingCommands(t *testing.T) {
 		{"portfolio", func() error { return runPortfolio(root, true, false) }},
 		{"focus", func() error { return runFocus(root, true, false) }},
 		{"migration", func() error { return runMigration("readiness", root, true, "", "") }},
-		{"benchmark", func() error { return runExportBenchmark(root, true) }},
+		{"benchmark", func() error { return runExportBenchmark(root) }},
 	}
 
 	for _, tt := range tests {
@@ -126,9 +129,25 @@ func TestCLISmoke_PRCommand(t *testing.T) {
 	}
 }
 
+// TestCLISmoke_AIBaselineCompare verifies the compare subcommand runs
+// without panicking. It may error if no baseline exists (expected).
+func TestCLISmoke_AIBaselineCompare(t *testing.T) {
+	root := fixtureRoot(t)
+
+	_, _ = captureRun(func() error {
+		// This will likely return "no baseline found" error — that's fine.
+		// We're testing that the command doesn't panic.
+		return runAIBaselineCompare(root, true)
+	})
+	// No assertion on error — "no baseline found" is a valid outcome.
+}
+
 // captureRun redirects os.Stdout, runs fn, and returns captured output.
 // Must NOT be used concurrently — os.Stdout is global.
 func captureRun(fn func() error) ([]byte, error) {
+	captureRunMu.Lock()
+	defer captureRunMu.Unlock()
+
 	old := os.Stdout
 	r, w, pipeErr := os.Pipe()
 	if pipeErr != nil {
@@ -146,4 +165,11 @@ func captureRun(fn func() error) ([]byte, error) {
 	r.Close()
 
 	return buf.Bytes(), fnErr
+}
+
+// runCaptured serializes stdout-affecting commands even when the caller only
+// cares about the returned error or side effects on disk.
+func runCaptured(fn func() error) error {
+	_, err := captureRun(fn)
+	return err
 }

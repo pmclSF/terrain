@@ -73,9 +73,9 @@ func (d *FlakyTestDetector) Detect(results []runtime.TestResult) []models.Signal
 				meta["testId"] = o.testID
 			}
 			signals = append(signals, models.Signal{
-				Type:     "flakyTest",
-				Category: models.CategoryHealth,
-				Severity: models.SeverityMedium,
+				Type:       "flakyTest",
+				Category:   models.CategoryHealth,
+				Severity:   models.SeverityMedium,
 				Confidence: 0.7,
 				Location: models.SignalLocation{
 					File:   o.file,
@@ -113,8 +113,8 @@ func buildFlakySignal(r runtime.TestResult, explanation string) models.Signal {
 			File:   r.File,
 			Symbol: r.Name,
 		},
-		Explanation:     fmt.Sprintf("%s Test: %s", explanation, r.Name),
-		SuggestedAction: "Investigate non-deterministic dependencies, timing issues, or shared mutable state.",
+		Explanation:      fmt.Sprintf("%s Test: %s", explanation, r.Name),
+		SuggestedAction:  "Investigate non-deterministic dependencies, timing issues, or shared mutable state.",
 		EvidenceStrength: models.EvidenceModerate,
 		EvidenceSource:   models.SourceRuntime,
 		Metadata:         meta,

@@ -62,11 +62,11 @@ func (d *AssertionFreeDetector) Detect(snap *models.TestSuiteSnapshot) []models.
 	}
 
 	sigs = append(sigs, models.Signal{
-		Type:     "assertionFreeTest",
-		Category: models.CategoryHealth,
-		Severity: sev,
+		Type:       "assertionFreeTest",
+		Category:   models.CategoryHealth,
+		Severity:   sev,
 		Confidence: 0.7,
-		Location: models.SignalLocation{Repository: "static"},
+		Location:   models.SignalLocation{Repository: "static"},
 		Explanation: fmt.Sprintf(
 			"%d of %d test files have tests but no detectable assertions (%.0f%%).",
 			len(candidates), total, ratio*100,
@@ -89,11 +89,11 @@ func (d *AssertionFreeDetector) Detect(snap *models.TestSuiteSnapshot) []models.
 	}
 	for _, c := range candidates[:limit] {
 		sigs = append(sigs, models.Signal{
-			Type:     "assertionFreeTest",
-			Category: models.CategoryHealth,
-			Severity: models.SeverityMedium,
+			Type:       "assertionFreeTest",
+			Category:   models.CategoryHealth,
+			Severity:   models.SeverityMedium,
 			Confidence: 0.7,
-			Location: models.SignalLocation{File: c.path},
+			Location:   models.SignalLocation{File: c.path},
 			Explanation: fmt.Sprintf(
 				"%s has %d test(s) but no detectable assertions.",
 				c.path, c.tests,

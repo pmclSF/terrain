@@ -11,6 +11,7 @@ package migration
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -320,8 +321,7 @@ func hasCustomMatchers(content string) bool {
 }
 
 func readFile(root, relPath string) string {
-	path := root + "/" + relPath
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(filepath.Join(root, relPath))
 	if err != nil {
 		return ""
 	}
@@ -330,7 +330,7 @@ func readFile(root, relPath string) string {
 
 func frameworkLanguage(framework string) string {
 	switch framework {
-	case "jest", "vitest", "mocha", "jasmine", "cypress", "playwright", "puppeteer", "webdriverio", "testcafe":
+	case "jest", "vitest", "mocha", "jasmine", "cypress", "playwright", "puppeteer", "webdriverio", "testcafe", "node-test":
 		return "js"
 	case "go-testing":
 		return "go"
@@ -339,7 +339,7 @@ func frameworkLanguage(framework string) string {
 	case "junit4", "junit5", "testng":
 		return "java"
 	default:
-		return "js"
+		return ""
 	}
 }
 
@@ -433,10 +433,10 @@ var (
 func detectUnsupportedSetup(content string, framework string) []string {
 	content = stripJSNoise(content)
 	var found []string
-	if framework != "jest" && jestGlobalSetup.MatchString(content) {
+	if framework == "jest" && jestGlobalSetup.MatchString(content) {
 		found = append(found, "jest-global-setup")
 	}
-	if framework != "mocha" && mochaRootHooks.MatchString(content) {
+	if framework == "mocha" && mochaRootHooks.MatchString(content) {
 		found = append(found, "mocha-root-hooks")
 	}
 	if framework == "cypress" && cypressCommands.MatchString(content) {

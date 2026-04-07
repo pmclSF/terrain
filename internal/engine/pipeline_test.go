@@ -22,14 +22,20 @@ func TestPipelineSteps_Integration(t *testing.T) {
 	snap := testdata.HealthyBalancedSnapshot()
 
 	// Step 3 equivalent: run detectors on an in-memory snapshot.
-	registry, rErr := DefaultRegistry(Config{RepoRoot: "."}); if rErr != nil { t.Fatal(rErr) }
+	registry, rErr := DefaultRegistry(Config{RepoRoot: "."})
+	if rErr != nil {
+		t.Fatal(rErr)
+	}
 	registry.Run(snap)
 
 	// Step 5: compute risk surfaces.
 	snap.Risk = scoring.ComputeRisk(snap)
 
 	// Step 6: compute measurements.
-	measRegistry, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measRegistry, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	measSnap := measRegistry.ComputeSnapshot(snap)
 	snap.Measurements = measSnap.ToModel()
 
@@ -61,12 +67,18 @@ func TestPipelineSteps_EmptySnapshot(t *testing.T) {
 	t.Parallel()
 	snap := testdata.EmptySnapshot()
 
-	registry, rErr := DefaultRegistry(Config{RepoRoot: "."}); if rErr != nil { t.Fatal(rErr) }
+	registry, rErr := DefaultRegistry(Config{RepoRoot: "."})
+	if rErr != nil {
+		t.Fatal(rErr)
+	}
 	registry.Run(snap)
 
 	snap.Risk = scoring.ComputeRisk(snap)
 
-	measRegistry, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measRegistry, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	measSnap := measRegistry.ComputeSnapshot(snap)
 	snap.Measurements = measSnap.ToModel()
 
@@ -82,12 +94,18 @@ func TestPipelineSteps_LargeScale(t *testing.T) {
 	t.Parallel()
 	snap := testdata.LargeScaleSnapshot()
 
-	registry, rErr := DefaultRegistry(Config{RepoRoot: "."}); if rErr != nil { t.Fatal(rErr) }
+	registry, rErr := DefaultRegistry(Config{RepoRoot: "."})
+	if rErr != nil {
+		t.Fatal(rErr)
+	}
 	registry.Run(snap)
 
 	snap.Risk = scoring.ComputeRisk(snap)
 
-	measRegistry, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measRegistry, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	measSnap := measRegistry.ComputeSnapshot(snap)
 	snap.Measurements = measSnap.ToModel()
 
@@ -172,10 +190,16 @@ func TestPipelineDeterminism(t *testing.T) {
 	t.Parallel()
 	run := func() string {
 		snap := testdata.HealthyBalancedSnapshot()
-		registry, rErr := DefaultRegistry(Config{RepoRoot: "."}); if rErr != nil { t.Fatal(rErr) }
+		registry, rErr := DefaultRegistry(Config{RepoRoot: "."})
+		if rErr != nil {
+			t.Fatal(rErr)
+		}
 		registry.Run(snap)
 		snap.Risk = scoring.ComputeRisk(snap)
-		measRegistry, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+		measRegistry, mErr := measurement.DefaultRegistry()
+		if mErr != nil {
+			t.Fatal(mErr)
+		}
 		measSnap := measRegistry.ComputeSnapshot(snap)
 		snap.Measurements = measSnap.ToModel()
 		models.SortSnapshot(snap)

@@ -18,8 +18,6 @@ func StructuralRiskMeasurements() []Definition {
 			Units:       UnitsRatio,
 			Inputs: []string{
 				string(signals.SignalMigrationBlocker),
-				string(signals.SignalDeprecatedTestPattern),
-				string(signals.SignalDynamicTestGeneration),
 				string(signals.SignalCustomMatcherRisk),
 			},
 			Compute: computeMigrationBlockerDensity,
@@ -48,15 +46,16 @@ func computeMigrationBlockerDensity(snap *models.TestSuiteSnapshot) Result {
 	if total == 0 {
 		return Result{
 			ID: "structural_risk.migration_blocker_density", Dimension: DimensionStructuralRisk,
-			Value: 0, Units: UnitsRatio, Band: "strong",
+			Value: 0, Units: UnitsRatio, Band: "unknown",
 			Evidence: EvidenceNone, Explanation: "No test files detected.",
 		}
 	}
 
-	count := countSignals(snap,
+	// Only count signals that are NOT already covered by their own dedicated
+	// measurements (deprecated_pattern_share, dynamic_generation_share) to
+	// avoid double-penalizing the structural risk dimension.
+	count := countFileSignals(snap,
 		signals.SignalMigrationBlocker,
-		signals.SignalDeprecatedTestPattern,
-		signals.SignalDynamicTestGeneration,
 		signals.SignalCustomMatcherRisk,
 	)
 	ratio := float64(count) / float64(total)
@@ -66,8 +65,8 @@ func computeMigrationBlockerDensity(snap *models.TestSuiteSnapshot) Result {
 		ID: "structural_risk.migration_blocker_density", Dimension: DimensionStructuralRisk,
 		Value: ratio, Units: UnitsRatio, Band: band,
 		Evidence:    EvidenceStrong,
-		Explanation: fmt.Sprintf("%d migration blocker(s) across %d test file(s) (%.0f%%).", count, total, ratio*100),
-		Inputs:      []string{"migrationBlocker", "deprecatedTestPattern", "dynamicTestGeneration", "customMatcherRisk"},
+		Explanation: fmt.Sprintf("%d test file(s) with migration blocker(s) out of %d (%.0f%%).", count, total, ratio*100),
+		Inputs:      []string{string(signals.SignalMigrationBlocker), string(signals.SignalCustomMatcherRisk)},
 	}
 }
 
@@ -76,12 +75,12 @@ func computeDeprecatedPatternShare(snap *models.TestSuiteSnapshot) Result {
 	if total == 0 {
 		return Result{
 			ID: "structural_risk.deprecated_pattern_share", Dimension: DimensionStructuralRisk,
-			Value: 0, Units: UnitsRatio, Band: "strong",
+			Value: 0, Units: UnitsRatio, Band: "unknown",
 			Evidence: EvidenceNone, Explanation: "No test files detected.",
 		}
 	}
 
-	count := countSignals(snap, signals.SignalDeprecatedTestPattern)
+	count := countFileSignals(snap, signals.SignalDeprecatedTestPattern)
 	ratio := float64(count) / float64(total)
 	band := ratioToBand(ratio, 0.05, 0.15, 0.30)
 
@@ -90,7 +89,7 @@ func computeDeprecatedPatternShare(snap *models.TestSuiteSnapshot) Result {
 		Value: ratio, Units: UnitsRatio, Band: band,
 		Evidence:    EvidenceStrong,
 		Explanation: fmt.Sprintf("%d of %d test file(s) use deprecated patterns (%.0f%%).", count, total, ratio*100),
-		Inputs:      []string{"deprecatedTestPattern"},
+		Inputs:      []string{string(signals.SignalDeprecatedTestPattern)},
 	}
 }
 
@@ -99,12 +98,12 @@ func computeDynamicGenerationShare(snap *models.TestSuiteSnapshot) Result {
 	if total == 0 {
 		return Result{
 			ID: "structural_risk.dynamic_generation_share", Dimension: DimensionStructuralRisk,
-			Value: 0, Units: UnitsRatio, Band: "strong",
+			Value: 0, Units: UnitsRatio, Band: "unknown",
 			Evidence: EvidenceNone, Explanation: "No test files detected.",
 		}
 	}
 
-	count := countSignals(snap, signals.SignalDynamicTestGeneration)
+	count := countFileSignals(snap, signals.SignalDynamicTestGeneration)
 	ratio := float64(count) / float64(total)
 	band := ratioToBand(ratio, 0.05, 0.10, 0.20)
 
@@ -113,6 +112,6 @@ func computeDynamicGenerationShare(snap *models.TestSuiteSnapshot) Result {
 		Value: ratio, Units: UnitsRatio, Band: band,
 		Evidence:    EvidenceStrong,
 		Explanation: fmt.Sprintf("%d of %d test file(s) use dynamic test generation (%.0f%%).", count, total, ratio*100),
-		Inputs:      []string{"dynamicTestGeneration"},
+		Inputs:      []string{string(signals.SignalDynamicTestGeneration)},
 	}
 }

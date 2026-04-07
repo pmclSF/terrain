@@ -13,41 +13,41 @@ import (
 // InitResult holds everything detected during `terrain init`.
 type InitResult struct {
 	// Root is the absolute repository root path.
-	Root string
+	Root string `json:"root"`
 
 	// Frameworks detected at the project level.
-	Frameworks []DetectedFramework
+	Frameworks []DetectedFramework `json:"frameworks"`
 
 	// Languages detected from test files.
-	Languages []string
+	Languages []string `json:"languages"`
 
 	// Artifacts discovered at known paths.
-	Artifacts *ArtifactDiscovery
+	Artifacts *ArtifactDiscovery `json:"artifacts,omitempty"`
 
 	// HasTerrainDir is true if .terrain/ already exists.
-	HasTerrainDir bool
+	HasTerrainDir bool `json:"hasTerrainDir"`
 
 	// HasPolicyFile is true if .terrain/policy.yaml already exists.
-	HasPolicyFile bool
+	HasPolicyFile bool `json:"hasPolicyFile"`
 
 	// HasTerrainYAML is true if terrain.yaml already exists.
-	HasTerrainYAML bool
+	HasTerrainYAML bool `json:"hasTerrainYaml"`
 
 	// TestFileCount is the number of test files discovered.
-	TestFileCount int
+	TestFileCount int `json:"testFileCount"`
 
 	// ConfigPath is the path to the generated config, if any.
-	ConfigPath string
+	ConfigPath string `json:"configPath,omitempty"`
 
 	// PolicyPath is the path to the generated policy, if any.
-	PolicyPath string
+	PolicyPath string `json:"policyPath,omitempty"`
 }
 
 // DetectedFramework captures a framework found during init scanning.
 type DetectedFramework struct {
-	Name       string `json:"name"`
-	Language   string `json:"language"`
-	Source     string `json:"source"` // "config-file", "dependency", "convention"
+	Name       string  `json:"name"`
+	Language   string  `json:"language"`
+	Source     string  `json:"source"` // "config-file", "dependency", "convention"
 	Confidence float64 `json:"confidence"`
 }
 
@@ -88,8 +88,11 @@ func RunInit(root string) (*InitResult, error) {
 			})
 		}
 	}
-	sort.Slice(result.Frameworks, func(i, j int) bool {
-		return result.Frameworks[i].Confidence > result.Frameworks[j].Confidence
+	sort.SliceStable(result.Frameworks, func(i, j int) bool {
+		if result.Frameworks[i].Confidence != result.Frameworks[j].Confidence {
+			return result.Frameworks[i].Confidence > result.Frameworks[j].Confidence
+		}
+		return result.Frameworks[i].Name < result.Frameworks[j].Name
 	})
 
 	// Detect languages from frameworks.
@@ -184,10 +187,12 @@ func generateTerrainYAML(path string, result *InitResult) error {
 	b.WriteString("\n")
 
 	if result.Artifacts != nil && result.Artifacts.CoveragePath != "" {
-		b.WriteString("# Detected coverage: " + result.Artifacts.CoveragePath + " (" + result.Artifacts.CoverageFormat + ")\n")
+		relCov := relativeTo(result.Artifacts.CoveragePath, result.Root)
+		b.WriteString("# Detected coverage: " + relCov + " (" + result.Artifacts.CoverageFormat + ")\n")
 	}
-	if result.Artifacts != nil && len(result.Artifacts.RuntimePaths) > 0 {
-		b.WriteString("# Detected runtime: " + result.Artifacts.RuntimePaths[0] + " (" + result.Artifacts.RuntimeFormats[0] + ")\n")
+	if result.Artifacts != nil && len(result.Artifacts.RuntimePaths) > 0 && len(result.Artifacts.RuntimeFormats) > 0 {
+		relRT := relativeTo(result.Artifacts.RuntimePaths[0], result.Root)
+		b.WriteString("# Detected runtime: " + relRT + " (" + result.Artifacts.RuntimeFormats[0] + ")\n")
 	}
 	b.WriteString("#\n")
 	b.WriteString("# See: docs/examples/manual-coverage.md\n\n")
@@ -224,9 +229,12 @@ func countTestFiles(root string) int {
 		}
 		if d.IsDir() {
 			base := d.Name()
-			if base == "node_modules" || base == ".git" || base == "vendor" ||
-				base == "dist" || base == "build" || base == "__pycache__" ||
-				base == ".venv" || base == "venv" || base == ".terrain" {
+			// Keep in sync with analysis.skipDirs in repository_scan.go.
+			switch base {
+			case ".git", "node_modules", "dist", "build", "benchmarks",
+				"coverage", ".next", ".turbo", ".nuxt", "vendor",
+				"__pycache__", ".pytest_cache", ".mypy_cache", ".tox",
+				".venv", "venv", ".idea", ".vscode", ".terrain", "target":
 				return filepath.SkipDir
 			}
 			return nil
@@ -261,6 +269,14 @@ func isTestFileName(name string) bool {
 		return true
 	}
 	return false
+}
+
+// relativeTo returns path relative to base, falling back to the original path.
+func relativeTo(path, base string) string {
+	if rel, err := filepath.Rel(base, path); err == nil {
+		return rel
+	}
+	return path
 }
 
 func dirExists(path string) bool {

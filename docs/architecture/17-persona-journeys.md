@@ -8,7 +8,7 @@
 > - Journey transitions are first-class — commands produce cross-references that guide the next question
 > - Extended commands (summary, focus, posture, portfolio, metrics, compare, policy, migration) serve specialized decision contexts
 
-**See also:** [09-cli-spec.md](09-cli-spec.md), [docs/product/canonical-user-journeys.md](../product/canonical-user-journeys.md), [docs/product/feature-matrix.md](../product/feature-matrix.md)
+**See also:** [09-cli-spec.md](09-cli-spec.md), [docs/product/canonical-user-journeys.md](../product/canonical-user-journeys.md)
 
 ## Core Journeys
 

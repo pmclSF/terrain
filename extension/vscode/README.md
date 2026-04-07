@@ -21,6 +21,10 @@ Understand your test system without leaving your editor. Terrain analyzes your r
 Install the Terrain CLI:
 
 ```bash
+brew install pmclSF/terrain/mapterrain
+# or
+npm install -g mapterrain
+# or
 go install github.com/pmclSF/terrain/cmd/terrain@latest
 ```
 
@@ -47,7 +51,7 @@ The extension invokes `terrain analyze --json` and `terrain insights --json` in 
 ```
 terrain analyze --json  ─┐
 terrain insights --json  ├─→ report bundle ─→ sidebar views
-terrain migration --json ─┘
+terrain migration readiness --json ─┘
 ```
 
 The extension calls the CLI, parses JSON output, and renders tree views. No business logic is duplicated in the extension — the CLI is the single source of truth.

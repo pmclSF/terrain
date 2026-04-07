@@ -4,7 +4,7 @@
 
 Terrain is a ground-up rewrite of the analysis engine in Go. It introduces a signal-first architecture that maps test suites into structured snapshots, evaluates them across five posture dimensions backed by 18 measurements, and surfaces portfolio intelligence, impact analysis, and migration readiness -- all from a single CLI.
 
-This is a new product direction, not an in-place upgrade. The legacy JavaScript converter engine (test framework conversion across 16 frameworks) remains functional and unchanged.
+This is a new product direction, not an in-place upgrade. Terrain now ships both analysis and framework migration from the same Go-native CLI.
 
 ## Key Capabilities
 
@@ -271,14 +271,14 @@ All commands support `--json` for machine-readable output and `--root PATH` to t
 
 ## Breaking Changes
 
-None. This is a new engine and a new binary. The legacy JavaScript converter engine (`node bin/terrain.js`) is unchanged and continues to work independently.
+None. This is a new engine and a new binary. Framework migration now ships inside the same Go-native `terrain` CLI.
 
 ## Known Limitations
 
 - **Static analysis confidence**: test-to-code linkage is heuristic-based (naming conventions, import analysis). Some coverage relationships may not be detected. Evidence strength metadata indicates where confidence is limited.
 - **Flaky/slow test detection**: without runtime artifacts (`--runtime`), flaky and slow test signals rely on code-level heuristics (retry patterns, timeout values). Provide JUnit XML or Jest JSON for high-confidence runtime signals.
 - **Coverage enrichment**: coverage-dependent measurements (E2E-only units, unit test coverage, coverage breach share) require separate LCOV or Istanbul JSON artifacts passed via `--coverage`.
-- **No hosted benchmarking**: benchmark exports are local JSON files. Cross-repository comparison requires manual aggregation. A hosted benchmarking service is planned but not yet available.
+- **No hosted benchmarking**: benchmark exports are local JSON files. Cross-repository comparison requires manual aggregation.
 - **Single-language heuristics**: code unit extraction and framework detection are strongest for JavaScript/TypeScript, Java, and Python. Other languages receive basic file-level analysis.
 
 ## Getting Started
@@ -286,6 +286,10 @@ None. This is a new engine and a new binary. The legacy JavaScript converter eng
 ### Install
 
 ```bash
+brew install pmclSF/terrain/mapterrain
+# or
+npm install -g mapterrain
+# or
 go install github.com/pmclSF/terrain/cmd/terrain@latest
 ```
 

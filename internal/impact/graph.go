@@ -49,8 +49,8 @@ type ImpactGraph struct {
 	// TestToUnits maps test file paths to code unit IDs.
 	TestToUnits map[string][]string `json:"-"`
 
-	// EdgeIndex maps "sourceID->targetID" to the edge for lookup.
-	EdgeIndex map[string]*ImpactEdge `json:"-"`
+	// EdgeIndex maps "sourceID->targetID" to the index in Edges for lookup.
+	EdgeIndex map[string]int `json:"-"`
 
 	// Stats summarizes graph construction quality.
 	Stats GraphStats `json:"stats"`
@@ -76,7 +76,7 @@ func BuildImpactGraph(snap *models.TestSuiteSnapshot) *ImpactGraph {
 	g := &ImpactGraph{
 		UnitToTests: make(map[string][]string),
 		TestToUnits: make(map[string][]string),
-		EdgeIndex:   make(map[string]*ImpactEdge),
+		EdgeIndex:   make(map[string]int),
 	}
 
 	if snap == nil {
@@ -150,13 +150,17 @@ func BuildImpactGraph(snap *models.TestSuiteSnapshot) *ImpactGraph {
 	// Compute stats.
 	g.computeStats(snap)
 
-	// Sort edges for determinism.
+	// Sort edges for determinism, then rebuild the index since sorting
+	// invalidates the position-based EdgeIndex built during addEdge.
 	sort.Slice(g.Edges, func(i, j int) bool {
 		if g.Edges[i].SourceID != g.Edges[j].SourceID {
 			return g.Edges[i].SourceID < g.Edges[j].SourceID
 		}
 		return g.Edges[i].TargetID < g.Edges[j].TargetID
 	})
+	for i, e := range g.Edges {
+		g.EdgeIndex[e.SourceID+"->"+e.TargetID] = i
+	}
 
 	return g
 }
@@ -164,12 +168,12 @@ func BuildImpactGraph(snap *models.TestSuiteSnapshot) *ImpactGraph {
 // addEdge adds an edge to the graph, avoiding duplicates.
 func (g *ImpactGraph) addEdge(unitID, testPath string, kind EdgeKind, conf Confidence, prov, covType string) {
 	key := unitID + "->" + testPath
-	if existing, ok := g.EdgeIndex[key]; ok {
+	if idx, ok := g.EdgeIndex[key]; ok {
 		// Upgrade confidence if new edge is stronger.
-		if confidenceOrder(conf) < confidenceOrder(existing.Confidence) {
-			existing.Kind = kind
-			existing.Confidence = conf
-			existing.Provenance = prov
+		if confidenceOrder(conf) < confidenceOrder(g.Edges[idx].Confidence) {
+			g.Edges[idx].Kind = kind
+			g.Edges[idx].Confidence = conf
+			g.Edges[idx].Provenance = prov
 		}
 		return
 	}
@@ -182,8 +186,8 @@ func (g *ImpactGraph) addEdge(unitID, testPath string, kind EdgeKind, conf Confi
 		Provenance:   prov,
 		CoverageType: covType,
 	}
+	g.EdgeIndex[key] = len(g.Edges)
 	g.Edges = append(g.Edges, edge)
-	g.EdgeIndex[key] = &g.Edges[len(g.Edges)-1]
 
 	g.UnitToTests[unitID] = append(g.UnitToTests[unitID], testPath)
 	g.TestToUnits[testPath] = append(g.TestToUnits[testPath], unitID)
@@ -205,8 +209,8 @@ func (g *ImpactGraph) TestsForUnit(unitID string) []string {
 	for _, tp := range tests {
 		key := unitID + "->" + tp
 		conf := ConfidenceWeak
-		if edge, ok := g.EdgeIndex[key]; ok {
-			conf = edge.Confidence
+		if idx, ok := g.EdgeIndex[key]; ok {
+			conf = g.Edges[idx].Confidence
 		}
 		sorted = append(sorted, testWithConf{tp, conf})
 	}
@@ -251,7 +255,10 @@ func (g *ImpactGraph) EdgesForUnit(unitID string) []ImpactEdge {
 // EdgeBetween returns the edge between a unit and test, if it exists.
 func (g *ImpactGraph) EdgeBetween(unitID, testPath string) *ImpactEdge {
 	key := unitID + "->" + testPath
-	return g.EdgeIndex[key]
+	if idx, ok := g.EdgeIndex[key]; ok {
+		return &g.Edges[idx]
+	}
+	return nil
 }
 
 // computeStats aggregates graph quality metrics.
@@ -295,7 +302,9 @@ func extractTestSubject(path string) string {
 	// Remove test file suffixes.
 	suffixes := []string{
 		".test.js", ".test.ts", ".test.tsx", ".test.jsx",
+		".test.mjs", ".test.mts", ".test.cjs",
 		".spec.js", ".spec.ts", ".spec.tsx", ".spec.jsx",
+		".spec.mjs", ".spec.mts", ".spec.cjs",
 		"_test.go", "_test.py",
 		".test.java", ".spec.java",
 	}

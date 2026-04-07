@@ -658,6 +658,58 @@ func TestAIPolicy_WarnOnLatencyRegression(t *testing.T) {
 	}
 }
 
+func TestAIPolicy_WarnOnCostRegression(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{Type: "costRegression", Category: models.CategoryAI, Severity: models.SeverityMedium},
+		},
+	}
+	cfg := &policy.Config{
+		Rules: policy.Rules{
+			AI: &policy.AIRules{
+				WarnOnCostRegression: boolPtr(true),
+			},
+		},
+	}
+
+	result := Evaluate(snap, cfg)
+	if result.Pass {
+		t.Error("expected FAIL (cost regression violation emitted)")
+	}
+	if len(result.Violations) != 1 {
+		t.Fatalf("expected 1 violation, got %d", len(result.Violations))
+	}
+	if result.Violations[0].Severity != models.SeverityMedium {
+		t.Errorf("expected medium severity for cost warning, got %s", result.Violations[0].Severity)
+	}
+	rule, _ := result.Violations[0].Metadata["rule"].(string)
+	if rule != "warn_on_cost_regression" {
+		t.Errorf("expected rule warn_on_cost_regression, got %q", rule)
+	}
+}
+
+func TestAIPolicy_WarnOnCostRegression_DisabledSkips(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{Type: "costRegression", Category: models.CategoryAI, Severity: models.SeverityMedium},
+		},
+	}
+	cfg := &policy.Config{
+		Rules: policy.Rules{
+			AI: &policy.AIRules{
+				WarnOnCostRegression: boolPtr(false),
+			},
+		},
+	}
+
+	result := Evaluate(snap, cfg)
+	if !result.Pass {
+		t.Error("expected PASS when cost regression warning is disabled")
+	}
+}
+
 func TestAIPolicy_BlockingSignalTypes(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
@@ -706,12 +758,12 @@ func TestAIPolicy_ConfigParsing(t *testing.T) {
 	cfg := &policy.Config{
 		Rules: policy.Rules{
 			AI: &policy.AIRules{
-				BlockOnSafetyFailure:        boolPtr(true),
-				BlockOnAccuracyRegression:   intPtr(0),
-				BlockOnUncoveredContext:      boolPtr(true),
-				WarnOnLatencyRegression:     boolPtr(true),
-				WarnOnCostRegression:        boolPtr(true),
-				BlockingSignalTypes:         []string{"hallucinationDetected", "aiPolicyViolation"},
+				BlockOnSafetyFailure:      boolPtr(true),
+				BlockOnAccuracyRegression: intPtr(0),
+				BlockOnUncoveredContext:   boolPtr(true),
+				WarnOnLatencyRegression:   boolPtr(true),
+				WarnOnCostRegression:      boolPtr(true),
+				BlockingSignalTypes:       []string{"hallucinationDetected", "aiPolicyViolation"},
 			},
 		},
 	}

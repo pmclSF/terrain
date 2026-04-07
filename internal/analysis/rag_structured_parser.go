@@ -55,12 +55,12 @@ var (
 	jsContextWindowPattern = regexp.MustCompile(`\b(ContextualCompressionRetriever|DocumentCompressor|LLMChainExtractor)\s*\(`)
 
 	// Config value extractors
-	jsChunkSizePattern   = regexp.MustCompile(`chunkSize\s*:\s*(\d+)`)
+	jsChunkSizePattern    = regexp.MustCompile(`chunkSize\s*:\s*(\d+)`)
 	jsChunkOverlapPattern = regexp.MustCompile(`chunkOverlap\s*:\s*(\d+)`)
-	jsTopKPattern        = regexp.MustCompile(`(?:k|topK|topN|top_k|top_n)\s*:\s*(\d+)`)
-	jsModelNamePattern   = regexp.MustCompile(`model(?:Name)?\s*:\s*["']([^"']+)["']`)
-	jsSearchTypePattern  = regexp.MustCompile(`(?:searchType|search_type)\s*:\s*["']([^"']+)["']`)
-	jsPersistDirPattern  = regexp.MustCompile(`(?:persistDir|persist_directory|directory)\s*:\s*["']([^"']+)["']`)
+	jsTopKPattern         = regexp.MustCompile(`(?:k|topK|topN|top_k|top_n)\s*:\s*(\d+)`)
+	jsModelNamePattern    = regexp.MustCompile(`model(?:Name)?\s*:\s*["']([^"']+)["']`)
+	jsSearchTypePattern   = regexp.MustCompile(`(?:searchType|search_type)\s*:\s*["']([^"']+)["']`)
+	jsPersistDirPattern   = regexp.MustCompile(`(?:persistDir|persist_directory|directory)\s*:\s*["']([^"']+)["']`)
 )
 
 func parseRAGStructuredJS(relPath, src string) []models.RAGPipelineSurface {

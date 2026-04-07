@@ -1,11 +1,19 @@
-# Terrain in 5 Minutes
+# Terrain Quickstart
 
-Terrain analyzes your test system without running any tests. It reads your code, test files, and optional coverage/runtime artifacts to surface risk, quality gaps, and actionable findings.
+Understand your test system in 5 minutes. No config, no setup, no test execution required.
+
+Terrain reads your repository — test code, source structure, coverage data, runtime artifacts — and builds a structural model of how your tests relate to your code. From that model it surfaces risk, quality gaps, redundancy, fragile dependencies, and actionable recommendations.
 
 ## Install
 
 ```bash
-# Binary (recommended)
+# Homebrew
+brew install pmclSF/terrain/mapterrain
+
+# npm
+npm install -g mapterrain
+
+# Go binary
 go install github.com/pmclSF/terrain/cmd/terrain@latest
 
 # From source
@@ -29,11 +37,25 @@ The report starts with the most important information:
 
 **Headline** -- a single sentence summarizing the most surprising finding.
 
-**Key Findings** -- the top 3 issues by severity (duplicates, coverage gaps, high-fanout modules).
+**Key Findings** -- the top issues by severity (duplicates, coverage gaps, high-fanout modules).
 
 **What to do next** -- copy-pasteable commands for the highest-impact next steps.
 
 Below that, you'll see the repository profile, signal breakdown, risk posture, and any structural anomalies. Every finding traces back to specific files and signals.
+
+## What Terrain detects
+
+Out of the box, with no configuration:
+
+- **Frameworks**: Jest, Vitest, Playwright, Cypress, pytest, unittest, Go testing, JUnit, TestNG, Mocha, Jasmine, WebdriverIO, Puppeteer, TestCafe, nose2, and more
+- **Languages**: JavaScript, TypeScript, Python, Go, Java
+- **Quality signals**: weak assertions, mock-heavy tests, assertion-free tests, orphaned tests, untested exports
+- **Health signals**: slow tests, flaky tests, skipped tests, dead tests (requires runtime data)
+- **Structural signals**: high-fanout fixtures, duplicate test clusters, coverage gaps
+- **Migration signals**: deprecated patterns, framework fragmentation, blocker density
+- **AI/eval surfaces**: prompts, contexts, datasets, tool definitions, RAG pipelines, eval scenarios
+
+With optional coverage and runtime data, Terrain also detects coverage breaches, runtime budget violations, and stability clusters.
 
 ## Going deeper
 
@@ -84,13 +106,61 @@ A ranked list of findings with effort estimates and suggested actions.
 ### Understand a specific finding
 
 ```bash
-terrain explain <signal-or-test-path>
+# Explain a test file
+terrain explain src/auth/login.test.ts
+
+# Explain the overall test selection strategy
+terrain explain selection
 ```
 
-Traces the reasoning behind any finding back to signals, dependency paths, and scoring rules.
+Shows the reasoning behind any finding — which signals fired, what dependency paths are involved, and how scoring rules produced the decision.
+
+### Track trends over time
+
+```bash
+# Save a snapshot
+terrain analyze --write-snapshot
+
+# Later, compare
+terrain compare
+```
+
+### Check policy compliance in CI
+
+```bash
+terrain policy check --json
+# Exit 0 = pass, 2 = violations
+```
+
+## The four primary questions
+
+Everything in Terrain maps to one of four questions:
+
+| Command | Question |
+|---------|----------|
+| `terrain analyze` | What is the state of our test system? |
+| `terrain insights` | What should we fix? |
+| `terrain impact --base main` | What tests matter for this change? |
+| `terrain explain <target>` | Why did Terrain make this decision? |
+
+## Supporting views
+
+| Command | Purpose |
+|---------|---------|
+| `terrain summary` | Executive summary with risk and trends |
+| `terrain focus` | Prioritized next actions |
+| `terrain posture` | Measurement evidence by dimension |
+| `terrain portfolio` | Cost, breadth, leverage, redundancy |
+| `terrain metrics` | Aggregate metrics scorecard |
+| `terrain select-tests` | Protective test set for CI |
+| `terrain pr --base main` | PR-scoped analysis |
+| `terrain show test <path>` | Drill into a specific test file |
+
+All commands support `--json` for machine-readable output and `--root PATH` to target a specific repository.
 
 ## What's next
 
 - [CLI Reference](cli-spec.md) -- all commands and flags
-- [Signal Catalog](signal-catalog.md) -- the 22+ signal types Terrain detects
+- [Signal Catalog](signal-catalog.md) -- the signal types Terrain detects
+- [Example Reports](examples/) -- sample output for each command
 - [Contributing](contributing/adding-a-measurement.md) -- how to extend Terrain

@@ -30,14 +30,15 @@ import (
 	"github.com/pmclSF/terrain/internal/models"
 )
 
-// ChangeKind describes how an entity was changed.
-type ChangeKind string
+// ChangeKind is an alias for models.ChangeKind so callers can use
+// impact.ChangeAdded etc. without importing models directly.
+type ChangeKind = models.ChangeKind
 
 const (
-	ChangeAdded    ChangeKind = "added"
-	ChangeModified ChangeKind = "modified"
-	ChangeDeleted  ChangeKind = "deleted"
-	ChangeRenamed  ChangeKind = "renamed"
+	ChangeAdded    = models.ChangeAdded
+	ChangeModified = models.ChangeModified
+	ChangeDeleted  = models.ChangeDeleted
+	ChangeRenamed  = models.ChangeRenamed
 )
 
 // Confidence describes how confident the impact mapping is.
@@ -265,9 +266,9 @@ type AffectedBehavior struct {
 
 // ReasonCategories counts impacted tests by reason category.
 type ReasonCategories struct {
-	DirectDependency  int `json:"directDependency"`
-	FixtureDependency int `json:"fixtureDependency"`
-	DirectlyChanged   int `json:"directlyChanged"`
+	DirectDependency   int `json:"directDependency"`
+	FixtureDependency  int `json:"fixtureDependency"`
+	DirectlyChanged    int `json:"directlyChanged"`
 	DirectoryProximity int `json:"directoryProximity"`
 }
 
@@ -423,14 +424,24 @@ func (r *ImpactResult) ApplyManualCoverageOverlay(artifacts []models.ManualCover
 
 // matchesArea checks if a file path falls within a coverage area.
 // Areas can be exact prefixes ("billing-core") or glob-like ("checkout/*").
+// The match enforces path boundaries to avoid "billing" matching "billing-core".
 func matchesArea(filePath, area string) bool {
 	// Strip trailing wildcard for prefix match.
 	prefix := area
 	if len(prefix) > 0 && prefix[len(prefix)-1] == '*' {
 		prefix = prefix[:len(prefix)-1]
 	}
-	// Prefix match on the file path or any of its directory components.
-	return len(filePath) >= len(prefix) && filePath[:len(prefix)] == prefix
+	if len(filePath) < len(prefix) {
+		return false
+	}
+	if filePath[:len(prefix)] != prefix {
+		return false
+	}
+	// Exact match or the next character must be a path separator to
+	// prevent "billing" from matching "billing-core/foo.js".
+	return len(filePath) == len(prefix) ||
+		filePath[len(prefix)] == '/' ||
+		prefix[len(prefix)-1] == '/'
 }
 
 // AnalyzeChangeSet performs impact analysis starting from a ChangeSet.

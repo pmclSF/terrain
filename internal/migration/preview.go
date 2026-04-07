@@ -17,6 +17,7 @@ package migration
 import (
 	"fmt"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
@@ -279,12 +280,12 @@ func unsupportedSetupExplanation(pattern string) string {
 func inferTarget(source string, snap *models.TestSuiteSnapshot) string {
 	// Common migration paths
 	commonTargets := map[string]string{
-		"jest":    "vitest",
-		"mocha":   "vitest",
-		"jasmine": "vitest",
-		"cypress": "playwright",
-		"puppeteer": "playwright",
-		"testcafe":  "playwright",
+		"jest":        "vitest",
+		"mocha":       "vitest",
+		"jasmine":     "vitest",
+		"cypress":     "playwright",
+		"puppeteer":   "playwright",
+		"testcafe":    "playwright",
 		"webdriverio": "playwright",
 	}
 
@@ -388,7 +389,7 @@ func PreviewScope(snap *models.TestSuiteSnapshot, scope string, repoRoot string)
 
 	for _, tf := range snap.TestFiles {
 		dir := filepath.Dir(tf.Path)
-		if scope != "" && !strings.HasPrefix(dir, scope) && dir != scope {
+		if scope != "" && dir != scope && !strings.HasPrefix(dir, scope+"/") {
 			continue
 		}
 
@@ -398,13 +399,9 @@ func PreviewScope(snap *models.TestSuiteSnapshot, scope string, repoRoot string)
 
 	// Sort by difficulty: high → medium → low → unknown
 	diffOrder := map[string]int{"high": 0, "medium": 1, "low": 2, "unknown": 3}
-	for i := 0; i < len(results); i++ {
-		for j := i + 1; j < len(results); j++ {
-			if diffOrder[results[i].Difficulty] > diffOrder[results[j].Difficulty] {
-				results[i], results[j] = results[j], results[i]
-			}
-		}
-	}
+	sort.SliceStable(results, func(i, j int) bool {
+		return diffOrder[results[i].Difficulty] < diffOrder[results[j].Difficulty]
+	})
 
 	return results
 }

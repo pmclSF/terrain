@@ -6,7 +6,7 @@ DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)
 GO_OWNED_PKGS := ./cmd/... ./internal/...
 
-.PHONY: build test lint clean demo benchmark-fetch benchmark-smoke benchmark-full benchmark-stress benchmark-summary install \
+.PHONY: build test lint clean demo benchmark-fetch benchmark-smoke benchmark-full benchmark-stress benchmark-summary benchmark-convert install \
        test-golden test-determinism test-schema test-adversarial test-e2e test-cli test-bench golden-update pr-gate release-gate \
        sbom sbom-cyclonedx sbom-spdx release-dry-run go-release-verify js-release-verify extension-verify release-verify
 
@@ -124,7 +124,7 @@ go-release-verify:
 	go build ./cmd/terrain
 	go test ./cmd/terrain/ -run TestSnapshot -count=1 -v
 
-js-release-verify:
+npm-release-verify:
 	npm ci
 	npm run release:verify
 
@@ -135,12 +135,8 @@ extension-verify:
 
 release-verify:
 	$(MAKE) go-release-verify
-	$(MAKE) js-release-verify
+	$(MAKE) npm-release-verify
 	$(MAKE) extension-verify
-
-# Legacy JavaScript tests (requires Node.js 22+)
-test-legacy:
-	npm test
 
 # ── Public Benchmark Matrix ──────────────────────────────────
 
@@ -166,3 +162,7 @@ benchmark-stress:
 # Just regenerate the summary from existing artifacts
 benchmark-summary:
 	python3 ./scripts/benchmarks/summarize_public_matrix.py
+
+# Compare current Go converters against the legacy JS runtime floor.
+benchmark-convert:
+	go run ./cmd/terrain-convert-bench

@@ -78,7 +78,7 @@ Terrain serves six primary personas, each asking different questions of the same
 | **SRE / Platform Engineer** | CI duration, flaky tests, test selection | `pr` in CI; `select-tests` for fast feedback; `metrics` for dashboards |
 | **AI / ML Engineer** | Eval suite coverage, parametrized test auditing | `analyze` for eval audit; `insights` for redundant evals |
 
-See [Persona Journeys](../architecture/17-persona-journeys.md) and [Feature Matrix](feature-matrix.md) for detailed capability mapping.
+See [Persona Journeys](../architecture/17-persona-journeys.md) for detailed workflow mapping by role.
 
 ## CI Integration
 
@@ -117,9 +117,9 @@ internal/
 
 The pipeline runs in a fixed order: scan → analyze → detect signals → build dependency graph → score → report. Each detector registers with the engine and receives the accumulated state from prior stages.
 
-## Legacy Converter Engine
+## Conversion Runtime
 
-The JavaScript converter engine (`src/`, `bin/terrain.js`) provides multi-framework test conversion across 16 frameworks and 25 conversion directions. It remains functional and is accessible via `node bin/terrain.js` (the npm package entry point). The converter is not currently wired into the Go CLI binary. This engine predates the Go analysis engine and serves as the migration acquisition wedge — the pain of framework migration is what brings teams to Terrain, and the analysis engine turns that pain into broader test intelligence.
+Terrain now ships the framework conversion and migration surface directly in the Go CLI under `terrain convert`, `terrain migrate`, `terrain estimate`, `terrain status`, `terrain checklist`, `terrain doctor`, and `terrain convert-config`. Homebrew, npm, and GitHub Releases all deliver the same functional runtime.
 
 ## Current State
 
