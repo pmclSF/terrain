@@ -421,6 +421,36 @@ Usage: `terrain estimate <dir> --from <framework> --to <framework> [flags]`
 
 ---
 
+---
+
+## GitHub Actions
+
+Two workflow templates are provided in `.github/workflows/`:
+
+### `terrain-pr.yml` — Test Selection Gate
+Runs on every PR. Analyzes impact, selects relevant tests, runs them, and posts a PR comment with the results.
+
+### `terrain-ai.yml` — AI Validation Gate
+Runs on every PR. Checks AI surface coverage, runs impact-scoped eval scenario selection, and posts a PR comment with AI validation results. Blocks the PR if the AI gate returns "block" (uncovered safety-critical surfaces, accuracy regressions, etc.).
+
+Both workflows are opt-in — copy them to your repository's `.github/workflows/` directory to enable.
+
+---
+
+## Language Support
+
+| Layer | JS/TS | Go | Python | Java |
+|-------|-------|-----|--------|------|
+| Framework detection | ✓ | ✓ | ✓ | ✓ |
+| Code unit extraction | ✓ | ✓ | ✓ | ✓ |
+| Import graph | ✓ full resolver | ✓ AST | ✓ | ✗ heuristic |
+| Fixture detection | ✓ | ✓ | ✓ | ✓ |
+| Impact analysis | Full | Full | Full | Heuristic |
+
+Java import resolution is planned for a future release. Impact analysis for Java projects uses structural heuristics (file path matching, framework conventions) rather than dependency tracing.
+
+---
+
 ## Output rules
 
 ### Human-readable output
