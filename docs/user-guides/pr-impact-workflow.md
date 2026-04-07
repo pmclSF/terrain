@@ -1,7 +1,5 @@
 # PR Impact Workflow
 
-## Stage 128 -- PR Integration Guide
-
 ### Overview
 
 This guide walks through integrating Terrain's impact analysis into your pull request workflow, from local review to automated CI comments and annotations.

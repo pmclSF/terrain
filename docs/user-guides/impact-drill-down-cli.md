@@ -1,7 +1,5 @@
 # Impact Drill-Down CLI
 
-## Stage 129 -- Drill-Down Views Guide
-
 ### Overview
 
 The `terrain impact --show` flag provides six drill-down views into impact analysis results. Each view answers a different question about how a code change relates to the test suite.

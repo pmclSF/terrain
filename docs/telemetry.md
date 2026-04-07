@@ -9,7 +9,7 @@ When enabled, each command invocation appends one JSON line to `~/.terrain/telem
 | Field | Example | Purpose |
 |-------|---------|---------|
 | `ts` | `2026-03-31T12:00:00Z` | When the command ran |
-| `version` | `3.1.0` | Terrain version |
+| `version` | `0.1.0` | Terrain version |
 | `command` | `analyze` | Which command was run |
 | `sizeBand` | `medium` | Test file count band (small/medium/large) |
 | `languages` | `["js","go"]` | Detected languages |

@@ -93,7 +93,7 @@ Test discovery + code surface inference
 | [08-test-similarity-structural-fingerprints.md](08-test-similarity-structural-fingerprints.md) | Duplicate detection algorithm |
 | [09-cli-spec.md](09-cli-spec.md) | CLI commands, flags, and output modes |
 | [10-json-artifact-schemas.md](10-json-artifact-schemas.md) | JSON artifact envelope and schemas |
-| [11-ui-requirements.md](11-ui-requirements.md) | VS Code extension and future UI |
+| *(moved to internal)* | VS Code extension UI requirements |
 | [12-risk-and-coverage-taxonomy.md](12-risk-and-coverage-taxonomy.md) | Risk dimensions and coverage bands |
 | [13-graph-traversal-algorithms.md](13-graph-traversal-algorithms.md) | BFS, reverse reachability, path tracing |
 | [14-evidence-scoring-and-confidence-model.md](14-evidence-scoring-and-confidence-model.md) | Edge confidence and evidence types |
@@ -105,7 +105,7 @@ Test discovery + code surface inference
 | [20-manual-coverage-and-governance-model.md](20-manual-coverage-and-governance-model.md) | Manual test coverage, QA processes, and governance overlays |
 | [21-behavior-surface-derivation.md](21-behavior-surface-derivation.md) | Deriving behavior surfaces from code structure |
 | [22-reasoning-engine.md](22-reasoning-engine.md) | Explainable, traceable reasoning chains for findings |
-| [23-phased-implementation-roadmap.md](23-phased-implementation-roadmap.md) | Implementation phases from current state to full vision |
+| *(moved to internal)* | Implementation phases and roadmap |
 | [24-stability-reasoning.md](24-stability-reasoning.md) | Stability signal aggregation and cluster analysis |
 | [25-redundancy-reasoning.md](25-redundancy-reasoning.md) | Behavior-aware test redundancy detection |
 | [26-device-matrix-foundation.md](26-device-matrix-foundation.md) | Device and environment matrix analysis |

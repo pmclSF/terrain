@@ -9,7 +9,7 @@
 > - Go-native converter fidelity improvements should prefer AST / Tree-sitter-backed rewrites over whole-file regex substitution where practical
 > - Performance must never fall below the legacy JS floor; benchmark gates enforce that contract as converters evolve
 
-**See also:** [09-cli-spec.md](09-cli-spec.md), [23-phased-implementation-roadmap.md](23-phased-implementation-roadmap.md), [../legacy/converter-architecture-legacy.md](../legacy/converter-architecture-legacy.md)
+**See also:** [09-cli-spec.md](09-cli-spec.md), [../legacy/converter-architecture-legacy.md](../legacy/converter-architecture-legacy.md)
 
 ## Goal
 

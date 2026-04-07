@@ -1,6 +1,6 @@
 # Impact Analysis Framework
 
-Stage 121 -- Core framework for change-scoped test intelligence.
+Core framework for change-scoped test intelligence.
 
 ## What Impact Analysis Is
 

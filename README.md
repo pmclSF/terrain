@@ -65,38 +65,43 @@ terrain analyze
 ```
 
 ```
-Terrain Test Suite Analysis
-══════════════════════════════════════════════════
+Terrain — Test Suite Analysis
+============================================================
+
+  conftest.py fixture fans out to 3,100 tests — any change retriggers the frame/ suite.
+
+Key Findings
+------------------------------------------------------------
+  1. [HIGH] 23 source files (18%) have low structural coverage
+  2. [HIGH] 8 duplicate test clusters with 0.91+ similarity
+  3. [MEDIUM] 34 xfail markers older than 180 days
 
 Repository Profile
+------------------------------------------------------------
   Test volume:          very large
   CI pressure:          high
   Coverage confidence:  medium
   Redundancy level:     medium
   Fanout burden:        high
 
-Tests detected:         52,341 across 1,047 test files
-Frameworks:             pytest (100%)
-
-Weak coverage areas:
-  pandas/io/sas/          2 test files, no parametrize coverage for edge encodings
-  pandas/core/internals/  block manager has 4 tests, low relative to complexity
-  pandas/plotting/        matplotlib integration tests skip without display backend
-
-CI optimization potential:
-  Estimated 40% runtime reduction with confidence-based test selection
-  187 tests marked @pytest.mark.slow — clustered in io/ and groupby/
+Validation Inventory
+------------------------------------------------------------
+  Test files:     1,047
+  Test cases:     52,341
+  Frameworks:
+    pytest                1,047 files [unit]
 
 Risk Posture
-  Quality:     medium risk   (weak assertions in 23 test files)
-  Reliability: high risk     (network-dependent tests, xfail clusters)
-  Speed:       high risk     (slow markers, single_cpu constraints)
-  Governance:  low risk
+------------------------------------------------------------
+  health:              MODERATE
+  coverage_depth:      ELEVATED
+  coverage_diversity:  STRONG
+  structural_risk:     STRONG
+  operational_risk:    STRONG
 
-Signals: 1,204 total (38 critical, 187 high, 412 medium, 567 low)
-
-Next: terrain insights    see what to improve
-      terrain impact      analyze a specific change
+Next steps:
+  terrain insights            prioritized actions and recommendations
+  terrain impact              what tests matter for this change?
 ```
 
 ### 2. Insights — find what to improve
@@ -106,27 +111,26 @@ terrain insights
 ```
 
 ```
-Top improvement opportunities:
-  1. Reduce conftest.py fixture fanout in tests/frame/
-     why: dataframe_with_arrays fixture fans out to 3,100 tests —
-          any change retriggers the entire frame/ suite
-     where: pandas/tests/frame/conftest.py
+Terrain — Test System Health Report
+============================================================
 
-  2. Add structural tests for pandas/core/internals/
-     why: Block manager is critical infrastructure with minimal test density
-     where: pandas/core/internals/
+Health Grade: C
 
-  3. Review 34 xfail(strict=False) markers older than 6 months
-     why: Loose xfail masks real regressions — either fix or remove
-     where: pandas/tests/io/, pandas/tests/indexing/
+Reliability Problems (2)
+  [HIGH] 12 flaky tests with >10% failure rate
+  [MEDIUM] 34 skipped tests consuming CI resources
 
-  4. Consolidate duplicate GroupBy aggregation tests
-     why: 8 tests across 3 files with 0.91 similarity — redundant CI cost
-     where: pandas/tests/groupby/
+Coverage Debt (2)
+  [HIGH] 23 source files (18%) have low structural coverage
+  [MEDIUM] conftest.py fixture fans out to 3,100 tests
 
-  5. Split network-dependent I/O tests into isolated suite
-     why: @pytest.mark.network tests fail intermittently, blocking unrelated PRs
-     where: pandas/tests/io/json/, pandas/tests/io/html/
+Recommended Actions
+  1. [reliability] Quarantine 12 flaky tests
+     why: Flaky tests block unrelated PRs and erode CI trust.
+  2. [coverage] Add tests for 23 uncovered source files
+     why: Changes in uncovered files cannot trigger test selection.
+  3. [optimization] Consolidate 8 duplicate test clusters
+     why: 0.91+ similarity — redundant CI cost with no coverage benefit.
 ```
 
 ### 3. Impact — understand what a change affects
@@ -137,44 +141,51 @@ terrain impact --base main
 
 ```
 Terrain Impact Analysis
-══════════════════════════════════════════════════
+============================================================
 
-Changed areas:
-  core/groupby           pandas/core/groupby/groupby.py (+8 -2)
+Summary: 3 file(s) changed, 41 test(s) relevant. Posture: needs_attention.
 
-Impacted tests:          127 / 52,341
+Impacted tests:          127 of 52,341 total
+Coverage confidence:     High
 
-Selected tests (top 10):
-  [high]   tests/groupby/test_groupby.py                confidence: 0.96
-  [high]   tests/groupby/test_apply.py                   confidence: 0.93
-  [high]   tests/groupby/test_grouper.py                 confidence: 0.88
-  [medium] tests/resample/test_base.py                   confidence: 0.61
-  [medium] tests/frame/methods/test_describe.py          confidence: 0.54
-  ...and 117 more
+Recommended Tests (41)
+------------------------------------------------------------
+  tests/groupby/test_groupby.py [exact]
+    Covers: groupby.py:GroupBy.aggregate
+  tests/groupby/test_apply.py [exact]
+    Covers: groupby.py:GroupBy.apply
+  tests/resample/test_base.py [inferred]
+    Reached via shared fixture path
+  ...and 38 more
 
-Insights:
-  conftest.py fixture path amplifies impact — 74 of 127 tests reached via
-  shared fixtures, not direct imports. Consider targeted test run:
-    pytest tests/groupby/ -x -q
+Protection Gaps
+------------------------------------------------------------
+  [medium] pandas/core/groupby/ops.py — no covering tests found
+
+Next steps:
+  terrain impact --show tests      full test list
+  terrain impact --show gaps       all protection gaps
 ```
 
 ### 4. Explain — understand why
 
 ```bash
-terrain explain pandas/tests/io/json/test_pandas.py
+terrain explain tests/io/json/test_pandas.py
 ```
 
 ```
-Test File: pandas/tests/io/json/test_pandas.py
+Test File: tests/io/json/test_pandas.py
 Framework: pytest
 Tests: 84    Assertions: 312
-Runtime: 4.2s    Pass rate: 96%    Retry rate: 4%
 
-Signals (4):
+Signals (3):
   [high]   networkDependency: 12 tests use @pytest.mark.network — flaky in CI
-  [medium] slowTest: 4.2s runtime exceeds 2s threshold
   [medium] weakAssertion: 8 bare assert statements without descriptive messages
   [low]    xfailAccumulation: 3 xfail markers older than 180 days
+
+Next steps:
+  terrain explain selection       explain overall test selection strategy
+  terrain impact --show tests     see all impacted tests
 ```
 
 See [Canonical User Journeys](docs/product/canonical-user-journeys.md) for the full workflow specification and [example outputs](docs/examples/) for detailed report samples.
@@ -197,7 +208,7 @@ Terrain is framework-agnostic and language-aware. The same analysis model applie
 
 - **Frontend teams** — React/Vue component tests, Playwright/Cypress E2E suites, Vitest/Jest unit tests
 - **Backend teams** — Go test suites, pytest collections, JUnit hierarchies, integration test infrastructure
-- **Mobile teams** — XCTest, Espresso, and cross-platform test suites
+- **Mobile teams** — cross-platform test suites with standard test frameworks
 - **QA / SDET** — test portfolio management, coverage gap analysis, migration planning across frameworks
 - **SRE / Platform** — CI optimization, test selection for pipelines, policy enforcement
 - **AI / ML evaluation** — evaluation suite structure, benchmark test management, coverage across model behaviors
@@ -282,27 +293,13 @@ terrain analyze
 
 # JSON output for any command
 terrain analyze --json
+
+# See what a change affects
+terrain impact --base main
+
+# Get prioritized recommendations
+terrain insights
 ```
-
-### npm package layout
-
-The npm package `mapterrain` installs the Terrain CLI as `terrain`. Test framework migration is now part of the main Go-native CLI.
-
-```bash
-# Install Terrain from npm
-npm install -g mapterrain
-
-# Main CLI
-terrain analyze
-
-# Conversion workflow
-terrain convert src/tests/ --from jest --to vitest -o converted/
-
-# Shorthand aliases
-terrain cy2pw src/e2e/ -o converted/
-```
-
-The old npm package `hamlet-converter` is deprecated in favor of `mapterrain`.
 
 ## Commands
 
@@ -343,7 +340,23 @@ The old npm package `hamlet-converter` is deprecated in favor of `mapterrain`.
 | `terrain ai run` | Execute eval scenarios and collect results |
 | `terrain ai replay` | Replay and verify a previous eval run artifact |
 | `terrain ai record` | Record eval results as a baseline snapshot |
-| `terrain ai baseline` | Manage eval baselines (show, compare, promote) |
+| `terrain ai baseline` | Manage eval baselines (show, compare) |
+
+### Conversion / migration
+
+| Command | Purpose |
+|---------|---------|
+| `terrain convert <source>` | Go-native test conversion (25 directions) |
+| `terrain convert-config <source>` | Convert framework config files |
+| `terrain migrate <dir>` | Project-wide migration with state tracking |
+| `terrain estimate <dir>` | Estimate migration complexity |
+| `terrain status` | Show migration progress |
+| `terrain checklist` | Generate migration checklist |
+| `terrain doctor [path]` | Run migration diagnostics |
+| `terrain reset` | Clear migration state |
+| `terrain list-conversions` | List supported conversion directions |
+| `terrain shorthands` | List shorthand aliases (e.g., `cy2pw`, `jest2vt`) |
+| `terrain detect <file-or-dir>` | Detect dominant framework |
 
 ### Advanced / debug
 
@@ -355,7 +368,7 @@ The old npm package `hamlet-converter` is deprecated in favor of `mapterrain`.
 | `terrain debug duplicates` | Duplicate test cluster analysis |
 | `terrain debug depgraph` | Full dependency graph analysis (all engines) |
 
-Repository-scoped commands support `--root PATH`, and machine-readable commands support `--json`. Run `terrain <command> --help` for full flag documentation.
+Repository-scoped commands support `--root PATH`, and machine-readable commands support `--json`. Most analysis commands support `--verbose` for additional detail. Run `terrain <command> --help` for full flag documentation.
 
 ## Architecture Overview
 
@@ -379,45 +392,12 @@ Repository scan  →  Signal detection  →  Risk modeling  →  Reporting
 - **Reports** synthesize signals, risk, trends, and benchmark readiness into actionable output
 
 ```
-cmd/terrain/          CLI entry point and command routing
-cmd/terrain-bench/    Benchmark harness for cross-repo CLI validation
-internal/
-├── analysis/        Repository scanning, framework detection, code surface inference
-├── analyze/         Analyze report builder (depgraph aggregation)
-├── benchmark/       Privacy-safe benchmark export and assessment scoring
-├── comparison/      Snapshot-to-snapshot trend comparison
-├── coverage/        Coverage ingestion (LCOV, Istanbul) and attribution
-├── depgraph/        Dependency graph: 20 node types, 20 edge types, 5 reasoning engines
-├── engine/          Pipeline orchestration and detector registry
-├── explain/         Structured explanation builder (tests + scenarios)
-├── gauntlet/        Gauntlet AI eval artifact ingestion
-├── governance/      Policy evaluation and governance signals
-├── graph/           Import graph construction
-├── health/          Runtime-backed health detectors (slow, flaky, skipped)
-├── heatmap/         Risk concentration model (directory and owner hotspots)
-├── identity/        Test identity hashing and normalization
-├── impact/          Change-scope impact analysis (tests + scenarios)
-├── insights/        Prioritized health report and findings
-├── matrix/          Environment/device matrix analysis
-├── measurement/     Posture measurement framework (5 dimensions, 18 measurements)
-├── metrics/         Aggregate metric derivation
-├── migration/       Migration detectors, readiness model, preview boundary
-├── models/          Canonical data models (Signal, Snapshot, CodeSurface, Scenario, etc.)
-├── ownership/       Ownership resolution (CODEOWNERS, config, directory)
-├── policy/          Policy + terrain.yaml config (scenarios, manual coverage)
-├── portfolio/       Portfolio intelligence (cost, breadth, leverage, redundancy)
-├── quality/         Quality signal detectors
-├── reporting/       Report renderers (analyze, impact, insights, posture, etc.)
-├── runtime/         Runtime artifact ingestion (JUnit XML, Jest JSON)
-├── scoring/         Explainable risk engine (reliability, change, speed)
-├── signals/         Signal detector interface, registry, runner
-├── stability/       Stability clustering (shared root cause detection)
-├── summary/         Executive summary builder
-├── testcase/        Test case extraction and identity collision detection
-└── testtype/        Test type inference (unit, integration, e2e)
+cmd/terrain/     CLI (30+ commands)
+internal/        47 Go packages covering analysis, signals, risk,
+                 impact, depgraph, measurement, reporting, and more
 ```
 
-See [DESIGN.md](DESIGN.md) for the full architecture overview, [docs/architecture/](docs/architecture/) for detailed design documents, and [docs/json-schema.md](docs/json-schema.md) for JSON output structure.
+See [DESIGN.md](DESIGN.md) for the full architecture overview and package map, [docs/architecture/](docs/architecture/) for detailed design documents, and [docs/json-schema.md](docs/json-schema.md) for JSON output structure.
 
 ## Snapshot Workflow
 
@@ -459,35 +439,29 @@ terrain policy check --json # JSON output for CI
 
 Exit code 0 = pass, 2 = violations found, 1 = error.
 
+## Documentation
+
+- [Quickstart Guide](docs/quickstart.md) — understand your first report in 5 minutes
+- [CLI Specification](docs/cli-spec.md) — full command and flag reference
+- [Example Reports](docs/examples/) — analyze, impact, insights, explain output samples
+- [Canonical User Journeys](docs/product/canonical-user-journeys.md) — primary workflows and expected outcomes
+- [Signal Model](docs/signal-model.md) — the core signal abstraction
+- [Architecture](docs/architecture/) — design documents and technical specifications
+- [Contributing](CONTRIBUTING.md) — how to build, test, and extend Terrain
+
 ## Development
 
 ```bash
 # Build
 go build -o terrain ./cmd/terrain
 
-# Test Terrain-owned Go packages
+# Test
 go test ./cmd/... ./internal/...
 
-# Test with verbose output
-go test -v ./cmd/... ./internal/...
-
-# Verify the npm wrapper package
-npm test
-
-# Full release verification (Go + npm package + VS Code extension)
+# Full release verification
 make release-verify
 ```
 
-## Documentation
-
-- [Canonical User Journeys](docs/product/canonical-user-journeys.md) — primary workflows and expected outcomes
-- [Example Reports](docs/examples/) — analyze, impact, insights, explain output samples
-- [Architecture](docs/architecture/) — design documents and technical specifications
-- [CLI Specification](docs/cli-spec.md) — full command and flag reference
-- [Signal Model](docs/signal-model.md) — the core signal abstraction
-- [Engineering](docs/engineering/) — contributor-facing architecture maps and implementation details
-- [Legacy Converter](docs/legacy/) — historical JavaScript converter engine documentation
-
 ## License
 
-MIT License — see [LICENSE](LICENSE) for details.
+Apache License 2.0 — see [LICENSE](LICENSE) for details.
