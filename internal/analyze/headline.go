@@ -8,7 +8,7 @@ import "fmt"
 func deriveHeadline(r *Report) string {
 	if r.SignalSummary.Critical > 0 {
 		return fmt.Sprintf(
-			"Your test suite has %d critical issues requiring immediate attention.",
+			"%d high-priority signal(s) detected — review recommended.",
 			r.SignalSummary.Critical,
 		)
 	}

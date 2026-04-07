@@ -80,6 +80,11 @@ const maxRedundancyTests = 25000
 // to consider two tests as exercising overlapping behavior.
 const minBehaviorOverlap = 0.5
 
+// minSharedSurfaces is the minimum number of shared surfaces required for
+// a cluster to be reported. Clusters sharing only 1-2 surfaces are likely
+// noise from common package imports, not real behavioral redundancy.
+const minSharedSurfaces = 3
+
 // AnalyzeRedundancy detects behavior-aware redundancy in the test suite.
 //
 // Unlike DetectDuplicates (which uses structural fingerprinting), this
@@ -367,6 +372,12 @@ func scoreAndClusterRedundancy(
 		// Classify overlap kind.
 		frameworks := sortedStringKeys(fwSet)
 		kind, rationale := classifyOverlap(frameworks, typeSet, avgOverlap, len(sharedSurfaces))
+
+		// Skip clusters with too few shared surfaces — likely noise from
+		// common package imports rather than real behavioral redundancy.
+		if len(sharedSurfaces) < minSharedSurfaces {
+			continue
+		}
 
 		// Confidence from overlap strength and surface count.
 		confidence := redundancyConfidence(avgOverlap, len(sharedSurfaces), kind)

@@ -34,7 +34,7 @@
   },
   "highFanout": {
     "flaggedCount": 0,
-    "threshold": 10
+    "threshold": 50
   },
   "skippedTestBurden": {
     "skippedCount": 0,

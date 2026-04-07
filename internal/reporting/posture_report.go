@@ -157,7 +157,7 @@ func computeOverallPosture(dimensions []models.DimensionPostureResult) overallPo
 	case measurement.PostureElevated:
 		explanation = fmt.Sprintf("Elevated concerns in %s.", dimLabel)
 	case measurement.PostureCritical:
-		explanation = fmt.Sprintf("Critical issues in %s require immediate attention.", dimLabel)
+		explanation = fmt.Sprintf("Critical risk in %s — review recommended.", dimLabel)
 	}
 
 	return overallPosture{band: band, explanation: explanation}

@@ -846,8 +846,8 @@ func deriveKeyFindings(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph
 	if r.SignalSummary.Critical > 0 {
 		candidates = append(candidates, candidate{
 			finding: KeyFinding{
-				Title:    fmt.Sprintf("%d critical signal(s) detected — immediate attention required", r.SignalSummary.Critical),
-				Severity: "critical",
+				Title:    fmt.Sprintf("%d critical signal(s) detected — review recommended", r.SignalSummary.Critical),
+				Severity: "high",
 				Category: "reliability",
 				Metric:   fmt.Sprintf("%d critical", r.SignalSummary.Critical),
 			},

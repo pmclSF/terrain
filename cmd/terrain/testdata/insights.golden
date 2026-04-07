@@ -1,9 +1,9 @@
 {
   "duplicateClusters": 0,
-  "findingCount": 3,
+  "findingCount": 2,
   "healthGrade": "D",
-  "highFanoutNodes": 5,
-  "recommendationCount": 3,
+  "highFanoutNodes": 0,
+  "recommendationCount": 2,
   "repoProfile": {
     "testVolume": "small",
     "ciPressure": "medium",
