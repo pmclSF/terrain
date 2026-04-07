@@ -76,8 +76,8 @@ func (d *PhantomEvalScenarioDetector) DetectWithGraph(snap *models.TestSuiteSnap
 				scenario.Name, len(scenario.CoveredSurfaceIDs), len(unreachable)),
 			SuggestedAction: "Verify the test file imports and exercises the target code, or correct the surface mapping.",
 			Metadata: map[string]any{
-				"scenarioName":       scenario.Name,
-				"claimedSurfaces":    len(scenario.CoveredSurfaceIDs),
+				"scenarioName":        scenario.Name,
+				"claimedSurfaces":     len(scenario.CoveredSurfaceIDs),
 				"unreachableSurfaces": unreachable,
 			},
 		})

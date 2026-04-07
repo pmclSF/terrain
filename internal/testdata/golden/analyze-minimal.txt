@@ -46,7 +46,7 @@ Posture
 ----------------------------------------
   health:                  STRONG
   coverage_depth:          STRONG
-  coverage_diversity:      WEAK
+  coverage_diversity:      STRONG
   structural_risk:         STRONG
   operational_risk:        STRONG
 

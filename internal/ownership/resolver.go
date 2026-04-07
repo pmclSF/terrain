@@ -66,18 +66,18 @@ type Resolver struct {
 	// no CODEOWNERS file is present. This is enabled by default and can be
 	// disabled via ownership.git_history.auto_when_no_codeowners: false.
 	gitHistoryAutoNoCodeowners bool
-	gitHistoryMaxLogs int
-	gitHistoryOwners  map[string]string
-	gitHistoryLoaded  bool
-	diagnostics       []Diagnostic
+	gitHistoryMaxLogs          int
+	gitHistoryOwners           map[string]string
+	gitHistoryLoaded           bool
+	diagnostics                []Diagnostic
 }
 
 // NewResolver creates a Resolver by loading ownership config and CODEOWNERS
 // from the given repository root. Missing files are handled gracefully.
 func NewResolver(repoRoot string) *Resolver {
 	r := &Resolver{
-		repoRoot:                    repoRoot,
-		gitHistoryAutoNoCodeowners:  true,
+		repoRoot:                   repoRoot,
+		gitHistoryAutoNoCodeowners: true,
 	}
 	r.loadExplicitConfig(repoRoot)
 	r.loadCodeownersFile(repoRoot)

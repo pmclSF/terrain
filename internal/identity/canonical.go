@@ -10,7 +10,8 @@ const Delimiter = "::"
 // Format: {normalized_path}::{suite_hierarchy}::{test_name}
 //
 // If paramSignature is non-empty, it is appended:
-//   {normalized_path}::{suite_hierarchy}::{test_name}::{param_signature}
+//
+//	{normalized_path}::{suite_hierarchy}::{test_name}::{param_signature}
 //
 // All components are normalized before joining.
 func BuildCanonical(filePath string, suiteHierarchy []string, testName string, paramSignature string) string {

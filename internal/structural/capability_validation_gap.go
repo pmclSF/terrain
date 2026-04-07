@@ -8,6 +8,15 @@ import (
 	"github.com/pmclSF/terrain/internal/signals"
 )
 
+// Capability validation gap confidence values.
+const (
+	// capGapNoScenarioConfidence is used when a capability has zero scenarios.
+	capGapNoScenarioConfidence = 0.80
+
+	// capGapNonExecutableConfidence is used when scenarios exist but none are executable.
+	capGapNonExecutableConfidence = 0.65
+)
+
 // CapabilityValidationGapDetector finds inferred AI capabilities with no
 // scenario validation.
 type CapabilityValidationGapDetector struct{}
@@ -49,12 +58,12 @@ func (d *CapabilityValidationGapDetector) DetectWithGraph(snap *models.TestSuite
 
 		if scenarioCount == 0 {
 			severity = models.SeverityHigh
-			confidence = 0.80
+			confidence = capGapNoScenarioConfidence
 			explanation = fmt.Sprintf(
 				"AI capability '%s' has no eval scenarios validating it. Behavioral regressions are undetectable.", name)
 		} else {
 			severity = models.SeverityMedium
-			confidence = 0.65
+			confidence = capGapNonExecutableConfidence
 			explanation = fmt.Sprintf(
 				"AI capability '%s' has %d scenario(s) but none are executable — validation exists only on paper.", name, scenarioCount)
 		}
@@ -70,9 +79,9 @@ func (d *CapabilityValidationGapDetector) DetectWithGraph(snap *models.TestSuite
 			Explanation:      explanation,
 			SuggestedAction:  "Add eval scenarios that exercise this capability to ensure behavioral regression detection.",
 			Metadata: map[string]any{
-				"capabilityName":        name,
-				"scenarioCount":         scenarioCount,
-				"executableScenarios":   executableCount,
+				"capabilityName":      name,
+				"scenarioCount":       scenarioCount,
+				"executableScenarios": executableCount,
 			},
 		})
 	}

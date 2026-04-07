@@ -23,14 +23,14 @@ func goldenPath(t *testing.T, name string) string {
 
 // goldenReport extracts a stable subset of the report for golden comparison.
 type goldenReport struct {
-	HealthGrade     string                       `json:"healthGrade"`
-	FindingCount    int                          `json:"findingCount"`
-	RecCount        int                          `json:"recCount"`
-	Categories      map[Category]int             `json:"categories"`
-	TopFinding      string                       `json:"topFinding,omitempty"`
-	TopRec          string                       `json:"topRec,omitempty"`
-	LimitationCount int                          `json:"limitationCount"`
-	DataSources     int                          `json:"dataSources"`
+	HealthGrade     string           `json:"healthGrade"`
+	FindingCount    int              `json:"findingCount"`
+	RecCount        int              `json:"recCount"`
+	Categories      map[Category]int `json:"categories"`
+	TopFinding      string           `json:"topFinding,omitempty"`
+	TopRec          string           `json:"topRec,omitempty"`
+	LimitationCount int              `json:"limitationCount"`
+	DataSources     int              `json:"dataSources"`
 }
 
 func extractGolden(r *Report) goldenReport {

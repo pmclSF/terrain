@@ -13,17 +13,17 @@ import (
 //
 // Detections:
 //
-//   JS/TS:
-//   - Zod schemas (z.object, z.string, etc.) assigned to tool/output variables
-//   - OpenAI tool registration ({ type: "function", function: { name: ... } })
-//   - LangChain output parsers (StructuredOutputParser, JsonOutputParser)
-//   - Function-calling tool arrays
+//	JS/TS:
+//	- Zod schemas (z.object, z.string, etc.) assigned to tool/output variables
+//	- OpenAI tool registration ({ type: "function", function: { name: ... } })
+//	- LangChain output parsers (StructuredOutputParser, JsonOutputParser)
+//	- Function-calling tool arrays
 //
-//   Python:
-//   - Pydantic BaseModel subclasses used as response models
-//   - Instructor response_model= patterns
-//   - OpenAI tools=[{...}] registration
-//   - LangChain output parsers
+//	Python:
+//	- Pydantic BaseModel subclasses used as response models
+//	- Instructor response_model= patterns
+//	- OpenAI tools=[{...}] registration
+//	- LangChain output parsers
 //
 // Each detection carries tier, confidence, and evidence metadata.
 func ParseToolSchemas(relPath, src, lang string) []models.CodeSurface {

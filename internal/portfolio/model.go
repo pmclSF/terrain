@@ -20,29 +20,29 @@ package portfolio
 type BreadthClass string
 
 const (
-	BreadthNarrow  BreadthClass = "narrow"  // targets specific units
+	BreadthNarrow   BreadthClass = "narrow"   // targets specific units
 	BreadthModerate BreadthClass = "moderate" // covers a module/package
-	BreadthBroad   BreadthClass = "broad"   // spans multiple modules or owners
-	BreadthUnknown BreadthClass = "unknown" // insufficient data
+	BreadthBroad    BreadthClass = "broad"    // spans multiple modules or owners
+	BreadthUnknown  BreadthClass = "unknown"  // insufficient data
 )
 
 // CostClass describes the relative operational cost of a test.
 type CostClass string
 
 const (
-	CostLow     CostClass = "low"
+	CostLow      CostClass = "low"
 	CostModerate CostClass = "moderate"
-	CostHigh    CostClass = "high"
-	CostUnknown CostClass = "unknown"
+	CostHigh     CostClass = "high"
+	CostUnknown  CostClass = "unknown"
 )
 
 // CandidateConfidence describes confidence in a portfolio finding.
 type CandidateConfidence string
 
 const (
-	ConfidenceHigh   CandidateConfidence = "high"
+	ConfidenceHigh     CandidateConfidence = "high"
 	ConfidenceModerate CandidateConfidence = "moderate"
-	ConfidenceLow    CandidateConfidence = "low"
+	ConfidenceLow      CandidateConfidence = "low"
 )
 
 // TestAsset represents a test file viewed as a portfolio asset with

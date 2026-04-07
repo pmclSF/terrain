@@ -49,9 +49,9 @@ func (d *SlowTestDetector) Detect(results []runtime.TestResult) []models.Signal 
 				meta["testId"] = r.TestID
 			}
 			signals = append(signals, models.Signal{
-				Type:     "slowTest",
-				Category: models.CategoryHealth,
-				Severity: sev,
+				Type:       "slowTest",
+				Category:   models.CategoryHealth,
+				Severity:   sev,
 				Confidence: 0.9,
 				Location: models.SignalLocation{
 					File:   r.File,
@@ -61,10 +61,10 @@ func (d *SlowTestDetector) Detect(results []runtime.TestResult) []models.Signal 
 					"Observed runtime %.0fms exceeds threshold %.0fms.",
 					r.DurationMs, threshold,
 				),
-				SuggestedAction: "Reduce fixture/setup cost, split expensive scenarios, or isolate integration-heavy behavior.",
+				SuggestedAction:  "Reduce fixture/setup cost, split expensive scenarios, or isolate integration-heavy behavior.",
 				EvidenceStrength: models.EvidenceStrong,
 				EvidenceSource:   models.SourceRuntime,
-				Metadata: meta,
+				Metadata:         meta,
 			})
 		}
 	}

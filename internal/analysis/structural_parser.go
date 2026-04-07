@@ -492,18 +492,9 @@ func countPyRoleEntries(content string) int {
 func countFewShotEntries(content string) int {
 	// Count distinct objects with input-like keys.
 	// Each { input: ... } or { "input": ... } = one example.
-	count := 0
+	// Use max count of any single key pattern as the example count,
+	// since the same key may appear in quoted and unquoted forms.
 	lower := strings.ToLower(content)
-	for _, pattern := range []string{
-		`"input"`, `'input'`, "input:",
-		`"user"`, `'user'`, "user:",
-		`"question"`, `'question'`, "question:",
-	} {
-		count += strings.Count(lower, pattern)
-	}
-	// Approximate: "input" appears once per object in the array.
-	// But the key may appear as both "input": and "input" in the same object.
-	// Use max of (count of any single key pattern) as the example count.
 	maxSingle := 0
 	for _, key := range []string{"input", "user", "question"} {
 		n := strings.Count(lower, key)

@@ -29,7 +29,7 @@ func EmptySnapshot() *models.TestSuiteSnapshot {
 func MinimalSnapshot() *models.TestSuiteSnapshot {
 	return &models.TestSuiteSnapshot{
 		Repository: models.RepositoryMetadata{
-			Name:     "minimal-repo",
+			Name:      "minimal-repo",
 			Languages: []string{"javascript"},
 		},
 		Frameworks: []models.Framework{
@@ -50,7 +50,7 @@ func MinimalSnapshot() *models.TestSuiteSnapshot {
 func HealthyBalancedSnapshot() *models.TestSuiteSnapshot {
 	return &models.TestSuiteSnapshot{
 		Repository: models.RepositoryMetadata{
-			Name:     "healthy-balanced",
+			Name:      "healthy-balanced",
 			Languages: []string{"javascript"},
 		},
 		Frameworks: []models.Framework{
@@ -97,7 +97,7 @@ func HealthyBalancedSnapshot() *models.TestSuiteSnapshot {
 func FlakyConcentratedSnapshot() *models.TestSuiteSnapshot {
 	return &models.TestSuiteSnapshot{
 		Repository: models.RepositoryMetadata{
-			Name:     "flaky-concentrated",
+			Name:      "flaky-concentrated",
 			Languages: []string{"javascript"},
 		},
 		Frameworks: []models.Framework{
@@ -132,7 +132,7 @@ func FlakyConcentratedSnapshot() *models.TestSuiteSnapshot {
 func E2EHeavySnapshot() *models.TestSuiteSnapshot {
 	return &models.TestSuiteSnapshot{
 		Repository: models.RepositoryMetadata{
-			Name:     "e2e-heavy",
+			Name:      "e2e-heavy",
 			Languages: []string{"javascript"},
 		},
 		Frameworks: []models.Framework{
@@ -170,7 +170,7 @@ func E2EHeavySnapshot() *models.TestSuiteSnapshot {
 func MigrationRiskSnapshot() *models.TestSuiteSnapshot {
 	return &models.TestSuiteSnapshot{
 		Repository: models.RepositoryMetadata{
-			Name:     "migration-risk",
+			Name:      "migration-risk",
 			Languages: []string{"javascript"},
 		},
 		Frameworks: []models.Framework{
@@ -222,7 +222,7 @@ func MigrationRiskSnapshot() *models.TestSuiteSnapshot {
 func LargeScaleSnapshot() *models.TestSuiteSnapshot {
 	snap := &models.TestSuiteSnapshot{
 		Repository: models.RepositoryMetadata{
-			Name:     "large-scale",
+			Name:      "large-scale",
 			Languages: []string{"javascript"},
 		},
 		Frameworks: []models.Framework{

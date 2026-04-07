@@ -205,7 +205,7 @@ func ChangeSetToScope(cs *models.ChangeSet) *ChangeScope {
 	for _, f := range cs.ChangedFiles {
 		scope.ChangedFiles = append(scope.ChangedFiles, ChangedFile{
 			Path:       f.Path,
-			ChangeKind: ChangeKind(f.ChangeKind),
+			ChangeKind: f.ChangeKind,
 			OldPath:    f.OldPath,
 			IsTestFile: f.IsTestFile,
 		})

@@ -21,7 +21,10 @@ func TestE2E_PortfolioIntelligenceFlow(t *testing.T) {
 	t.Parallel()
 	snap := FlakyConcentratedSnapshot()
 	snap.Risk = scoring.ComputeRisk(snap)
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	// Run portfolio analysis.
@@ -111,7 +114,10 @@ func TestE2E_ImpactSelectTestsFlow(t *testing.T) {
 	snap, changedFiles := ChangeScopedPRSnapshot()
 
 	// Compute measurements for a full snapshot.
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	// Create scope and analyze.
@@ -164,7 +170,10 @@ func TestE2E_PostureExplainFlow(t *testing.T) {
 	snap := HealthyBalancedSnapshot()
 	snap.Risk = scoring.ComputeRisk(snap)
 
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	// Posture should have all 5 dimensions.
@@ -182,11 +191,15 @@ func TestE2E_PostureExplainFlow(t *testing.T) {
 	if !strings.Contains(output, "Terrain Posture") {
 		t.Error("expected 'Terrain Posture' header")
 	}
-	// Should contain dimension names.
-	for _, dim := range []string{"HEALTH", "COVERAGE_DEPTH", "STRUCTURAL_RISK"} {
+	// Should contain all 5 human-readable dimension names.
+	for _, dim := range []string{"HEALTH", "COVERAGE DEPTH", "COVERAGE DIVERSITY", "STRUCTURAL RISK", "OPERATIONAL RISK"} {
 		if !strings.Contains(output, dim) {
 			t.Errorf("expected dimension %q in posture output", dim)
 		}
+	}
+	// Should contain overall posture.
+	if !strings.Contains(output, "Overall:") {
+		t.Error("expected overall posture in output")
 	}
 }
 
@@ -215,7 +228,10 @@ func TestE2E_MigrationReadinessFlow(t *testing.T) {
 func TestE2E_ViewModelDrillDowns(t *testing.T) {
 	t.Parallel()
 	snap := HealthyBalancedSnapshot()
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	scope := impact.ChangeScopeFromPaths(

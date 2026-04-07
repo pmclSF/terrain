@@ -15,6 +15,13 @@ import (
 	"github.com/pmclSF/terrain/internal/reporting"
 )
 
+// jsonOut writes v to stdout as indented JSON.
+func jsonOut(v any) error {
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	return enc.Encode(v)
+}
+
 func printShowUsage() {
 	fmt.Fprintln(os.Stderr, "Usage: terrain show <test|unit|codeunit|owner|finding> <id-or-path> [--root PATH] [--json]")
 	fmt.Fprintln(os.Stderr)
@@ -33,6 +40,9 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 
 	// Compute impact result for structured explanation.
 	impactResult, impactErr := computeImpactForExplain(root, baseRef, snap)
+	if impactErr == nil {
+		applyImpactPolicy(impactResult, result)
+	}
 
 	// "selection" mode: explain overall test selection strategy.
 	if target == "selection" {
@@ -44,9 +54,7 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 			return err
 		}
 		if jsonOutput {
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
-			return enc.Encode(sel)
+			return jsonOut(sel)
 		}
 		reporting.RenderSelectionExplanation(os.Stdout, sel, verbose)
 		return nil
@@ -57,9 +65,7 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 		te, err := explain.ExplainTest(target, impactResult)
 		if err == nil {
 			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(te)
+				return jsonOut(te)
 			}
 			reporting.RenderTestExplanation(os.Stdout, te, verbose)
 			return nil
@@ -72,9 +78,7 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 	for _, tf := range snap.TestFiles {
 		if tf.Path == target {
 			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(tf)
+				return jsonOut(tf)
 			}
 			renderTestDetail(tf, snap)
 			return nil
@@ -85,9 +89,7 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 	for _, tc := range snap.TestCases {
 		if tc.TestID == target || tc.CanonicalIdentity == target {
 			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(tc)
+				return jsonOut(tc)
 			}
 			renderTestCaseDetail(tc, snap)
 			return nil
@@ -99,9 +101,7 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 		unitID := cu.Path + ":" + cu.Name
 		if unitID == target || cu.Name == target || cu.Path == target {
 			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(cu)
+				return jsonOut(cu)
 			}
 			renderCodeUnitDetail(cu, snap)
 			return nil
@@ -143,9 +143,7 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 		se, seErr := explain.ExplainScenarioRich(target, impactResult, snap)
 		if seErr == nil {
 			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(se)
+				return jsonOut(se)
 			}
 			renderScenarioExplanation(se, verbose)
 			return nil
@@ -156,9 +154,7 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 	for _, sc := range snap.Scenarios {
 		if sc.ScenarioID == target || sc.Name == target {
 			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(sc)
+				return jsonOut(sc)
 			}
 			fmt.Printf("Scenario: %s\n", sc.Name)
 			fmt.Printf("ID: %s\n", sc.ScenarioID)
@@ -238,8 +234,9 @@ func runShow(entity, id, root string, jsonOutput bool) error {
 		return showOwner(id, snap, jsonOutput)
 	case "finding":
 		return showFinding(id, snap, jsonOutput)
+	default:
+		return fmt.Errorf("unhandled entity type: %q", entity)
 	}
-	return nil
 }
 
 func showTest(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) error {
@@ -247,9 +244,7 @@ func showTest(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) error 
 	for _, tf := range snap.TestFiles {
 		if tf.Path == id {
 			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(tf)
+				return jsonOut(tf)
 			}
 			renderTestDetail(tf, snap)
 			return nil
@@ -259,9 +254,7 @@ func showTest(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) error 
 	for _, tc := range snap.TestCases {
 		if tc.TestID == id || tc.CanonicalIdentity == id {
 			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(tc)
+				return jsonOut(tc)
 			}
 			renderTestCaseDetail(tc, snap)
 			return nil
@@ -275,9 +268,7 @@ func showCodeUnit(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) er
 		unitID := cu.Path + ":" + cu.Name
 		if unitID == id || cu.Name == id || cu.Path == id {
 			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(cu)
+				return jsonOut(cu)
 			}
 			renderCodeUnitDetail(cu, snap)
 			return nil
@@ -316,6 +307,7 @@ func showOwner(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) error
 			data.TestFiles = append(data.TestFiles, tf.Path)
 		}
 	}
+	sort.Strings(data.TestFiles)
 
 	for _, sig := range snap.Signals {
 		if strings.ToLower(sig.Owner) == ownerID {
@@ -331,9 +323,7 @@ func showOwner(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) error
 	}
 
 	if jsonOutput {
-		enc := json.NewEncoder(os.Stdout)
-		enc.SetIndent("", "  ")
-		return enc.Encode(data)
+		return jsonOut(data)
 	}
 
 	fmt.Printf("Owner: %s\n", data.Owner)
@@ -370,9 +360,7 @@ func showFinding(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) err
 			findingID := fmt.Sprintf("%d", i)
 			if findingID == id || f.Type == id {
 				if jsonOutput {
-					enc := json.NewEncoder(os.Stdout)
-					enc.SetIndent("", "  ")
-					return enc.Encode(f)
+					return jsonOut(f)
 				}
 				fmt.Printf("Finding: %s\n", f.Type)
 				fmt.Printf("Path: %s\n", f.Path)
@@ -390,9 +378,7 @@ func showFinding(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) err
 		sigID := fmt.Sprintf("s%d", i)
 		if sigID == id || string(sig.Type) == id {
 			if jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				return enc.Encode(sig)
+				return jsonOut(sig)
 			}
 			fmt.Printf("Signal: %s\n", sig.Type)
 			fmt.Printf("Category: %s\n", sig.Category)
@@ -406,7 +392,7 @@ func showFinding(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) err
 }
 
 func isUniqueCodeUnitName(snap *models.TestSuiteSnapshot, name string) bool {
-	if name == "" {
+	if snap == nil || name == "" {
 		return false
 	}
 	count := 0
@@ -420,4 +406,3 @@ func isUniqueCodeUnitName(snap *models.TestSuiteSnapshot, name string) bool {
 	}
 	return count == 1
 }
-

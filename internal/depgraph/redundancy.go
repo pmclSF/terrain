@@ -264,8 +264,8 @@ func scoreAndClusterRedundancy(
 	uf := newUnionFind(len(tests))
 
 	type pairResult struct {
-		overlap    float64
-		sharedIDs  []string
+		overlap   float64
+		sharedIDs []string
 	}
 	pairData := map[[2]string]pairResult{}
 

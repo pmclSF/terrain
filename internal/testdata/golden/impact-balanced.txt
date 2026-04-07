@@ -32,6 +32,10 @@ Recommended Tests (2)
 
 Impacted Owners: team-payments, team-platform
 
+Limitations
+------------------------------------------------------------
+  * No coverage artifacts provided; protection gaps reflect missing data, not measured absence. Provide --coverage to improve accuracy.
+
 Next steps:
   terrain impact --show selected   view protective test set with reasoning
   terrain impact --show graph       see dependency graph

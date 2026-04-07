@@ -1,0 +1,287 @@
+package convert
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestConvertPytestToUnittestSource_ConvertsAutouseFixtureAndAssert(t *testing.T) {
+	t.Parallel()
+
+	input := `import pytest
+
+@pytest.fixture(autouse=True)
+def setup_data():
+    print("setting up")
+
+def test_example():
+    assert True
+`
+
+	got, err := ConvertPytestToUnittestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPytestToUnittestSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"import unittest",
+		"class TestExample(unittest.TestCase):",
+		"def setUp(self):",
+		"print(\"setting up\")",
+		"def test_example(self):",
+		"self.assertTrue(True)",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+}
+
+func TestConvertUnittestToPytestSource_ConvertsFixtureAndRaises(t *testing.T) {
+	t.Parallel()
+
+	input := `import unittest
+
+class TestExample(unittest.TestCase):
+    def setUp(self):
+        print("setting up")
+
+    def tearDown(self):
+        print("cleaning up")
+
+    def test_example(self):
+        with self.assertRaises(ValueError):
+            int("abc")
+`
+
+	got, err := ConvertUnittestToPytestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertUnittestToPytestSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"import pytest",
+		"@pytest.fixture(autouse=True)",
+		"def setup_teardown():",
+		"yield",
+		"def test_example():",
+		"with pytest.raises(ValueError):",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+}
+
+func TestConvertNose2ToPytestSource_ConvertsParamsAndAssertions(t *testing.T) {
+	t.Parallel()
+
+	input := `from nose2.tools import params
+from nose.tools import assert_equal, assert_true
+
+@params(1, 2, 3)
+def test_param(value):
+    assert_equal(value, value)
+    assert_true(value > 0)
+`
+
+	got, err := ConvertNose2ToPytestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertNose2ToPytestSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"import pytest",
+		"@pytest.mark.parametrize(\"value\", [1, 2, 3])",
+		"assert value == value",
+		"assert value > 0",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+}
+
+func TestConvertNose2ToPytestSource_ConvertsAdditionalAssertionVariants(t *testing.T) {
+	t.Parallel()
+
+	input := `from nose.tools import assert_not_equal, assert_not_in, assert_is_none, assert_is_not_none, assert_greater, assert_less
+
+def test_more():
+    assert_not_equal(left, right)
+    assert_not_in(item, collection)
+    assert_is_none(result)
+    assert_is_not_none(found)
+    assert_greater(total, 1)
+    assert_less(count, 10)
+`
+
+	got, err := ConvertNose2ToPytestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertNose2ToPytestSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"assert left != right",
+		"assert item not in collection",
+		"assert result is None",
+		"assert found is not None",
+		"assert total > 1",
+		"assert count < 10",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+}
+
+func TestExecuteUnittestToPytestDirectory_ConvertsPythonFilesAndPreservesHelpers(t *testing.T) {
+	t.Parallel()
+
+	sourceDir := t.TempDir()
+	outputDir := filepath.Join(t.TempDir(), "converted")
+	testPath := filepath.Join(sourceDir, "test_example.py")
+	helperPath := filepath.Join(sourceDir, "helpers.py")
+	if err := os.WriteFile(testPath, []byte("import unittest\n\nclass TestExample(unittest.TestCase):\n    def test_math(self):\n        self.assertEqual(2 + 2, 4)\n"), 0o644); err != nil {
+		t.Fatalf("write test file: %v", err)
+	}
+	if err := os.WriteFile(helperPath, []byte("VALUE = 42\n"), 0o644); err != nil {
+		t.Fatalf("write helper file: %v", err)
+	}
+
+	direction, ok := LookupDirection("unittest", "pytest")
+	if !ok {
+		t.Fatal("expected unittest -> pytest direction to exist")
+	}
+
+	result, err := Execute(sourceDir, direction, ExecuteOptions{Output: outputDir})
+	if err != nil {
+		t.Fatalf("Execute returned error: %v", err)
+	}
+	if result.Mode != "directory" {
+		t.Fatalf("mode = %q, want directory", result.Mode)
+	}
+
+	convertedTest, err := os.ReadFile(filepath.Join(outputDir, "test_example.py"))
+	if err != nil {
+		t.Fatalf("read converted test: %v", err)
+	}
+	if !strings.Contains(string(convertedTest), "assert 2 + 2 == 4") {
+		t.Fatalf("expected converted pytest assert, got:\n%s", convertedTest)
+	}
+
+	convertedHelper, err := os.ReadFile(filepath.Join(outputDir, "helpers.py"))
+	if err != nil {
+		t.Fatalf("read copied helper: %v", err)
+	}
+	if string(convertedHelper) != "VALUE = 42\n" {
+		t.Fatalf("expected helper file to be preserved, got:\n%s", convertedHelper)
+	}
+}
+
+func TestConvertPytestToUnittestSource_ConvertsParametrizeToSubTestLoop(t *testing.T) {
+	t.Parallel()
+
+	input := `import pytest
+
+@pytest.mark.parametrize("value, expected", [(1, 2), (3, 4)])
+def test_pairs(value, expected):
+    assert value != expected
+`
+
+	got, err := ConvertPytestToUnittestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPytestToUnittestSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"class TestPairs(unittest.TestCase):",
+		"def test_pairs(self):",
+		"for value, expected in [(1, 2), (3, 4)]:",
+		"with self.subTest(value=value, expected=expected):",
+		"self.assertNotEqual(value, expected)",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "manual pytest decorator migration required") {
+		t.Fatalf("expected parametrize decorator to convert without manual TODO, got:\n%s", got)
+	}
+}
+
+func TestConvertPytestToUnittestSource_ConvertsCommonPytestDecorators(t *testing.T) {
+	t.Parallel()
+
+	input := `import pytest
+
+@pytest.mark.skipif(sys.platform == "win32", reason="windows-only")
+def test_skip():
+    assert True
+
+@pytest.mark.xfail
+def test_xfail():
+    assert False
+`
+
+	got, err := ConvertPytestToUnittestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPytestToUnittestSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"@unittest.skipIf(sys.platform == \"win32\", \"windows-only\")",
+		"@unittest.expectedFailure",
+		"self.assertTrue(True)",
+		"self.assertFalse(False)",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "manual pytest decorator migration required") {
+		t.Fatalf("expected supported pytest decorators to convert without manual TODO, got:\n%s", got)
+	}
+}
+
+func TestConvertPytestToUnittestSource_ConvertsRaisesMatchToAssertRaisesRegex(t *testing.T) {
+	t.Parallel()
+
+	input := `import pytest
+
+def test_invalid():
+    with pytest.raises(ValueError, match="boom"):
+        explode()
+`
+
+	got, err := ConvertPytestToUnittestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertPytestToUnittestSource returned error: %v", err)
+	}
+	if !strings.Contains(got, `with self.assertRaisesRegex(ValueError, "boom"):`) {
+		t.Fatalf("expected raises match conversion, got:\n%s", got)
+	}
+}
+
+func TestConvertUnittestToPytestSource_ConvertsComparatorAssertions(t *testing.T) {
+	t.Parallel()
+
+	input := `import unittest
+
+class TestExample(unittest.TestCase):
+    def test_compare(self):
+        self.assertGreater(total, 1)
+        self.assertLessEqual(count, 3)
+        self.assertIs(result, None)
+`
+
+	got, err := ConvertUnittestToPytestSource(input)
+	if err != nil {
+		t.Fatalf("ConvertUnittestToPytestSource returned error: %v", err)
+	}
+	for _, want := range []string{
+		"assert total > 1",
+		"assert count <= 3",
+		"assert result is None",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, got)
+		}
+	}
+}

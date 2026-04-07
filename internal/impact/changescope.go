@@ -1,6 +1,7 @@
 package impact
 
 import (
+	"bytes"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -110,9 +111,11 @@ func gitDiffNameStatus(repoRoot, baseRef string) ([]byte, error) {
 	}
 	cmd := exec.Command("git", args...)
 	cmd.Dir = repoRoot
-	out, err := cmd.CombinedOutput()
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
 	if err != nil {
-		msg := strings.TrimSpace(string(out))
+		msg := strings.TrimSpace(stderr.String())
 		if msg == "" {
 			msg = err.Error()
 		}

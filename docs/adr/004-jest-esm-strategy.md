@@ -1,5 +1,7 @@
 # ADR-004: Jest ESM Strategy and Worker Shutdown Warning
 
+> **Historical note:** This ADR documents the retired JavaScript/Jest runtime that existed before Terrain's Go-native conversion migration was completed on 2026-04-04. It is preserved for historical context only.
+
 ## Status
 
 Accepted (defer migration)
@@ -56,9 +58,9 @@ appear simultaneously.
 
 ### 5. Defer (document and accept)
 
-Accept the warning as a known Jest 29 limitation. Document it in `jest.config.js`
-and `CLAUDE.md` so contributors are not alarmed. Revisit when Jest 30 is
-evaluated for adoption.
+Accept the warning as a known Jest 29 limitation. Document it in the legacy
+runtime contributor notes so contributors are not alarmed. Revisit when Jest 30
+is evaluated for adoption.
 
 ## Decision
 

@@ -1,0 +1,89 @@
+package convert
+
+import (
+	"regexp"
+	"strings"
+)
+
+var (
+	reJasmineCreateSpyReturnValue = regexp.MustCompile(`jasmine\.createSpy(?:\([^)]*\))?\.and\.returnValue\(([^)]+)\)`)
+	reJasmineCreateSpyCallFake    = regexp.MustCompile(`jasmine\.createSpy(?:\([^)]*\))?\.and\.callFake\(([^)]+)\)`)
+	reJasmineCreateSpy            = regexp.MustCompile(`jasmine\.createSpy(?:\([^)]*\))?`)
+	reJasmineSpyOnReturnValue     = regexp.MustCompile(`spyOn\(([^,]+),\s*([^)]+)\)\.and\.returnValue\(([^)]+)\)`)
+	reJasmineSpyOnCallFake        = regexp.MustCompile(`spyOn\(([^,]+),\s*([^)]+)\)\.and\.callFake\(([^)]+)\)`)
+	reJasmineSpyOnCallThrough     = regexp.MustCompile(`spyOn\(([^,]+),\s*([^)]+)\)\.and\.callThrough\(\)`)
+	reJasmineSpyOn                = regexp.MustCompile(`\bspyOn\(([^,]+),\s*([^)]+)\)`)
+	reJasmineClockInstall         = regexp.MustCompile(`jasmine\.clock\(\)\.install\(\)`)
+	reJasmineClockUninstall       = regexp.MustCompile(`jasmine\.clock\(\)\.uninstall\(\)`)
+	reJasmineClockTick            = regexp.MustCompile(`jasmine\.clock\(\)\.tick\(([^)]+)\)`)
+	reJasmineClockMockDate        = regexp.MustCompile(`jasmine\.clock\(\)\.mockDate\(([^)]+)\)`)
+)
+
+var jasmineToJestReplacer = strings.NewReplacer(
+	"jasmine.anything()", "expect.anything()",
+	"jasmine.objectContaining(", "expect.objectContaining(",
+	"jasmine.arrayContaining(", "expect.arrayContaining(",
+	"jasmine.stringMatching(", "expect.stringMatching(",
+	"jasmine.any(", "expect.any(",
+)
+
+// ConvertJasmineToJestSource rewrites the high-confidence Jasmine surface into
+// Go-native Jest output.
+func ConvertJasmineToJestSource(source string) (string, error) {
+	if strings.TrimSpace(source) == "" {
+		return source, nil
+	}
+	if !strings.Contains(source, "jasmine.") &&
+		!strings.Contains(source, "spyOn(") {
+		return ensureTrailingNewline(strings.ReplaceAll(source, "\r\n", "\n")), nil
+	}
+
+	result := strings.ReplaceAll(source, "\r\n", "\n")
+	if astResult, ok := convertJasmineToJestSourceAST(result); ok {
+		return astResult, nil
+	}
+
+	result = replaceCodeRegexMatches(result, reJasmineCreateSpyObj, func(match string, _ []string) string {
+		return convertJasmineCreateSpyObj(match)
+	})
+	result = replaceCodeRegexString(result, reJasmineCreateSpyReturnValue, "jest.fn().mockReturnValue($1)")
+	result = replaceCodeRegexString(result, reJasmineCreateSpyCallFake, "jest.fn().mockImplementation($1)")
+	result = replaceCodeRegexString(result, reJasmineCreateSpy, "jest.fn()")
+	result = replaceCodeRegexString(result, reJasmineSpyOnReturnValue, "jest.spyOn($1, $2).mockReturnValue($3)")
+	result = replaceCodeRegexString(result, reJasmineSpyOnCallFake, "jest.spyOn($1, $2).mockImplementation($3)")
+	result = replaceCodeRegexString(result, reJasmineSpyOnCallThrough, "jest.spyOn($1, $2)")
+	result = replaceCodeRegexString(result, reJasmineSpyOn, "jest.spyOn($1, $2)")
+	result = replaceCodeRegexString(result, reJasmineClockInstall, "jest.useFakeTimers()")
+	result = replaceCodeRegexString(result, reJasmineClockUninstall, "jest.useRealTimers()")
+	result = replaceCodeRegexString(result, reJasmineClockTick, "jest.advanceTimersByTime($1)")
+	result = replaceCodeRegexString(result, reJasmineClockMockDate, "jest.setSystemTime($1)")
+	result = jasmineToJestReplacer.Replace(result)
+	result = commentMatchedLines(result, func(line string) bool {
+		return reJasmineAddMatchers.MatchString(line)
+	}, "manual Jasmine matcher migration required")
+	result = collapseBlankLines(result)
+	return ensureTrailingNewline(result), nil
+}
+
+var reJasmineCreateSpyObj = regexp.MustCompile(`jasmine\.createSpyObj\(\s*['"][^'"]*['"]\s*,\s*\[([^\]]*)\]\s*\)`)
+
+func convertJasmineCreateSpyObj(match string) string {
+	parts := reJasmineCreateSpyObj.FindStringSubmatch(match)
+	if len(parts) < 2 {
+		return match
+	}
+	methods := strings.Split(parts[1], ",")
+	items := make([]string, 0, len(methods))
+	for _, method := range methods {
+		method = strings.TrimSpace(method)
+		method = strings.Trim(method, `"'`)
+		if method == "" {
+			continue
+		}
+		items = append(items, method+": jest.fn()")
+	}
+	if len(items) == 0 {
+		return "{}"
+	}
+	return "{ " + strings.Join(items, ", ") + " }"
+}

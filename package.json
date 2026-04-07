@@ -1,46 +1,14 @@
 {
-  "name": "terrain-testframework",
-  "version": "2.0.2",
-  "description": "Terrain test framework converter — migrate tests between Jest, Vitest, Playwright, Cypress, pytest, JUnit, and 10 more frameworks.",
+  "name": "mapterrain",
+  "version": "0.1.0",
+  "description": "Terrain test intelligence CLI.",
   "type": "module",
-  "main": "src/index.js",
-  "types": "src/types/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./src/types/index.d.ts",
-      "import": "./src/index.js"
-    },
-    "./internals": {
-      "types": "./src/types/internals.d.ts",
-      "import": "./src/internals.js"
-    },
-    "./converters": {
-      "types": "./src/types/converters.d.ts",
-      "import": "./src/converters/index.js"
-    },
-    "./core": {
-      "types": "./src/types/core.d.ts",
-      "import": "./src/core/index.js"
-    }
-  },
   "bin": {
-    "terrain-convert": "bin/terrain.js",
-    "terrain": "bin/terrain-compat.js"
+    "mapterrain": "bin/terrain-cli.js",
+    "terrain": "bin/terrain-cli.js"
   },
   "files": [
     "bin",
-    "src/cli",
-    "src/converter",
-    "src/converters",
-    "src/core",
-    "src/languages",
-    "src/patterns",
-    "src/server",
-    "src/ui",
-    "src/utils",
-    "src/types",
-    "src/index.js",
-    "src/internals.js",
     "README.md",
     "SECURITY.md",
     "LICENSE"
@@ -54,18 +22,22 @@
     "url": "https://github.com/pmclSF/terrain/issues"
   },
   "scripts": {
-    "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
-    "lint": "eslint src/**/*.js bin/**/*.js",
-    "format": "prettier --write \"src/**/*.js\" \"bin/**/*.js\"",
-    "format:check": "prettier --check \"src/**/*.js\" \"bin/**/*.js\"",
-    "start": "node bin/terrain.js",
-    "convert": "node bin/terrain.js",
+    "postinstall": "node bin/postinstall.js",
+    "test": "node scripts/verify-pack.js",
+    "lint": "eslint \"bin/*.js\" \"scripts/*.js\"",
+    "format": "prettier --write \"bin/*.js\" \"scripts/*.js\"",
+    "format:check": "prettier --check \"bin/*.js\" \"scripts/*.js\"",
+    "start": "node bin/terrain-cli.js",
+    "convert": "node bin/terrain-cli.js convert",
     "lint-staged": "lint-staged",
-    "test:staged": "jest --findRelatedTests",
-    "release:verify": "npm run format:check && npm run lint && npm test && node scripts/verify-pack.js",
+    "release:verify": "npm run format:check && npm run lint && npm test",
     "prepublishOnly": "npm run format:check && npm run lint && npm test"
   },
   "keywords": [
+    "terrain",
+    "test-intelligence",
+    "test-analysis",
+    "risk-analysis",
     "playwright",
     "cypress",
     "selenium",
@@ -88,31 +60,19 @@
     "test-migration",
     "test-converter"
   ],
-  "author": "pmcISF",
-  "license": "MIT",
-  "dependencies": {
-    "@babel/parser": "7.29.2",
-    "chalk": "5.6.2",
-    "commander": "14.0.3",
-    "fast-glob": "3.3.3",
-    "pixelmatch": "7.1.0",
-    "pngjs": "7.0.0",
-    "tree-sitter-wasms": "0.1.11",
-    "web-tree-sitter": "0.24.7"
-  },
+  "author": "pmclSF",
+  "license": "Apache-2.0",
+  "dependencies": {},
   "devDependencies": {
     "@commitlint/cli": "^19.6.1",
     "@commitlint/config-conventional": "^19.6.0",
-    "@playwright/test": "^1.40.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-jest": "^29.15.0",
-    "jest": "^29.6.2",
     "lint-staged": "^16.2.7",
     "prettier": "^3.0.0"
   },
   "lint-staged": {
-    "*.{js,ts}": [
+    "{bin,scripts}/*.js": [
       "prettier --write",
       "eslint --fix --max-warnings=0"
     ]

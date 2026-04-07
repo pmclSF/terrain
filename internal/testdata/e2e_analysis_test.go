@@ -30,7 +30,10 @@ func TestE2E_FullAnalysisToSummary(t *testing.T) {
 	snap.Risk = scoring.ComputeRisk(snap)
 
 	// Step 2: Compute measurements.
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	// Step 3: Build heatmap and metrics.
@@ -99,7 +102,10 @@ func TestE2E_ImpactWorkflow(t *testing.T) {
 	snap := HealthyBalancedSnapshot()
 
 	// Compute measurements for a full snapshot.
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	// Create a change scope.
@@ -161,7 +167,10 @@ func TestE2E_MigrationRiskFlow(t *testing.T) {
 
 	// Compute risk and measurements.
 	snap.Risk = scoring.ComputeRisk(snap)
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	ms := metrics.Derive(snap)

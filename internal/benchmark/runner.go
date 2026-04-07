@@ -9,8 +9,8 @@ import (
 // BenchResult holds all command results for a single repo.
 type BenchResult struct {
 	Repo     RepoMeta        `json:"repo"`
-	Commands []CommandResult  `json:"commands"`
-	RunAt    time.Time        `json:"runAt"`
+	Commands []CommandResult `json:"commands"`
+	RunAt    time.Time       `json:"runAt"`
 }
 
 // ProgressFunc is called after each command completes for streaming output.

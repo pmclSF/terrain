@@ -162,7 +162,7 @@ func TestExplainScenarioRich_PromptOnly(t *testing.T) {
 			{ScenarioID: "sc:safety", Name: "safety-check", Category: "safety",
 				ImpactConfidence: impact.ConfidenceExact, Capability: "safety",
 				CoversSurfaces: []string{"surface:src/prompt.ts:buildPrompt"},
-				Relevance: "prompt changed (buildPrompt)"},
+				Relevance:      "prompt changed (buildPrompt)"},
 		},
 	}
 
@@ -205,7 +205,7 @@ func TestExplainScenarioRich_RAGSystem(t *testing.T) {
 			{ScenarioID: "sc:search", Name: "enterprise-search", Category: "accuracy",
 				ImpactConfidence: impact.ConfidenceExact, Capability: "search",
 				CoversSurfaces: []string{"s:chunk"},
-				Relevance: "retrieval config changed (chunkConfig)"},
+				Relevance:      "retrieval config changed (chunkConfig)"},
 		},
 	}
 
@@ -248,8 +248,8 @@ func TestExplainScenarioRich_ToolAgent(t *testing.T) {
 		ImpactedScenarios: []impact.ImpactedScenario{
 			{ScenarioID: "sc:agent", Name: "agent-tool-use", Category: "accuracy",
 				ImpactConfidence: impact.ConfidenceExact,
-				CoversSurfaces: []string{"s:tool", "s:agent"},
-				Relevance: "tool schema changed; agent config changed"},
+				CoversSurfaces:   []string{"s:tool", "s:agent"},
+				Relevance:        "tool schema changed; agent config changed"},
 		},
 	}
 
@@ -283,11 +283,11 @@ func TestExplainScenarioRich_WithSignals(t *testing.T) {
 		},
 		Signals: []models.Signal{
 			{Type: "safetyFailure", Category: models.CategoryAI, Severity: models.SeverityHigh,
-				Location: models.SignalLocation{ScenarioID: "sc:safe"},
+				Location:    models.SignalLocation{ScenarioID: "sc:safe"},
 				Explanation: "Safety eval failed"},
 			{Type: "policyViolation", Category: models.CategoryGovernance, Severity: models.SeverityCritical,
 				Explanation: "Block on safety failure",
-				Metadata: map[string]any{"rule": "block_on_safety_failure"}},
+				Metadata:    map[string]any{"rule": "block_on_safety_failure"}},
 		},
 	}
 	result := &impact.ImpactResult{
@@ -310,4 +310,250 @@ func TestExplainScenarioRich_WithSignals(t *testing.T) {
 	if se.PolicyDecision == "" || se.PolicyDecision == "pass" {
 		t.Errorf("expected blocked policy, got %q", se.PolicyDecision)
 	}
+}
+
+func TestExplainTest_DirectlyChangedTest(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		ImpactedTests: []impact.ImpactedTest{
+			{
+				Path:              "tests/auth.test.ts",
+				Relevance:         "test file directly modified",
+				ImpactConfidence:  impact.ConfidenceExact,
+				IsDirectlyChanged: true,
+			},
+		},
+	}
+
+	te, err := ExplainTest("tests/auth.test.ts", result)
+	if err != nil {
+		t.Fatalf("explain: %v", err)
+	}
+	if te.Verdict == "" {
+		t.Error("expected non-empty verdict")
+	}
+	// buildSyntheticChains should produce a high-confidence chain for directly changed test.
+	if te.StrongestPath == nil {
+		t.Error("expected non-empty StrongestPath for directly changed test")
+	}
+	if te.Confidence < 0.9 {
+		t.Errorf("expected high confidence for directly changed test, got %f", te.Confidence)
+	}
+}
+
+func TestExplainTest_CoversUnits(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		ImpactedTests: []impact.ImpactedTest{
+			{
+				Path:             "tests/billing.test.ts",
+				Relevance:        "covers changed code unit",
+				ImpactConfidence: impact.ConfidenceInferred,
+				CoversUnits:      []string{"src/billing.ts:calculateTotal"},
+			},
+		},
+	}
+
+	te, err := ExplainTest("tests/billing.test.ts", result)
+	if err != nil {
+		t.Fatalf("explain: %v", err)
+	}
+	if te.Verdict == "" {
+		t.Error("expected non-empty verdict")
+	}
+	if te.StrongestPath == nil {
+		t.Error("expected non-empty StrongestPath for test covering units")
+	}
+	if te.Confidence == 0 {
+		t.Error("expected non-zero confidence")
+	}
+}
+
+func TestExplainTest_WeakRelevance(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		ImpactedTests: []impact.ImpactedTest{
+			{
+				Path:             "tests/util.test.ts",
+				Relevance:        "nearby file changed",
+				ImpactConfidence: impact.ConfidenceWeak,
+			},
+		},
+	}
+
+	te, err := ExplainTest("tests/util.test.ts", result)
+	if err != nil {
+		t.Fatalf("explain: %v", err)
+	}
+	if te.Verdict == "" {
+		t.Error("expected non-empty verdict")
+	}
+	if te.Confidence > 0.5 {
+		t.Errorf("expected low confidence for weak relevance, got %f", te.Confidence)
+	}
+}
+
+func TestExplainScenario_NotFound(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{}
+	_, err := ExplainScenario("nonexistent", result)
+	if err == nil {
+		t.Fatal("expected error for nonexistent scenario")
+	}
+}
+
+func TestExplainScenario_NilResult(t *testing.T) {
+	t.Parallel()
+	_, err := ExplainScenario("anything", nil)
+	if err == nil {
+		t.Fatal("expected error for nil result")
+	}
+}
+
+func TestExplainScenario_FoundByName(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		ImpactedScenarios: []impact.ImpactedScenario{
+			{
+				ScenarioID:       "sc:safety",
+				Name:             "safety-check",
+				Category:         "safety",
+				Framework:        "deepeval",
+				ImpactConfidence: impact.ConfidenceExact,
+				CoversSurfaces:   []string{"surface:src/prompt.ts:buildPrompt"},
+				Relevance:        "prompt changed",
+				Capability:       "safety",
+			},
+		},
+	}
+
+	se, err := ExplainScenario("safety-check", result)
+	if err != nil {
+		t.Fatalf("explain: %v", err)
+	}
+	if se.Name != "safety-check" {
+		t.Errorf("name = %q, want safety-check", se.Name)
+	}
+	if se.Category != "safety" {
+		t.Errorf("category = %q, want safety", se.Category)
+	}
+	if se.Capability != "safety" {
+		t.Errorf("capability = %q, want safety", se.Capability)
+	}
+	if len(se.ChangedSurfaces) != 1 {
+		t.Errorf("changed surfaces = %d, want 1", len(se.ChangedSurfaces))
+	}
+	if se.Verdict == "" {
+		t.Error("expected non-empty verdict")
+	}
+}
+
+func TestExplainScenario_SingleSurfaceVerdict(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		ImpactedScenarios: []impact.ImpactedScenario{
+			{
+				ScenarioID:     "sc:1",
+				Name:           "test-scenario",
+				CoversSurfaces: []string{"surface:src/a.ts:fn"},
+			},
+		},
+	}
+
+	se, err := ExplainScenario("test-scenario", result)
+	if err != nil {
+		t.Fatalf("explain: %v", err)
+	}
+	// Single surface verdict should name the specific surface.
+	if se.Verdict == "" || !containsStr(se.Verdict, "surface:src/a.ts:fn") {
+		t.Errorf("expected single-surface verdict to name the surface, got %q", se.Verdict)
+	}
+}
+
+func TestExplainSelection_WithTests(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		SelectedTests: []impact.ImpactedTest{
+			{Path: "tests/auth.test.ts", ImpactConfidence: impact.ConfidenceExact, Relevance: "direct coverage"},
+			{Path: "tests/util.test.ts", ImpactConfidence: impact.ConfidenceWeak, Relevance: "nearby"},
+		},
+		ImpactedTests: []impact.ImpactedTest{
+			{Path: "tests/auth.test.ts", ImpactConfidence: impact.ConfidenceExact, Relevance: "direct coverage"},
+			{Path: "tests/util.test.ts", ImpactConfidence: impact.ConfidenceWeak, Relevance: "nearby"},
+		},
+		CoverageConfidence: "medium",
+		ReasonCategories: impact.ReasonCategories{
+			DirectDependency: 1,
+		},
+	}
+
+	sel, err := ExplainSelection(result)
+	if err != nil {
+		t.Fatalf("explain: %v", err)
+	}
+	if sel.TotalSelected != 2 {
+		t.Errorf("total selected = %d, want 2", sel.TotalSelected)
+	}
+	if sel.Strategy != "exact" {
+		t.Errorf("strategy = %q, want exact", sel.Strategy)
+	}
+	if sel.Summary == "" {
+		t.Error("expected non-empty summary")
+	}
+	if sel.ReasonBreakdown["directDependency"] != 1 {
+		t.Errorf("directDependency count = %d, want 1", sel.ReasonBreakdown["directDependency"])
+	}
+	// Should have bucketed tests by confidence.
+	total := len(sel.HighConfidenceTests) + len(sel.MediumConfidenceTests) + len(sel.LowConfidenceTests)
+	if total != 2 {
+		t.Errorf("bucketed tests = %d, want 2", total)
+	}
+}
+
+func TestFindTest_SuffixMatchInSelectedTests(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		SelectedTests: []impact.ImpactedTest{
+			{Path: "tests/integration/auth.test.ts", Relevance: "selected"},
+		},
+	}
+
+	found, ok := findTest("auth.test.ts", result)
+	if !ok {
+		t.Fatal("expected suffix match on SelectedTests")
+	}
+	if found.Path != "tests/integration/auth.test.ts" {
+		t.Errorf("path = %q", found.Path)
+	}
+}
+
+func TestBuildTestLimitations_WeakConfidence(t *testing.T) {
+	t.Parallel()
+	test := &impact.ImpactedTest{
+		ImpactConfidence: impact.ConfidenceWeak,
+	}
+	result := &impact.ImpactResult{}
+
+	lims := buildTestLimitations(test, result)
+	if len(lims) == 0 {
+		t.Error("expected limitations for weak confidence")
+	}
+	found := false
+	for _, l := range lims {
+		if containsStr(l, "Low confidence") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected 'Low confidence' limitation")
+	}
+}
+
+func containsStr(s, sub string) bool {
+	for i := 0; i <= len(s)-len(sub); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
 }

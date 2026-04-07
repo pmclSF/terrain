@@ -14,15 +14,19 @@ import (
 // The graph is populated in stages:
 //  1. Test structure: TestFile → TestCase → Suite hierarchy
 //  2. Import edges: TestFile → SourceFile (from ImportGraph)
-//  3. Source-to-source edges: SourceFile → SourceFile (from ImportGraph overlap)
-//  4. Code surfaces: CodeSurface → SourceFile (from inferred behavior anchors)
+//  3. Source-to-source edges: SourceFile → SourceFile (real imports + heuristic co-imports)
+//  4. Code surfaces: CodeSurface ��� SourceFile (from inferred behavior anchors)
 //  5. Behavior surfaces: BehaviorSurface → CodeSurface (derived groupings)
 //  6. Fixture surfaces: FixtureSurface → TestFile, Test → Fixture (shared infrastructure)
 //  7. Scenarios: Scenario → CodeSurface/BehaviorSurface (behavioral validation)
-//  8. Manual coverage: ManualCoverageArtifact → CodeSurface (overlay validation)
-//  9. Environments: Environment nodes from CI config inference
-//  10. Environment classes: EnvironmentClass → Environment groupings
-//  11. Device configs: DeviceConfig nodes for device/browser targets
+//  8. AI surface nodes: Promote AI-typed surfaces to NodePrompt/NodeDataset/NodeModel
+//  9. RAG pipeline: RAGPipelineSurface → CodeSurface, Scenario → RAG component
+//  10. Capabilities: Capability nodes from scenario annotations
+//  11. Manual coverage: ManualCoverageArtifact → CodeSurface (overlay validation)
+//  12. Environments: Environment nodes from CI config inference
+//  13. Environment classes: EnvironmentClass → Environment groupings
+//  14. Device configs: DeviceConfig nodes for device/browser targets
+//  15. Environment edges: TestFile/Scenario → Environment/Device targeting
 //
 // The resulting graph enables traversal-based analysis that the flat snapshot
 // indexes cannot support: coverage via reverse edges, impact via BFS with
@@ -412,13 +416,6 @@ func buildFixtureSurfaces(g *Graph, snap *models.TestSuiteSnapshot) {
 		return
 	}
 
-	// Index code surfaces by package+name for fixture→surface linkage.
-	surfaceByPkgName := map[string]string{} // "pkg:name" → surfaceID
-	for _, cs := range snap.CodeSurfaces {
-		key := cs.Package + ":" + strings.ToLower(cs.Name)
-		surfaceByPkgName[key] = cs.SurfaceID
-	}
-
 	for _, fs := range snap.FixtureSurfaces {
 		if fs.FixtureID == "" {
 			continue
@@ -565,7 +562,9 @@ func buildScenarios(g *Graph, snap *models.TestSuiteSnapshot) {
 		if sc.Framework != "" {
 			meta["framework"] = sc.Framework
 		}
-		if !sc.Executable {
+		if sc.Executable {
+			meta["executable"] = "true"
+		} else {
 			meta["executable"] = "false"
 		}
 
@@ -681,6 +680,15 @@ func buildAISurfaceNodes(g *Graph, snap *models.TestSuiteSnapshot) {
 				From:         scenarioID,
 				To:           nodeID,
 				Type:         edgeType,
+				Confidence:   edgeConfidence,
+				EvidenceType: EvidenceInferred,
+			})
+			// Also create a coverage edge so ValidationsForSurface()
+			// recognizes this scenario as validation for the AI node.
+			g.AddEdge(&Edge{
+				From:         scenarioID,
+				To:           nodeID,
+				Type:         EdgeCoversCodeSurface,
 				Confidence:   edgeConfidence,
 				EvidenceType: EvidenceInferred,
 			})
@@ -1188,9 +1196,6 @@ func buildDeviceConfigs(g *Graph, snap *models.TestSuiteSnapshot) {
 	}
 }
 
-// inferPackage extracts a package identifier from a file path.
-// For JS/TS this is typically the first directory; for monorepos it
-// includes the package name (e.g., "packages/compiler-core").
 // sortedMapKeys returns the sorted keys of a map[string]map[string]bool.
 func sortedMapKeys(m map[string]map[string]bool) []string {
 	keys := make([]string, 0, len(m))
@@ -1201,6 +1206,9 @@ func sortedMapKeys(m map[string]map[string]bool) []string {
 	return keys
 }
 
+// inferPackage extracts a package identifier from a file path.
+// For JS/TS this is typically the first directory; for monorepos it
+// includes the package name (e.g., "packages/compiler-core").
 func inferPackage(filePath string) string {
 	parts := strings.Split(filepath.ToSlash(filePath), "/")
 	if len(parts) <= 1 {

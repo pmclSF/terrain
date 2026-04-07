@@ -1,7 +1,5 @@
 # Impact Analysis Model
 
-## Stage 121 -- Product Concept
-
 ### What Is Impact Analysis?
 
 Impact analysis answers a deceptively simple question: **given a code change, which tests matter?**

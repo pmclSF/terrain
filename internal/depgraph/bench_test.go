@@ -200,7 +200,7 @@ func buildLargeSnapshot(testFiles, sourcesPerTest, testsPerFile, scenarios int) 
 		})
 		snap.CodeSurfaces = append(snap.CodeSurfaces, models.CodeSurface{
 			SurfaceID: fmt.Sprintf("surface:src/mod_%d.js:fn", j),
-			Name: "fn", Path: fmt.Sprintf("src/mod_%d.js", j),
+			Name:      "fn", Path: fmt.Sprintf("src/mod_%d.js", j),
 			Kind: models.SurfaceFunction, Exported: true,
 		})
 	}

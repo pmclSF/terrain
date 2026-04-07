@@ -1,7 +1,6 @@
 package reporting
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -13,10 +12,7 @@ import (
 // This report is designed to be paste-ready for leadership updates,
 // technical debt reviews, and migration planning discussions.
 func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Terrain Executive Summary")
 	line(strings.Repeat("=", 50))

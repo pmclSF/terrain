@@ -62,14 +62,24 @@ func AnalyzePR(scope *impact.ChangeScope, snap *models.TestSuiteSnapshot) *PRAna
 // a ChangeSet. This is the preferred entry point for new code.
 func AnalyzePRFromChangeSet(cs *models.ChangeSet, snap *models.TestSuiteSnapshot) *PRAnalysis {
 	result := impact.AnalyzeChangeSet(cs, snap)
+	return buildPRFromImpact(result, snap)
+}
 
+// AnalyzePRFromImpact builds a PR analysis from a pre-computed impact result.
+// Use this when impact analysis has already been performed (e.g., by
+// runImpactPipeline) to avoid redundant recomputation.
+func AnalyzePRFromImpact(result *impact.ImpactResult, snap *models.TestSuiteSnapshot) *PRAnalysis {
+	return buildPRFromImpact(result, snap)
+}
+
+func buildPRFromImpact(result *impact.ImpactResult, snap *models.TestSuiteSnapshot) *PRAnalysis {
 	pr := &PRAnalysis{
 		SchemaVersion: PRAnalysisSchemaVersion,
 		Scope:         result.Scope,
 		ImpactResult:  result,
 	}
 
-	for _, cf := range cs.ChangedFiles {
+	for _, cf := range result.Scope.ChangedFiles {
 		pr.ChangedFileCount++
 		if cf.IsTestFile {
 			pr.ChangedTestCount++

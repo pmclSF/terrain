@@ -110,8 +110,8 @@ func TestChangeSet_MarshalJSON(t *testing.T) {
 func TestChangeSet_ShallowMetadata(t *testing.T) {
 	t.Parallel()
 	cs := &ChangeSet{
-		Source:    "shallow-clone",
-		IsShallow: true,
+		Source:      "shallow-clone",
+		IsShallow:   true,
 		Limitations: []string{"shallow clone: commit history may be incomplete"},
 	}
 

@@ -22,6 +22,7 @@
 //	terrain migration <sub>      readiness, blockers, or preview
 //	terrain policy check         evaluate local policy rules
 //	terrain export benchmark     privacy-safe JSON export for benchmarking
+//	terrain serve                local HTTP server with HTML report and JSON API
 //
 // Advanced / debug:
 //
@@ -40,8 +41,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	conv "github.com/pmclSF/terrain/internal/convert"
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/logging"
+	"github.com/pmclSF/terrain/internal/server"
 	"github.com/pmclSF/terrain/internal/telemetry"
 )
 
@@ -112,6 +115,69 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "convert":
+		if err := runConvertCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "convert-config":
+		if err := runConvertConfigCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "list", "list-conversions":
+		if err := runListConversionsCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "shorthands":
+		if err := runShorthandsCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "detect":
+		if err := runDetectCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "migrate":
+		if err := runMigrateCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "estimate":
+		if err := runEstimateCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "status":
+		if err := runStatusCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "checklist":
+		if err := runChecklistCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "doctor":
+		os.Exit(runDoctorCLI(os.Args[2:]))
+
+	case "reset":
+		if err := runResetCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
 	case "policy":
 		if len(os.Args) < 3 || os.Args[2] != "check" {
 			fmt.Fprintln(os.Stderr, "Usage: terrain policy check [flags]")
@@ -178,7 +244,10 @@ func main() {
 		baseRef := explainCmd.String("base", "", "git base ref for diff (default: HEAD~1)")
 		jsonFlag := explainCmd.Bool("json", false, "output JSON")
 		verboseFlag := explainCmd.Bool("verbose", false, "show detection evidence, tiers, and confidence details")
-		_ = explainCmd.Parse(os.Args[2:])
+		explainFlagsWithValue := map[string]bool{
+			"--root": true, "--base": true,
+		}
+		_ = explainCmd.Parse(reorderCLIArgs(os.Args[2:], explainFlagsWithValue))
 		explainArgs := explainCmd.Args()
 		if len(explainArgs) == 0 {
 			fmt.Fprintln(os.Stderr, "Usage: terrain explain <target> [flags]")
@@ -307,16 +376,48 @@ func main() {
 			printShowUsage()
 			os.Exit(2)
 		}
-		showSubCmd := os.Args[2]
-		showCmd := flag.NewFlagSet("show", flag.ExitOnError)
-		rootFlag := showCmd.String("root", ".", "repository root to analyze")
-		jsonFlag := showCmd.Bool("json", false, "output JSON")
-		_ = showCmd.Parse(os.Args[3:])
-		showArgs := showCmd.Args()
-		showID := ""
-		if len(showArgs) > 0 {
-			showID = showArgs[0]
+		// Separate flags from positional args manually so flags can appear
+		// in any position (e.g., "terrain show --json test foo",
+		// "terrain show test foo --json", or "terrain show test --json foo").
+		var showPositional []string
+		showJSON := false
+		showRoot := "."
+		for _, arg := range os.Args[2:] {
+			switch {
+			case arg == "--json" || arg == "-json":
+				showJSON = true
+			case strings.HasPrefix(arg, "--root="):
+				showRoot = strings.TrimPrefix(arg, "--root=")
+			case strings.HasPrefix(arg, "-root="):
+				showRoot = strings.TrimPrefix(arg, "-root=")
+			case arg == "--root" || arg == "-root":
+				// Next arg would be the root value — handled below.
+				showRoot = ""
+			default:
+				if showRoot == "" {
+					showRoot = arg // consume the value after --root
+				} else {
+					showPositional = append(showPositional, arg)
+				}
+			}
 		}
+		if showRoot == "" {
+			showRoot = "." // --root provided without value; fall back to cwd
+		}
+		showSubCmd := ""
+		showID := ""
+		if len(showPositional) > 0 {
+			showSubCmd = showPositional[0]
+		}
+		if len(showPositional) > 1 {
+			showID = showPositional[1]
+		}
+		if showSubCmd == "" {
+			printShowUsage()
+			os.Exit(2)
+		}
+		rootFlag := &showRoot
+		jsonFlag := &showJSON
 		if err := runShow(showSubCmd, showID, *rootFlag, *jsonFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -338,9 +439,8 @@ func main() {
 		}
 		exportCmd := flag.NewFlagSet("export benchmark", flag.ExitOnError)
 		rootFlag := exportCmd.String("root", ".", "repository root to analyze")
-		jsonFlag := exportCmd.Bool("json", false, "output JSON benchmark export")
 		_ = exportCmd.Parse(os.Args[3:])
-		if err := runExportBenchmark(*rootFlag, *jsonFlag); err != nil {
+		if err := runExportBenchmark(*rootFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -468,6 +568,15 @@ func main() {
 			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
 			jsonFlag := aiCmd.Bool("json", false, "output JSON")
 			_ = aiCmd.Parse(os.Args[3:])
+			// Check for sub-subcommand: terrain ai baseline compare
+			baselineArgs := aiCmd.Args()
+			if len(baselineArgs) > 0 && baselineArgs[0] == "compare" {
+				if err := runAIBaselineCompare(*rootFlag, *jsonFlag); err != nil {
+					fmt.Fprintf(os.Stderr, "error: %v\n", err)
+					os.Exit(1)
+				}
+				return
+			}
 			if err := runAIBaseline(*rootFlag, *jsonFlag); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
@@ -546,9 +655,26 @@ func main() {
 		}
 		fmt.Printf("terrain %s (commit %s, built %s)\n", version, commit, date)
 
+	case "serve":
+		serveCmd := flag.NewFlagSet("serve", flag.ExitOnError)
+		rootFlag := serveCmd.String("root", ".", "repository root to analyze")
+		portFlag := serveCmd.Int("port", server.DefaultPort, "port to listen on")
+		_ = serveCmd.Parse(os.Args[2:])
+		if err := runServe(*rootFlag, *portFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
 	case "--help", "-h", "help":
 		printUsage()
 	default:
+		if _, ok := conv.LookupShorthand(os.Args[1]); ok {
+			if err := runShorthandCLI(os.Args[1], os.Args[2:]); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(exitCodeForCLIError(err))
+			}
+			return
+		}
 		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])
 		printUsage()
 		os.Exit(2)
@@ -597,6 +723,17 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Supporting commands:")
 	fmt.Fprintln(os.Stderr, "  init [flags]             detect data paths and print recommended analyze command")
+	fmt.Fprintln(os.Stderr, "  convert <source> [flags] inspect or execute Go-native conversion directions")
+	fmt.Fprintln(os.Stderr, "  convert-config [flags]   convert framework config files with the Go-native runtime")
+	fmt.Fprintln(os.Stderr, "  migrate <dir> [flags]    run project-wide Go-native conversion workflow")
+	fmt.Fprintln(os.Stderr, "  estimate <dir> [flags]   estimate migration complexity without writing files")
+	fmt.Fprintln(os.Stderr, "  status [flags]           show current migration progress")
+	fmt.Fprintln(os.Stderr, "  checklist [flags]        generate the current migration checklist")
+	fmt.Fprintln(os.Stderr, "  doctor [path] [flags]    run migration diagnostics for a directory")
+	fmt.Fprintln(os.Stderr, "  reset [flags]            clear conversion migration state")
+	fmt.Fprintln(os.Stderr, "  list-conversions [flags] list supported conversion directions")
+	fmt.Fprintln(os.Stderr, "  shorthands [flags]       list shorthand conversion aliases")
+	fmt.Fprintln(os.Stderr, "  detect <file-or-dir>     detect the dominant framework for a file or directory")
 	fmt.Fprintln(os.Stderr, "  summary [flags]          executive summary with risk, trends, benchmark readiness")
 	fmt.Fprintln(os.Stderr, "  focus [flags]            prioritized next actions")
 	fmt.Fprintln(os.Stderr, "  posture [flags]          detailed posture breakdown with measurement evidence")
@@ -609,6 +746,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  migration <sub> [flags]  readiness, blockers, or preview")
 	fmt.Fprintln(os.Stderr, "  policy check [flags]     evaluate local policy rules")
 	fmt.Fprintln(os.Stderr, "  export benchmark [flags] privacy-safe JSON export for benchmarking")
+	fmt.Fprintln(os.Stderr, "  serve [flags]            local HTTP server with HTML report and JSON API")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "AI / eval:")
 	fmt.Fprintln(os.Stderr, "  ai list [flags]          list detected AI/eval scenarios and surfaces")
@@ -627,6 +765,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Benchmark / validation (separate binaries):")
 	fmt.Fprintln(os.Stderr, "  terrain-bench            run benchmark suite across repos (go run ./cmd/terrain-bench)")
+	fmt.Fprintln(os.Stderr, "  terrain-convert-bench    compare Go converters against the legacy JS performance floor")
 	fmt.Fprintln(os.Stderr, "  terrain-truthcheck       validate output against ground truth (go run ./cmd/terrain-truthcheck)")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Common repo-scoped flags:")
@@ -667,7 +806,7 @@ func printDebugUsage() {
 	fmt.Fprintln(os.Stderr, "  coverage    structural coverage analysis")
 	fmt.Fprintln(os.Stderr, "  fanout      high-fanout node analysis")
 	fmt.Fprintln(os.Stderr, "  duplicates  duplicate test cluster analysis")
-	fmt.Fprintln(os.Stderr, "  depgraph    full dependency graph analysis")
+	fmt.Fprintln(os.Stderr, "  depgraph    full dependency graph analysis (supports --show: stats, coverage, duplicates, fanout, impact, profile)")
 }
 
 func printAIUsage() {

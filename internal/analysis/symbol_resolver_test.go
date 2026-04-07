@@ -506,6 +506,10 @@ foo(); bar(); baz();
 func writeTempFileForTest(t *testing.T, root, relPath, content string) {
 	t.Helper()
 	absPath := filepath.Join(root, relPath)
-	os.MkdirAll(filepath.Dir(absPath), 0o755)
-	os.WriteFile(absPath, []byte(content), 0o644)
+	if err := os.MkdirAll(filepath.Dir(absPath), 0o755); err != nil {
+		t.Fatalf("mkdir for %s: %v", relPath, err)
+	}
+	if err := os.WriteFile(absPath, []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", relPath, err)
+	}
 }

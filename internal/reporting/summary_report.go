@@ -1,7 +1,6 @@
 package reporting
 
 import (
-	"fmt"
 	"io"
 	"strings"
 
@@ -11,15 +10,16 @@ import (
 
 // RenderSummaryReport writes a leadership-oriented summary to w.
 func RenderSummaryReport(w io.Writer, snap *models.TestSuiteSnapshot, h *heatmap.Heatmap, opts ...ReportOptions) {
-	_ = isVerbose(opts) // reserved for future verbose heatmap detail
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Terrain Summary")
 	line(strings.Repeat("=", 50))
 	blank()
+
+	if h == nil {
+		line("No heatmap data available.")
+		return
+	}
 
 	// Posture
 	line("Posture: %s", strings.ToUpper(string(h.PostureBand)))

@@ -215,6 +215,10 @@ func (a *Analyzer) AnalyzeContext(ctx context.Context) (*models.TestSuiteSnapsho
 		environments = append(environments, fwMatrix.Environments...)
 		environmentClasses = mergeEnvironmentClasses(environmentClasses, fwMatrix.EnvironmentClasses)
 		deviceConfigs = append(deviceConfigs, fwMatrix.DeviceConfigs...)
+
+		// Wire parsed device and environment IDs to test files so the matrix
+		// analysis engine can compute real coverage per test file.
+		WireMatrixToTestFiles(testFiles, fwMatrix)
 	}
 
 	snapshot := &models.TestSuiteSnapshot{
@@ -228,19 +232,19 @@ func (a *Analyzer) AnalyzeContext(ctx context.Context) (*models.TestSuiteSnapsho
 			CommitSHA:         commitSHA,
 			Branch:            branch,
 		},
-		Frameworks:       frameworks,
-		TestFiles:        testFiles,
-		TestCases:        testCases,
-		CodeUnits:        codeUnits,
-		CodeSurfaces:     codeSurfaces,
-		BehaviorSurfaces: behaviorSurfaces,
+		Frameworks:          frameworks,
+		TestFiles:           testFiles,
+		TestCases:           testCases,
+		CodeUnits:           codeUnits,
+		CodeSurfaces:        codeSurfaces,
+		BehaviorSurfaces:    behaviorSurfaces,
 		FixtureSurfaces:     fixtureSurfaces,
 		RAGPipelineSurfaces: ragComponents,
-		Environments:       environments,
-		EnvironmentClasses: environmentClasses,
-		DeviceConfigs:      deviceConfigs,
-		ImportGraph:        importGraph.TestImports,
-		SourceImports:      importGraph.SourceImports,
+		Environments:        environments,
+		EnvironmentClasses:  environmentClasses,
+		DeviceConfigs:       deviceConfigs,
+		ImportGraph:         importGraph.TestImports,
+		SourceImports:       importGraph.SourceImports,
 		// Signals: populated by detectors after snapshot creation.
 		// Risk: populated by risk engine after signal generation.
 		GeneratedAt: analyzedAt,
@@ -283,51 +287,9 @@ func parallelForEachIndex(n int, fn func(i int)) {
 	wg.Wait()
 }
 
-func populateLinkedCodeUnits(testFiles []models.TestFile, codeUnits []models.CodeUnit, graph *ImportGraph) {
-	if graph == nil || len(graph.TestImports) == 0 || len(testFiles) == 0 || len(codeUnits) == 0 {
-		return
-	}
-
-	unitsByPath := make(map[string][]models.CodeUnit, len(codeUnits))
-	for _, cu := range codeUnits {
-		unitsByPath[cu.Path] = append(unitsByPath[cu.Path], cu)
-	}
-
-	for i := range testFiles {
-		imports := graph.TestImports[testFiles[i].Path]
-		if len(imports) == 0 {
-			continue
-		}
-
-		seen := map[string]bool{}
-		linked := make([]string, 0, 8)
-		for src := range imports {
-			for _, cu := range unitsByPath[src] {
-				id := cu.UnitID
-				if id == "" {
-					id = buildUnitID(cu.Path, cu.Name, cu.ParentName)
-				}
-				if id == "" || seen[id] {
-					continue
-				}
-				seen[id] = true
-				linked = append(linked, id)
-			}
-		}
-		if len(linked) == 0 {
-			continue
-		}
-		sort.Strings(linked)
-		testFiles[i].LinkedCodeUnits = linked
-	}
-}
-
 // extractRAGPipelineComponents scans source files for RAG pipeline components
 // with structured config extraction, then links them to CodeSurfaces.
 func extractRAGPipelineComponents(root string, codeSurfaces []models.CodeSurface, sourceFiles []string) []models.RAGPipelineSurface {
-	testPaths := map[string]bool{} // no test filtering needed here — sourceFiles already filtered
-	_ = testPaths
-
 	componentsByFile := make([][]models.RAGPipelineSurface, len(sourceFiles))
 	parallelForEachIndex(len(sourceFiles), func(i int) {
 		relPath := sourceFiles[i]

@@ -289,7 +289,7 @@ function stateItems(): TerrainTreeItem[] | null {
         makeItem(
           "Is terrain installed?",
           "$(question)",
-          "Install: go install github.com/pmclSF/terrain/cmd/terrain@latest"
+          "Install with Homebrew: brew install pmclSF/terrain/mapterrain or npm: npm install -g mapterrain"
         ),
       ];
     case "loaded":

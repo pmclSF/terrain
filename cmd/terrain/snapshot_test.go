@@ -145,21 +145,21 @@ func runInsightsPipeline(t *testing.T, root string) map[string]any {
 	})
 
 	return map[string]any{
-		"healthGrade":       report.HealthGrade,
-		"findingCount":      len(report.Findings),
+		"healthGrade":         report.HealthGrade,
+		"findingCount":        len(report.Findings),
 		"recommendationCount": len(report.Recommendations),
-		"duplicateClusters": len(dgDupes.Clusters),
-		"highFanoutNodes":   dgFanout.FlaggedCount,
-		"weakCoverageCount": dgCov.BandCounts[depgraph.CoverageBandLow],
-		"repoProfile":       dgProfile,
+		"duplicateClusters":   len(dgDupes.Clusters),
+		"highFanoutNodes":     dgFanout.FlaggedCount,
+		"weakCoverageCount":   dgCov.BandCounts[depgraph.CoverageBandLow],
+		"repoProfile":         dgProfile,
 	}
 }
 
-// runImpactPipeline runs impact analysis against the fixture repo's known git
+// runTestImpactPipeline runs impact analysis against the fixture repo's known git
 // history (HEAD~1 → HEAD) and returns structured output.
 // Mirrors the runImpact() flow in main.go.
 // See docs/examples/impact-report.md for the user-facing output this validates.
-func runImpactPipeline(t *testing.T, root string) map[string]any {
+func runTestImpactPipeline(t *testing.T, root string) map[string]any {
 	t.Helper()
 	result, err := engine.RunPipeline(root, engine.PipelineOptions{EngineVersion: "test"})
 	if err != nil {
@@ -300,7 +300,7 @@ func TestSnapshot_Impact(t *testing.T) {
 		t.Skipf("fixture not found: %s", root)
 	}
 
-	data := runImpactPipeline(t, root)
+	data := runTestImpactPipeline(t, root)
 
 	// Structural assertions — the fixture diff (HEAD~1 → HEAD) adds 2 files.
 	if data["changedFileCount"].(int) < 1 {

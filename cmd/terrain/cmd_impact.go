@@ -15,48 +15,35 @@ import (
 	"github.com/pmclSF/terrain/internal/reporting"
 )
 
-func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
+// runImpactPipeline runs the analysis pipeline, computes a git diff changeset,
+// performs impact analysis, and applies edge-case policy. This is the shared
+// core for runImpact, runSelectTests, and runPR.
+func runImpactPipeline(root, baseRef string, opts engine.PipelineOptions) (*impact.ImpactResult, *engine.PipelineResult, error) {
+	result, err := engine.RunPipeline(root, opts)
 	if err != nil {
-		return fmt.Errorf("analysis failed: %w", err)
+		return nil, nil, fmt.Errorf("analysis failed: %w", err)
 	}
 
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	cs, err := impact.ChangeSetFromGitDiff(absRoot, baseRef)
 	if err != nil {
-		return fmt.Errorf("failed to determine changed files: %w", err)
+		return nil, nil, fmt.Errorf("failed to determine changed files: %w", err)
 	}
 
 	impactResult := impact.AnalyzeChangeSet(cs, result.Snapshot)
+	applyImpactPolicy(impactResult, result)
 
-	// Apply edge-case policy to adjust confidence and add warnings.
-	snapshot := result.Snapshot
-	dg := depgraph.Build(snapshot)
-	dgCov := depgraph.AnalyzeCoverage(dg)
-	dgDupes := depgraph.DetectDuplicates(dg)
-	dgFanout := depgraph.AnalyzeFanout(dg, depgraph.DefaultFanoutThreshold)
-	ms := metrics.Derive(snapshot)
-	pi := depgraph.ProfileInsights{
-		Coverage:   &dgCov,
-		Duplicates: &dgDupes,
-		Fanout:     &dgFanout,
-		Snapshot:   analyze.BuildSnapshotProfileData(snapshot),
-	}
-	dgProfile := depgraph.AnalyzeProfile(dg, pi)
-	depgraph.EnrichProfileWithHealthRatios(&dgProfile, ms.Health.SkippedTestRatio, ms.Health.FlakyTestRatio)
-	dgEdgeCases := depgraph.DetectEdgeCases(dgProfile, dg, pi)
-	if len(dgEdgeCases) > 0 {
-		dgPolicy := depgraph.ApplyEdgeCasePolicy(dgEdgeCases, dgProfile)
-		impactResult.ApplyEdgeCasePolicy(dgPolicy.ConfidenceAdjustment, dgPolicy.RiskElevated, dgPolicy.Recommendations)
-	}
+	return impactResult, result, nil
+}
 
-	// Apply manual coverage overlay to annotate protection gaps.
-	if len(snapshot.ManualCoverage) > 0 {
-		impactResult.ApplyManualCoverageOverlay(snapshot.ManualCoverage)
+func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string) error {
+	impactResult, _, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
+	if err != nil {
+		return err
 	}
 
 	// Apply owner filter if specified.
@@ -93,51 +80,62 @@ func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string) 
 
 // runSelectTests performs impact analysis and outputs the protective test set.
 func runSelectTests(root, baseRef string, jsonOutput bool) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptions())
-	if err != nil {
-		return fmt.Errorf("analysis failed: %w", err)
-	}
-
-	absRoot, err := filepath.Abs(root)
+	impactResult, _, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return err
 	}
 
-	cs, err := impact.ChangeSetFromGitDiff(absRoot, baseRef)
-	if err != nil {
-		return fmt.Errorf("failed to determine changed files: %w", err)
-	}
-
-	impactResult := impact.AnalyzeChangeSet(cs, result.Snapshot)
-
 	if jsonOutput {
+		ps := impactResult.ProtectiveSet
+		// Ensure Tests serializes as [] not null.
+		if ps != nil && ps.Tests == nil {
+			ps.Tests = []impact.SelectedTest{}
+		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		return enc.Encode(impactResult.ProtectiveSet)
+		return enc.Encode(ps)
 	}
 
 	reporting.RenderProtectiveSet(os.Stdout, impactResult)
 	return nil
 }
 
-
-func runPR(root, baseRef string, jsonOutput bool, format string) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptions())
-	if err != nil {
-		return fmt.Errorf("analysis failed: %w", err)
+// applyImpactPolicy applies edge-case policy and manual coverage overlay to
+// an impact result. This should be called after AnalyzeChangeSet for every
+// command that surfaces impact data to users.
+func applyImpactPolicy(impactResult *impact.ImpactResult, result *engine.PipelineResult) {
+	snapshot := result.Snapshot
+	dg := result.Graph
+	dgCov := depgraph.AnalyzeCoverage(dg)
+	dgDupes := depgraph.DetectDuplicates(dg)
+	dgFanout := depgraph.AnalyzeFanout(dg, depgraph.DefaultFanoutThreshold)
+	ms := metrics.Derive(snapshot)
+	pi := depgraph.ProfileInsights{
+		Coverage:   &dgCov,
+		Duplicates: &dgDupes,
+		Fanout:     &dgFanout,
+		Snapshot:   analyze.BuildSnapshotProfileData(snapshot),
+	}
+	dgProfile := depgraph.AnalyzeProfile(dg, pi)
+	depgraph.EnrichProfileWithHealthRatios(&dgProfile, ms.Health.SkippedTestRatio, ms.Health.FlakyTestRatio)
+	dgEdgeCases := depgraph.DetectEdgeCases(dgProfile, dg, pi)
+	if len(dgEdgeCases) > 0 {
+		dgPolicy := depgraph.ApplyEdgeCasePolicy(dgEdgeCases, dgProfile)
+		impactResult.ApplyEdgeCasePolicy(dgPolicy.ConfidenceAdjustment, dgPolicy.RiskElevated, dgPolicy.Recommendations)
 	}
 
-	absRoot, err := filepath.Abs(root)
+	if len(snapshot.ManualCoverage) > 0 {
+		impactResult.ApplyManualCoverageOverlay(snapshot.ManualCoverage)
+	}
+}
+
+func runPR(root, baseRef string, jsonOutput bool, format string) error {
+	impactResult, result, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return err
 	}
 
-	cs, err := impact.ChangeSetFromGitDiff(absRoot, baseRef)
-	if err != nil {
-		return fmt.Errorf("failed to determine changed files: %w", err)
-	}
-
-	pr := changescope.AnalyzePRFromChangeSet(cs, result.Snapshot)
+	pr := changescope.AnalyzePRFromImpact(impactResult, result.Snapshot)
 
 	if jsonOutput {
 		enc := json.NewEncoder(os.Stdout)
@@ -157,4 +155,3 @@ func runPR(root, baseRef string, jsonOutput bool, format string) error {
 	}
 	return nil
 }
-

@@ -210,13 +210,13 @@ func TestBuildDeviceConfigs_CreatesNodes(t *testing.T) {
 	snap := &models.TestSuiteSnapshot{
 		DeviceConfigs: []models.DeviceConfig{
 			{
-				DeviceID:      "device:iphone-15-ios17",
-				Name:          "iPhone 15 iOS 17",
-				Platform:      "ios",
-				FormFactor:    "phone",
-				OSVersion:     "17.0",
-				Capabilities:  []string{"touch", "camera", "biometrics"},
-				InferredFrom:  "xcode-scheme",
+				DeviceID:     "device:iphone-15-ios17",
+				Name:         "iPhone 15 iOS 17",
+				Platform:     "ios",
+				FormFactor:   "phone",
+				OSVersion:    "17.0",
+				Capabilities: []string{"touch", "camera", "biometrics"},
+				InferredFrom: "xcode-scheme",
 			},
 			{
 				DeviceID:      "device:chrome-120",

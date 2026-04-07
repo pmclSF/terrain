@@ -10,10 +10,7 @@ import (
 
 // RenderMigrationReport writes a migration readiness report to w.
 func RenderMigrationReport(w io.Writer, readiness *migration.ReadinessSummary) {
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Terrain Migration Readiness")
 	line(strings.Repeat("=", 40))
@@ -102,10 +99,7 @@ func RenderMigrationReport(w io.Writer, readiness *migration.ReadinessSummary) {
 // RenderMigrationBlockers writes a focused migration blockers report to w.
 // This is the output for `terrain migration blockers`.
 func RenderMigrationBlockers(w io.Writer, readiness *migration.ReadinessSummary) {
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Terrain Migration Blockers")
 	line(strings.Repeat("=", 40))
@@ -168,10 +162,7 @@ func RenderMigrationBlockers(w io.Writer, readiness *migration.ReadinessSummary)
 
 // RenderMigrationPreview writes a migration preview report for a single file.
 func RenderMigrationPreview(w io.Writer, preview *migration.PreviewResult) {
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Terrain Migration Preview")
 	line(strings.Repeat("=", 40))
@@ -242,10 +233,7 @@ func RenderMigrationPreview(w io.Writer, preview *migration.PreviewResult) {
 
 // RenderMigrationPreviewScope writes a scope-level migration preview summary.
 func RenderMigrationPreviewScope(w io.Writer, previews []*migration.PreviewResult) {
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Terrain Migration Preview (scope)")
 	line(strings.Repeat("=", 40))

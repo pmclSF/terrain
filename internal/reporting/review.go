@@ -1,7 +1,6 @@
 package reporting
 
 import (
-	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -12,10 +11,10 @@ import (
 
 // ReviewGroup holds findings grouped by a common key (owner, type, directory).
 type ReviewGroup struct {
-	Key      string
-	Signals  []models.Signal
-	TopRisk  models.RiskBand
-	Count    int
+	Key     string
+	Signals []models.Signal
+	TopRisk models.RiskBand
+	Count   int
 }
 
 // GroupSignalsByOwner groups signals by their owner field.
@@ -104,10 +103,7 @@ func directoryOf(path string) string {
 
 // RenderReviewSections appends review-oriented sections to the analyze report.
 func RenderReviewSections(w io.Writer, snap *models.TestSuiteSnapshot) {
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	if len(snap.Signals) == 0 {
 		return

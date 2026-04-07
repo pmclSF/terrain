@@ -18,6 +18,19 @@ import (
 	"github.com/pmclSF/terrain/internal/depgraph"
 )
 
+const (
+	// concentrationThreshold is the minimum share of tests targeting a single
+	// class member before the class is flagged as concentrated. A value of
+	// 0.70 means one member holds >70% of all test coverage within the class.
+	// This threshold balances sensitivity (catching real skew) against noise
+	// (not flagging classes with naturally uneven but acceptable distribution).
+	concentrationThreshold = 0.70
+
+	// maxRecommendations caps the number of device/environment recommendations
+	// returned. This prevents overwhelming users with large matrices.
+	maxRecommendations = 10
+)
+
 // MatrixResult is the output of environment/device matrix analysis.
 type MatrixResult struct {
 	// Classes contains coverage analysis per environment class.
@@ -178,9 +191,13 @@ func Analyze(g *depgraph.Graph) *MatrixResult {
 		result.Classes = append(result.Classes, cc)
 	}
 
-	// Sort classes by coverage ratio ascending (worst coverage first).
+	// Sort classes by coverage ratio ascending (worst coverage first),
+	// with ClassID as tiebreaker for determinism when ratios are equal.
 	sort.SliceStable(result.Classes, func(i, j int) bool {
-		return result.Classes[i].CoverageRatio < result.Classes[j].CoverageRatio
+		if result.Classes[i].CoverageRatio != result.Classes[j].CoverageRatio {
+			return result.Classes[i].CoverageRatio < result.Classes[j].CoverageRatio
+		}
+		return result.Classes[i].ClassID < result.Classes[j].ClassID
 	})
 
 	// Extract gaps and concentrations.
@@ -360,8 +377,8 @@ func extractGaps(classes []ClassCoverage) []CoverageGap {
 }
 
 // extractConcentrations finds classes where coverage is heavily skewed.
-// A class is concentrated if one member holds > 70% of all test coverage
-// within the class and there are ≥ 2 members.
+// A class is concentrated if one member holds more than concentrationThreshold
+// of all test coverage within the class and there are ≥ 2 members.
 func extractConcentrations(classes []ClassCoverage) []Concentration {
 	var concs []Concentration
 	for _, cc := range classes {
@@ -385,7 +402,7 @@ func extractConcentrations(classes []ClassCoverage) []Concentration {
 		}
 
 		share := float64(maxTests) / float64(totalTests)
-		if share > 0.70 && cc.CoveredMembers < cc.TotalMembers {
+		if share > concentrationThreshold && cc.CoveredMembers < cc.TotalMembers {
 			concs = append(concs, Concentration{
 				ClassID:        cc.ClassID,
 				ClassName:      cc.ClassName,
@@ -433,37 +450,38 @@ func buildRecommendations(gaps []CoverageGap, concs []Concentration, classes []C
 	}
 
 	// Priority 2: concentration — suggest underserved members.
+	classIndex := make(map[string]*ClassCoverage, len(classes))
+	for i := range classes {
+		classIndex[classes[i].ClassID] = &classes[i]
+	}
 	for _, conc := range concs {
-		for _, cc := range classes {
-			if cc.ClassID != conc.ClassID {
-				continue
+		cc, ok := classIndex[conc.ClassID]
+		if !ok {
+			continue
+		}
+		for _, m := range cc.Members {
+			if m.Covered && m.ID != conc.DominantMember {
+				continue // already has some coverage
 			}
-			for _, m := range cc.Members {
-				if m.Covered && m.ID != conc.DominantMember {
-					continue // already has some coverage
-				}
-				if !m.Covered && !seen[m.ID] {
-					seen[m.ID] = true
-					recs = append(recs, DeviceRecommendation{
-						MemberID:   m.ID,
-						MemberName: m.Name,
-						ClassID:    conc.ClassID,
-						ClassName:  conc.ClassName,
-						Dimension:  conc.Dimension,
-						Reason: fmt.Sprintf(
-							"%.0f%% of %s tests target only %s — diversify coverage",
-							conc.DominantShare*100, conc.Dimension,
-							conc.DominantName),
-					})
-				}
+			if !m.Covered && !seen[m.ID] {
+				seen[m.ID] = true
+				recs = append(recs, DeviceRecommendation{
+					MemberID:   m.ID,
+					MemberName: m.Name,
+					ClassID:    conc.ClassID,
+					ClassName:  conc.ClassName,
+					Dimension:  conc.Dimension,
+					Reason: fmt.Sprintf(
+						"%.0f%% of %s tests target only %s — diversify coverage",
+						conc.DominantShare*100, conc.Dimension,
+						conc.DominantName),
+				})
 			}
-			break
 		}
 	}
 
-	// Cap at 10 recommendations.
-	if len(recs) > 10 {
-		recs = recs[:10]
+	if len(recs) > maxRecommendations {
+		recs = recs[:maxRecommendations]
 	}
 
 	for i := range recs {

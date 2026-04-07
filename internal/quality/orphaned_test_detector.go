@@ -58,11 +58,11 @@ func (d *OrphanedTestDetector) Detect(snap *models.TestSuiteSnapshot) []models.S
 	}
 
 	sigs = append(sigs, models.Signal{
-		Type:     "orphanedTestFile",
-		Category: models.CategoryHealth,
-		Severity: sev,
+		Type:       "orphanedTestFile",
+		Category:   models.CategoryHealth,
+		Severity:   sev,
 		Confidence: 0.5,
-		Location: models.SignalLocation{Repository: "static"},
+		Location:   models.SignalLocation{Repository: "static"},
 		Explanation: fmt.Sprintf(
 			"%d of %d test files have no linked source code units (%.0f%%).",
 			len(candidates), total, ratio*100,
@@ -85,11 +85,11 @@ func (d *OrphanedTestDetector) Detect(snap *models.TestSuiteSnapshot) []models.S
 	}
 	for _, c := range candidates[:limit] {
 		sigs = append(sigs, models.Signal{
-			Type:     "orphanedTestFile",
-			Category: models.CategoryHealth,
-			Severity: models.SeverityLow,
+			Type:       "orphanedTestFile",
+			Category:   models.CategoryHealth,
+			Severity:   models.SeverityLow,
 			Confidence: 0.5,
-			Location: models.SignalLocation{File: c.path},
+			Location:   models.SignalLocation{File: c.path},
 			Explanation: fmt.Sprintf(
 				"%s has %d test(s) but no linked source code units.",
 				c.path, c.tests,

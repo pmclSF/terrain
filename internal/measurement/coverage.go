@@ -96,15 +96,18 @@ func computeUncoveredExports(snap *models.TestSuiteSnapshot) Result {
 	if exported == 0 {
 		return Result{
 			ID: "coverage_depth.uncovered_exports", Dimension: DimensionCoverageDepth,
-			Value: 0, Units: UnitsRatio, Band: "strong",
+			Value: 0, Units: UnitsRatio, Band: "unknown",
 			Evidence:    EvidenceNone,
 			Explanation: "No exported code units detected.",
 			Limitations: []string{"Code unit discovery may be incomplete."},
 		}
 	}
 
-	untestedCount := countSignals(snap, signals.SignalUntestedExport)
+	untestedCount := countFileSignals(snap, signals.SignalUntestedExport)
 	ratio := float64(untestedCount) / float64(exported)
+	if ratio > 1.0 {
+		ratio = 1.0
+	}
 	band := ratioToBand(ratio, 0.10, 0.30, 0.50)
 
 	return Result{
@@ -112,7 +115,7 @@ func computeUncoveredExports(snap *models.TestSuiteSnapshot) Result {
 		Value: ratio, Units: UnitsRatio, Band: band,
 		Evidence:    EvidencePartial,
 		Explanation: fmt.Sprintf("%d of %d exported code unit(s) appear untested (%.0f%%).", untestedCount, exported, ratio*100),
-		Inputs:      []string{"untestedExport"},
+		Inputs:      []string{string(signals.SignalUntestedExport)},
 		Limitations: []string{"Test linkage is heuristic-based; some coverage may exist but not be detected."},
 	}
 }
@@ -122,12 +125,12 @@ func computeWeakAssertionShare(snap *models.TestSuiteSnapshot) Result {
 	if total == 0 {
 		return Result{
 			ID: "coverage_depth.weak_assertion_share", Dimension: DimensionCoverageDepth,
-			Value: 0, Units: UnitsRatio, Band: "strong",
+			Value: 0, Units: UnitsRatio, Band: "unknown",
 			Evidence: EvidenceNone, Explanation: "No test files detected.",
 		}
 	}
 
-	count := countSignals(snap, signals.SignalWeakAssertion)
+	count := countFileSignals(snap, signals.SignalWeakAssertion)
 	ratio := float64(count) / float64(total)
 	band := ratioToBand(ratio, 0.10, 0.25, 0.50)
 
@@ -136,7 +139,7 @@ func computeWeakAssertionShare(snap *models.TestSuiteSnapshot) Result {
 		Value: ratio, Units: UnitsRatio, Band: band,
 		Evidence:    EvidenceStrong,
 		Explanation: fmt.Sprintf("%d of %d test file(s) have weak assertion density (%.0f%%).", count, total, ratio*100),
-		Inputs:      []string{"weakAssertion"},
+		Inputs:      []string{string(signals.SignalWeakAssertion)},
 	}
 }
 
@@ -145,12 +148,12 @@ func computeCoverageBreachShare(snap *models.TestSuiteSnapshot) Result {
 	if total == 0 {
 		return Result{
 			ID: "coverage_depth.coverage_breach_share", Dimension: DimensionCoverageDepth,
-			Value: 0, Units: UnitsRatio, Band: "strong",
+			Value: 0, Units: UnitsRatio, Band: "unknown",
 			Evidence: EvidenceNone, Explanation: "No test files detected.",
 		}
 	}
 
-	count := countSignals(snap, signals.SignalCoverageThresholdBreak)
+	count := countFileSignals(snap, signals.SignalCoverageThresholdBreak)
 	if count == 0 {
 		// Distinguish between "no breaches" and "no coverage data."
 		hasCoverage := false
@@ -168,9 +171,9 @@ func computeCoverageBreachShare(snap *models.TestSuiteSnapshot) Result {
 		}
 		return Result{
 			ID: "coverage_depth.coverage_breach_share", Dimension: DimensionCoverageDepth,
-			Value: 0, Units: UnitsRatio, Band: "strong",
+			Value: 0, Units: UnitsRatio, Band: string(PostureStrong),
 			Evidence: evidence, Explanation: "No coverage threshold breaches detected.",
-			Inputs: []string{"coverageThresholdBreak"}, Limitations: limitations,
+			Inputs: []string{string(signals.SignalCoverageThresholdBreak)}, Limitations: limitations,
 		}
 	}
 
@@ -182,7 +185,7 @@ func computeCoverageBreachShare(snap *models.TestSuiteSnapshot) Result {
 		Value: ratio, Units: UnitsRatio, Band: band,
 		Evidence:    EvidenceStrong,
 		Explanation: fmt.Sprintf("%d coverage threshold breach(es) detected across %d test file(s) (%.0f%%).", count, total, ratio*100),
-		Inputs:      []string{"coverageThresholdBreak"},
+		Inputs:      []string{string(signals.SignalCoverageThresholdBreak)},
 	}
 }
 
@@ -191,12 +194,12 @@ func computeMockHeavyShare(snap *models.TestSuiteSnapshot) Result {
 	if total == 0 {
 		return Result{
 			ID: "coverage_diversity.mock_heavy_share", Dimension: DimensionCoverageDiversity,
-			Value: 0, Units: UnitsRatio, Band: "strong",
+			Value: 0, Units: UnitsRatio, Band: "unknown",
 			Evidence: EvidenceNone, Explanation: "No test files detected.",
 		}
 	}
 
-	count := countSignals(snap, signals.SignalMockHeavyTest)
+	count := countFileSignals(snap, signals.SignalMockHeavyTest)
 	ratio := float64(count) / float64(total)
 	band := ratioToBand(ratio, 0.10, 0.25, 0.40)
 
@@ -205,7 +208,7 @@ func computeMockHeavyShare(snap *models.TestSuiteSnapshot) Result {
 		Value: ratio, Units: UnitsRatio, Band: band,
 		Evidence:    EvidenceStrong,
 		Explanation: fmt.Sprintf("%d of %d test file(s) are mock-heavy (%.0f%%).", count, total, ratio*100),
-		Inputs:      []string{"mockHeavyTest"},
+		Inputs:      []string{string(signals.SignalMockHeavyTest)},
 	}
 }
 
@@ -216,20 +219,28 @@ func computeFrameworkFragmentation(snap *models.TestSuiteSnapshot) Result {
 	if total == 0 || fwCount == 0 {
 		return Result{
 			ID: "coverage_diversity.framework_fragmentation", Dimension: DimensionCoverageDiversity,
-			Value: 0, Units: UnitsRatio, Band: "strong",
+			Value: 0, Units: UnitsRatio, Band: "unknown",
 			Evidence: EvidenceNone, Explanation: "No frameworks detected.",
 		}
 	}
 
 	// Fragmentation: many frameworks relative to suite size.
-	// 1 framework = no fragmentation, 5+ frameworks in a small suite = high.
+	// Absolute framework counts are concerning in small suites but normal in
+	// large polyglot codebases, so every threshold pairs a count floor with a
+	// ratio floor to avoid false positives at scale.
+	//   critical: 8+ frameworks AND ratio > 3%, OR 5+ at >50%
+	//   weak:     5+ frameworks AND ratio > 5%, OR 3+ at >30%
+	//   moderate: 3+ frameworks (any ratio — it's just a heads-up)
+	//   strong:   1-2 frameworks
 	ratio := float64(fwCount) / float64(total)
-	band := "strong"
-	if fwCount >= 3 {
-		band = "moderate"
-	}
-	if fwCount >= 5 || ratio > 0.3 {
-		band = "weak"
+	band := string(PostureStrong)
+	switch {
+	case (fwCount >= 8 && ratio > 0.03) || (fwCount >= 5 && ratio > 0.5):
+		band = string(PostureCritical)
+	case (fwCount >= 5 && ratio > 0.05) || (fwCount >= 3 && ratio > 0.3):
+		band = string(PostureWeak)
+	case fwCount >= 3:
+		band = string(PostureModerate)
 	}
 
 	return Result{
@@ -246,7 +257,7 @@ func computeE2EConcentration(snap *models.TestSuiteSnapshot) Result {
 	if total == 0 {
 		return Result{
 			ID: "coverage_diversity.e2e_concentration", Dimension: DimensionCoverageDiversity,
-			Value: 0, Units: UnitsRatio, Band: "strong",
+			Value: 0, Units: UnitsRatio, Band: "unknown",
 			Evidence: EvidenceNone, Explanation: "No test files detected.",
 		}
 	}
@@ -266,12 +277,14 @@ func computeE2EConcentration(snap *models.TestSuiteSnapshot) Result {
 	}
 
 	ratio := float64(e2eCount) / float64(total)
-	band := "strong"
-	if ratio > 0.50 {
-		band = "moderate"
-	}
-	if ratio > 0.80 {
-		band = "weak"
+	band := string(PostureStrong)
+	switch {
+	case ratio > 0.95:
+		band = string(PostureCritical)
+	case ratio > 0.80:
+		band = string(PostureWeak)
+	case ratio > 0.50:
+		band = string(PostureModerate)
 	}
 
 	return Result{
@@ -324,11 +337,11 @@ func computeUnitTestCoverage(snap *models.TestSuiteSnapshot) Result {
 	ratio := float64(covered) / float64(total)
 
 	// For unit test coverage, higher is better — invert the band logic.
-	band := "strong"
+	band := string(PostureStrong)
 	if ratio < 0.50 {
-		band = "weak"
+		band = string(PostureWeak)
 	} else if ratio < 0.70 {
-		band = "moderate"
+		band = string(PostureModerate)
 	}
 
 	return Result{

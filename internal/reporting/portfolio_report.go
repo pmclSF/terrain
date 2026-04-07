@@ -1,8 +1,8 @@
 package reporting
 
 import (
-	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
@@ -10,11 +10,7 @@ import (
 
 // RenderPortfolioReport writes a human-readable portfolio intelligence report to w.
 func RenderPortfolioReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...ReportOptions) {
-	_ = isVerbose(opts) // reserved for future verbose per-asset detail
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Terrain Portfolio Intelligence")
 	line(strings.Repeat("=", 50))
@@ -129,10 +125,7 @@ func findingBadge(findingType string) string {
 }
 
 func renderOwnerSummary(w io.Writer, p *models.PortfolioSnapshot) {
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	if len(p.Aggregates.ByOwner) == 0 {
 		return
@@ -155,6 +148,11 @@ func renderOwnerSummary(w io.Writer, p *models.PortfolioSnapshot) {
 		return
 	}
 
+	// Sort by findings descending so the top-N are the most impactful.
+	sort.Slice(entries, func(i, j int) bool {
+		return entries[i].findings > entries[j].findings
+	})
+
 	line("By Owner")
 	line(strings.Repeat("-", 50))
 	limit := 5
@@ -174,10 +172,7 @@ func RenderPortfolioSection(w io.Writer, p *models.PortfolioSnapshot) {
 		return
 	}
 
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	agg := p.Aggregates
 	totalFindings := agg.RedundancyCandidateCount + agg.OverbroadCount +

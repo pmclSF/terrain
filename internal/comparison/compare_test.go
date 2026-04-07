@@ -505,3 +505,82 @@ func TestCompare_BackfillsLegacySnapshotTimes(t *testing.T) {
 		t.Fatalf("expected migrated snapshot times, got from=%q to=%q", comp.FromTime, comp.ToTime)
 	}
 }
+
+func TestCompareEvalMetrics(t *testing.T) {
+	t.Parallel()
+
+	from := map[string]map[string]float64{
+		"scenario-1": {"accuracy": 0.92, "latency_ms": 200, "cost_usd": 0.05},
+		"scenario-2": {"accuracy": 0.85, "f1": 0.88},
+	}
+	to := map[string]map[string]float64{
+		"scenario-1": {"accuracy": 0.88, "latency_ms": 350, "cost_usd": 0.04},
+		"scenario-2": {"accuracy": 0.90, "f1": 0.91},
+	}
+
+	deltas := CompareEvalMetrics(from, to)
+
+	if len(deltas) == 0 {
+		t.Fatal("expected deltas")
+	}
+
+	// Check regressions come first.
+	regressionCount := 0
+	for _, d := range deltas {
+		if d.IsRegression {
+			regressionCount++
+		}
+	}
+	if regressionCount == 0 {
+		t.Error("expected at least one regression")
+	}
+
+	// Accuracy decreased for scenario-1: 0.92 → 0.88 = regression.
+	foundAccuracyRegression := false
+	for _, d := range deltas {
+		if d.ScenarioID == "scenario-1" && d.MetricName == "accuracy" {
+			foundAccuracyRegression = d.IsRegression
+			if d.Delta >= 0 {
+				t.Errorf("accuracy delta = %f, want negative", d.Delta)
+			}
+		}
+	}
+	if !foundAccuracyRegression {
+		t.Error("expected accuracy regression for scenario-1")
+	}
+
+	// Latency increased for scenario-1: 200 → 350 = regression (lower is better).
+	for _, d := range deltas {
+		if d.ScenarioID == "scenario-1" && d.MetricName == "latency_ms" {
+			if !d.IsRegression {
+				t.Error("expected latency regression for scenario-1")
+			}
+		}
+	}
+
+	// Cost decreased for scenario-1: 0.05 → 0.04 = improvement.
+	for _, d := range deltas {
+		if d.ScenarioID == "scenario-1" && d.MetricName == "cost_usd" {
+			if d.IsRegression {
+				t.Error("cost decrease should not be a regression")
+			}
+		}
+	}
+
+	// Accuracy improved for scenario-2: 0.85 → 0.90 = improvement.
+	for _, d := range deltas {
+		if d.ScenarioID == "scenario-2" && d.MetricName == "accuracy" {
+			if d.IsRegression {
+				t.Error("accuracy improvement should not be a regression")
+			}
+		}
+	}
+}
+
+func TestCompareEvalMetrics_Empty(t *testing.T) {
+	t.Parallel()
+	deltas := CompareEvalMetrics(nil, nil)
+	if deltas != nil {
+		t.Errorf("expected nil for empty inputs, got %d deltas", len(deltas))
+	}
+}

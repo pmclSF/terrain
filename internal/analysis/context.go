@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	goruntime "runtime"
+	"sort"
 	"strings"
 	"sync"
 
@@ -436,21 +437,6 @@ func ResolveSymbolLinksCtx(ctx context.Context, root string, testFiles []models.
 	return allLinks
 }
 
-// sortStrings is a local helper to avoid importing sort in this file
-// when the full sort package is already available through the sort import
-// in other files in this package.
 func sortStrings(s []string) {
-	if len(s) <= 1 {
-		return
-	}
-	// Simple insertion sort for the typical small slices we see here.
-	for i := 1; i < len(s); i++ {
-		key := s[i]
-		j := i - 1
-		for j >= 0 && s[j] > key {
-			s[j+1] = s[j]
-			j--
-		}
-		s[j+1] = key
-	}
+	sort.Strings(s)
 }

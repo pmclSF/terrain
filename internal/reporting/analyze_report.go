@@ -18,10 +18,7 @@ type AnalyzeReportOptions struct {
 
 // RenderAnalyzeReport writes a human-readable analysis report to w.
 func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...AnalyzeReportOptions) {
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 	opt := AnalyzeReportOptions{}
 	if len(opts) > 0 {
 		opt = opts[0]

@@ -30,6 +30,22 @@ archives:
 checksum:
   name_template: "checksums.txt"
 
+brews:
+  - name: mapterrain
+    homepage: "https://github.com/pmclSF/terrain"
+    description: "Signal-first test intelligence CLI"
+    license: "Apache-2.0"
+    directory: Formula
+    repository:
+      owner: pmclSF
+      name: homebrew-terrain
+      branch: main
+      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
+    install: |
+      bin.install "terrain"
+    test: |
+      system "#{bin}/terrain", "version"
+
 # ── SBOM Generation ────────────────────────────────────────
 # Generates Software Bill of Materials for each release archive.
 # Requires syft (https://github.com/anchore/syft) on the build host.
