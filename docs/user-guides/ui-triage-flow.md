@@ -1,4 +1,4 @@
-# Stage 117 -- UI Drill-Down Hierarchy and Triage Queue
+# UI Drill-Down Hierarchy and Triage Queue
 
 Design specification for the Terrain extension UI's primary navigation and triage workflow.
 This document describes views, not implementation. No Go code is introduced.

@@ -78,7 +78,7 @@ Terrain serves six primary personas, each asking different questions of the same
 | **SRE / Platform Engineer** | CI duration, flaky tests, test selection | `pr` in CI; `select-tests` for fast feedback; `metrics` for dashboards |
 | **AI / ML Engineer** | Eval suite coverage, parametrized test auditing | `analyze` for eval audit; `insights` for redundant evals |
 
-See [Persona Journeys](../architecture/17-persona-journeys.md) and [Feature Matrix](feature-matrix.md) for detailed capability mapping.
+See [Persona Journeys](../architecture/17-persona-journeys.md) for detailed workflow mapping by role.
 
 ## CI Integration
 

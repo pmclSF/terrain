@@ -1,6 +1,6 @@
 # Impact Graph
 
-Stage 124 -- Bidirectional graph connecting code units to tests.
+Bidirectional graph connecting code units to tests.
 
 ## Overview
 

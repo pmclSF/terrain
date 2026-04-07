@@ -1,6 +1,6 @@
 # Changed Code Unit Mapping
 
-Stage 123 -- How changed files map to impacted code units.
+How changed files map to impacted code units.
 
 ## Overview
 

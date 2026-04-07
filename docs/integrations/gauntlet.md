@@ -155,13 +155,13 @@ Gauntlet is included in Terrain's benchmark matrix as a real-world repository:
 
 This ensures Terrain's analysis engines (framework detection, signal generation, coverage analysis) are validated against Gauntlet's codebase structure.
 
-## Future: `terrain ai run` Integration
+## `terrain ai run` Integration
 
-When `terrain ai run` is fully implemented, it will:
+`terrain ai run` integrates with Gauntlet by:
 
-1. Select relevant scenarios based on code change (`terrain impact`)
-2. Invoke Gauntlet as the execution backend
-3. Ingest results automatically
-4. Report pass/fail with explanation traces
+1. Selecting relevant scenarios based on code changes (`terrain impact`)
+2. Invoking the eval framework as the execution backend
+3. Ingesting results automatically via `--gauntlet` flag
+4. Reporting pass/fail with explanation traces
 
-The interface between Terrain and Gauntlet will be the artifact JSON described above — Terrain writes a scenario selection file, Gauntlet executes and writes results, Terrain ingests results.
+The interface between Terrain and Gauntlet is the artifact JSON described above — Terrain writes a scenario selection file, the eval framework executes and writes results, Terrain ingests results via `terrain analyze --gauntlet results.json`.

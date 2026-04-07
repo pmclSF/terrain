@@ -278,7 +278,7 @@ None. This is a new engine and a new binary. Framework migration now ships insid
 - **Static analysis confidence**: test-to-code linkage is heuristic-based (naming conventions, import analysis). Some coverage relationships may not be detected. Evidence strength metadata indicates where confidence is limited.
 - **Flaky/slow test detection**: without runtime artifacts (`--runtime`), flaky and slow test signals rely on code-level heuristics (retry patterns, timeout values). Provide JUnit XML or Jest JSON for high-confidence runtime signals.
 - **Coverage enrichment**: coverage-dependent measurements (E2E-only units, unit test coverage, coverage breach share) require separate LCOV or Istanbul JSON artifacts passed via `--coverage`.
-- **No hosted benchmarking**: benchmark exports are local JSON files. Cross-repository comparison requires manual aggregation. A hosted benchmarking service is planned but not yet available.
+- **No hosted benchmarking**: benchmark exports are local JSON files. Cross-repository comparison requires manual aggregation.
 - **Single-language heuristics**: code unit extraction and framework detection are strongest for JavaScript/TypeScript, Java, and Python. Other languages receive basic file-level analysis.
 
 ## Getting Started

@@ -69,7 +69,7 @@ These surfaces participate in BehaviorSurface grouping and can be linked to Scen
 | `terrain ai run` | Implemented | Execute eval scenarios and collect results |
 | `terrain ai replay` | Implemented | Replay and verify a previous eval run artifact |
 | `terrain ai record` | Implemented | Record eval run results as a baseline snapshot |
-| `terrain ai baseline` | Implemented | Manage eval baselines (show, compare, promote) |
+| `terrain ai baseline` | Implemented | Manage eval baselines (show, compare) |
 
 `terrain ai list` supports `--json` for machine-readable output. `terrain ai doctor` runs 5 diagnostic checks and reports pass/warn status for each. `run`, `replay`, `record`, and `baseline` all execute today from the shared `terrain ai` namespace.
 

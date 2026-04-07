@@ -1,7 +1,5 @@
 # Impact Analysis and Test Selection
 
-## Stage 128 -- User Guide
-
 ### Overview
 
 Terrain's impact analysis commands help you understand which tests are affected by a code change and select the right tests to run. This guide covers the `terrain impact` and `terrain select-tests` commands.

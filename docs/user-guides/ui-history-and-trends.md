@@ -1,4 +1,4 @@
-# Stage 118 -- UI History, Trends, and Snapshot Browser
+# UI History, Trends, and Snapshot Browser
 
 Design specification for the Terrain extension UI's longitudinal views.
 This document describes views and data access patterns, not implementation.
@@ -28,7 +28,7 @@ Users can pin two snapshots for side-by-side comparison (see below).
 
 ### Snapshot detail
 
-Selecting a snapshot opens the standard drill-down hierarchy from Stage 117,
+Selecting a snapshot opens the standard drill-down hierarchy,
 but in read-only mode (no triage actions). This allows reviewing historical
 posture without modifying current triage state.
 
