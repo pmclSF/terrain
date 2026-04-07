@@ -5,6 +5,7 @@ import (
 	"sort"
 	"sync"
 
+	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -17,6 +18,7 @@ const (
 	DomainGovernance Domain = "governance"
 	DomainHealth     Domain = "health"
 	DomainCoverage   Domain = "coverage"
+	DomainStructural Domain = "structural"
 )
 
 // EvidenceType describes how a detector obtains its evidence.
@@ -29,6 +31,7 @@ const (
 	EvidenceCoverage          EvidenceType = "coverage"
 	EvidencePolicy            EvidenceType = "policy"
 	EvidenceCodeowners        EvidenceType = "codeowners"
+	EvidenceGraphTraversal    EvidenceType = "graph-traversal"
 )
 
 // DetectorMeta describes a detector's identity and capabilities.
@@ -53,6 +56,10 @@ type DetectorMeta struct {
 
 	// DependsOnSignals indicates this detector reads signals from prior detectors.
 	DependsOnSignals bool
+
+	// RequiresGraph indicates this detector needs the dependency graph.
+	// Graph detectors run in Phase 2 (after flat detectors, before signal-dependent).
+	RequiresGraph bool
 }
 
 // DetectorRegistration pairs a Detector with its metadata.
@@ -88,16 +95,6 @@ func (r *DetectorRegistry) Register(reg DetectorRegistration) error {
 	}
 	r.registrations = append(r.registrations, reg)
 	return nil
-}
-
-// MustRegister adds a detector to the registry, panicking on error.
-//
-// Deprecated: Use Register and propagate errors instead.
-// Retained only for backward compatibility with tests.
-func (r *DetectorRegistry) MustRegister(reg DetectorRegistration) {
-	if err := r.Register(reg); err != nil {
-		panic(err)
-	}
 }
 
 // All returns all registrations in registration order.
@@ -171,6 +168,95 @@ func (r *DetectorRegistry) Run(snap *models.TestSuiteSnapshot) {
 	}
 
 	// Dependent detectors run after independent outputs are available.
+	for _, reg := range dependents {
+		found := reg.Detector.Detect(snap)
+		snap.Signals = append(snap.Signals, found...)
+	}
+}
+
+// RunWithGraph executes all registered detectors in three phases:
+//
+//	Phase 1: Independent flat detectors (concurrent)
+//	Phase 2: Graph-powered detectors (concurrent — graph is sealed/immutable)
+//	Phase 3: Signal-dependent detectors (sequential)
+func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgraph.Graph) {
+	if snap == nil || len(r.registrations) == 0 {
+		return
+	}
+
+	type result struct {
+		idx     int
+		signals []models.Signal
+	}
+
+	var (
+		wg         sync.WaitGroup
+		mu         sync.Mutex
+		results    []result
+		graphRegs  []DetectorRegistration
+		graphIdxs  []int
+		dependents []DetectorRegistration
+	)
+
+	// Phase 1: Independent flat detectors (concurrent).
+	for idx, reg := range r.registrations {
+		if reg.Meta.DependsOnSignals {
+			dependents = append(dependents, reg)
+			continue
+		}
+		if reg.Meta.RequiresGraph {
+			graphRegs = append(graphRegs, reg)
+			graphIdxs = append(graphIdxs, idx)
+			continue
+		}
+
+		wg.Add(1)
+		go func(idx int, reg DetectorRegistration) {
+			defer wg.Done()
+			found := reg.Detector.Detect(snap)
+			mu.Lock()
+			results = append(results, result{idx: idx, signals: found})
+			mu.Unlock()
+		}(idx, reg)
+	}
+	wg.Wait()
+
+	sort.Slice(results, func(i, j int) bool {
+		return results[i].idx < results[j].idx
+	})
+	for _, res := range results {
+		snap.Signals = append(snap.Signals, res.signals...)
+	}
+
+	// Phase 2: Graph-powered detectors (concurrent — graph is sealed).
+	if g != nil && len(graphRegs) > 0 {
+		var graphResults []result
+		var wg2 sync.WaitGroup
+		for i, reg := range graphRegs {
+			gd, ok := reg.Detector.(GraphDetector)
+			if !ok {
+				continue
+			}
+			wg2.Add(1)
+			go func(idx int, gd GraphDetector) {
+				defer wg2.Done()
+				found := gd.DetectWithGraph(snap, g)
+				mu.Lock()
+				graphResults = append(graphResults, result{idx: idx, signals: found})
+				mu.Unlock()
+			}(graphIdxs[i], gd)
+		}
+		wg2.Wait()
+
+		sort.Slice(graphResults, func(i, j int) bool {
+			return graphResults[i].idx < graphResults[j].idx
+		})
+		for _, res := range graphResults {
+			snap.Signals = append(snap.Signals, res.signals...)
+		}
+	}
+
+	// Phase 3: Signal-dependent detectors (sequential).
 	for _, reg := range dependents {
 		found := reg.Detector.Detect(snap)
 		snap.Signals = append(snap.Signals, found...)

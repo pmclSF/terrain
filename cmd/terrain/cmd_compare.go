@@ -19,7 +19,7 @@ import (
 )
 
 func runMigration(subCmd, root string, jsonOutput bool, file, scope string) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptions())
+	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -220,4 +220,3 @@ func persistSnapshot(snapshot *models.TestSuiteSnapshot, root string) error {
 	logging.L().Info("snapshot persisted", "latest", latestPath, "archive", archivePath)
 	return nil
 }
-

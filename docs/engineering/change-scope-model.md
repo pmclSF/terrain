@@ -1,6 +1,6 @@
 # Change Scope Model
 
-Stage 122 -- How Terrain determines what changed in the repository.
+How Terrain determines what changed in the repository.
 
 ## Overview
 

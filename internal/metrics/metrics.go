@@ -21,6 +21,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/skipstats"
 )
 
 // Snapshot contains benchmark-ready aggregate metrics derived from
@@ -135,12 +136,13 @@ func Derive(snap *models.TestSuiteSnapshot) *Snapshot {
 	totalFiles := len(snap.TestFiles)
 	signalCounts := countSignalsByType(snap.Signals)
 	signalFileCounts := countSignalFilesByType(snap.Signals)
+	skipSummary := skipstats.Summarize(snap)
 
-	healthCount := func(signalType string) int {
-		if c := signalFileCounts[signalType]; c > 0 {
+	healthCount := func(st models.SignalType) int {
+		if c := signalFileCounts[st]; c > 0 {
 			return c
 		}
-		return signalCounts[signalType]
+		return signalCounts[st]
 	}
 
 	ms := &Snapshot{
@@ -162,31 +164,31 @@ func Derive(snap *models.TestSuiteSnapshot) *Snapshot {
 	}
 
 	// Health
-	slowCount := healthCount("slowTest")
-	flakyCount := healthCount("flakyTest")
-	skippedCount := healthCount("skippedTest")
-	deadCount := healthCount("deadTest")
+	slowCount := healthCount(signals.SignalSlowTest)
+	flakyCount := healthCount(signals.SignalFlakyTest)
+	deadCount := healthCount(signals.SignalDeadTest)
 	ms.Health = HealthMetrics{
 		SlowTestCount:    slowCount,
 		SlowTestRatio:    safeRatio(slowCount, totalFiles),
 		FlakyTestCount:   flakyCount,
 		FlakyTestRatio:   safeRatio(flakyCount, totalFiles),
-		SkippedTestCount: skippedCount,
-		SkippedTestRatio: safeRatio(skippedCount, totalFiles),
+		SkippedTestCount: skipSummary.SkippedTests,
+		SkippedTestRatio: skipSummary.TestRatio,
 		DeadTestCount:    deadCount,
 	}
 
 	// Quality
-	qualityIssueCount := signalCounts["weakAssertion"] + signalCounts["mockHeavyTest"] +
-		signalCounts["untestedExport"] + signalCounts["coverageThresholdBreak"]
+	qualityIssueCount := signalCounts[signals.SignalWeakAssertion] + signalCounts[signals.SignalMockHeavyTest] +
+		signalCounts[signals.SignalUntestedExport] + signalCounts[signals.SignalCoverageThresholdBreak] +
+		signalCounts[signals.SignalSnapshotHeavyTest]
 	ms.Quality = QualityMetrics{
-		WeakAssertionCount:          signalCounts["weakAssertion"],
-		WeakAssertionRatio:          safeRatio(signalCounts["weakAssertion"], totalFiles),
-		MockHeavyTestCount:          signalCounts["mockHeavyTest"],
-		MockHeavyTestRatio:          safeRatio(signalCounts["mockHeavyTest"], totalFiles),
-		UntestedExportCount:         signalCounts["untestedExport"],
-		CoverageThresholdBreakCount: signalCounts["coverageThresholdBreak"],
-		SnapshotHeavyCount:          signalCounts["snapshotHeavyTest"],
+		WeakAssertionCount:          signalCounts[signals.SignalWeakAssertion],
+		WeakAssertionRatio:          safeRatio(signalCounts[signals.SignalWeakAssertion], totalFiles),
+		MockHeavyTestCount:          signalCounts[signals.SignalMockHeavyTest],
+		MockHeavyTestRatio:          safeRatio(signalCounts[signals.SignalMockHeavyTest], totalFiles),
+		UntestedExportCount:         signalCounts[signals.SignalUntestedExport],
+		CoverageThresholdBreakCount: signalCounts[signals.SignalCoverageThresholdBreak],
+		SnapshotHeavyCount:          signalCounts[signals.SignalSnapshotHeavyTest],
 		QualityPostureBand:          deriveQualityPosture(qualityIssueCount, totalFiles),
 	}
 
@@ -201,10 +203,10 @@ func Derive(snap *models.TestSuiteSnapshot) *Snapshot {
 	}
 	migrationStats := deriveMigrationPosture(snap)
 	ms.Change = ChangeMetrics{
-		MigrationBlockerCount:         signalCounts["migrationBlocker"],
-		DeprecatedPatternCount:        signalCounts["deprecatedTestPattern"],
-		DynamicGenerationCount:        signalCounts["dynamicTestGeneration"],
-		CustomMatcherRiskCount:        signalCounts["customMatcherRisk"],
+		MigrationBlockerCount:         signalCounts[signals.SignalMigrationBlocker],
+		DeprecatedPatternCount:        signalCounts[signals.SignalDeprecatedTestPattern],
+		DynamicGenerationCount:        signalCounts[signals.SignalDynamicTestGeneration],
+		CustomMatcherRiskCount:        signalCounts[signals.SignalCustomMatcherRisk],
 		BlockerCountByType:            blockersByType,
 		MigrationReadinessBand:        migrationStats.readinessBand,
 		SafeAreaCount:                 migrationStats.safeAreas,
@@ -214,9 +216,9 @@ func Derive(snap *models.TestSuiteSnapshot) *Snapshot {
 
 	// Governance
 	ms.Governance = GovernanceMetrics{
-		PolicyViolationCount:       signalCounts["policyViolation"] + signalCounts["skippedTestsInCI"],
-		LegacyFrameworkUsageCount:  signalCounts["legacyFrameworkUsage"],
-		RuntimeBudgetExceededCount: signalCounts["runtimeBudgetExceeded"],
+		PolicyViolationCount:       signalCounts[signals.SignalPolicyViolation] + signalCounts[signals.SignalSkippedTestsInCI],
+		LegacyFrameworkUsageCount:  signalCounts[signals.SignalLegacyFrameworkUsage],
+		RuntimeBudgetExceededCount: signalCounts[signals.SignalRuntimeBudgetExceeded],
 	}
 
 	// Risk
@@ -267,27 +269,26 @@ func deriveRiskMetrics(snap *models.TestSuiteSnapshot) RiskMetrics {
 	return rm
 }
 
-func countSignalsByType(signals []models.Signal) map[string]int {
-	counts := map[string]int{}
-	for _, s := range signals {
-		counts[string(s.Type)]++
+func countSignalsByType(sigs []models.Signal) map[models.SignalType]int {
+	counts := map[models.SignalType]int{}
+	for _, s := range sigs {
+		counts[s.Type]++
 	}
 	return counts
 }
 
-func countSignalFilesByType(signals []models.Signal) map[string]int {
-	byType := map[string]map[string]bool{}
-	for _, s := range signals {
+func countSignalFilesByType(sigs []models.Signal) map[models.SignalType]int {
+	byType := map[models.SignalType]map[string]bool{}
+	for _, s := range sigs {
 		if s.Location.File == "" {
 			continue
 		}
-		t := string(s.Type)
-		if byType[t] == nil {
-			byType[t] = map[string]bool{}
+		if byType[s.Type] == nil {
+			byType[s.Type] = map[string]bool{}
 		}
-		byType[t][s.Location.File] = true
+		byType[s.Type][s.Location.File] = true
 	}
-	counts := map[string]int{}
+	counts := map[models.SignalType]int{}
 	for t, files := range byType {
 		counts[t] = len(files)
 	}

@@ -55,17 +55,17 @@ func compareGolden(t *testing.T, name string, data any) {
 // omitting fields that may vary (like graph density floats, limitations
 // that depend on runtime state).
 type goldenReport struct {
-	TestsDetected      TestSummary         `json:"testsDetected"`
-	RepoProfile        ProfileSummary      `json:"repoProfile"`
-	CoverageConfidence CoverageSummary     `json:"coverageConfidence"`
-	DuplicateClusters  DuplicateSummary    `json:"duplicateClusters"`
-	HighFanout         FanoutSummary       `json:"highFanout"`
-	SkippedTestBurden  SkipSummary         `json:"skippedTestBurden"`
-	WeakAreaCount      int                 `json:"weakAreaCount"`
+	TestsDetected      TestSummary           `json:"testsDetected"`
+	RepoProfile        ProfileSummary        `json:"repoProfile"`
+	CoverageConfidence CoverageSummary       `json:"coverageConfidence"`
+	DuplicateClusters  DuplicateSummary      `json:"duplicateClusters"`
+	HighFanout         FanoutSummary         `json:"highFanout"`
+	SkippedTestBurden  SkipSummary           `json:"skippedTestBurden"`
+	WeakAreaCount      int                   `json:"weakAreaCount"`
 	CIOptimization     CIOptimizationSummary `json:"ciOptimization"`
-	SignalSummary      SignalBreakdown     `json:"signalSummary"`
-	HasTopInsight      bool                `json:"hasTopInsight"`
-	RiskDimensionCount int                 `json:"riskDimensionCount"`
+	SignalSummary      SignalBreakdown       `json:"signalSummary"`
+	HasTopInsight      bool                  `json:"hasTopInsight"`
+	RiskDimensionCount int                   `json:"riskDimensionCount"`
 }
 
 func toGoldenReport(r *Report) goldenReport {

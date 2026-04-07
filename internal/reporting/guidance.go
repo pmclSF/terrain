@@ -5,6 +5,7 @@ import (
 	"io"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/signals"
 )
 
 // WriteHealthGuidance prints actionable guidance when runtime data is absent.
@@ -14,7 +15,8 @@ func WriteHealthGuidance(w io.Writer, snap *models.TestSuiteSnapshot) {
 		return
 	}
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "  Health signals (flaky, slow, dead tests) require runtime artifacts.")
+	fmt.Fprintln(w, "  Static analysis (skip detection, dead test detection) is available without runtime artifacts.")
+	fmt.Fprintln(w, "  Additional health signals (flaky, slow, unstable tests) require runtime artifacts.")
 	fmt.Fprintln(w, "  Generate with:")
 	fmt.Fprintln(w, "    Jest:    npx jest --json --outputFile=jest-results.json")
 	fmt.Fprintln(w, "    Pytest:  pytest --junitxml=junit.xml")
@@ -26,7 +28,8 @@ func WriteHealthGuidance(w io.Writer, snap *models.TestSuiteSnapshot) {
 func hasRuntimeSignals(snap *models.TestSuiteSnapshot) bool {
 	for _, sig := range snap.Signals {
 		switch sig.Type {
-		case "slowTest", "flakyTest", "skippedTest", "deadTest", "unstableSuite":
+		case signals.SignalSlowTest, signals.SignalFlakyTest, signals.SignalSkippedTest,
+			signals.SignalDeadTest, signals.SignalUnstableSuite:
 			return true
 		}
 	}

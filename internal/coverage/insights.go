@@ -55,9 +55,9 @@ func DeriveInsights(typeCov []TypeCoverage, units []models.CodeUnit) []CoverageI
 	})
 	if len(onlyE2E) > 0 {
 		insights = append(insights, CoverageInsight{
-			Type:        "only_e2e_coverage",
-			Severity:    "medium",
-			Description: fmt.Sprintf("%d code unit(s) are covered only by e2e tests. These lack fast unit-level feedback.", len(onlyE2E)),
+			Type:            "only_e2e_coverage",
+			Severity:        "medium",
+			Description:     fmt.Sprintf("%d code unit(s) are covered only by e2e tests. These lack fast unit-level feedback.", len(onlyE2E)),
 			SuggestedAction: "Add unit tests for code units that rely exclusively on e2e coverage.",
 		})
 		// Surface top 5 specific units.
@@ -71,11 +71,11 @@ func DeriveInsights(typeCov []TypeCoverage, units []models.CodeUnit) []CoverageI
 				sev = "medium"
 			}
 			insights = append(insights, CoverageInsight{
-				Type:        "only_e2e_unit",
-				Severity:    sev,
-				Description: fmt.Sprintf("%s (%s) is covered only by e2e tests.", tc.Name, tc.Path),
-				Path:        tc.Path,
-				UnitID:      tc.UnitID,
+				Type:            "only_e2e_unit",
+				Severity:        sev,
+				Description:     fmt.Sprintf("%s (%s) is covered only by e2e tests.", tc.Name, tc.Path),
+				Path:            tc.Path,
+				UnitID:          tc.UnitID,
 				SuggestedAction: fmt.Sprintf("Add unit tests for %s.", tc.Name),
 			})
 		}
@@ -92,9 +92,9 @@ func DeriveInsights(typeCov []TypeCoverage, units []models.CodeUnit) []CoverageI
 	}
 	if uncoveredExportedCount > 0 {
 		insights = append(insights, CoverageInsight{
-			Type:        "uncovered_exported",
-			Severity:    "high",
-			Description: fmt.Sprintf("%d exported/public function(s) have no test coverage. See untestedExport signals for per-unit detail.", uncoveredExportedCount),
+			Type:            "uncovered_exported",
+			Severity:        "high",
+			Description:     fmt.Sprintf("%d exported/public function(s) have no test coverage. See untestedExport signals for per-unit detail.", uncoveredExportedCount),
 			SuggestedAction: "Prioritize adding tests for public API surface.",
 		})
 	}
@@ -114,9 +114,9 @@ func DeriveInsights(typeCov []TypeCoverage, units []models.CodeUnit) []CoverageI
 	}
 
 	type fileRisk struct {
-		path      string
-		e2eOnly   int
-		total     int
+		path    string
+		e2eOnly int
+		total   int
 	}
 	var riskyFiles []fileRisk
 	for path, fc := range fileCov {
@@ -140,7 +140,7 @@ func DeriveInsights(typeCov []TypeCoverage, units []models.CodeUnit) []CoverageI
 			Severity: "medium",
 			Description: fmt.Sprintf("%s has %d of %d code units covered only by e2e tests.",
 				rf.path, rf.e2eOnly, rf.total),
-			Path: rf.path,
+			Path:            rf.path,
 			SuggestedAction: fmt.Sprintf("Add unit tests to %s to reduce e2e dependency.", rf.path),
 		})
 	}
@@ -161,9 +161,9 @@ func DeriveUnitInsights(unitCov []UnitCoverage) []CoverageInsight {
 	}
 	if noBranch > 0 {
 		insights = append(insights, CoverageInsight{
-			Type:        "line_but_no_branch",
-			Severity:    "info",
-			Description: fmt.Sprintf("%d function(s) have line coverage but no branch coverage.", noBranch),
+			Type:            "line_but_no_branch",
+			Severity:        "info",
+			Description:     fmt.Sprintf("%d function(s) have line coverage but no branch coverage.", noBranch),
 			SuggestedAction: "Add tests that exercise conditional branches.",
 		})
 	}
@@ -177,9 +177,9 @@ func DeriveUnitInsights(unitCov []UnitCoverage) []CoverageInsight {
 	}
 	if partial > 0 {
 		insights = append(insights, CoverageInsight{
-			Type:        "partially_covered",
-			Severity:    "low",
-			Description: fmt.Sprintf("%d function(s) have less than 50%% line coverage.", partial),
+			Type:            "partially_covered",
+			Severity:        "low",
+			Description:     fmt.Sprintf("%d function(s) have less than 50%% line coverage.", partial),
 			SuggestedAction: "Improve test coverage for partially covered functions.",
 		})
 	}

@@ -32,6 +32,9 @@ func testSnapshot() *models.TestSuiteSnapshot {
 			"src/auth.js":    {"team-platform"},
 			"src/payment.js": {"team-payments"},
 		},
+		DataSources: []models.DataSource{
+			{Name: "coverage", Status: models.DataSourceAvailable},
+		},
 	}
 }
 
@@ -339,16 +342,16 @@ func TestFormatTestReasons_UniqueVsShared(t *testing.T) {
 			Path:       "test/auth.test.js",
 			Confidence: "exact",
 			CoversUnits: []string{
-				"src/auth.js:AuthService",   // unique to this test
-				"src/shared.js:SharedUtil",  // shared with test B
+				"src/auth.js:AuthService",  // unique to this test
+				"src/shared.js:SharedUtil", // shared with test B
 			},
 		},
 		{
 			Path:       "test/user.test.js",
 			Confidence: "exact",
 			CoversUnits: []string{
-				"src/user.js:UserService",   // unique to this test
-				"src/shared.js:SharedUtil",  // shared with test A
+				"src/user.js:UserService",  // unique to this test
+				"src/shared.js:SharedUtil", // shared with test A
 			},
 		},
 	}
@@ -402,5 +405,300 @@ func TestAnalyzePR_SchemaVersion(t *testing.T) {
 	pr := AnalyzePR(scope, snap)
 	if pr.SchemaVersion != PRAnalysisSchemaVersion {
 		t.Errorf("schemaVersion = %q, want %q", pr.SchemaVersion, PRAnalysisSchemaVersion)
+	}
+}
+
+func TestAnalyzePRFromChangeSet_Basic(t *testing.T) {
+	t.Parallel()
+	snap := testSnapshot()
+	cs := &models.ChangeSet{
+		Source: "explicit",
+		ChangedFiles: []models.ChangedFile{
+			{Path: "src/auth/login.js", ChangeKind: models.ChangeModified},
+		},
+	}
+
+	pr := AnalyzePRFromChangeSet(cs, snap)
+	if pr.SchemaVersion != PRAnalysisSchemaVersion {
+		t.Errorf("schemaVersion = %q, want %q", pr.SchemaVersion, PRAnalysisSchemaVersion)
+	}
+	if pr.ChangedFileCount != 1 {
+		t.Errorf("changedFileCount = %d, want 1", pr.ChangedFileCount)
+	}
+	if pr.ChangedSourceCount != 1 {
+		t.Errorf("changedSourceCount = %d, want 1", pr.ChangedSourceCount)
+	}
+	if pr.ChangedTestCount != 0 {
+		t.Errorf("changedTestCount = %d, want 0", pr.ChangedTestCount)
+	}
+	if pr.Summary == "" {
+		t.Error("expected non-empty summary")
+	}
+	if pr.PostureBand == "" {
+		t.Error("expected non-empty posture band")
+	}
+	if pr.PostureDelta == nil {
+		t.Error("expected non-nil posture delta")
+	}
+}
+
+func TestAnalyzePRFromChangeSet_WithTestChanges(t *testing.T) {
+	t.Parallel()
+	snap := testSnapshot()
+	cs := &models.ChangeSet{
+		Source: "explicit",
+		ChangedFiles: []models.ChangedFile{
+			{Path: "src/__tests__/auth.test.js", ChangeKind: models.ChangeModified, IsTestFile: true},
+			{Path: "src/auth/login.js", ChangeKind: models.ChangeModified},
+		},
+	}
+
+	pr := AnalyzePRFromChangeSet(cs, snap)
+	if pr.ChangedTestCount != 1 {
+		t.Errorf("changedTestCount = %d, want 1", pr.ChangedTestCount)
+	}
+	if pr.ChangedSourceCount != 1 {
+		t.Errorf("changedSourceCount = %d, want 1", pr.ChangedSourceCount)
+	}
+	if pr.ChangedFileCount != 2 {
+		t.Errorf("changedFileCount = %d, want 2", pr.ChangedFileCount)
+	}
+}
+
+func TestAnalyzePRFromChangeSet_Empty(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{}
+	cs := &models.ChangeSet{Source: "explicit"}
+
+	pr := AnalyzePRFromChangeSet(cs, snap)
+	if pr.ChangedFileCount != 0 {
+		t.Errorf("changedFileCount = %d, want 0", pr.ChangedFileCount)
+	}
+	if pr.Summary == "" {
+		t.Error("expected non-empty summary even for empty change set")
+	}
+}
+
+func TestBuildAIValidationSummary_NoAI(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{}
+	snap := &models.TestSuiteSnapshot{}
+	ai := buildAIValidationSummary(result, snap)
+	if ai != nil {
+		t.Error("expected nil AI summary when no scenarios or AI signals")
+	}
+}
+
+func TestBuildAIValidationSummary_WithScenarios(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		ImpactedScenarios: []impact.ImpactedScenario{
+			{Name: "safety-check", Capability: "safety", Relevance: "prompt changed"},
+			{Name: "accuracy-test", Capability: "accuracy", Relevance: "model updated"},
+		},
+	}
+	snap := &models.TestSuiteSnapshot{
+		Scenarios: []models.Scenario{
+			{ScenarioID: "sc:1", Name: "safety-check"},
+			{ScenarioID: "sc:2", Name: "accuracy-test"},
+			{ScenarioID: "sc:3", Name: "latency-test"},
+		},
+	}
+
+	ai := buildAIValidationSummary(result, snap)
+	if ai == nil {
+		t.Fatal("expected non-nil AI summary")
+	}
+	if ai.TotalScenarios != 3 {
+		t.Errorf("totalScenarios = %d, want 3", ai.TotalScenarios)
+	}
+	if ai.SelectedScenarios != 2 {
+		t.Errorf("selectedScenarios = %d, want 2", ai.SelectedScenarios)
+	}
+	if len(ai.ImpactedCapabilities) != 2 {
+		t.Errorf("impactedCapabilities = %d, want 2", len(ai.ImpactedCapabilities))
+	}
+	if len(ai.Scenarios) != 2 {
+		t.Errorf("scenarios = %d, want 2", len(ai.Scenarios))
+	}
+}
+
+func TestBuildAIValidationSummary_WithSignals(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		ImpactedScenarios: []impact.ImpactedScenario{
+			{Name: "test", Capability: "search"},
+		},
+	}
+	snap := &models.TestSuiteSnapshot{
+		Scenarios: []models.Scenario{
+			{ScenarioID: "sc:1", Name: "test"},
+		},
+		Signals: []models.Signal{
+			{Type: "safetyFailure", Category: models.CategoryAI, Severity: models.SeverityCritical, Explanation: "safety eval failed"},
+			{Type: "costRegression", Category: models.CategoryAI, Severity: models.SeverityMedium, Explanation: "cost increased 20%"},
+			{Type: "weakAssertion", Category: models.CategoryQuality, Severity: models.SeverityMedium, Explanation: "not AI"},
+		},
+	}
+
+	ai := buildAIValidationSummary(result, snap)
+	if ai == nil {
+		t.Fatal("expected non-nil AI summary")
+	}
+	if len(ai.BlockingSignals) != 1 {
+		t.Errorf("blocking signals = %d, want 1 (critical)", len(ai.BlockingSignals))
+	}
+	if len(ai.WarningSignals) != 1 {
+		t.Errorf("warning signals = %d, want 1 (medium)", len(ai.WarningSignals))
+	}
+}
+
+func TestBuildAIValidationSummary_UncoveredContexts(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		Scope: impact.ChangeScope{
+			ChangedFiles: []impact.ChangedFile{
+				{Path: "src/prompt.ts"},
+			},
+		},
+		ImpactedScenarios: []impact.ImpactedScenario{
+			{Name: "test"},
+		},
+	}
+	snap := &models.TestSuiteSnapshot{
+		Scenarios: []models.Scenario{
+			{ScenarioID: "sc:1", Name: "test"},
+		},
+		CodeSurfaces: []models.CodeSurface{
+			{SurfaceID: "surface:src/prompt.ts:sysPrompt", Name: "sysPrompt", Path: "src/prompt.ts", Kind: models.SurfaceContext},
+		},
+	}
+
+	ai := buildAIValidationSummary(result, snap)
+	if ai == nil {
+		t.Fatal("expected non-nil AI summary")
+	}
+	if len(ai.UncoveredContexts) != 1 {
+		t.Errorf("uncoveredContexts = %d, want 1", len(ai.UncoveredContexts))
+	}
+}
+
+func TestBuildChangeScopedFindings_ExistingSignals(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		Scope: impact.ChangeScope{
+			ChangedFiles: []impact.ChangedFile{
+				{Path: "src/auth.ts"},
+			},
+		},
+	}
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{Type: "weakAssertion", Category: models.CategoryQuality, Severity: models.SeverityMedium,
+				Location: models.SignalLocation{File: "src/auth.ts"}, Explanation: "too few assertions"},
+			{Type: "flakyTest", Category: models.CategoryHealth, Severity: models.SeverityHigh,
+				Location: models.SignalLocation{File: "src/other.ts"}, Explanation: "not on changed file"},
+		},
+	}
+
+	findings := buildChangeScopedFindings(result, snap)
+	// Should include the signal on the changed file but not the one on other.ts.
+	existingSignals := 0
+	for _, f := range findings {
+		if f.Type == "existing_signal" {
+			existingSignals++
+			if f.Path != "src/auth.ts" {
+				t.Errorf("expected signal on src/auth.ts, got %q", f.Path)
+			}
+			if f.Scope != "direct" {
+				t.Errorf("expected scope=direct, got %q", f.Scope)
+			}
+		}
+	}
+	if existingSignals != 1 {
+		t.Errorf("expected 1 existing signal finding, got %d", existingSignals)
+	}
+}
+
+func TestBuildChangeScopedFindings_SkipsDuplicateUntestedExport(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		Scope: impact.ChangeScope{
+			ChangedFiles: []impact.ChangedFile{
+				{Path: "src/auth.ts"},
+			},
+		},
+		ProtectionGaps: []impact.ProtectionGap{
+			{Path: "src/auth.ts", Severity: "high", Explanation: "no test coverage"},
+		},
+	}
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			// This untestedExport signal should be skipped because a gap already exists for the same path.
+			{Type: "untestedExport", Category: models.CategoryQuality, Severity: models.SeverityHigh,
+				Location: models.SignalLocation{File: "src/auth.ts"}, Explanation: "login not tested"},
+		},
+	}
+
+	findings := buildChangeScopedFindings(result, snap)
+	for _, f := range findings {
+		if f.Type == "existing_signal" && strings.Contains(f.Explanation, "untestedExport") {
+			t.Error("untestedExport signal should be deduplicated when a gap exists for the same path")
+		}
+	}
+}
+
+func TestBuildPostureDelta_WellProtected(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		Posture: impact.ChangeRiskPosture{Band: "well_protected"},
+	}
+	delta := buildPostureDelta(result)
+	if delta.OverallDirection != "unchanged" {
+		t.Errorf("direction = %q, want unchanged", delta.OverallDirection)
+	}
+	if delta.Explanation == "" {
+		t.Error("expected non-empty explanation")
+	}
+}
+
+func TestBuildPostureDelta_HighRisk(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		Posture:        impact.ChangeRiskPosture{Band: "high_risk"},
+		ProtectionGaps: []impact.ProtectionGap{{Path: "a"}, {Path: "b"}},
+	}
+	delta := buildPostureDelta(result)
+	if delta.OverallDirection != "worsened" {
+		t.Errorf("direction = %q, want worsened", delta.OverallDirection)
+	}
+	if delta.NewGapCount != 2 {
+		t.Errorf("newGapCount = %d, want 2", delta.NewGapCount)
+	}
+}
+
+func TestPopulateTestSelections_FallbackToSelectedTests(t *testing.T) {
+	t.Parallel()
+	pr := &PRAnalysis{}
+	result := &impact.ImpactResult{
+		// No ProtectiveSet — should fall back to SelectedTests.
+		SelectedTests: []impact.ImpactedTest{
+			{Path: "tests/auth.test.ts", ImpactConfidence: impact.ConfidenceExact, Relevance: "direct coverage", CoversUnits: []string{"AuthService"}},
+			{Path: "tests/util.test.ts", ImpactConfidence: impact.ConfidenceWeak, Relevance: "proximity"},
+		},
+	}
+
+	populateTestSelections(pr, result)
+	if len(pr.RecommendedTests) != 2 {
+		t.Fatalf("recommendedTests = %d, want 2", len(pr.RecommendedTests))
+	}
+	if len(pr.TestSelections) != 2 {
+		t.Fatalf("testSelections = %d, want 2", len(pr.TestSelections))
+	}
+	if pr.TestSelections[0].Confidence != "exact" {
+		t.Errorf("first test confidence = %q, want exact", pr.TestSelections[0].Confidence)
+	}
+	if len(pr.TestSelections[0].CoversUnits) != 1 {
+		t.Errorf("first test coversUnits = %d, want 1", len(pr.TestSelections[0].CoversUnits))
 	}
 }

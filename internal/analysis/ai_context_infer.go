@@ -56,61 +56,22 @@ func InferAIContextSurfacesFromList(root string, testFiles []models.TestFile, ex
 		src := string(content)
 
 		// Pass 0: AST-level prompt detection (highest priority).
-		// Uses real AST for Go, deep structural analysis for JS/Python.
-		// Detects message arrays, framework constructors, template factories,
-		// system prompt assignments, and few-shot arrays.
-		astSurfaces := ParsePromptAST(relPath, src, lang)
-		for _, s := range astSurfaces {
-			if !existingIDs[s.SurfaceID] {
-				existingIDs[s.SurfaceID] = true
-				surfaces = append(surfaces, s)
-			}
-		}
+		surfaces = appendNew(surfaces, existingIDs, ParsePromptAST(relPath, src, lang))
 
 		// Pass 1a: Bracket-aware structural parsing.
-		structural := ParseStructural(relPath, src, lang)
-		for _, s := range structural {
-			if !existingIDs[s.SurfaceID] {
-				existingIDs[s.SurfaceID] = true
-				surfaces = append(surfaces, s)
-			}
-		}
+		surfaces = appendNew(surfaces, existingIDs, ParseStructural(relPath, src, lang))
 
 		// Pass 1a2: Regex-based prompt parsing (supplements structural).
-		parsed := ParseEmbeddedPrompts(relPath, src, lang)
-		for _, s := range parsed {
-			if !existingIDs[s.SurfaceID] {
-				existingIDs[s.SurfaceID] = true
-				surfaces = append(surfaces, s)
-			}
-		}
+		surfaces = appendNew(surfaces, existingIDs, ParseEmbeddedPrompts(relPath, src, lang))
 
 		// Pass 1b: Structured RAG pipeline parsing (vector stores, splitters, etc.).
-		ragSurfaces := ParseRAGPipeline(relPath, src, lang)
-		for _, s := range ragSurfaces {
-			if !existingIDs[s.SurfaceID] {
-				existingIDs[s.SurfaceID] = true
-				surfaces = append(surfaces, s)
-			}
-		}
+		surfaces = appendNew(surfaces, existingIDs, ParseRAGPipeline(relPath, src, lang))
 
 		// Pass 1c: Structured schema/contract parsing (Zod, Pydantic, OpenAI tools).
-		schemas := ParseToolSchemas(relPath, src, lang)
-		for _, s := range schemas {
-			if !existingIDs[s.SurfaceID] {
-				existingIDs[s.SurfaceID] = true
-				surfaces = append(surfaces, s)
-			}
-		}
+		surfaces = appendNew(surfaces, existingIDs, ParseToolSchemas(relPath, src, lang))
 
-		// Pass 1c: Framework-aware content inference (LangChain, LlamaIndex, etc.).
-		inferred := inferFromContent(relPath, src, lang)
-		for _, s := range inferred {
-			if !existingIDs[s.SurfaceID] {
-				existingIDs[s.SurfaceID] = true
-				surfaces = append(surfaces, s)
-			}
-		}
+		// Pass 1d: Framework-aware content inference (LangChain, LlamaIndex, etc.).
+		surfaces = appendNew(surfaces, existingIDs, inferFromContent(relPath, src, lang))
 	}
 
 	// Pass 2: Detect AI template files by extension + content.
@@ -194,14 +155,14 @@ func inferFromContent(relPath, src, lang string) []models.CodeSurface {
 				}
 				sid := models.BuildSurfaceID(relPath, "system_message_L"+itoa(i+1), "")
 				surfaces = append(surfaces, models.CodeSurface{
-					SurfaceID: sid,
-					Name:      "system_message",
-					Path:      relPath,
-					Kind:      models.SurfaceContext,
-					Language:  lang,
-					Package:   pkg,
-					Line:      i + 1,
-					Exported:  false,
+					SurfaceID:     sid,
+					Name:          "system_message",
+					Path:          relPath,
+					Kind:          models.SurfaceContext,
+					Language:      lang,
+					Package:       pkg,
+					Line:          i + 1,
+					Exported:      false,
 					DetectionTier: models.TierContent, Confidence: 0.75, Reason: reason,
 				})
 				break // One per file to avoid noise.
@@ -214,14 +175,14 @@ func inferFromContent(relPath, src, lang string) []models.CodeSurface {
 		for i, line := range lines {
 			if lcPattern.MatchString(line) {
 				surfaces = append(surfaces, models.CodeSurface{
-					SurfaceID: models.BuildSurfaceID(relPath, "langchain_message_L"+itoa(i+1), ""),
-					Name:      "langchain_message",
-					Path:      relPath,
-					Kind:      models.SurfaceContext,
-					Language:  lang,
-					Package:   pkg,
-					Line:      i + 1,
-					Exported:  false,
+					SurfaceID:     models.BuildSurfaceID(relPath, "langchain_message_L"+itoa(i+1), ""),
+					Name:          "langchain_message",
+					Path:          relPath,
+					Kind:          models.SurfaceContext,
+					Language:      lang,
+					Package:       pkg,
+					Line:          i + 1,
+					Exported:      false,
 					DetectionTier: models.TierSemantic, Confidence: 0.9, Reason: "[" + models.DetectorLangChainConstructor + "] LangChain message constructor (SystemMessage/HumanMessage)",
 				})
 				break
@@ -233,14 +194,14 @@ func inferFromContent(relPath, src, lang string) []models.CodeSurface {
 		for i, line := range lines {
 			if llPattern.MatchString(line) {
 				surfaces = append(surfaces, models.CodeSurface{
-					SurfaceID: models.BuildSurfaceID(relPath, "llamaindex_message_L"+itoa(i+1), ""),
-					Name:      "llamaindex_message",
-					Path:      relPath,
-					Kind:      models.SurfaceContext,
-					Language:  lang,
-					Package:   pkg,
-					Line:      i + 1,
-					Exported:  false,
+					SurfaceID:     models.BuildSurfaceID(relPath, "llamaindex_message_L"+itoa(i+1), ""),
+					Name:          "llamaindex_message",
+					Path:          relPath,
+					Kind:          models.SurfaceContext,
+					Language:      lang,
+					Package:       pkg,
+					Line:          i + 1,
+					Exported:      false,
 					DetectionTier: models.TierSemantic, Confidence: 0.85, Reason: "[" + models.DetectorLlamaIndexConstructor + "] LlamaIndex ChatMessage with SYSTEM role",
 				})
 				break
@@ -257,14 +218,14 @@ func inferFromContent(relPath, src, lang string) []models.CodeSurface {
 				name, reason := classifyRAGLine(line)
 				sid := models.BuildSurfaceID(relPath, name+"_L"+itoa(i+1), "")
 				surfaces = append(surfaces, models.CodeSurface{
-					SurfaceID: sid,
-					Name:      name,
-					Path:      relPath,
-					Kind:      models.SurfaceRetrieval,
-					Language:  lang,
-					Package:   pkg,
-					Line:      i + 1,
-					Exported:  false,
+					SurfaceID:     sid,
+					Name:          name,
+					Path:          relPath,
+					Kind:          models.SurfaceRetrieval,
+					Language:      lang,
+					Package:       pkg,
+					Line:          i + 1,
+					Exported:      false,
 					DetectionTier: models.TierContent, Confidence: 0.75, Reason: reason,
 				})
 				break // One per file to avoid noise.
@@ -360,14 +321,14 @@ func detectTemplateFiles(root string, existingIDs map[string]bool) []models.Code
 		reason := "template file (" + ext + ") containing AI instruction markers"
 		existingIDs[sid] = true
 		surfaces = append(surfaces, models.CodeSurface{
-			SurfaceID: sid,
-			Name:      filepath.Base(relPath),
-			Path:      relPath,
-			Kind:      models.SurfaceContext,
-			Language:  "template",
-			Package:   inferSurfacePackage(relPath),
-			Line:      1,
-			Exported:  true,
+			SurfaceID:     sid,
+			Name:          filepath.Base(relPath),
+			Path:          relPath,
+			Kind:          models.SurfaceContext,
+			Language:      "template",
+			Package:       inferSurfacePackage(relPath),
+			Line:          1,
+			Exported:      true,
 			DetectionTier: models.TierContent, Confidence: 0.75, Reason: reason,
 		})
 		return nil
@@ -381,6 +342,10 @@ func detectTemplateFiles(root string, existingIDs map[string]bool) []models.Code
 // RAG config keys that indicate retrieval pipeline configuration.
 // Requires 2+ keys from this set to qualify.
 var ragConfigMarkers = regexp.MustCompile(`(?i)\b(chunk_size|chunk_overlap|chunking_strategy|embedding_model|vector_store|vector_db|top_k|num_results|retrieval_filter|reranker|rerank_model|similarity_threshold|context_window|max_tokens|retrieval_mode|search_type|index_type|collection_name)\b`)
+
+// maxRAGConfigSize is the maximum file size (64 KB) for RAG config files.
+// Config files should be small; anything larger is likely generated or data.
+const maxRAGConfigSize = 64 * 1024
 
 // ragConfigExts are file extensions that may contain RAG config.
 var ragConfigExts = map[string]bool{
@@ -402,7 +367,7 @@ func detectRAGConfigFiles(root string, existingIDs map[string]bool) []models.Cod
 		}
 
 		// Skip large files (configs should be small).
-		if info.Size() > 64*1024 {
+		if info.Size() > maxRAGConfigSize {
 			return nil
 		}
 
@@ -452,20 +417,32 @@ func detectRAGConfigFiles(root string, existingIDs map[string]bool) []models.Cod
 		reason := "RAG config file with " + itoa(len(uniqueKeys)) + " retrieval key(s): " + strings.Join(uniqueKeys, ", ")
 		existingIDs[sid] = true
 		surfaces = append(surfaces, models.CodeSurface{
-			SurfaceID: sid,
-			Name:      filepath.Base(relPath),
-			Path:      relPath,
-			Kind:      models.SurfaceRetrieval,
-			Language:  "config",
-			Package:   inferSurfacePackage(relPath),
-			Line:      1,
-			Exported:  true,
+			SurfaceID:     sid,
+			Name:          filepath.Base(relPath),
+			Path:          relPath,
+			Kind:          models.SurfaceRetrieval,
+			Language:      "config",
+			Package:       inferSurfacePackage(relPath),
+			Line:          1,
+			Exported:      true,
 			DetectionTier: models.TierContent, Confidence: 0.75, Reason: reason,
 		})
 		return nil
 	})
 
 	return surfaces
+}
+
+// appendNew appends surfaces to dst, skipping any whose SurfaceID is already
+// present in seen. It updates seen in place.
+func appendNew(dst []models.CodeSurface, seen map[string]bool, candidates []models.CodeSurface) []models.CodeSurface {
+	for _, s := range candidates {
+		if !seen[s.SurfaceID] {
+			seen[s.SurfaceID] = true
+			dst = append(dst, s)
+		}
+	}
+	return dst
 }
 
 func itoa(n int) string {

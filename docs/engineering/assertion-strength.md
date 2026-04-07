@@ -1,8 +1,10 @@
 # Assertion Strength and Oracle-Quality Analysis
 
+> **Status:** HISTORICAL — the `internal/assertion/` package described here was removed. Assertion strength analysis is now handled by `internal/quality/` detectors (WeakAssertionDetector, MockHeavyDetector, SnapshotHeavyDetector, AssertionFreeDetector). This document is preserved for design context.
+
 ## Overview
 
-The `internal/assertion/` package assesses whether tests check behavior meaningfully by analyzing assertion density, category distribution, and mock/snapshot ratios. This is a static-analysis-based heuristic that operates on snapshot data — it does not parse test source code directly.
+The `internal/assertion/` package assessed whether tests check behavior meaningfully by analyzing assertion density, category distribution, and mock/snapshot ratios. This was a static-analysis-based heuristic that operated on snapshot data.
 
 ## Strength Classes
 

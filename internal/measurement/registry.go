@@ -31,16 +31,6 @@ func (r *Registry) Register(def Definition) error {
 	return nil
 }
 
-// MustRegister adds a measurement definition, panicking on duplicate ID.
-//
-// Deprecated: Use Register and propagate errors instead.
-// Retained only for backward compatibility with tests.
-func (r *Registry) MustRegister(def Definition) {
-	if err := r.Register(def); err != nil {
-		panic(err)
-	}
-}
-
 // All returns all registered definitions in registration order.
 func (r *Registry) All() []Definition {
 	out := make([]Definition, len(r.definitions))
@@ -69,17 +59,6 @@ func (r *Registry) Run(snap *models.TestSuiteSnapshot) []Result {
 	results := make([]Result, len(r.definitions))
 	for i, def := range r.definitions {
 		results[i] = def.Compute(snap)
-	}
-	return results
-}
-
-// RunDimension executes measurements for a specific dimension.
-func (r *Registry) RunDimension(snap *models.TestSuiteSnapshot, dim Dimension) []Result {
-	var results []Result
-	for _, def := range r.definitions {
-		if def.Dimension == dim {
-			results = append(results, def.Compute(snap))
-		}
 	}
 	return results
 }
@@ -126,10 +105,10 @@ func (r *Registry) ComputeSnapshot(snap *models.TestSuiteSnapshot) *Snapshot {
 // computeDimensionPosture derives a posture band from a set of measurement results.
 //
 // The algorithm:
-//  1. Count measurements by evidence strength
-//  2. Identify the worst band among ratio/band measurements
-//  3. Weight by concentration: many weak measurements = worse posture
-//  4. Downgrade when evidence is partial/weak
+//  1. Collect bands and identify driver measurements (weak/elevated/critical)
+//  2. Resolve the dimension band via resolvePostureBand (worst-band wins with
+//     majority escalation)
+//  3. Cap at moderate when no strong or partial evidence exists
 func computeDimensionPosture(dim Dimension, results []Result) DimensionPosture {
 	if len(results) == 0 {
 		return DimensionPosture{
@@ -142,7 +121,6 @@ func computeDimensionPosture(dim Dimension, results []Result) DimensionPosture {
 	// Collect band-like assessments from measurements.
 	var bandValues []string
 	var drivers []string
-	var limitations []string
 	hasStrongEvidence := false
 
 	for _, r := range results {
@@ -151,11 +129,10 @@ func computeDimensionPosture(dim Dimension, results []Result) DimensionPosture {
 		}
 		if r.Band != "" {
 			bandValues = append(bandValues, r.Band)
-			if r.Band == "weak" || r.Band == "elevated" || r.Band == "critical" {
+			if r.Band == string(PostureWeak) || r.Band == string(PostureElevated) || r.Band == string(PostureCritical) {
 				drivers = append(drivers, r.ID)
 			}
 		}
-		limitations = append(limitations, r.Limitations...)
 	}
 
 	// Determine overall band from constituent measurements.
@@ -166,7 +143,7 @@ func computeDimensionPosture(dim Dimension, results []Result) DimensionPosture {
 		band = PostureModerate
 	}
 
-	explanation := buildPostureExplanation(dim, band, drivers, len(results), limitations)
+	explanation := buildPostureExplanation(dim, band, drivers, len(results))
 
 	return DimensionPosture{
 		Dimension:           dim,
@@ -183,11 +160,11 @@ func resolvePostureBand(bands []string) PostureBand {
 	}
 
 	order := map[string]int{
-		"critical": 5,
-		"elevated": 4,
-		"weak":     3,
-		"moderate": 2,
-		"strong":   1,
+		string(PostureCritical): 5,
+		string(PostureElevated): 4,
+		string(PostureWeak):     3,
+		string(PostureModerate): 2,
+		string(PostureStrong):   1,
 	}
 
 	// Filter out "unknown" bands — they represent missing data, not assessments.
@@ -215,9 +192,12 @@ func resolvePostureBand(bands []string) PostureBand {
 		return PostureUnknown
 	}
 
-	// If majority of resolved measurements are weak+, escalate.
-	if resolvedCount > 1 && weakCount > resolvedCount/2 && worst < 4 {
-		worst = 3 // at least weak
+	// If ALL resolved measurements indicate problems (weak+) and there are
+	// at least 3, escalate to elevated — the convergence is significant.
+	// Note: when weakCount > resolvedCount/2, worst is already >= 3 (at
+	// least one band is weak+), so no separate "at least weak" guard is needed.
+	if resolvedCount >= 3 && weakCount == resolvedCount && worst < 4 {
+		worst = 4 // elevated: all measurements converge on problems
 	}
 
 	// Map back to PostureBand.
@@ -234,8 +214,8 @@ func resolvePostureBand(bands []string) PostureBand {
 	return PostureUnknown
 }
 
-func buildPostureExplanation(dim Dimension, band PostureBand, drivers []string, total int, limitations []string) string {
-	dimName := string(dim)
+func buildPostureExplanation(dim Dimension, band PostureBand, drivers []string, total int) string {
+	dimName := DimensionDisplayName(dim)
 	switch band {
 	case PostureStrong:
 		return fmt.Sprintf("%s posture is strong across %d measurement(s).", dimName, total)

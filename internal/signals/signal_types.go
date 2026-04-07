@@ -27,7 +27,18 @@ const (
 	SignalLegacyFrameworkUsage   models.SignalType = "legacyFrameworkUsage"
 	SignalSkippedTestsInCI       models.SignalType = "skippedTestsInCI"
 	SignalRuntimeBudgetExceeded  models.SignalType = "runtimeBudgetExceeded"
-	SignalStaticSkippedTest     models.SignalType = "staticSkippedTest"
+	SignalStaticSkippedTest      models.SignalType = "staticSkippedTest"
+	SignalAssertionFreeTest      models.SignalType = "assertionFreeTest"
+	SignalOrphanedTestFile       models.SignalType = "orphanedTestFile"
+
+	// Graph-powered structural signal types.
+	SignalUncoveredAISurface      models.SignalType = "uncoveredAISurface"
+	SignalPhantomEvalScenario     models.SignalType = "phantomEvalScenario"
+	SignalUntestedPromptFlow      models.SignalType = "untestedPromptFlow"
+	SignalBlastRadiusHotspot      models.SignalType = "blastRadiusHotspot"
+	SignalFixtureFragilityHotspot models.SignalType = "fixtureFragilityHotspot"
+	SignalAssertionFreeImport     models.SignalType = "assertionFreeImport"
+	SignalCapabilityValidationGap models.SignalType = "capabilityValidationGap"
 
 	// AI/eval signal types.
 	SignalEvalFailure            models.SignalType = "evalFailure"
@@ -44,15 +55,15 @@ const (
 	SignalLatencyRegression      models.SignalType = "latencyRegression"
 	SignalCostRegression         models.SignalType = "costRegression"
 	SignalContextOverflowRisk    models.SignalType = "contextOverflowRisk"
-	SignalWrongSourceSelected   models.SignalType = "wrongSourceSelected"
-	SignalCitationMismatch      models.SignalType = "citationMismatch"
-	SignalStaleSourceRisk       models.SignalType = "staleSourceRisk"
-	SignalChunkingRegression    models.SignalType = "chunkingRegression"
-	SignalRerankerRegression    models.SignalType = "rerankerRegression"
-	SignalTopKRegression        models.SignalType = "topKRegression"
-	SignalToolRoutingError      models.SignalType = "toolRoutingError"
+	SignalWrongSourceSelected    models.SignalType = "wrongSourceSelected"
+	SignalCitationMismatch       models.SignalType = "citationMismatch"
+	SignalStaleSourceRisk        models.SignalType = "staleSourceRisk"
+	SignalChunkingRegression     models.SignalType = "chunkingRegression"
+	SignalRerankerRegression     models.SignalType = "rerankerRegression"
+	SignalTopKRegression         models.SignalType = "topKRegression"
+	SignalToolRoutingError       models.SignalType = "toolRoutingError"
 	SignalToolGuardrailViolation models.SignalType = "toolGuardrailViolation"
-	SignalToolBudgetExceeded    models.SignalType = "toolBudgetExceeded"
+	SignalToolBudgetExceeded     models.SignalType = "toolBudgetExceeded"
 	SignalAgentFallbackTriggered models.SignalType = "agentFallbackTriggered"
 )
 
@@ -78,6 +89,17 @@ var QualitySignalTypes = map[models.SignalType]bool{
 	SignalUntestedExport:         true,
 	SignalCoverageThresholdBreak: true,
 	SignalCoverageBlindSpot:      true,
+}
+
+// StructuralSignalTypes is the canonical set of graph-powered structural signal types.
+var StructuralSignalTypes = map[models.SignalType]bool{
+	SignalUncoveredAISurface:      true,
+	SignalPhantomEvalScenario:     true,
+	SignalUntestedPromptFlow:      true,
+	SignalBlastRadiusHotspot:      true,
+	SignalFixtureFragilityHotspot: true,
+	SignalAssertionFreeImport:     true,
+	SignalCapabilityValidationGap: true,
 }
 
 // IsMigrationSignal returns true if the signal type is migration-related.
@@ -180,6 +202,44 @@ var typeInfoBySignal = map[models.SignalType]TypeInfo{
 	SignalRuntimeBudgetExceeded: {
 		Description: "Observed runtimes exceed configured policy budget.",
 		Remediation: "Reduce runtime hotspots or adjust policy to reflect intentional tradeoffs.",
+	},
+	SignalAssertionFreeTest: {
+		Description: "Test files contain test function signatures but no detectable assertions.",
+		Remediation: "Add assertions to validate behavior — tests without assertions verify nothing.",
+	},
+	SignalOrphanedTestFile: {
+		Description: "Test files do not import any source modules from the repository.",
+		Remediation: "Connect orphaned tests to source code or remove if obsolete.",
+	},
+
+	// Graph-powered structural signals.
+	SignalUncoveredAISurface: {
+		Description: "AI surfaces (prompts, tools, datasets) have zero test or scenario coverage.",
+		Remediation: "Add eval scenarios that exercise this AI surface — untested prompts and tools can change behavior silently.",
+	},
+	SignalPhantomEvalScenario: {
+		Description: "Eval scenarios claim to validate AI surfaces but have no import-graph path to those surfaces.",
+		Remediation: "Verify the test file actually imports and exercises the target code, or correct the surface mapping.",
+	},
+	SignalUntestedPromptFlow: {
+		Description: "A prompt flows through multiple source files via imports with zero test coverage at any point in the chain.",
+		Remediation: "Add integration tests at the prompt's consumption points to catch behavioral regressions.",
+	},
+	SignalBlastRadiusHotspot: {
+		Description: "Source files where a change would impact an unusually large number of tests.",
+		Remediation: "Ensure high direct test coverage and consider adding contract tests at interface boundaries.",
+	},
+	SignalFixtureFragilityHotspot: {
+		Description: "Fixtures depended on by many tests, where a single change cascades widely.",
+		Remediation: "Extract smaller, focused fixtures to reduce cascading test failures.",
+	},
+	SignalAssertionFreeImport: {
+		Description: "Test files import production code but contain zero assertions — exercising code without verifying behavior.",
+		Remediation: "Add assertions to validate behavior or remove tests that verify nothing.",
+	},
+	SignalCapabilityValidationGap: {
+		Description: "Inferred AI capabilities have no eval scenarios validating them.",
+		Remediation: "Add eval scenarios that exercise this capability to ensure behavioral regression detection.",
 	},
 }
 

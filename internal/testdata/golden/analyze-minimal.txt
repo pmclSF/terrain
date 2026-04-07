@@ -13,8 +13,9 @@ Data Completeness
   [missing  ] Policy config
   Coverage analysis skipped or partial. Provide coverage with:
     terrain analyze --root . --coverage path/to/lcov.info
-  Runtime-dependent signals unavailable without runtime artifacts:
-    slowTest, flakyTest, skippedTest, deadTest, unstableSuite
+  Static skip detection is available from source code.
+  Runtime-dependent signals still need runtime artifacts:
+    slowTest, flakyTest, deadTest, unstableSuite
   Provide runtime data with:
     terrain analyze --root . --runtime path/to/results.xml
 
@@ -45,7 +46,7 @@ Posture
 ----------------------------------------
   health:                  STRONG
   coverage_depth:          STRONG
-  coverage_diversity:      WEAK
+  coverage_diversity:      STRONG
   structural_risk:         STRONG
   operational_risk:        STRONG
 
@@ -65,6 +66,7 @@ Next steps:
      terrain analyze --root . --coverage path/to/lcov.info
   2) Add runtime data:
      terrain analyze --root . --runtime path/to/test-results.xml
+     This unlocks flaky/slow/dead/unstable signals; static skip detection already runs.
   3) Show full findings:
      terrain analyze --root . --verbose
   4) Save trend baseline:

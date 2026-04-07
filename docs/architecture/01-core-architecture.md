@@ -121,9 +121,5 @@ internal/
   testcase/              Test case extraction
   testtype/              Test type inference
 
-src/                     Legacy JavaScript converter engine (ES modules)
-  core/                  BaseConverter, ConverterFactory, PatternEngine, etc.
-  converters/            E2E converter classes (Cypress/Playwright/Selenium)
-  languages/             Framework definitions by language (Java, JS, Python)
-  utils/                 Helpers, reporter
+internal/convert/        Go-native conversion catalog, runtime, config, workflows
 ```

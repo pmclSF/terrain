@@ -555,6 +555,10 @@ func TestBuildImportGraph_SourceImports_Deterministic(t *testing.T) {
 func writeTestFile(t *testing.T, root, relPath, content string) {
 	t.Helper()
 	abs := filepath.Join(root, relPath)
-	os.MkdirAll(filepath.Dir(abs), 0o755)
-	os.WriteFile(abs, []byte(content), 0o644)
+	if err := os.MkdirAll(filepath.Dir(abs), 0o755); err != nil {
+		t.Fatalf("mkdir for %s: %v", relPath, err)
+	}
+	if err := os.WriteFile(abs, []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", relPath, err)
+	}
 }

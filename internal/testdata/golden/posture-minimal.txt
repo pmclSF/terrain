@@ -1,9 +1,14 @@
 Terrain Posture Report
 ============================================================
 
-HEALTH
+  Overall: [ok] STRONG
+  All 5 dimension(s) are strong.
+
+------------------------------------------------------------
+
+[ok] HEALTH
   Posture: STRONG
-  health posture is strong across 4 measurement(s).
+  Health posture is strong across 4 measurement(s).
 
   Measurements:
     health.flaky_share                       0.0% [unknown]
@@ -11,11 +16,13 @@ HEALTH
       No runtime data available; flakiness cannot be assessed from static analysis alone.
       * No runtime data available; result is based on static analysis only.
     health.skip_density                      0.0% [strong]
-      Evidence: strong
+      Evidence: partial
       0 of 1 test file(s) contain skipped tests (0%).
-    health.dead_test_share                   0.0% [strong]
-      Evidence: strong
-      0 of 1 test file(s) contain dead tests (0%).
+      * Partial data available; result may improve with more runtime artifacts.
+    health.dead_test_share                   0.0% [unknown]
+      Evidence: weak
+      No runtime data available; dead tests cannot be identified without test execution results.
+      * No runtime data available; result is based on static analysis only.
     health.slow_test_share                   0.0% [unknown]
       Evidence: weak
       No runtime data available; test speed cannot be assessed from static analysis alone.
@@ -23,9 +30,9 @@ HEALTH
 
 ------------------------------------------------------------
 
-COVERAGE_DEPTH
+[ok] COVERAGE DEPTH
   Posture: STRONG
-  coverage_depth posture is strong across 3 measurement(s).
+  Coverage Depth posture is strong across 3 measurement(s).
 
   Measurements:
     coverage_depth.uncovered_exports         0.0% [strong]
@@ -42,16 +49,15 @@ COVERAGE_DEPTH
 
 ------------------------------------------------------------
 
-COVERAGE_DIVERSITY
-  Posture: WEAK
-  coverage_diversity posture is weak. Driven by: coverage_diversity.framework_fragmentation.
+[ok] COVERAGE DIVERSITY
+  Posture: STRONG
+  Coverage Diversity posture is strong across 5 measurement(s).
 
-  Driving measurements: coverage_diversity.framework_fragmentation
   Measurements:
     coverage_diversity.mock_heavy_share      0.0% [strong]
       Evidence: strong
       0 of 1 test file(s) are mock-heavy (0%).
-    coverage_diversity.framework_fragmentation 100.0% [weak]
+    coverage_diversity.framework_fragmentation 100.0% [strong]
       Evidence: strong
       1 framework(s) across 1 test file(s).
     coverage_diversity.e2e_concentration     0.0% [strong]
@@ -68,9 +74,9 @@ COVERAGE_DIVERSITY
 
 ------------------------------------------------------------
 
-STRUCTURAL_RISK
+[ok] STRUCTURAL RISK
   Posture: STRONG
-  structural_risk posture is strong across 3 measurement(s).
+  Structural Risk posture is strong across 3 measurement(s).
 
   Measurements:
     structural_risk.migration_blocker_density 0.0% [strong]
@@ -85,9 +91,9 @@ STRUCTURAL_RISK
 
 ------------------------------------------------------------
 
-OPERATIONAL_RISK
+[ok] OPERATIONAL RISK
   Posture: STRONG
-  operational_risk posture is strong across 3 measurement(s).
+  Operational Risk posture is strong across 3 measurement(s).
 
   Measurements:
     operational_risk.policy_violation_density 0.0% [strong]
@@ -107,4 +113,5 @@ Next steps:
   terrain summary       leadership-ready overview
   terrain metrics       aggregate scorecard
   terrain posture --json   machine-readable posture data
+  terrain posture --verbose   show signal inputs per measurement
 

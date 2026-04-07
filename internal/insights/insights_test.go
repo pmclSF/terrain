@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/depgraph"
+	"github.com/pmclSF/terrain/internal/matrix"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -129,14 +130,7 @@ func TestBuild_SkipFindings(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
 		TestFiles: []models.TestFile{
-			{Path: "test/a.test.js", TestCount: 100},
-		},
-		Signals: []models.Signal{
-			{Type: "skippedTest", Severity: models.SeverityMedium},
-			{Type: "skippedTest", Severity: models.SeverityMedium},
-			{Type: "skippedTest", Severity: models.SeverityMedium},
-			{Type: "skippedTest", Severity: models.SeverityMedium},
-			{Type: "skippedTest", Severity: models.SeverityMedium},
+			{Path: "test/a.test.js", TestCount: 100, SkipCount: 5},
 		},
 	}
 	input := &BuildInput{
@@ -193,8 +187,8 @@ func TestBuild_HealthGrade(t *testing.T) {
 		want     string
 	}{
 		{
-			name: "grade A - no findings",
-			want: "A",
+			name:     "grade A - no findings",
+			want:     "A",
 			coverage: depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},
 		},
 		{
@@ -492,4 +486,286 @@ func searchString(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+// ---------------------------------------------------------------------------
+// matrixFindings
+// ---------------------------------------------------------------------------
+
+func TestBuild_MatrixFindings_Gaps(t *testing.T) {
+	t.Parallel()
+	input := &BuildInput{
+		Snapshot: &models.TestSuiteSnapshot{},
+		Coverage: depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},
+		MatrixCoverage: &matrix.MatrixResult{
+			ClassesAnalyzed: 1,
+			Classes: []matrix.ClassCoverage{
+				{ClassID: "envclass:browser", ClassName: "Browsers", Dimension: "browser", TotalMembers: 3, CoveredMembers: 1},
+			},
+			Gaps: []matrix.CoverageGap{
+				{ClassID: "envclass:browser", ClassName: "Browsers", Dimension: "browser", MemberID: "env:firefox", MemberName: "Firefox"},
+				{ClassID: "envclass:browser", ClassName: "Browsers", Dimension: "browser", MemberID: "env:webkit", MemberName: "WebKit"},
+			},
+		},
+	}
+
+	r := Build(input)
+
+	found := false
+	for _, f := range r.Findings {
+		if f.Category == CategoryCoverageDebt && contains(f.Title, "coverage gaps") {
+			found = true
+			if !contains(f.Description, "Firefox") {
+				t.Errorf("expected Firefox in gap description, got %q", f.Description)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected coverage debt finding for matrix gaps")
+	}
+}
+
+func TestBuild_MatrixFindings_Concentration(t *testing.T) {
+	t.Parallel()
+	input := &BuildInput{
+		Snapshot: &models.TestSuiteSnapshot{},
+		Coverage: depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},
+		MatrixCoverage: &matrix.MatrixResult{
+			ClassesAnalyzed: 1,
+			Classes: []matrix.ClassCoverage{
+				{ClassID: "envclass:device", ClassName: "Devices", Dimension: "device", TotalMembers: 3, CoveredMembers: 2},
+			},
+			Concentrations: []matrix.Concentration{
+				{ClassID: "envclass:device", ClassName: "Devices", Dimension: "device",
+					DominantMember: "device:iphone", DominantName: "iPhone 15", DominantShare: 0.85,
+					TotalMembers: 3, CoveredMembers: 2},
+			},
+		},
+	}
+
+	r := Build(input)
+
+	found := false
+	for _, f := range r.Findings {
+		if f.Category == CategoryCoverageDebt && contains(f.Title, "concentration") {
+			found = true
+			if !contains(f.Title, "iPhone 15") {
+				t.Errorf("expected 'iPhone 15' in concentration title, got %q", f.Title)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected coverage debt finding for device concentration")
+	}
+}
+
+func TestBuild_MatrixFindings_NilMatrix(t *testing.T) {
+	t.Parallel()
+	input := &BuildInput{
+		Snapshot:       &models.TestSuiteSnapshot{},
+		Coverage:       depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},
+		MatrixCoverage: nil,
+	}
+
+	r := Build(input)
+
+	for _, f := range r.Findings {
+		if contains(f.Title, "coverage gaps") || contains(f.Title, "concentration") {
+			t.Errorf("should not produce matrix findings with nil MatrixCoverage, got %q", f.Title)
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// signalFindings
+// ---------------------------------------------------------------------------
+
+func TestBuild_SignalFindings_CriticalSignals(t *testing.T) {
+	t.Parallel()
+	input := &BuildInput{
+		Snapshot: &models.TestSuiteSnapshot{
+			Signals: []models.Signal{
+				{Type: "uncoveredAISurface", Severity: models.SeverityCritical},
+				{Type: "phantomEvalScenario", Severity: models.SeverityCritical},
+			},
+		},
+		Coverage: depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},
+	}
+
+	r := Build(input)
+
+	found := false
+	for _, f := range r.Findings {
+		if f.Severity == SeverityCritical && contains(f.Title, "critical-severity") {
+			found = true
+			if !contains(f.Metric, "2 critical") {
+				t.Errorf("expected '2 critical' in metric, got %q", f.Metric)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected critical signal finding")
+	}
+}
+
+func TestBuild_SignalFindings_HighSignalsAboveThreshold(t *testing.T) {
+	t.Parallel()
+	sigs := make([]models.Signal, 12)
+	for i := range sigs {
+		sigs[i] = models.Signal{Type: "weakAssertion", Severity: models.SeverityHigh}
+	}
+	input := &BuildInput{
+		Snapshot: &models.TestSuiteSnapshot{Signals: sigs},
+		Coverage: depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},
+	}
+
+	r := Build(input)
+
+	found := false
+	for _, f := range r.Findings {
+		if contains(f.Title, "high-severity signals") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected high-severity signal finding when >10 high signals")
+	}
+}
+
+func TestBuild_SignalFindings_HighSignalsBelowThreshold(t *testing.T) {
+	t.Parallel()
+	sigs := make([]models.Signal, 5)
+	for i := range sigs {
+		sigs[i] = models.Signal{Type: "weakAssertion", Severity: models.SeverityHigh}
+	}
+	input := &BuildInput{
+		Snapshot: &models.TestSuiteSnapshot{Signals: sigs},
+		Coverage: depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},
+	}
+
+	r := Build(input)
+
+	for _, f := range r.Findings {
+		if contains(f.Title, "high-severity signals") {
+			t.Error("should not produce high-signal finding when <=10 high signals")
+		}
+	}
+}
+
+func TestBuild_SignalFindings_E2EOnlyCoverage(t *testing.T) {
+	t.Parallel()
+	input := &BuildInput{
+		Snapshot: &models.TestSuiteSnapshot{
+			CoverageSummary: &models.CoverageSummary{CoveredOnlyByE2E: 15},
+		},
+		Coverage: depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},
+	}
+
+	r := Build(input)
+
+	found := false
+	for _, f := range r.Findings {
+		if contains(f.Title, "e2e tests") {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("expected E2E-only coverage finding")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// manualCoverageFindings
+// ---------------------------------------------------------------------------
+
+func TestBuild_ManualCoverageFindings_StaleArtifacts(t *testing.T) {
+	t.Parallel()
+	input := &BuildInput{
+		Snapshot: &models.TestSuiteSnapshot{
+			ManualCoverage: []models.ManualCoverageArtifact{
+				{Name: "security audit", LastExecuted: "", Criticality: "high"},
+				{Name: "accessibility check", LastExecuted: "", Criticality: "low"},
+				{Name: "performance review", LastExecuted: "2025-01-01", Criticality: "medium"},
+			},
+		},
+		Coverage: depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},
+	}
+
+	r := Build(input)
+
+	found := false
+	for _, f := range r.Findings {
+		if contains(f.Title, "manual coverage") {
+			found = true
+			// 2 of 3 stale → >= total/2, and 1 is high criticality → SeverityMedium.
+			if f.Severity != SeverityMedium {
+				t.Errorf("expected medium severity (stale high-crit artifact), got %s", f.Severity)
+			}
+		}
+	}
+	if !found {
+		t.Error("expected manual coverage finding for stale artifacts")
+	}
+}
+
+func TestBuild_ManualCoverageFindings_NoStale(t *testing.T) {
+	t.Parallel()
+	input := &BuildInput{
+		Snapshot: &models.TestSuiteSnapshot{
+			ManualCoverage: []models.ManualCoverageArtifact{
+				{Name: "security audit", LastExecuted: "2025-06-01", Criticality: "high"},
+			},
+		},
+		Coverage: depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},
+	}
+
+	r := Build(input)
+
+	for _, f := range r.Findings {
+		if contains(f.Title, "manual coverage") {
+			t.Error("should not produce manual coverage finding when no artifacts are stale")
+		}
+	}
+}
+
+// ---------------------------------------------------------------------------
+// recommendation builder: finding-specific matching
+// ---------------------------------------------------------------------------
+
+func TestBuild_Recommendations_ScenarioDupGetsScenarioRec(t *testing.T) {
+	t.Parallel()
+	input := &BuildInput{
+		Snapshot: &models.TestSuiteSnapshot{
+			Scenarios: []models.Scenario{
+				{ScenarioID: "s1", CoveredSurfaceIDs: []string{"a", "b"}},
+				{ScenarioID: "s2", CoveredSurfaceIDs: []string{"a", "b"}},
+			},
+		},
+		Coverage: depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},
+		Duplicates: depgraph.DuplicateResult{
+			DuplicateCount: 10,
+			Clusters:       []depgraph.DuplicateCluster{{ID: 1, Tests: []string{"t1"}, Similarity: 0.8}},
+		},
+	}
+
+	r := Build(input)
+
+	// Should have BOTH a duplicate-cluster rec AND a scenario rec — not
+	// two duplicate-cluster recs.
+	hasDuplicateRec := false
+	hasScenarioRec := false
+	for _, rec := range r.Recommendations {
+		if contains(rec.Action, "Consolidate") {
+			hasDuplicateRec = true
+		}
+		if contains(rec.Action, "overlapping") || contains(rec.Action, "scenario") {
+			hasScenarioRec = true
+		}
+	}
+	if !hasDuplicateRec {
+		t.Error("expected duplicate-cluster recommendation")
+	}
+	if !hasScenarioRec {
+		t.Error("expected scenario-overlap recommendation (not another duplicate rec)")
+	}
 }

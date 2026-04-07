@@ -1,5 +1,7 @@
 # Failure Taxonomy and Runtime Failure Classification
 
+> **Status:** HISTORICAL — the `internal/failure/` package described here was removed. Runtime failure interpretation is now handled by the active health/runtime pipeline under `internal/health/` and related reporting layers. This document is preserved for design context.
+
 **Package:** `internal/failure/`
 **Stage:** 109
 

@@ -12,6 +12,8 @@ import (
 	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/matrix"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/skipstats"
 	"github.com/pmclSF/terrain/internal/stability"
 )
 
@@ -19,11 +21,14 @@ import (
 type Category string
 
 const (
-	CategoryOptimization    Category = "optimization"
-	CategoryReliability     Category = "reliability"
+	CategoryOptimization     Category = "optimization"
+	CategoryReliability      Category = "reliability"
 	CategoryArchitectureDebt Category = "architecture_debt"
-	CategoryCoverageDebt    Category = "coverage_debt"
+	CategoryCoverageDebt     Category = "coverage_debt"
 )
+
+// maxRecommendations caps the number of recommendations in a report.
+const maxRecommendations = 7
 
 // Severity ranks how urgent a finding is.
 type Severity string
@@ -40,7 +45,8 @@ type Report struct {
 	// Headline is a one-line summary of the most important finding.
 	Headline string `json:"headline"`
 
-	// HealthGrade is a letter grade (A–F) summarizing overall health.
+	// HealthGrade is a letter grade (A–D) summarizing overall health.
+	// A = no findings, B = low/medium only, C = high present, D = critical or many high.
 	HealthGrade string `json:"healthGrade"`
 
 	// Findings are all detected issues, ranked by priority.
@@ -130,10 +136,10 @@ type Recommendation struct {
 
 // CategoryBreakdown summarizes findings within a category.
 type CategoryBreakdown struct {
-	Count          int      `json:"count"`
-	CriticalCount  int      `json:"criticalCount"`
-	HighCount      int      `json:"highCount"`
-	TopFinding     string   `json:"topFinding,omitempty"`
+	Count         int    `json:"count"`
+	CriticalCount int    `json:"criticalCount"`
+	HighCount     int    `json:"highCount"`
+	TopFinding    string `json:"topFinding,omitempty"`
 }
 
 // DataSource describes a data source's availability.
@@ -429,43 +435,25 @@ func coverageFindings(input *BuildInput) []Finding {
 
 func skipFindings(input *BuildInput) []Finding {
 	var findings []Finding
-	snap := input.Snapshot
+	stats := skipstats.Summarize(input.Snapshot)
 
-	skipped := 0
-	for _, sig := range snap.Signals {
-		if sig.Type == "skippedTest" || sig.Type == "conditionallySkippedTest" {
-			skipped++
-		}
-	}
-
-	if skipped == 0 {
+	if stats.SkippedTests == 0 {
 		return findings
 	}
 
-	totalTests := 0
-	for _, tf := range snap.TestFiles {
-		totalTests += tf.TestCount
-	}
-	if totalTests == 0 {
-		totalTests = len(snap.TestCases)
-	}
-
 	sev := SeverityLow
-	if totalTests > 0 {
-		ratio := float64(skipped) / float64(totalTests)
-		if ratio > 0.10 {
-			sev = SeverityHigh
-		} else if ratio > 0.03 {
-			sev = SeverityMedium
-		}
+	if stats.TestRatio > 0.10 {
+		sev = SeverityHigh
+	} else if stats.TestRatio > 0.03 {
+		sev = SeverityMedium
 	}
 
 	findings = append(findings, Finding{
-		Title:       fmt.Sprintf("%d skipped tests consuming CI resources", skipped),
+		Title:       fmt.Sprintf("%d skipped tests consuming CI resources", stats.SkippedTests),
 		Description: "Skipped tests still occupy CI queue slots and mask coverage gaps. Review whether each skip is still justified or should be removed.",
 		Category:    CategoryReliability,
 		Severity:    sev,
-		Metric:      fmt.Sprintf("%d skipped", skipped),
+		Metric:      fmt.Sprintf("%d skipped", stats.SkippedTests),
 	})
 
 	return findings
@@ -477,7 +465,7 @@ func stabilityFindings(input *BuildInput) []Finding {
 
 	flaky := 0
 	for _, sig := range snap.Signals {
-		if sig.Type == "flakyTest" || sig.Type == "unstableSuite" {
+		if sig.Type == signals.SignalFlakyTest || sig.Type == signals.SignalUnstableSuite {
 			flaky++
 		}
 	}
@@ -632,14 +620,10 @@ func matrixFindings(input *BuildInput) []Finding {
 			sev = SeverityMedium
 		}
 
+		gap := mr.Gaps[0]
 		desc := fmt.Sprintf(
-			"%d environment/device class members have no test coverage. ",
-			len(mr.Gaps))
-		if len(mr.Gaps) > 0 {
-			gap := mr.Gaps[0]
-			desc += fmt.Sprintf("Example: %s in %s (%s).",
-				gap.MemberName, gap.ClassName, gap.Dimension)
-		}
+			"%d environment/device class members have no test coverage. Example: %s in %s (%s).",
+			len(mr.Gaps), gap.MemberName, gap.ClassName, gap.Dimension)
 
 		findings = append(findings, Finding{
 			Title:       fmt.Sprintf("%d environment/device coverage gaps detected", len(mr.Gaps)),
@@ -755,12 +739,11 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 		}
 
 		switch {
-		case f.Category == CategoryOptimization && len(input.Duplicates.Clusters) > 0:
+		case f.Category == CategoryOptimization && strings.Contains(f.Title, "redundant") && len(input.Duplicates.Clusters) > 0:
 			rec.Action = fmt.Sprintf("Consolidate %d duplicate test clusters", len(input.Duplicates.Clusters))
 			rec.Rationale = "Removing redundant tests reduces CI runtime and maintenance overhead."
 			rec.Impact = fmt.Sprintf("~%d fewer tests to maintain", input.Duplicates.DuplicateCount)
 			rec.Command = "terrain insights"
-			// Target files from the largest cluster.
 			if len(input.Duplicates.Clusters) > 0 {
 				cluster := input.Duplicates.Clusters[0]
 				for _, t := range cluster.Tests {
@@ -770,6 +753,17 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 					rec.TargetFiles = append(rec.TargetFiles, t)
 				}
 			}
+
+		case f.Category == CategoryOptimization && strings.Contains(f.Title, "behavior-redundant"):
+			rec.Action = f.Title
+			rec.Rationale = f.Description
+			rec.Impact = "fewer CI cycles spent re-validating identical behavior"
+			rec.Command = "terrain insights"
+
+		case f.Category == CategoryOptimization && strings.Contains(f.Title, "scenario pair"):
+			rec.Action = "Review overlapping AI eval scenarios"
+			rec.Rationale = f.Description
+			rec.Impact = "sharper scenario coverage with less duplication"
 
 		case f.Category == CategoryArchitectureDebt && input.Fanout.FlaggedCount > 0:
 			rec.Action = "Refactor high-fanout fixtures to reduce blast radius"
@@ -792,7 +786,13 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 				}
 			}
 
-		case f.Category == CategoryCoverageDebt && f.Title != "" && input.Coverage.SourceCount > 0:
+		case f.Category == CategoryCoverageDebt && strings.Contains(f.Title, "coverage gaps"):
+			// Matrix gap findings get matrix-specific recommendations.
+			rec.Action = f.Title
+			rec.Rationale = f.Description
+			rec.Impact = "broader device/environment coverage"
+
+		case f.Category == CategoryCoverageDebt && strings.Contains(f.Title, "source files") && input.Coverage.SourceCount > 0:
 			lowCount := input.Coverage.BandCounts[depgraph.CoverageBandLow]
 			rec.Action = fmt.Sprintf("Add tests for %d uncovered source files", lowCount)
 			rec.Rationale = "Coverage gaps mean changes in these files cannot trigger targeted test selection."
@@ -817,7 +817,7 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 				if len(rec.TargetFiles) >= 5 {
 					break
 				}
-				if sig.Location.File != "" && (sig.Type == "flakyTest" || sig.Type == "slowTest") {
+				if sig.Location.File != "" && (sig.Type == signals.SignalFlakyTest || sig.Type == signals.SignalSlowTest) {
 					rec.TargetFiles = append(rec.TargetFiles, sig.Location.File)
 				}
 			}
@@ -851,9 +851,8 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 		recs[i].Priority = i + 1
 	}
 
-	// Cap at 7 recommendations.
-	if len(recs) > 7 {
-		recs = recs[:7]
+	if len(recs) > maxRecommendations {
+		recs = recs[:maxRecommendations]
 	}
 
 	return recs
@@ -950,7 +949,7 @@ func buildLimitations(input *BuildInput) []string {
 		lims = append(lims, "No coverage data; coverage confidence is structural (import-based) only.")
 	}
 	if !dsAvailable(snap, "runtime") {
-		lims = append(lims, "No runtime data; flaky/slow test detection relies on structural signals only.")
+		lims = append(lims, "No runtime data; static skip detection is available, but flaky/slow/dead/unstable signals still require runtime artifacts.")
 	}
 	if !input.HasPolicy && !dsAvailable(snap, "policy") {
 		lims = append(lims, "No policy file found; governance checks skipped.")
@@ -979,9 +978,12 @@ func severityOrder(s Severity) int {
 }
 
 // deduplicateInsightFindings removes findings with the same category + title + scope.
-// Keeps the first (higher-severity) occurrence since findings are appended in
-// priority order by builder.
+// Sorts by severity descending first so the highest-severity occurrence wins.
 func deduplicateInsightFindings(findings []Finding) []Finding {
+	// Sort by severity descending so highest severity wins dedup.
+	sort.SliceStable(findings, func(i, j int) bool {
+		return severityOrder(findings[i].Severity) > severityOrder(findings[j].Severity)
+	})
 	seen := map[string]bool{}
 	var out []Finding
 	for _, f := range findings {

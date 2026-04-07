@@ -97,7 +97,10 @@ func TestGolden_ExportJSON(t *testing.T) {
 	ms.GeneratedAt = FixedTime
 
 	// Compute measurements and portfolio so all export fields are populated.
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 	snap.Portfolio = portfolio.Analyze(snap).ToModel()
 
@@ -115,7 +118,10 @@ func TestGolden_AnalyzeText(t *testing.T) {
 	t.Parallel()
 	snap := MinimalSnapshot()
 	snap.Risk = scoring.ComputeRisk(snap)
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 	snap.Portfolio = portfolio.Analyze(snap).ToModel()
 
@@ -128,7 +134,10 @@ func TestGolden_PortfolioText(t *testing.T) {
 	t.Parallel()
 	snap := FlakyConcentratedSnapshot()
 	snap.Risk = scoring.ComputeRisk(snap)
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 	snap.Portfolio = portfolio.Analyze(snap).ToModel()
 
@@ -141,7 +150,10 @@ func TestGolden_SummaryText(t *testing.T) {
 	t.Parallel()
 	snap := MinimalSnapshot()
 	snap.Risk = scoring.ComputeRisk(snap)
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	h := heatmap.Build(snap)
@@ -154,7 +166,10 @@ func TestGolden_SummaryText(t *testing.T) {
 func TestGolden_PostureText(t *testing.T) {
 	t.Parallel()
 	snap := MinimalSnapshot()
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	var buf bytes.Buffer
@@ -165,7 +180,10 @@ func TestGolden_PostureText(t *testing.T) {
 func TestGolden_ImpactText(t *testing.T) {
 	t.Parallel()
 	snap := HealthyBalancedSnapshot()
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	scope := impact.ChangeScopeFromPaths(
@@ -194,7 +212,10 @@ func TestGolden_CompareText(t *testing.T) {
 func TestGolden_ImpactAggregateJSON(t *testing.T) {
 	t.Parallel()
 	snap := HealthyBalancedSnapshot()
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	scope := impact.ChangeScopeFromPaths(

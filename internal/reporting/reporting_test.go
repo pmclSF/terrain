@@ -21,7 +21,10 @@ func TestRenderSummaryReport_HealthyBalanced(t *testing.T) {
 	t.Parallel()
 	snap := testdata.HealthyBalancedSnapshot()
 	snap.Risk = scoring.ComputeRisk(snap)
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	h := heatmap.Build(snap)
@@ -57,7 +60,10 @@ func TestRenderMetricsReport_Minimal(t *testing.T) {
 func TestRenderPostureReport_Healthy(t *testing.T) {
 	t.Parallel()
 	snap := testdata.HealthyBalancedSnapshot()
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 
 	var buf bytes.Buffer
@@ -69,6 +75,319 @@ func TestRenderPostureReport_Healthy(t *testing.T) {
 	}
 	if !strings.Contains(output, "Next steps:") {
 		t.Error("posture report missing next steps")
+	}
+	// Should contain overall posture line.
+	if !strings.Contains(output, "Overall:") {
+		t.Error("posture report missing overall posture")
+	}
+	// Should use human-readable dimension names.
+	if strings.Contains(output, "COVERAGE_DEPTH") {
+		t.Error("posture report still using raw identifier COVERAGE_DEPTH instead of COVERAGE DEPTH")
+	}
+}
+
+func TestRenderPostureReport_WeakScenario(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Measurements: &models.MeasurementSnapshot{
+			Posture: []models.DimensionPostureResult{
+				{
+					Dimension:           "health",
+					Band:                "weak",
+					Explanation:         "health posture is weak. Driven by: health.flaky_share.",
+					DrivingMeasurements: []string{"health.flaky_share"},
+					Measurements: []models.MeasurementResult{
+						{ID: "health.flaky_share", Value: 0.35, Units: "ratio", Band: "critical", Evidence: "strong", Explanation: "35% flaky"},
+					},
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	RenderPostureReport(&buf, snap)
+	output := buf.String()
+
+	// Should have visual marker for weak.
+	if !strings.Contains(output, "[~]") {
+		t.Error("posture report missing [~] marker for weak band")
+	}
+	if !strings.Contains(output, "WEAK") {
+		t.Error("posture report missing WEAK band display")
+	}
+	if !strings.Contains(output, "Driving measurements:") {
+		t.Error("posture report missing driving measurements section")
+	}
+}
+
+func TestRenderPostureReport_CriticalScenario(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Measurements: &models.MeasurementSnapshot{
+			Posture: []models.DimensionPostureResult{
+				{
+					Dimension:   "operational_risk",
+					Band:        "critical",
+					Explanation: "operational_risk posture is critical. Immediate attention needed.",
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	RenderPostureReport(&buf, snap)
+	output := buf.String()
+
+	if !strings.Contains(output, "[!!]") {
+		t.Error("posture report missing [!!] marker for critical band")
+	}
+	if !strings.Contains(output, "CRITICAL") {
+		t.Error("posture report missing CRITICAL band display")
+	}
+}
+
+func TestRenderPostureReport_ElevatedScenario(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Measurements: &models.MeasurementSnapshot{
+			Posture: []models.DimensionPostureResult{
+				{
+					Dimension:   "structural_risk",
+					Band:        "elevated",
+					Explanation: "Structural Risk posture is elevated.",
+				},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	RenderPostureReport(&buf, snap)
+	output := buf.String()
+
+	if !strings.Contains(output, "[!]") {
+		t.Error("posture report missing [!] marker for elevated band")
+	}
+	if !strings.Contains(output, "ELEVATED") {
+		t.Error("posture report missing ELEVATED band display")
+	}
+}
+
+func TestRenderPostureReport_UnknownScenario(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Measurements: &models.MeasurementSnapshot{
+			Posture: []models.DimensionPostureResult{
+				{Dimension: "health", Band: "unknown", Explanation: "No data."},
+			},
+		},
+	}
+
+	var buf bytes.Buffer
+	RenderPostureReport(&buf, snap)
+	output := buf.String()
+
+	if !strings.Contains(output, "[?]") {
+		t.Error("posture report missing [?] marker for unknown band")
+	}
+}
+
+func TestRenderPostureReport_VerboseShowsInputs(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Measurements: &models.MeasurementSnapshot{
+			Posture: []models.DimensionPostureResult{
+				{
+					Dimension:   "health",
+					Band:        "moderate",
+					Explanation: "Some room for improvement.",
+					Measurements: []models.MeasurementResult{
+						{
+							ID: "health.flaky_share", Value: 0.1, Units: "ratio",
+							Band: "moderate", Evidence: "strong",
+							Explanation: "1 of 10 test file(s) flagged as flaky.",
+							Inputs:      []string{"flakyTest", "unstableSuite"},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	// Non-verbose should NOT show inputs.
+	var buf bytes.Buffer
+	RenderPostureReport(&buf, snap)
+	if strings.Contains(buf.String(), "Inputs:") {
+		t.Error("non-verbose posture report should not show Inputs")
+	}
+
+	// Verbose SHOULD show inputs.
+	buf.Reset()
+	RenderPostureReport(&buf, snap, ReportOptions{Verbose: true})
+	output := buf.String()
+	if !strings.Contains(output, "Inputs: flakyTest, unstableSuite") {
+		t.Error("verbose posture report should show Inputs")
+	}
+	if !strings.Contains(output, "Question:") {
+		t.Error("verbose posture report should show dimension question")
+	}
+}
+
+func TestRenderPostureReport_VerboseHintHidden(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Measurements: &models.MeasurementSnapshot{
+			Posture: []models.DimensionPostureResult{
+				{Dimension: "health", Band: "strong", Explanation: "All good."},
+			},
+		},
+	}
+
+	// Non-verbose should suggest --verbose.
+	var buf bytes.Buffer
+	RenderPostureReport(&buf, snap)
+	if !strings.Contains(buf.String(), "--verbose") {
+		t.Error("non-verbose report should suggest --verbose in next steps")
+	}
+
+	// Verbose should NOT suggest --verbose.
+	buf.Reset()
+	RenderPostureReport(&buf, snap, ReportOptions{Verbose: true})
+	if strings.Contains(buf.String(), "--verbose") {
+		t.Error("verbose report should not suggest --verbose")
+	}
+}
+
+func TestRenderPostureReport_NoData(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{}
+
+	var buf bytes.Buffer
+	RenderPostureReport(&buf, snap)
+	output := buf.String()
+
+	if !strings.Contains(output, "No measurement data") {
+		t.Error("posture report should show no-data message")
+	}
+}
+
+func TestComputeOverallPosture(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name       string
+		dimensions []models.DimensionPostureResult
+		wantBand   string
+	}{
+		{
+			"all strong",
+			[]models.DimensionPostureResult{
+				{Dimension: "health", Band: "strong"},
+				{Dimension: "coverage_depth", Band: "strong"},
+			},
+			"strong",
+		},
+		{
+			"worst wins",
+			[]models.DimensionPostureResult{
+				{Dimension: "health", Band: "strong"},
+				{Dimension: "coverage_depth", Band: "critical"},
+			},
+			"critical",
+		},
+		{
+			"all unknown",
+			[]models.DimensionPostureResult{
+				{Dimension: "health", Band: "unknown"},
+			},
+			"unknown",
+		},
+		{
+			"unknown ignored",
+			[]models.DimensionPostureResult{
+				{Dimension: "health", Band: "unknown"},
+				{Dimension: "coverage_depth", Band: "moderate"},
+			},
+			"moderate",
+		},
+		{
+			"elevated",
+			[]models.DimensionPostureResult{
+				{Dimension: "health", Band: "strong"},
+				{Dimension: "structural_risk", Band: "elevated"},
+			},
+			"elevated",
+		},
+		{
+			"weak names dimension",
+			[]models.DimensionPostureResult{
+				{Dimension: "health", Band: "strong"},
+				{Dimension: "coverage_diversity", Band: "weak"},
+			},
+			"weak",
+		},
+		{
+			"empty",
+			nil,
+			"unknown",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := computeOverallPosture(tt.dimensions)
+			if string(result.band) != tt.wantBand {
+				t.Errorf("computeOverallPosture = %q, want %q", result.band, tt.wantBand)
+			}
+		})
+	}
+}
+
+func TestComputeOverallPosture_ExplanationContent(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name        string
+		dimensions  []models.DimensionPostureResult
+		wantContain string
+	}{
+		{
+			"strong mentions all dimensions",
+			[]models.DimensionPostureResult{
+				{Dimension: "health", Band: "strong"},
+				{Dimension: "coverage_depth", Band: "strong"},
+			},
+			"All 2 dimension(s) are strong",
+		},
+		{
+			"moderate names worst dimension",
+			[]models.DimensionPostureResult{
+				{Dimension: "health", Band: "strong"},
+				{Dimension: "coverage_depth", Band: "moderate"},
+			},
+			"Coverage Depth",
+		},
+		{
+			"weak names driving dimension",
+			[]models.DimensionPostureResult{
+				{Dimension: "health", Band: "strong"},
+				{Dimension: "structural_risk", Band: "weak"},
+			},
+			"Structural Risk",
+		},
+		{
+			"critical names driving dimension",
+			[]models.DimensionPostureResult{
+				{Dimension: "operational_risk", Band: "critical"},
+			},
+			"Operational Risk",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+			result := computeOverallPosture(tt.dimensions)
+			if !strings.Contains(result.explanation, tt.wantContain) {
+				t.Errorf("explanation %q should contain %q", result.explanation, tt.wantContain)
+			}
+		})
 	}
 }
 

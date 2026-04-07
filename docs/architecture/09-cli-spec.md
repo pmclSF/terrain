@@ -8,7 +8,7 @@
 > - Debug commands are namespaced under `terrain debug` to separate diagnostic tooling from user-facing workflows
 > - Artifact generation uses `--artifact` flag to write JSON files alongside console output
 
-See also: [10-json-artifact-schemas.md](10-json-artifact-schemas.md)
+See also: [10-json-artifact-schemas.md](10-json-artifact-schemas.md), [27-go-native-conversion-migration.md](27-go-native-conversion-migration.md)
 
 ## Global Flags
 
@@ -90,6 +90,104 @@ Detect data files and print recommended analyze command.
 
 ```bash
 terrain init [--root PATH]
+```
+
+### `terrain convert`
+
+Inspect a conversion direction and the Go-native migration path for it.
+
+```bash
+terrain convert <source> --from FRAMEWORK --to FRAMEWORK [--plan] [--dry-run] [--json]
+```
+
+Current status: this command now owns the Go-native contract, direction catalog, shorthand support, source framework detection, and executable runtime for every cataloged conversion direction.
+
+Current executable directions: `jasmine -> jest`, `jest -> jasmine`, `jest -> mocha`, `jest -> vitest`, `mocha -> jest`, `junit4 -> junit5`, `junit5 -> testng`, `testng -> junit5`, `pytest -> unittest`, `unittest -> pytest`, `nose2 -> pytest`, `cypress -> playwright`, `cypress -> selenium`, `cypress -> webdriverio`, `playwright -> cypress`, `playwright -> puppeteer`, `playwright -> selenium`, `playwright -> webdriverio`, `puppeteer -> playwright`, `selenium -> cypress`, `selenium -> playwright`, `testcafe -> cypress`, `testcafe -> playwright`, `webdriverio -> cypress`, and `webdriverio -> playwright`.
+
+### `terrain convert-config`
+
+Convert test framework configuration files with the Go-native runtime.
+
+```bash
+terrain convert-config <source> --to FRAMEWORK [--from FRAMEWORK] [--output PATH] [--dry-run] [--json]
+```
+
+Current executable config directions include the core JavaScript migration paths that used to live in the legacy JS converter, including `jest -> vitest`, `vitest -> jest`, `cypress -> playwright`, `playwright -> cypress`, `webdriverio -> playwright`, `playwright -> webdriverio`, `webdriverio -> cypress`, `cypress -> webdriverio`, `cypress -> selenium`, `selenium -> cypress`, `playwright -> selenium`, `selenium -> playwright`, `mocha -> jest`, and `jasmine -> jest`.
+
+### `terrain detect`
+
+Detect the dominant framework for a file or directory.
+
+```bash
+terrain detect <file-or-dir> [--json]
+```
+
+### `terrain list-conversions`
+
+List supported conversion directions and shorthand aliases.
+
+```bash
+terrain list-conversions [--json]
+```
+
+### `terrain shorthands`
+
+List shorthand aliases such as `cy2pw` and `jesttovt`.
+
+```bash
+terrain shorthands [--json]
+```
+
+### `terrain estimate`
+
+Estimate migration complexity without writing converted output.
+
+```bash
+terrain estimate <dir> --from FRAMEWORK --to FRAMEWORK [--json]
+```
+
+This command walks the source tree, classifies test/helper/config files, runs the Go-native converters in-memory, and reports confidence bands plus manual-review blockers.
+
+### `terrain migrate`
+
+Run the project-wide Go-native migration workflow.
+
+```bash
+terrain migrate <dir> --from FRAMEWORK --to FRAMEWORK [--output PATH] [--continue] [--retry-failed] [--dry-run] [--plan] [--json]
+```
+
+This workflow layers state tracking, checklist generation, and config conversion on top of the direct `terrain convert` runtime. Migration state is written under `.terrain/migration/`.
+
+### `terrain status`
+
+Show current conversion workflow progress.
+
+```bash
+terrain status [--dir PATH] [--json]
+```
+
+### `terrain checklist`
+
+Generate the current migration checklist from saved workflow state.
+
+```bash
+terrain checklist [--dir PATH] [--json]
+```
+
+### `terrain doctor`
+
+Run migration diagnostics for a target directory.
+
+```bash
+terrain doctor [path] [--json] [--verbose]
+```
+
+### `terrain reset`
+
+Clear conversion migration state.
+
+```bash
+terrain reset [--dir PATH] [--yes] [--json]
 ```
 
 ### `terrain summary`

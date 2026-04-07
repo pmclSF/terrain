@@ -18,12 +18,12 @@ package depgraph
 type NodeFamily string
 
 const (
-	FamilySystem     NodeFamily = "system"
-	FamilyValidation NodeFamily = "validation"
-	FamilyBehavior   NodeFamily = "behavior"
+	FamilySystem      NodeFamily = "system"
+	FamilyValidation  NodeFamily = "validation"
+	FamilyBehavior    NodeFamily = "behavior"
 	FamilyEnvironment NodeFamily = "environment"
-	FamilyExecution  NodeFamily = "execution"
-	FamilyGovernance NodeFamily = "governance"
+	FamilyExecution   NodeFamily = "execution"
+	FamilyGovernance  NodeFamily = "governance"
 )
 
 // NodeType classifies graph nodes.

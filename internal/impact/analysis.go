@@ -9,6 +9,11 @@ import (
 	"github.com/pmclSF/terrain/internal/models"
 )
 
+// highComplexityThreshold is the cyclomatic complexity above which a code
+// unit is flagged as contributing to instability risk. Units above this
+// threshold are harder to test thoroughly and more likely to harbour defects.
+const highComplexityThreshold = 10
+
 // CoverageTypeInfo describes the coverage type mix for an impacted code unit.
 type CoverageTypeInfo struct {
 	HasUnitCoverage        bool `json:"hasUnitCoverage"`
@@ -50,6 +55,24 @@ type SelectedTest struct {
 	Reasons []SelectionReason `json:"reasons,omitempty"`
 }
 
+// unitLookupContext holds pre-built indexes for per-unit classification.
+// Built once in mapChangedUnits and passed to helpers to avoid O(T*U) rebuilds.
+type unitLookupContext struct {
+	fwTypes    map[string]models.FrameworkType
+	nameCounts map[string]int
+}
+
+func buildUnitLookupContext(snap *models.TestSuiteSnapshot) *unitLookupContext {
+	fwTypes := make(map[string]models.FrameworkType, len(snap.Frameworks))
+	for _, fw := range snap.Frameworks {
+		fwTypes[fw.Name] = fw.Type
+	}
+	return &unitLookupContext{
+		fwTypes:    fwTypes,
+		nameCounts: codeUnitNameCounts(snap.CodeUnits),
+	}
+}
+
 // mapChangedUnits maps changed files to impacted code units.
 func mapChangedUnits(scope *ChangeScope, snap *models.TestSuiteSnapshot) []ImpactedCodeUnit {
 	// Build code-unit index by file path.
@@ -57,7 +80,7 @@ func mapChangedUnits(scope *ChangeScope, snap *models.TestSuiteSnapshot) []Impac
 	for _, cu := range snap.CodeUnits {
 		unitsByFile[cu.Path] = append(unitsByFile[cu.Path], cu)
 	}
-	nameCounts := codeUnitNameCounts(snap.CodeUnits)
+	ctx := buildUnitLookupContext(snap)
 
 	var impacted []ImpactedCodeUnit
 
@@ -99,9 +122,9 @@ func mapChangedUnits(scope *ChangeScope, snap *models.TestSuiteSnapshot) []Impac
 				ChangeKind:       cf.ChangeKind,
 				Exported:         cu.Exported,
 				ImpactConfidence: confidence,
-				ProtectionStatus: classifyUnitProtection(cu, snap, nameCounts),
-				CoveringTests:    findCoveringTests(cu, snap, nameCounts),
-				CoverageTypes:    classifyCoverageTypes(cu, snap, nameCounts),
+				ProtectionStatus: classifyUnitProtection(cu, snap, ctx),
+				CoveringTests:    findCoveringTests(cu, snap, ctx),
+				CoverageTypes:    classifyCoverageTypes(cu, snap, ctx),
 				Complexity:       cu.Complexity,
 			}
 
@@ -121,12 +144,10 @@ func mapChangedUnits(scope *ChangeScope, snap *models.TestSuiteSnapshot) []Impac
 
 // findImpactedTests finds tests relevant to the change.
 func findImpactedTests(scope *ChangeScope, snap *models.TestSuiteSnapshot, units []ImpactedCodeUnit) []ImpactedTest {
-	// Build set of changed source files and their directories.
+	// Build set of changed source directories.
 	changedDirs := map[string]bool{}
-	changedSourceFiles := map[string]bool{}
 	for _, cf := range scope.ChangedFiles {
 		if !cf.IsTestFile {
-			changedSourceFiles[cf.Path] = true
 			changedDirs[filepath.Dir(cf.Path)] = true
 		}
 	}
@@ -139,16 +160,16 @@ func findImpactedTests(scope *ChangeScope, snap *models.TestSuiteSnapshot, units
 		}
 	}
 
+	// Build set of changed file paths for O(1) lookups.
+	changedFilePaths := map[string]bool{}
+	for _, cf := range scope.ChangedFiles {
+		changedFilePaths[cf.Path] = true
+	}
+
 	var tests []ImpactedTest
 
 	for _, tf := range snap.TestFiles {
-		isDirectlyChanged := false
-		for _, cf := range scope.ChangedFiles {
-			if cf.Path == tf.Path {
-				isDirectlyChanged = true
-				break
-			}
-		}
+		isDirectlyChanged := changedFilePaths[tf.Path]
 
 		// Direct coverage link.
 		if coveringTestPaths[tf.Path] {
@@ -229,8 +250,9 @@ func pathTreesOverlap(a, b string) bool {
 //
 // The Relevance field explains *which kind* of surface triggered the impact,
 // enabling output like:
-//   "retrieval config changed (chunkConfig)"
-//   "context template changed (systemPrompt, safetyOverlay)"
+//
+//	"retrieval config changed (chunkConfig)"
+//	"context template changed (systemPrompt, safetyOverlay)"
 func findImpactedScenarios(changedAreas []ChangedArea, snap *models.TestSuiteSnapshot) []ImpactedScenario {
 	if len(snap.Scenarios) == 0 {
 		return nil
@@ -298,9 +320,10 @@ func findImpactedScenarios(changedAreas []ChangedArea, snap *models.TestSuiteSna
 // scenario is impacted, grouped by the kinds of changed surfaces.
 //
 // Examples:
-//   "retrieval config changed (chunkConfig)"
-//   "context template changed (systemPrompt, safetyOverlay)"
-//   "prompt changed (buildPrompt); tool schema changed (searchTool)"
+//
+//	"retrieval config changed (chunkConfig)"
+//	"context template changed (systemPrompt, safetyOverlay)"
+//	"prompt changed (buildPrompt); tool schema changed (searchTool)"
 func buildSurfaceRelevance(surfaceIDs []string, surfaces map[string]models.CodeSurface) string {
 	// Group changed surface names by kind.
 	byKind := map[models.CodeSurfaceKind][]string{}
@@ -377,6 +400,10 @@ func surfaceKindLabel(kind models.CodeSurfaceKind) string {
 func findProtectionGaps(units []ImpactedCodeUnit, tests []ImpactedTest, snap *models.TestSuiteSnapshot) []ProtectionGap {
 	var gaps []ProtectionGap
 
+	// When no coverage data was provided, downgrade severity since "no observed
+	// coverage" means "we don't have data" not "we measured and found zero."
+	hasCoverageData := hasCoverageArtifacts(snap)
+
 	for _, iu := range units {
 		if iu.ProtectionStatus == ProtectionNone {
 			severity := "medium"
@@ -389,6 +416,16 @@ func findProtectionGaps(units []ImpactedCodeUnit, tests []ImpactedTest, snap *mo
 				gapType = "untested_export"
 				explanation = fmt.Sprintf("Exported function %s has no observed test coverage.", iu.Name)
 				action = fmt.Sprintf("Add unit tests for exported function %s — this is public API surface.", iu.Name)
+			}
+
+			// Downgrade when no coverage artifacts were provided: the gap
+			// reflects missing data, not measured absence of tests.
+			if !hasCoverageData {
+				if severity == "high" {
+					severity = "medium"
+				} else {
+					severity = "low"
+				}
 			}
 
 			gaps = append(gaps, ProtectionGap{
@@ -638,6 +675,16 @@ func computeProtectionDimension(result *ImpactResult) ChangeRiskDimension {
 		}
 	}
 
+	// When no coverage data was provided, protection gaps reflect missing data
+	// rather than measured absence. Cap the band at "partially_protected" to
+	// avoid alarming merge recommendations based on absent evidence.
+	if !result.HasCoverageData && unprotected > 0 {
+		return ChangeRiskDimension{
+			Name: "protection", Band: "partially_protected",
+			Explanation: fmt.Sprintf("%d of %d impacted unit(s) have no observed coverage (no coverage artifacts provided).", unprotected, len(result.ImpactedUnits)),
+		}
+	}
+
 	ratio := float64(unprotected) / float64(len(result.ImpactedUnits))
 	switch {
 	case ratio == 0:
@@ -741,7 +788,7 @@ func computeInstabilityDimension(result *ImpactResult) ChangeRiskDimension {
 		if iu.ProtectionStatus == ProtectionNone || iu.ProtectionStatus == ProtectionWeak {
 			weakCoverage++
 		}
-		if iu.Complexity > 10 {
+		if iu.Complexity > highComplexityThreshold {
 			highComplexity++
 		}
 	}
@@ -850,11 +897,27 @@ func identifyLimitations(scope *ChangeScope, snap *models.TestSuiteSnapshot, res
 		lims = append(lims, "No per-test coverage lineage available; test selection uses structural heuristics.")
 	}
 
+	if !hasCoverageArtifacts(snap) {
+		lims = append(lims, "No coverage artifacts provided; protection gaps reflect missing data, not measured absence. Provide --coverage to improve accuracy.")
+	}
+
 	if len(snap.Ownership) == 0 {
 		lims = append(lims, "No ownership data available; coordination risk may be underestimated.")
 	}
 
 	return lims
+}
+
+// hasCoverageArtifacts returns true if the snapshot includes coverage data
+// (lcov, cobertura, istanbul, etc.). When false, "no observed coverage"
+// reflects missing data rather than measured absence of tests.
+func hasCoverageArtifacts(snap *models.TestSuiteSnapshot) bool {
+	for _, ds := range snap.DataSources {
+		if ds.Name == "coverage" && ds.Status == models.DataSourceAvailable {
+			return true
+		}
+	}
+	return false
 }
 
 // --- helpers ---
@@ -870,21 +933,15 @@ func classifyProtection(filePath string, snap *models.TestSuiteSnapshot) Protect
 	return ProtectionNone
 }
 
-func classifyUnitProtection(cu models.CodeUnit, snap *models.TestSuiteSnapshot, nameCounts map[string]int) ProtectionStatus {
+func classifyUnitProtection(cu models.CodeUnit, snap *models.TestSuiteSnapshot, ctx *unitLookupContext) ProtectionStatus {
 	unitID := cu.Path + ":" + cu.Name
 	hasUnit := false
 	hasE2E := false
 
-	// Build framework type index.
-	fwTypes := map[string]models.FrameworkType{}
-	for _, fw := range snap.Frameworks {
-		fwTypes[fw.Name] = fw.Type
-	}
-
 	for _, tf := range snap.TestFiles {
 		for _, linked := range tf.LinkedCodeUnits {
-			if linkedMatchesCodeUnit(linked, unitID, cu.Name, nameCounts) {
-				fwType := fwTypes[tf.Framework]
+			if linkedMatchesCodeUnit(linked, unitID, cu.Name, ctx.nameCounts) {
+				fwType := ctx.fwTypes[tf.Framework]
 				if fwType == models.FrameworkTypeUnit {
 					hasUnit = true
 				} else if fwType == models.FrameworkTypeE2E {
@@ -905,12 +962,12 @@ func classifyUnitProtection(cu models.CodeUnit, snap *models.TestSuiteSnapshot, 
 	return ProtectionNone
 }
 
-func findCoveringTests(cu models.CodeUnit, snap *models.TestSuiteSnapshot, nameCounts map[string]int) []string {
+func findCoveringTests(cu models.CodeUnit, snap *models.TestSuiteSnapshot, ctx *unitLookupContext) []string {
 	unitID := cu.Path + ":" + cu.Name
 	var tests []string
 	for _, tf := range snap.TestFiles {
 		for _, linked := range tf.LinkedCodeUnits {
-			if linkedMatchesCodeUnit(linked, unitID, cu.Name, nameCounts) {
+			if linkedMatchesCodeUnit(linked, unitID, cu.Name, ctx.nameCounts) {
 				tests = append(tests, tf.Path)
 				break
 			}
@@ -933,19 +990,14 @@ func confidenceOrder(c Confidence) int {
 }
 
 // classifyCoverageTypes determines the mix of coverage types for a code unit.
-func classifyCoverageTypes(cu models.CodeUnit, snap *models.TestSuiteSnapshot, nameCounts map[string]int) *CoverageTypeInfo {
+func classifyCoverageTypes(cu models.CodeUnit, snap *models.TestSuiteSnapshot, ctx *unitLookupContext) *CoverageTypeInfo {
 	unitID := cu.Path + ":" + cu.Name
 	info := &CoverageTypeInfo{}
 
-	fwTypes := map[string]models.FrameworkType{}
-	for _, fw := range snap.Frameworks {
-		fwTypes[fw.Name] = fw.Type
-	}
-
 	for _, tf := range snap.TestFiles {
 		for _, linked := range tf.LinkedCodeUnits {
-			if linkedMatchesCodeUnit(linked, unitID, cu.Name, nameCounts) {
-				switch fwTypes[tf.Framework] {
+			if linkedMatchesCodeUnit(linked, unitID, cu.Name, ctx.nameCounts) {
+				switch ctx.fwTypes[tf.Framework] {
 				case models.FrameworkTypeUnit:
 					info.HasUnitCoverage = true
 				case models.FrameworkTypeE2E:

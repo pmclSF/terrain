@@ -16,8 +16,8 @@ func TestCapabilityFromPath_EvalSubfolder(t *testing.T) {
 		{"evals/billing/lookup.test.ts", "billing"},
 		{"tests/eval/safety/prompt-injection.test.ts", "safety"},
 		{"evaluations/enterprise-search/retrieval.py", "enterprise-search"},
-		{"evals/unit/test_basic.py", ""},  // "unit" is generic
-		{"src/services/auth.ts", ""},      // no eval path
+		{"evals/unit/test_basic.py", ""}, // "unit" is generic
+		{"src/services/auth.ts", ""},     // no eval path
 		{"", ""},
 	}
 	for _, tt := range tests {
@@ -40,9 +40,9 @@ func TestCapabilityFromName_StripsSuffixes(t *testing.T) {
 		{"enterprise-search-eval", "enterprise-search"},
 		{"support-triage-quality", "support-triage"},
 		{"meeting-summarization-test", "meeting-summarization"},
-		{"accuracy", ""},          // generic, stripped to empty
-		{"safety", ""},            // generic
-		{"ab", ""},                // too short
+		{"accuracy", ""}, // generic, stripped to empty
+		{"safety", ""},   // generic
+		{"ab", ""},       // too short
 		{"", ""},
 	}
 	for _, tt := range tests {
@@ -147,7 +147,7 @@ func TestCollectImpactedCapabilities(t *testing.T) {
 		{ScenarioID: "s1", Capability: "refund-explanation"},
 		{ScenarioID: "s2", Capability: "enterprise-search"},
 		{ScenarioID: "s3", Capability: "refund-explanation"}, // duplicate
-		{ScenarioID: "s4", Capability: ""},                    // no capability
+		{ScenarioID: "s4", Capability: ""},                   // no capability
 	}
 	caps := CollectImpactedCapabilities(scenarios, []string{"s1", "s2", "s3", "s4"})
 	if len(caps) != 2 {

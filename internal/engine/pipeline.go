@@ -16,8 +16,8 @@ import (
 	"github.com/pmclSF/terrain/internal/aidetect"
 	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/coverage"
+	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/gauntlet"
-	"github.com/pmclSF/terrain/internal/health"
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/measurement"
 	"github.com/pmclSF/terrain/internal/models"
@@ -34,11 +34,12 @@ const DefaultEngineVersion = "dev"
 // PipelineResult holds the output of a full analysis pipeline run.
 type PipelineResult struct {
 	Snapshot          *models.TestSuiteSnapshot
+	Graph             *depgraph.Graph // sealed graph built during analysis; reusable by downstream commands
 	HasPolicy         bool
 	DataCompleteness  DataCompleteness
-	Diagnostics       *PipelineDiagnostics  // populated when CollectDiagnostics is true
-	ArtifactDiscovery *ArtifactDiscovery    // populated when auto-discovery runs
-	DiscoveryMessages []string              // user-facing messages about auto-detected artifacts
+	Diagnostics       *PipelineDiagnostics // populated when CollectDiagnostics is true
+	ArtifactDiscovery *ArtifactDiscovery   // populated when auto-discovery runs
+	DiscoveryMessages []string             // user-facing messages about auto-detected artifacts
 }
 
 // DataCompleteness captures which analysis inputs were present and usable.
@@ -467,18 +468,31 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		return nil, err
 	}
 
-	// Step 5: Build detector registry and run all detectors.
+	// Step 5: Build dependency graph, then run detectors (flat → graph → dependent).
 	progress(2, "Building graph")
 	stepStart = time.Now()
+	dg := depgraph.Build(snapshot)
+	logging.L().Debug("dependency graph built", "nodes", dg.Stats().NodeCount, "edges", dg.Stats().EdgeCount, "duration", time.Since(stepStart))
+	if diag != nil {
+		diag.add("graph-build", time.Since(stepStart), dg.Stats().NodeCount)
+	}
+
+	stepStart = time.Now()
+	var runtimeResultsPtr *[]runtime.TestResult
+	if len(runtimeResults) > 0 {
+		runtimeResultsPtr = &runtimeResults
+	}
 	registry, regErr := DefaultRegistry(Config{
-		RepoRoot:     root,
-		PolicyConfig: policyCfg,
+		RepoRoot:            root,
+		PolicyConfig:        policyCfg,
+		RuntimeResults:      runtimeResultsPtr,
+		SlowTestThresholdMs: opt.SlowTestThresholdMs,
 	})
 	if regErr != nil {
 		return nil, fmt.Errorf("initialize detector registry: %w", regErr)
 	}
 	signalsBefore := len(snapshot.Signals)
-	registry.Run(snapshot)
+	registry.RunWithGraph(snapshot, dg)
 	signalsProduced := len(snapshot.Signals) - signalsBefore
 	logging.L().Debug("signal detection complete", "detectors", registry.Len(), "signals", signalsProduced, "duration", time.Since(stepStart))
 	if diag != nil {
@@ -578,6 +592,7 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 
 	return &PipelineResult{
 		Snapshot:          snapshot,
+		Graph:             dg,
 		HasPolicy:         hasPolicy,
 		DataCompleteness:  deriveDataCompleteness(snapshot, opt, hasPolicy),
 		Diagnostics:       diag,
@@ -924,18 +939,9 @@ func applyRuntimeResults(snapshot *models.TestSuiteSnapshot, allResults []runtim
 		}
 	}
 
-	// Run health detectors on runtime data.
-	slowDetector := &health.SlowTestDetector{ThresholdMs: slowThreshold}
-	flakyDetector := &health.FlakyTestDetector{}
-	skippedDetector := &health.SkippedTestDetector{}
-	deadDetector := &health.DeadTestDetector{}
-	unstableDetector := &health.UnstableSuiteDetector{}
-
-	snapshot.Signals = append(snapshot.Signals, slowDetector.Detect(allResults)...)
-	snapshot.Signals = append(snapshot.Signals, flakyDetector.Detect(allResults)...)
-	snapshot.Signals = append(snapshot.Signals, skippedDetector.Detect(allResults)...)
-	snapshot.Signals = append(snapshot.Signals, deadDetector.Detect(allResults)...)
-	snapshot.Signals = append(snapshot.Signals, unstableDetector.Detect(allResults)...)
+	// Health detector signal emission is now handled by the registry via
+	// RuntimeDetectorAdapter. The runtime results are passed to the registry
+	// Config so adapted health detectors run during the normal signal phase.
 }
 
 func ingestCoverageArtifacts(ctx context.Context, coveragePath string, runLabel string) ([]coverage.CoverageArtifact, error) {

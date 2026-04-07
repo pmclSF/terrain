@@ -156,7 +156,7 @@ type CodeSurface struct {
 // formal DetectionEvidence struct for rendering and serialization.
 func (cs *CodeSurface) Evidence() DetectionEvidence {
 	return DetectionEvidence{
-		DetectorID: TierFromDetectorID(extractDetectorID(cs.Reason)),
+		DetectorID: extractDetectorID(cs.Reason),
 		Tier:       cs.DetectionTier,
 		Confidence: cs.Confidence,
 		FilePath:   cs.Path,

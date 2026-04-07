@@ -1,6 +1,6 @@
 # AI Scenario and Evaluation Model
 
-> **Status:** Implemented (graph model, reasoning path, CLI namespace, prompt/dataset inference; eval execution planned)
+> **Status:** Implemented (graph model, reasoning path, CLI namespace, prompt/dataset inference, eval execution, replay, baseline recording)
 > **Purpose:** Define how Terrain models AI/ML evaluation suites, behavioral scenarios, and model validation as part of the test terrain — treating evals as first-class validation alongside traditional tests.
 > **Key decisions:**
 > - Evaluation suites are first-class validation in the graph, not a separate analysis domain
@@ -66,11 +66,12 @@ These surfaces participate in BehaviorSurface grouping and can be linked to Scen
 |---------|--------|---------|
 | `terrain ai list` | Implemented | List detected scenarios, prompt surfaces, dataset surfaces, and eval files |
 | `terrain ai doctor` | Implemented | Validate AI/eval setup: check for scenarios, prompts, datasets, eval files, graph wiring |
-| `terrain ai run` | Scaffolded | Execute eval scenarios and collect results |
-| `terrain ai record` | Scaffolded | Record eval run results as a baseline snapshot |
-| `terrain ai baseline` | Scaffolded | Manage eval baselines (show, compare, promote) |
+| `terrain ai run` | Implemented | Execute eval scenarios and collect results |
+| `terrain ai replay` | Implemented | Replay and verify a previous eval run artifact |
+| `terrain ai record` | Implemented | Record eval run results as a baseline snapshot |
+| `terrain ai baseline` | Implemented | Manage eval baselines (show, compare) |
 
-`terrain ai list` supports `--json` for machine-readable output. `terrain ai doctor` runs 5 diagnostic checks and reports pass/warn status for each.
+`terrain ai list` supports `--json` for machine-readable output. `terrain ai doctor` runs 5 diagnostic checks and reports pass/warn status for each. `run`, `replay`, `record`, and `baseline` all execute today from the shared `terrain ai` namespace.
 
 ### Test Coverage
 

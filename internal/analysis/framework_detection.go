@@ -53,6 +53,13 @@ func detectFrameworkWithContext(relPath string, absPath string, projectCtx *Proj
 	return result
 }
 
+// DetectFrameworkForFile performs per-file framework detection without
+// requiring project-level fallback context.
+func DetectFrameworkForFile(path string) FrameworkResult {
+	cleanPath := filepath.Clean(path)
+	return detectFrameworkWithContext(cleanPath, cleanPath, nil)
+}
+
 // extToLanguage maps file extensions to language identifiers for framework fallback.
 func extToLanguage(ext string) string {
 	switch {

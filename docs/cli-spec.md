@@ -17,6 +17,9 @@ Print version, commit, and build date.
 
 Output: `terrain <version> (commit <sha>, built <date>)`
 
+Flags:
+- `--json` — output machine-readable version metadata
+
 ---
 
 ## Core commands
@@ -26,8 +29,13 @@ Purpose:
 Inspect a repository for common coverage/runtime artifacts and print a
 ready-to-run `terrain analyze` command with detected paths.
 
+Must support:
+- human-readable output (default)
+- JSON output (`--json`)
+
 Flags:
 - `--root PATH` — repository root to inspect (default: current directory)
+- `--json` — output JSON init result
 
 ### `terrain analyze`
 Primary command.
@@ -48,12 +56,13 @@ Must support:
 Flags:
 - `--root PATH` — repository root to analyze (default: current directory)
 - `--json` — output JSON snapshot
-- `--format json|text` — output format (default: text)
+- `--format FORMAT` — output format: json, text, sarif, annotation, html (default: text)
 - `--verbose` — show all findings in analyze output
 - `--write-snapshot` — persist snapshot to .terrain/snapshots/latest.json
 - `--coverage PATH` — ingest coverage data (LCOV, Istanbul JSON)
 - `--coverage-run-label LABEL` — coverage run label: unit, integration, or e2e
 - `--runtime PATH` — path to runtime artifact (JUnit XML or Jest JSON); comma-separated for multiple
+- `--gauntlet PATH` — path to Gauntlet AI eval result artifact (JSON); comma-separated for multiple
 - `--slow-threshold MS` — slow test threshold in milliseconds (default: 5000)
 
 ### `terrain impact`
@@ -75,6 +84,7 @@ Detailed posture breakdown with measurement evidence by dimension.
 Flags:
 - `--root PATH` — repository root (default: current directory)
 - `--json` — output JSON posture snapshot
+- `--verbose` — show measurement values and thresholds
 
 ### `terrain migration readiness`
 Purpose:
@@ -168,31 +178,6 @@ Supported policy rules:
 - `max_weak_assertions` — maximum allowed weakAssertion signals
 - `max_mock_heavy_tests` — maximum allowed mockHeavyTest signals
 
-### `terrain metrics`
-Purpose:
-Output aggregate, benchmark-ready metrics scorecard.
-
-Must support:
-- human-readable output (default)
-- JSON output (`--json`)
-
-Flags:
-- `--root PATH` — repository root to analyze (default: current directory)
-- `--json` — output JSON metrics snapshot
-
-Metrics categories:
-- Structure: test file count, frameworks, fragmentation ratio, languages
-- Health: slow/flaky/skipped/dead test counts and ratios
-- Quality: weak assertions, mock-heavy tests, untested exports, coverage breaks
-- Change readiness: migration blockers, deprecated patterns, dynamic generation, custom matchers
-- Governance: policy violations, legacy framework usage, runtime budget exceeded
-- Risk: reliability/change/speed bands, high-risk area count, critical findings
-
-Privacy boundary:
-- Metrics contain only aggregate counts, ratios, and qualitative bands
-- No raw file paths, symbol names, source code, or user identity
-- Safe for future anonymous aggregation
-
 ### `terrain summary`
 Purpose:
 Executive summary — leadership-oriented risk, trend, and benchmark readiness report.
@@ -204,6 +189,7 @@ Must support:
 Flags:
 - `--root PATH` — repository root to analyze (default: current directory)
 - `--json` — output JSON executive summary (ExecutiveSummary model)
+- `--verbose` — show detailed heatmap breakdown
 
 Output includes:
 - Overall posture by dimension (reliability, change, speed, governance)
@@ -225,6 +211,7 @@ Output a benchmark-safe JSON artifact for future anonymous comparison.
 
 Flags:
 - `--root PATH` — repository root to analyze (default: current directory)
+- `--json` — accepted for explicit machine-readable invocation (output is always JSON)
 
 Output is always JSON (no human-readable mode — this is a machine artifact).
 
@@ -246,18 +233,22 @@ and why, based on signal analysis.
 Flags:
 - `--root PATH` — repository root (default: current directory)
 - `--json` — output JSON insights
+- `--verbose` — show per-finding evidence and file details
 
 ### `terrain explain`
 Purpose:
-Evidence chain for a specific entity — test file, code unit, owner, or finding.
-Answers "Why did Terrain make this decision?"
+Evidence chain for a specific entity — test file, code unit, owner, scenario,
+or finding. Answers "Why did Terrain make this decision?"
 
-Usage: `terrain explain <test-path|test-id|code-unit|owner|finding|selection>`
+Usage: `terrain explain <test-path|test-id|code-unit|owner|scenario-id|selection>`
 
 Flags:
 - `--root PATH` — repository root (default: current directory)
 - `--base REF` — git base ref for diff (used when explaining impact-related decisions)
 - `--json` — output JSON explanation
+- `--verbose` — show detection evidence, tiers, and confidence details
+
+Note: Flags can appear before or after the target argument.
 
 ### `terrain focus`
 Purpose:
@@ -267,6 +258,7 @@ coverage gaps, and recent changes.
 Flags:
 - `--root PATH` — repository root (default: current directory)
 - `--json` — output JSON focus summary
+- `--verbose` — show full rationale, dependency chains, and blind spots
 
 ### `terrain portfolio`
 Purpose:
@@ -277,6 +269,16 @@ risk allocation across the codebase.
 Flags:
 - `--root PATH` — repository root (default: current directory)
 - `--json` — output JSON portfolio snapshot
+- `--verbose` — show per-asset details
+
+### `terrain metrics`
+Purpose:
+Output aggregate, benchmark-ready metrics scorecard.
+
+Flags:
+- `--root PATH` — repository root (default: current directory)
+- `--json` — output JSON metrics snapshot
+- `--verbose` — show detailed metric breakdowns
 
 ### `terrain select-tests`
 Purpose:
@@ -314,7 +316,7 @@ Flags:
 Purpose:
 Developer debugging commands for inspecting internal analysis state.
 
-Usage: `terrain debug <graph|coverage|fanout|duplicates> [flags]`
+Usage: `terrain debug <graph|coverage|fanout|duplicates|depgraph> [flags]`
 
 Subcommands:
 - `graph` — dependency graph statistics
@@ -345,14 +347,77 @@ AI/eval validation namespace. List detected scenarios, run evals, manage baselin
 
 Subcommands:
 - `terrain ai list` — list detected AI/eval scenarios, prompt surfaces, dataset surfaces, and eval files
-- `terrain ai run` — execute eval scenarios and collect results (planned)
-- `terrain ai record` — record eval run results as a baseline snapshot (planned)
-- `terrain ai baseline` — manage eval baselines: show, compare, promote (planned)
+- `terrain ai run` — execute eval scenarios and collect results
+- `terrain ai replay` — replay and verify a previous eval run artifact
+- `terrain ai record` — record eval run results as a baseline snapshot
+- `terrain ai baseline` — manage eval baselines: show, compare
 - `terrain ai doctor` — validate AI/eval setup: scenarios, prompts, datasets, eval files, graph wiring
 
-Flags (all subcommands):
+Common flags (all subcommands):
 - `--root PATH` — repository root (default: current directory)
 - `--json` — output JSON
+
+Additional flags:
+- `terrain ai list --verbose` — show detection evidence per surface
+- `terrain ai run --base REF` — git base ref for impact-based scenario selection
+- `terrain ai run --full` — run all scenarios (skip impact selection)
+- `terrain ai run --dry-run` — show what would run without executing
+
+---
+
+## Conversion / migration commands
+
+### `terrain convert`
+Purpose:
+Go-native test source conversion. 25 supported directions across E2E (Cypress, Playwright, Selenium, WebdriverIO, Puppeteer, TestCafe), JS unit (Jest, Vitest, Mocha, Jasmine), Java (JUnit 4/5, TestNG), and Python (pytest, unittest, nose2).
+
+Usage: `terrain convert <source> --from <framework> --to <framework> [flags]`
+
+Flags:
+- `--from, -f` — source framework
+- `--to, -t` — target framework
+- `--output, -o` — output path
+- `--auto-detect` — detect source framework automatically
+- `--validate` — validate converted output (default: true)
+- `--strict-validate` — force strict validation
+- `--on-error` — skip|fail|best-effort
+- `--plan` — show conversion plan
+- `--dry-run` — preview without writing
+- `--batch-size` — files per batch (default: 5)
+- `--concurrency` — parallel workers (default: 4)
+- `--json` — machine-readable output
+
+### `terrain convert-config`
+Purpose:
+Convert framework configuration files.
+
+Usage: `terrain convert-config <source> --to <framework> [flags]`
+
+### `terrain migrate`
+Purpose:
+Project-wide migration with state tracking, resume, and retry.
+
+Usage: `terrain migrate <dir> --from <framework> --to <framework> [flags]`
+
+Additional flags:
+- `--continue` — resume a previously started migration
+- `--retry-failed` — retry only failed files
+
+### `terrain estimate`
+Purpose:
+Estimate migration complexity without writing files.
+
+Usage: `terrain estimate <dir> --from <framework> --to <framework> [flags]`
+
+### Supporting commands
+
+- `terrain status [--dir PATH]` — show migration progress
+- `terrain checklist [--dir PATH]` — generate migration checklist
+- `terrain doctor [path]` — run migration diagnostics
+- `terrain reset [--dir PATH] --yes` — clear migration state
+- `terrain list-conversions [--json]` — list all 25 supported directions
+- `terrain shorthands [--json]` — list all 50 shorthand aliases
+- `terrain detect <file-or-dir> [--json]` — detect dominant framework
 
 ---
 
@@ -369,4 +434,4 @@ Should be stable enough to support:
 - extension rendering
 - CI integration
 - snapshot persistence
-- future hosted ingestion
+- third-party tool integration

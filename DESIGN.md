@@ -5,7 +5,7 @@ Terrain is a signal-first test intelligence platform. It analyzes repository str
 ## Core Principles
 
 - **Signals are the core abstraction.** Every finding is a structured signal with type, severity, evidence, and location.
-- **Snapshots are the canonical artifact.** The `TestSuiteSnapshot` is the serialized boundary between engine, reporting, and future aggregation.
+- **Snapshots are the canonical artifact.** The `TestSuiteSnapshot` is the serialized boundary between engine, reporting, and external integrations.
 - **Risk must be explainable.** Risk surfaces are derived from signals with transparent scoring, not opaque scores.
 - **Local-first.** Terrain is useful on a single machine, without accounts, SaaS, or network access.
 - **Privacy boundary.** Aggregate metrics and benchmark exports never expose raw file paths or source code.
@@ -30,52 +30,24 @@ See [docs/architecture.md](docs/architecture.md) for the full layered architectu
 | [docs/architecture.md](docs/architecture.md) | Layered architecture: analysis, signals, risk, reporting |
 | [docs/signal-model.md](docs/signal-model.md) | Signal abstraction and schema |
 | [docs/signal-catalog.md](docs/signal-catalog.md) | All signal types and categories |
-| [docs/roadmap.md](docs/roadmap.md) | Milestone history and future work |
 | [docs/cli-spec.md](docs/cli-spec.md) | Full command and flag reference |
 | [docs/engineering/detector-architecture.md](docs/engineering/detector-architecture.md) | Registry-based detector plugin system |
-| [docs/engineering/architecture-map.md](docs/engineering/architecture-map.md) | Contributor-facing component and pipeline map |
-| [docs/engineering/detector-audit.md](docs/engineering/detector-audit.md) | Evidence classification for all detectors |
-| [docs/engineering/hosted-future.md](docs/engineering/hosted-future.md) | What remains for hosted/org product |
 | [docs/contributing/writing-a-detector.md](docs/contributing/writing-a-detector.md) | How to add a new signal detector |
 
 ## Package Map
 
 ```
-cmd/terrain/          CLI entry point
-internal/
-  analysis/          Repository scanning, framework detection, test file discovery
-  benchmark/         Privacy-safe benchmark export and segmentation
-  comparison/        Snapshot-to-snapshot trend comparison
-  coverage/          Coverage artifact ingestion (LCOV, Istanbul) and attribution
-  engine/            Pipeline orchestration and detector registry
-  governance/        Policy evaluation and governance signals
-  health/            Runtime-backed health detectors (slow, flaky, skipped)
-  heatmap/           Risk concentration model (directory and owner hotspots)
-  identity/          Test identity hashing and normalization
-  impact/            Change-scope impact analysis
-  measurement/       Posture measurement framework
-  metrics/           Aggregate metric derivation
-  migration/         Migration detectors, readiness model, preview boundary
-  models/            Canonical data models (Signal, Snapshot, Risk, Framework, etc.)
-  ownership/         Ownership resolution (CODEOWNERS, config, directory fallback)
-  policy/            Policy config model and YAML loader
-  quality/           Quality signal detectors
-  reporting/         Human-readable report renderers
-  runtime/           Runtime artifact ingestion (JUnit XML, Jest JSON)
-  scoring/           Explainable risk engine (reliability, change, speed)
-  signals/           Signal detector interface, registry, runner
-  summary/           Executive summary builder (posture, trends, focus, recommendations)
-  testcase/          Test case extraction and identity collision detection
-  testtype/          Test type inference (unit, integration, e2e)
+cmd/terrain/          CLI entry point (30+ commands)
+internal/             47 packages — see README.md for full listing
 ```
 
-See [docs/engineering/architecture-map.md](docs/engineering/architecture-map.md) for the full contributor-oriented component map.
+See [docs/engineering/detector-architecture.md](docs/engineering/detector-architecture.md) for the detector plugin system architecture.
 
 ## Migration Context
 
-Terrain originated as a multi-framework test converter (legacy). That converter engine (JavaScript ES modules, `src/`) remains in the repository and is fully functional. The current engine reframes migration as one dimension of broader test intelligence rather than the sole product.
+Terrain originated as a multi-framework test converter. That migration surface now lives directly in the Go CLI under `internal/convert` and `cmd/terrain`, so migration and analysis ship as one product runtime instead of separate stacks.
 
-The legacy converter architecture is documented in [docs/legacy/converter-architecture-legacy.md](docs/legacy/converter-architecture-legacy.md).
+The historical converter architecture remains documented in [docs/legacy/converter-architecture-legacy.md](docs/legacy/converter-architecture-legacy.md) for reference, but the supported implementation is now Go-native.
 
 ## Extension Architecture
 

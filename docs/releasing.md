@@ -8,25 +8,36 @@ git tag vX.Y.Z && git push origin vX.Y.Z
          ▼
   release.yml (trigger: tag push v*)
     ├── verify job:
-    │     ├── npm ci
+    │     ├── actions/setup-go + actions/setup-node
     │     ├── Assert tag matches package.json version
-    │     └── npm run release:verify
-    │           ├── format:check
-    │           ├── lint
-    │           ├── test (all suites)
-    │           └── verify-pack.js
-    │                 ├── npm pack → install in temp dir
-    │                 ├── Verify JS exports (VERSION, convertFile, …)
-    │                 ├── CLI smoke (--version, --help)
-    │                 └── Conversion smoke (jest→vitest)
-    └── release job (needs: verify):
+    │     └── make release-verify
+    │           ├── make go-release-verify
+    │           │     ├── go vet ./cmd/... ./internal/...
+    │           │     ├── go test ./cmd/... ./internal/...
+    │           │     ├── go build ./cmd/terrain
+    │           │     └── go test ./cmd/terrain/ -run TestSnapshot -count=1 -v
+    │           ├── make npm-release-verify
+    │           │     ├── npm ci
+    │           │     ├── format:check
+    │           │     ├── lint
+    │           │     └── verify-pack.js
+    │           │           ├── npm pack → install in temp dir
+    │           │           ├── CLI smoke (`terrain`, `mapterrain`)
+    │           │           └── Conversion smoke (`terrain convert`, `terrain migrate`)
+    │           └── make extension-verify
+    │                 ├── npm --prefix extension/vscode ci
+    │                 ├── npm --prefix extension/vscode run compile
+    │                 └── npm --prefix extension/vscode test
+    ├── go-release job (needs: verify):
+    │     ├── goreleaser release --clean
+    │     ├── Create GitHub Release with binaries + SBOMs + checksums
+    │     └── Update Homebrew tap formula in pmclSF/homebrew-terrain
+    └── npm-release job (needs: verify + go-release):
           ├── npm ci
-          ├── npm publish --provenance (NPM_TOKEN secret)
-          └── Create GitHub Release (auto-generated notes)
+          └── npm publish --provenance (NPM_TOKEN secret)
 ```
 
-A single workflow (`release.yml`) handles the full pipeline: verify → npm release →
-Go binary release. Both release jobs only run if verify passes.
+A single workflow (`release.yml`) handles the full pipeline: verify → GitHub/Homebrew release → npm release. The npm package publishes only after the GitHub release artifacts exist, because the `mapterrain` npm package installs the Go CLI from those tagged assets.
 
 ### Go Binary Release
 
@@ -43,14 +54,19 @@ Users can install via:
 ```bash
 go install github.com/pmclSF/terrain/cmd/terrain@latest
 ```
-Or download pre-built binaries from the GitHub Releases page.
+Users can also download pre-built binaries from the GitHub Releases page, install with Homebrew, or use npm:
+
+```bash
+brew install pmclSF/terrain/mapterrain
+npm install -g mapterrain
+```
 
 The verify job includes a **tag/version guard** that aborts if the git tag
 version does not match `package.json` version — preventing accidental publishes
 of mismatched versions.
 
 `publish.yml` (renamed "Verify Release") is a safety net that triggers on
-`release: created` events. It runs `npm run release:verify` but does NOT
+`release: created` events. It runs `make release-verify` but does NOT
 publish — this catches issues if a release is created manually outside the
 tag-push flow.
 
@@ -59,6 +75,7 @@ tag-push flow.
 | Secret | Where | Purpose |
 |--------|-------|---------|
 | `NPM_TOKEN` | GitHub repo → Settings → Secrets | npm automation token with publish access |
+| `HOMEBREW_TAP_GITHUB_TOKEN` | GitHub repo → Settings → Secrets | push generated formula updates to `pmclSF/homebrew-terrain` |
 
 ### Permissions
 
@@ -82,12 +99,11 @@ Follow these steps before cutting any release.
 ### 1. Run the full verification locally
 
 ```bash
-npm run release:verify
+make release-verify
 ```
 
-This runs format:check, lint, tests, packs the tarball, installs it in a temp
-directory, verifies exports, runs CLI smoke tests (`--version`, `--help`), and
-runs a conversion smoke test (jest→vitest).
+This runs the Go release gate, the npm package verification, and the VS Code
+extension compile path in one contract.
 
 ### 2. Inspect tarball contents
 
@@ -96,9 +112,9 @@ npm pack --dry-run
 ```
 
 Confirm only expected files are included:
-- `bin/terrain.js`
-- `src/**/*.js`
-- `src/types/*.d.ts`
+- `bin/terrain-cli.js`
+- `bin/terrain-installer.js`
+- `bin/postinstall.js`
 - `README.md`
 - `SECURITY.md`
 - `LICENSE`
@@ -116,9 +132,10 @@ git push origin vX.Y.Z
 ### 4. Verify after push
 
 - [ ] GitHub Actions: `release.yml` completed successfully
-- [ ] GitHub Releases: new release exists with auto-generated notes
-- [ ] npm: `npm view terrain-testframework version` shows the new version
-- [ ] Install test: `npx terrain-testframework@latest --version` prints the new version
+- [ ] GitHub Releases: new release exists with binaries, checksums, and SBOMs
+- [ ] Homebrew: `brew install pmclSF/terrain/mapterrain` succeeds
+- [ ] npm: `npm view mapterrain version` shows the new version
+- [ ] Install test: `npx mapterrain@latest version --json` prints the new version
 
 ## Tag Naming Convention
 

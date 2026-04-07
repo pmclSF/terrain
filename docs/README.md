@@ -8,7 +8,7 @@
 - **The current engine** is signal-led: a test intelligence platform that surfaces risk, quality, migration readiness, and governance from static and runtime analysis.
 - **Migration remains the acquisition wedge** — the pain of framework migration is what brings teams to Terrain. The current engine turns that pain into broader test intelligence.
 
-The legacy converter engine is preserved and functional. See [legacy/](legacy/) for historical architecture docs.
+The legacy converter docs are kept as historical records from the retired JavaScript runtime. The supported product runtime is now Go-native; see [legacy/](legacy/) only for background and migration history.
 
 ## Start Here
 
@@ -21,21 +21,20 @@ The legacy converter engine is preserved and functional. See [legacy/](legacy/) 
 ## Product
 
 - [Product Overview](product/terrain-overview.md) — what Terrain is, how it works, current state
-- [Vision](vision.md) — why Terrain exists
-- [Product Concept](product-concept.md) — what Terrain does
-- [Persona Journeys](architecture/17-persona-journeys.md) — how each persona uses Terrain
-- [Feature Matrix](product/feature-matrix.md) — capabilities mapped to personas with support levels
-- [Master Plan](MASTER_PLAN.md) — strategic direction
-- [Paid Product](paid-product.md) — future commercial direction
-- [UX Blueprint](ux-blueprint.md) — user experience design
+- [Canonical User Journeys](product/canonical-user-journeys.md) — primary workflows and expected outcomes
+- [First-Run Story](product/first-run-story.md) — what the first 5 minutes look like
+- [AI/Eval User Journey](product/ai-user-journey.md) — AI and eval validation workflow
+- [Posture Model](product/posture-model.md) — the five-dimension posture framework
+- [Impact Analysis Model](product/impact-analysis-model.md) — how impact analysis works
 
 ## Technical
 
 - [Signal Model](signal-model.md) — the core signal abstraction
 - [Signal Catalog](signal-catalog.md) — all signal types
+- [JSON Schema](json-schema.md) — JSON output structure
+- [Telemetry](telemetry.md) — opt-in local telemetry
 - [VS Code Extension](vscode-extension.md) — extension architecture and views
-- [Roadmap](roadmap.md) — milestone history and future work
-- [Implementation Workbook](implementation-workbook.md) — stage-by-stage implementation log
+- [Telemetry](telemetry.md) — opt-in local telemetry
 
 ## Benchmarks
 
@@ -45,12 +44,8 @@ The legacy converter engine is preserved and functional. See [legacy/](legacy/) 
 
 ## Engineering
 
-- [Architecture Map](engineering/architecture-map.md) — contributor-facing component map
 - [Detector Architecture](engineering/detector-architecture.md) — registry-based detector plugin system
-- [Detector Audit](engineering/detector-audit.md) — evidence classification for all detectors
 - [Deterministic Output](engineering/determinism.md) — deterministic output contract and enforcement
-- [Engineering Roadmap](engineering/future-work.md) — incremental analysis, parallelization, and layer separation
-- [Hosted Future](engineering/hosted-future.md) — what remains for hosted/org product
 - [Test Identity](engineering/test-identity.md) — deterministic test identity model
 - [Test Type Inference](engineering/test-type-inference.md) — evidence-based test classification
 - [Code Unit Inventory](engineering/code-unit-inventory.md) — normalized code structure model
@@ -70,12 +65,11 @@ The legacy converter engine is preserved and functional. See [legacy/](legacy/) 
 
 ## Release
 
-- [Release Checklist](release-checklist.md) — launch readiness status
 - [Release Process](releasing.md) — versioning and release workflow
 
 ## Legacy Converter Engine
 
-Historical documentation for the JavaScript converter engine:
+Historical documentation for the retired JavaScript converter engine:
 
 - [Converter Architecture (legacy)](legacy/converter-architecture-legacy.md)
 - [Legacy Notes](legacy/legacy-notes.md)

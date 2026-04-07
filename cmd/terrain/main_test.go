@@ -71,28 +71,6 @@ func TestLoadSnapshot_MigratesLegacyFields(t *testing.T) {
 	}
 }
 
-func TestDetectFirstExisting(t *testing.T) {
-	t.Parallel()
-
-	root := t.TempDir()
-	if got := detectFirstExisting(root, []string{"coverage/lcov.info"}); got != "" {
-		t.Fatalf("expected empty result, got %q", got)
-	}
-
-	path := filepath.Join(root, "coverage", "lcov.info")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatalf("mkdir: %v", err)
-	}
-	if err := os.WriteFile(path, []byte("TN:\n"), 0o644); err != nil {
-		t.Fatalf("write: %v", err)
-	}
-
-	got := detectFirstExisting(root, []string{"coverage/lcov.info", "coverage.out"})
-	if got != path {
-		t.Fatalf("detected path = %q, want %q", got, path)
-	}
-}
-
 func TestInitLogging_ParsesFlag(t *testing.T) {
 	// Not parallel: modifies global logging state.
 	initLogging([]string{"analyze", "--log-level=debug", "--root", "."})
@@ -108,7 +86,7 @@ func TestInitLogging_ParsesFlag(t *testing.T) {
 func TestRunInit_InvalidRoot(t *testing.T) {
 	t.Parallel()
 
-	if err := runInit(filepath.Join(t.TempDir(), "missing")); err == nil {
+	if err := runInit(filepath.Join(t.TempDir(), "missing"), false); err == nil {
 		t.Fatal("expected error for missing root")
 	}
 }
@@ -140,20 +118,20 @@ func TestIsEvalPath(t *testing.T) {
 	}
 }
 
-func TestRunAI_UnknownSubcommand(t *testing.T) {
+func TestRunAI_CommandsRequireScenarioContext(t *testing.T) {
 	t.Parallel()
-	err := runAI("nonexistent", ".", false)
-	if err == nil {
-		t.Fatal("expected error for unknown subcommand")
+	type subTest struct {
+		name string
+		fn   func() error
 	}
-}
-
-func TestRunAI_ScaffoldedCommandsReturnError(t *testing.T) {
-	t.Parallel()
-	for _, sub := range []string{"run", "record", "baseline"} {
-		err := runAI(sub, ".", false)
-		if err == nil {
-			t.Errorf("terrain ai %s should return not-implemented error", sub)
+	subs := []subTest{
+		{"run", func() error { return runAIRun(".", false, "", false, false) }},
+		{"record", func() error { return runAIRecord(".", false) }},
+		{"baseline", func() error { return runAIBaseline(".", false) }},
+	}
+	for _, sub := range subs {
+		if err := sub.fn(); err == nil {
+			t.Errorf("terrain ai %s should fail without runnable scenario context", sub.name)
 		}
 	}
 }
@@ -162,7 +140,11 @@ func TestRunAIList_EmptyRepo(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	// Empty directory — should produce zero counts without error.
-	if err := runAIList(root, false, false); err != nil {
+	// Use captureRun to avoid racing on os.Stdout with other parallel tests.
+	_, err := captureRun(func() error {
+		return runAIList(root, false, false)
+	})
+	if err != nil {
 		t.Fatalf("runAIList on empty dir: %v", err)
 	}
 }
@@ -170,7 +152,11 @@ func TestRunAIList_EmptyRepo(t *testing.T) {
 func TestRunAIDoctor_EmptyRepo(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	if err := runAIDoctor(root, false); err != nil {
+	// Use captureRun to avoid racing on os.Stdout with other parallel tests.
+	_, err := captureRun(func() error {
+		return runAIDoctor(root, false)
+	})
+	if err != nil {
 		t.Fatalf("runAIDoctor on empty dir: %v", err)
 	}
 }

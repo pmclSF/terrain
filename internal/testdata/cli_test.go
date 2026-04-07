@@ -58,6 +58,13 @@ func TestCLI_HelpContainsAllCommands(t *testing.T) {
 			t.Errorf("help text missing supporting command %q", c)
 		}
 	}
+
+	aiCommands := []string{"ai list", "ai run", "ai replay", "ai record", "ai baseline", "ai doctor"}
+	for _, c := range aiCommands {
+		if !strings.Contains(output, c) {
+			t.Errorf("help text missing AI command %q", c)
+		}
+	}
 }
 
 // TestCLI_UnknownCommandExitCode verifies unknown commands exit non-zero.
@@ -221,6 +228,126 @@ func TestCLI_HelpContainsDebugNamespace(t *testing.T) {
 	}
 }
 
+func TestCLI_AINamespaceHelp(t *testing.T) {
+	t.Parallel()
+	cmd := exec.Command("go", "run", "./cmd/terrain/", "ai", "--help")
+	cmd.Dir = "../.."
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("ai --help failed: %v\n%s", err, out)
+	}
+
+	output := string(out)
+	if !strings.Contains(output, "Usage: terrain ai") {
+		t.Fatalf("ai --help missing usage text:\n%s", output)
+	}
+	for _, expected := range []string{"list", "run", "replay", "record", "baseline", "doctor"} {
+		if !strings.Contains(output, expected) {
+			t.Errorf("ai --help missing %q", expected)
+		}
+	}
+}
+
+func TestCLI_MigrationNamespaceHelp(t *testing.T) {
+	t.Parallel()
+	cmd := exec.Command("go", "run", "./cmd/terrain/", "migration", "--help")
+	cmd.Dir = "../.."
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("migration --help failed: %v\n%s", err, out)
+	}
+
+	output := string(out)
+	if !strings.Contains(output, "Usage: terrain migration") {
+		t.Fatalf("migration --help missing usage text:\n%s", output)
+	}
+	for _, expected := range []string{"readiness", "blockers", "preview"} {
+		if !strings.Contains(output, expected) {
+			t.Errorf("migration --help missing %q", expected)
+		}
+	}
+}
+
+func TestCLI_DebugNamespaceHelp(t *testing.T) {
+	t.Parallel()
+	cmd := exec.Command("go", "run", "./cmd/terrain/", "debug", "--help")
+	cmd.Dir = "../.."
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("debug --help failed: %v\n%s", err, out)
+	}
+
+	if !strings.Contains(string(out), "Usage: terrain debug") {
+		t.Fatalf("debug --help missing usage text:\n%s", out)
+	}
+}
+
+func TestCLI_ExportNamespaceHelp(t *testing.T) {
+	t.Parallel()
+	cmd := exec.Command("go", "run", "./cmd/terrain/", "export", "--help")
+	cmd.Dir = "../.."
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("export --help failed: %v\n%s", err, out)
+	}
+
+	if !strings.Contains(string(out), "Usage: terrain export benchmark") {
+		t.Fatalf("export --help missing usage text:\n%s", out)
+	}
+}
+
+func TestCLI_AISubcommandHelpShowsOnlyRelevantFlags(t *testing.T) {
+	t.Parallel()
+	cmd := exec.Command("go", "run", "./cmd/terrain/", "ai", "replay", "--help")
+	cmd.Dir = "../.."
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("ai replay --help failed: %v\n%s", err, out)
+	}
+
+	output := string(out)
+	for _, unexpected := range []string{"-base", "-dry-run", "-full", "-verbose"} {
+		if strings.Contains(output, unexpected) {
+			t.Errorf("ai replay --help should not include %q:\n%s", unexpected, output)
+		}
+	}
+	for _, expected := range []string{"-json", "-root"} {
+		if !strings.Contains(output, expected) {
+			t.Errorf("ai replay --help missing %q:\n%s", expected, output)
+		}
+	}
+}
+
+func TestCLI_MigrationSubcommandHelpShowsOnlyRelevantFlags(t *testing.T) {
+	t.Parallel()
+
+	readinessCmd := exec.Command("go", "run", "./cmd/terrain/", "migration", "readiness", "--help")
+	readinessCmd.Dir = "../.."
+	readinessOut, err := readinessCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("migration readiness --help failed: %v\n%s", err, readinessOut)
+	}
+	readiness := string(readinessOut)
+	for _, unexpected := range []string{"-file", "-scope"} {
+		if strings.Contains(readiness, unexpected) {
+			t.Errorf("migration readiness --help should not include %q:\n%s", unexpected, readiness)
+		}
+	}
+
+	previewCmd := exec.Command("go", "run", "./cmd/terrain/", "migration", "preview", "--help")
+	previewCmd.Dir = "../.."
+	previewOut, err := previewCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("migration preview --help failed: %v\n%s", err, previewOut)
+	}
+	preview := string(previewOut)
+	for _, expected := range []string{"-file", "-scope"} {
+		if !strings.Contains(preview, expected) {
+			t.Errorf("migration preview --help missing %q:\n%s", expected, preview)
+		}
+	}
+}
+
 // TestCLI_ExportBenchmarkTestdata verifies export benchmark command works.
 func TestCLI_ExportBenchmarkTestdata(t *testing.T) {
 	t.Parallel()
@@ -237,6 +364,52 @@ func TestCLI_ExportBenchmarkTestdata(t *testing.T) {
 	}
 }
 
+func TestCLI_InitJSON(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	cmd := exec.Command("go", "run", "./cmd/terrain/", "init", "--root", root, "--json")
+	cmd.Dir = "../.."
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("init --json failed: %v\n%s", err, out)
+	}
+
+	if !strings.HasPrefix(strings.TrimSpace(string(out)), "{") {
+		t.Fatalf("init --json output is not JSON:\n%s", out)
+	}
+}
+
+func TestCLI_ExportBenchmarkAcceptsJSONFlag(t *testing.T) {
+	t.Parallel()
+
+	cmd := exec.Command("go", "run", "./cmd/terrain/", "export", "benchmark", "--root", "internal/analysis/testdata/sample-repo", "--json")
+	cmd.Dir = "../.."
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("export benchmark --json failed: %v\n%s", err, out)
+	}
+
+	if !strings.HasPrefix(strings.TrimSpace(string(out)), "{") {
+		t.Fatalf("export benchmark --json output is not JSON:\n%s", out)
+	}
+}
+
+func TestCLI_VersionJSON(t *testing.T) {
+	t.Parallel()
+
+	cmd := exec.Command("go", "run", "./cmd/terrain/", "version", "--json")
+	cmd.Dir = "../.."
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("version --json failed: %v\n%s", err, out)
+	}
+
+	if !strings.HasPrefix(strings.TrimSpace(string(out)), "{") {
+		t.Fatalf("version --json output is not JSON:\n%s", out)
+	}
+}
+
 // TestCLI_AnalyzeOutputConsistency verifies analyze output structure.
 func TestCLI_AnalyzeOutputConsistency(t *testing.T) {
 	t.Parallel()
@@ -248,8 +421,16 @@ func TestCLI_AnalyzeOutputConsistency(t *testing.T) {
 	}
 
 	output := string(out)
-	// Should have standard sections.
-	sections := []string{"Test Files", "Frameworks", "Signals"}
+	// The first-run analyze report uses the v2 layout; assert durable sections
+	// that reflect the current CLI contract rather than legacy headings.
+	sections := []string{
+		"Repository Profile",
+		"Validation Inventory",
+		"Risk Posture",
+		"Signals:",
+		"Data Completeness",
+		"Next steps:",
+	}
 	for _, s := range sections {
 		if !strings.Contains(output, s) {
 			t.Errorf("analyze output missing section %q", s)

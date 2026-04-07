@@ -25,6 +25,7 @@ import (
 	"github.com/pmclSF/terrain/internal/heatmap"
 	"github.com/pmclSF/terrain/internal/metrics"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/signals"
 )
 
 // ExecutiveSummary is the top-level leadership summary artifact.
@@ -407,12 +408,8 @@ func buildRecommendations(snap *models.TestSuiteSnapshot, h *heatmap.Heatmap) []
 
 	// Group signals by directory and evidence strength.
 	type dirInfo struct {
-		signalCount int
 		strongCount int
 		modCount    int
-		weakCount   int
-		topType     string
-		topCount    int
 	}
 	dirs := map[string]*dirInfo{}
 	for _, s := range snap.Signals {
@@ -422,21 +419,11 @@ func buildRecommendations(snap *models.TestSuiteSnapshot, h *heatmap.Heatmap) []
 			d = &dirInfo{}
 			dirs[dir] = d
 		}
-		d.signalCount++
 		switch s.EvidenceStrength {
 		case models.EvidenceStrong:
 			d.strongCount++
 		case models.EvidenceModerate:
 			d.modCount++
-		default:
-			d.weakCount++
-		}
-		tkey := string(s.Type)
-		if d.topType == "" {
-			d.topType = tkey
-			d.topCount = 1
-		} else if tkey == d.topType {
-			d.topCount++
 		}
 	}
 
@@ -623,16 +610,17 @@ func buildRecommendedFocus(es *ExecutiveSummary) string {
 }
 
 func categorizeSignalType(signalType string) string {
-	switch signalType {
-	case "flakyTest", "skippedTest", "deadTest", "unstableSuite":
+	st := models.SignalType(signalType)
+	switch st {
+	case signals.SignalFlakyTest, signals.SignalSkippedTest, signals.SignalDeadTest, signals.SignalUnstableSuite:
 		return "reliability"
-	case "slowTest", "runtimeBudgetExceeded":
+	case signals.SignalSlowTest, signals.SignalRuntimeBudgetExceeded:
 		return "speed"
-	case "weakAssertion", "mockHeavyTest", "untestedExport", "coverageThresholdBreak":
+	case signals.SignalWeakAssertion, signals.SignalMockHeavyTest, signals.SignalUntestedExport, signals.SignalCoverageThresholdBreak:
 		return "quality"
-	case "migrationBlocker", "deprecatedTestPattern", "customMatcherRisk", "dynamicTestGeneration":
+	case signals.SignalMigrationBlocker, signals.SignalDeprecatedTestPattern, signals.SignalCustomMatcherRisk, signals.SignalDynamicTestGeneration:
 		return "migration"
-	case "policyViolation", "legacyFrameworkUsage", "skippedTestsInCI":
+	case signals.SignalPolicyViolation, signals.SignalLegacyFrameworkUsage, signals.SignalSkippedTestsInCI:
 		return "governance"
 	default:
 		return "quality"

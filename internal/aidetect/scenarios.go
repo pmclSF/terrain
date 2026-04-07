@@ -66,7 +66,7 @@ func deriveFromEvalTests(root string, testFiles []models.TestFile, surfacesByPat
 	var scenarios []models.Scenario
 
 	for _, tf := range testFiles {
-		if !isEvalTestPath(tf.Path) {
+		if !IsEvalTestPath(tf.Path) {
 			continue
 		}
 
@@ -93,6 +93,7 @@ func deriveFromEvalTests(root string, testFiles []models.TestFile, surfacesByPat
 			Path:              tf.Path,
 			Framework:         tf.Framework,
 			CoveredSurfaceIDs: importedSurfaces,
+			Executable:        true, // Eval test files are directly runnable.
 		})
 	}
 
@@ -121,7 +122,7 @@ func deriveFromAIImports(root string, testFiles []models.TestFile, detection *De
 	var scenarios []models.Scenario
 	for _, tf := range testFiles {
 		// Skip files already handled by eval directory detection.
-		if isEvalTestPath(tf.Path) {
+		if IsEvalTestPath(tf.Path) {
 			continue
 		}
 
@@ -176,13 +177,12 @@ func deriveFromAIImports(root string, testFiles []models.TestFile, detection *De
 			Path:              tf.Path,
 			Framework:         framework,
 			CoveredSurfaceIDs: surfaces,
+			Executable:        true, // Test files with AI imports are directly runnable.
 		})
 	}
 
 	return scenarios
 }
-
-var promptfooTestPattern = regexp.MustCompile(`(?m)^\s*-\s+(?:description|vars|assert)`)
 
 // deriveFromPromptfooConfig creates scenarios from promptfoo config files.
 func deriveFromPromptfooConfig(root, configPath string, prompts map[string]string) []models.Scenario {
@@ -291,7 +291,8 @@ func resolveImportPath(fromFile, importPath string) string {
 	return resolved
 }
 
-func isEvalTestPath(path string) bool {
+// IsEvalTestPath returns true if the path is within a known eval directory.
+func IsEvalTestPath(path string) bool {
 	lower := strings.ToLower(path)
 	parts := strings.Split(strings.ReplaceAll(lower, "\\", "/"), "/")
 	for _, p := range parts {

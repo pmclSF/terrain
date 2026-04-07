@@ -3,7 +3,9 @@ package analyze
 import (
 	"testing"
 
+	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/skipstats"
 )
 
 func TestBuild_EmptySnapshot(t *testing.T) {
@@ -47,21 +49,41 @@ func TestBuildSignalSummary(t *testing.T) {
 func TestBuildSkipSummary(t *testing.T) {
 	snap := &models.TestSuiteSnapshot{
 		TestFiles: []models.TestFile{
-			{TestCount: 10},
-			{TestCount: 5},
-		},
-		Signals: []models.Signal{
-			{Type: "skippedTest"},
-			{Type: "skippedTest"},
-			{Type: "weakAssertion"},
+			{Path: "test/a.test.js", TestCount: 10, SkipCount: 3},
+			{Path: "test/b.test.js", TestCount: 5},
 		},
 	}
-	ss := buildSkipSummary(snap)
-	if ss.SkippedCount != 2 {
-		t.Errorf("skipped = %d, want 2", ss.SkippedCount)
+	stats := skipstats.Summarize(snap)
+	ss := SkipSummary{
+		SkippedCount: stats.SkippedTests,
+		TotalTests:   stats.TotalTests,
+		SkipRatio:    stats.TestRatio,
+	}
+	if ss.SkippedCount != 3 {
+		t.Errorf("skipped = %d, want 3", ss.SkippedCount)
 	}
 	if ss.TotalTests != 15 {
 		t.Errorf("total = %d, want 15", ss.TotalTests)
+	}
+	if ss.SkipRatio != 0.2 {
+		t.Errorf("ratio = %v, want 0.2", ss.SkipRatio)
+	}
+}
+
+func TestBuildCIOptimization_UsesMergedSkipCounts(t *testing.T) {
+	t.Parallel()
+
+	ci := buildCIOptimization(
+		&depgraph.DuplicateResult{DuplicateCount: 4},
+		&depgraph.FanoutResult{FlaggedCount: 2},
+		3, // skippedTests
+	)
+
+	if ci.SkippedTestsReviewable != 3 {
+		t.Fatalf("SkippedTestsReviewable = %d, want 3", ci.SkippedTestsReviewable)
+	}
+	if ci.Recommendation == "" {
+		t.Fatal("expected recommendation")
 	}
 }
 
@@ -326,4 +348,121 @@ func TestBuild_SchemaVersionStable(t *testing.T) {
 	if AnalyzeReportSchemaVersion != "1" {
 		t.Errorf("expected schema version '1', got %q", AnalyzeReportSchemaVersion)
 	}
+}
+
+func TestBuildRiskPosture_NilMeasurements(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{}
+	dims := buildRiskPosture(snap)
+	if dims != nil {
+		t.Errorf("expected nil for nil measurements, got %v", dims)
+	}
+}
+
+func TestBuildRiskPosture_PopulatesDimensions(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Measurements: &models.MeasurementSnapshot{
+			Posture: []models.DimensionPostureResult{
+				{Dimension: "health", Band: "STRONG"},
+				{Dimension: "coverage_depth", Band: "MODERATE"},
+			},
+		},
+	}
+	dims := buildRiskPosture(snap)
+	if len(dims) != 2 {
+		t.Fatalf("expected 2 dimensions, got %d", len(dims))
+	}
+	if dims[0].Dimension != "health" || dims[0].Band != "STRONG" {
+		t.Errorf("dim[0] = %v", dims[0])
+	}
+	if dims[1].Dimension != "coverage_depth" || dims[1].Band != "MODERATE" {
+		t.Errorf("dim[1] = %v", dims[1])
+	}
+}
+
+func TestFanoutNodeLabel(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		nodeID   string
+		nodeType string
+		want     string
+	}{
+		{"behavior:module:src/auth.ts", "behavior_surface", "src/auth.ts"},
+		{"file:src/db.ts", "source_file", "src/db.ts"},
+		{"owner:ml-team", "owner", "ml-team"},
+		{"singleton", "test", "test"},
+		{"singleton", "", "singleton"},
+	}
+	for _, tc := range cases {
+		got := fanoutNodeLabel(tc.nodeID, tc.nodeType)
+		if got != tc.want {
+			t.Errorf("fanoutNodeLabel(%q, %q) = %q, want %q", tc.nodeID, tc.nodeType, got, tc.want)
+		}
+	}
+}
+
+func TestDeriveTopInsight_NoDuplicatesNoFanout(t *testing.T) {
+	t.Parallel()
+	r := &Report{SkippedTestBurden: SkipSummary{SkippedCount: 5}}
+	fanout := &depgraph.FanoutResult{}
+	dupes := &depgraph.DuplicateResult{}
+	cov := &depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}}
+
+	got := deriveTopInsight(r, fanout, dupes, cov)
+	if got == "" {
+		t.Fatal("expected non-empty insight")
+	}
+	// Should fall through to skip burden.
+	if !contains(got, "skipped") {
+		t.Errorf("expected skip-related insight, got %q", got)
+	}
+}
+
+func TestDeriveTopInsight_Default(t *testing.T) {
+	t.Parallel()
+	r := &Report{}
+	fanout := &depgraph.FanoutResult{}
+	dupes := &depgraph.DuplicateResult{}
+	cov := &depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}}
+
+	got := deriveTopInsight(r, fanout, dupes, cov)
+	if got == "" {
+		t.Fatal("expected non-empty default insight")
+	}
+	if !contains(got, "No major issues") {
+		t.Errorf("expected default insight, got %q", got)
+	}
+}
+
+func TestDsAvailable(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		DataSources: []models.DataSource{
+			{Name: "coverage", Status: models.DataSourceAvailable},
+			{Name: "runtime", Status: models.DataSourceUnavailable},
+		},
+	}
+	if !dsAvailable(snap, "coverage") {
+		t.Error("expected coverage to be available")
+	}
+	if dsAvailable(snap, "runtime") {
+		t.Error("expected runtime to be unavailable")
+	}
+	if dsAvailable(snap, "policy") {
+		t.Error("expected policy (not present) to be unavailable")
+	}
+}
+
+func contains(s, sub string) bool {
+	return len(s) >= len(sub) && (s == sub || len(s) > 0 && containsSubstring(s, sub))
+}
+
+func containsSubstring(s, sub string) bool {
+	for i := 0; i <= len(s)-len(sub); i++ {
+		if s[i:i+len(sub)] == sub {
+			return true
+		}
+	}
+	return false
 }

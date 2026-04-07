@@ -226,7 +226,7 @@ func TestApplyDiscovery_NilDiscovery(t *testing.T) {
 func TestMissingArtifactHints_BothMissing(t *testing.T) {
 	t.Parallel()
 	opts := PipelineOptions{}
-	hints := MissingArtifactHints(&opts, &ArtifactDiscovery{})
+	hints := MissingArtifactHints(&opts, &ArtifactDiscovery{}, nil)
 	if len(hints) != 2 {
 		t.Errorf("expected 2 hints when both missing, got %d", len(hints))
 	}
@@ -235,7 +235,7 @@ func TestMissingArtifactHints_BothMissing(t *testing.T) {
 func TestMissingArtifactHints_CoverageProvided(t *testing.T) {
 	t.Parallel()
 	opts := PipelineOptions{CoveragePath: "/some/lcov.info"}
-	hints := MissingArtifactHints(&opts, &ArtifactDiscovery{})
+	hints := MissingArtifactHints(&opts, &ArtifactDiscovery{}, nil)
 	if len(hints) != 1 {
 		t.Errorf("expected 1 hint (runtime missing), got %d", len(hints))
 	}
@@ -247,7 +247,7 @@ func TestMissingArtifactHints_AllProvided(t *testing.T) {
 		CoveragePath: "/some/lcov.info",
 		RuntimePaths: []string{"/some/junit.xml"},
 	}
-	hints := MissingArtifactHints(&opts, &ArtifactDiscovery{})
+	hints := MissingArtifactHints(&opts, &ArtifactDiscovery{}, nil)
 	if len(hints) != 0 {
 		t.Errorf("expected 0 hints when all provided, got %d", len(hints))
 	}

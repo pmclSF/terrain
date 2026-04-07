@@ -159,13 +159,13 @@ Every core command should be able to produce or consume a `TestSuiteSnapshot`.
 This snapshot is the boundary between:
 - engine
 - reporting
-- future hosted aggregation
+- third-party integrations
 
 ## Why this architecture
 
 This architecture allows Terrain to:
 - stay repo-native
 - support local OSS value
-- support future aggregation and benchmarking
+- support cross-repo benchmarking via privacy-safe exports
 - evolve new detectors without reworking the whole system
 - support multiple product surfaces with one engine

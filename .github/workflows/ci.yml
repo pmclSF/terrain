@@ -10,24 +10,24 @@ permissions:
   contents: read
 
 jobs:
-  # ── JavaScript (legacy converter engine) ────────────────────
-  test:
+  npm-package:
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        node-version: [22.x, 24.x]
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Setup Node.js ${{ matrix.node-version }}
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: 22.x
           cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -43,13 +43,7 @@ jobs:
             exit 1
           }
 
-      - name: Check formatting
-        run: npm run format:check
-
-      - name: Run linter
-        run: npm run lint
-
-      - name: Run tests
+      - name: Verify npm package wrapper
         run: npm test
 
   # ── Go (analysis engine) ────────────────────────────────────
@@ -72,18 +66,22 @@ jobs:
           go mod tidy
           git diff --exit-code go.mod go.sum
 
-      - name: Build terrain binary
-        run: go build -o terrain ./cmd/terrain
+      - name: Run core Go verification
+        run: make go-release-verify
 
       - name: Run Go tests with race detector
         run: go test ./internal/... ./cmd/... -count=1 -race
 
-      - name: Verify golden/snapshot tests
-        run: go test ./cmd/terrain/ -run TestSnapshot -count=1 -v
-
       - name: Smoke-test terrain CLI
         run: |
+          go build -o terrain ./cmd/terrain
           ./terrain version
+          ./terrain version --json > /dev/null
+          ./terrain --help > /dev/null
+          ./terrain ai --help > /dev/null
+          ./terrain migration --help > /dev/null
+          ./terrain debug --help > /dev/null
+          ./terrain export --help > /dev/null
           ./terrain analyze --root tests/fixtures/sample-repo --json > /dev/null
           ./terrain insights --root tests/fixtures/sample-repo --json > /dev/null
 
@@ -97,6 +95,7 @@ jobs:
       - name: Benchmark smoke tests (4 canonical commands)
         run: |
           echo "=== benchmark: sample-repo ==="
+          go build -o terrain ./cmd/terrain
           ./terrain analyze --root tests/fixtures/sample-repo --json | python3 -c "import sys,json; d=json.load(sys.stdin); assert d['testsDetected']['testFileCount'] > 0, 'analyze: no test files'"
           ./terrain insights --root tests/fixtures/sample-repo --json | python3 -c "import sys,json; d=json.load(sys.stdin); assert 'healthGrade' in d, 'insights: no health grade'"
 
@@ -108,6 +107,23 @@ jobs:
           ./terrain analyze --root tests/fixtures/backend-api --json | python3 -c "import sys,json; d=json.load(sys.stdin); assert len(d.get('riskPosture',[])) == 5, 'analyze: expected 5 posture dimensions'"
 
           echo "All benchmark smoke tests passed."
+
+  extension:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22.x
+          cache: npm
+          cache-dependency-path: extension/vscode/package-lock.json
+
+      - name: Verify VS Code extension
+        run: make extension-verify
 
   # ── Go benchmark comparison (PRs only) ──────────────────────
   go-bench-compare:
@@ -157,39 +173,3 @@ jobs:
             cat /tmp/benchstat.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
-
-  # ── Integration (JS CLI + Go CLI) ──────────────────────────
-  build:
-    runs-on: ubuntu-latest
-    needs: [test, go-test]
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22.x
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Verify JS CLI works
-        run: |
-          node bin/terrain.js --version
-          node bin/terrain.js --help
-          node bin/terrain.js list-conversions
-
-      - name: Test Cypress to Playwright conversion
-        run: |
-          echo "describe('Test', () => { it('works', () => { cy.visit('/'); }); });" > /tmp/test.cy.js
-          node bin/terrain.js convert /tmp/test.cy.js --from cypress --to playwright -o /tmp/out1
-          cat /tmp/out1/test.spec.js
-
-      - name: Test Playwright to Cypress conversion
-        run: |
-          echo "import { test } from '@playwright/test'; test('works', async ({ page }) => { await page.goto('/'); });" > /tmp/test.spec.js
-          node bin/terrain.js convert /tmp/test.spec.js --from playwright --to cypress -o /tmp/out2
-          cat /tmp/out2/test.cy.js

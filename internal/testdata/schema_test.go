@@ -179,7 +179,10 @@ func TestSchema_BenchmarkExportRoundTrip(t *testing.T) {
 	ms := metrics.Derive(snap)
 	ms.GeneratedAt = FixedTime
 
-	measReg, mErr := measurement.DefaultRegistry(); if mErr != nil { t.Fatal(mErr) }
+	measReg, mErr := measurement.DefaultRegistry()
+	if mErr != nil {
+		t.Fatal(mErr)
+	}
 	snap.Measurements = measReg.ComputeSnapshot(snap).ToModel()
 	snap.Portfolio = portfolio.Analyze(snap).ToModel()
 
