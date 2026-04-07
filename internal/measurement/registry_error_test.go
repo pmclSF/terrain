@@ -21,10 +21,10 @@ func TestMeasurementDefaultRegistry_DefinitionCountStable(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// Should have all 18 measurement definitions.
+	// Should have exactly 18 measurement definitions.
 	count := len(reg.All())
-	if count < 18 {
-		t.Errorf("expected at least 18 definitions, got %d", count)
+	if count != 18 {
+		t.Errorf("expected 18 definitions, got %d", count)
 	}
 }
 

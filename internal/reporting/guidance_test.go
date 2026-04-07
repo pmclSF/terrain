@@ -6,12 +6,14 @@ import (
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/signals"
 )
 
 func TestWriteHealthGuidance_NoRuntime(t *testing.T) {
+	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
 		Signals: []models.Signal{
-			{Type: "weakAssertion"},
+			{Type: signals.SignalWeakAssertion},
 		},
 	}
 	var buf bytes.Buffer
@@ -23,12 +25,19 @@ func TestWriteHealthGuidance_NoRuntime(t *testing.T) {
 	if !strings.Contains(out, "Jest:") || !strings.Contains(out, "Pytest:") {
 		t.Error("expected framework-specific generation commands")
 	}
+	// Dead test detection is static — the runtime-required line should not mention it.
+	for _, line := range strings.Split(out, "\n") {
+		if strings.Contains(line, "require runtime") && strings.Contains(line, "dead") {
+			t.Error("guidance should not list dead tests as requiring runtime (they use AST analysis)")
+		}
+	}
 }
 
 func TestWriteHealthGuidance_WithRuntime(t *testing.T) {
+	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
 		Signals: []models.Signal{
-			{Type: "flakyTest"},
+			{Type: signals.SignalFlakyTest},
 		},
 	}
 	var buf bytes.Buffer
@@ -39,6 +48,7 @@ func TestWriteHealthGuidance_WithRuntime(t *testing.T) {
 }
 
 func TestWriteHealthGuidance_EmptySignals(t *testing.T) {
+	t.Parallel()
 	snap := &models.TestSuiteSnapshot{}
 	var buf bytes.Buffer
 	WriteHealthGuidance(&buf, snap)

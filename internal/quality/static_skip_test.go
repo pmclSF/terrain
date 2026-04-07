@@ -61,10 +61,10 @@ func TestStaticSkipDetector_SeverityThresholds(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name     string
-		skips    int
-		total    int
-		wantSev  models.SignalSeverity
+		name    string
+		skips   int
+		total   int
+		wantSev models.SignalSeverity
 	}{
 		{"low skip rate", 1, 20, models.SeverityLow},
 		{"medium skip rate", 5, 20, models.SeverityMedium},
