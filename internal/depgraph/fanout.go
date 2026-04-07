@@ -48,7 +48,20 @@ type FanoutEntry struct {
 }
 
 // DefaultFanoutThreshold is the default threshold for flagging excessive fanout.
-const DefaultFanoutThreshold = 10
+//
+// This is a cross-language compromise:
+//   - Go: package-level imports create high natural fanout; 25 avoids most
+//     false positives from normal package dependencies while still catching
+//     genuinely excessive shared helpers.
+//   - Python: conftest.py and shared fixtures with 25+ dependents are real
+//     blast-radius concerns (the pandas conftest pattern).
+//   - JavaScript/TypeScript: setupTests/testUtils with 25+ importers are
+//     worth flagging — one change affects many test files.
+//   - Java: abstract base test classes with 25+ subclasses indicate tight
+//     coupling through inheritance.
+//
+// Future: make this language-aware at the analysis layer.
+const DefaultFanoutThreshold = 25
 
 // maxFanoutNodes is the safety threshold for transitive fanout analysis.
 // Above this size, exact transitive analysis is too expensive for interactive

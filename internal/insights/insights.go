@@ -218,7 +218,19 @@ func Build(input *BuildInput) *Report {
 	// 9. AI scenario duplication.
 	findings = append(findings, scenarioDuplicationFindings(input)...)
 
-	// 10. Depgraph skipped warning.
+	// 10. AI surface coverage gaps.
+	findings = append(findings, aiCoverageFindings(input)...)
+
+	// 11. "What to test next" — prioritized untested code.
+	findings = append(findings, testNextFindings(input)...)
+
+	// 12. AI behavior impact chains — prompt/context downstream gaps.
+	findings = append(findings, aiBehaviorChainFindings(input)...)
+
+	// 13. Capability gap detection — missing negative/adversarial scenarios.
+	findings = append(findings, capabilityGapFindings(input)...)
+
+	// 14. Depgraph skipped warning.
 	if input.DepgraphSkipped {
 		findings = append(findings, Finding{
 			Title:       "Depgraph analysis skipped",
@@ -652,6 +664,93 @@ func matrixFindings(input *BuildInput) []Finding {
 	return findings
 }
 
+func aiCoverageFindings(input *BuildInput) []Finding {
+	var findings []Finding
+	snap := input.Snapshot
+	if snap == nil {
+		return findings
+	}
+
+	// Count AI surfaces by kind.
+	aiSurfaces := 0
+	for _, cs := range snap.CodeSurfaces {
+		switch cs.Kind {
+		case models.SurfacePrompt, models.SurfaceContext, models.SurfaceDataset,
+			models.SurfaceToolDef, models.SurfaceRetrieval, models.SurfaceAgent,
+			models.SurfaceEvalDef:
+			aiSurfaces++
+		}
+	}
+	if aiSurfaces == 0 {
+		return findings
+	}
+
+	// Count uncovered AI surfaces (not linked to any scenario).
+	coveredIDs := map[string]bool{}
+	for _, sc := range snap.Scenarios {
+		for _, sid := range sc.CoveredSurfaceIDs {
+			coveredIDs[sid] = true
+		}
+	}
+	uncovered := 0
+	var uncoveredExamples []string
+	for _, cs := range snap.CodeSurfaces {
+		switch cs.Kind {
+		case models.SurfacePrompt, models.SurfaceContext, models.SurfaceDataset,
+			models.SurfaceToolDef, models.SurfaceRetrieval, models.SurfaceAgent:
+			if !coveredIDs[cs.SurfaceID] {
+				uncovered++
+				if len(uncoveredExamples) < 3 {
+					uncoveredExamples = append(uncoveredExamples, cs.Path)
+				}
+			}
+		}
+	}
+
+	if uncovered == 0 {
+		return findings
+	}
+
+	sev := SeverityMedium
+	if uncovered > 5 {
+		sev = SeverityHigh
+	}
+
+	f := Finding{
+		Title: fmt.Sprintf("%d AI surface(s) have no eval scenario coverage", uncovered),
+		Description: fmt.Sprintf(
+			"Changes to uncovered AI surfaces (prompts, contexts, datasets, tool definitions) "+
+				"cannot be validated automatically. Add eval scenarios to catch behavioral regressions."),
+		Category: CategoryCoverageDebt,
+		Severity: sev,
+		Scope:    strings.Join(uncoveredExamples, ", "),
+		Metric:   fmt.Sprintf("%d/%d uncovered", uncovered, aiSurfaces),
+	}
+	findings = append(findings, f)
+
+	// If there are scenarios but none cover all surfaces, recommend wiring.
+	if len(snap.Scenarios) > 0 && uncovered > 0 {
+		wiredCount := 0
+		for _, sc := range snap.Scenarios {
+			if len(sc.CoveredSurfaceIDs) > 0 {
+				wiredCount++
+			}
+		}
+		if wiredCount < len(snap.Scenarios) {
+			findings = append(findings, Finding{
+				Title: fmt.Sprintf("%d scenario(s) have no linked code surfaces", len(snap.Scenarios)-wiredCount),
+				Description: "Scenarios without linked surfaces cannot be selected by impact analysis. " +
+					"Wire them via terrain.yaml or ensure eval test files import the surfaces they validate.",
+				Category: CategoryArchitectureDebt,
+				Severity: SeverityMedium,
+				Metric:   fmt.Sprintf("%d/%d unwired", len(snap.Scenarios)-wiredCount, len(snap.Scenarios)),
+			})
+		}
+	}
+
+	return findings
+}
+
 func scenarioDuplicationFindings(input *BuildInput) []Finding {
 	var findings []Finding
 	snap := input.Snapshot
@@ -723,6 +822,280 @@ func scenarioDuplicationFindings(input *BuildInput) []Finding {
 		Category: CategoryOptimization,
 		Severity: sev,
 		Metric:   fmt.Sprintf("%d overlapping pairs across %d scenarios", highOverlapPairs, len(snap.Scenarios)),
+	})
+
+	return findings
+}
+
+// --- Feature: "What to test next" ---
+//
+// Ranks untested code units by risk: high-fanout files with no coverage are
+// the highest-priority testing gaps because changes to them affect many tests
+// but no test validates them directly.
+func testNextFindings(input *BuildInput) []Finding {
+	var findings []Finding
+	snap := input.Snapshot
+	if snap == nil || len(snap.CodeUnits) == 0 {
+		return findings
+	}
+
+	// Build set of code units that have at least one covering test.
+	coveredUnits := map[string]bool{}
+	for _, tf := range snap.TestFiles {
+		for _, linked := range tf.LinkedCodeUnits {
+			coveredUnits[linked] = true
+		}
+	}
+
+	// Count dependents per source file from the import graph.
+	// Each entry in ImportGraph maps a test file to its imports;
+	// we reverse it to count how many tests depend on each source.
+	fileDependents := map[string]int{}
+	for _, imports := range snap.ImportGraph {
+		for src := range imports {
+			fileDependents[src]++
+		}
+	}
+
+	// Find untested code units, prioritized by dependent count.
+	type candidate struct {
+		path       string
+		name       string
+		dependents int
+	}
+	var candidates []candidate
+	seen := map[string]bool{}
+	for _, cu := range snap.CodeUnits {
+		unitID := cu.Path + ":" + cu.Name
+		if coveredUnits[unitID] || coveredUnits[cu.Name] {
+			continue
+		}
+		if seen[cu.Path] {
+			continue
+		}
+		seen[cu.Path] = true
+		candidates = append(candidates, candidate{
+			path:       cu.Path,
+			name:       cu.Name,
+			dependents: fileDependents[cu.Path],
+		})
+	}
+
+	if len(candidates) == 0 {
+		return findings
+	}
+
+	// Sort by dependents descending.
+	sort.Slice(candidates, func(i, j int) bool {
+		return candidates[i].dependents > candidates[j].dependents
+	})
+
+	// Top 5 targets.
+	limit := 5
+	if len(candidates) < limit {
+		limit = len(candidates)
+	}
+	top := candidates[:limit]
+	targetFiles := make([]string, limit)
+	for i, c := range top {
+		targetFiles[i] = c.path
+	}
+
+	sev := SeverityMedium
+	if len(candidates) > 10 {
+		sev = SeverityHigh
+	}
+
+	topDesc := top[0].path
+	if top[0].dependents > 0 {
+		topDesc = fmt.Sprintf("%s (%d dependents)", top[0].path, top[0].dependents)
+	}
+
+	findings = append(findings, Finding{
+		Title: fmt.Sprintf("%d untested source file(s) — start with %s", len(candidates), topDesc),
+		Description: fmt.Sprintf(
+			"These source files have exported code units with no covering tests. "+
+				"Prioritized by dependency count: files with more dependents create larger blind spots "+
+				"for change-scoped test selection."),
+		Category: CategoryCoverageDebt,
+		Severity: sev,
+		Scope:    strings.Join(targetFiles, ", "),
+		Metric:   fmt.Sprintf("%d untested files", len(candidates)),
+	})
+
+	return findings
+}
+
+// --- Feature: AI behavior impact chains ---
+//
+// Detects when an AI surface (prompt, context, RAG config) feeds into a
+// downstream behavior chain that has partial or no eval coverage.
+func aiBehaviorChainFindings(input *BuildInput) []Finding {
+	var findings []Finding
+	snap := input.Snapshot
+	if snap == nil || len(snap.CodeSurfaces) == 0 || len(snap.Scenarios) == 0 {
+		return findings
+	}
+
+	// Build coverage map: surface ID → covered by at least one scenario.
+	coveredIDs := map[string]bool{}
+	for _, sc := range snap.Scenarios {
+		for _, sid := range sc.CoveredSurfaceIDs {
+			coveredIDs[sid] = true
+		}
+	}
+
+	// AI surface kinds that form chains.
+	chainKinds := map[models.CodeSurfaceKind]bool{
+		models.SurfacePrompt:    true,
+		models.SurfaceContext:   true,
+		models.SurfaceRetrieval: true,
+		models.SurfaceToolDef:   true,
+		models.SurfaceAgent:     true,
+	}
+
+	// Group surfaces by file to detect chains: if a file has multiple AI
+	// surface types, a change to one type may affect behavior of another.
+	type fileSurfaces struct {
+		kinds    map[models.CodeSurfaceKind]int
+		covered  int
+		total    int
+		surfaces []string
+	}
+	byFile := map[string]*fileSurfaces{}
+	for _, cs := range snap.CodeSurfaces {
+		if !chainKinds[cs.Kind] {
+			continue
+		}
+		fs, ok := byFile[cs.Path]
+		if !ok {
+			fs = &fileSurfaces{kinds: map[models.CodeSurfaceKind]int{}}
+			byFile[cs.Path] = fs
+		}
+		fs.kinds[cs.Kind]++
+		fs.total++
+		fs.surfaces = append(fs.surfaces, string(cs.Kind)+":"+cs.Name)
+		if coveredIDs[cs.SurfaceID] {
+			fs.covered++
+		}
+	}
+
+	// Find files with multiple AI surface types where coverage is partial.
+	var partialChains []string
+	for path, fs := range byFile {
+		if len(fs.kinds) >= 2 && fs.covered < fs.total {
+			partialChains = append(partialChains, fmt.Sprintf(
+				"%s (%d surface types, %d/%d covered)", path, len(fs.kinds), fs.covered, fs.total))
+		}
+	}
+
+	if len(partialChains) == 0 {
+		return findings
+	}
+
+	sort.Strings(partialChains)
+	scope := partialChains[0]
+	if len(partialChains) > 1 {
+		scope = partialChains[0] + fmt.Sprintf(" +%d more", len(partialChains)-1)
+	}
+
+	findings = append(findings, Finding{
+		Title: fmt.Sprintf("%d file(s) have partially covered AI behavior chains", len(partialChains)),
+		Description: "These files contain multiple AI surface types (e.g., prompt + context, or " +
+			"retrieval + tool definition) where some surfaces are tested but others are not. " +
+			"A change to the untested surface can alter downstream AI behavior without detection.",
+		Category: CategoryCoverageDebt,
+		Severity: SeverityHigh,
+		Scope:    scope,
+		Metric:   fmt.Sprintf("%d partial chains", len(partialChains)),
+	})
+
+	return findings
+}
+
+// --- Feature: Capability gap detection ---
+//
+// Detects capabilities that have only positive/accuracy scenarios but no
+// negative, adversarial, or safety scenarios. A capability with only
+// "does it work?" tests but no "does it fail safely?" tests has a
+// validation blind spot.
+func capabilityGapFindings(input *BuildInput) []Finding {
+	var findings []Finding
+	snap := input.Snapshot
+	if snap == nil || len(snap.Scenarios) == 0 {
+		return findings
+	}
+
+	// Group scenarios by capability and classify by category.
+	type capInfo struct {
+		total      int
+		categories map[string]int
+	}
+	caps := map[string]*capInfo{}
+	for _, sc := range snap.Scenarios {
+		if sc.Capability == "" {
+			continue
+		}
+		ci, ok := caps[sc.Capability]
+		if !ok {
+			ci = &capInfo{categories: map[string]int{}}
+			caps[sc.Capability] = ci
+		}
+		ci.total++
+		cat := strings.ToLower(sc.Category)
+		if cat == "" {
+			cat = "general"
+		}
+		ci.categories[cat]++
+	}
+
+	if len(caps) == 0 {
+		return findings
+	}
+
+	// Negative/safety category keywords.
+	negativeCategories := map[string]bool{
+		"safety": true, "adversarial": true, "robustness": true,
+		"security": true, "edge_case": true, "negative": true,
+		"boundary": true, "failure": true, "error_handling": true,
+	}
+
+	// Find capabilities with no negative/safety scenarios.
+	var gappedCaps []string
+	for cap, ci := range caps {
+		hasNegative := false
+		for cat := range ci.categories {
+			if negativeCategories[cat] {
+				hasNegative = true
+				break
+			}
+		}
+		if !hasNegative && ci.total > 0 {
+			cats := make([]string, 0, len(ci.categories))
+			for c := range ci.categories {
+				cats = append(cats, c)
+			}
+			sort.Strings(cats)
+			gappedCaps = append(gappedCaps, fmt.Sprintf(
+				"%s (%d scenario(s): %s)", cap, ci.total, strings.Join(cats, ", ")))
+		}
+	}
+
+	if len(gappedCaps) == 0 {
+		return findings
+	}
+
+	sort.Strings(gappedCaps)
+
+	findings = append(findings, Finding{
+		Title: fmt.Sprintf("%d capability(ies) have no adversarial or safety scenarios", len(gappedCaps)),
+		Description: "These capabilities are validated for correctness (accuracy, quality, regression) " +
+			"but have no scenarios testing failure modes, safety boundaries, or adversarial inputs. " +
+			"Consider adding scenarios with categories like 'safety', 'adversarial', or 'robustness'.",
+		Category: CategoryCoverageDebt,
+		Severity: SeverityMedium,
+		Scope:    strings.Join(gappedCaps, "; "),
+		Metric:   fmt.Sprintf("%d capabilities without negative tests", len(gappedCaps)),
 	})
 
 	return findings

@@ -1,0 +1,152 @@
+name: Terrain AI Validation
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  ai-gate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Build Terrain
+        run: go build -o terrain ./cmd/terrain
+
+      - name: Check AI surface coverage
+        id: ai-check
+        run: |
+          # List AI surfaces and their coverage status
+          ./terrain ai list --json > /tmp/ai-inventory.json
+
+          TOTAL=$(jq '.summary.totalAISurfaces' /tmp/ai-inventory.json)
+          UNCOVERED=$(jq '.summary.uncoveredSurfaces' /tmp/ai-inventory.json)
+          SCENARIOS=$(jq '.summary.scenarios' /tmp/ai-inventory.json)
+
+          echo "total_surfaces=$TOTAL" >> "$GITHUB_OUTPUT"
+          echo "uncovered_surfaces=$UNCOVERED" >> "$GITHUB_OUTPUT"
+          echo "scenarios=$SCENARIOS" >> "$GITHUB_OUTPUT"
+
+          # Skip AI gate if no AI surfaces detected
+          if [ "$TOTAL" = "0" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "No AI surfaces detected — skipping AI gate."
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Run impact-scoped AI analysis
+        id: ai-impact
+        if: steps.ai-check.outputs.skip != 'true'
+        run: |
+          # Check which AI surfaces are affected by this change
+          ./terrain pr --base "${{ github.event.pull_request.base.sha }}" --json > /tmp/pr-analysis.json
+
+          # Extract AI validation section
+          AI_SELECTED=$(jq '.ai.selectedScenarios // 0' /tmp/pr-analysis.json)
+          AI_TOTAL=$(jq '.ai.totalScenarios // 0' /tmp/pr-analysis.json)
+          UNCOVERED=$(jq '[.ai.uncoveredContexts // [] | length] | add' /tmp/pr-analysis.json)
+          BLOCKING=$(jq '[.ai.blockingSignals // [] | length] | add' /tmp/pr-analysis.json)
+
+          echo "selected=$AI_SELECTED" >> "$GITHUB_OUTPUT"
+          echo "blocking=$BLOCKING" >> "$GITHUB_OUTPUT"
+          echo "uncovered=$UNCOVERED" >> "$GITHUB_OUTPUT"
+
+      - name: Run selected eval scenarios (dry-run)
+        id: ai-run
+        if: steps.ai-check.outputs.skip != 'true'
+        continue-on-error: true
+        run: |
+          ./terrain ai run \
+            --base "${{ github.event.pull_request.base.sha }}" \
+            --json > /tmp/ai-run.json 2>&1
+
+          ACTION=$(jq -r '.decision.action' /tmp/ai-run.json)
+          REASON=$(jq -r '.decision.reason' /tmp/ai-run.json)
+          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
+          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+
+      - name: Generate AI validation comment
+        id: ai-comment
+        if: steps.ai-check.outputs.skip != 'true'
+        run: |
+          {
+            echo 'body<<TERRAIN_AI_EOF'
+            echo '<!-- terrain-ai-validation -->'
+            echo '### Terrain AI Validation'
+            echo ''
+
+            TOTAL="${{ steps.ai-check.outputs.total_surfaces }}"
+            UNCOVERED="${{ steps.ai-check.outputs.uncovered_surfaces }}"
+            SCENARIOS="${{ steps.ai-check.outputs.scenarios }}"
+            SELECTED="${{ steps.ai-impact.outputs.selected }}"
+            BLOCKING="${{ steps.ai-impact.outputs.blocking }}"
+            ACTION="${{ steps.ai-run.outputs.action }}"
+
+            echo "| Metric | Value |"
+            echo "|--------|-------|"
+            echo "| AI surfaces | $TOTAL |"
+            echo "| Eval scenarios | $SCENARIOS |"
+            echo "| Impacted scenarios | $SELECTED |"
+
+            if [ "$UNCOVERED" != "0" ] && [ -n "$UNCOVERED" ]; then
+              echo "| **Uncovered surfaces** | **$UNCOVERED** |"
+            fi
+
+            if [ "$BLOCKING" != "0" ] && [ -n "$BLOCKING" ]; then
+              echo "| **Blocking signals** | **$BLOCKING** |"
+            fi
+
+            echo ''
+
+            if [ "$ACTION" = "block" ]; then
+              echo '**Decision: BLOCKED** — AI validation failed.'
+              echo ''
+              echo "Reason: ${{ steps.ai-run.outputs.reason }}"
+            elif [ "$ACTION" = "warn" ]; then
+              echo '**Decision: WARNING** — Review AI validation results.'
+              echo ''
+              echo "Reason: ${{ steps.ai-run.outputs.reason }}"
+            else
+              echo '**Decision: PASS** — AI surfaces are covered.'
+            fi
+
+            echo 'TERRAIN_AI_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Find existing AI comment
+        if: steps.ai-check.outputs.skip != 'true'
+        uses: peter-evans/find-comment@v4
+        id: find-comment
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- terrain-ai-validation -->'
+
+      - name: Post or update AI comment
+        if: steps.ai-check.outputs.skip != 'true'
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          edit-mode: replace
+          body: ${{ steps.ai-comment.outputs.body }}
+
+      - name: Fail if AI gate blocks
+        if: steps.ai-run.outputs.action == 'block'
+        run: |
+          echo "::error::Terrain AI validation blocked this PR: ${{ steps.ai-run.outputs.reason }}"
+          exit 1

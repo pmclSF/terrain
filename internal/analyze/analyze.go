@@ -846,8 +846,8 @@ func deriveKeyFindings(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph
 	if r.SignalSummary.Critical > 0 {
 		candidates = append(candidates, candidate{
 			finding: KeyFinding{
-				Title:    fmt.Sprintf("%d critical signal(s) detected — immediate attention required", r.SignalSummary.Critical),
-				Severity: "critical",
+				Title:    fmt.Sprintf("%d critical signal(s) detected — review recommended", r.SignalSummary.Critical),
+				Severity: "high",
 				Category: "reliability",
 				Metric:   fmt.Sprintf("%d critical", r.SignalSummary.Critical),
 			},
@@ -917,6 +917,18 @@ func buildLimitations(snap *models.TestSuiteSnapshot, hasPolicy bool) []string {
 	}
 	if snap.Ownership == nil || len(snap.Ownership) == 0 {
 		lims = append(lims, "No ownership data available; per-owner risk breakdown unavailable.")
+	}
+
+	// Check for Java files without import resolution.
+	hasJava := false
+	for _, fw := range snap.Frameworks {
+		if fw.Name == "junit" || fw.Name == "junit4" || fw.Name == "junit5" || fw.Name == "testng" {
+			hasJava = true
+			break
+		}
+	}
+	if hasJava {
+		lims = append(lims, "Java import resolution is not yet supported; impact analysis and test selection for Java code uses structural heuristics only.")
 	}
 
 	// Sort for determinism.
