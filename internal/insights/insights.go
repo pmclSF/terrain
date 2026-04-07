@@ -218,7 +218,10 @@ func Build(input *BuildInput) *Report {
 	// 9. AI scenario duplication.
 	findings = append(findings, scenarioDuplicationFindings(input)...)
 
-	// 10. Depgraph skipped warning.
+	// 10. AI surface coverage gaps.
+	findings = append(findings, aiCoverageFindings(input)...)
+
+	// 11. Depgraph skipped warning.
 	if input.DepgraphSkipped {
 		findings = append(findings, Finding{
 			Title:       "Depgraph analysis skipped",
@@ -647,6 +650,93 @@ func matrixFindings(input *BuildInput) []Finding {
 			Severity: SeverityLow,
 			Metric:   fmt.Sprintf("%.0f%% concentration", top.DominantShare*100),
 		})
+	}
+
+	return findings
+}
+
+func aiCoverageFindings(input *BuildInput) []Finding {
+	var findings []Finding
+	snap := input.Snapshot
+	if snap == nil {
+		return findings
+	}
+
+	// Count AI surfaces by kind.
+	aiSurfaces := 0
+	for _, cs := range snap.CodeSurfaces {
+		switch cs.Kind {
+		case models.SurfacePrompt, models.SurfaceContext, models.SurfaceDataset,
+			models.SurfaceToolDef, models.SurfaceRetrieval, models.SurfaceAgent,
+			models.SurfaceEvalDef:
+			aiSurfaces++
+		}
+	}
+	if aiSurfaces == 0 {
+		return findings
+	}
+
+	// Count uncovered AI surfaces (not linked to any scenario).
+	coveredIDs := map[string]bool{}
+	for _, sc := range snap.Scenarios {
+		for _, sid := range sc.CoveredSurfaceIDs {
+			coveredIDs[sid] = true
+		}
+	}
+	uncovered := 0
+	var uncoveredExamples []string
+	for _, cs := range snap.CodeSurfaces {
+		switch cs.Kind {
+		case models.SurfacePrompt, models.SurfaceContext, models.SurfaceDataset,
+			models.SurfaceToolDef, models.SurfaceRetrieval, models.SurfaceAgent:
+			if !coveredIDs[cs.SurfaceID] {
+				uncovered++
+				if len(uncoveredExamples) < 3 {
+					uncoveredExamples = append(uncoveredExamples, cs.Path)
+				}
+			}
+		}
+	}
+
+	if uncovered == 0 {
+		return findings
+	}
+
+	sev := SeverityMedium
+	if uncovered > 5 {
+		sev = SeverityHigh
+	}
+
+	f := Finding{
+		Title: fmt.Sprintf("%d AI surface(s) have no eval scenario coverage", uncovered),
+		Description: fmt.Sprintf(
+			"Changes to uncovered AI surfaces (prompts, contexts, datasets, tool definitions) "+
+				"cannot be validated automatically. Add eval scenarios to catch behavioral regressions."),
+		Category: CategoryCoverageDebt,
+		Severity: sev,
+		Scope:    strings.Join(uncoveredExamples, ", "),
+		Metric:   fmt.Sprintf("%d/%d uncovered", uncovered, aiSurfaces),
+	}
+	findings = append(findings, f)
+
+	// If there are scenarios but none cover all surfaces, recommend wiring.
+	if len(snap.Scenarios) > 0 && uncovered > 0 {
+		wiredCount := 0
+		for _, sc := range snap.Scenarios {
+			if len(sc.CoveredSurfaceIDs) > 0 {
+				wiredCount++
+			}
+		}
+		if wiredCount < len(snap.Scenarios) {
+			findings = append(findings, Finding{
+				Title: fmt.Sprintf("%d scenario(s) have no linked code surfaces", len(snap.Scenarios)-wiredCount),
+				Description: "Scenarios without linked surfaces cannot be selected by impact analysis. " +
+					"Wire them via terrain.yaml or ensure eval test files import the surfaces they validate.",
+				Category: CategoryArchitectureDebt,
+				Severity: SeverityMedium,
+				Metric:   fmt.Sprintf("%d/%d unwired", len(snap.Scenarios)-wiredCount, len(snap.Scenarios)),
+			})
+		}
 	}
 
 	return findings
