@@ -21,6 +21,7 @@ package telemetry
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -161,8 +162,8 @@ func formatSize(bytes int64) string {
 	case bytes < 1024:
 		return "< 1 KB"
 	case bytes < 1024*1024:
-		return string(rune('0'+bytes/1024)) + " KB"
+		return fmt.Sprintf("%d KB", bytes/1024)
 	default:
-		return string(rune('0'+bytes/(1024*1024))) + " MB"
+		return fmt.Sprintf("%d MB", bytes/(1024*1024))
 	}
 }

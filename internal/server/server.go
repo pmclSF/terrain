@@ -25,8 +25,8 @@ type Server struct {
 	root string
 	port int
 
-	mu          sync.Mutex
-	cachedAt    time.Time
+	mu           sync.Mutex
+	cachedAt     time.Time
 	cachedResult *engine.PipelineResult
 	cachedReport *analyze.Report
 }

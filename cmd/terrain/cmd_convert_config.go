@@ -167,13 +167,13 @@ func printConvertConfigUsage() {
 func resolveConfigValidationMode(opts convertConfigCommandOptions) (conv.ValidationMode, error) {
 	switch strings.ToLower(strings.TrimSpace(opts.OnError)) {
 	case "", "skip", "fail":
+		return conv.ValidationModeStrict, nil
 	case "best-effort":
+		if opts.StrictValidate {
+			return conv.ValidationModeStrict, nil
+		}
 		return conv.ValidationModeBestEffort, nil
 	default:
 		return "", fmt.Errorf("--on-error must be one of skip, fail, or best-effort")
 	}
-	if opts.StrictValidate {
-		return conv.ValidationModeStrict, nil
-	}
-	return conv.ValidationModeStrict, nil
 }

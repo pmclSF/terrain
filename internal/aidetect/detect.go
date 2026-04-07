@@ -27,6 +27,10 @@ type DetectResult struct {
 	ModelFiles []string `json:"modelFiles,omitempty"`
 }
 
+// maxSourceFileSize is the maximum file size (256 KB) to scan for AI patterns.
+// Files larger than this are skipped to avoid slow analysis on generated code.
+const maxSourceFileSize = 256 * 1024
+
 // Detect scans a repository root for AI/ML frameworks, prompt patterns,
 // dataset usage, and model invocations. No configuration required.
 func Detect(root string) *DetectResult {
@@ -172,7 +176,10 @@ func detectFromSource(root string, result *DetectResult) {
 	frameworkHits := map[string]bool{}
 
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
+		if err != nil {
+			return nil
+		}
+		if d.IsDir() {
 			name := d.Name()
 			if name == "node_modules" || name == ".git" || name == "__pycache__" || name == ".venv" || name == "venv" {
 				return filepath.SkipDir
@@ -186,7 +193,7 @@ func detectFromSource(root string, result *DetectResult) {
 		}
 
 		data, err := os.ReadFile(path)
-		if err != nil || len(data) > 256*1024 { // skip files > 256KB
+		if err != nil || len(data) > maxSourceFileSize {
 			return nil
 		}
 		content := string(data)
@@ -231,13 +238,7 @@ func detectFromSource(root string, result *DetectResult) {
 	result.ModelFiles = sortedKeyList(modelFiles)
 }
 
-func hasPromptPatterns(content string) bool {
-	patterns := []string{
-		"PromptTemplate", "ChatPromptTemplate", "SystemMessage",
-		"HumanMessage", "AIMessage", "prompt_template",
-		"system_prompt", "systemPrompt", "buildPrompt",
-		"PROMPT", "prompt =", "template =",
-	}
+func containsAny(content string, patterns []string) bool {
 	for _, p := range patterns {
 		if strings.Contains(content, p) {
 			return true
@@ -246,19 +247,21 @@ func hasPromptPatterns(content string) bool {
 	return false
 }
 
-func hasDatasetPatterns(content string) bool {
-	patterns := []string{
-		"load_dataset", "Dataset", "DataLoader", "dataloader",
-		"training_data", "eval_data", "test_data",
-		"evalDataset", "trainingDataset",
-	}
-	for _, p := range patterns {
-		if strings.Contains(content, p) {
-			return true
-		}
-	}
-	return false
+var promptPatterns = []string{
+	"PromptTemplate", "ChatPromptTemplate", "SystemMessage",
+	"HumanMessage", "AIMessage", "prompt_template",
+	"system_prompt", "systemPrompt", "buildPrompt",
+	"PROMPT", "prompt =", "template =",
 }
+
+var datasetPatterns = []string{
+	"load_dataset", "Dataset", "DataLoader", "dataloader",
+	"training_data", "eval_data", "test_data",
+	"evalDataset", "trainingDataset",
+}
+
+func hasPromptPatterns(content string) bool  { return containsAny(content, promptPatterns) }
+func hasDatasetPatterns(content string) bool { return containsAny(content, datasetPatterns) }
 
 func deduplicateFrameworks(frameworks []Framework) []Framework {
 	best := map[string]Framework{}

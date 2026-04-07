@@ -73,7 +73,7 @@ const (
 //
 // Connect owners and capabilities to the elements they govern.
 const (
-	EdgeOwns                      EdgeType = "owns"
+	EdgeOwns                        EdgeType = "owns"
 	EdgeScenarioValidatesCapability EdgeType = "scenario_validates_capability"
 )
 

@@ -769,11 +769,11 @@ func parsePromptASTGo(relPath, src string) []models.CodeSurface {
 // --- Object/Array shape analysis (JS) ---
 
 type arrayShapeInfo struct {
-	varName        string
-	line           int
-	objectCount    int
-	hasRoleContent bool
-	hasSystemRole  bool
+	varName         string
+	line            int
+	objectCount     int
+	hasRoleContent  bool
+	hasSystemRole   bool
 	hasFewShotShape bool
 }
 

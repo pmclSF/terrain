@@ -72,7 +72,7 @@ func parseJSPrompts(relPath, src string) []models.CodeSurface {
 			Name:          name,
 			Path:          relPath,
 			Kind:          models.SurfaceContext,
-			Language:       "js",
+			Language:      "js",
 			Package:       pkg,
 			Line:          line,
 			Exported:      false,
@@ -142,7 +142,7 @@ func parseJSPrompts(relPath, src string) []models.CodeSurface {
 
 // --- Python structured parsing ---
 
-// pyTripleQuote finds triple-quoted strings (""" or ''') with substantial content.
+// pyTripleQuote finds triple-quoted strings (""" or ”') with substantial content.
 var pyTripleQuote = regexp.MustCompile(`(?s)"""(.{60,}?)"""|'''(.{60,}?)'''`)
 
 // pyFString finds f-strings with AI content.
@@ -173,7 +173,7 @@ func parsePythonPrompts(relPath, src string) []models.CodeSurface {
 			Name:          name,
 			Path:          relPath,
 			Kind:          models.SurfaceContext,
-			Language:       "python",
+			Language:      "python",
 			Package:       pkg,
 			Line:          line,
 			Exported:      false,
@@ -243,7 +243,7 @@ func parseGoPrompts(relPath, src string) []models.CodeSurface {
 			Name:          name,
 			Path:          relPath,
 			Kind:          models.SurfaceContext,
-			Language:       "go",
+			Language:      "go",
 			Package:       pkg,
 			Line:          line,
 			Exported:      false,

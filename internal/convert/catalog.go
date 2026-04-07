@@ -196,14 +196,20 @@ func SupportedDirections() []Direction {
 	return items
 }
 
+var supportedDirectionSet = func() map[string]bool {
+	m := make(map[string]bool, len(supportedDirectionKeys))
+	for _, key := range supportedDirectionKeys {
+		m[key] = true
+	}
+	return m
+}()
+
 func LookupDirection(from, to string) (Direction, bool) {
 	key := NormalizeFramework(from) + "-" + NormalizeFramework(to)
-	for _, item := range supportedDirectionKeys {
-		if item == key {
-			return directionFromKey(key), true
-		}
+	if !supportedDirectionSet[key] {
+		return Direction{}, false
 	}
-	return Direction{}, false
+	return directionFromKey(key), true
 }
 
 func IsSupported(from, to string) bool {
@@ -275,6 +281,9 @@ func Shorthands() []Shorthand {
 
 func directionFromKey(key string) Direction {
 	parts := strings.SplitN(key, "-", 2)
+	if len(parts) < 2 {
+		return Direction{}
+	}
 	from := parts[0]
 	to := parts[1]
 	framework := frameworks[from]

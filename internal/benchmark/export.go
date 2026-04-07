@@ -39,9 +39,9 @@ const (
 // Risk concentration thresholds: classify how evenly risk is distributed
 // across owners. Balanced means no single owner dominates.
 const (
-	riskConcentrationBalanced      = 0.50 // ≤50%: well-distributed
-	riskConcentrationModerate      = 0.70 // ≤70%: some concentration
-	riskConcentrationConcentrated  = 0.85 // ≤85%: concerning concentration
+	riskConcentrationBalanced     = 0.50 // ≤50%: well-distributed
+	riskConcentrationModerate     = 0.70 // ≤70%: some concentration
+	riskConcentrationConcentrated = 0.85 // ≤85%: concerning concentration
 )
 
 // Signal share thresholds: classify what proportion of total signals

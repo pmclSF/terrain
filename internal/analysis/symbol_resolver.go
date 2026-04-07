@@ -351,8 +351,6 @@ func resolveByNameMatch(root, testPath string, candidates []models.CodeUnit) []S
 }
 
 // containsWordBoundary checks if src contains name as a whole word.
-var wordBoundaryCache = map[string]*regexp.Regexp{}
-
 func containsWordBoundary(src, name string) bool {
 	if name == "" || len(name) < 2 {
 		return false

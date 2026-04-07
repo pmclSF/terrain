@@ -22,6 +22,7 @@ type migrateCommandOptions struct {
 	Plan           bool
 	JSON           bool
 	StrictValidate bool
+	OnError        string
 }
 
 func runMigrateCLI(args []string) error {
@@ -42,6 +43,7 @@ func runMigrateCLI(args []string) error {
 	fs.BoolVar(&opts.Plan, "plan", false, "show a structured migration plan")
 	fs.BoolVar(&opts.JSON, "json", false, "JSON output")
 	fs.BoolVar(&opts.StrictValidate, "strict-validate", true, "validate converted output syntax before recording files as converted")
+	fs.StringVar(&opts.OnError, "on-error", "", "error handling: skip|fail|best-effort (overrides --strict-validate)")
 
 	if err := fs.Parse(reorderCLIArgs(args, workflowFlagsWithValue)); err != nil {
 		printMigrateUsage()
@@ -221,6 +223,14 @@ func runMigrate(root string, opts migrateCommandOptions) error {
 }
 
 func migrateValidationMode(opts migrateCommandOptions) string {
+	// --on-error takes precedence over --strict-validate when explicitly set.
+	switch strings.ToLower(strings.TrimSpace(opts.OnError)) {
+	case "best-effort":
+		return string(conv.ValidationModeBestEffort)
+	case "skip", "fail":
+		return string(conv.ValidationModeStrict)
+	}
+	// Fall back to --strict-validate boolean.
 	if !opts.StrictValidate {
 		return string(conv.ValidationModeBestEffort)
 	}
@@ -271,12 +281,20 @@ func runStatus(root string, jsonOutput bool) error {
 	fmt.Println()
 	fmt.Printf("  Source: %s\n", emptyFallback(status.Source, "unknown"))
 	fmt.Printf("  Target: %s\n", emptyFallback(status.Target, "unknown"))
+	if status.OutputRoot != "" {
+		fmt.Printf("  Output: %s\n", status.OutputRoot)
+	}
 	fmt.Printf("  Started: %s\n", emptyFallback(status.StartedAt, "unknown"))
 	fmt.Printf("  Updated: %s\n", emptyFallback(status.UpdatedAt, "unknown"))
 	fmt.Printf("  Converted: %d\n", status.Converted)
 	fmt.Printf("  Failed: %d\n", status.Failed)
 	fmt.Printf("  Skipped: %d\n", status.Skipped)
 	fmt.Printf("  Total tracked: %d\n", status.Total)
+	if status.Total > 0 {
+		done := status.Converted + status.Failed + status.Skipped
+		pct := float64(done) / float64(status.Total) * 100
+		fmt.Printf("  Progress: %.0f%% (%d/%d)\n", pct, done, status.Total)
+	}
 	return nil
 }
 
@@ -459,6 +477,7 @@ func printMigrateUsage() {
 	fmt.Fprintln(os.Stderr, "      --plan            show a structured migration plan")
 	fmt.Fprintln(os.Stderr, "      --json            machine-readable output")
 	fmt.Fprintln(os.Stderr, "      --strict-validate validate converted output before keeping files (default: true; pass --strict-validate=false for best-effort mode)")
+	fmt.Fprintln(os.Stderr, "      --on-error MODE   error handling: skip|fail|best-effort (default: skip)")
 }
 
 func printEstimateUsage() {

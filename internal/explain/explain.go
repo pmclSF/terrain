@@ -232,9 +232,9 @@ func ExplainSelection(result *impact.ImpactResult) (*SelectionExplanation, error
 
 	// Reason breakdown.
 	sel.ReasonBreakdown = map[string]int{
-		"directDependency":  result.ReasonCategories.DirectDependency,
-		"fixtureDependency": result.ReasonCategories.FixtureDependency,
-		"directlyChanged":   result.ReasonCategories.DirectlyChanged,
+		"directDependency":   result.ReasonCategories.DirectDependency,
+		"fixtureDependency":  result.ReasonCategories.FixtureDependency,
+		"directlyChanged":    result.ReasonCategories.DirectlyChanged,
 		"directoryProximity": result.ReasonCategories.DirectoryProximity,
 	}
 
@@ -288,7 +288,13 @@ func findTest(target string, result *impact.ImpactResult) (*impact.ImpactedTest,
 		}
 	}
 
-	// Partial match: suffix match on path.
+	// Partial match: suffix match on path (check selected first for richer data).
+	for i := range result.SelectedTests {
+		t := &result.SelectedTests[i]
+		if strings.HasSuffix(t.Path, target) {
+			return t, true
+		}
+	}
 	for i := range result.ImpactedTests {
 		t := &result.ImpactedTests[i]
 		if strings.HasSuffix(t.Path, target) {
@@ -730,15 +736,21 @@ func ExplainScenarioRich(target string, result *impact.ImpactResult, snap *model
 		}
 	}
 
-	// Policy decision from governance signals.
+	// Policy decision from governance signals scoped to this scenario.
 	for _, sig := range snap.Signals {
-		if sig.Category == models.CategoryGovernance {
-			if md, ok := sig.Metadata["rule"]; ok {
-				rule, _ := md.(string)
-				if strings.HasPrefix(rule, "block_on_") || rule == "blocking_signal_types" {
-					base.PolicyDecision = "blocked: " + sig.Explanation
-					break
-				}
+		if sig.Category != models.CategoryGovernance {
+			continue
+		}
+		// Only consider governance signals that explicitly reference this scenario.
+		// Repo-wide signals (empty ScenarioID) should not block individual scenarios.
+		if sig.Location.ScenarioID != base.ScenarioID {
+			continue
+		}
+		if md, ok := sig.Metadata["rule"]; ok {
+			rule, isStr := md.(string)
+			if isStr && (strings.HasPrefix(rule, "block_on_") || rule == "blocking_signal_types") {
+				base.PolicyDecision = "blocked: " + sig.Explanation
+				break
 			}
 		}
 	}

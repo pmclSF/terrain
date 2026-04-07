@@ -3,6 +3,7 @@ package depgraph
 import (
 	"encoding/json"
 	"sort"
+	"sync"
 )
 
 // Graph is an in-memory directed graph with typed nodes and edges.
@@ -17,8 +18,8 @@ import (
 //   - Neighbors/ReverseNeighbors: O(1) after first call (cached)
 //   - Nodes() sorted: O(1) after first call (cached)
 type Graph struct {
-	nodes map[string]*Node  // id → node
-	edges []*Edge           // all edges (insertion order)
+	nodes map[string]*Node   // id → node
+	edges []*Edge            // all edges (insertion order)
 	adj   map[string][]*Edge // outgoing: from → edges
 	radj  map[string][]*Edge // incoming: to → edges
 
@@ -26,13 +27,14 @@ type Graph struct {
 	typeIndex   map[NodeType][]*Node   // type → nodes (unsorted during build)
 	familyIndex map[NodeFamily][]*Node // family → nodes (unsorted during build)
 
-	// Caches populated lazily after Build(). These are nil during
-	// construction and populated on first read-path access.
-	sortedNodes      []*Node            // cached sorted node list
+	// Caches populated at Seal() time. These are nil during construction
+	// and built once at seal time for safe concurrent reads.
+	sortedNodes      []*Node             // cached sorted node list
 	neighborCache    map[string][]string // cached deduplicated+sorted neighbor lists
 	revNeighborCache map[string][]string // cached deduplicated+sorted reverse neighbors
 	outDegreeCache   map[string]int      // cached out-degree per node
-	sealed           bool               // true after Seal() — enables caching
+	sealOnce         sync.Once           // ensures caches are built exactly once
+	sealed           bool                // true after Seal() — enables caching
 }
 
 // NewGraph creates an empty graph.
@@ -49,12 +51,37 @@ func NewGraph() *Graph {
 // AddNode adds a node to the graph. If a node with the same ID already
 // exists, it is replaced (indexes are rebuilt for the replaced node).
 func (g *Graph) AddNode(n *Node) {
-	if old, exists := g.nodes[n.ID]; exists && old.Type != n.Type {
-		// Remove from old type/family indexes on type change.
-		g.removeFromIndexes(old)
-	}
-	if _, exists := g.nodes[n.ID]; !exists {
-		// Only add to indexes for genuinely new nodes.
+	if old, exists := g.nodes[n.ID]; exists {
+		if old.Type != n.Type {
+			// Remove from old type/family indexes on type change.
+			g.removeFromIndexes(old)
+			// Add to new type/family indexes.
+			g.typeIndex[n.Type] = append(g.typeIndex[n.Type], n)
+			fam := NodeTypeFamily(n.Type)
+			if fam != "" {
+				g.familyIndex[fam] = append(g.familyIndex[fam], n)
+			}
+		} else {
+			// Same type: update the pointer in the index so NodesByType
+			// returns the latest data (not a stale pointer).
+			for i, existing := range g.typeIndex[n.Type] {
+				if existing.ID == n.ID {
+					g.typeIndex[n.Type][i] = n
+					break
+				}
+			}
+			fam := NodeTypeFamily(n.Type)
+			if fam != "" {
+				for i, existing := range g.familyIndex[fam] {
+					if existing.ID == n.ID {
+						g.familyIndex[fam][i] = n
+						break
+					}
+				}
+			}
+		}
+	} else {
+		// Genuinely new node: add to indexes.
 		g.typeIndex[n.Type] = append(g.typeIndex[n.Type], n)
 		fam := NodeTypeFamily(n.Type)
 		if fam != "" {
@@ -99,16 +126,65 @@ func (g *Graph) AddEdge(e *Edge) {
 	g.outDegreeCache = nil
 }
 
-// Seal marks the graph as read-only, enabling query result caching.
-// Called automatically at the end of Build().
+// Seal marks the graph as read-only and pre-populates all query caches.
+// Called automatically at the end of Build(). After Seal(), the graph
+// is safe for concurrent reads without any synchronization.
 func (g *Graph) Seal() {
-	g.sealed = true
-	// Sort type and family indexes for deterministic iteration.
-	for t := range g.typeIndex {
-		sortNodesByID(g.typeIndex[t])
+	g.sealOnce.Do(func() {
+		g.sealed = true
+		// Sort type and family indexes for deterministic iteration.
+		for t := range g.typeIndex {
+			sortNodesByID(g.typeIndex[t])
+		}
+		for f := range g.familyIndex {
+			sortNodesByID(g.familyIndex[f])
+		}
+		// Pre-populate all caches so read-path methods never write.
+		g.buildCaches()
+	})
+}
+
+// buildCaches pre-populates neighbor, reverse-neighbor, out-degree, and
+// sorted-node caches. Called once at Seal() time.
+func (g *Graph) buildCaches() {
+	// Sorted nodes.
+	out := make([]*Node, 0, len(g.nodes))
+	for _, n := range g.nodes {
+		out = append(out, n)
 	}
-	for f := range g.familyIndex {
-		sortNodesByID(g.familyIndex[f])
+	sortNodesByID(out)
+	g.sortedNodes = out
+
+	// Neighbor and reverse-neighbor caches.
+	g.neighborCache = make(map[string][]string, len(g.nodes))
+	g.revNeighborCache = make(map[string][]string, len(g.nodes))
+	g.outDegreeCache = make(map[string]int, len(g.nodes))
+
+	for id := range g.nodes {
+		// Outgoing neighbors.
+		seen := map[string]bool{}
+		for _, e := range g.adj[id] {
+			seen[e.To] = true
+		}
+		nb := make([]string, 0, len(seen))
+		for nid := range seen {
+			nb = append(nb, nid)
+		}
+		sort.Strings(nb)
+		g.neighborCache[id] = nb
+		g.outDegreeCache[id] = len(nb)
+
+		// Incoming neighbors.
+		rseen := map[string]bool{}
+		for _, e := range g.radj[id] {
+			rseen[e.From] = true
+		}
+		rnb := make([]string, 0, len(rseen))
+		for nid := range rseen {
+			rnb = append(rnb, nid)
+		}
+		sort.Strings(rnb)
+		g.revNeighborCache[id] = rnb
 	}
 }
 
@@ -128,9 +204,9 @@ func (g *Graph) EdgeCount() int {
 }
 
 // Nodes returns all nodes, sorted by ID for determinism.
-// Result is cached after first call on a sealed graph.
+// Result is cached on sealed graphs (populated at Seal time).
 func (g *Graph) Nodes() []*Node {
-	if g.sealed && g.sortedNodes != nil {
+	if g.sealed {
 		return g.sortedNodes
 	}
 	out := make([]*Node, 0, len(g.nodes))
@@ -138,9 +214,6 @@ func (g *Graph) Nodes() []*Node {
 		out = append(out, n)
 	}
 	sortNodesByID(out)
-	if g.sealed {
-		g.sortedNodes = out
-	}
 	return out
 }
 
@@ -160,12 +233,10 @@ func (g *Graph) Incoming(id string) []*Edge {
 }
 
 // Neighbors returns the IDs of nodes reachable via outgoing edges,
-// deduplicated and sorted. Result is cached on sealed graphs.
+// deduplicated and sorted. Result is pre-computed on sealed graphs.
 func (g *Graph) Neighbors(id string) []string {
-	if g.sealed && g.neighborCache != nil {
-		if cached, ok := g.neighborCache[id]; ok {
-			return cached
-		}
+	if g.sealed {
+		return g.neighborCache[id]
 	}
 	seen := map[string]bool{}
 	for _, e := range g.adj[id] {
@@ -176,22 +247,14 @@ func (g *Graph) Neighbors(id string) []string {
 		out = append(out, nid)
 	}
 	sort.Strings(out)
-	if g.sealed {
-		if g.neighborCache == nil {
-			g.neighborCache = make(map[string][]string)
-		}
-		g.neighborCache[id] = out
-	}
 	return out
 }
 
 // ReverseNeighbors returns the IDs of nodes with edges pointing to
-// the given node, deduplicated and sorted. Result is cached on sealed graphs.
+// the given node, deduplicated and sorted. Result is pre-computed on sealed graphs.
 func (g *Graph) ReverseNeighbors(id string) []string {
-	if g.sealed && g.revNeighborCache != nil {
-		if cached, ok := g.revNeighborCache[id]; ok {
-			return cached
-		}
+	if g.sealed {
+		return g.revNeighborCache[id]
 	}
 	seen := map[string]bool{}
 	for _, e := range g.radj[id] {
@@ -202,58 +265,41 @@ func (g *Graph) ReverseNeighbors(id string) []string {
 		out = append(out, nid)
 	}
 	sort.Strings(out)
-	if g.sealed {
-		if g.revNeighborCache == nil {
-			g.revNeighborCache = make(map[string][]string)
-		}
-		g.revNeighborCache[id] = out
-	}
 	return out
 }
 
 // OutDegree returns the number of unique outgoing neighbors for a node.
-// Result is cached on sealed graphs.
+// Result is pre-computed on sealed graphs.
 func (g *Graph) OutDegree(id string) int {
-	if g.sealed && g.outDegreeCache != nil {
-		if deg, ok := g.outDegreeCache[id]; ok {
-			return deg
-		}
-	}
-	deg := len(g.Neighbors(id))
 	if g.sealed {
-		if g.outDegreeCache == nil {
-			g.outDegreeCache = make(map[string]int)
-		}
-		g.outDegreeCache[id] = deg
+		return g.outDegreeCache[id]
 	}
-	return deg
+	return len(g.Neighbors(id))
 }
 
 // NodesByType returns all nodes of the given type, sorted by ID.
 // Uses the type index for O(k) performance where k = matching nodes.
+// Returns a copy to prevent callers from mutating internal state.
 func (g *Graph) NodesByType(t NodeType) []*Node {
 	indexed := g.typeIndex[t]
-	if g.sealed {
-		// Index is pre-sorted after Seal().
-		return indexed
-	}
-	// During construction, return a sorted copy.
 	out := make([]*Node, len(indexed))
 	copy(out, indexed)
-	sortNodesByID(out)
+	if !g.sealed {
+		sortNodesByID(out)
+	}
 	return out
 }
 
 // NodesByFamily returns all nodes belonging to the given family, sorted by ID.
 // Uses the family index for O(k) performance where k = matching nodes.
+// Returns a copy to prevent callers from mutating internal state.
 func (g *Graph) NodesByFamily(f NodeFamily) []*Node {
 	indexed := g.familyIndex[f]
-	if g.sealed {
-		return indexed
-	}
 	out := make([]*Node, len(indexed))
 	copy(out, indexed)
-	sortNodesByID(out)
+	if !g.sealed {
+		sortNodesByID(out)
+	}
 	return out
 }
 

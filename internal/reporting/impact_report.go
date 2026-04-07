@@ -11,10 +11,7 @@ import (
 
 // RenderImpactReport writes a human-readable impact analysis report.
 func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
-	line := func(format string, args ...any) {
-		fmt.Fprintf(w, format+"\n", args...)
-	}
-	blank := func() { fmt.Fprintln(w) }
+	line, blank := reportHelpers(w)
 
 	line("Terrain Impact Analysis")
 	line(strings.Repeat("=", 60))
@@ -57,7 +54,7 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	}
 
 	// Coverage confidence
-	line("Coverage confidence:     %s", strings.Title(result.CoverageConfidence))
+	line("Coverage confidence:     %s", capitalizeFirst(result.CoverageConfidence))
 
 	// PR risk
 	line("PR risk:                 %s", strings.ToUpper(result.Posture.Band))
@@ -196,4 +193,13 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	line("  terrain impact --show graph       see dependency graph")
 	line("  terrain impact --json             machine-readable impact data")
 	blank()
+}
+
+// capitalizeFirst uppercases the first letter of a string.
+// Replaces deprecated strings.Title for simple single-word capitalization.
+func capitalizeFirst(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }

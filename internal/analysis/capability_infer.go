@@ -53,7 +53,8 @@ func InferCapabilities(scenarios []models.Scenario, surfaces []models.CodeSurfac
 // capabilityFromPath extracts a capability label from a scenario file path.
 // Looks for domain directories under eval/evals/tests paths.
 // e.g., "evals/refund/accuracy.test.ts" → "refund"
-//       "tests/eval/billing/lookup.test.ts" → "billing"
+//
+//	"tests/eval/billing/lookup.test.ts" → "billing"
 func capabilityFromPath(path string) string {
 	if path == "" {
 		return ""

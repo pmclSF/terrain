@@ -20,34 +20,20 @@ import (
 	"github.com/pmclSF/terrain/internal/reporting"
 )
 
-func runAI(subCmd, root string, jsonOutput bool) error {
-	switch subCmd {
-	case "list":
-		return runAIList(root, jsonOutput, false)
-	case "doctor":
-		return runAIDoctor(root, jsonOutput)
-	case "run":
-		// Handled separately in main dispatch with extra flags.
-		return runAIRun(root, jsonOutput, "", false, false)
-	case "replay":
-		return runAIReplay(root, jsonOutput, filepath.Join(root, ".terrain", "artifacts", "ai-run-latest.json"))
-	case "record":
-		return runAIRecord(root, jsonOutput)
-	case "baseline":
-		// Check for "terrain ai baseline compare" sub-subcommand.
-		if len(os.Args) > 3 && os.Args[3] == "compare" {
-			return runAIBaselineCompare(root, jsonOutput)
-		}
-		return runAIBaseline(root, jsonOutput)
-	default:
-		return fmt.Errorf("unknown ai subcommand: %q\nValid: list, run, replay, record, baseline, doctor", subCmd)
-	}
-}
+const (
+	// aiSeparatorWidth is the width of separator lines in AI text output.
+	aiSeparatorWidth = 60
+
+	// Decision actions returned by evaluateAIRunDecision.
+	actionPass  = "pass"
+	actionWarn  = "warn"
+	actionBlock = "block"
+)
 
 // runAIList produces a comprehensive AI inventory view showing what AI systems
 // exist in a repo, what capabilities they support, and what's missing validation.
 func runAIList(root string, jsonOutput, verbose bool) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptions())
+	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -148,7 +134,8 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 		if !coveredIDs[cs.SurfaceID] {
 			uncoveredSurfaces = append(uncoveredSurfaces, aiSurfaceEntry{
 				SurfaceID: cs.SurfaceID, Name: cs.Name,
-				Path: cs.Path, Language: cs.Language,
+				Path: cs.Path, Language: cs.Language, Line: cs.Line,
+				DetectionTier: cs.DetectionTier, Confidence: cs.Confidence,
 			})
 		}
 	}
@@ -194,6 +181,21 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 		}
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
+		// Ensure non-omitempty fields serialize as [] not null.
+		if frameworks == nil {
+			frameworks = []fwEntry{}
+		}
+		if scenarios == nil {
+			scenarios = []aiScenarioEntry{}
+		}
+		if evalFiles == nil {
+			evalFiles = []string{}
+		}
+		for i := range groups {
+			if groups[i].items == nil {
+				groups[i].items = []aiSurfaceEntry{}
+			}
+		}
 		return enc.Encode(jsonResult{
 			Frameworks:        frameworks,
 			Capabilities:      capabilities,
@@ -214,7 +216,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 
 	// --- Text output ---
 	fmt.Println("Terrain AI Inventory")
-	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
 	fmt.Println()
 
 	// Summary table.
@@ -232,7 +234,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 		fmt.Printf("| Frameworks         | %5d |\n", len(frameworks))
 	}
 	if len(uncoveredSurfaces) > 0 {
-		fmt.Printf("| **Missing coverage** | %5d |\n", len(uncoveredSurfaces))
+		fmt.Printf("| Missing coverage   | %5d |\n", len(uncoveredSurfaces))
 	}
 	fmt.Println()
 
@@ -246,7 +248,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// Capabilities.
 	if len(capabilities) > 0 {
 		fmt.Println("Capabilities")
-		fmt.Println(strings.Repeat("-", 60))
+		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
 		for _, cap := range capabilities {
 			names := capScenarios[cap]
 			fmt.Printf("  %-30s %d scenario(s)\n", cap, len(names))
@@ -257,7 +259,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// Frameworks.
 	if len(frameworks) > 0 {
 		fmt.Println("Frameworks")
-		fmt.Println(strings.Repeat("-", 60))
+		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
 		for _, fw := range frameworks {
 			fmt.Printf("  %-20s via %s (%.0f%%)\n", fw.Name, fw.Source, fw.Confidence*100)
 		}
@@ -267,7 +269,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// Scenarios grouped by capability.
 	if len(scenarios) > 0 {
 		fmt.Printf("Scenarios (%d)\n", len(scenarios))
-		fmt.Println(strings.Repeat("-", 60))
+		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
 		for _, sc := range scenarios {
 			capLabel := ""
 			if sc.Capability != "" {
@@ -288,7 +290,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 			continue
 		}
 		fmt.Printf("%s (%d)\n", g.label, len(g.items))
-		fmt.Println(strings.Repeat("-", 60))
+		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
 		for _, s := range g.items {
 			if verbose {
 				reporting.RenderSurfaceEvidence(os.Stdout, s.Name, s.Path, s.Line, s.DetectionTier, s.Confidence, s.Reason)
@@ -308,7 +310,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// Eval files.
 	if len(evalFiles) > 0 {
 		fmt.Printf("Eval Files (%d)\n", len(evalFiles))
-		fmt.Println(strings.Repeat("-", 60))
+		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
 		for _, f := range evalFiles {
 			fmt.Printf("  %s\n", f)
 		}
@@ -318,7 +320,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// Validation gaps.
 	if len(uncoveredSurfaces) > 0 {
 		fmt.Printf("Missing Validation (%d AI surface(s) not covered by any scenario)\n", len(uncoveredSurfaces))
-		fmt.Println(strings.Repeat("-", 60))
+		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
 		limit := 10
 		if len(uncoveredSurfaces) < limit {
 			limit = len(uncoveredSurfaces)
@@ -340,47 +342,16 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	return nil
 }
 
-// runAIDoctor validates AI/eval setup and surfaces configuration issues.
 // runAIRun detects eval frameworks and executes scenarios.
-// aiRunArtifact is the structured output of terrain ai run.
-type aiRunArtifact struct {
-	Mode      string             `json:"mode"` // "impacted", "full", "dry-run"
-	Framework string             `json:"framework"`
-	Command   string             `json:"command,omitempty"`
-	Selected  []aiRunScenario    `json:"selected"`
-	Skipped   []aiRunScenario    `json:"skipped,omitempty"`
-	Signals   []aiRunSignalEntry `json:"signals,omitempty"`
-	Decision  aiRunDecision      `json:"decision"`
-	ExitCode  int                `json:"exitCode"`
-}
 
-type aiRunScenario struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Capability string   `json:"capability,omitempty"`
-	Category   string   `json:"category,omitempty"`
-	Reason     string   `json:"reason"`
-	Surfaces   []string `json:"surfaces,omitempty"`
-	Path       string   `json:"path,omitempty"`
-}
-
-type aiRunSignalEntry struct {
-	Type        string `json:"type"`
-	Severity    string `json:"severity"`
-	Scenario    string `json:"scenario,omitempty"`
-	Explanation string `json:"explanation"`
-}
-
-type aiRunDecision struct {
-	Action  string `json:"action"` // "pass", "warn", "block"
-	Reason  string `json:"reason"`
-	Signals int    `json:"signals"`
-	Blocked int    `json:"blocked"`
-}
+// Type aliases to avoid duplicating struct definitions from airun package.
+type aiRunScenario = airun.ScenarioEntry
+type aiRunSignalEntry = airun.SignalEntry
+type aiRunDecision = airun.Decision
 
 func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) error {
 	// Step 1: Run pipeline.
-	result, err := engine.RunPipeline(root, defaultPipelineOptions())
+	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -494,11 +465,11 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	// Step 7: Evaluate policy for CI decision.
 	decision := evaluateAIRunDecision(snap, result)
 	exitCode := 0
-	if decision.Action == "block" {
+	if decision.Action == actionBlock {
 		exitCode = 1
 	}
 	if execErr != nil {
-		decision.Action = "block"
+		decision.Action = actionBlock
 		if stderr := stderrBuf.String(); stderr != "" {
 			decision.Reason = fmt.Sprintf("eval execution failed: %v\n%s", execErr, stderr)
 		} else {
@@ -518,24 +489,12 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 		Hashes:   hashes,
 		ExitCode: exitCode,
 	}
-	for _, sc := range selected {
-		persistArt.Selected = append(persistArt.Selected, airun.ScenarioEntry{
-			ID: sc.ID, Name: sc.Name, Capability: sc.Capability,
-			Category: sc.Category, Reason: sc.Reason, Surfaces: sc.Surfaces, Path: sc.Path,
-		})
-	}
-	for _, sc := range skipped {
-		persistArt.Skipped = append(persistArt.Skipped, airun.ScenarioEntry{
-			ID: sc.ID, Name: sc.Name, Capability: sc.Capability,
-			Category: sc.Category, Reason: sc.Reason,
-		})
-	}
-	for _, s := range signalEntries {
-		persistArt.Signals = append(persistArt.Signals, airun.SignalEntry{
-			Type: s.Type, Severity: s.Severity, Scenario: s.Scenario, Explanation: s.Explanation,
-		})
-	}
-	if savedPath, saveErr := airun.SaveArtifact(root, persistArt); saveErr == nil && !jsonOutput {
+	persistArt.Selected = selected
+	persistArt.Skipped = skipped
+	persistArt.Signals = signalEntries
+	if savedPath, saveErr := airun.SaveArtifact(root, persistArt); saveErr != nil {
+		fmt.Fprintf(os.Stderr, "Warning: failed to save artifact: %v\n", saveErr)
+	} else if !jsonOutput {
 		fmt.Printf("Artifact saved: %s\n\n", savedPath)
 	}
 
@@ -544,16 +503,18 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		// Output the full artifact (with hashes) for CI pipelines.
-		_ = enc.Encode(persistArt)
+		if err := enc.Encode(persistArt); err != nil {
+			return fmt.Errorf("encoding artifact JSON: %w", err)
+		}
 		if exitCode != 0 {
-			os.Exit(exitCode)
+			return cliExitError{code: exitCode, message: decision.Reason}
 		}
 		return nil
 	}
 
 	// Text output.
 	fmt.Println("Terrain AI Run")
-	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
 	fmt.Println()
 	fmt.Printf("Mode:      %s\n", mode)
 	fmt.Printf("Framework: %s\n", framework)
@@ -566,7 +527,7 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	// Show selected scenarios.
 	if len(selected) > 0 {
 		fmt.Println("Selected Scenarios")
-		fmt.Println(strings.Repeat("-", 60))
+		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
 		for _, sc := range selected {
 			capLabel := ""
 			if sc.Capability != "" {
@@ -593,11 +554,11 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 
 	// Decision.
 	switch decision.Action {
-	case "block":
+	case actionBlock:
 		fmt.Printf("Decision: BLOCKED — %s\n", decision.Reason)
-	case "warn":
+	case actionWarn:
 		fmt.Printf("Decision: WARN — %s\n", decision.Reason)
-	case "pass":
+	case actionPass:
 		fmt.Println("Decision: PASS")
 	}
 
@@ -614,7 +575,7 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	fmt.Println("  terrain explain <id> explain a scenario")
 
 	if exitCode != 0 {
-		os.Exit(exitCode)
+		return cliExitError{code: exitCode, message: decision.Reason}
 	}
 	return nil
 }
@@ -661,7 +622,7 @@ func buildEvalCommand(framework string, det *aidetect.DetectResult, selected []a
 }
 
 func evaluateAIRunDecision(snap *models.TestSuiteSnapshot, result *engine.PipelineResult) aiRunDecision {
-	decision := aiRunDecision{Action: "pass", Reason: "all checks passed"}
+	decision := aiRunDecision{Action: actionPass, Reason: "all checks passed"}
 
 	// Count AI signals by severity.
 	var critical, high, medium int
@@ -684,8 +645,8 @@ func evaluateAIRunDecision(snap *models.TestSuiteSnapshot, result *engine.Pipeli
 	for _, sig := range snap.Signals {
 		if sig.Category == models.CategoryGovernance {
 			if md, ok := sig.Metadata["rule"]; ok {
-				rule, _ := md.(string)
-				if strings.HasPrefix(rule, "block_on_") || rule == "blocking_signal_types" {
+				rule, isStr := md.(string)
+				if isStr && (strings.HasPrefix(rule, "block_on_") || rule == "blocking_signal_types") {
 					decision.Blocked++
 				}
 			}
@@ -693,7 +654,7 @@ func evaluateAIRunDecision(snap *models.TestSuiteSnapshot, result *engine.Pipeli
 	}
 
 	if critical > 0 || decision.Blocked > 0 {
-		decision.Action = "block"
+		decision.Action = actionBlock
 		parts := []string{}
 		if critical > 0 {
 			parts = append(parts, fmt.Sprintf("%d critical signal(s)", critical))
@@ -703,7 +664,7 @@ func evaluateAIRunDecision(snap *models.TestSuiteSnapshot, result *engine.Pipeli
 		}
 		decision.Reason = strings.Join(parts, ", ")
 	} else if high > 0 || medium > 0 {
-		decision.Action = "warn"
+		decision.Action = actionWarn
 		decision.Reason = fmt.Sprintf("%d high + %d medium signal(s)", high, medium)
 	}
 
@@ -748,7 +709,10 @@ func runAIRecord(root string, jsonOutput bool) error {
 		}
 	}
 
-	data, _ := json.MarshalIndent(bl, "", "  ")
+	data, err := json.MarshalIndent(bl, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encoding baseline: %w", err)
+	}
 	blPath := filepath.Join(baselineDir, "latest.json")
 	if err := os.WriteFile(blPath, data, 0o644); err != nil {
 		return fmt.Errorf("writing baseline: %w", err)
@@ -761,7 +725,7 @@ func runAIRecord(root string, jsonOutput bool) error {
 	}
 
 	fmt.Println("Terrain AI Record")
-	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
 	fmt.Printf("Recorded %d scenarios to %s\n", len(bl.Scenarios), blPath)
 	fmt.Printf("Prompt surfaces: %d\n", bl.Surfaces.Prompts)
 	fmt.Printf("Dataset surfaces: %d\n", bl.Surfaces.Datasets)
@@ -783,7 +747,9 @@ func runAIBaseline(root string, jsonOutput bool) error {
 	}
 
 	if jsonOutput {
-		os.Stdout.Write(data)
+		if _, err := os.Stdout.Write(data); err != nil {
+			return fmt.Errorf("writing baseline: %w", err)
+		}
 		fmt.Println()
 		return nil
 	}
@@ -805,7 +771,7 @@ func runAIBaseline(root string, jsonOutput bool) error {
 	}
 
 	fmt.Println("Terrain AI Baseline")
-	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
 	fmt.Printf("Recorded: %s\n", bl.RecordedAt)
 	fmt.Printf("Scenarios: %d\n", len(bl.Scenarios))
 	fmt.Printf("Prompt surfaces: %d\n", bl.Surfaces.Prompts)
@@ -831,7 +797,7 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 	data, err := os.ReadFile(blPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("no baseline found. Run `terrain ai record` to create one first")
+			return fmt.Errorf("no baseline found. Run `terrain ai record` to create one.")
 		}
 		return fmt.Errorf("reading baseline: %w", err)
 	}
@@ -850,7 +816,7 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 	}
 
 	// Run current analysis to get current scenario state.
-	result, err := engine.RunPipeline(root, engine.PipelineOptions{EngineVersion: version})
+	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -922,7 +888,7 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 
 	// Human-readable output.
 	fmt.Println("Terrain AI Baseline Comparison")
-	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
 	fmt.Printf("Baseline recorded: %s\n", baseline.RecordedAt)
 	fmt.Printf("Scenarios: %d → %d", len(baseline.Scenarios), len(result.Snapshot.Scenarios))
 	if diff := len(result.Snapshot.Scenarios) - len(baseline.Scenarios); diff > 0 {
@@ -974,7 +940,7 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 
 func runAIReplay(root string, jsonOutput bool, artifactPath string) error {
 	// Run pipeline for current state.
-	result, err := engine.RunPipeline(root, defaultPipelineOptions())
+	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -992,7 +958,7 @@ func runAIReplay(root string, jsonOutput bool, artifactPath string) error {
 	}
 
 	fmt.Println("Terrain AI Replay")
-	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
 	fmt.Println()
 	fmt.Printf("Artifact:    %s\n", artifactPath)
 	fmt.Printf("Scenarios:   %d original → %d current\n", replayResult.OriginalScenarios, replayResult.CurrentScenarios)
@@ -1006,7 +972,7 @@ func runAIReplay(root string, jsonOutput bool, artifactPath string) error {
 		fmt.Printf("Result: MISMATCH — %d difference(s) found\n", len(replayResult.Mismatches))
 		fmt.Println()
 		fmt.Println("Differences")
-		fmt.Println(strings.Repeat("-", 60))
+		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
 		for _, m := range replayResult.Mismatches {
 			fmt.Printf("  [%s] %s\n", m.Kind, m.Detail)
 			if m.Surface != "" {
@@ -1027,7 +993,7 @@ func runAIReplay(root string, jsonOutput bool, artifactPath string) error {
 }
 
 func runAIDoctor(root string, jsonOutput bool) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptions())
+	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -1181,7 +1147,7 @@ func runAIDoctor(root string, jsonOutput bool) error {
 
 	// Text output.
 	fmt.Println("Terrain AI Doctor")
-	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
 	fmt.Println()
 
 	passCount := 0
@@ -1235,25 +1201,7 @@ type aiSurfaceEntry struct {
 	Reason        string  `json:"reason,omitempty"`
 }
 
-// aiListSummary is the summary section of ai list output.
-type aiListSummary struct {
-	ScenarioCount int `json:"scenarioCount"`
-	PromptCount   int `json:"promptCount"`
-	DatasetCount  int `json:"datasetCount"`
-	EvalFileCount int `json:"evalFileCount"`
-}
-
 // isEvalPath returns true if a file path looks like an eval/benchmark file.
 func isEvalPath(path string) bool {
-	lower := strings.ToLower(path)
-	parts := strings.Split(strings.ReplaceAll(lower, "\\", "/"), "/")
-	for _, p := range parts {
-		switch p {
-		case "eval", "evals", "evaluations", "__evals__", "benchmarks":
-			return true
-		}
-	}
-	return false
+	return aidetect.IsEvalTestPath(path)
 }
-
-// runMigration handles `terrain migration readiness`, `terrain migration blockers`,

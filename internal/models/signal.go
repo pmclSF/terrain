@@ -66,7 +66,7 @@ const (
 	SourcePolicy            EvidenceSource = "policy"
 	SourceCodeowners        EvidenceSource = "codeowners"
 	SourceEvalExecution     EvidenceSource = "eval-execution"
-	SourceGraphTraversal   EvidenceSource = "graph-traversal"
+	SourceGraphTraversal    EvidenceSource = "graph-traversal"
 )
 
 // Signal is the canonical structured insight type in Terrain.

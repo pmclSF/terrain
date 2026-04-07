@@ -80,9 +80,9 @@ const (
 	DetectorASTTemplateCall  = "structural:ast-template-prompt"
 
 	// Fixture detectors that use language-level structure (fixture_parser.go).
-	DetectorFixtureGoTestMain  = "structural:go-testmain"
-	DetectorFixtureGoHelper    = "structural:go-test-helper"
-	DetectorFixturePyFixture   = "structural:pytest-fixture"
+	DetectorFixtureGoTestMain    = "structural:go-testmain"
+	DetectorFixtureGoHelper      = "structural:go-test-helper"
+	DetectorFixturePyFixture     = "structural:pytest-fixture"
 	DetectorFixtureJavaLifecycle = "structural:java-lifecycle"
 
 	// ── Semantic detectors (Tier 2) ────────────────────────────────────
@@ -117,11 +117,11 @@ const (
 	// ── Pattern detectors (Tier 3) ─────────────────────────────────────
 	// Regex/naming convention matching.
 
-	DetectorExportName       = "pattern:export-name"
+	DetectorExportName        = "pattern:export-name"
 	DetectorRouteRegistration = "pattern:route-registration"
-	DetectorHandlerName      = "pattern:handler-name"
-	DetectorPathConvention   = "pattern:path-convention"
-	DetectorImportMatch      = "pattern:import-match"
+	DetectorHandlerName       = "pattern:handler-name"
+	DetectorPathConvention    = "pattern:path-convention"
+	DetectorImportMatch       = "pattern:import-match"
 
 	// Fixture detectors using naming conventions (fixture_parser.go).
 	DetectorFixtureLifecycleHook = "pattern:fixture-lifecycle-hook"
