@@ -919,6 +919,18 @@ func buildLimitations(snap *models.TestSuiteSnapshot, hasPolicy bool) []string {
 		lims = append(lims, "No ownership data available; per-owner risk breakdown unavailable.")
 	}
 
+	// Check for Java files without import resolution.
+	hasJava := false
+	for _, fw := range snap.Frameworks {
+		if fw.Name == "junit" || fw.Name == "junit4" || fw.Name == "junit5" || fw.Name == "testng" {
+			hasJava = true
+			break
+		}
+	}
+	if hasJava {
+		lims = append(lims, "Java import resolution is not yet supported; impact analysis and test selection for Java code uses structural heuristics only.")
+	}
+
 	// Sort for determinism.
 	sort.Strings(lims)
 
