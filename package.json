@@ -1,6 +1,6 @@
 {
   "name": "mapterrain",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Terrain test intelligence CLI.",
   "type": "module",
   "bin": {
@@ -61,7 +61,7 @@
     "test-converter"
   ],
   "author": "pmclSF",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "dependencies": {},
   "devDependencies": {
     "@commitlint/cli": "^19.6.1",
