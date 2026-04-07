@@ -111,6 +111,3 @@ release:
   github:
     owner: pmclSF
     name: terrain
-  extra_files:
-    - glob: "dist/*.cdx.json"
-    - glob: "dist/*.spdx.json"
