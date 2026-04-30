@@ -274,7 +274,16 @@ type BuildInput struct {
 // Build constructs an AnalyzeReport from a pipeline snapshot.
 // It runs depgraph analysis internally to produce coverage, redundancy,
 // and fanout findings.
+//
+// nil-safe: a nil input or a non-nil input with a nil Snapshot returns
+// an empty Report stamped with the current schema version. CLI commands
+// that recover from a failed pipeline get a benign object back instead
+// of crashing. The contract is exercised by
+// internal/testdata/adversarial_test.go:TestAdversarial_BuildEntryPoints_NilInput.
 func Build(input *BuildInput) *Report {
+	if input == nil || input.Snapshot == nil {
+		return &Report{SchemaVersion: AnalyzeReportSchemaVersion}
+	}
 	snap := input.Snapshot
 
 	r := &Report{SchemaVersion: AnalyzeReportSchemaVersion}
@@ -846,8 +855,8 @@ func deriveKeyFindings(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph
 	if r.SignalSummary.Critical > 0 {
 		candidates = append(candidates, candidate{
 			finding: KeyFinding{
-				Title:    fmt.Sprintf("%d critical signal(s) detected — immediate attention required", r.SignalSummary.Critical),
-				Severity: "critical",
+				Title:    fmt.Sprintf("%d critical signal(s) detected — review recommended", r.SignalSummary.Critical),
+				Severity: "high",
 				Category: "reliability",
 				Metric:   fmt.Sprintf("%d critical", r.SignalSummary.Critical),
 			},
@@ -917,6 +926,18 @@ func buildLimitations(snap *models.TestSuiteSnapshot, hasPolicy bool) []string {
 	}
 	if snap.Ownership == nil || len(snap.Ownership) == 0 {
 		lims = append(lims, "No ownership data available; per-owner risk breakdown unavailable.")
+	}
+
+	// Check for Java files without import resolution.
+	hasJava := false
+	for _, fw := range snap.Frameworks {
+		if fw.Name == "junit" || fw.Name == "junit4" || fw.Name == "junit5" || fw.Name == "testng" {
+			hasJava = true
+			break
+		}
+	}
+	if hasJava {
+		lims = append(lims, "Java import resolution is not yet supported; impact analysis and test selection for Java code uses structural heuristics only.")
 	}
 
 	// Sort for determinism.

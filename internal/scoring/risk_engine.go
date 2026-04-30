@@ -23,15 +23,57 @@ import (
 // RiskModelVersion increments when scoring methodology changes.
 const RiskModelVersion = "2.0.0"
 
-// Severity weights for risk score computation.
-// These are explicit so future stages can tune them transparently.
+// Severity weights are the multipliers applied to each finding when summing
+// per-dimension risk. They are NOT corpus-calibrated — values were chosen by
+// hand so that one Critical finding outweighs ~1.3 High findings, and one
+// High outweighs 1.5 Medium findings, which roughly matches reviewer intuition
+// on a sample of customer repos. Calibration against a labelled corpus lands
+// in 0.3 (see docs/release/0.2.md → 0.3 plan); when it does, both these
+// weights and the band thresholds below will shift. The current values
+// represent the "best guess" that 0.1.0 shipped with; we are documenting
+// them here, not changing them, to preserve back-compat in 0.1.2.
+//
+// Rationale per level:
+//   - Critical (4.0): user-facing safety/security risk; fail-the-PR severity.
+//   - High (3.0): bug-escape risk OR meaningful CI cost.
+//   - Medium (2.0): maintenance pain or moderate efficacy gap.
+//   - Low (1.0): code smell or cleanup opportunity.
+//   - Info (0.5): observation; counted for visibility, not scored.
+const (
+	severityWeightCritical = 4.0
+	severityWeightHigh     = 3.0
+	severityWeightMedium   = 2.0
+	severityWeightLow      = 1.0
+	severityWeightInfo     = 0.5
+)
+
 var severityWeight = map[models.SignalSeverity]float64{
-	models.SeverityCritical: 4.0,
-	models.SeverityHigh:     3.0,
-	models.SeverityMedium:   2.0,
-	models.SeverityLow:      1.0,
-	models.SeverityInfo:     0.5,
+	models.SeverityCritical: severityWeightCritical,
+	models.SeverityHigh:     severityWeightHigh,
+	models.SeverityMedium:   severityWeightMedium,
+	models.SeverityLow:      severityWeightLow,
+	models.SeverityInfo:     severityWeightInfo,
 }
+
+// Risk band thresholds map a weighted score to a qualitative band.
+//
+// These four constants are the single source of truth for the band
+// boundaries; the deadband logic in scoreToBandWithHysteresis derives its
+// hysteresis values from them. They are intentionally NOT calibrated —
+// 4 / 9 / 16 are gut-feel breakpoints chosen during 0.1.0 design and
+// preserved through 0.1.2 for back-compat. 0.3 replaces them with corpus-
+// percentile-derived values; see docs/scoring-rubric.md for the full
+// methodology.
+const (
+	riskBandLowUpper      = 4.0  // score < 4 → Low
+	riskBandMediumUpper   = 9.0  // 4 ≤ score < 9 → Medium
+	riskBandHighUpper     = 16.0 // 9 ≤ score < 16 → High; ≥16 → Critical
+	riskBandHysteresis    = 0.5  // deadband around each boundary
+	governanceFloorScore  = 4.0  // governance violations don't drop below Medium
+	densityScoreScale     = 10.0 // density score = (weight / files) × this
+	absoluteWeightScale   = 1.2  // log-scaled weight component multiplier
+	absoluteCountScale    = 0.8  // log-scaled count component multiplier
+)
 
 // Signal types that feed each risk dimension.
 var reliabilitySignals = map[models.SignalType]bool{
@@ -132,8 +174,14 @@ func computeRepoRisk(
 	}
 
 	score := computeHybridScore(totalWeight, len(contributing), totalFiles)
-	if riskType == "governance" && score < 4 && hasGovernanceFloorTrigger(contributing) {
-		score = 4
+	// Governance floor: when a hard policy violation or a Critical/High
+	// signal exists in the governance dimension, the score is floored at
+	// the Medium-band boundary so a small repo with a single but
+	// significant policy violation still lands in Medium rather than Low.
+	// This is documented in docs/scoring-rubric.md as the only case where
+	// the band is not a pure function of the score.
+	if riskType == "governance" && score < governanceFloorScore && hasGovernanceFloorTrigger(contributing) {
+		score = governanceFloorScore
 	}
 	band := scoreToBandWithHysteresis(score, previousBand)
 
@@ -263,20 +311,21 @@ func computeDirectoryRisk(snap *models.TestSuiteSnapshot) []models.RiskSurface {
 
 // scoreToBand maps a weighted signal score to a qualitative risk band.
 //
-// Thresholds:
-//   - 0-3:  low
-//   - 4-8:  medium
-//   - 9-15: high
-//   - 16+:  critical
+// Thresholds (derived from riskBand* constants above):
+//   - score < 4:   Low
+//   - 4 ≤ x < 9:   Medium
+//   - 9 ≤ x < 16:  High
+//   - score ≥ 16:  Critical
 //
-// These thresholds are intentionally simple and inspectable.
+// These thresholds are intentionally simple and inspectable. See
+// docs/scoring-rubric.md for what changes when calibration lands in 0.3.
 func scoreToBand(score float64) models.RiskBand {
 	switch {
-	case score >= 16:
+	case score >= riskBandHighUpper:
 		return models.RiskBandCritical
-	case score >= 9:
+	case score >= riskBandMediumUpper:
 		return models.RiskBandHigh
-	case score >= 4:
+	case score >= riskBandLowUpper:
 		return models.RiskBandMedium
 	default:
 		return models.RiskBandLow
@@ -288,14 +337,15 @@ func scoreToBandWithHysteresis(score float64, previousBand models.RiskBand) mode
 		return scoreToBand(score)
 	}
 
-	// Deadband around thresholds to reduce band flapping near boundaries.
-	const hysteresis = 0.5
-	lowUp := 4.0 + hysteresis
-	mediumDown := 4.0 - hysteresis
-	mediumUp := 9.0 + hysteresis
-	highDown := 9.0 - hysteresis
-	highUp := 16.0 + hysteresis
-	criticalDown := 16.0 - hysteresis
+	// Deadband around each threshold to reduce band flapping near boundaries.
+	// All values derive from the constants above so adjusting the model is a
+	// single-place edit.
+	lowUp := riskBandLowUpper + riskBandHysteresis
+	mediumDown := riskBandLowUpper - riskBandHysteresis
+	mediumUp := riskBandMediumUpper + riskBandHysteresis
+	highDown := riskBandMediumUpper - riskBandHysteresis
+	highUp := riskBandHighUpper + riskBandHysteresis
+	criticalDown := riskBandHighUpper - riskBandHysteresis
 
 	switch previousBand {
 	case models.RiskBandLow:
@@ -348,15 +398,31 @@ func scoreToBandWithHysteresis(score float64, previousBand models.RiskBand) mode
 	}
 }
 
+// computeHybridScore returns the larger of two scores so neither very small
+// nor very large repos dominate the band assignment unfairly:
+//
+//   - density: (weighted-severity-sum / file-count) × densityScoreScale.
+//     Captures concentration. A 10-file repo with 5 medium findings
+//     (weight 10) yields density 10. A 1000-file repo with the same 5
+//     findings yields 0.1 — too low to flag.
+//
+//   - absolute: log(1+weight) × W + log(1+count) × C. Captures sheer
+//     volume even when density is low. A 1000-file repo with 200 medium
+//     findings has density 4 (Medium boundary) but absolute burden ~7.5
+//     (still Medium, but trending up).
+//
+// Taking the max means a repo can land in High either by being densely
+// problematic or by accumulating absolute volume. Both axes are kept
+// inspectable so future calibration can adjust them independently.
 func computeHybridScore(totalWeight float64, signalCount, totalFiles int) float64 {
 	densityScore := totalWeight
 	if totalFiles > 0 {
-		densityScore = (totalWeight / float64(totalFiles)) * 10.0
+		densityScore = (totalWeight / float64(totalFiles)) * densityScoreScale
 	}
 
-	// Absolute burden: log-scaled so large repos are comparable while still
-	// surfacing substantial issue volume even at low density.
-	absoluteScore := (math.Log1p(totalWeight) * 1.2) + (math.Log1p(float64(signalCount)) * 0.8)
+	absoluteScore := math.Log1p(totalWeight)*absoluteWeightScale +
+		math.Log1p(float64(signalCount))*absoluteCountScale
+
 	if densityScore > absoluteScore {
 		return densityScore
 	}

@@ -47,35 +47,41 @@ func TestLookupShorthand(t *testing.T) {
 func TestLookupDirection_ImplementedDirectionsReportGoNativeRuntime(t *testing.T) {
 	t.Parallel()
 
-	cases := [][2]string{
+	implementedCases := [][2]string{
 		{"cypress", "webdriverio"},
 		{"jasmine", "jest"},
 		{"cypress", "selenium"},
 		{"jest", "vitest"},
 		{"jest", "jasmine"},
 		{"jest", "mocha"},
-		{"junit4", "junit5"},
-		{"junit5", "testng"},
 		{"cypress", "playwright"},
 		{"mocha", "jest"},
-		{"nose2", "pytest"},
 		{"playwright", "cypress"},
 		{"playwright", "puppeteer"},
 		{"playwright", "selenium"},
 		{"playwright", "webdriverio"},
 		{"puppeteer", "playwright"},
-		{"pytest", "unittest"},
-		{"selenium", "cypress"},
-		{"selenium", "playwright"},
-		{"testng", "junit5"},
-		{"testcafe", "cypress"},
-		{"testcafe", "playwright"},
-		{"unittest", "pytest"},
 		{"webdriverio", "cypress"},
 		{"webdriverio", "playwright"},
 	}
 
-	for _, tc := range cases {
+	// experimentalCases are directions that round 3 review classified as
+	// C-grade; they dispatch to the Go-native runtime but are not yet
+	// production-ready. See internal/convert/catalog.go for promotion criteria.
+	experimentalCases := [][2]string{
+		{"junit4", "junit5"},
+		{"junit5", "testng"},
+		{"testng", "junit5"},
+		{"nose2", "pytest"},
+		{"pytest", "unittest"},
+		{"unittest", "pytest"},
+		{"selenium", "cypress"},
+		{"selenium", "playwright"},
+		{"testcafe", "cypress"},
+		{"testcafe", "playwright"},
+	}
+
+	for _, tc := range implementedCases {
 		direction, ok := LookupDirection(tc[0], tc[1])
 		if !ok {
 			t.Fatalf("expected direction %s -> %s", tc[0], tc[1])
@@ -85,6 +91,22 @@ func TestLookupDirection_ImplementedDirectionsReportGoNativeRuntime(t *testing.T
 		}
 		if direction.Implementation != "go-native-runtime" {
 			t.Fatalf("%s -> %s implementation = %q, want go-native-runtime", tc[0], tc[1], direction.Implementation)
+		}
+	}
+
+	for _, tc := range experimentalCases {
+		direction, ok := LookupDirection(tc[0], tc[1])
+		if !ok {
+			t.Fatalf("expected direction %s -> %s", tc[0], tc[1])
+		}
+		if direction.GoNativeState != GoNativeStateExperimental {
+			t.Fatalf("%s -> %s state = %s, want %s", tc[0], tc[1], direction.GoNativeState, GoNativeStateExperimental)
+		}
+		if direction.Implementation != "go-native-runtime" {
+			t.Fatalf("%s -> %s implementation = %q, want go-native-runtime", tc[0], tc[1], direction.Implementation)
+		}
+		if !direction.GoNativeReady {
+			t.Fatalf("%s -> %s GoNativeReady = false; experimental directions should still dispatch (with warning)", tc[0], tc[1])
 		}
 	}
 }

@@ -419,6 +419,68 @@ Usage: `terrain estimate <dir> --from <framework> --to <framework> [flags]`
 - `terrain shorthands [--json]` — list all 50 shorthand aliases
 - `terrain detect <file-or-dir> [--json]` — detect dominant framework
 
+### `terrain serve` *(experimental)*
+
+Purpose:
+Run a local HTTP server that renders the analysis report at `/` and exposes
+a JSON API at `/api/analyze` and `/api/health`. The HTML view auto-refreshes
+every 30 seconds. Intended for single-developer local exploration; the
+"dashboard with embedded charts" framing in older docs is **planned for 0.2**
+and not yet shipped.
+
+Usage: `terrain serve [--root PATH] [--port N] [--host HOST] [--read-only]`
+
+Flags:
+- `--root PATH` — repository root to analyse (default: `.`).
+- `--port N` — bind port (default: 8421).
+- `--host HOST` — bind host (default: `127.0.0.1`). Setting any other
+  value emits a stderr warning because the server has no built-in
+  authentication.
+- `--read-only` — reject future state-changing API endpoints. No-op in
+  0.1.2 (every handler is read-only); reserved so users who flip it now
+  keep that guarantee when 0.2 introduces write APIs.
+
+Security:
+- Binds to `127.0.0.1` by default.
+- Sets CSP, `X-Frame-Options: DENY`, `X-Content-Type-Options: nosniff`,
+  and `Referrer-Policy: no-referrer` on every response.
+- Validates `Origin`/`Referer` headers; cross-origin browser requests are
+  rejected with 403. Empty headers (curl, server-to-server) are allowed.
+- Reads (and serves) the snapshot from disk; never writes.
+
+For multi-developer hosts, use an SSH tunnel rather than binding to a
+non-localhost address; first-class authentication is 0.3 work.
+
+---
+
+---
+
+## GitHub Actions
+
+Two workflow templates are provided in `.github/workflows/`:
+
+### `terrain-pr.yml` — Test Selection Gate
+Runs on every PR. Analyzes impact, selects relevant tests, runs them, and posts a PR comment with the results.
+
+### `terrain-ai.yml` — AI Validation Gate
+Runs on every PR. Checks AI surface coverage, runs impact-scoped eval scenario selection, and posts a PR comment with AI validation results. Blocks the PR if the AI gate returns "block" (uncovered safety-critical surfaces, accuracy regressions, etc.).
+
+Both workflows are opt-in — copy them to your repository's `.github/workflows/` directory to enable.
+
+---
+
+## Language Support
+
+| Layer | JS/TS | Go | Python | Java |
+|-------|-------|-----|--------|------|
+| Framework detection | ✓ | ✓ | ✓ | ✓ |
+| Code unit extraction | ✓ | ✓ | ✓ | ✓ |
+| Import graph | ✓ full resolver | ✓ AST | ✓ | ✗ heuristic |
+| Fixture detection | ✓ | ✓ | ✓ | ✓ |
+| Impact analysis | Full | Full | Full | Heuristic |
+
+Java import resolution is planned for a future release. Impact analysis for Java projects uses structural heuristics (file path matching, framework conventions) rather than dependency tracing.
+
 ---
 
 ## Output rules

@@ -1,5 +1,6 @@
 version: 2
 updates:
+  # ── npm (Node tooling: extension, npm wrapper, lint/format) ──────────
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
@@ -29,3 +30,53 @@ updates:
           - "eslint*"
           - "prettier"
           - "lint-staged"
+
+  # ── npm (VS Code extension package) ─────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/extension/vscode"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    versioning-strategy: increase
+    labels:
+      - "dependencies"
+      - "vscode-extension"
+    commit-message:
+      prefix: "chore(extension)"
+      include: "scope"
+
+  # ── Go modules (analysis engine) ────────────────────────────────────
+  # New in 0.1.2: round-2 review flagged that gomod was uncovered. Tree-sitter
+  # grammars and the YAML library both need security update visibility.
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "go"
+    commit-message:
+      prefix: "chore"
+      include: "scope"
+    groups:
+      tree-sitter:
+        patterns:
+          - "github.com/smacker/go-tree-sitter*"
+
+  # ── GitHub Actions ──────────────────────────────────────────────────
+  # New in 0.1.2: actions were not tracked, so floating @v6 / @v3 references
+  # in our workflows could silently shift under us. Dependabot can bump SHA
+  # pins automatically; we still recommend pinning to a SHA in workflow
+  # files (it understands both forms).
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "ci"
+      include: "scope"

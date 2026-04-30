@@ -1,5 +1,147 @@
 # Changelog
 
+All notable changes to Terrain are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+(intentionally empty — track 0.2 work in `docs/release/0.2.md`)
+
+## [0.1.2] — Truth-up & foundation
+
+The deliberate "boring" release. No new headline features; instead, every
+gap between what Terrain marketed and what the code actually delivered is
+either closed or explicitly tagged. Schemas, signal vocabulary, and
+distribution surfaces are locked so 0.2 can ship features against a stable
+foundation. Per `docs/release/0.1.2.md`.
+
+### Honest about what ships
+
+- New: `docs/release/feature-status.md` is the canonical inventory of
+  stable / experimental / planned features. Drift between marketing and
+  code becomes a release blocker starting in 0.2.
+- README: example CLI outputs are now framed explicitly as illustrative
+  shape, not literal output. Three signals shown (`xfailAccumulation`,
+  statistical ">10% failure rate" flaky detection, `0.91+` duplicate
+  similarity) are explicitly tagged `[experimental]` or `[planned]`
+  because the underlying detectors don't ship in 0.1.2.
+- README: the "30 seconds" claim is now scoped to small-to-medium repos
+  with realistic numbers for larger workspaces.
+- `docs/legacy/`: every file now carries a strong **DEPRECATED — DO NOT
+  USE FOR NEW WORK** banner pointing at current docs.
+- `internal/convert/catalog.go`: 10 conversion directions tagged
+  `GoNativeStateExperimental` per round 3 audit (Java, Python,
+  TestCafe, Selenium families). `terrain convert` warns to stderr when
+  invoked on an experimental direction.
+
+### Distribution
+
+- Goreleaser now builds five platforms instead of one: darwin/amd64,
+  darwin/arm64, linux/amd64, linux/arm64, windows/amd64. Each is built
+  on a matching CI runner because go-tree-sitter requires CGO and
+  cannot cross-compile cleanly.
+- Release archives, SBOMs, and checksums are signed via Sigstore
+  keyless cosign. Signatures and certificates are uploaded with each
+  artifact.
+- npm postinstall (`bin/terrain-installer.js`) gains a best-effort
+  cosign verifier: in 0.1.2 it warns on missing cosign, missing
+  signature artifacts, or verification failure but does not block
+  install. 0.2 makes this hard-fail unless
+  `TERRAIN_INSTALLER_SKIP_VERIFY=1` is set.
+- `.github/dependabot.yml`: gomod, github-actions, and the VS Code
+  extension package are now tracked alongside the existing root-npm
+  ecosystem. Tree-sitter grammar updates surface as PRs automatically.
+
+### Schema & signal vocabulary
+
+- `internal/signals/manifest.go` (new): single source of truth for all
+  56 signal types. Status (stable / experimental / planned), default
+  severity, confidence range, evidence sources, RuleID, RuleURI, and
+  promotion plan are recorded for every entry.
+  `TestManifest_MatchesSignalTypes` makes constant↔manifest drift a
+  build failure.
+- `internal/models/MaxSupportedMajorSchema = 1`. Snapshot reads now
+  reject majors above the current binary's understanding via
+  `ValidateSchemaVersion`.
+- `docs/schema/COMPAT.md` (new): the public compatibility contract.
+  Documents what is allowed at minor steps, what requires a major bump,
+  and how the manifest's drift gates fit in.
+- `docs/scoring-rubric.md` and `docs/health-grade-rubric.md` (new):
+  every magic number behind risk-band assignment and Health Grade
+  derivation is now extracted to a named constant and explained.
+
+### Correctness & durability fixes
+
+- `.gitignore` is now honoured during repository scanning. Vendored
+  trees and generated artefacts the user has explicitly excluded are
+  no longer walked.
+- File cache is bounded: per-file 8 MB, total 256 MB. Files past the
+  cap stream from disk on every read instead of failing the process.
+- Worker-pool sizing capped at `min(GOMAXPROCS, 16)`.
+- Framework detection probe size raised from 64 KB to 256 KB.
+- `internal/metrics/metrics.go:Derive`, `internal/analyze/analyze.go:Build`,
+  and `internal/insights/insights.go:Build` are now nil-safe; the
+  adversarial test that previously swallowed their panics with
+  `t.Logf("acceptable")` is now a strict contract test that fails on
+  panic.
+
+### CLI ergonomics
+
+- `NO_COLOR`, `TERM=dumb`, and every common CI provider
+  (GitHub Actions, GitLab, CircleCI, Buildkite, Jenkins, Azure
+  Pipelines) now suppress progress output. Logs no longer get
+  carriage-return garbage in CI.
+- Did-you-mean suggestions on unknown commands. Levenshtein distance
+  ≤2 gets you up to three suggestions; in-tree implementation, no new
+  dependency.
+- Exit codes documented as a 5-level scheme. `exitPolicyViolation`
+  remains 2 for back-compat in 0.1.2; 0.2 splits it cleanly.
+- `terrain doctor` and `terrain ai doctor` consolidation deferred to
+  0.2 (the larger CLI restructure).
+
+### Security & privacy
+
+- `--base` git refs are validated against an allow-listed regex
+  before being passed to `git diff`. Shell-injection payloads,
+  reflog selectors (`@{-1}`), `--upload-pack=evil`, and whitespace
+  are all rejected.
+- Telemetry config and event log now ship 0o600; the parent
+  `~/.terrain` directory ships 0o700.
+- SARIF emission gains `--redact-paths`; absolute paths inside the
+  repo are rewritten relative, paths outside collapse to bare
+  basenames.
+- `terrain serve` ships a security middleware: CSP, X-Frame-Options
+  DENY, X-Content-Type-Options nosniff, Referrer-Policy no-referrer
+  on every response. Origin/Referer validation rejects browser-driven
+  cross-origin attacks against localhost. New `--host` flag warns
+  when bound to a non-localhost address.
+
+### CI & governance
+
+- Multi-OS test matrix: ubuntu-latest, macos-latest, windows-latest.
+  ubuntu remains the canonical runner with the race detector and full
+  fixture suite; macos and windows run unit tests to catch
+  platform-specific regressions before binaries ship.
+- Determinism gate (`make test-determinism`) now runs in CI on every
+  PR.
+- New: `.github/CODEOWNERS`, `.github/pull_request_template.md`,
+  `.husky/pre-commit` (blocks files >5 MB and binary-only extensions).
+- `.nvmrc` strict-pinned to `22.11.0`.
+
+### Removed
+
+- `internal/plugin/` package (extension-point interfaces that were
+  never wired into the engine). The only adopters were tests in the
+  package itself. Detector contributors should read
+  `docs/engineering/detector-architecture.md` for the actual in-tree
+  registry pattern.
+
+### Versioning
+
+- npm package, `extension/vscode/package.json`, and
+  `package-lock.json` all bumped to `0.1.2`. Git-tag/package.json
+  drift is now a release-gate failure.
+
 ## 0.1.0 — Test System Intelligence Platform (2026-04-06)
 
 Terrain 0.1.0 is the first public release of the Terrain test intelligence
@@ -83,6 +225,26 @@ packages, all passing. Zero `go vet` warnings. Zero `gofmt` issues.**
 **Debug:**
 - `terrain debug graph|coverage|fanout|duplicates|depgraph` — internal analysis inspection
 
+### AI / Regular Test Parity
+
+AI surfaces receive the same CI treatment as regular tests:
+
+- Discovery: prompts, contexts, datasets, tool definitions, RAG pipelines, agents, eval definitions
+- Impact selection: `terrain ai run --base main` selects only impacted eval scenarios
+- Protection gaps: changed AI surfaces without eval coverage appear in `terrain impact` and `terrain pr`
+- Policy enforcement: 7 AI-specific policy rules (`block_on_safety_failure`, `block_on_uncovered_context`, etc.)
+- PR comments: AI Validation section in `terrain pr` output (markdown + text)
+- GitHub Action: `terrain-ai.yml` template for AI CI gates
+- Health insights: uncovered AI surfaces appear in `terrain insights`
+
+### Structural Intelligence
+
+Three features that use the dependency graph and surface model to produce recommendations no individual tool can generate:
+
+- **"What to test next"**: ranks untested source files by import graph dependency count — files with more dependents create larger blind spots for change-scoped test selection
+- **AI behavior impact chains**: detects files with multiple AI surface types where some are covered and others aren't — a change to the untested surface can alter downstream AI behavior undetected
+- **Capability gap detection**: identifies AI capabilities with only positive/accuracy scenarios but no adversarial, safety, or robustness scenarios
+
 ### Impact Analysis
 
 - Change-scope analysis against git diff with structural dependency tracing
@@ -91,6 +253,7 @@ packages, all passing. Zero `go vet` warnings. Zero `gofmt` issues.**
 - Drill-down views: units, gaps, tests, owners, graph, selected
 - Manual coverage overlay for untestable paths
 - PR-scoped output: markdown, CI comment, GitHub annotations
+- AI protection gaps: changed AI surfaces without eval coverage
 
 ### Dependency Graph Engine
 
@@ -98,6 +261,7 @@ packages, all passing. Zero `go vet` warnings. Zero `gofmt` issues.**
 - Edge-case detection (14 types) with policy recommendations
 - Stability clustering for shared root-cause detection
 - Environment/device matrix coverage analysis
+- Language-aware fanout threshold (25, calibrated across Go/Python/JS/Java)
 
 ### Go-Native Conversion Runtime
 

@@ -78,6 +78,116 @@ function archiveDownloadUrl(version) {
   return `${baseUrl}/v${version}/${archiveFileName(version)}`;
 }
 
+function signatureDownloadUrl(version) {
+  return `${archiveDownloadUrl(version)}.sig`;
+}
+
+function certificateDownloadUrl(version) {
+  return `${archiveDownloadUrl(version)}.pem`;
+}
+
+function expectedSignerIdentity(version) {
+  // The keyless Sigstore signature is anchored to the GitHub Actions workflow
+  // that ran goreleaser at release time. The workflow runs on the v<version>
+  // tag, so the OIDC subject identity is deterministic.
+  return (
+    `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}` +
+    `/.github/workflows/release.yml@refs/tags/v${version}`
+  );
+}
+
+const SIGSTORE_OIDC_ISSUER = 'https://token.actions.githubusercontent.com';
+
+function isCosignAvailable() {
+  try {
+    execFileSync('cosign', ['version'], { stdio: 'pipe' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Best-effort signature verification. In 0.1.2 this is warn-only: a missing
+// cosign, missing signature artifact, or verification failure logs to stderr
+// and does NOT block install. The signing pipeline is still maturing and we
+// don't want to break npm installs while it stabilises.
+//
+// In 0.2 this becomes hard-fail unless TERRAIN_INSTALLER_SKIP_VERIFY=1 is set,
+// at which point the warning escalates to an error.
+async function verifySignatureBestEffort({
+  archivePath,
+  version,
+  tempDir,
+  quiet,
+  env,
+}) {
+  if (env.TERRAIN_INSTALLER_SKIP_VERIFY === '1') {
+    log(
+      'Skipping signature verification (TERRAIN_INSTALLER_SKIP_VERIFY=1).',
+      quiet
+    );
+    return { verified: false, reason: 'skipped-by-env' };
+  }
+
+  if (!isCosignAvailable()) {
+    log(
+      'cosign not found on PATH; skipping signature verification. ' +
+        'Install cosign (https://github.com/sigstore/cosign) for stronger ' +
+        'integrity guarantees in future releases.',
+      quiet
+    );
+    return { verified: false, reason: 'cosign-missing' };
+  }
+
+  const sigPath = path.join(tempDir, `${path.basename(archivePath)}.sig`);
+  const certPath = path.join(tempDir, `${path.basename(archivePath)}.pem`);
+
+  try {
+    await downloadFile(signatureDownloadUrl(version), sigPath);
+    await downloadFile(certificateDownloadUrl(version), certPath);
+  } catch (error) {
+    log(
+      `Could not fetch signature artifacts (${error.message}); ` +
+        'skipping verification.',
+      quiet
+    );
+    return { verified: false, reason: 'sig-download-failed' };
+  }
+
+  try {
+    execFileSync(
+      'cosign',
+      [
+        'verify-blob',
+        '--certificate',
+        certPath,
+        '--signature',
+        sigPath,
+        '--certificate-identity',
+        expectedSignerIdentity(version),
+        '--certificate-oidc-issuer',
+        SIGSTORE_OIDC_ISSUER,
+        archivePath,
+      ],
+      { stdio: 'pipe' }
+    );
+    log(
+      `Verified Sigstore signature for ${path.basename(archivePath)}.`,
+      quiet
+    );
+    return { verified: true, reason: 'ok' };
+  } catch (error) {
+    log(
+      `WARNING: cosign verify-blob failed for ${path.basename(archivePath)}. ` +
+        'The downloaded archive may be tampered with. Continuing install ' +
+        '(verification will become mandatory in 0.2). Error: ' +
+        (error.stderr ? error.stderr.toString().trim() : error.message),
+      quiet
+    );
+    return { verified: false, reason: 'verify-failed' };
+  }
+}
+
 async function ensureDirectory(dir) {
   await fs.mkdir(dir, { recursive: true });
 }
@@ -233,6 +343,13 @@ export async function ensureTerrainBinary({
       quiet
     );
     await downloadFile(archiveDownloadUrl(version), archivePath);
+    await verifySignatureBestEffort({
+      archivePath,
+      version,
+      tempDir,
+      quiet,
+      env,
+    });
     await ensureDirectory(extractDir);
     extractArchive(archivePath, extractDir);
 

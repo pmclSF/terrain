@@ -2,8 +2,51 @@ package models
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
+
+// ValidateSchemaVersion accepts the snapshot schema version string and
+// reports whether this binary is willing to read a snapshot stamped with it.
+//
+// Returns nil if the version is supported (current or older major; any minor
+// or patch). Returns a typed *ValidationError otherwise.
+//
+// Empty version strings are accepted at this layer because the broader
+// ValidateSnapshot path treats an empty SchemaVersion as a separate
+// invariant violation. Empty here keeps responsibilities cleanly split.
+func ValidateSchemaVersion(version string) error {
+	if version == "" {
+		return nil
+	}
+	parts := strings.Split(version, ".")
+	if len(parts) == 0 {
+		return &ValidationError{Errors: []string{
+			fmt.Sprintf("invalid schemaVersion %q: empty after split", version),
+		}}
+	}
+	major, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return &ValidationError{Errors: []string{
+			fmt.Sprintf("invalid schemaVersion %q: major component is not an integer", version),
+		}}
+	}
+	if major < 0 {
+		return &ValidationError{Errors: []string{
+			fmt.Sprintf("invalid schemaVersion %q: negative major", version),
+		}}
+	}
+	if major > MaxSupportedMajorSchema {
+		return &ValidationError{Errors: []string{
+			fmt.Sprintf(
+				"snapshot schemaVersion %q has major %d but this Terrain binary supports up to major %d; "+
+					"upgrade Terrain or downgrade the snapshot",
+				version, major, MaxSupportedMajorSchema,
+			),
+		}}
+	}
+	return nil
+}
 
 // ValidationError collects multiple invariant violations.
 type ValidationError struct {
@@ -43,9 +86,13 @@ func ValidateSnapshot(snap *TestSuiteSnapshot) error {
 		ve.add("repository name is empty")
 	}
 
-	// Schema version must be set.
+	// Schema version must be set and within the supported major range.
 	if snap.SnapshotMeta.SchemaVersion == "" {
 		ve.add("snapshot schema version is empty")
+	} else if err := ValidateSchemaVersion(snap.SnapshotMeta.SchemaVersion); err != nil {
+		// Forward the structured error message; ValidateSchemaVersion already
+		// formats it actionably.
+		ve.add(err.Error())
 	}
 
 	// All test files must have non-empty paths.

@@ -55,7 +55,25 @@ type RiskSurface struct {
 
 // SnapshotSchemaVersion is the current schema version for TestSuiteSnapshot.
 // Increment this when the snapshot JSON shape changes in a breaking way.
+//
+// Compatibility policy (locked in 0.1.2):
+//   - The major version (1.x.x) is the public contract. Tools written
+//     against 1.0.0 must keep working through 1.x. Adding new fields is
+//     allowed (consumers ignore unknown fields); removing or changing the
+//     meaning of existing fields is not.
+//   - Minor and patch bumps are reserved for additive changes and bug fixes.
+//   - A future 2.x.x major bump requires an opt-in path: writers continue
+//     emitting 1.x for at least one release after 2.x ships, and readers
+//     will reject snapshots whose major version exceeds the highest they
+//     understand (see ValidateSchemaVersion).
+//
+// Full policy: docs/schema/COMPAT.md.
 const SnapshotSchemaVersion = "1.0.0"
+
+// MaxSupportedMajorSchema is the highest snapshot schema major version
+// this binary can read. Newer snapshots must be downgraded or read with a
+// newer Terrain release.
+const MaxSupportedMajorSchema = 1
 
 // SnapshotMeta holds machine-readable provenance for the snapshot artifact.
 type SnapshotMeta struct {

@@ -648,16 +648,23 @@ func TestAIWorkflow_InventoryJSON_IncludesEvidence(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	// Drain concurrently — the JSON output exceeds the Windows pipe buffer
+	// (~4 KB), so reading after runAIList returns deadlocks the writer.
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		buf.ReadFrom(r)
+		close(done)
+	}()
+
 	err := runAIList(root, true, false)
 	w.Close()
 	os.Stdout = old
+	<-done
 
 	if err != nil {
 		t.Fatalf("runAIList JSON: %v", err)
 	}
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
 
 	var result struct {
 		Prompts  []json.RawMessage `json:"prompts"`

@@ -38,7 +38,7 @@ See [docs/architecture.md](docs/architecture.md) for the full layered architectu
 
 ```
 cmd/terrain/          CLI entry point (30+ commands)
-internal/             47 packages — see README.md for full listing
+internal/             46 packages — see internal/README.md for the listing
 ```
 
 See [docs/engineering/detector-architecture.md](docs/engineering/detector-architecture.md) for the detector plugin system architecture.
