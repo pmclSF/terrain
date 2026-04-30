@@ -211,12 +211,30 @@ jobs:
           git checkout "${{ github.sha }}"
           "$(go env GOPATH)/bin/benchstat" /tmp/bench_base.txt /tmp/bench_head.txt | tee /tmp/benchstat.txt
 
-      - name: Append benchstat summary
+      - name: Regression gate (>10% fails the job)
+        # Carries the round-4 review's "perf regression suite establishes
+        # baseline" finding into a hard-fail gate. The gate parses the same
+        # benchmark output benchstat consumed, computes per-bench delta,
+        # and fails if any benchmark regressed beyond the threshold.
+        run: |
+          go run ./cmd/terrain-bench-gate \
+            --base /tmp/bench_base.txt \
+            --head /tmp/bench_head.txt \
+            --threshold 10 | tee /tmp/bench-gate.txt
+
+      - name: Append summary
+        if: always()
         run: |
           {
             echo '### Go Benchmark Comparison (base vs head)'
             echo ''
             echo '```'
             cat /tmp/benchstat.txt
+            echo '```'
+            echo ''
+            echo '### Regression gate (>10% threshold)'
+            echo ''
+            echo '```'
+            cat /tmp/bench-gate.txt 2>/dev/null || echo "(gate did not run)"
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
