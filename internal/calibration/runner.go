@@ -2,12 +2,47 @@ package calibration
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
 
 	"github.com/pmclSF/terrain/internal/models"
 )
+
+// wilson95 is the Wilson score 95% confidence interval for a
+// proportion. Inlined here (rather than importing internal/airun) so
+// the calibration package stays a leaf dependency. Mirrors
+// airun.WilsonInterval95; tested by airun's confidence_test.go.
+func wilson95(successes, total int) (float64, float64) {
+	if total <= 0 {
+		return 0, 1
+	}
+	if successes < 0 {
+		successes = 0
+	}
+	if successes > total {
+		successes = total
+	}
+	const z = 1.959964
+	n := float64(total)
+	pHat := float64(successes) / n
+	z2 := z * z
+
+	denom := 1 + z2/n
+	center := (pHat + z2/(2*n)) / denom
+	margin := z * math.Sqrt(pHat*(1-pHat)/n+z2/(4*n*n)) / denom
+
+	lo := center - margin
+	hi := center + margin
+	if lo < 0 {
+		lo = 0
+	}
+	if hi > 1 {
+		hi = 1
+	}
+	return lo, hi
+}
 
 // Match outcomes for a single (Type, File) pair across emitted vs
 // expected signals.
@@ -81,6 +116,65 @@ func (c CorpusResult) RecallByType() map[models.SignalType]float64 {
 			continue
 		}
 		out[typ] = float64(tp) / float64(denom)
+	}
+	return out
+}
+
+// MetricInterval pairs a point estimate with a Wilson 95% interval.
+// Used by PrecisionByTypeInterval / RecallByTypeInterval so detector
+// metrics carry uncertainty alongside the headline number.
+type MetricInterval struct {
+	Value        float64
+	IntervalLow  float64
+	IntervalHigh float64
+	Successes    int
+	Total        int
+}
+
+// PrecisionByTypeInterval returns Wilson 95% intervals for per-detector
+// precision. Detectors with zero TP+FP are omitted (no data to bracket).
+//
+// The interval narrows as the corpus grows: with 1 fixture per detector
+// the bounds will be wide, near-uninformative; at 25-50 fixtures (the
+// 0.2 corpus target) bounds become useful.
+func (c CorpusResult) PrecisionByTypeInterval() map[models.SignalType]MetricInterval {
+	out := map[models.SignalType]MetricInterval{}
+	for typ, tp := range c.TP {
+		fp := c.FP[typ]
+		total := tp + fp
+		if total == 0 {
+			continue
+		}
+		lo, hi := wilson95(tp, total)
+		out[typ] = MetricInterval{
+			Value:        float64(tp) / float64(total),
+			IntervalLow:  lo,
+			IntervalHigh: hi,
+			Successes:    tp,
+			Total:        total,
+		}
+	}
+	return out
+}
+
+// RecallByTypeInterval returns Wilson 95% intervals for per-detector
+// recall. See PrecisionByTypeInterval for semantics.
+func (c CorpusResult) RecallByTypeInterval() map[models.SignalType]MetricInterval {
+	out := map[models.SignalType]MetricInterval{}
+	for typ, tp := range c.TP {
+		fn := c.FN[typ]
+		total := tp + fn
+		if total == 0 {
+			continue
+		}
+		lo, hi := wilson95(tp, total)
+		out[typ] = MetricInterval{
+			Value:        float64(tp) / float64(total),
+			IntervalLow:  lo,
+			IntervalHigh: hi,
+			Successes:    tp,
+			Total:        total,
+		}
 	}
 	return out
 }
