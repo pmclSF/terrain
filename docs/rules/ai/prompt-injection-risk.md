@@ -1,5 +1,36 @@
 # TER-AI-102 — Prompt-Injection-Shaped Concatenation
 
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `aiPromptInjectionRisk`  
+**Domain:** ai  
+**Default severity:** high  
+**Status:** experimental
+
+## Summary
+
+User-controlled input is concatenated into a prompt without escaping, system-prompt boundaries, or structured input boundaries.
+
+## Remediation
+
+Use a prompt template with explicit user-content boundaries, or run user input through a sanitiser.
+
+## Promotion plan
+
+0.2 ships heuristic regex detection. Promotes to stable in 0.3 when AST-precise taint-flow analysis lands.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.60, 0.85] (heuristic in 0.2; calibration in 0.3).
+
+<!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
+
+# TER-AI-102 — Prompt-Injection-Shaped Concatenation
+
 **Type:** `aiPromptInjectionRisk`
 **Domain:** AI
 **Default severity:** High

@@ -1,5 +1,32 @@
 # TER-AI-105 — Non-Deterministic Eval Configuration
 
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `aiNonDeterministicEval`  
+**Domain:** ai  
+**Default severity:** medium  
+**Status:** stable
+
+## Summary
+
+An LLM eval runs without temperature pinned to 0 or a deterministic seed, so re-runs produce noisy comparisons.
+
+## Remediation
+
+Pin temperature: 0 and a seed in the eval config, or document the non-determinism budget.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.90, 0.98] (heuristic in 0.2; calibration in 0.3).
+
+<!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
+
+# TER-AI-105 — Non-Deterministic Eval Configuration
+
 **Type:** `aiNonDeterministicEval`
 **Domain:** AI
 **Default severity:** Medium
