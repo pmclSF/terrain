@@ -26,6 +26,13 @@ type TestCase struct {
 	// TestName is the normalized test name.
 	TestName string `json:"testName"`
 
+	// DisplayName is a human-readable name for the test when the
+	// framework supports one (JUnit 5 @DisplayName, Vitest "test
+	// description", etc.) and it differs from TestName. SignalV2 0.2
+	// field; downstream renderers should prefer DisplayName for
+	// presentation when set, and fall back to TestName for identity.
+	DisplayName string `json:"displayName,omitempty"`
+
 	// Framework is the detected framework for this test.
 	Framework string `json:"framework"`
 
