@@ -170,6 +170,19 @@ type TestSuiteSnapshot struct {
 
 	Signals []Signal `json:"signals,omitempty"`
 
+	// EvalRuns carries normalised eval-framework results when an
+	// adapter (Promptfoo, DeepEval, Ragas, ...) parsed an artifact
+	// during analyse. Detectors that compare against a baseline
+	// (aiCostRegression, aiHallucinationRate, aiRetrievalRegression)
+	// consume this field; today only the Promptfoo adapter ships, so
+	// most snapshots leave it empty. SignalV2 0.2 field.
+	//
+	// The actual EvalRunResult type lives in internal/airun to avoid
+	// dragging adapter dependencies into models. The snapshot keeps a
+	// raw JSON envelope so consumers can decode it via airun without
+	// circular imports.
+	EvalRuns []EvalRunEnvelope `json:"evalRuns,omitempty"`
+
 	Risk []RiskSurface `json:"risk,omitempty"`
 
 	// Measurements contains the measurement-layer snapshot when computed.

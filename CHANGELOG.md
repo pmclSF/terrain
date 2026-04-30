@@ -19,6 +19,12 @@ Tracking 0.2 work — see `docs/release/0.2.md` for the full milestone.
 - **`TestManifestExport_StableEntriesHaveRuleURI`** tightens the manifest
   contract: status=stable requires a non-empty `RuleURI`. Experimental
   and planned entries may still leave it blank.
+- **Eval framework adapter — Promptfoo.** `internal/airun.ParsePromptfooJSON`
+  reads Promptfoo `--output` payloads (v3 nested + v4 flat shapes) into a
+  normalised `EvalRunResult`. `TestSuiteSnapshot.EvalRuns` carries the
+  envelope; per-case payloads decode via `airun.ParseEvalRunPayload`.
+  Foundation for the runtime-aware AI detectors (aiCostRegression,
+  aiHallucinationRate, aiRetrievalRegression) that land later in 0.2.
 
 ### Changed
 
