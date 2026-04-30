@@ -135,6 +135,10 @@ func RunTestMigration(source string, options TestMigrationOptions) (TestMigratio
 	if err != nil {
 		return result, err
 	}
+	// 0.2 per-file confidence: walk Files, compute heuristic
+	// covered/lossy/confidence for each (source, output) pair. The
+	// metrics surface in JSON output and feed the report renderer.
+	annotateFileConfidence(&execution)
 	validationMode := normalizeValidationMode(options.ValidationMode)
 	execution.ValidationMode = string(validationMode)
 	validationErr := ValidateExecutionResultForDirection(execution, direction)

@@ -22,6 +22,25 @@ type FileResult struct {
 	OutputPath string `json:"outputPath,omitempty"`
 	Changed    bool   `json:"changed"`
 	Status     string `json:"status"`
+
+	// ItemsCovered is the count of test-significant items that
+	// appear in BOTH the source and output (test()/it()/describe()
+	// calls + assertion-shaped expressions). 0 when the converter
+	// did not run or the conversion was a no-op.
+	ItemsCovered int `json:"itemsCovered,omitempty"`
+
+	// ItemsLossy is the count of test-significant items that
+	// appeared in the source but disappeared from the output —
+	// usually a converter that doesn't have an equivalent target
+	// API for some construct. Non-zero indicates the user should
+	// review the diff before merging.
+	ItemsLossy int `json:"itemsLossy,omitempty"`
+
+	// Confidence is ItemsCovered / (ItemsCovered + ItemsLossy),
+	// in [0.0, 1.0]. 1.0 means the heuristic saw every input
+	// construct survive into the output. 0.0 means a total loss.
+	// Empty for source-mode runs that weren't measured.
+	Confidence float64 `json:"confidence,omitempty"`
 }
 
 type ExecutionResult struct {
