@@ -422,6 +422,16 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		},
 		Detector: &aidetect.SafetyEvalMissingDetector{},
 	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "ai.hallucination-rate",
+			Domain:       signals.DomainAI,
+			EvidenceType: signals.EvidenceRuntime,
+			Description:  "Flag eval runs whose hallucination-shaped failure rate exceeds the configured threshold.",
+			SignalTypes:  []models.SignalType{signals.SignalAIHallucinationRate},
+		},
+		Detector: &aidetect.HallucinationRateDetector{},
+	})
 
 	// Governance detectors (depend on signals from quality/migration detectors).
 	if cfg.PolicyConfig != nil && !cfg.PolicyConfig.IsEmpty() {
