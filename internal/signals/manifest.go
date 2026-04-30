@@ -824,15 +824,14 @@ var allSignalManifest = []ManifestEntry{
 	},
 	{
 		Type: SignalAICostRegression, ConstName: "SignalAICostRegression",
-		Domain: models.CategoryAI, Status: StatusPlanned,
+		Domain: models.CategoryAI, Status: StatusStable,
 		Title:           "Prompt Token-Cost Regression",
 		Description:     "A prompt change increases the token count by more than 25% versus the recorded baseline.",
 		Remediation:     "Investigate the change for unintended bloat; bump the baseline if the increase is intentional.",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
-		EvidenceSources: []string{"runtime", "graph-traversal"},
+		EvidenceSources: []string{"runtime"},
 		RuleID:          "TER-AI-107", RuleURI: "docs/rules/ai/cost-regression.md",
-		PromotionPlan:   "0.2 — requires the gauntlet baseline pipeline; lands with `terrain ai run` real execution.",
 	},
 	{
 		Type: SignalAIHallucinationRate, ConstName: "SignalAIHallucinationRate",

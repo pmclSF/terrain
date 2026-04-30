@@ -126,7 +126,7 @@ func relativeToRoot(path, root string) string {
 	return path
 }
 
-func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, promptfooPaths string, slowThreshold float64, redactPaths bool) error {
+func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, promptfooPaths string, baselinePath string, slowThreshold float64, redactPaths bool) error {
 	parsedRuntime := parseRuntimePaths(runtimePaths)
 	parsedGauntlet := parseRuntimePaths(gauntletPaths)        // same comma-split logic
 	parsedPromptfoo := parseRuntimePaths(promptfooPaths)      // same comma-split logic
@@ -135,6 +135,11 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	}
 	if err := validateExistingPaths("--promptfoo-results", parsedPromptfoo); err != nil {
 		return err
+	}
+	if baselinePath != "" {
+		if err := validateExistingPaths("--baseline", []string{baselinePath}); err != nil {
+			return err
+		}
 	}
 	var sarifOutput, annotationOutput bool
 	switch strings.ToLower(strings.TrimSpace(format)) {
@@ -158,6 +163,7 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	opt := analysisPipelineOptions(coveragePath, coverageRunLabel, parsedRuntime, slowThreshold)
 	opt.GauntletPaths = parsedGauntlet
 	opt.PromptfooPaths = parsedPromptfoo
+	opt.BaselineSnapshotPath = baselinePath
 	opt.OnProgress = newProgressFunc(jsonOutput)
 	result, err := engine.RunPipeline(root, opt)
 	if err != nil {

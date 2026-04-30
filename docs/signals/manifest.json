@@ -1101,7 +1101,7 @@
       "type": "aiCostRegression",
       "constName": "SignalAICostRegression",
       "domain": "ai",
-      "status": "planned",
+      "status": "stable",
       "title": "Prompt Token-Cost Regression",
       "description": "A prompt change increases the token count by more than 25% versus the recorded baseline.",
       "remediation": "Investigate the change for unintended bloat; bump the baseline if the increase is intentional.",
@@ -1109,12 +1109,10 @@
       "confidenceMin": 0.85,
       "confidenceMax": 0.95,
       "evidenceSources": [
-        "runtime",
-        "graph-traversal"
+        "runtime"
       ],
       "ruleId": "TER-AI-107",
-      "ruleUri": "docs/rules/ai/cost-regression.md",
-      "promotionPlan": "0.2 — requires the gauntlet baseline pipeline; lands with `terrain ai run` real execution."
+      "ruleUri": "docs/rules/ai/cost-regression.md"
     },
     {
       "type": "aiHallucinationRate",
