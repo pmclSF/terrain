@@ -74,6 +74,36 @@ expectedAbsent:
 	}
 }
 
+// TestRunner_PrecisionInterval gives a non-degenerate Wilson interval
+// when the corpus has measurable data, and an empty map for detectors
+// with no positive samples.
+func TestRunner_PrecisionInterval(t *testing.T) {
+	t.Parallel()
+
+	c := CorpusResult{
+		TP: map[models.SignalType]int{"weakAssertion": 19},
+		FP: map[models.SignalType]int{"weakAssertion": 1},
+		FN: map[models.SignalType]int{"weakAssertion": 0},
+	}
+	intervals := c.PrecisionByTypeInterval()
+	mi, ok := intervals["weakAssertion"]
+	if !ok {
+		t.Fatal("expected interval for weakAssertion")
+	}
+	if mi.Value < 0.93 || mi.Value > 0.96 {
+		t.Errorf("Value = %.3f, want ~0.95", mi.Value)
+	}
+	if mi.IntervalLow >= mi.Value || mi.IntervalHigh <= mi.Value {
+		t.Errorf("interval [%.3f, %.3f] does not bracket Value %.3f",
+			mi.IntervalLow, mi.IntervalHigh, mi.Value)
+	}
+	// No samples → omitted from result.
+	c2 := CorpusResult{TP: map[models.SignalType]int{}, FP: map[models.SignalType]int{}}
+	if got := c2.PrecisionByTypeInterval(); len(got) != 0 {
+		t.Errorf("expected empty result for empty corpus, got %d entries", len(got))
+	}
+}
+
 // TestRunner_NoFixtures returns an empty corpus result without error.
 func TestRunner_NoFixtures(t *testing.T) {
 	t.Parallel()
