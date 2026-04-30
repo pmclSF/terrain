@@ -126,7 +126,7 @@ func relativeToRoot(path, root string) string {
 	return path
 }
 
-func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, slowThreshold float64) error {
+func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, slowThreshold float64, redactPaths bool) error {
 	parsedRuntime := parseRuntimePaths(runtimePaths)
 	parsedGauntlet := parseRuntimePaths(gauntletPaths) // same comma-split logic
 	if err := validateCommandInputs(root, coveragePath, parsedRuntime, parsedGauntlet); err != nil {
@@ -193,7 +193,10 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	})
 
 	if sarifOutput {
-		sarifLog := sarif.FromAnalyzeReport(report, version)
+		sarifLog := sarif.FromAnalyzeReportWithOptions(report, version, sarif.Options{
+			RedactPaths: redactPaths,
+			RepoRoot:    root,
+		})
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		return enc.Encode(sarifLog)

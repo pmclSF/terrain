@@ -106,8 +106,9 @@ func main() {
 		runtimeFlag := analyzeCmd.String("runtime", "", "path to runtime artifact (JUnit XML, Jest JSON); comma-separated for multiple")
 		gauntletFlag := analyzeCmd.String("gauntlet", "", "path to Gauntlet eval result artifact (JSON); comma-separated for multiple")
 		slowThreshold := analyzeCmd.Float64("slow-threshold", defaultSlowThresholdMs, "slow test threshold in ms")
+		redactPathsFlag := analyzeCmd.Bool("redact-paths", false, "rewrite absolute paths in --format=sarif output to repo-relative form (or basename if outside repo)")
 		_ = analyzeCmd.Parse(os.Args[2:])
-		if err := runAnalyze(*rootFlag, *jsonFlag, *formatFlag, *verboseFlag, *writeSnapshot, *coverageFlag, *coverageRunLabelFlag, *runtimeFlag, *gauntletFlag, *slowThreshold); err != nil {
+		if err := runAnalyze(*rootFlag, *jsonFlag, *formatFlag, *verboseFlag, *writeSnapshot, *coverageFlag, *coverageRunLabelFlag, *runtimeFlag, *gauntletFlag, *slowThreshold, *redactPathsFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
