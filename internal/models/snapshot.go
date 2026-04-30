@@ -68,7 +68,12 @@ type RiskSurface struct {
 //     understand (see ValidateSchemaVersion).
 //
 // Full policy: docs/schema/COMPAT.md.
-const SnapshotSchemaVersion = "1.0.0"
+//
+// 1.1.0 added SignalV2 fields (severityClauses, confidenceDetail,
+// actionability, lifecycleStages, aiRelevance, ruleId, ruleUri,
+// detectorVersion, relatedSignals). All additive and omitempty;
+// v1 consumers ignore them.
+const SnapshotSchemaVersion = "1.1.0"
 
 // MaxSupportedMajorSchema is the highest snapshot schema major version
 // this binary can read. Newer snapshots must be downgraded or read with a
