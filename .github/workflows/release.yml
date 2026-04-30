@@ -243,35 +243,11 @@ jobs:
           --generate-notes \
           dist/*
 
-  # Homebrew tap update runs after the GitHub Release is live so it can pull
-  # darwin archives. Uses the same goreleaser config but only the brews block.
-  homebrew-publish:
-    needs: go-release-publish
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-
-    - uses: actions/setup-go@v6
-      with:
-        go-version-file: go.mod
-
-    - name: Install syft
-      uses: anchore/sbom-action/download-syft@v0
-      with:
-        syft-version: 'v1.18.1'
-
-    - name: Run GoReleaser (publish brews only)
-      uses: goreleaser/goreleaser-action@v6
-      with:
-        version: '~> v2'
-        # Re-runs the darwin build then publishes the brew formula. Skips signs
-        # because we don't need Sigstore signatures for the formula update.
-        args: release --clean --skip=publish,validate,sign
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+  # Homebrew tap update is handled by the separate homebrew-update.yml
+  # workflow, which fires on `release: published` (and on workflow_dispatch
+  # for recovery). It updates the source-build formula in-place — no
+  # goreleaser involvement, no cross-compiler needed, no rebuild on the
+  # macos runner of artifacts that already exist in the GitHub release.
 
   npm-release:
     needs: [verify, go-release-publish]
