@@ -1172,7 +1172,7 @@
       "type": "aiRetrievalRegression",
       "constName": "SignalAIRetrievalRegression",
       "domain": "ai",
-      "status": "planned",
+      "status": "stable",
       "title": "Retrieval Quality Regression",
       "description": "Context relevance, nDCG, or coverage dropped versus the recorded baseline.",
       "remediation": "Investigate the regression; revert the offending change or re-tune retrieval before merging.",
@@ -1183,8 +1183,7 @@
         "runtime"
       ],
       "ruleId": "TER-AI-111",
-      "ruleUri": "docs/rules/ai/retrieval-regression.md",
-      "promotionPlan": "0.2 — Ragas adapter ships first, then this detector consumes its metrics."
+      "ruleUri": "docs/rules/ai/retrieval-regression.md"
     }
   ]
 }

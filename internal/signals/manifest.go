@@ -870,7 +870,7 @@ var allSignalManifest = []ManifestEntry{
 	},
 	{
 		Type: SignalAIRetrievalRegression, ConstName: "SignalAIRetrievalRegression",
-		Domain: models.CategoryAI, Status: StatusPlanned,
+		Domain: models.CategoryAI, Status: StatusStable,
 		Title:           "Retrieval Quality Regression",
 		Description:     "Context relevance, nDCG, or coverage dropped versus the recorded baseline.",
 		Remediation:     "Investigate the regression; revert the offending change or re-tune retrieval before merging.",
@@ -878,7 +878,6 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "TER-AI-111", RuleURI: "docs/rules/ai/retrieval-regression.md",
-		PromotionPlan:   "0.2 — Ragas adapter ships first, then this detector consumes its metrics.",
 	},
 }
 
