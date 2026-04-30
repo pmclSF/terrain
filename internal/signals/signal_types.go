@@ -65,6 +65,23 @@ const (
 	SignalToolGuardrailViolation models.SignalType = "toolGuardrailViolation"
 	SignalToolBudgetExceeded     models.SignalType = "toolBudgetExceeded"
 	SignalAgentFallbackTriggered models.SignalType = "agentFallbackTriggered"
+
+	// 0.2 AI signal types — declared per docs/release/0.2.md as planned.
+	// Detectors land in subsequent commits; the constants and manifest
+	// entries reserve the names and shape so policy rules and tests can
+	// reference them now.
+	SignalAISafetyEvalMissing      models.SignalType = "aiSafetyEvalMissing"
+	SignalAIPromptVersioning       models.SignalType = "aiPromptVersioning"
+	SignalAIPromptInjectionRisk    models.SignalType = "aiPromptInjectionRisk"
+	SignalAIHardcodedAPIKey        models.SignalType = "aiHardcodedAPIKey"
+	SignalAIToolWithoutSandbox     models.SignalType = "aiToolWithoutSandbox"
+	SignalAINonDeterministicEval   models.SignalType = "aiNonDeterministicEval"
+	SignalAIModelDeprecationRisk   models.SignalType = "aiModelDeprecationRisk"
+	SignalAICostRegression         models.SignalType = "aiCostRegression"
+	SignalAIHallucinationRate      models.SignalType = "aiHallucinationRate"
+	SignalAIFewShotContamination   models.SignalType = "aiFewShotContamination"
+	SignalAIEmbeddingModelChange   models.SignalType = "aiEmbeddingModelChange"
+	SignalAIRetrievalRegression    models.SignalType = "aiRetrievalRegression"
 )
 
 // Canonical signal type sets. Import these rather than duplicating

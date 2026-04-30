@@ -973,6 +973,227 @@
       "ruleId": "TER-AI-024",
       "ruleUri": "docs/rules/ai/agent-fallback.md",
       "promotionPlan": "0.3"
+    },
+    {
+      "type": "aiSafetyEvalMissing",
+      "constName": "SignalAISafetyEvalMissing",
+      "domain": "ai",
+      "status": "planned",
+      "title": "AI Safety Eval Missing",
+      "description": "Agent or prompt has no eval scenario covering the documented safety category (jailbreak, harm, leak).",
+      "remediation": "Add an eval scenario tagged with the missing safety category and re-run the gauntlet.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern",
+        "policy"
+      ],
+      "ruleId": "TER-AI-100",
+      "ruleUri": "docs/rules/ai/safety-eval-missing.md",
+      "promotionPlan": "0.2 — detector lands alongside the eval framework integration. Promotes to stable once the calibration corpus has 5+ labelled fixtures."
+    },
+    {
+      "type": "aiPromptVersioning",
+      "constName": "SignalAIPromptVersioning",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Prompt Changed Without Version Bump",
+      "description": "Prompt content changed between commits without a corresponding version field bump or filename version suffix.",
+      "remediation": "Bump the prompt's version metadata or rename the file with a new version suffix before merging.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern",
+        "graph-traversal"
+      ],
+      "ruleId": "TER-AI-101",
+      "ruleUri": "docs/rules/ai/prompt-versioning.md",
+      "promotionPlan": "0.2 — git-blame-driven detector lands with the prompt-surface expansion."
+    },
+    {
+      "type": "aiPromptInjectionRisk",
+      "constName": "SignalAIPromptInjectionRisk",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Prompt-Injection-Shaped Concatenation",
+      "description": "User-controlled input is concatenated into a prompt without escaping, system-prompt boundaries, or structured input boundaries.",
+      "remediation": "Use a prompt template with explicit user-content boundaries, or run user input through a sanitiser.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.6,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "ast",
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-102",
+      "ruleUri": "docs/rules/ai/prompt-injection-risk.md",
+      "promotionPlan": "0.2 — taint-flow-style detector. Heuristic in 0.2, AST-precise in 0.3."
+    },
+    {
+      "type": "aiHardcodedAPIKey",
+      "constName": "SignalAIHardcodedAPIKey",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Hard-Coded API Key in AI Configuration",
+      "description": "API-key-shaped string appears in an eval YAML, prompt config, or agent definition.",
+      "remediation": "Move the secret to an environment variable or secrets store and reference it through the runner's secret-resolution path.",
+      "defaultSeverity": "critical",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-103",
+      "ruleUri": "docs/rules/ai/hardcoded-api-key.md",
+      "promotionPlan": "0.2 — entropy + provider-prefix regex detector. False-positive-guard fixtures live under tests/calibration/."
+    },
+    {
+      "type": "aiToolWithoutSandbox",
+      "constName": "SignalAIToolWithoutSandbox",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Destructive Tool Without Sandbox",
+      "description": "An agent tool definition can perform an irreversible operation (delete, drop, exec) without an explicit approval gate, sandbox, or dry-run mode.",
+      "remediation": "Wrap the tool in an approval gate or restrict its capability surface to a sandbox.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-104",
+      "ruleUri": "docs/rules/ai/tool-without-sandbox.md",
+      "promotionPlan": "0.2 — verb-list + decorator scan. Promotes to stable once the MCP / agent-config parsers ship in 0.2."
+    },
+    {
+      "type": "aiNonDeterministicEval",
+      "constName": "SignalAINonDeterministicEval",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Non-Deterministic Eval Configuration",
+      "description": "An LLM eval runs without temperature pinned to 0 or a deterministic seed, so re-runs produce noisy comparisons.",
+      "remediation": "Pin temperature: 0 and a seed in the eval config, or document the non-determinism budget.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.9,
+      "confidenceMax": 0.98,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-105",
+      "ruleUri": "docs/rules/ai/non-deterministic-eval.md",
+      "promotionPlan": "0.2 — YAML/JSON config inspection. Promotes to stable on first detector commit."
+    },
+    {
+      "type": "aiModelDeprecationRisk",
+      "constName": "SignalAIModelDeprecationRisk",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Model Pinned to Deprecated or Floating Tag",
+      "description": "Code references a model name that resolves to a deprecated version or a floating tag (e.g. `gpt-4`, `gpt-3.5-turbo`).",
+      "remediation": "Pin to a dated model variant or upgrade to a supported tier.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.8,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-106",
+      "ruleUri": "docs/rules/ai/model-deprecation-risk.md",
+      "promotionPlan": "0.2 — deprecation list maintained alongside the prompt-surface inventory."
+    },
+    {
+      "type": "aiCostRegression",
+      "constName": "SignalAICostRegression",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Prompt Token-Cost Regression",
+      "description": "A prompt change increases the token count by more than 25% versus the recorded baseline.",
+      "remediation": "Investigate the change for unintended bloat; bump the baseline if the increase is intentional.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime",
+        "graph-traversal"
+      ],
+      "ruleId": "TER-AI-107",
+      "ruleUri": "docs/rules/ai/cost-regression.md",
+      "promotionPlan": "0.2 — requires the gauntlet baseline pipeline; lands with `terrain ai run` real execution."
+    },
+    {
+      "type": "aiHallucinationRate",
+      "constName": "SignalAIHallucinationRate",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Hallucination Rate Above Threshold",
+      "description": "An eval reports fabricated outputs at a rate above the project-configured threshold (default 5%).",
+      "remediation": "Investigate failing scenarios; tighten retrieval or grounding before merging.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.8,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-108",
+      "ruleUri": "docs/rules/ai/hallucination-rate.md",
+      "promotionPlan": "0.2 — depends on the Promptfoo / DeepEval / Ragas adapter shipping."
+    },
+    {
+      "type": "aiFewShotContamination",
+      "constName": "SignalAIFewShotContamination",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Few-Shot Contamination",
+      "description": "Few-shot examples in a prompt overlap with the eval test set, inflating reported scores.",
+      "remediation": "De-duplicate or hold out the contaminated examples; re-run the eval.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "TER-AI-109",
+      "ruleUri": "docs/rules/ai/few-shot-contamination.md",
+      "promotionPlan": "0.2 — string-similarity detector across the prompt-surface inventory."
+    },
+    {
+      "type": "aiEmbeddingModelChange",
+      "constName": "SignalAIEmbeddingModelChange",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Embedding Model Swap Without Re-Evaluation",
+      "description": "An embedding model name or version changed in the codebase without a corresponding RAG re-evaluation in the gauntlet.",
+      "remediation": "Run the RAG eval suite against the new embeddings; commit the updated baseline.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern",
+        "graph-traversal"
+      ],
+      "ruleId": "TER-AI-110",
+      "ruleUri": "docs/rules/ai/embedding-model-change.md",
+      "promotionPlan": "0.2 — git-blame detector. Promotes to stable once the embedding-aware surface scanner ships."
+    },
+    {
+      "type": "aiRetrievalRegression",
+      "constName": "SignalAIRetrievalRegression",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Retrieval Quality Regression",
+      "description": "Context relevance, nDCG, or coverage dropped versus the recorded baseline.",
+      "remediation": "Investigate the regression; revert the offending change or re-tune retrieval before merging.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-111",
+      "ruleUri": "docs/rules/ai/retrieval-regression.md",
+      "promotionPlan": "0.2 — Ragas adapter ships first, then this detector consumes its metrics."
     }
   ]
 }
