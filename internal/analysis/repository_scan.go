@@ -45,6 +45,8 @@ func discoverTestFiles(root string, projectCtx ...*ProjectContext) ([]models.Tes
 		ctx = projectCtx[0]
 	}
 
+	gitignore := loadGitignoreMatcher(root)
+
 	type candidate struct {
 		relPath string
 		absPath string
@@ -56,16 +58,31 @@ func discoverTestFiles(root string, projectCtx ...*ProjectContext) ([]models.Tes
 			return nil // skip inaccessible paths
 		}
 
+		relPath, relErr := filepath.Rel(root, path)
+		if relErr != nil {
+			relPath = ""
+		}
+
 		if d.IsDir() {
 			base := filepath.Base(path)
 			if skipDirs[base] {
 				return filepath.SkipDir
 			}
+			// Honour the repo .gitignore for directories. Skipping a directory
+			// here saves walking large vendored or generated trees that the
+			// user has explicitly declared off-limits.
+			if relPath != "" && relPath != "." && gitignore.match(relPath, true) {
+				return filepath.SkipDir
+			}
 			return nil
 		}
 
-		relPath, err := filepath.Rel(root, path)
-		if err != nil {
+		if relPath == "" {
+			return nil
+		}
+
+		// Files matched by .gitignore are skipped before the test-file check.
+		if gitignore.match(relPath, false) {
 			return nil
 		}
 
