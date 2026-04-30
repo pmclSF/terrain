@@ -2,7 +2,9 @@
 
 ## Overview
 
-Terrain's signal detection uses a registry-based plugin architecture. Detectors are self-describing components that examine a `TestSuiteSnapshot` and emit structured `Signal` objects.
+Terrain's signal detection uses a registry pattern. Detectors are self-describing components that examine a `TestSuiteSnapshot` and emit structured `Signal` objects. All detectors live in-tree under `internal/` and are wired together by hand in `internal/engine/registry.go`.
+
+> **Note on "plugins":** Terrain does **not** ship a runtime plugin loader. Earlier drafts of the architecture envisioned an external plugin API (`internal/plugin/`), but it was never wired up; that package was removed in 0.1.2 to avoid implying a capability that doesn't exist. Adding a new detector today means contributing to the in-tree registry — see [Adding a New Detector](#adding-a-new-detector). A loadable-plugin model is a possible 0.3+ direction tracked in [docs/release/0.2.md](../release/0.2.md) and beyond.
 
 ## Core Abstractions
 
