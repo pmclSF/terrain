@@ -1035,7 +1035,7 @@
       "type": "aiHardcodedAPIKey",
       "constName": "SignalAIHardcodedAPIKey",
       "domain": "ai",
-      "status": "planned",
+      "status": "stable",
       "title": "Hard-Coded API Key in AI Configuration",
       "description": "API-key-shaped string appears in an eval YAML, prompt config, or agent definition.",
       "remediation": "Move the secret to an environment variable or secrets store and reference it through the runner's secret-resolution path.",
@@ -1046,8 +1046,7 @@
         "structural-pattern"
       ],
       "ruleId": "TER-AI-103",
-      "ruleUri": "docs/rules/ai/hardcoded-api-key.md",
-      "promotionPlan": "0.2 — entropy + provider-prefix regex detector. False-positive-guard fixtures live under tests/calibration/."
+      "ruleUri": "docs/rules/ai/hardcoded-api-key.md"
     },
     {
       "type": "aiToolWithoutSandbox",

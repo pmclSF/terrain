@@ -781,7 +781,7 @@ var allSignalManifest = []ManifestEntry{
 	},
 	{
 		Type: SignalAIHardcodedAPIKey, ConstName: "SignalAIHardcodedAPIKey",
-		Domain: models.CategoryAI, Status: StatusPlanned,
+		Domain: models.CategoryAI, Status: StatusStable,
 		Title:           "Hard-Coded API Key in AI Configuration",
 		Description:     "API-key-shaped string appears in an eval YAML, prompt config, or agent definition.",
 		Remediation:     "Move the secret to an environment variable or secrets store and reference it through the runner's secret-resolution path.",
@@ -789,7 +789,6 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "TER-AI-103", RuleURI: "docs/rules/ai/hardcoded-api-key.md",
-		PromotionPlan:   "0.2 — entropy + provider-prefix regex detector. False-positive-guard fixtures live under tests/calibration/.",
 	},
 	{
 		Type: SignalAIToolWithoutSandbox, ConstName: "SignalAIToolWithoutSandbox",
