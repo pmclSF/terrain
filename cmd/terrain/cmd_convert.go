@@ -458,6 +458,26 @@ var shorthandFlagsWithValue = map[string]bool{
 	"--on-error":    true,
 }
 
+// reorderCLIArgs splits a raw argv slice into a "flags first, positionals
+// last" form so Go's stdlib `flag` package — which stops parsing at the
+// first non-flag argument — sees every flag the user supplied, regardless
+// of where in the command line they typed it.
+//
+// Without this helper, `terrain convert input.test.ts --to playwright`
+// would parse `input.test.ts` as a positional, then refuse to consume
+// `--to playwright`. Most users intuitively put flags after the file
+// argument, so we accommodate that and re-order before parsing.
+//
+// The flagsWithValue map identifies flags that take a separate value
+// argument (e.g., `--to playwright`). Flags using the `--key=value`
+// inline form are detected and don't need the lookup. Positional `--`
+// stops re-ordering: anything after `--` is treated as a positional
+// regardless of leading dashes, matching the POSIX convention. A nil
+// flagsWithValue is supported for callers that don't accept value-flags
+// (e.g. `terrain detect`).
+//
+// Round 1 review noted this helper as undocumented; this comment is the
+// canonical explanation.
 func reorderCLIArgs(args []string, flagsWithValue map[string]bool) []string {
 	if len(args) == 0 {
 		return nil
