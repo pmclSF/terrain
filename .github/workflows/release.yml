@@ -95,7 +95,7 @@ jobs:
       uses: sigstore/cosign-installer@v3
 
     - name: Run GoReleaser (build only, this matrix's IDs)
-      uses: goreleaser/goreleaser-action@v6
+      uses: goreleaser/goreleaser-action@v7
       with:
         version: '~> v2'
         args: build --clean ${{ matrix.build_args }}
