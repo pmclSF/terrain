@@ -88,6 +88,10 @@ type PipelineOptions struct {
 	// snap.EvalRuns through internal/airun/deepeval.go.
 	DeepEvalPaths []string
 
+	// RagasPaths are paths to Ragas eval result JSON files.
+	// Same destination as PromptfooPaths / DeepEvalPaths.
+	RagasPaths []string
+
 	// BaselineSnapshotPath, when set, points at a previous snapshot
 	// JSON file. The pipeline loads it and attaches the result to
 	// snap.Baseline so regression-aware detectors (aiCostRegression,
@@ -194,6 +198,8 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		promptfooIngestErr   error
 		deepevalEnvelopes    []models.EvalRunEnvelope
 		deepevalIngestErr    error
+		ragasEnvelopes       []models.EvalRunEnvelope
+		ragasIngestErr       error
 
 		staticAnalysisDuration  time.Duration
 		policyLoadDuration      time.Duration
@@ -315,6 +321,15 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 				return err
 			}
 			deepevalEnvelopes, deepevalIngestErr = ingestDeepEvalArtifacts(opt.DeepEvalPaths)
+			return nil
+		})
+	}
+	if len(opt.RagasPaths) > 0 {
+		startTask(&prepWG, func(taskCtx context.Context) error {
+			if err := taskCtx.Err(); err != nil {
+				return err
+			}
+			ragasEnvelopes, ragasIngestErr = ingestRagasArtifacts(opt.RagasPaths)
 			return nil
 		})
 	}
@@ -540,6 +555,25 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 				Name:   "deepeval",
 				Status: models.DataSourceAvailable,
 				Detail: fmt.Sprintf("%d artifact(s) ingested", len(opt.DeepEvalPaths)),
+			})
+		}
+	}
+
+	// Step 4d-tris: Apply Ragas eval-run envelopes.
+	if len(opt.RagasPaths) > 0 {
+		if ragasIngestErr != nil {
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "ragas",
+				Status: models.DataSourceError,
+				Detail: ragasIngestErr.Error(),
+				Impact: "Ragas results are unavailable. Per-case retrieval/faithfulness scores will not feed retrieval/hallucination detectors.",
+			})
+		} else {
+			snapshot.EvalRuns = append(snapshot.EvalRuns, ragasEnvelopes...)
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "ragas",
+				Status: models.DataSourceAvailable,
+				Detail: fmt.Sprintf("%d artifact(s) ingested", len(opt.RagasPaths)),
 			})
 		}
 	}
@@ -1143,6 +1177,26 @@ func ingestDeepEvalArtifacts(paths []string) ([]models.EvalRunEnvelope, error) {
 		env, err := result.ToEnvelope(p)
 		if err != nil {
 			return nil, fmt.Errorf("deepeval envelope for %s: %w", p, err)
+		}
+		out = append(out, env)
+	}
+	return out, nil
+}
+
+// ingestRagasArtifacts mirrors the Promptfoo / DeepEval helpers for
+// the Ragas adapter. Ragas's named-score axes (faithfulness,
+// context_relevance, answer_relevancy) feed aiRetrievalRegression
+// directly via the same EvalRunEnvelope plumbing.
+func ingestRagasArtifacts(paths []string) ([]models.EvalRunEnvelope, error) {
+	out := make([]models.EvalRunEnvelope, 0, len(paths))
+	for _, p := range paths {
+		result, err := airun.LoadRagasFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("ragas artifact %s: %w", p, err)
+		}
+		env, err := result.ToEnvelope(p)
+		if err != nil {
+			return nil, fmt.Errorf("ragas envelope for %s: %w", p, err)
 		}
 		out = append(out, env)
 	}

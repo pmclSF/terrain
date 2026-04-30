@@ -126,11 +126,12 @@ func relativeToRoot(path, root string) string {
 	return path
 }
 
-func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, promptfooPaths string, deepevalPaths string, baselinePath string, slowThreshold float64, redactPaths bool) error {
+func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, promptfooPaths string, deepevalPaths string, ragasPaths string, baselinePath string, slowThreshold float64, redactPaths bool) error {
 	parsedRuntime := parseRuntimePaths(runtimePaths)
 	parsedGauntlet := parseRuntimePaths(gauntletPaths)        // same comma-split logic
 	parsedPromptfoo := parseRuntimePaths(promptfooPaths)      // same comma-split logic
 	parsedDeepEval := parseRuntimePaths(deepevalPaths)        // same comma-split logic
+	parsedRagas := parseRuntimePaths(ragasPaths)              // same comma-split logic
 	if err := validateCommandInputs(root, coveragePath, parsedRuntime, parsedGauntlet); err != nil {
 		return err
 	}
@@ -138,6 +139,9 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		return err
 	}
 	if err := validateExistingPaths("--deepeval-results", parsedDeepEval); err != nil {
+		return err
+	}
+	if err := validateExistingPaths("--ragas-results", parsedRagas); err != nil {
 		return err
 	}
 	if baselinePath != "" {
@@ -168,6 +172,7 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	opt.GauntletPaths = parsedGauntlet
 	opt.PromptfooPaths = parsedPromptfoo
 	opt.DeepEvalPaths = parsedDeepEval
+	opt.RagasPaths = parsedRagas
 	opt.BaselineSnapshotPath = baselinePath
 	opt.OnProgress = newProgressFunc(jsonOutput)
 	result, err := engine.RunPipeline(root, opt)
