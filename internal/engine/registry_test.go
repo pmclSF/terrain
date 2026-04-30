@@ -11,9 +11,11 @@ func TestDefaultRegistry_WithoutPolicy(t *testing.T) {
 	t.Parallel()
 	r, _ := DefaultRegistry(Config{RepoRoot: "."})
 
-	// Should have 14 detectors (5 quality + 2 health + 2 coverage + 5 migration, no governance).
-	if r.Len() != 26 {
-		t.Errorf("DefaultRegistry without policy: Len() = %d, want 26", r.Len())
+	// 5 quality + 2 coverage + 4 health (assertion-free + orphaned-test +
+	// static-skip + 5 runtime adapters wait actually 7) + 5 migration +
+	// 7 structural + 6 AI = 32, no governance.
+	if r.Len() != 32 {
+		t.Errorf("DefaultRegistry without policy: Len() = %d, want 32", r.Len())
 	}
 
 	quality := r.ByDomain(signals.DomainQuality)
@@ -29,6 +31,11 @@ func TestDefaultRegistry_WithoutPolicy(t *testing.T) {
 	migration := r.ByDomain(signals.DomainMigration)
 	if len(migration) != 5 {
 		t.Errorf("migration detectors = %d, want 5", len(migration))
+	}
+
+	ai := r.ByDomain(signals.DomainAI)
+	if len(ai) != 6 {
+		t.Errorf("ai detectors = %d, want 6 (the 0.2 batch)", len(ai))
 	}
 
 	governance := r.ByDomain(signals.DomainGovernance)
@@ -50,9 +57,9 @@ func TestDefaultRegistry_WithPolicy(t *testing.T) {
 	}
 	r, _ := DefaultRegistry(cfg)
 
-	// Should have 15 detectors (5 quality + 2 health + 2 coverage + 5 migration + 1 governance).
-	if r.Len() != 27 {
-		t.Errorf("DefaultRegistry with policy: Len() = %d, want 27", r.Len())
+	// Same 32 plus the policy governance detector.
+	if r.Len() != 33 {
+		t.Errorf("DefaultRegistry with policy: Len() = %d, want 33", r.Len())
 	}
 
 	governance := r.ByDomain(signals.DomainGovernance)
@@ -92,6 +99,12 @@ func TestDefaultRegistry_DetectorIDs(t *testing.T) {
 		"structural.phantom-eval-scenario",
 		"structural.untested-prompt-flow",
 		"structural.capability-validation-gap",
+		"ai.hardcoded-api-key",
+		"ai.non-deterministic-eval",
+		"ai.model-deprecation-risk",
+		"ai.prompt-injection-risk",
+		"ai.tool-without-sandbox",
+		"ai.safety-eval-missing",
 	}
 
 	all := r.All()

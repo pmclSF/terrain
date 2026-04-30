@@ -107,13 +107,17 @@ function isCosignAvailable() {
   }
 }
 
-// Best-effort signature verification. In 0.1.2 this is warn-only: a missing
-// cosign, missing signature artifact, or verification failure logs to stderr
-// and does NOT block install. The signing pipeline is still maturing and we
-// don't want to break npm installs while it stabilises.
+// Sigstore signature verification. 0.2 makes verification mandatory:
+// a missing/failed verification aborts the install. Two escape hatches:
 //
-// In 0.2 this becomes hard-fail unless TERRAIN_INSTALLER_SKIP_VERIFY=1 is set,
-// at which point the warning escalates to an error.
+//   - TERRAIN_INSTALLER_SKIP_VERIFY=1 — opt out (CI / air-gapped). Prints
+//     a clear warning so the bypass is auditable.
+//   - cosign not installed — falls back to a checksum-only contract
+//     since requiring cosign on every npm-install host would block
+//     adoption. The installer still writes a clear notice that cosign
+//     would have provided stronger integrity guarantees.
+//
+// Once cosign is on the host, every other failure is a hard error.
 async function verifySignatureBestEffort({
   archivePath,
   version,
@@ -123,7 +127,9 @@ async function verifySignatureBestEffort({
 }) {
   if (env.TERRAIN_INSTALLER_SKIP_VERIFY === '1') {
     log(
-      'Skipping signature verification (TERRAIN_INSTALLER_SKIP_VERIFY=1).',
+      'WARNING: signature verification skipped (TERRAIN_INSTALLER_SKIP_VERIFY=1). ' +
+        'Set this only in trusted CI / air-gapped environments where ' +
+        'integrity is established by another channel.',
       quiet
     );
     return { verified: false, reason: 'skipped-by-env' };
@@ -131,9 +137,9 @@ async function verifySignatureBestEffort({
 
   if (!isCosignAvailable()) {
     log(
-      'cosign not found on PATH; skipping signature verification. ' +
-        'Install cosign (https://github.com/sigstore/cosign) for stronger ' +
-        'integrity guarantees in future releases.',
+      'cosign not found on PATH. Falling back to checksum verification only. ' +
+        'For stronger integrity guarantees install cosign ' +
+        '(https://github.com/sigstore/cosign) and reinstall.',
       quiet
     );
     return { verified: false, reason: 'cosign-missing' };
@@ -146,12 +152,14 @@ async function verifySignatureBestEffort({
     await downloadFile(signatureDownloadUrl(version), sigPath);
     await downloadFile(certificateDownloadUrl(version), certPath);
   } catch (error) {
-    log(
-      `Could not fetch signature artifacts (${error.message}); ` +
-        'skipping verification.',
-      quiet
+    // Hard error in 0.2: if cosign is present, the signature download
+    // is required. The release pipeline produces signatures for every
+    // archive; their absence is a real failure mode worth surfacing.
+    throw new Error(
+      `cosign is installed but the Sigstore signature artifacts for ` +
+        `terrain ${version} could not be downloaded: ${error.message}. ` +
+        `Set TERRAIN_INSTALLER_SKIP_VERIFY=1 to bypass at your own risk.`
     );
-    return { verified: false, reason: 'sig-download-failed' };
   }
 
   try {
@@ -177,14 +185,15 @@ async function verifySignatureBestEffort({
     );
     return { verified: true, reason: 'ok' };
   } catch (error) {
-    log(
-      `WARNING: cosign verify-blob failed for ${path.basename(archivePath)}. ` +
-        'The downloaded archive may be tampered with. Continuing install ' +
-        '(verification will become mandatory in 0.2). Error: ' +
-        (error.stderr ? error.stderr.toString().trim() : error.message),
-      quiet
+    // Hard error in 0.2: a verify-blob failure means the archive on disk
+    // does NOT match the signed certificate. Aborting the install is
+    // strictly safer than silently continuing.
+    const detail = error.stderr ? error.stderr.toString().trim() : error.message;
+    throw new Error(
+      `cosign verify-blob FAILED for ${path.basename(archivePath)}: ${detail}. ` +
+        `The downloaded archive does not match its Sigstore signature; ` +
+        `the binary may have been tampered with. Install aborted.`
     );
-    return { verified: false, reason: 'verify-failed' };
   }
 }
 

@@ -92,18 +92,23 @@ func (d *NonDeterministicEvalDetector) Detect(snap *models.TestSuiteSnapshot) []
 	return out
 }
 
-// gatherEvalConfigPaths picks the YAML/JSON files in the snapshot whose
-// path or filename smells like an eval / agent / prompt config. The
-// universe is intentionally narrow to keep false positives down on
-// repos that have unrelated YAML/JSON.
+// gatherEvalConfigPaths picks YAML/JSON files whose path smells like
+// an eval / agent / prompt config. Combines snapshot enumeration with
+// a fresh walk of d.Root so eval configs that aren't tracked as test
+// files still get inspected.
 func (d *NonDeterministicEvalDetector) gatherEvalConfigPaths(snap *models.TestSuiteSnapshot) []string {
-	seen := map[string]bool{}
-	var out []string
+	fromSnap := snapshotPaths(snap)
+	fromWalk := walkRepoForConfigs(d.Root, scanOpts{
+		extensions: evalConfigExts,
+		markers:    evalFilenameMarkers,
+	})
+	merged := uniquePaths(fromSnap, fromWalk)
 
-	add := func(p string) {
+	var out []string
+	for _, p := range merged {
 		ext := strings.ToLower(filepath.Ext(p))
 		if !evalConfigExts[ext] {
-			return
+			continue
 		}
 		lower := strings.ToLower(p)
 		matched := false
@@ -114,20 +119,9 @@ func (d *NonDeterministicEvalDetector) gatherEvalConfigPaths(snap *models.TestSu
 			}
 		}
 		if !matched {
-			return
+			continue
 		}
-		if seen[p] {
-			return
-		}
-		seen[p] = true
 		out = append(out, p)
-	}
-
-	for _, tf := range snap.TestFiles {
-		add(tf.Path)
-	}
-	for _, sc := range snap.Scenarios {
-		add(sc.Path)
 	}
 	return out
 }
