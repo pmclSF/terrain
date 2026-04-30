@@ -637,6 +637,9 @@ func TestAIRun_DecisionPass_NoSignals(t *testing.T) {
 }
 
 func TestAIWorkflow_InventoryJSON_IncludesEvidence(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("os.Pipe + os.Stdout swap hangs reliably on Windows runners; tracked in #114")
+	}
 	// Not parallel: captures os.Stdout.
 	_, thisFile, _, _ := runtime.Caller(0)
 	root := filepath.Join(filepath.Dir(thisFile), "..", "..", "tests", "fixtures", "ai-prompt-only")

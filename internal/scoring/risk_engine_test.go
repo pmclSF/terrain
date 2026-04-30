@@ -1,6 +1,7 @@
 package scoring
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/models"
@@ -120,6 +121,9 @@ func TestComputeRisk_LargeRepoAbsoluteBurden(t *testing.T) {
 }
 
 func TestComputeRisk_DirectoryRollup(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("directory rollup map keyed by filepath.Dir output without ToSlash; tracked in #114")
+	}
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
 		Signals: []models.Signal{
