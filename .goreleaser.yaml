@@ -2,8 +2,22 @@ version: 2
 
 project_name: terrain
 
+# Multi-platform CGO build.
+#
+# go-tree-sitter (smacker/go-tree-sitter) requires CGO. CGO cannot cross-compile
+# from a single host without a target-specific C toolchain, so each platform is
+# built on its own runner via the GitHub Actions matrix in .github/workflows/release.yml:
+#
+#   ubuntu-latest  -> terrain-linux   (linux/amd64, linux/arm64)
+#   macos-latest   -> terrain-darwin  (darwin/amd64, darwin/arm64)
+#   windows-latest -> terrain-windows (windows/amd64)
+#
+# Each runner invokes `goreleaser release --clean --split --id=<build-id>`
+# (or filters by `--single-target`), and a final aggregate job stitches the
+# release together. linux/arm64 is cross-compiled on amd64 with `gcc-aarch64-linux-gnu`.
 builds:
-  - main: ./cmd/terrain
+  - id: terrain-linux-amd64
+    main: ./cmd/terrain
     binary: terrain
     env:
       - CGO_ENABLED=1
@@ -11,6 +25,62 @@ builds:
       - linux
     goarch:
       - amd64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: terrain-linux-arm64
+    main: ./cmd/terrain
+    binary: terrain
+    env:
+      - CGO_ENABLED=1
+      - CC=aarch64-linux-gnu-gcc
+      - CXX=aarch64-linux-gnu-g++
+    goos:
+      - linux
+    goarch:
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: terrain-darwin
+    main: ./cmd/terrain
+    binary: terrain
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+  - id: terrain-windows
+    main: ./cmd/terrain
+    binary: terrain
+    env:
+      - CGO_ENABLED=1
+    goos:
+      - windows
+    goarch:
+      - amd64
+    flags:
+      - -trimpath
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
@@ -42,6 +112,11 @@ brews:
       bin.install "terrain"
     test: |
       system "#{bin}/terrain", "version"
+    # Build IDs included in the Homebrew formula. Linux is omitted because
+    # Homebrew on Linux is much rarer and adds release-pipeline complexity
+    # we'll revisit in 0.2 once macOS distribution is stable.
+    ids:
+      - terrain-darwin
 
 # ── SBOM Generation ────────────────────────────────────────
 # Generates Software Bill of Materials for each release archive.
@@ -78,12 +153,13 @@ sboms:
 # Set COSIGN_ENABLED=1 in the release workflow environment to activate.
 #
 # When enabled, produces:
-#   - .sig files (detached signatures) for checksums and SBOMs
+#   - .sig files (detached signatures) for checksums, SBOMs, and archives
 #   - Signatures are verifiable via: cosign verify-blob --certificate-identity ...
 #
 # When COSIGN_ENABLED is unset or empty, signing is skipped gracefully.
 signs:
-  - cmd: cosign
+  - id: sign-checksum
+    cmd: cosign
     artifacts: checksum
     certificate: "${artifact}.pem"
     args:
@@ -94,8 +170,34 @@ signs:
       - "${artifact}"
     env:
       - COSIGN_EXPERIMENTAL=1
-    # Only sign when explicitly opted in via environment variable.
-    # This allows local `goreleaser release --snapshot` without cosign.
+    output: true
+
+  - id: sign-sbom
+    cmd: cosign
+    artifacts: sbom
+    certificate: "${artifact}.pem"
+    args:
+      - "sign-blob"
+      - "--yes"
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+    env:
+      - COSIGN_EXPERIMENTAL=1
+    output: true
+
+  - id: sign-archive
+    cmd: cosign
+    artifacts: archive
+    certificate: "${artifact}.pem"
+    args:
+      - "sign-blob"
+      - "--yes"
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+    env:
+      - COSIGN_EXPERIMENTAL=1
     output: true
 
 changelog:

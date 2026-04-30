@@ -176,7 +176,16 @@ type BuildInput struct {
 }
 
 // Build constructs an insights Report from analysis results.
+//
+// nil-safe: a nil input or a non-nil input with a nil Snapshot returns
+// an empty Report. The contract is exercised by
+// internal/testdata/adversarial_test.go:TestAdversarial_BuildEntryPoints_NilInput.
 func Build(input *BuildInput) *Report {
+	if input == nil || input.Snapshot == nil {
+		return &Report{
+			CategorySummary: map[Category]CategoryBreakdown{},
+		}
+	}
 	r := &Report{
 		RepoProfile:        input.Profile,
 		EdgeCases:          input.EdgeCases,
@@ -1256,6 +1265,19 @@ func deriveHeadline(r *Report) string {
 	return top.Title
 }
 
+// Health grade rubric. Each constant names the threshold at which a grade
+// flips. Values are uncalibrated heuristics carried forward from 0.1.0;
+// docs/health-grade-rubric.md covers what they mean today and what changes
+// when the corpus calibration in 0.3 lands. They are extracted as named
+// constants so:
+//   - the rubric document has stable references to point at
+//   - 0.3's recalibration touches a single declaration
+//   - tests that exercise grade boundaries don't repeat magic numbers
+const (
+	healthGradeDHighFindingThreshold   = 3 // > N high findings → D
+	healthGradeCMediumFindingThreshold = 3 // > N medium findings → C
+)
+
 func deriveHealthGrade(r *Report) string {
 	critical := 0
 	high := 0
@@ -1271,21 +1293,22 @@ func deriveHealthGrade(r *Report) string {
 		}
 	}
 
+	// Order matters: each clause shadows the next.
 	switch {
 	case critical > 0:
-		return "D"
-	case high > 3:
-		return "D"
+		return "D" // any Critical → fail
+	case high > healthGradeDHighFindingThreshold:
+		return "D" // > 3 High → fail
 	case high > 0:
-		return "C"
-	case medium > 3:
-		return "C"
+		return "C" // 1–3 High → concerning
+	case medium > healthGradeCMediumFindingThreshold:
+		return "C" // > 3 Medium → concerning
 	case medium > 0:
-		return "B"
+		return "B" // 1–3 Medium → minor issues
 	case len(r.Findings) > 0:
-		return "B"
+		return "B" // any Low/Info finding → minor issues
 	default:
-		return "A"
+		return "A" // clean bill of health
 	}
 }
 

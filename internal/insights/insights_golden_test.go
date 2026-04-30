@@ -76,8 +76,11 @@ func compareGolden(t *testing.T, name string, gr goldenReport) {
 		t.Fatalf("golden file not found: %s\nRun with -update-golden to create it.", golden)
 	}
 
-	actualStr := strings.TrimSpace(string(actual))
-	expectedStr := strings.TrimSpace(string(expected))
+	// Strip CRs so a Windows checkout with core.autocrlf=true does not
+	// produce a spurious diff. .gitattributes pins golden files to LF on
+	// disk; this normalisation handles the in-memory side.
+	actualStr := strings.TrimSpace(strings.ReplaceAll(string(actual), "\r", ""))
+	expectedStr := strings.TrimSpace(strings.ReplaceAll(string(expected), "\r", ""))
 
 	if actualStr != expectedStr {
 		t.Errorf("snapshot mismatch for %s\n\nExpected:\n%s\n\nActual:\n%s\n\nRun with -update-golden to update.",

@@ -160,3 +160,32 @@ func TestValidateSnapshot_MultipleErrors(t *testing.T) {
 		t.Errorf("expected at least 5 errors, got %d: %v", len(ve.Errors), ve.Errors)
 	}
 }
+
+func TestValidateSchemaVersion(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		version string
+		wantErr bool
+	}{
+		{"empty accepted (separate invariant)", "", false},
+		{"current major", "1.0.0", false},
+		{"current major minor bump", "1.5.0", false},
+		{"current major patch bump", "1.0.42", false},
+		{"older major (legacy)", "0.0.0", false},
+		{"future major rejected", "2.0.0", true},
+		{"way-future major rejected", "99.0.0", true},
+		{"non-numeric major", "abc.0.0", true},
+		{"negative major", "-1.0.0", true},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ValidateSchemaVersion(tc.version)
+			if (err != nil) != tc.wantErr {
+				t.Errorf("ValidateSchemaVersion(%q) err = %v, wantErr = %v", tc.version, err, tc.wantErr)
+			}
+		})
+	}
+}

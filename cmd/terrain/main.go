@@ -39,6 +39,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	conv "github.com/pmclSF/terrain/internal/convert"
@@ -57,10 +58,29 @@ var (
 
 const defaultSlowThresholdMs = 5000.0
 
+// Exit codes. CI scripts can distinguish failure modes from these without
+// parsing stderr. The 0.1.2 contract preserves historical semantics: codes
+// 0–2 keep their existing meanings, and the new code (4) is additive.
+//
+//	0 — success
+//	1 — runtime / analysis error (file not found, parse failed, IO error)
+//	2 — usage error OR policy violation (overloaded for back-compat; both
+//	     meanings retained because at least one consumer pattern-matches
+//	     `exit 2 == policy fail today`)
+//	3 — reserved (0.2 will move policy violations here once we publish a
+//	     migration guide; do not use for new codepaths)
+//	4 — AI gate block (terrain ai gate; reserved for 0.2's dedicated AI
+//	     gate command)
+//
+// Splitting code 2 cleanly into "usage" vs "policy" is a behaviour-breaking
+// change that needs a migration window. It's documented in 0.2 as an
+// explicit milestone in docs/release/0.2.md.
 const (
 	exitOK              = 0
 	exitError           = 1
-	exitPolicyViolation = 2
+	exitUsageError      = 2
+	exitPolicyViolation = 2 // overloaded with exitUsageError until 0.2; see comment above
+	exitAIGateBlock     = 4
 )
 
 func main() {
@@ -86,8 +106,9 @@ func main() {
 		runtimeFlag := analyzeCmd.String("runtime", "", "path to runtime artifact (JUnit XML, Jest JSON); comma-separated for multiple")
 		gauntletFlag := analyzeCmd.String("gauntlet", "", "path to Gauntlet eval result artifact (JSON); comma-separated for multiple")
 		slowThreshold := analyzeCmd.Float64("slow-threshold", defaultSlowThresholdMs, "slow test threshold in ms")
+		redactPathsFlag := analyzeCmd.Bool("redact-paths", false, "rewrite absolute paths in --format=sarif output to repo-relative form (or basename if outside repo)")
 		_ = analyzeCmd.Parse(os.Args[2:])
-		if err := runAnalyze(*rootFlag, *jsonFlag, *formatFlag, *verboseFlag, *writeSnapshot, *coverageFlag, *coverageRunLabelFlag, *runtimeFlag, *gauntletFlag, *slowThreshold); err != nil {
+		if err := runAnalyze(*rootFlag, *jsonFlag, *formatFlag, *verboseFlag, *writeSnapshot, *coverageFlag, *coverageRunLabelFlag, *runtimeFlag, *gauntletFlag, *slowThreshold, *redactPathsFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -659,8 +680,10 @@ func main() {
 		serveCmd := flag.NewFlagSet("serve", flag.ExitOnError)
 		rootFlag := serveCmd.String("root", ".", "repository root to analyze")
 		portFlag := serveCmd.Int("port", server.DefaultPort, "port to listen on")
+		hostFlag := serveCmd.String("host", server.DefaultHost, "bind host (default 127.0.0.1; non-localhost values are unauthenticated and warned about)")
+		readOnlyFlag := serveCmd.Bool("read-only", false, "forbid state-changing API endpoints (no-op in 0.1.2; reserved for 0.2)")
 		_ = serveCmd.Parse(os.Args[2:])
-		if err := runServe(*rootFlag, *portFlag); err != nil {
+		if err := runServe(*rootFlag, *portFlag, *hostFlag, *readOnlyFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -675,10 +698,112 @@ func main() {
 			}
 			return
 		}
-		fmt.Fprintf(os.Stderr, "unknown command: %s\n\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
+		if suggestions := didYouMean(os.Args[1], 3); len(suggestions) > 0 {
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "Did you mean one of these?")
+			for _, s := range suggestions {
+				fmt.Fprintf(os.Stderr, "  terrain %s\n", s)
+			}
+		}
+		fmt.Fprintln(os.Stderr)
 		printUsage()
-		os.Exit(2)
+		os.Exit(exitUsageError)
 	}
+}
+
+// knownCommands lists every top-level command the dispatcher accepts. Kept
+// in sync with the switch statement in main(); when you add a new case,
+// add it here so `terrain mistyped-name` can suggest it.
+var knownCommands = []string{
+	"analyze", "init", "impact", "explain", "insights", "summary",
+	"focus", "posture", "portfolio", "metrics", "compare",
+	"select-tests", "pr", "show", "policy", "export",
+	"convert", "convert-config", "list", "list-conversions",
+	"shorthands", "detect",
+	"migration", "migrate", "estimate", "status", "checklist",
+	"doctor", "reset",
+	"ai", "feedback", "telemetry",
+	"debug", "depgraph",
+	"version", "serve", "help", "--help", "-h",
+}
+
+// didYouMean returns up to maxResults command names from knownCommands
+// closest to candidate by Levenshtein distance, sorted nearest-first.
+// Suggestions are emitted only for distance <= 2 — any further away is
+// noisy more often than helpful.
+func didYouMean(candidate string, maxResults int) []string {
+	candidate = strings.ToLower(candidate)
+	type scored struct {
+		name string
+		dist int
+	}
+	var ranked []scored
+	for _, cmd := range knownCommands {
+		d := levenshtein(candidate, strings.ToLower(cmd))
+		if d <= 2 {
+			ranked = append(ranked, scored{name: cmd, dist: d})
+		}
+	}
+	sort.SliceStable(ranked, func(i, j int) bool {
+		if ranked[i].dist != ranked[j].dist {
+			return ranked[i].dist < ranked[j].dist
+		}
+		return ranked[i].name < ranked[j].name
+	})
+	if len(ranked) > maxResults {
+		ranked = ranked[:maxResults]
+	}
+	out := make([]string, 0, len(ranked))
+	for _, s := range ranked {
+		out = append(out, s.name)
+	}
+	return out
+}
+
+// levenshtein returns the Levenshtein edit distance between a and b.
+// Standard dynamic-programming implementation; O(len(a) * len(b)) time and
+// O(min(len(a), len(b))) space.
+func levenshtein(a, b string) int {
+	if a == b {
+		return 0
+	}
+	if len(a) == 0 {
+		return len(b)
+	}
+	if len(b) == 0 {
+		return len(a)
+	}
+	if len(a) < len(b) {
+		a, b = b, a
+	}
+	prev := make([]int, len(b)+1)
+	curr := make([]int, len(b)+1)
+	for j := range prev {
+		prev[j] = j
+	}
+	for i := 1; i <= len(a); i++ {
+		curr[0] = i
+		for j := 1; j <= len(b); j++ {
+			cost := 1
+			if a[i-1] == b[j-1] {
+				cost = 0
+			}
+			del := prev[j] + 1
+			ins := curr[j-1] + 1
+			sub := prev[j-1] + cost
+			best := del
+			if ins < best {
+				best = ins
+			}
+			if sub < best {
+				best = sub
+			}
+			curr[j] = best
+		}
+		prev, curr = curr, prev
+	}
+	return prev[len(b)]
 }
 
 // initLogging scans args for --log-level=<level> or --log-level <level>

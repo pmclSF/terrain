@@ -5,14 +5,56 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
 )
 
+// validBaseRefPattern restricts baseRef to characters git ref names actually
+// permit: alphanumerics plus a small whitelist of separator/segment chars.
+// We reject:
+//   - shell metacharacters (`;`, `&`, `|`, `$`, backticks, redirects)
+//   - whitespace (\t, space, newline)
+//   - reflog selectors that resolve relative to the user's local state in
+//     surprising ways for an automated tool (e.g. `@{-1}`)
+//   - colon-separated ref:path forms that pull a path out of the diff target
+//   - empty strings (the caller already handles "" as "use working tree")
+//
+// This is intentionally narrower than git's full ref grammar; it covers
+// every real-world base ref we've observed in CI (`HEAD`, `HEAD~1`,
+// `origin/main`, `feature/foo`, `v1.2.3`, commit SHAs) and bounces anything
+// designed to break out of an `exec.Command` argument boundary or to
+// reference history out of band.
+var validBaseRefPattern = regexp.MustCompile(`^[A-Za-z0-9_./^~+@-]+$`)
+
+// ValidateBaseRef enforces the regex above and returns a typed error. Used
+// by every command that accepts --base before passing the value to git.
+//
+// The empty string is allowed and means "no base ref"; callers interpret
+// that as "diff against the working tree" or "use the default history
+// window". Validation is therefore opt-in: a caller that has already
+// resolved a ref to "" doesn't need to re-validate.
+func ValidateBaseRef(ref string) error {
+	if ref == "" {
+		return nil
+	}
+	if !validBaseRefPattern.MatchString(ref) {
+		return fmt.Errorf(
+			"invalid --base ref %q: only alphanumerics, dots, slashes, dashes, "+
+				"underscores, plus, at, tilde, and caret are allowed",
+			ref,
+		)
+	}
+	return nil
+}
+
 // ChangeScopeFromGitDiff creates a ChangeScope from git diff against a base ref.
 func ChangeScopeFromGitDiff(repoRoot, baseRef string) (*ChangeScope, error) {
+	if err := ValidateBaseRef(baseRef); err != nil {
+		return nil, err
+	}
 	if baseRef == "" {
 		if refExists(repoRoot, "HEAD~1") {
 			baseRef = "HEAD~1"

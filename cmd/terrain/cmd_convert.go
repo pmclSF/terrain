@@ -212,6 +212,8 @@ func runConvert(source string, opts convertCommandOptions) error {
 		return err
 	}
 
+	printExperimentalWarning(result.Direction, opts.JSON)
+
 	if result.Plan != nil {
 		return renderConvertPlan(*result.Plan, opts.JSON)
 	}
@@ -456,6 +458,26 @@ var shorthandFlagsWithValue = map[string]bool{
 	"--on-error":    true,
 }
 
+// reorderCLIArgs splits a raw argv slice into a "flags first, positionals
+// last" form so Go's stdlib `flag` package — which stops parsing at the
+// first non-flag argument — sees every flag the user supplied, regardless
+// of where in the command line they typed it.
+//
+// Without this helper, `terrain convert input.test.ts --to playwright`
+// would parse `input.test.ts` as a positional, then refuse to consume
+// `--to playwright`. Most users intuitively put flags after the file
+// argument, so we accommodate that and re-order before parsing.
+//
+// The flagsWithValue map identifies flags that take a separate value
+// argument (e.g., `--to playwright`). Flags using the `--key=value`
+// inline form are detected and don't need the lookup. Positional `--`
+// stops re-ordering: anything after `--` is treated as a positional
+// regardless of leading dashes, matching the POSIX convention. A nil
+// flagsWithValue is supported for callers that don't accept value-flags
+// (e.g. `terrain detect`).
+//
+// Round 1 review noted this helper as undocumented; this comment is the
+// canonical explanation.
 func reorderCLIArgs(args []string, flagsWithValue map[string]bool) []string {
 	if len(args) == 0 {
 		return nil
@@ -491,11 +513,30 @@ func humanizeGoNativeState(state conv.GoNativeState) string {
 	switch state {
 	case conv.GoNativeStateImplemented:
 		return "implemented"
+	case conv.GoNativeStateExperimental:
+		return "experimental"
 	case conv.GoNativeStatePrioritized:
 		return "prioritized"
 	default:
 		return "cataloged"
 	}
+}
+
+// printExperimentalWarning emits a stderr notice when an experimental
+// conversion direction is invoked. It is suppressed when JSON output is
+// requested so machine consumers see clean structured output; in that case
+// the same information is available via the Direction.GoNativeState field.
+func printExperimentalWarning(direction conv.Direction, jsonOutput bool) {
+	if direction.GoNativeState != conv.GoNativeStateExperimental || jsonOutput {
+		return
+	}
+	fmt.Fprintf(
+		os.Stderr,
+		"warning: %s -> %s is marked EXPERIMENTAL. Coverage of real-world test\n"+
+			"         patterns is incomplete; expect to clean up the output by hand.\n"+
+			"         See docs/release/feature-status.md for promotion criteria.\n",
+		direction.From, direction.To,
+	)
 }
 
 func printConvertUsage() {

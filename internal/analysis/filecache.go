@@ -30,12 +30,31 @@ type FileCache struct {
 	contents map[string]fileCacheEntry // relPath → content
 	goASTs   map[string]goASTEntry     // relPath → parsed AST
 
+	// Memory-pressure bounds. The cache is bounded by both per-file and total
+	// content size; ASTs are bounded only implicitly by file count. Large
+	// monorepos used to be able to fault Terrain by filling memory with
+	// unbounded cache content. When the bound is hit, additional reads still
+	// succeed — they just bypass the cache and read straight from disk on
+	// every call (the resulting redundant I/O is far cheaper than swapping or
+	// being OOM-killed). LRU eviction is a 0.2 follow-up.
+	totalContentBytes int64
+
 	// Stats for observability.
 	hits      int64
 	misses    int64
 	astHits   int64
 	astMisses int64
 }
+
+const (
+	// fileCacheMaxFileBytes caps the size of any single file we will cache.
+	// Files above this are read directly on every call.
+	fileCacheMaxFileBytes int64 = 8 * 1024 * 1024 // 8 MB
+
+	// fileCacheMaxTotalBytes caps the total content held in the cache.
+	// Empirically, ~256 MB covers a 50k-file repo with comfortable headroom.
+	fileCacheMaxTotalBytes int64 = 256 * 1024 * 1024 // 256 MB
+)
 
 type fileCacheEntry struct {
 	content string
@@ -95,6 +114,17 @@ func (fc *FileCache) ReadFile(relPath string) (string, bool) {
 		return "", false
 	}
 	content := string(data)
+	contentSize := int64(len(content))
+
+	// Memory pressure bounds: skip caching huge files individually, and stop
+	// growing the cache once we've buffered the global ceiling. The caller
+	// still gets the content for this read; subsequent reads of the same path
+	// will re-hit disk, which is preferable to OOM-killing the process.
+	if contentSize > fileCacheMaxFileBytes ||
+		fc.totalContentBytes+contentSize > fileCacheMaxTotalBytes {
+		fc.mu.Unlock()
+		return content, true
+	}
 
 	// Capture mod time for incremental support.
 	var modTime time.Time
@@ -107,6 +137,7 @@ func (fc *FileCache) ReadFile(relPath string) (string, bool) {
 		modTime: modTime,
 		ok:      true,
 	}
+	fc.totalContentBytes += contentSize
 	fc.mu.Unlock()
 	return content, true
 }
@@ -217,6 +248,12 @@ func (fc *FileCache) IsStale(relPath string) bool {
 // on the next access. Used for incremental updates.
 func (fc *FileCache) Invalidate(relPath string) {
 	fc.mu.Lock()
+	if entry, ok := fc.contents[relPath]; ok {
+		fc.totalContentBytes -= int64(len(entry.content))
+		if fc.totalContentBytes < 0 {
+			fc.totalContentBytes = 0
+		}
+	}
 	delete(fc.contents, relPath)
 	delete(fc.goASTs, relPath)
 	fc.mu.Unlock()
