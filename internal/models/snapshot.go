@@ -183,6 +183,15 @@ type TestSuiteSnapshot struct {
 	// circular imports.
 	EvalRuns []EvalRunEnvelope `json:"evalRuns,omitempty"`
 
+	// Baseline is an optional previous-snapshot pointer used by the
+	// regression-aware detectors (aiCostRegression,
+	// aiRetrievalRegression). Populated by the pipeline when the user
+	// passes `--baseline path/to/old-snapshot.json` on terrain analyze.
+	// Marked json:"-" so we don't double the size of every emitted
+	// snapshot — the baseline is an in-memory adjunct, not part of
+	// the serialised contract.
+	Baseline *TestSuiteSnapshot `json:"-"`
+
 	Risk []RiskSurface `json:"risk,omitempty"`
 
 	// Measurements contains the measurement-layer snapshot when computed.

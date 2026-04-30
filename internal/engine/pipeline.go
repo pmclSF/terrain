@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -81,6 +82,12 @@ type PipelineOptions struct {
 	// When set, the Promptfoo adapter ingests them into snap.EvalRuns.
 	// SignalV2 0.2 field — see internal/airun/promptfoo.go.
 	PromptfooPaths []string
+
+	// BaselineSnapshotPath, when set, points at a previous snapshot
+	// JSON file. The pipeline loads it and attaches the result to
+	// snap.Baseline so regression-aware detectors (aiCostRegression,
+	// aiRetrievalRegression) can compare current vs baseline.
+	BaselineSnapshotPath string
 
 	// SlowTestThresholdMs overrides the default slow test threshold.
 	SlowTestThresholdMs float64
@@ -499,6 +506,24 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 				Detail: fmt.Sprintf("%d artifact(s) ingested", len(opt.PromptfooPaths)),
 			})
 		}
+	}
+
+	// Step 4e: Load baseline snapshot when --baseline was provided.
+	// Attaches the parsed result to snap.Baseline so regression-aware
+	// detectors can compare current vs baseline. Failure is loud
+	// rather than degraded: the user explicitly asked for the
+	// comparison, so a malformed baseline should fail the run.
+	if opt.BaselineSnapshotPath != "" {
+		baseline, err := loadBaselineSnapshot(opt.BaselineSnapshotPath)
+		if err != nil {
+			return nil, fmt.Errorf("load --baseline %s: %w", opt.BaselineSnapshotPath, err)
+		}
+		snapshot.Baseline = baseline
+		snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+			Name:   "baseline-snapshot",
+			Status: models.DataSourceAvailable,
+			Detail: fmt.Sprintf("loaded from %s (eval runs: %d)", opt.BaselineSnapshotPath, len(baseline.EvalRuns)),
+		})
 	}
 
 	if err := ctx.Err(); err != nil {
@@ -1023,6 +1048,26 @@ func ingestGauntletArtifacts(paths []string) ([]*gauntlet.Artifact, error) {
 		artifacts = append(artifacts, art)
 	}
 	return artifacts, nil
+}
+
+// loadBaselineSnapshot reads a previous snapshot from disk and returns
+// it as a fully-decoded TestSuiteSnapshot. The result is attached to
+// snap.Baseline by the pipeline so regression-aware detectors can
+// compare current vs baseline state.
+//
+// Returns an error rather than nil when the file is missing or
+// malformed — the user explicitly asked for the comparison via
+// --baseline, so a silent fallback would mask intent.
+func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read: %w", err)
+	}
+	var snap models.TestSuiteSnapshot
+	if err := json.Unmarshal(data, &snap); err != nil {
+		return nil, fmt.Errorf("decode: %w", err)
+	}
+	return &snap, nil
 }
 
 // ingestPromptfooArtifacts parses each Promptfoo `--output` JSON file

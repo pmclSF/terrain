@@ -432,6 +432,16 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		},
 		Detector: &aidetect.HallucinationRateDetector{},
 	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "ai.cost-regression",
+			Domain:       signals.DomainAI,
+			EvidenceType: signals.EvidenceRuntime,
+			Description:  "Flag avg cost-per-case rising more than the configured threshold against a baseline snapshot.",
+			SignalTypes:  []models.SignalType{signals.SignalAICostRegression},
+		},
+		Detector: &aidetect.CostRegressionDetector{},
+	})
 
 	// Governance detectors (depend on signals from quality/migration detectors).
 	if cfg.PolicyConfig != nil && !cfg.PolicyConfig.IsEmpty() {
