@@ -1,5 +1,32 @@
 # TER-AI-106 — Model Pinned to Deprecated or Floating Tag
 
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `aiModelDeprecationRisk`  
+**Domain:** ai  
+**Default severity:** medium  
+**Status:** stable
+
+## Summary
+
+Code references a model name that resolves to a deprecated version or a floating tag (e.g. `gpt-4`, `gpt-3.5-turbo`).
+
+## Remediation
+
+Pin to a dated model variant or upgrade to a supported tier.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.80, 0.95] (heuristic in 0.2; calibration in 0.3).
+
+<!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
+
+# TER-AI-106 — Model Pinned to Deprecated or Floating Tag
+
 **Type:** `aiModelDeprecationRisk`
 **Domain:** AI
 **Default severity:** Medium

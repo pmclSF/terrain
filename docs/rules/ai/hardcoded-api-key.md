@@ -1,5 +1,32 @@
 # TER-AI-103 — Hard-Coded API Key in AI Configuration
 
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `aiHardcodedAPIKey`  
+**Domain:** ai  
+**Default severity:** critical  
+**Status:** stable
+
+## Summary
+
+API-key-shaped string appears in an eval YAML, prompt config, or agent definition.
+
+## Remediation
+
+Move the secret to an environment variable or secrets store and reference it through the runner's secret-resolution path.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.85, 0.95] (heuristic in 0.2; calibration in 0.3).
+
+<!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
+
+# TER-AI-103 — Hard-Coded API Key in AI Configuration
+
 **Type:** `aiHardcodedAPIKey`
 **Domain:** AI
 **Default severity:** Critical

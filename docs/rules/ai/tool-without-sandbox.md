@@ -1,5 +1,32 @@
 # TER-AI-104 — Destructive Tool Without Sandbox
 
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `aiToolWithoutSandbox`  
+**Domain:** ai  
+**Default severity:** high  
+**Status:** stable
+
+## Summary
+
+An agent tool definition can perform an irreversible operation (delete, drop, exec) without an explicit approval gate, sandbox, or dry-run mode.
+
+## Remediation
+
+Wrap the tool in an approval gate or restrict its capability surface to a sandbox.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.70, 0.90] (heuristic in 0.2; calibration in 0.3).
+
+<!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
+
+# TER-AI-104 — Destructive Tool Without Sandbox
+
 **Type:** `aiToolWithoutSandbox`
 **Domain:** AI
 **Default severity:** High

@@ -143,18 +143,7 @@ docs-gen:
 	go run ./cmd/terrain-docs-gen
 
 docs-verify:
-	@tmp=$$(mktemp -d) ; \
-	go run ./cmd/terrain-docs-gen -out "$$tmp" ; \
-	rc=0 ; \
-	for f in docs/signals/manifest.json docs/severity-rubric.md ; do \
-		if ! diff -u "$$f" "$$tmp/$$f" ; then \
-			echo "::error::$$f is out of date. Run 'make docs-gen' and commit." ; \
-			rc=1 ; \
-		fi ; \
-	done ; \
-	rm -rf "$$tmp" ; \
-	if [ $$rc -ne 0 ] ; then exit $$rc ; fi ; \
-	echo "docs-verify: docs/signals/manifest.json + docs/severity-rubric.md are up to date."
+	@scripts/docs-verify.sh
 
 # ── Calibration corpus ──────────────────────────────────────
 # Runs the engine pipeline against every fixture under tests/calibration/
