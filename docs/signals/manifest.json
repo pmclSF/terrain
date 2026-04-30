@@ -1016,7 +1016,7 @@
       "type": "aiPromptInjectionRisk",
       "constName": "SignalAIPromptInjectionRisk",
       "domain": "ai",
-      "status": "planned",
+      "status": "experimental",
       "title": "Prompt-Injection-Shaped Concatenation",
       "description": "User-controlled input is concatenated into a prompt without escaping, system-prompt boundaries, or structured input boundaries.",
       "remediation": "Use a prompt template with explicit user-content boundaries, or run user input through a sanitiser.",
@@ -1024,12 +1024,11 @@
       "confidenceMin": 0.6,
       "confidenceMax": 0.85,
       "evidenceSources": [
-        "ast",
         "structural-pattern"
       ],
       "ruleId": "TER-AI-102",
       "ruleUri": "docs/rules/ai/prompt-injection-risk.md",
-      "promotionPlan": "0.2 — taint-flow-style detector. Heuristic in 0.2, AST-precise in 0.3."
+      "promotionPlan": "0.2 ships heuristic regex detection. Promotes to stable in 0.3 when AST-precise taint-flow analysis lands."
     },
     {
       "type": "aiHardcodedAPIKey",
@@ -1070,7 +1069,7 @@
       "type": "aiNonDeterministicEval",
       "constName": "SignalAINonDeterministicEval",
       "domain": "ai",
-      "status": "planned",
+      "status": "stable",
       "title": "Non-Deterministic Eval Configuration",
       "description": "An LLM eval runs without temperature pinned to 0 or a deterministic seed, so re-runs produce noisy comparisons.",
       "remediation": "Pin temperature: 0 and a seed in the eval config, or document the non-determinism budget.",
@@ -1081,14 +1080,13 @@
         "structural-pattern"
       ],
       "ruleId": "TER-AI-105",
-      "ruleUri": "docs/rules/ai/non-deterministic-eval.md",
-      "promotionPlan": "0.2 — YAML/JSON config inspection. Promotes to stable on first detector commit."
+      "ruleUri": "docs/rules/ai/non-deterministic-eval.md"
     },
     {
       "type": "aiModelDeprecationRisk",
       "constName": "SignalAIModelDeprecationRisk",
       "domain": "ai",
-      "status": "planned",
+      "status": "stable",
       "title": "Model Pinned to Deprecated or Floating Tag",
       "description": "Code references a model name that resolves to a deprecated version or a floating tag (e.g. `gpt-4`, `gpt-3.5-turbo`).",
       "remediation": "Pin to a dated model variant or upgrade to a supported tier.",
@@ -1099,8 +1097,7 @@
         "structural-pattern"
       ],
       "ruleId": "TER-AI-106",
-      "ruleUri": "docs/rules/ai/model-deprecation-risk.md",
-      "promotionPlan": "0.2 — deprecation list maintained alongside the prompt-surface inventory."
+      "ruleUri": "docs/rules/ai/model-deprecation-risk.md"
     },
     {
       "type": "aiCostRegression",
