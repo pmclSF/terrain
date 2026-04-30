@@ -2,7 +2,7 @@
   "name": "terrain-test-intelligence",
   "displayName": "Terrain Test Intelligence",
   "description": "Signal-first test intelligence: risk, quality, migration readiness, and governance insights for your test suite.",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "publisher": "pmclSF",
   "license": "Apache-2.0",
   "repository": {
