@@ -9,6 +9,8 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/java"
 	"github.com/smacker/go-tree-sitter/python"
+
+	"github.com/pmclSF/terrain/internal/parserpool"
 )
 
 // ValidateSyntax checks whether converted output is parseable for the target language.
@@ -79,21 +81,22 @@ func CleanupExecutionOutputs(result ExecutionResult) error {
 }
 
 func validateTreeSitterSyntax(path, language, source string, lang *sitter.Language) error {
-	parser := sitter.NewParser()
-	defer parser.Close()
-	parser.SetLanguage(lang)
-
-	tree, err := parser.ParseCtx(context.Background(), nil, []byte(source))
-	if err != nil || tree == nil {
-		return syntaxValidationError(path, language, nil)
-	}
-	defer tree.Close()
-
-	root := tree.RootNode()
-	if root == nil || !root.HasError() {
+	var validationErr error
+	_ = parserpool.With(lang, func(parser *sitter.Parser) error {
+		tree, err := parser.ParseCtx(context.Background(), nil, []byte(source))
+		if err != nil || tree == nil {
+			validationErr = syntaxValidationError(path, language, nil)
+			return nil
+		}
+		defer tree.Close()
+		root := tree.RootNode()
+		if root == nil || !root.HasError() {
+			return nil
+		}
+		validationErr = syntaxValidationError(path, language, firstSyntaxErrorNode(root))
 		return nil
-	}
-	return syntaxValidationError(path, language, firstSyntaxErrorNode(root))
+	})
+	return validationErr
 }
 
 func firstSyntaxErrorNode(node *sitter.Node) *sitter.Node {
