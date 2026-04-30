@@ -1,5 +1,58 @@
 # Changelog
 
+All notable changes to Terrain are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
+
+## [Unreleased]
+
+(intentionally empty — track 0.2 work in `docs/release/0.2.md`)
+
+## [0.1.2] — Truth-up & foundation (in progress)
+
+This release closes the gap between Terrain's marketed capabilities and what
+the code actually does. Most changes are documentation, schema lock, and
+distribution work; behavior changes are bounded to correctness fixes.
+
+### Honest about what ships
+
+- New: `docs/release/feature-status.md` is the canonical inventory of stable /
+  experimental / planned features. Drift between marketing and code becomes a
+  release blocker starting in 0.2.
+- README: example CLI outputs are now framed explicitly as illustrative shape,
+  not literal output. Three signals shown (`xfailAccumulation`, statistical
+  ">10% failure rate" flaky detection, `0.91+` duplicate similarity) are
+  explicitly tagged `[experimental]` or `[planned]` because the underlying
+  detectors don't ship in 0.1.2.
+- README: the "30 seconds" claim is now scoped to small-to-medium repos with
+  realistic numbers for larger workspaces.
+- `docs/legacy/`: every file now carries a strong **DEPRECATED — DO NOT USE
+  FOR NEW WORK** banner pointing at current docs.
+
+### Distribution
+
+- Goreleaser now builds five platforms instead of one: darwin/amd64,
+  darwin/arm64, linux/amd64, linux/arm64, windows/amd64. Each is built on a
+  matching CI runner because go-tree-sitter requires CGO and cannot
+  cross-compile cleanly.
+- Release archives, SBOMs, and checksums are signed via Sigstore keyless
+  cosign. Signatures and certificates are uploaded with each artifact.
+- npm postinstall (`bin/terrain-installer.js`) gains a best-effort cosign
+  verifier: in 0.1.2 it warns on missing cosign, missing signature artifacts,
+  or verification failure but does not block install. 0.2 makes this
+  hard-fail unless `TERRAIN_INSTALLER_SKIP_VERIFY=1` is set.
+
+### Removed
+
+- `internal/plugin/` package (extension-point interfaces that were never
+  wired into the engine). The only adopters were tests in the package itself.
+  Detector contributors should read `docs/engineering/detector-architecture.md`
+  for the actual in-tree registry pattern.
+
+### Versioning
+
+- npm package, `extension/vscode/package.json`, and `package-lock.json` all
+  bumped to `0.1.2`. Git-tag/package.json drift is now a release-gate failure.
+
 ## 0.1.0 — Test System Intelligence Platform (2026-04-06)
 
 Terrain 0.1.0 is the first public release of the Terrain test intelligence

@@ -1,8 +1,11 @@
 # Terrain Legacy Multi-Framework Test Converter Architecture
 
-> **Historical document.** This describes the legacy converter architecture (JavaScript ES modules).
-> The current product direction is the signal-first test intelligence engine.
-> See the root [DESIGN.md](../../DESIGN.md) for the current architecture.
+> ⚠️ **[DEPRECATED — DO NOT USE FOR NEW WORK]** This document describes the legacy
+> JavaScript converter architecture (ES modules). The current converter is
+> Go-native and lives in `internal/convert/`; product direction is the
+> signal-first test intelligence engine documented in [DESIGN.md](../../DESIGN.md).
+> Kept only for historical reference. For per-direction conversion status, run
+> `terrain convert list` or see [docs/release/feature-status.md](../release/feature-status.md).
 
 ## 1. Architecture Decision Record
 
