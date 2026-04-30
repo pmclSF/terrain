@@ -83,6 +83,11 @@ type PipelineOptions struct {
 	// SignalV2 0.2 field — see internal/airun/promptfoo.go.
 	PromptfooPaths []string
 
+	// DeepEvalPaths are paths to DeepEval `--export` JSON files.
+	// Same destination as PromptfooPaths: each result lands in
+	// snap.EvalRuns through internal/airun/deepeval.go.
+	DeepEvalPaths []string
+
 	// BaselineSnapshotPath, when set, points at a previous snapshot
 	// JSON file. The pipeline loads it and attaches the result to
 	// snap.Baseline so regression-aware detectors (aiCostRegression,
@@ -187,6 +192,8 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		gauntletIngestErr    error
 		promptfooEnvelopes   []models.EvalRunEnvelope
 		promptfooIngestErr   error
+		deepevalEnvelopes    []models.EvalRunEnvelope
+		deepevalIngestErr    error
 
 		staticAnalysisDuration  time.Duration
 		policyLoadDuration      time.Duration
@@ -299,6 +306,15 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 				return err
 			}
 			promptfooEnvelopes, promptfooIngestErr = ingestPromptfooArtifacts(opt.PromptfooPaths)
+			return nil
+		})
+	}
+	if len(opt.DeepEvalPaths) > 0 {
+		startTask(&prepWG, func(taskCtx context.Context) error {
+			if err := taskCtx.Err(); err != nil {
+				return err
+			}
+			deepevalEnvelopes, deepevalIngestErr = ingestDeepEvalArtifacts(opt.DeepEvalPaths)
 			return nil
 		})
 	}
@@ -504,6 +520,26 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 				Name:   "promptfoo",
 				Status: models.DataSourceAvailable,
 				Detail: fmt.Sprintf("%d artifact(s) ingested", len(opt.PromptfooPaths)),
+			})
+		}
+	}
+
+	// Step 4d-bis: Apply DeepEval eval-run envelopes (same destination
+	// as Promptfoo; both adapters write into snap.EvalRuns).
+	if len(opt.DeepEvalPaths) > 0 {
+		if deepevalIngestErr != nil {
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "deepeval",
+				Status: models.DataSourceError,
+				Detail: deepevalIngestErr.Error(),
+				Impact: "DeepEval results are unavailable. Per-case scoring + token usage will not feed cost/hallucination/retrieval detectors.",
+			})
+		} else {
+			snapshot.EvalRuns = append(snapshot.EvalRuns, deepevalEnvelopes...)
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "deepeval",
+				Status: models.DataSourceAvailable,
+				Detail: fmt.Sprintf("%d artifact(s) ingested", len(opt.DeepEvalPaths)),
 			})
 		}
 	}
@@ -1087,6 +1123,26 @@ func ingestPromptfooArtifacts(paths []string) ([]models.EvalRunEnvelope, error) 
 		env, err := result.ToEnvelope(p)
 		if err != nil {
 			return nil, fmt.Errorf("promptfoo envelope for %s: %w", p, err)
+		}
+		out = append(out, env)
+	}
+	return out, nil
+}
+
+// ingestDeepEvalArtifacts mirrors ingestPromptfooArtifacts for the
+// DeepEval adapter. Both adapters target the same EvalRunEnvelope
+// shape; the runtime-aware AI detectors don't care which framework
+// produced the data.
+func ingestDeepEvalArtifacts(paths []string) ([]models.EvalRunEnvelope, error) {
+	out := make([]models.EvalRunEnvelope, 0, len(paths))
+	for _, p := range paths {
+		result, err := airun.LoadDeepEvalFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("deepeval artifact %s: %w", p, err)
+		}
+		env, err := result.ToEnvelope(p)
+		if err != nil {
+			return nil, fmt.Errorf("deepeval envelope for %s: %w", p, err)
 		}
 		out = append(out, env)
 	}
