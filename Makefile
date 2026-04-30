@@ -8,7 +8,8 @@ GO_OWNED_PKGS := ./cmd/... ./internal/...
 
 .PHONY: build test lint clean demo benchmark-fetch benchmark-smoke benchmark-full benchmark-stress benchmark-summary benchmark-convert install \
        test-golden test-determinism test-schema test-adversarial test-e2e test-cli test-bench golden-update pr-gate release-gate \
-       sbom sbom-cyclonedx sbom-spdx release-dry-run go-release-verify js-release-verify extension-verify release-verify
+       sbom sbom-cyclonedx sbom-spdx release-dry-run go-release-verify js-release-verify extension-verify release-verify \
+       docs-gen docs-verify
 
 # Build the CLI binary
 build:
@@ -132,6 +133,25 @@ extension-verify:
 	npm --prefix extension/vscode ci
 	npm --prefix extension/vscode run compile
 	npm --prefix extension/vscode test
+
+# ── Generated documentation ─────────────────────────────────
+# `docs-gen` rewrites docs/signals/manifest.json from
+# internal/signals.allSignalManifest. `docs-verify` writes to a tempdir
+# and diffs against the committed copy so CI fails when a manifest
+# change ships without the regenerated docs.
+docs-gen:
+	go run ./cmd/terrain-docs-gen
+
+docs-verify:
+	@tmp=$$(mktemp -d) ; \
+	go run ./cmd/terrain-docs-gen -out "$$tmp" ; \
+	if ! diff -u docs/signals/manifest.json "$$tmp/docs/signals/manifest.json" ; then \
+		echo "::error::docs/signals/manifest.json is out of date. Run 'make docs-gen' and commit." ; \
+		rm -rf "$$tmp" ; \
+		exit 1 ; \
+	fi ; \
+	rm -rf "$$tmp" ; \
+	echo "docs-verify: docs/signals/manifest.json is up to date."
 
 release-verify:
 	$(MAKE) go-release-verify

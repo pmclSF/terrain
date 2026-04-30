@@ -84,6 +84,13 @@ jobs:
           go mod tidy
           git diff --exit-code go.mod go.sum
 
+      - name: Verify generated docs are up to date
+        if: matrix.extended
+        # Hard-fail gate (carries the 0.1.2 manifest scaffold to enforcement
+        # in 0.2). If you edit internal/signals/manifest.go, run
+        # `make docs-gen` and commit docs/signals/manifest.json.
+        run: make docs-verify
+
       - name: Run core Go verification
         if: matrix.extended
         run: make go-release-verify
