@@ -680,8 +680,10 @@ func main() {
 		serveCmd := flag.NewFlagSet("serve", flag.ExitOnError)
 		rootFlag := serveCmd.String("root", ".", "repository root to analyze")
 		portFlag := serveCmd.Int("port", server.DefaultPort, "port to listen on")
+		hostFlag := serveCmd.String("host", server.DefaultHost, "bind host (default 127.0.0.1; non-localhost values are unauthenticated and warned about)")
+		readOnlyFlag := serveCmd.Bool("read-only", false, "forbid state-changing API endpoints (no-op in 0.1.2; reserved for 0.2)")
 		_ = serveCmd.Parse(os.Args[2:])
-		if err := runServe(*rootFlag, *portFlag); err != nil {
+		if err := runServe(*rootFlag, *portFlag, *hostFlag, *readOnlyFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
