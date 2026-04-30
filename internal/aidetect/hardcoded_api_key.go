@@ -150,30 +150,29 @@ func (d *HardcodedAPIKeyDetector) Detect(snap *models.TestSuiteSnapshot) []model
 	return out
 }
 
-// gatherConfigPaths collects every config-extension file already
-// represented in the snapshot — test files, scenarios, fixtures.
-// Returns repo-relative paths to read.
+// gatherConfigPaths returns every config-extension file we should scan.
+// Combines two sources:
+//
+//   1. files already in the snapshot (TestFiles, Scenarios)
+//   2. a fresh walk of d.Root for files matching the extension allowlist
+//
+// Source #2 is what catches eval YAMLs / agent JSONs that aren't tests
+// per se and so don't appear in TestFiles. Without it, a repo with no
+// JS/Go test runner would never have its eval configs scanned.
 func (d *HardcodedAPIKeyDetector) gatherConfigPaths(snap *models.TestSuiteSnapshot) []string {
-	seen := map[string]bool{}
-	var paths []string
-	add := func(p string) {
-		ext := strings.ToLower(filepath.Ext(p))
-		if !configFileExts[ext] {
-			return
+	fromSnap := snapshotPaths(snap)
+	fromWalk := walkRepoForConfigs(d.Root, scanOpts{
+		extensions: configFileExts,
+	})
+	merged := uniquePaths(fromSnap, fromWalk)
+
+	out := make([]string, 0, len(merged))
+	for _, p := range merged {
+		if configFileExts[strings.ToLower(filepath.Ext(p))] {
+			out = append(out, p)
 		}
-		if seen[p] {
-			return
-		}
-		seen[p] = true
-		paths = append(paths, p)
 	}
-	for _, tf := range snap.TestFiles {
-		add(tf.Path)
-	}
-	for _, sc := range snap.Scenarios {
-		add(sc.Path)
-	}
-	return paths
+	return out
 }
 
 // keyHit is one match in one file.

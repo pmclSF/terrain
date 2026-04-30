@@ -100,12 +100,18 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 }
 
 func (d *ToolWithoutSandboxDetector) gatherToolConfigs(snap *models.TestSuiteSnapshot) []string {
-	seen := map[string]bool{}
+	fromSnap := snapshotPaths(snap)
+	fromWalk := walkRepoForConfigs(d.Root, scanOpts{
+		extensions: evalConfigExts,
+		markers:    toolConfigMarkers,
+	})
+	merged := uniquePaths(fromSnap, fromWalk)
+
 	var out []string
-	add := func(p string) {
+	for _, p := range merged {
 		ext := strings.ToLower(filepath.Ext(p))
 		if !evalConfigExts[ext] {
-			return
+			continue
 		}
 		lower := strings.ToLower(p)
 		matched := false
@@ -116,19 +122,9 @@ func (d *ToolWithoutSandboxDetector) gatherToolConfigs(snap *models.TestSuiteSna
 			}
 		}
 		if !matched {
-			return
+			continue
 		}
-		if seen[p] {
-			return
-		}
-		seen[p] = true
 		out = append(out, p)
-	}
-	for _, tf := range snap.TestFiles {
-		add(tf.Path)
-	}
-	for _, sc := range snap.Scenarios {
-		add(sc.Path)
 	}
 	return out
 }

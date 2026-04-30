@@ -114,23 +114,17 @@ func (d *PromptInjectionDetector) Detect(snap *models.TestSuiteSnapshot) []model
 }
 
 func (d *PromptInjectionDetector) gatherPaths(snap *models.TestSuiteSnapshot) []string {
-	seen := map[string]bool{}
+	fromSnap := snapshotPaths(snap)
+	fromWalk := walkRepoForConfigs(d.Root, scanOpts{
+		extensions: promptInjectionScanExts,
+	})
+	merged := uniquePaths(fromSnap, fromWalk)
+
 	var out []string
-	add := func(p string) {
-		if !promptInjectionScanExts[strings.ToLower(filepath.Ext(p))] {
-			return
+	for _, p := range merged {
+		if promptInjectionScanExts[strings.ToLower(filepath.Ext(p))] {
+			out = append(out, p)
 		}
-		if seen[p] {
-			return
-		}
-		seen[p] = true
-		out = append(out, p)
-	}
-	for _, tf := range snap.TestFiles {
-		add(tf.Path)
-	}
-	for _, sc := range snap.Scenarios {
-		add(sc.Path)
 	}
 	return out
 }

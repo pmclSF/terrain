@@ -7,6 +7,7 @@ package engine
 import (
 	"fmt"
 
+	"github.com/pmclSF/terrain/internal/aidetect"
 	"github.com/pmclSF/terrain/internal/governance"
 	"github.com/pmclSF/terrain/internal/health"
 	"github.com/pmclSF/terrain/internal/migration"
@@ -350,6 +351,76 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			RequiresGraph: true,
 		},
 		Detector: &structural.CapabilityValidationGapDetector{},
+	})
+
+	// AI detectors (0.2). Each reads files referenced by the snapshot
+	// (TestFiles + Scenarios) and emits AI-domain signals. They run
+	// after quality/migration so any signals they reference (when 0.3
+	// adds compound-evidence) are already in the snapshot.
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.hardcoded-api-key",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Detect hard-coded API keys in AI configuration files.",
+			SignalTypes:    []models.SignalType{signals.SignalAIHardcodedAPIKey},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.HardcodedAPIKeyDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.non-deterministic-eval",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Detect eval configs missing temperature: 0 / seed pin.",
+			SignalTypes:    []models.SignalType{signals.SignalAINonDeterministicEval},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.NonDeterministicEvalDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.model-deprecation-risk",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Detect floating or deprecated model tags (gpt-4, text-davinci-003, ...).",
+			SignalTypes:    []models.SignalType{signals.SignalAIModelDeprecationRisk},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.ModelDeprecationDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.prompt-injection-risk",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Detect prompt-injection-shaped concatenation of user input.",
+			SignalTypes:    []models.SignalType{signals.SignalAIPromptInjectionRisk},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.PromptInjectionDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.tool-without-sandbox",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Detect destructive agent tools without an approval gate or sandbox.",
+			SignalTypes:    []models.SignalType{signals.SignalAIToolWithoutSandbox},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.ToolWithoutSandboxDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "ai.safety-eval-missing",
+			Domain:       signals.DomainAI,
+			EvidenceType: signals.EvidenceGraphTraversal,
+			Description:  "Detect safety-critical surfaces with no safety-shaped scenario coverage.",
+			SignalTypes:  []models.SignalType{signals.SignalAISafetyEvalMissing},
+		},
+		Detector: &aidetect.SafetyEvalMissingDetector{},
 	})
 
 	// Governance detectors (depend on signals from quality/migration detectors).

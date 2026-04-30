@@ -132,27 +132,21 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 	return out
 }
 
-// gatherScanPaths returns the snapshot files we should walk. We scan
-// every TestFile and Scenario whose extension is in modelScanExts —
-// model identifiers can appear in any source language, not just configs.
+// gatherScanPaths returns files to scan. Combines snapshot files with
+// a repo walk so model identifiers in non-test source still get
+// flagged. The extension filter is applied to both sources.
 func (d *ModelDeprecationDetector) gatherScanPaths(snap *models.TestSuiteSnapshot) []string {
-	seen := map[string]bool{}
+	fromSnap := snapshotPaths(snap)
+	fromWalk := walkRepoForConfigs(d.Root, scanOpts{
+		extensions: modelScanExts,
+	})
+	merged := uniquePaths(fromSnap, fromWalk)
+
 	var out []string
-	add := func(p string) {
-		if !modelScanExts[strings.ToLower(filepath.Ext(p))] {
-			return
+	for _, p := range merged {
+		if modelScanExts[strings.ToLower(filepath.Ext(p))] {
+			out = append(out, p)
 		}
-		if seen[p] {
-			return
-		}
-		seen[p] = true
-		out = append(out, p)
-	}
-	for _, tf := range snap.TestFiles {
-		add(tf.Path)
-	}
-	for _, sc := range snap.Scenarios {
-		add(sc.Path)
 	}
 	return out
 }
