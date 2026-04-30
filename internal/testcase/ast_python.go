@@ -6,25 +6,29 @@ import (
 
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/python"
+
+	"github.com/pmclSF/terrain/internal/parserpool"
 )
 
 // extractPythonWithAST uses tree-sitter to parse Python source and extract test cases.
 func extractPythonWithAST(src, relPath, framework string) []TestCase {
 	srcBytes := []byte(src)
 
-	parser := sitter.NewParser()
-	defer parser.Close()
-	parser.SetLanguage(python.GetLanguage())
-
-	tree, err := parser.ParseCtx(context.Background(), nil, srcBytes)
-	if err != nil || tree == nil {
+	var cases []TestCase
+	parsed := false
+	_ = parserpool.With(python.GetLanguage(), func(parser *sitter.Parser) error {
+		tree, perr := parser.ParseCtx(context.Background(), nil, srcBytes)
+		if perr != nil || tree == nil {
+			return perr
+		}
+		defer tree.Close()
+		walkPyNode(tree.RootNode(), srcBytes, nil, &cases, false, 0)
+		parsed = true
+		return nil
+	})
+	if !parsed {
 		return extractPython(src, relPath, framework)
 	}
-	defer tree.Close()
-
-	root := tree.RootNode()
-	var cases []TestCase
-	walkPyNode(root, srcBytes, nil, &cases, false, 0)
 	return cases
 }
 

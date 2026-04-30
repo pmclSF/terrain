@@ -6,25 +6,29 @@ import (
 
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/java"
+
+	"github.com/pmclSF/terrain/internal/parserpool"
 )
 
 // extractJavaWithAST uses tree-sitter to parse Java source and extract test cases.
 func extractJavaWithAST(src, relPath, framework string) []TestCase {
 	srcBytes := []byte(src)
 
-	parser := sitter.NewParser()
-	defer parser.Close()
-	parser.SetLanguage(java.GetLanguage())
-
-	tree, err := parser.ParseCtx(context.Background(), nil, srcBytes)
-	if err != nil || tree == nil {
+	var cases []TestCase
+	parsed := false
+	_ = parserpool.With(java.GetLanguage(), func(parser *sitter.Parser) error {
+		tree, perr := parser.ParseCtx(context.Background(), nil, srcBytes)
+		if perr != nil || tree == nil {
+			return perr
+		}
+		defer tree.Close()
+		walkJavaNode(tree.RootNode(), srcBytes, nil, &cases)
+		parsed = true
+		return nil
+	})
+	if !parsed {
 		return extractJava(src, relPath, framework)
 	}
-	defer tree.Close()
-
-	root := tree.RootNode()
-	var cases []TestCase
-	walkJavaNode(root, srcBytes, nil, &cases)
 	return cases
 }
 
