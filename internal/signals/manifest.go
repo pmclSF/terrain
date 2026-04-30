@@ -836,7 +836,7 @@ var allSignalManifest = []ManifestEntry{
 	},
 	{
 		Type: SignalAIHallucinationRate, ConstName: "SignalAIHallucinationRate",
-		Domain: models.CategoryAI, Status: StatusPlanned,
+		Domain: models.CategoryAI, Status: StatusStable,
 		Title:           "Hallucination Rate Above Threshold",
 		Description:     "An eval reports fabricated outputs at a rate above the project-configured threshold (default 5%).",
 		Remediation:     "Investigate failing scenarios; tighten retrieval or grounding before merging.",
@@ -844,7 +844,6 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "TER-AI-108", RuleURI: "docs/rules/ai/hallucination-rate.md",
-		PromotionPlan:   "0.2 — depends on the Promptfoo / DeepEval / Ragas adapter shipping.",
 	},
 	{
 		Type: SignalAIFewShotContamination, ConstName: "SignalAIFewShotContamination",

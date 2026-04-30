@@ -1120,7 +1120,7 @@
       "type": "aiHallucinationRate",
       "constName": "SignalAIHallucinationRate",
       "domain": "ai",
-      "status": "planned",
+      "status": "stable",
       "title": "Hallucination Rate Above Threshold",
       "description": "An eval reports fabricated outputs at a rate above the project-configured threshold (default 5%).",
       "remediation": "Investigate failing scenarios; tighten retrieval or grounding before merging.",
@@ -1131,8 +1131,7 @@
         "runtime"
       ],
       "ruleId": "TER-AI-108",
-      "ruleUri": "docs/rules/ai/hallucination-rate.md",
-      "promotionPlan": "0.2 — depends on the Promptfoo / DeepEval / Ragas adapter shipping."
+      "ruleUri": "docs/rules/ai/hallucination-rate.md"
     },
     {
       "type": "aiFewShotContamination",

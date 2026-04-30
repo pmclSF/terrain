@@ -5,7 +5,7 @@
 **Type:** `aiHallucinationRate`  
 **Domain:** ai  
 **Default severity:** high  
-**Status:** planned
+**Status:** stable
 
 ## Summary
 
@@ -14,10 +14,6 @@ An eval reports fabricated outputs at a rate above the project-configured thresh
 ## Remediation
 
 Investigate failing scenarios; tighten retrieval or grounding before merging.
-
-## Promotion plan
-
-0.2 — depends on the Promptfoo / DeepEval / Ragas adapter shipping.
 
 ## Evidence sources
 
