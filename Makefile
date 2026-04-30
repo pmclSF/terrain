@@ -9,7 +9,7 @@ GO_OWNED_PKGS := ./cmd/... ./internal/...
 .PHONY: build test lint clean demo benchmark-fetch benchmark-smoke benchmark-full benchmark-stress benchmark-summary benchmark-convert install \
        test-golden test-determinism test-schema test-adversarial test-e2e test-cli test-bench golden-update pr-gate release-gate \
        sbom sbom-cyclonedx sbom-spdx release-dry-run go-release-verify js-release-verify extension-verify release-verify \
-       docs-gen docs-verify
+       docs-gen docs-verify calibrate
 
 # Build the CLI binary
 build:
@@ -155,6 +155,14 @@ docs-verify:
 	rm -rf "$$tmp" ; \
 	if [ $$rc -ne 0 ] ; then exit $$rc ; fi ; \
 	echo "docs-verify: docs/signals/manifest.json + docs/severity-rubric.md are up to date."
+
+# ── Calibration corpus ──────────────────────────────────────
+# Runs the engine pipeline against every fixture under tests/calibration/
+# and prints precision/recall per detector. Today a smoke gate (advisory
+# misses); flips to a hard ≥90% precision gate once the corpus is
+# populated. See docs/calibration/CORPUS.md.
+calibrate:
+	go test -count=1 -v -run TestCalibration ./internal/engine/...
 
 release-verify:
 	$(MAKE) go-release-verify

@@ -1,0 +1,11 @@
+schemaVersion: 1
+fixture: skipped-without-ticket
+description: |
+  Tiny fixture proving the calibration runner end-to-end: one test file
+  uses .skip without a tracking-ticket comment, which should fire
+  skippedTest. The src/ file has no tests-not-asserting issues so we
+  list nothing else; out-of-scope detections are silent.
+expected:
+  - type: skippedTest
+    file: src/login.test.js
+    notes: ".skip without a ticket reference"
