@@ -978,7 +978,7 @@
       "type": "aiSafetyEvalMissing",
       "constName": "SignalAISafetyEvalMissing",
       "domain": "ai",
-      "status": "planned",
+      "status": "stable",
       "title": "AI Safety Eval Missing",
       "description": "Agent or prompt has no eval scenario covering the documented safety category (jailbreak, harm, leak).",
       "remediation": "Add an eval scenario tagged with the missing safety category and re-run the gauntlet.",
@@ -987,11 +987,10 @@
       "confidenceMax": 0.9,
       "evidenceSources": [
         "structural-pattern",
-        "policy"
+        "graph-traversal"
       ],
       "ruleId": "TER-AI-100",
-      "ruleUri": "docs/rules/ai/safety-eval-missing.md",
-      "promotionPlan": "0.2 — detector lands alongside the eval framework integration. Promotes to stable once the calibration corpus has 5+ labelled fixtures."
+      "ruleUri": "docs/rules/ai/safety-eval-missing.md"
     },
     {
       "type": "aiPromptVersioning",
@@ -1051,7 +1050,7 @@
       "type": "aiToolWithoutSandbox",
       "constName": "SignalAIToolWithoutSandbox",
       "domain": "ai",
-      "status": "planned",
+      "status": "stable",
       "title": "Destructive Tool Without Sandbox",
       "description": "An agent tool definition can perform an irreversible operation (delete, drop, exec) without an explicit approval gate, sandbox, or dry-run mode.",
       "remediation": "Wrap the tool in an approval gate or restrict its capability surface to a sandbox.",
@@ -1062,8 +1061,7 @@
         "structural-pattern"
       ],
       "ruleId": "TER-AI-104",
-      "ruleUri": "docs/rules/ai/tool-without-sandbox.md",
-      "promotionPlan": "0.2 — verb-list + decorator scan. Promotes to stable once the MCP / agent-config parsers ship in 0.2."
+      "ruleUri": "docs/rules/ai/tool-without-sandbox.md"
     },
     {
       "type": "aiNonDeterministicEval",
