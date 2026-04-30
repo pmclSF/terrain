@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/pmclSF/terrain/internal/aidetect"
+	"github.com/pmclSF/terrain/internal/airun"
 	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/coverage"
 	"github.com/pmclSF/terrain/internal/depgraph"
@@ -75,6 +76,11 @@ type PipelineOptions struct {
 	// GauntletPaths are paths to Gauntlet AI eval result artifacts (JSON).
 	// When set, Gauntlet results are ingested and applied to scenarios.
 	GauntletPaths []string
+
+	// PromptfooPaths are paths to Promptfoo `--output` JSON files.
+	// When set, the Promptfoo adapter ingests them into snap.EvalRuns.
+	// SignalV2 0.2 field — see internal/airun/promptfoo.go.
+	PromptfooPaths []string
 
 	// SlowTestThresholdMs overrides the default slow test threshold.
 	SlowTestThresholdMs float64
@@ -167,11 +173,13 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		terrainCfgErr     error
 		ownerResolver     *ownership.Resolver
 		runtimeResults    []runtime.TestResult
-		runtimeIngestErr  error
-		coverageArtifacts []coverage.CoverageArtifact
-		coverageIngestErr error
-		gauntletArtifacts []*gauntlet.Artifact
-		gauntletIngestErr error
+		runtimeIngestErr     error
+		coverageArtifacts    []coverage.CoverageArtifact
+		coverageIngestErr    error
+		gauntletArtifacts    []*gauntlet.Artifact
+		gauntletIngestErr    error
+		promptfooEnvelopes   []models.EvalRunEnvelope
+		promptfooIngestErr   error
 
 		staticAnalysisDuration  time.Duration
 		policyLoadDuration      time.Duration
@@ -275,6 +283,15 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 				return err
 			}
 			gauntletArtifacts, gauntletIngestErr = ingestGauntletArtifacts(opt.GauntletPaths)
+			return nil
+		})
+	}
+	if len(opt.PromptfooPaths) > 0 {
+		startTask(&prepWG, func(taskCtx context.Context) error {
+			if err := taskCtx.Err(); err != nil {
+				return err
+			}
+			promptfooEnvelopes, promptfooIngestErr = ingestPromptfooArtifacts(opt.PromptfooPaths)
 			return nil
 		})
 	}
@@ -460,6 +477,26 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 				Name:   "gauntlet",
 				Status: models.DataSourceAvailable,
 				Detail: fmt.Sprintf("%d artifact(s) ingested", len(opt.GauntletPaths)),
+			})
+		}
+	}
+
+	// Step 4d: Apply Promptfoo eval-run envelopes (the 0.2 adapter
+	// path; the runtime-aware AI detectors will consume these).
+	if len(opt.PromptfooPaths) > 0 {
+		if promptfooIngestErr != nil {
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "promptfoo",
+				Status: models.DataSourceError,
+				Detail: promptfooIngestErr.Error(),
+				Impact: "Promptfoo results are unavailable. Per-case scoring + token usage will not feed cost/hallucination/retrieval detectors.",
+			})
+		} else {
+			snapshot.EvalRuns = append(snapshot.EvalRuns, promptfooEnvelopes...)
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "promptfoo",
+				Status: models.DataSourceAvailable,
+				Detail: fmt.Sprintf("%d artifact(s) ingested", len(opt.PromptfooPaths)),
 			})
 		}
 	}
@@ -986,6 +1023,29 @@ func ingestGauntletArtifacts(paths []string) ([]*gauntlet.Artifact, error) {
 		artifacts = append(artifacts, art)
 	}
 	return artifacts, nil
+}
+
+// ingestPromptfooArtifacts parses each Promptfoo `--output` JSON file
+// and returns the resulting envelope per file. Errors abort early so a
+// malformed file fails the run loudly.
+//
+// The actual parsing lives in internal/airun.ParsePromptfooJSON; this
+// helper is the thin pipeline-side wrapper that translates each
+// EvalRunResult into the snapshot envelope.
+func ingestPromptfooArtifacts(paths []string) ([]models.EvalRunEnvelope, error) {
+	out := make([]models.EvalRunEnvelope, 0, len(paths))
+	for _, p := range paths {
+		result, err := airun.LoadPromptfooFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("promptfoo artifact %s: %w", p, err)
+		}
+		env, err := result.ToEnvelope(p)
+		if err != nil {
+			return nil, fmt.Errorf("promptfoo envelope for %s: %w", p, err)
+		}
+		out = append(out, env)
+	}
+	return out, nil
 }
 
 func applyCoverageArtifacts(snapshot *models.TestSuiteSnapshot, artifacts []coverage.CoverageArtifact) {

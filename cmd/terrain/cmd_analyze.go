@@ -126,10 +126,14 @@ func relativeToRoot(path, root string) string {
 	return path
 }
 
-func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, slowThreshold float64, redactPaths bool) error {
+func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, promptfooPaths string, slowThreshold float64, redactPaths bool) error {
 	parsedRuntime := parseRuntimePaths(runtimePaths)
-	parsedGauntlet := parseRuntimePaths(gauntletPaths) // same comma-split logic
+	parsedGauntlet := parseRuntimePaths(gauntletPaths)        // same comma-split logic
+	parsedPromptfoo := parseRuntimePaths(promptfooPaths)      // same comma-split logic
 	if err := validateCommandInputs(root, coveragePath, parsedRuntime, parsedGauntlet); err != nil {
+		return err
+	}
+	if err := validateExistingPaths("--promptfoo-results", parsedPromptfoo); err != nil {
 		return err
 	}
 	var sarifOutput, annotationOutput bool
@@ -153,6 +157,7 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 
 	opt := analysisPipelineOptions(coveragePath, coverageRunLabel, parsedRuntime, slowThreshold)
 	opt.GauntletPaths = parsedGauntlet
+	opt.PromptfooPaths = parsedPromptfoo
 	opt.OnProgress = newProgressFunc(jsonOutput)
 	result, err := engine.RunPipeline(root, opt)
 	if err != nil {
@@ -362,6 +367,18 @@ func validateCommandInputs(root, coveragePath string, runtimePaths, gauntletPath
 	for _, p := range gauntletPaths {
 		if _, err := os.Stat(p); err != nil {
 			return fmt.Errorf("invalid --gauntlet path %q: %w", p, err)
+		}
+	}
+	return nil
+}
+
+// validateExistingPaths is a small helper that mirrors the existing
+// per-flag validation but works for any flag's path list. Used by the
+// new --promptfoo-results flag and any future eval-adapter flags.
+func validateExistingPaths(flagName string, paths []string) error {
+	for _, p := range paths {
+		if _, err := os.Stat(p); err != nil {
+			return fmt.Errorf("invalid %s path %q: %w", flagName, p, err)
 		}
 	}
 	return nil
