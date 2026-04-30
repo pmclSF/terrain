@@ -145,13 +145,16 @@ docs-gen:
 docs-verify:
 	@tmp=$$(mktemp -d) ; \
 	go run ./cmd/terrain-docs-gen -out "$$tmp" ; \
-	if ! diff -u docs/signals/manifest.json "$$tmp/docs/signals/manifest.json" ; then \
-		echo "::error::docs/signals/manifest.json is out of date. Run 'make docs-gen' and commit." ; \
-		rm -rf "$$tmp" ; \
-		exit 1 ; \
-	fi ; \
+	rc=0 ; \
+	for f in docs/signals/manifest.json docs/severity-rubric.md ; do \
+		if ! diff -u "$$f" "$$tmp/$$f" ; then \
+			echo "::error::$$f is out of date. Run 'make docs-gen' and commit." ; \
+			rc=1 ; \
+		fi ; \
+	done ; \
 	rm -rf "$$tmp" ; \
-	echo "docs-verify: docs/signals/manifest.json is up to date."
+	if [ $$rc -ne 0 ] ; then exit $$rc ; fi ; \
+	echo "docs-verify: docs/signals/manifest.json + docs/severity-rubric.md are up to date."
 
 release-verify:
 	$(MAKE) go-release-verify

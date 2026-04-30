@@ -1,6 +1,8 @@
-// Command terrain-docs-gen regenerates the deterministic JSON exports of
-// in-tree manifests under docs/. Today the only output is
-// docs/signals/manifest.json, derived from internal/signals.allSignalManifest.
+// Command terrain-docs-gen regenerates deterministic documentation
+// outputs from in-tree source-of-truth Go data. Today the outputs are:
+//
+//	docs/signals/manifest.json   from internal/signals.allSignalManifest
+//	docs/severity-rubric.md      from internal/severity.clauses
 //
 // The generator is the source of truth — `make docs-gen` writes; `make
 // docs-verify` writes to a tempdir and diffs against the committed copy.
@@ -22,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pmclSF/terrain/internal/severity"
 	"github.com/pmclSF/terrain/internal/signals"
 )
 
@@ -41,18 +44,41 @@ func run() error {
 		return err
 	}
 
-	manifestPath := filepath.Join(root, "docs", "signals", "manifest.json")
-	if err := os.MkdirAll(filepath.Dir(manifestPath), 0o755); err != nil {
-		return fmt.Errorf("create %s: %w", filepath.Dir(manifestPath), err)
+	if err := writeManifest(root); err != nil {
+		return err
+	}
+	if err := writeSeverityRubric(root); err != nil {
+		return err
+	}
+	return nil
+}
+
+func writeManifest(root string) error {
+	path := filepath.Join(root, "docs", "signals", "manifest.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create %s: %w", filepath.Dir(path), err)
 	}
 	data, err := signals.MarshalManifestJSON()
 	if err != nil {
 		return fmt.Errorf("marshal manifest: %w", err)
 	}
-	if err := os.WriteFile(manifestPath, data, 0o644); err != nil {
-		return fmt.Errorf("write %s: %w", manifestPath, err)
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
 	}
-	fmt.Println("wrote", manifestPath)
+	fmt.Println("wrote", path)
+	return nil
+}
+
+func writeSeverityRubric(root string) error {
+	path := filepath.Join(root, "docs", "severity-rubric.md")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return fmt.Errorf("create %s: %w", filepath.Dir(path), err)
+	}
+	data := severity.RenderMarkdown()
+	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
+		return fmt.Errorf("write %s: %w", path, err)
+	}
+	fmt.Println("wrote", path)
 	return nil
 }
 
