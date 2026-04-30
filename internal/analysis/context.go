@@ -270,6 +270,17 @@ func inferAIContextCachedCtx(ctx context.Context, root string, testFiles []model
 	templateSurfaces := detectAITemplateFiles(root, existingIDs)
 	surfaces = append(surfaces, templateSurfaces...)
 
+	// 0.2 expansion: dataset filenames, DB-cursor / pgvector retrieval,
+	// MCP tool definitions. The detector walks sourceFiles itself
+	// rather than reusing fc; the patterns are coarse-grained and
+	// re-reading is fine. See ai_extra_surfaces.go.
+	for _, s := range DetectExtraAISurfaces(root, testFiles, existing, sourceFiles) {
+		if !existingIDs[s.SurfaceID] {
+			existingIDs[s.SurfaceID] = true
+			surfaces = append(surfaces, s)
+		}
+	}
+
 	return surfaces
 }
 
