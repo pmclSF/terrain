@@ -1,0 +1,26 @@
+name: npm-token-check
+
+# One-shot manual validation that NPM_TOKEN can authenticate to the
+# public npm registry. Runs `npm whoami` only — never publishes. Delete
+# this file once the v0.1.2 release pipeline is confirmed working.
+#
+# Trigger: gh workflow run npm-token-check.yml
+
+on:
+  workflow_dispatch:
+
+jobs:
+  whoami:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.x'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Verify NPM_TOKEN authenticates
+        run: |
+          echo "Querying npm whoami…"
+          npm whoami
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
