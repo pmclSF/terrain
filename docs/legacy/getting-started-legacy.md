@@ -1,4 +1,9 @@
-> **Legacy document.** This describes the legacy JavaScript converter engine. For the current engine, see the [CLI spec](../cli-spec.md) and [architecture overview](../architecture/00-overview.md).
+> ⚠️ **[DEPRECATED — DO NOT USE FOR NEW WORK]** This document describes the legacy
+> JavaScript converter engine that predates the current Go-native pipeline. It is
+> kept only for historical reference. The current converter lives in
+> `internal/convert/` and is documented in [docs/cli-spec.md](../cli-spec.md). For
+> per-direction conversion status, run `terrain convert list` or see
+> [docs/release/feature-status.md](../release/feature-status.md).
 
 # Getting Started with Terrain (Legacy Converter)
 

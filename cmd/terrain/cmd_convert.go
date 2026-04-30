@@ -212,6 +212,8 @@ func runConvert(source string, opts convertCommandOptions) error {
 		return err
 	}
 
+	printExperimentalWarning(result.Direction, opts.JSON)
+
 	if result.Plan != nil {
 		return renderConvertPlan(*result.Plan, opts.JSON)
 	}
@@ -491,11 +493,30 @@ func humanizeGoNativeState(state conv.GoNativeState) string {
 	switch state {
 	case conv.GoNativeStateImplemented:
 		return "implemented"
+	case conv.GoNativeStateExperimental:
+		return "experimental"
 	case conv.GoNativeStatePrioritized:
 		return "prioritized"
 	default:
 		return "cataloged"
 	}
+}
+
+// printExperimentalWarning emits a stderr notice when an experimental
+// conversion direction is invoked. It is suppressed when JSON output is
+// requested so machine consumers see clean structured output; in that case
+// the same information is available via the Direction.GoNativeState field.
+func printExperimentalWarning(direction conv.Direction, jsonOutput bool) {
+	if direction.GoNativeState != conv.GoNativeStateExperimental || jsonOutput {
+		return
+	}
+	fmt.Fprintf(
+		os.Stderr,
+		"warning: %s -> %s is marked EXPERIMENTAL. Coverage of real-world test\n"+
+			"         patterns is incomplete; expect to clean up the output by hand.\n"+
+			"         See docs/release/feature-status.md for promotion criteria.\n",
+		direction.From, direction.To,
+	)
 }
 
 func printConvertUsage() {
