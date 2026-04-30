@@ -45,24 +45,27 @@ jobs:
   # one runner per OS family. Linux runner produces both amd64 (native) and
   # arm64 (cross-compiled with gcc-aarch64-linux-gnu).
   #
-  # Each runner builds its own slice via goreleaser `build --id=<list>`, then
-  # packages/signs via `release --skip-build --skip=publish,validate`. The
-  # aggregator job below downloads all artifacts and creates a single GitHub
-  # Release.
+  # Each runner builds its own slice via goreleaser `build --id <each>`, then
+  # packages/signs via `release --skip=publish,validate,build`. The aggregator
+  # job below downloads all artifacts and creates a single GitHub Release.
   go-release-build:
     needs: verify
     strategy:
       fail-fast: false
       matrix:
         include:
+          # build_args is the verbatim --id flag list passed to goreleaser
+          # build. Goreleaser v2's --id is singular and does NOT accept
+          # comma-separated values, so multi-id builds need one --id flag
+          # per id (the linux runner produces both amd64 and arm64).
           - os: ubuntu-latest
-            build_ids: terrain-linux-amd64,terrain-linux-arm64
+            build_args: --id terrain-linux-amd64 --id terrain-linux-arm64
             artifact_name: terrain-linux
           - os: macos-latest
-            build_ids: terrain-darwin
+            build_args: --id terrain-darwin
             artifact_name: terrain-darwin
           - os: windows-latest
-            build_ids: terrain-windows
+            build_args: --id terrain-windows
             artifact_name: terrain-windows
     runs-on: ${{ matrix.os }}
     steps:
@@ -95,19 +98,20 @@ jobs:
       uses: goreleaser/goreleaser-action@v6
       with:
         version: '~> v2'
-        args: build --clean --id ${{ matrix.build_ids }}
+        args: build --clean ${{ matrix.build_args }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COSIGN_ENABLED: "1"
 
     # Run goreleaser's release pipeline (archives, SBOMs, signs, checksums)
-    # without publishing or rebuilding. The build step above already produced
-    # binaries for this matrix entry.
+    # without publishing or rebuilding. Goreleaser v2 folded the standalone
+    # --skip-build flag into --skip=build, so all skip phases are listed in
+    # one comma-separated value.
     - name: Package + sign artifacts
       uses: goreleaser/goreleaser-action@v6
       with:
         version: '~> v2'
-        args: release --clean --skip=publish,validate --skip-build
+        args: release --clean --skip=publish,validate,build
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COSIGN_ENABLED: "1"
