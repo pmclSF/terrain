@@ -442,6 +442,16 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		},
 		Detector: &aidetect.CostRegressionDetector{},
 	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "ai.retrieval-regression",
+			Domain:       signals.DomainAI,
+			EvidenceType: signals.EvidenceRuntime,
+			Description:  "Flag drops in retrieval-quality named-scores (context_relevance, nDCG, coverage, etc.) vs baseline.",
+			SignalTypes:  []models.SignalType{signals.SignalAIRetrievalRegression},
+		},
+		Detector: &aidetect.RetrievalRegressionDetector{},
+	})
 
 	// Governance detectors (depend on signals from quality/migration detectors).
 	if cfg.PolicyConfig != nil && !cfg.PolicyConfig.IsEmpty() {

@@ -5,7 +5,7 @@
 **Type:** `aiRetrievalRegression`  
 **Domain:** ai  
 **Default severity:** high  
-**Status:** planned
+**Status:** stable
 
 ## Summary
 
@@ -14,10 +14,6 @@ Context relevance, nDCG, or coverage dropped versus the recorded baseline.
 ## Remediation
 
 Investigate the regression; revert the offending change or re-tune retrieval before merging.
-
-## Promotion plan
-
-0.2 — Ragas adapter ships first, then this detector consumes its metrics.
 
 ## Evidence sources
 
