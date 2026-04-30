@@ -28,6 +28,14 @@ type TestMigrationOptions struct {
 	ValidationMode    string `json:"validationMode,omitempty"`
 	Plan              bool   `json:"plan,omitempty"`
 	DryRun            bool   `json:"dryRun,omitempty"`
+
+	// Preview runs the conversion to a temp directory and returns
+	// per-file unified diffs without writing to the user's --output.
+	// Distinct from DryRun (which produces a structured plan only):
+	// Preview shows the actual converted content as a diff against
+	// the source, useful when the structural plan is fine but you
+	// want to eyeball the output before committing.
+	Preview bool `json:"preview,omitempty"`
 }
 
 // TestMigrationPlan describes a native conversion plan or dry-run preview.
@@ -53,6 +61,22 @@ type TestMigrationResult struct {
 	SourceDetection *Detection         `json:"sourceDetection,omitempty"`
 	Plan            *TestMigrationPlan `json:"plan,omitempty"`
 	Execution       *ExecutionResult   `json:"execution,omitempty"`
+
+	// Preview is populated when TestMigrationOptions.Preview was set.
+	// One entry per converted file with the unified diff against the
+	// original source. Mutually exclusive with Execution: preview runs
+	// to a temp directory and the temp output is discarded after the
+	// diff is captured.
+	Preview []FilePreview `json:"preview,omitempty"`
+}
+
+// FilePreview is one converted file's diff captured during a Preview run.
+type FilePreview struct {
+	SourcePath string `json:"sourcePath"`
+	OutputPath string `json:"outputPath,omitempty"`
+	Status     string `json:"status,omitempty"`
+	Changed    bool   `json:"changed"`
+	Diff       string `json:"diff"`
 }
 
 // RunTestMigration plans or executes a single native test migration request.
@@ -88,6 +112,18 @@ func RunTestMigration(source string, options TestMigrationOptions) (TestMigratio
 			direction.From,
 			direction.To,
 		)
+	}
+
+	// Preview mode: run the conversion to a temp directory, build
+	// per-file unified diffs, then discard the temp output. The user's
+	// --output (if set) is ignored — preview is read-only.
+	if options.Preview {
+		previews, err := runPreview(source, direction, options)
+		if err != nil {
+			return result, err
+		}
+		result.Preview = previews
+		return result, nil
 	}
 
 	execution, err := Execute(source, direction, ExecuteOptions{
