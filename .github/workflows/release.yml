@@ -114,6 +114,7 @@ jobs:
       run: |
         set -euo pipefail
         cd dist
+        DIST_ABS="$(pwd)"
         VERSION="${GITHUB_REF_NAME#v}"
 
         echo "=== Built binaries ==="
@@ -140,10 +141,12 @@ jobs:
           archive_base="terrain_${VERSION}_${goos}_${goarch}"
           if [[ "$goos" == "windows" ]]; then
             archive="${archive_base}.zip"
-            # 7z is preinstalled on GitHub-hosted Windows runners; produces
-            # a flat zip with just the .exe at the root, matching what
-            # goreleaser's archives block would have produced.
-            (cd "$binary_dir" && 7z a "${OLDPWD}/dist/${archive}" "$bin_name" > /dev/null)
+            # 7z is preinstalled on GitHub-hosted Windows runners. cd into
+            # the binary dir so the zip contains terrain.exe at the root
+            # (not <id>/terrain.exe). Use DIST_ABS captured before any cd
+            # since OLDPWD inside the subshell would point at the prior
+            # parent, not the dist root.
+            (cd "$binary_dir" && 7z a "${DIST_ABS}/${archive}" "$bin_name" > /dev/null)
           else
             archive="${archive_base}.tar.gz"
             tar -czf "$archive" -C "$binary_dir" "$bin_name"
