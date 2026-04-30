@@ -1,0 +1,57 @@
+# Enforce LF line endings repo-wide so behaviour is the same on Linux,
+# macOS, and Windows checkouts. Without this file, Windows clones with
+# default `core.autocrlf=true` rewrite text files to CRLF on checkout,
+# which breaks byte-equality assertions in golden tests, snapshot
+# determinism, and tree-sitter parsing on a few edge cases.
+#
+# Round-of-CI failures on the multi-OS matrix that landed in 0.1.2 were
+# traced back to this exact issue; the .gitattributes is how we make
+# the contract durable.
+
+# Default: text files normalise to LF in the working tree.
+* text=auto eol=lf
+
+# Explicitly LF for any format where byte equality matters or where
+# a CRLF would break a parser.
+*.go         text eol=lf
+*.js         text eol=lf
+*.jsx        text eol=lf
+*.ts         text eol=lf
+*.tsx        text eol=lf
+*.mjs        text eol=lf
+*.mts        text eol=lf
+*.py         text eol=lf
+*.java       text eol=lf
+*.json       text eol=lf
+*.yaml       text eol=lf
+*.yml        text eol=lf
+*.toml       text eol=lf
+*.md         text eol=lf
+*.html       text eol=lf
+*.css        text eol=lf
+*.sh         text eol=lf
+*.bash       text eol=lf
+Makefile     text eol=lf
+*.golden     text eol=lf
+
+# Binary file types — git should not attempt EOL conversion.
+*.png        binary
+*.jpg        binary
+*.jpeg       binary
+*.gif        binary
+*.ico        binary
+*.pdf        binary
+*.zip        binary
+*.tar        binary
+*.tar.gz     binary
+*.gz         binary
+*.exe        binary
+*.so         binary
+*.dylib      binary
+*.dll        binary
+*.a          binary
+*.o          binary
+
+# Generated / external trees we don't want git to touch.
+benchmarks/repos/**     -text -diff
+node_modules/**          -text -diff

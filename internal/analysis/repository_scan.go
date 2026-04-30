@@ -62,6 +62,12 @@ func discoverTestFiles(root string, projectCtx ...*ProjectContext) ([]models.Tes
 		if relErr != nil {
 			relPath = ""
 		}
+		// Normalise to forward slashes so downstream consumers
+		// (.gitignore matcher, isTestFile, signal locations, JSON output)
+		// see the same shape on every OS. Windows produces backslash
+		// separators by default; the rest of the pipeline assumes
+		// forward slashes.
+		relPath = filepath.ToSlash(relPath)
 
 		if d.IsDir() {
 			base := filepath.Base(path)
