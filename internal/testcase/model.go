@@ -77,4 +77,11 @@ type ParameterizationInfo struct {
 	// EstimatedInstances is the estimated number of parameter combinations
 	// if statically determinable.
 	EstimatedInstances int `json:"estimatedInstances,omitempty"`
+
+	// Values is the literal source text of each parametrize entry, when
+	// the decorator's value list was a static literal we could parse.
+	// One entry per row in @pytest.mark.parametrize(args, [v1, v2, ...]).
+	// Empty when values are computed at runtime, fetched from a fixture,
+	// or otherwise non-static. SignalV2 0.2 field.
+	Values []string `json:"values,omitempty"`
 }

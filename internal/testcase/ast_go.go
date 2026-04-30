@@ -39,9 +39,11 @@ func extractGoWithAST(src, relPath, framework string) []TestCase {
 			}
 			cases = append(cases, tc)
 
-			// Walk function body for t.Run subtests.
+			// Walk function body for t.Run subtests, tracking the
+			// nesting stack so deeply-nested t.Run calls retain the
+			// full path (test/sub1/sub2/...).
 			if fn.Body != nil {
-				subtests := extractGoSubtests(fn.Body, fset, name)
+				subtests := extractGoSubtestsHierarchical(fn.Body, fset, []string{name})
 				cases = append(cases, subtests...)
 			}
 		}
@@ -65,42 +67,72 @@ func isTestSignature(fn *ast.FuncDecl) bool {
 	return true
 }
 
-// extractGoSubtests walks a function body looking for t.Run("name", ...) calls.
-func extractGoSubtests(body *ast.BlockStmt, fset *token.FileSet, parentName string) []TestCase {
+// extractGoSubtestsHierarchical recursively walks the function body
+// looking for t.Run(name, fn) calls and tracks the full nesting stack
+// so deeply-nested t.Runs retain their parent chain.
+//
+// stack is the chain of names from the enclosing test function down to
+// the current call (without the new t.Run's own name appended yet).
+// Each emitted TestCase has SuiteHierarchy = stack and TestName = the
+// new t.Run's literal name argument; recursion into the t.Run's
+// callback function passes stack+[name].
+//
+// We stop the default ast.Inspect descent inside a t.Run call expression
+// because we recurse manually with the updated stack — letting Inspect
+// continue would re-visit the inner t.Runs at the wrong stack depth.
+func extractGoSubtestsHierarchical(node ast.Node, fset *token.FileSet, stack []string) []TestCase {
 	var cases []TestCase
+	if node == nil {
+		return cases
+	}
 
-	ast.Inspect(body, func(n ast.Node) bool {
+	ast.Inspect(node, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
 		if !ok {
 			return true
 		}
-
-		// Check for t.Run(name, func)
 		sel, ok := call.Fun.(*ast.SelectorExpr)
 		if !ok || sel.Sel.Name != "Run" {
 			return true
 		}
-
-		// First argument should be a string literal.
 		if len(call.Args) < 2 {
 			return true
 		}
-
 		name := extractGoStringLiteral(call.Args[0])
 		if name == "" {
 			return true
 		}
 
+		// Copy the stack so the appended slice doesn't alias the
+		// caller's; without this, sibling t.Runs see each other's
+		// names in their hierarchies.
+		hierarchy := append([]string(nil), stack...)
+
 		tc := TestCase{
 			TestName:       name,
-			SuiteHierarchy: []string{parentName},
+			SuiteHierarchy: hierarchy,
 			Line:           fset.Position(call.Pos()).Line,
 			ExtractionKind: ExtractionStatic,
 			Confidence:     ConfidenceSyntaxMatch,
 		}
 		cases = append(cases, tc)
 
-		return true // Continue walking for nested t.Run.
+		// Recurse into the t.Run callback body with the deeper stack.
+		// Args[1] is typically `func(t *testing.T) { ... }`. If it's
+		// a non-literal (e.g. a named function reference), we don't
+		// have its body in this AST and can't recurse — that's fine.
+		if fnLit, ok := call.Args[1].(*ast.FuncLit); ok && fnLit.Body != nil {
+			deeper := extractGoSubtestsHierarchical(
+				fnLit.Body, fset,
+				append(hierarchy, name),
+			)
+			cases = append(cases, deeper...)
+		}
+
+		// Stop default descent into this CallExpr; we recursed manually
+		// with the correct deeper stack. Returning false here prevents
+		// double-emission and wrong-stack attribution.
+		return false
 	})
 
 	return cases
