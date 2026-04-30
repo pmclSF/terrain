@@ -769,15 +769,15 @@ var allSignalManifest = []ManifestEntry{
 	},
 	{
 		Type: SignalAIPromptInjectionRisk, ConstName: "SignalAIPromptInjectionRisk",
-		Domain: models.CategoryAI, Status: StatusPlanned,
+		Domain: models.CategoryAI, Status: StatusExperimental,
 		Title:           "Prompt-Injection-Shaped Concatenation",
 		Description:     "User-controlled input is concatenated into a prompt without escaping, system-prompt boundaries, or structured input boundaries.",
 		Remediation:     "Use a prompt template with explicit user-content boundaries, or run user input through a sanitiser.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.6, ConfidenceMax: 0.85,
-		EvidenceSources: []string{"ast", "structural-pattern"},
+		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "TER-AI-102", RuleURI: "docs/rules/ai/prompt-injection-risk.md",
-		PromotionPlan:   "0.2 — taint-flow-style detector. Heuristic in 0.2, AST-precise in 0.3.",
+		PromotionPlan:   "0.2 ships heuristic regex detection. Promotes to stable in 0.3 when AST-precise taint-flow analysis lands.",
 	},
 	{
 		Type: SignalAIHardcodedAPIKey, ConstName: "SignalAIHardcodedAPIKey",
@@ -804,7 +804,7 @@ var allSignalManifest = []ManifestEntry{
 	},
 	{
 		Type: SignalAINonDeterministicEval, ConstName: "SignalAINonDeterministicEval",
-		Domain: models.CategoryAI, Status: StatusPlanned,
+		Domain: models.CategoryAI, Status: StatusStable,
 		Title:           "Non-Deterministic Eval Configuration",
 		Description:     "An LLM eval runs without temperature pinned to 0 or a deterministic seed, so re-runs produce noisy comparisons.",
 		Remediation:     "Pin temperature: 0 and a seed in the eval config, or document the non-determinism budget.",
@@ -812,11 +812,10 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.9, ConfidenceMax: 0.98,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "TER-AI-105", RuleURI: "docs/rules/ai/non-deterministic-eval.md",
-		PromotionPlan:   "0.2 — YAML/JSON config inspection. Promotes to stable on first detector commit.",
 	},
 	{
 		Type: SignalAIModelDeprecationRisk, ConstName: "SignalAIModelDeprecationRisk",
-		Domain: models.CategoryAI, Status: StatusPlanned,
+		Domain: models.CategoryAI, Status: StatusStable,
 		Title:           "Model Pinned to Deprecated or Floating Tag",
 		Description:     "Code references a model name that resolves to a deprecated version or a floating tag (e.g. `gpt-4`, `gpt-3.5-turbo`).",
 		Remediation:     "Pin to a dated model variant or upgrade to a supported tier.",
@@ -824,7 +823,6 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "TER-AI-106", RuleURI: "docs/rules/ai/model-deprecation-risk.md",
-		PromotionPlan:   "0.2 — deprecation list maintained alongside the prompt-surface inventory.",
 	},
 	{
 		Type: SignalAICostRegression, ConstName: "SignalAICostRegression",
