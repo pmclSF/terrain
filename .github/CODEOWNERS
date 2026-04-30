@@ -1,0 +1,31 @@
+# Code owners for the Terrain repository.
+#
+# GitHub uses this file to auto-request reviews on pull requests touching
+# matching paths. Branch-protection rules can be configured to require
+# owner approval before merging — that gating is set in the GitHub UI,
+# not here.
+#
+# Wildcards work like .gitignore. The last matching pattern wins, so
+# more-specific overrides go below the catch-all.
+#
+# Today the repo has a single primary maintainer; this file documents
+# that explicitly so external contributors know who reviews their work
+# and so future co-maintainers can be added by simply listing them.
+
+* @PMCLSF
+
+# Release-engineering surfaces deserve extra eyes when present:
+# anything that touches signing, distribution, or reproducibility should
+# be reviewed by whoever currently owns release pipeline work.
+/.github/workflows/release.yml @PMCLSF
+/.goreleaser.yaml @PMCLSF
+/bin/terrain-installer.js @PMCLSF
+/bin/postinstall.js @PMCLSF
+
+# Schema and rubric documents are part of the public contract; changes
+# should be treated as user-facing.
+/docs/schema/ @PMCLSF
+/docs/scoring-rubric.md @PMCLSF
+/docs/health-grade-rubric.md @PMCLSF
+/docs/release/feature-status.md @PMCLSF
+/internal/signals/manifest.go @PMCLSF
