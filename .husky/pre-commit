@@ -1,0 +1,46 @@
+#!/usr/bin/env sh
+
+# Block accidental commits of large or binary files.
+#
+# Round 1/2 review confirmed that prebuilt `terrain` and `terrain-bench`
+# binaries had been seen sitting in the working tree (gitignored, but
+# easy to add by mistake). This hook keeps that surface narrow:
+#
+#   - any file > 5 MB is rejected
+#   - any file with a binary-only extension (.exe, .so, .dylib, .a)
+#     is rejected outright, even below the size threshold
+#
+# Override with `git commit --no-verify` if you actually meant to add a
+# binary asset, but please consider whether that's the right call —
+# Terrain ships binaries via goreleaser, not as repo content.
+
+set -e
+
+MAX_BYTES=5242880  # 5 MB
+
+reject() {
+  printf '\033[31m[pre-commit] rejecting %s: %s\033[0m\n' "$1" "$2" >&2
+  exit 1
+}
+
+# Iterate every file in the staging area.
+git diff --cached --name-only --diff-filter=AM | while IFS= read -r file; do
+  case "$file" in
+    *.exe|*.so|*.dylib|*.a|*.o|*.dll|*.pyd|*.pyc|*.class|*.jar|*.war)
+      reject "$file" "binary file extension is not allowed in commits"
+      ;;
+  esac
+
+  if [ -f "$file" ]; then
+    size=$(wc -c <"$file" 2>/dev/null | tr -d ' ')
+    if [ -n "$size" ] && [ "$size" -gt "$MAX_BYTES" ]; then
+      reject "$file" "file is ${size} bytes (>${MAX_BYTES}); large assets belong in goreleaser, not git"
+    fi
+  fi
+done
+
+# Then run the existing commit-msg hook chain (lint-staged, etc.) if any
+# project script is wired up. lint-staged is what npm scripts call into.
+if [ -f package.json ] && command -v npx >/dev/null 2>&1; then
+  npx --no-install lint-staged 2>/dev/null || true
+fi
