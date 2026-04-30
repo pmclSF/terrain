@@ -88,23 +88,28 @@ func walkDirRecCtx(ctx context.Context, root, rel string, fn func(relPath string
 			return ctx.Err()
 		}
 
+		// See walkDirRec for the rationale: childRel uses OS-native
+		// separators for filesystem operations, childRelSlash uses
+		// forward slashes for callback delivery. The rest of the
+		// pipeline assumes forward-slash paths.
 		childRel := e.Name()
 		if rel != "" {
 			childRel = filepath.Join(rel, e.Name())
 		}
+		childRelSlash := filepath.ToSlash(childRel)
 		if e.Type()&os.ModeSymlink != 0 {
 			continue
 		}
 
 		if e.IsDir() {
-			if fn(childRel, true) {
+			if fn(childRelSlash, true) {
 				continue
 			}
 			if err := walkDirRecCtx(ctx, root, childRel, fn); err != nil {
 				return err
 			}
 		} else {
-			fn(childRel, false)
+			fn(childRelSlash, false)
 		}
 	}
 	return nil

@@ -42,8 +42,13 @@ func compareGolden(t *testing.T, name string, data any) {
 		t.Fatalf("golden file not found: %s\nRun with -update-golden to create it.", golden)
 	}
 
-	actualStr := strings.TrimSpace(string(actual))
-	expectedStr := strings.TrimSpace(string(expected))
+	// Normalise both sides: trim trailing whitespace and strip carriage
+	// returns so a checkout with `core.autocrlf=true` (the Windows default)
+	// doesn't produce a spurious diff. The on-disk golden is already
+	// LF-only via .gitattributes; this is belt-and-braces for users whose
+	// editor or git config inserts CR bytes anyway.
+	actualStr := strings.TrimSpace(strings.ReplaceAll(string(actual), "\r", ""))
+	expectedStr := strings.TrimSpace(strings.ReplaceAll(string(expected), "\r", ""))
 
 	if actualStr != expectedStr {
 		t.Errorf("golden mismatch for %s\n\nExpected:\n%s\n\nActual:\n%s\n\nRun with -update-golden to update.",

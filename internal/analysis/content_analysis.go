@@ -573,22 +573,28 @@ func walkDirRec(root, rel string, fn func(relPath string, isDir bool) bool) erro
 	}
 
 	for _, e := range entries {
+		// childRel is built with the OS-native separator (backslash on
+		// Windows) so it can be passed back to filepath.Join below.
+		// childRelSlash is the forward-slash form we hand to callbacks
+		// — the rest of the analysis pipeline (signal locations, JSON
+		// output, SARIF, golden tests) assumes forward slashes.
 		childRel := e.Name()
 		if rel != "" {
 			childRel = filepath.Join(rel, e.Name())
 		}
+		childRelSlash := filepath.ToSlash(childRel)
 		if e.Type()&os.ModeSymlink != 0 {
 			// Skip symlinks to avoid filesystem cycles.
 			continue
 		}
 
 		if e.IsDir() {
-			if fn(childRel, true) {
+			if fn(childRelSlash, true) {
 				continue // skip
 			}
 			_ = walkDirRec(root, childRel, fn)
 		} else {
-			fn(childRel, false)
+			fn(childRelSlash, false)
 		}
 	}
 	return nil

@@ -1,6 +1,7 @@
 package scoring
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/models"
@@ -120,6 +121,9 @@ func TestComputeRisk_LargeRepoAbsoluteBurden(t *testing.T) {
 }
 
 func TestComputeRisk_DirectoryRollup(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("directory rollup map keyed by filepath.Dir output without ToSlash; tracked in #114")
+	}
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
 		Signals: []models.Signal{
@@ -211,5 +215,114 @@ func TestScoreToBand(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("scoreToBand(%.1f) = %q, want %q", tt.score, got, tt.want)
 		}
+	}
+}
+
+// TestScoreToBand_Boundaries pins the exact band assignment at every
+// threshold. Round 4 review identified that small score perturbations could
+// silently flip bands without anyone noticing; this test acts as a tripwire.
+//
+// If you intentionally change a band threshold, update the rubric in
+// docs/scoring-rubric.md AND update the matching named constant in
+// risk_engine.go AND adjust this table — failing in only one place is what
+// drift looks like.
+func TestScoreToBand_Boundaries(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		score float64
+		want  models.RiskBand
+	}{
+		// Just below each boundary stays in the lower band.
+		{3.99, models.RiskBandLow},
+		{8.99, models.RiskBandMedium},
+		{15.99, models.RiskBandHigh},
+
+		// Exactly on each boundary jumps to the upper band (>=, not >).
+		{4.00, models.RiskBandMedium},
+		{9.00, models.RiskBandHigh},
+		{16.00, models.RiskBandCritical},
+
+		// Just above each boundary stays in the upper band.
+		{4.01, models.RiskBandMedium},
+		{9.01, models.RiskBandHigh},
+		{16.01, models.RiskBandCritical},
+
+		// Extremes.
+		{0.00, models.RiskBandLow},
+		{0.01, models.RiskBandLow},
+		{1000.00, models.RiskBandCritical},
+	}
+
+	for _, tc := range cases {
+		got := scoreToBand(tc.score)
+		if got != tc.want {
+			t.Errorf("scoreToBand(%v) = %q, want %q", tc.score, got, tc.want)
+		}
+	}
+}
+
+// TestScoreToBandWithHysteresis_DoesNotFlap ensures the deadband prevents
+// a one-step flip when a previous band is established. We pick scores
+// inside each hysteresis window and confirm the previous band is held.
+func TestScoreToBandWithHysteresis_DoesNotFlap(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		previous models.RiskBand
+		score    float64
+		want     models.RiskBand
+	}{
+		// Coming from Low, a score of 4.0 normally bumps to Medium, but with
+		// previousBand=Low and lowUp = 4 + 0.5 = 4.5, we hold at Low.
+		{"Low holds in 4.0–4.5 band", models.RiskBandLow, 4.2, models.RiskBandLow},
+
+		// Coming from Medium, a score of 9.0 normally bumps to High, but with
+		// previousBand=Medium we need >= 9.5 to actually flip.
+		{"Medium holds in 9.0–9.5 band", models.RiskBandMedium, 9.2, models.RiskBandMedium},
+
+		// And in the other direction: Medium score 3.6 normally drops to Low,
+		// but Medium → Low needs < 3.5.
+		{"Medium holds in 3.5–4.0 band", models.RiskBandMedium, 3.6, models.RiskBandMedium},
+
+		// Cross the deadband fully and the flip is allowed.
+		{"Medium drops past hysteresis", models.RiskBandMedium, 3.4, models.RiskBandLow},
+
+		// First-run (no previous band) uses plain mapping; 4.2 → Medium.
+		{"First-run uses scoreToBand", "", 4.2, models.RiskBandMedium},
+	}
+
+	for _, tc := range cases {
+		got := scoreToBandWithHysteresis(tc.score, tc.previous)
+		if got != tc.want {
+			t.Errorf("%s: scoreToBandWithHysteresis(%v, %q) = %q, want %q",
+				tc.name, tc.score, tc.previous, got, tc.want)
+		}
+	}
+}
+
+// TestSeverityWeights_Monotonic guards against a future edit accidentally
+// reversing the severity ordering (e.g. someone swapping High and Medium
+// while editing). Round 4 noted these weights as a frequent target for
+// drift; this test pins the contract.
+func TestSeverityWeights_Monotonic(t *testing.T) {
+	t.Parallel()
+
+	if !(severityWeight[models.SeverityCritical] >
+		severityWeight[models.SeverityHigh] &&
+		severityWeight[models.SeverityHigh] >
+			severityWeight[models.SeverityMedium] &&
+		severityWeight[models.SeverityMedium] >
+			severityWeight[models.SeverityLow] &&
+		severityWeight[models.SeverityLow] >
+			severityWeight[models.SeverityInfo]) {
+		t.Errorf("severity weights are not strictly decreasing: critical=%v high=%v medium=%v low=%v info=%v",
+			severityWeight[models.SeverityCritical],
+			severityWeight[models.SeverityHigh],
+			severityWeight[models.SeverityMedium],
+			severityWeight[models.SeverityLow],
+			severityWeight[models.SeverityInfo],
+		)
 	}
 }

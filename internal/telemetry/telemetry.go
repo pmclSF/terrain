@@ -89,14 +89,17 @@ func SaveConfig(cfg Config) error {
 	if dir == "" {
 		return nil
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(dir, "telemetry.json"), data, 0o644)
+	// 0o600 keeps telemetry config (and the existence of telemetry, which
+	// is itself a privacy signal on shared dev hosts) readable only by the
+	// owning user. The directory is also locked down to 0o700 above.
+	return os.WriteFile(filepath.Join(dir, "telemetry.json"), data, 0o600)
 }
 
 // Record appends an event to the local telemetry log.
@@ -110,9 +113,12 @@ func Record(evt Event) {
 	if dir == "" {
 		return
 	}
-	_ = os.MkdirAll(dir, 0o755)
+	_ = os.MkdirAll(dir, 0o700)
 
-	f, err := os.OpenFile(filepath.Join(dir, "telemetry.jsonl"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	// 0o600 mirrors the config file; the event log can leak repo-size
+	// bands and command-name patterns to other users on a shared host
+	// otherwise. See SECURITY.md for the full privacy threat model.
+	f, err := os.OpenFile(filepath.Join(dir, "telemetry.jsonl"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600)
 	if err != nil {
 		return
 	}

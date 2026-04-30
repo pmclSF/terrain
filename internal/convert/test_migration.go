@@ -81,7 +81,8 @@ func RunTestMigration(source string, options TestMigrationOptions) (TestMigratio
 		return result, nil
 	}
 
-	if direction.GoNativeState != GoNativeStateImplemented {
+	if direction.GoNativeState != GoNativeStateImplemented &&
+		direction.GoNativeState != GoNativeStateExperimental {
 		return result, fmt.Errorf(
 			"go-native conversion execution for %s -> %s is not implemented yet; use plan mode to inspect the migration path",
 			direction.From,
@@ -209,9 +210,13 @@ func buildTestMigrationPlan(source string, direction Direction, detection *Detec
 		ExecutionStatus: "cataloged-not-executable",
 		NextStep:        "The Go CLI now owns the conversion catalog, shorthands, and detection contract. Execution for this direction will land in follow-up migration slices.",
 	}
-	if direction.GoNativeState == GoNativeStateImplemented {
+	switch direction.GoNativeState {
+	case GoNativeStateImplemented:
 		plan.ExecutionStatus = "executable"
 		plan.NextStep = "Run the same request without plan mode to execute the Go-native converter for this direction."
+	case GoNativeStateExperimental:
+		plan.ExecutionStatus = "executable-experimental"
+		plan.NextStep = "Run the same request without plan mode to execute the experimental Go-native converter; expect manual cleanup post-conversion."
 	}
 	return plan
 }

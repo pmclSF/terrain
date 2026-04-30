@@ -51,3 +51,59 @@ func TestProgressFunc_Signature(t *testing.T) {
 		t.Errorf("expected 5 calls, got %d", callCount)
 	}
 }
+
+func TestIsInteractive_NoColorEnvSuppresses(t *testing.T) {
+	// Sequential — modifies process env.
+	t.Setenv("NO_COLOR", "1")
+	if isInteractive() {
+		t.Errorf("isInteractive() should be false when NO_COLOR is set")
+	}
+}
+
+func TestIsInteractive_DumbTerminalSuppresses(t *testing.T) {
+	t.Setenv("NO_COLOR", "")
+	t.Setenv("TERM", "dumb")
+	// Clear common CI vars so we isolate the TERM=dumb path.
+	t.Setenv("CI", "")
+	t.Setenv("GITHUB_ACTIONS", "")
+	if isInteractive() {
+		t.Errorf("isInteractive() should be false when TERM=dumb")
+	}
+}
+
+func TestIsCIEnvironment(t *testing.T) {
+	cases := []struct {
+		name    string
+		envKey  string
+		envVal  string
+		wantCI  bool
+	}{
+		{"CI=true", "CI", "true", true},
+		{"GitHub Actions", "GITHUB_ACTIONS", "true", true},
+		{"GitLab CI", "GITLAB_CI", "true", true},
+		{"CircleCI", "CIRCLECI", "true", true},
+		{"Buildkite", "BUILDKITE", "true", true},
+		{"Jenkins", "JENKINS_URL", "https://jenkins.example.com", true},
+		{"Azure Pipelines", "TF_BUILD", "True", true},
+		// Empty string and "false"/"0" don't count as set.
+		{"CI=false", "CI", "false", false},
+		{"CI=0", "CI", "0", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Clear all CI markers, then set just the one under test.
+			for _, key := range []string{
+				"CI", "GITHUB_ACTIONS", "GITLAB_CI", "CIRCLECI",
+				"BUILDKITE", "JENKINS_URL", "TF_BUILD",
+			} {
+				t.Setenv(key, "")
+			}
+			t.Setenv(tc.envKey, tc.envVal)
+			got := isCIEnvironment()
+			if got != tc.wantCI {
+				t.Errorf("isCIEnvironment() with %s=%q = %v, want %v",
+					tc.envKey, tc.envVal, got, tc.wantCI)
+			}
+		})
+	}
+}

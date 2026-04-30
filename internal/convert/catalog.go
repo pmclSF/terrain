@@ -8,7 +8,13 @@ type CapabilityLevel string
 const (
 	GoNativeStateCataloged   GoNativeState = "cataloged"
 	GoNativeStatePrioritized GoNativeState = "prioritized"
-	GoNativeStateImplemented GoNativeState = "implemented"
+	// GoNativeStateExperimental marks a direction whose Go-native converter
+	// runs end-to-end on the smoke fixture but has incomplete coverage of
+	// real-world test patterns (assertion variants, custom matchers, lifecycle
+	// hooks, framework-specific config). Round 3 review classified these as
+	// C-grade. Use with caution; expect manual cleanup post-conversion.
+	GoNativeStateExperimental GoNativeState = "experimental"
+	GoNativeStateImplemented  GoNativeState = "implemented"
 
 	CapabilityUnsupported CapabilityLevel = "unsupported"
 	CapabilityPartial     CapabilityLevel = "partial"
@@ -133,6 +139,31 @@ var supportedDirectionKeys = []string{
 
 var prioritizedDirections = map[string]struct{}{
 	"cypress-playwright": {},
+}
+
+// experimentalDirections names directions that run end-to-end on the smoke
+// fixture but were rated C-grade (<70% coverage of real-world conversion
+// patterns) by the round 3 review. They remain available behind the same
+// CLI surface; users are warned via `terrain convert list`.
+//
+// Tagging policy: any direction calling out to runtime that the round 3 audit
+// flagged as <70% complete on a representative real-world fixture. Promoting
+// out of experimental requires:
+//   - 95%+ post-conversion test pass rate on a labeled fixture corpus
+//     (planned: 0.2 stage corpus per direction)
+//   - documented coverage of assertion variants, lifecycle hooks, and
+//     framework-specific config keys
+var experimentalDirections = map[string]struct{}{
+	"junit4-junit5":       {},
+	"junit5-testng":       {},
+	"testng-junit5":       {},
+	"pytest-unittest":     {},
+	"unittest-pytest":     {},
+	"nose2-pytest":        {},
+	"selenium-cypress":    {},
+	"selenium-playwright": {},
+	"testcafe-cypress":    {},
+	"testcafe-playwright": {},
 }
 
 var implementedDirections = map[string]struct{}{
@@ -290,11 +321,18 @@ func directionFromKey(key string) Direction {
 	state := GoNativeStateCataloged
 	if _, ok := implementedDirections[key]; ok {
 		state = GoNativeStateImplemented
+		// Experimental classification overrides "implemented": the converter
+		// runs but coverage of real-world patterns is too partial for
+		// production use. We keep the entry in implementedDirections so the
+		// CLI dispatcher still routes to the Go-native runtime.
+		if _, ok := experimentalDirections[key]; ok {
+			state = GoNativeStateExperimental
+		}
 	} else if _, ok := prioritizedDirections[key]; ok {
 		state = GoNativeStatePrioritized
 	}
 	implementation := "legacy-js-runtime"
-	if state == GoNativeStateImplemented {
+	if state == GoNativeStateImplemented || state == GoNativeStateExperimental {
 		implementation = "go-native-runtime"
 	}
 
@@ -305,8 +343,11 @@ func directionFromKey(key string) Direction {
 		Category:       framework.Category,
 		Shorthands:     buildAliases(from, to),
 		LegacyRuntime:  "javascript",
-		GoNativeState:  state,
-		GoNativeReady:  state == GoNativeStateImplemented,
+		GoNativeState: state,
+		// Experimental directions also dispatch to the Go-native runtime;
+		// callers gating on GoNativeReady should additionally check
+		// state != GoNativeStateExperimental if they want stable-only.
+		GoNativeReady:  state == GoNativeStateImplemented || state == GoNativeStateExperimental,
 		Implementation: implementation,
 		Capabilities: DirectionCapabilities{
 			TestMigration:    CapabilitySupported,
