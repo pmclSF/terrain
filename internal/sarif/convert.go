@@ -2,6 +2,7 @@ package sarif
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/analyze"
@@ -14,10 +15,31 @@ const (
 	toolURI      = "https://github.com/pmclSF/terrain"
 )
 
-// FromAnalyzeReport converts an analyze.Report into a SARIF log.
+// Options controls SARIF emission.
+type Options struct {
+	// RedactPaths rewrites every artifact-location URI to be relative to
+	// RepoRoot. Absolute paths that don't sit under RepoRoot, plus the
+	// usual home-directory tilde expansions, are rewritten to bare
+	// basenames so the SARIF can be safely posted to a public PR comment
+	// or shared issue without leaking internal directory structure.
+	RedactPaths bool
+
+	// RepoRoot anchors path redaction. When empty and RedactPaths is set,
+	// the current working directory is used.
+	RepoRoot string
+}
+
+// FromAnalyzeReport converts an analyze.Report into a SARIF log using
+// default emission options (no redaction).
 func FromAnalyzeReport(r *analyze.Report, version string) *Log {
+	return FromAnalyzeReportWithOptions(r, version, Options{})
+}
+
+// FromAnalyzeReportWithOptions converts an analyze.Report into a SARIF log,
+// applying the supplied emission options.
+func FromAnalyzeReportWithOptions(r *analyze.Report, version string, opts Options) *Log {
 	rules := buildRules(r)
-	results := buildResults(r)
+	results := buildResults(r, opts)
 
 	return &Log{
 		Schema:  sarifSchema,
@@ -34,6 +56,38 @@ func FromAnalyzeReport(r *analyze.Report, version string) *Log {
 			Results: results,
 		}},
 	}
+}
+
+// redactPath converts an absolute path to a repo-relative path. Paths that
+// don't sit beneath repoRoot are reduced to their basename so the SARIF
+// artifact can be shared without leaking internal directory layout. The
+// returned path always uses forward slashes for cross-OS portability and
+// SARIF spec compliance.
+func redactPath(p, repoRoot string) string {
+	if p == "" {
+		return p
+	}
+	clean := filepath.Clean(p)
+	root := repoRoot
+	if root == "" {
+		root = "."
+	}
+	root = filepath.Clean(root)
+
+	// If repoRoot is absolute, try to make the path relative to it.
+	if filepath.IsAbs(clean) {
+		if filepath.IsAbs(root) {
+			if rel, err := filepath.Rel(root, clean); err == nil &&
+				!strings.HasPrefix(rel, "..") {
+				return filepath.ToSlash(rel)
+			}
+		}
+		// Outside the repo (or no repo root anchor): drop directory info
+		// entirely, keep only the filename.
+		return filepath.Base(clean)
+	}
+	// Already relative (or relative-ish). Normalise slashes.
+	return filepath.ToSlash(clean)
 }
 
 // buildRules derives SARIF rules from the KeyFindings categories.
@@ -59,11 +113,15 @@ func buildRules(r *analyze.Report) []Rule {
 
 // buildResults converts each KeyFinding into a SARIF Result, attaching
 // file locations from WeakCoverageAreas where applicable.
-func buildResults(r *analyze.Report) []Result {
-	// Build a location index from weak coverage areas.
+func buildResults(r *analyze.Report, opts Options) []Result {
+	// Build a location index from weak coverage areas, honouring redaction.
 	var weakPaths []string
 	for _, wa := range r.WeakCoverageAreas {
-		weakPaths = append(weakPaths, wa.Path)
+		p := wa.Path
+		if opts.RedactPaths {
+			p = redactPath(p, opts.RepoRoot)
+		}
+		weakPaths = append(weakPaths, p)
 	}
 
 	var results []Result

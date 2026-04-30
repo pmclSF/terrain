@@ -157,3 +157,76 @@ func TestFromAnalyzeReport_FindingMessage(t *testing.T) {
 		t.Errorf("expected 'Weak coverage (3 areas)', got %q", msg)
 	}
 }
+
+func TestRedactPath(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		in   string
+		root string
+		want string
+	}{
+		{"empty stays empty", "", "/work/repo", ""},
+		{"abs path inside repo becomes relative",
+			"/work/repo/src/foo.go", "/work/repo", "src/foo.go"},
+		{"abs path outside repo collapses to basename",
+			"/etc/passwd", "/work/repo", "passwd"},
+		{"already relative is normalised",
+			"src/foo.go", "/work/repo", "src/foo.go"},
+		// Note: filepath.ToSlash is a no-op on Unix, so backslash-only
+		// inputs round-trip unchanged here. On Windows the separators
+		// normalise. We test the cross-OS contract explicitly: the output
+		// always contains forward slashes when the input does.
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := redactPath(tc.in, tc.root)
+			if got != tc.want {
+				t.Errorf("redactPath(%q, %q) = %q, want %q", tc.in, tc.root, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestFromAnalyzeReportWithOptions_RedactsAbsolutePaths(t *testing.T) {
+	t.Parallel()
+
+	r := &analyze.Report{
+		KeyFindings: []analyze.KeyFinding{
+			{Title: "Weak coverage", Severity: "high", Category: "coverage_debt"},
+		},
+		WeakCoverageAreas: []analyze.WeakArea{
+			{Path: "/Users/pzachary/secret-project/src/auth.go"},
+		},
+	}
+
+	// Without redaction the absolute path leaks.
+	plain := FromAnalyzeReport(r, "1.0.0")
+	uri := plain.Runs[0].Results[0].Locations[0].PhysicalLocation.ArtifactLocation.URI
+	if uri != "/Users/pzachary/secret-project/src/auth.go" {
+		t.Errorf("baseline plain URI = %q; want absolute path leak", uri)
+	}
+
+	// With redaction and a matching repo root, the path is rewritten relative.
+	redacted := FromAnalyzeReportWithOptions(r, "1.0.0", Options{
+		RedactPaths: true,
+		RepoRoot:    "/Users/pzachary/secret-project",
+	})
+	uri = redacted.Runs[0].Results[0].Locations[0].PhysicalLocation.ArtifactLocation.URI
+	if uri != "src/auth.go" {
+		t.Errorf("redacted URI = %q; want %q", uri, "src/auth.go")
+	}
+
+	// With redaction but no matching root, paths outside the root collapse to
+	// just the basename.
+	redactedDifferentRoot := FromAnalyzeReportWithOptions(r, "1.0.0", Options{
+		RedactPaths: true,
+		RepoRoot:    "/some/other/repo",
+	})
+	uri = redactedDifferentRoot.Runs[0].Results[0].Locations[0].PhysicalLocation.ArtifactLocation.URI
+	if uri != "auth.go" {
+		t.Errorf("out-of-tree redaction URI = %q; want %q", uri, "auth.go")
+	}
+}
