@@ -176,7 +176,16 @@ type BuildInput struct {
 }
 
 // Build constructs an insights Report from analysis results.
+//
+// nil-safe: a nil input or a non-nil input with a nil Snapshot returns
+// an empty Report. The contract is exercised by
+// internal/testdata/adversarial_test.go:TestAdversarial_BuildEntryPoints_NilInput.
 func Build(input *BuildInput) *Report {
+	if input == nil || input.Snapshot == nil {
+		return &Report{
+			CategorySummary: map[Category]CategoryBreakdown{},
+		}
+	}
 	r := &Report{
 		RepoProfile:        input.Profile,
 		EdgeCases:          input.EdgeCases,

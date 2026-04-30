@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"testing"
 
+	"github.com/pmclSF/terrain/internal/analyze"
 	"github.com/pmclSF/terrain/internal/comparison"
 	"github.com/pmclSF/terrain/internal/heatmap"
 	"github.com/pmclSF/terrain/internal/impact"
+	"github.com/pmclSF/terrain/internal/insights"
 	"github.com/pmclSF/terrain/internal/measurement"
 	"github.com/pmclSF/terrain/internal/metrics"
 	"github.com/pmclSF/terrain/internal/models"
@@ -164,14 +166,22 @@ func TestAdversarial_FilterByOwner_NoMatch(t *testing.T) {
 	}
 }
 
-// TestAdversarial_NilSnapshot verifies analysis handles nil snapshot.
+// TestAdversarial_NilSnapshot verifies analysis handles nil snapshot
+// gracefully — i.e. without panicking. Round 4 review flagged that the
+// previous version of this test recovered from panics with t.Logf,
+// which silently masked real bugs. Graceful handling means returning
+// zero values, not crashing; if any future change causes a panic here,
+// that's a regression we want to know about, not absorb.
 func TestAdversarial_NilSnapshot(t *testing.T) {
 	t.Parallel()
 	defer func() {
 		if r := recover(); r != nil {
-			// Some functions may panic on nil; that is acceptable if documented.
-			// The point is that the test records the behavior.
-			t.Logf("nil snapshot caused panic (acceptable): %v", r)
+			t.Errorf(
+				"metrics.Derive(nil) panicked with %v; nil-safety is a contract, not an option. "+
+					"If a future change intentionally requires non-nil input, change the signature "+
+					"or document the precondition; do not crash.",
+				r,
+			)
 		}
 	}()
 	ms := metrics.Derive(nil)
@@ -304,5 +314,50 @@ func TestAdversarial_CompareIdenticalSnapshots(t *testing.T) {
 	}
 	if comp.HasMeaningfulChanges() {
 		t.Error("identical snapshots should have no meaningful changes")
+	}
+}
+
+// TestAdversarial_BuildEntryPoints_NilInput pins the contract that the
+// public Build() functions in analyze and insights handle nil input
+// without panicking. Both are reachable from CLI commands when an
+// upstream pipeline failure produces nothing useful; the user-facing
+// experience should be a benign empty report, not a stack trace.
+//
+// Round 3 review caught the matching gap in metrics.Derive (fixed in
+// the same commit that pinned this contract); these assertions stop
+// the same regression from coming back via the other entry points.
+func TestAdversarial_BuildEntryPoints_NilInput(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name string
+		fn   func()
+	}{
+		{
+			name: "analyze.Build(nil)",
+			fn:   func() { _ = analyze.Build(nil) },
+		},
+		{
+			name: "analyze.Build(&BuildInput{Snapshot:nil})",
+			fn:   func() { _ = analyze.Build(&analyze.BuildInput{}) },
+		},
+		{
+			name: "insights.Build(nil)",
+			fn:   func() { _ = insights.Build(nil) },
+		},
+		{
+			name: "insights.Build(&BuildInput{Snapshot:nil})",
+			fn:   func() { _ = insights.Build(&insights.BuildInput{}) },
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r != nil {
+					t.Errorf("%s panicked with %v; nil-safety is a contract", tc.name, r)
+				}
+			}()
+			tc.fn()
+		})
 	}
 }
