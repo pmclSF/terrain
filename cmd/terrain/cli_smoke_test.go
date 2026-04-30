@@ -144,6 +144,12 @@ func TestCLISmoke_AIBaselineCompare(t *testing.T) {
 
 // captureRun redirects os.Stdout, runs fn, and returns captured output.
 // Must NOT be used concurrently — os.Stdout is global.
+//
+// The reader goroutine drains the pipe concurrently with fn(). Without this,
+// any output larger than the OS pipe buffer (~4 KB on Windows) deadlocks the
+// writer while we wait for fn() to return before reading. Linux/macOS pipes
+// are large enough to mask the bug for small JSON outputs; Windows hangs
+// reliably on commands like `posture --json`.
 func captureRun(fn func() error) ([]byte, error) {
 	captureRunMu.Lock()
 	defer captureRunMu.Unlock()
@@ -155,13 +161,18 @@ func captureRun(fn func() error) ([]byte, error) {
 	}
 	os.Stdout = w
 
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		io.Copy(&buf, r)
+		close(done)
+	}()
+
 	fnErr := fn()
 
 	w.Close()
 	os.Stdout = old
-
-	var buf bytes.Buffer
-	io.Copy(&buf, r)
+	<-done
 	r.Close()
 
 	return buf.Bytes(), fnErr

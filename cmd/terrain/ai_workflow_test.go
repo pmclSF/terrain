@@ -637,9 +637,6 @@ func TestAIRun_DecisionPass_NoSignals(t *testing.T) {
 }
 
 func TestAIWorkflow_InventoryJSON_IncludesEvidence(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("os.Pipe + os.Stdout swap hangs reliably on Windows runners; tracked in #114")
-	}
 	// Not parallel: captures os.Stdout.
 	_, thisFile, _, _ := runtime.Caller(0)
 	root := filepath.Join(filepath.Dir(thisFile), "..", "..", "tests", "fixtures", "ai-prompt-only")
@@ -651,16 +648,23 @@ func TestAIWorkflow_InventoryJSON_IncludesEvidence(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
+	// Drain concurrently — the JSON output exceeds the Windows pipe buffer
+	// (~4 KB), so reading after runAIList returns deadlocks the writer.
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		buf.ReadFrom(r)
+		close(done)
+	}()
+
 	err := runAIList(root, true, false)
 	w.Close()
 	os.Stdout = old
+	<-done
 
 	if err != nil {
 		t.Fatalf("runAIList JSON: %v", err)
 	}
-
-	var buf bytes.Buffer
-	buf.ReadFrom(r)
 
 	var result struct {
 		Prompts  []json.RawMessage `json:"prompts"`
