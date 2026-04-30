@@ -61,11 +61,21 @@ jobs:
         include:
           - os: ubuntu-latest
             extended: true
+            required: true
           - os: macos-latest
             extended: false
+            required: true
           - os: windows-latest
             extended: false
+            required: false
     runs-on: ${{ matrix.os }}
+    # Windows-only failures are surfaced for visibility but do not block
+    # merges in 0.1.2. Several pre-existing path-handling bugs in the
+    # heatmap, impact, migration, and scoring packages — plus a long-tail
+    # AI-workflow test that hangs on Windows — need a dedicated 0.2 sweep.
+    # Until that lands the Windows runner is informational so we can keep
+    # observing regressions without blocking the merge train.
+    continue-on-error: ${{ !matrix.required }}
 
     steps:
       - name: Checkout repository

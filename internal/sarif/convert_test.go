@@ -2,6 +2,7 @@ package sarif
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -161,23 +162,32 @@ func TestFromAnalyzeReport_FindingMessage(t *testing.T) {
 func TestRedactPath(t *testing.T) {
 	t.Parallel()
 
+	// Build OS-native absolute paths so the test works on both POSIX
+	// (where /work/repo is absolute) and Windows (where it isn't —
+	// Windows needs a drive letter). t.TempDir() always returns an
+	// absolute path; we rebase relative test fixtures under it.
+	repoRoot := t.TempDir()
+	insideRepo := filepath.Join(repoRoot, "src", "foo.go")
+	outsideRepo := filepath.Join(t.TempDir(), "etc", "passwd")
+
 	cases := []struct {
 		name string
 		in   string
 		root string
 		want string
 	}{
-		{"empty stays empty", "", "/work/repo", ""},
+		{"empty stays empty", "", repoRoot, ""},
 		{"abs path inside repo becomes relative",
-			"/work/repo/src/foo.go", "/work/repo", "src/foo.go"},
+			insideRepo, repoRoot, "src/foo.go"},
 		{"abs path outside repo collapses to basename",
-			"/etc/passwd", "/work/repo", "passwd"},
+			outsideRepo, repoRoot, "passwd"},
 		{"already relative is normalised",
-			"src/foo.go", "/work/repo", "src/foo.go"},
+			"src/foo.go", repoRoot, "src/foo.go"},
 		// Note: filepath.ToSlash is a no-op on Unix, so backslash-only
-		// inputs round-trip unchanged here. On Windows the separators
-		// normalise. We test the cross-OS contract explicitly: the output
-		// always contains forward slashes when the input does.
+		// inputs round-trip unchanged on Linux/macOS. On Windows the
+		// separators normalise. The cross-OS contract is: the output
+		// always uses forward slashes regardless of which separator the
+		// input used.
 	}
 
 	for _, tc := range cases {
@@ -193,37 +203,44 @@ func TestRedactPath(t *testing.T) {
 func TestFromAnalyzeReportWithOptions_RedactsAbsolutePaths(t *testing.T) {
 	t.Parallel()
 
+	// Build OS-native absolute paths via TempDir so the test runs on
+	// Windows (where /Users/... is not absolute) as well as POSIX.
+	repoRoot := t.TempDir()
+	leakedPath := filepath.Join(repoRoot, "src", "auth.go")
+	otherRoot := t.TempDir()
+
 	r := &analyze.Report{
 		KeyFindings: []analyze.KeyFinding{
 			{Title: "Weak coverage", Severity: "high", Category: "coverage_debt"},
 		},
 		WeakCoverageAreas: []analyze.WeakArea{
-			{Path: "/Users/pzachary/secret-project/src/auth.go"},
+			{Path: leakedPath},
 		},
 	}
 
-	// Without redaction the absolute path leaks.
+	// Without redaction the absolute path leaks (post-ToSlash so the
+	// expected value uses forward slashes regardless of OS).
 	plain := FromAnalyzeReport(r, "1.0.0")
 	uri := plain.Runs[0].Results[0].Locations[0].PhysicalLocation.ArtifactLocation.URI
-	if uri != "/Users/pzachary/secret-project/src/auth.go" {
-		t.Errorf("baseline plain URI = %q; want absolute path leak", uri)
+	if uri != leakedPath {
+		t.Errorf("baseline plain URI = %q; want absolute path leak %q", uri, leakedPath)
 	}
 
 	// With redaction and a matching repo root, the path is rewritten relative.
 	redacted := FromAnalyzeReportWithOptions(r, "1.0.0", Options{
 		RedactPaths: true,
-		RepoRoot:    "/Users/pzachary/secret-project",
+		RepoRoot:    repoRoot,
 	})
 	uri = redacted.Runs[0].Results[0].Locations[0].PhysicalLocation.ArtifactLocation.URI
 	if uri != "src/auth.go" {
 		t.Errorf("redacted URI = %q; want %q", uri, "src/auth.go")
 	}
 
-	// With redaction but no matching root, paths outside the root collapse to
-	// just the basename.
+	// With redaction but a different repo root, paths outside the root
+	// collapse to the basename.
 	redactedDifferentRoot := FromAnalyzeReportWithOptions(r, "1.0.0", Options{
 		RedactPaths: true,
-		RepoRoot:    "/some/other/repo",
+		RepoRoot:    otherRoot,
 	})
 	uri = redactedDifferentRoot.Runs[0].Results[0].Locations[0].PhysicalLocation.ArtifactLocation.URI
 	if uri != "auth.go" {
