@@ -274,7 +274,16 @@ type BuildInput struct {
 // Build constructs an AnalyzeReport from a pipeline snapshot.
 // It runs depgraph analysis internally to produce coverage, redundancy,
 // and fanout findings.
+//
+// nil-safe: a nil input or a non-nil input with a nil Snapshot returns
+// an empty Report stamped with the current schema version. CLI commands
+// that recover from a failed pipeline get a benign object back instead
+// of crashing. The contract is exercised by
+// internal/testdata/adversarial_test.go:TestAdversarial_BuildEntryPoints_NilInput.
 func Build(input *BuildInput) *Report {
+	if input == nil || input.Snapshot == nil {
+		return &Report{SchemaVersion: AnalyzeReportSchemaVersion}
+	}
 	snap := input.Snapshot
 
 	r := &Report{SchemaVersion: AnalyzeReportSchemaVersion}
