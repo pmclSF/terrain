@@ -24,13 +24,12 @@ func writeFile(t *testing.T, dir, name, content string) string {
 func TestHardcodedAPIKey_DetectsRealKeys(t *testing.T) {
 	t.Parallel()
 
+	// Split at compile time so this source file does not itself
+	// match GitHub's secret-scanning patterns.
+	apiKey := "sk-" + "proj-abcdefghijklmnop1234567890ABCDEFGH"
 	root := t.TempDir()
-	rel := writeFile(t, root, "evals/agent.yaml", `
-name: classifier
-provider:
-  name: openai
-  api_key: sk-proj-abcdefghijklmnop1234567890ABCDEFGH
-`)
+	rel := writeFile(t, root, "evals/agent.yaml",
+		"\nname: classifier\nprovider:\n  name: openai\n  api_key: "+apiKey+"\n")
 	snap := &models.TestSuiteSnapshot{
 		TestFiles: []models.TestFile{{Path: rel}},
 	}
@@ -87,9 +86,10 @@ provider:
 func TestHardcodedAPIKey_SkipsNonConfigExtensions(t *testing.T) {
 	t.Parallel()
 
+	apiKey := "sk-" + "proj-abcdefghijklmnop1234567890ABCDEFGH"
 	root := t.TempDir()
 	rel := writeFile(t, root, "src/login.test.js",
-		`const key = "sk-proj-abcdefghijklmnop1234567890ABCDEFGH";`)
+		`const key = "`+apiKey+`";`)
 	snap := &models.TestSuiteSnapshot{
 		TestFiles: []models.TestFile{{Path: rel}},
 	}
@@ -103,17 +103,28 @@ func TestHardcodedAPIKey_SkipsNonConfigExtensions(t *testing.T) {
 func TestHardcodedAPIKey_DetectsAcrossProviders(t *testing.T) {
 	t.Parallel()
 
+	// Provider-key shapes are split at compile time so GitHub's
+	// secret-scanning patterns don't match this source file. Each
+	// fragment alone fails the scanner's regex; concatenated at
+	// runtime, the bytes written to the fixture file exercise our
+	// detector.
+	openaiKey := "sk-" + "proj-realKEY1234567890abcdefghijkl"
+	anthropicKey := "sk-" + "ant-realToken1234567890abcdef"
+	googleKey := "AIza" + "SyAVeryRealLookingKey12345678901234"
+	awsKey := "AKIA" + "REALKEY1234567XY"
+	githubKey := "ghp" + "_realtokenrealtokenrealtokenrealtoken12"
+
 	cases := []struct {
 		name     string
 		filename string
 		content  string
 		want     int // signals expected (one per matching line, capped)
 	}{
-		{"openai", "a.yaml", "key: sk-proj-realKEY1234567890abcdefghijkl", 1},
-		{"anthropic", "b.yaml", "ANTHROPIC_API_KEY=sk-ant-realToken1234567890abcdef", 1},
-		{"google", "c.json", `{"key":"AIzaSyAVeryRealLookingKey12345678901234"}`, 1},
-		{"aws", "d.toml", `aws = "AKIAREALKEY1234567XY"`, 1},
-		{"github", "e.yml", "token: ghp_realtokenrealtokenrealtokenrealtoken12", 1},
+		{"openai", "a.yaml", "key: " + openaiKey, 1},
+		{"anthropic", "b.yaml", "ANTHROPIC_API_KEY=" + anthropicKey, 1},
+		{"google", "c.json", `{"key":"` + googleKey + `"}`, 1},
+		{"aws", "d.toml", `aws = "` + awsKey + `"`, 1},
+		{"github", "e.yml", "token: " + githubKey, 1},
 	}
 
 	for _, tc := range cases {
