@@ -745,15 +745,14 @@ var allSignalManifest = []ManifestEntry{
 	// ── 0.2 AI signals (planned in 0.2, detectors land before 0.2 close) ──
 	{
 		Type: SignalAISafetyEvalMissing, ConstName: "SignalAISafetyEvalMissing",
-		Domain: models.CategoryAI, Status: StatusPlanned,
+		Domain: models.CategoryAI, Status: StatusStable,
 		Title:           "AI Safety Eval Missing",
 		Description:     "Agent or prompt has no eval scenario covering the documented safety category (jailbreak, harm, leak).",
 		Remediation:     "Add an eval scenario tagged with the missing safety category and re-run the gauntlet.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
-		EvidenceSources: []string{"structural-pattern", "policy"},
+		EvidenceSources: []string{"structural-pattern", "graph-traversal"},
 		RuleID:          "TER-AI-100", RuleURI: "docs/rules/ai/safety-eval-missing.md",
-		PromotionPlan:   "0.2 — detector lands alongside the eval framework integration. Promotes to stable once the calibration corpus has 5+ labelled fixtures.",
 	},
 	{
 		Type: SignalAIPromptVersioning, ConstName: "SignalAIPromptVersioning",
@@ -792,7 +791,7 @@ var allSignalManifest = []ManifestEntry{
 	},
 	{
 		Type: SignalAIToolWithoutSandbox, ConstName: "SignalAIToolWithoutSandbox",
-		Domain: models.CategoryAI, Status: StatusPlanned,
+		Domain: models.CategoryAI, Status: StatusStable,
 		Title:           "Destructive Tool Without Sandbox",
 		Description:     "An agent tool definition can perform an irreversible operation (delete, drop, exec) without an explicit approval gate, sandbox, or dry-run mode.",
 		Remediation:     "Wrap the tool in an approval gate or restrict its capability surface to a sandbox.",
@@ -800,7 +799,6 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "TER-AI-104", RuleURI: "docs/rules/ai/tool-without-sandbox.md",
-		PromotionPlan:   "0.2 — verb-list + decorator scan. Promotes to stable once the MCP / agent-config parsers ship in 0.2.",
 	},
 	{
 		Type: SignalAINonDeterministicEval, ConstName: "SignalAINonDeterministicEval",
