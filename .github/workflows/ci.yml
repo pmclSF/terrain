@@ -88,6 +88,15 @@ jobs:
         if: matrix.extended
         run: make go-release-verify
 
+      - name: Determinism gate
+        if: matrix.extended
+        # Three back-to-back runs against the same fixture must produce
+        # byte-identical snapshots. Round 4 review flagged that determinism
+        # was being asserted by a single-shot test rather than gated in CI;
+        # this step closes that gap. Failure here means a non-deterministic
+        # data path crept in (typically an unsorted map or a timestamp).
+        run: make test-determinism
+
       - name: Run Go tests
         # The race detector adds significant runtime cost; on macos and
         # windows runners we omit it to keep PR feedback fast. ubuntu
