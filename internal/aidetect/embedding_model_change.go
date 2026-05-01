@@ -85,51 +85,83 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 		return nil
 	}
 
-	candidatePaths := d.gatherSourcePaths(snap)
 	var out []models.Signal
 	emitted := map[string]bool{}
+
+	// Prefer structured RAG surfaces. ParseRAGStructured already
+	// extracted the embedding model name and line into Config.ModelName,
+	// so we avoid a redundant file scan and surface a higher-confidence
+	// signal when this path fires.
+	for _, comp := range snap.RAGPipelineSurfaces {
+		if comp.Kind != models.RAGEmbedding || comp.Config.ModelName == "" {
+			continue
+		}
+		if emitted[comp.Path] {
+			continue
+		}
+		emitted[comp.Path] = true
+		out = append(out, buildEmbeddingChangeSignal(comp.Path, comp.Line, comp.Config.ModelName, 1, models.EvidenceStrong, 0.85))
+	}
+
+	candidatePaths := d.gatherSourcePaths(snap)
 	for _, rel := range candidatePaths {
+		if emitted[rel] {
+			continue
+		}
 		hits := scanFileForEmbeddingModels(filepath.Join(d.Root, rel))
 		if len(hits) == 0 {
 			continue
 		}
-		if emitted[rel] {
-			continue
-		}
 		emitted[rel] = true
-
-		out = append(out, models.Signal{
-			Type:        signals.SignalAIEmbeddingModelChange,
-			Category:    models.CategoryAI,
-			Severity:    models.SeverityMedium,
-			Confidence:  0.8,
-			Location:    models.SignalLocation{File: rel, Line: hits[0].Line},
-			Explanation: "File references embedding model `" + hits[0].Identifier + "` but the project has no retrieval-shaped eval scenario. A future model swap will silently change retrieval quality.",
-			SuggestedAction: "Add a retrieval eval scenario (Ragas, Promptfoo, or DeepEval) that exercises this surface so future embedding swaps surface as a quality regression instead of going unnoticed.",
-
-			SeverityClauses: []string{"sev-medium-005"},
-			Actionability:   models.ActionabilityScheduled,
-			LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
-			AIRelevance:     models.AIRelevanceHigh,
-			RuleID:          "TER-AI-110",
-			RuleURI:         "docs/rules/ai/embedding-model-change.md",
-			DetectorVersion: "0.2.0",
-			ConfidenceDetail: &models.ConfidenceDetail{
-				Value:        0.8,
-				IntervalLow:  0.7,
-				IntervalHigh: 0.88,
-				Quality:      "heuristic",
-				Sources:      []models.EvidenceSource{models.SourceStructuralPattern},
-			},
-			EvidenceSource:   models.SourceStructuralPattern,
-			EvidenceStrength: models.EvidenceModerate,
-			Metadata: map[string]any{
-				"embeddingModel": hits[0].Identifier,
-				"matches":        len(hits),
-			},
-		})
+		out = append(out, buildEmbeddingChangeSignal(rel, hits[0].Line, hits[0].Identifier, len(hits), models.EvidenceModerate, 0.8))
 	}
 	return out
+}
+
+// buildEmbeddingChangeSignal constructs the canonical
+// SignalAIEmbeddingModelChange signal. Confidence and evidence
+// strength vary by detection path: structured RAG surfaces (ModelName
+// extracted from a known framework constructor) carry stronger
+// evidence than a regex match in arbitrary source.
+func buildEmbeddingChangeSignal(path string, line int, identifier string, matches int, strength models.EvidenceStrength, confidence float64) models.Signal {
+	intervalLow := confidence - 0.1
+	if intervalLow < 0 {
+		intervalLow = 0
+	}
+	intervalHigh := confidence + 0.08
+	if intervalHigh > 1 {
+		intervalHigh = 1
+	}
+	return models.Signal{
+		Type:            signals.SignalAIEmbeddingModelChange,
+		Category:        models.CategoryAI,
+		Severity:        models.SeverityMedium,
+		Confidence:      confidence,
+		Location:        models.SignalLocation{File: path, Line: line},
+		Explanation:     "File references embedding model `" + identifier + "` but the project has no retrieval-shaped eval scenario. A future model swap will silently change retrieval quality.",
+		SuggestedAction: "Add a retrieval eval scenario (Ragas, Promptfoo, or DeepEval) that exercises this surface so future embedding swaps surface as a quality regression instead of going unnoticed.",
+
+		SeverityClauses: []string{"sev-medium-005"},
+		Actionability:   models.ActionabilityScheduled,
+		LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
+		AIRelevance:     models.AIRelevanceHigh,
+		RuleID:          "TER-AI-110",
+		RuleURI:         "docs/rules/ai/embedding-model-change.md",
+		DetectorVersion: "0.2.0",
+		ConfidenceDetail: &models.ConfidenceDetail{
+			Value:        confidence,
+			IntervalLow:  intervalLow,
+			IntervalHigh: intervalHigh,
+			Quality:      "heuristic",
+			Sources:      []models.EvidenceSource{models.SourceStructuralPattern},
+		},
+		EvidenceSource:   models.SourceStructuralPattern,
+		EvidenceStrength: strength,
+		Metadata: map[string]any{
+			"embeddingModel": identifier,
+			"matches":        matches,
+		},
+	}
 }
 
 // gatherSourcePaths returns repo-relative paths the detector should

@@ -171,6 +171,46 @@ LEGACY = "text-embedding-ada-002"
 	}
 }
 
+func TestEmbeddingModelChange_PrefersStructuredRAGSurface(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	rel := writeEmbeddingProbeFile(t, root, "rag/embed.py", `
+embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
+`)
+	snap := &models.TestSuiteSnapshot{
+		CodeSurfaces: []models.CodeSurface{
+			{SurfaceID: "s1", Path: rel, Name: "embed", Kind: models.SurfacePrompt},
+		},
+		RAGPipelineSurfaces: []models.RAGPipelineSurface{
+			{
+				ComponentID: "rag:" + rel + ":embedding:openai_embeddings",
+				Name:        "openai_embeddings",
+				Path:        rel,
+				Kind:        models.RAGEmbedding,
+				Line:        2,
+				Config:      models.RAGComponentConfig{ModelName: "text-embedding-3-large"},
+			},
+		},
+	}
+	got := (&EmbeddingModelChangeDetector{Root: root}).Detect(snap)
+	if len(got) != 1 {
+		t.Fatalf("got %d signals, want 1", len(got))
+	}
+	if got[0].EvidenceStrength != models.EvidenceStrong {
+		t.Errorf("structured RAG path should yield EvidenceStrong, got %v", got[0].EvidenceStrength)
+	}
+	if got[0].Confidence != 0.85 {
+		t.Errorf("structured path confidence = %v, want 0.85", got[0].Confidence)
+	}
+	if got[0].Metadata["embeddingModel"] != "text-embedding-3-large" {
+		t.Errorf("metadata embeddingModel = %v", got[0].Metadata["embeddingModel"])
+	}
+	if got[0].Location.Line != 2 {
+		t.Errorf("location.Line = %v, want 2", got[0].Location.Line)
+	}
+}
+
 func TestEmbeddingModelChange_NilInputs(t *testing.T) {
 	t.Parallel()
 
