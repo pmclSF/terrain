@@ -29,6 +29,17 @@ type TestMigrationOptions struct {
 	Plan              bool   `json:"plan,omitempty"`
 	DryRun            bool   `json:"dryRun,omitempty"`
 
+	// HistoryRoot, when set, points at the repository root that owns
+	// `.terrain/conversion-history/`. The runtime appends one record
+	// per successful conversion. Empty disables history (preserves
+	// pre-0.2 behaviour for callers that haven't opted in).
+	HistoryRoot string `json:"historyRoot,omitempty"`
+
+	// TerrainVersion is stamped into the history record so audit
+	// readers know which engine produced the conversion. Plumbed
+	// from the CLI's main.version build var.
+	TerrainVersion string `json:"terrainVersion,omitempty"`
+
 	// Preview runs the conversion to a temp directory and returns
 	// per-file unified diffs without writing to the user's --output.
 	// Distinct from DryRun (which produces a structured plan only):
@@ -139,6 +150,7 @@ func RunTestMigration(source string, options TestMigrationOptions) (TestMigratio
 	// covered/lossy/confidence for each (source, output) pair. The
 	// metrics surface in JSON output and feed the report renderer.
 	annotateFileConfidence(&execution)
+
 	validationMode := normalizeValidationMode(options.ValidationMode)
 	execution.ValidationMode = string(validationMode)
 	validationErr := ValidateExecutionResultForDirection(execution, direction)
@@ -154,6 +166,19 @@ func RunTestMigration(source string, options TestMigrationOptions) (TestMigratio
 	case ValidationModeBestEffort:
 		execution.Warnings = append(execution.Warnings, validationWarningsForError(validationMode, validationErr)...)
 		execution.Validated = validationErr == nil
+	}
+
+	// 0.2 conversion history: append AFTER validation so the record
+	// reflects the final Validated state. Errors here do not fail
+	// the conversion — by the time we reach this point the user's
+	// output is already on disk and an audit-log failure shouldn't
+	// undo their successful run.
+	if options.HistoryRoot != "" {
+		rec := HistoryRecordFromExecution(execution, options.TerrainVersion)
+		if err := AppendConversionHistory(options.HistoryRoot, rec); err != nil {
+			execution.Warnings = append(execution.Warnings,
+				fmt.Sprintf("conversion history append failed: %v", err))
+		}
 	}
 
 	result.Execution = &execution

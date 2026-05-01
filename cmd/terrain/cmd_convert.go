@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	conv "github.com/pmclSF/terrain/internal/convert"
@@ -200,6 +201,8 @@ func runConvert(source string, opts convertCommandOptions) error {
 		Plan:              opts.Plan,
 		DryRun:            opts.DryRun,
 		Preview:           opts.Preview,
+		HistoryRoot:       resolveHistoryRoot(source),
+		TerrainVersion:    version,
 	})
 	if err != nil {
 		var inputErr conv.ConversionInputError
@@ -497,6 +500,45 @@ var shorthandFlagsWithValue = map[string]bool{
 	"-o":            true,
 	"--concurrency": true,
 	"--on-error":    true,
+}
+
+// resolveHistoryRoot returns the directory under which terrain
+// should write its `.terrain/conversion-history/log.jsonl` audit
+// log. Walks up from the source path looking for a go.mod /
+// package.json / .git marker; falls back to the source's parent dir
+// if no marker is found, so users running `terrain convert` outside
+// a real repo still get history alongside their work.
+//
+// Returns "" only when the source path itself can't be resolved.
+func resolveHistoryRoot(source string) string {
+	abs, err := filepath.Abs(source)
+	if err != nil {
+		return ""
+	}
+	info, err := os.Stat(abs)
+	if err != nil {
+		return ""
+	}
+	dir := abs
+	if !info.IsDir() {
+		dir = filepath.Dir(abs)
+	}
+	for {
+		for _, marker := range []string{"go.mod", "package.json", ".git"} {
+			if _, err := os.Stat(filepath.Join(dir, marker)); err == nil {
+				return dir
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	if info.IsDir() {
+		return abs
+	}
+	return filepath.Dir(abs)
 }
 
 // reorderCLIArgs splits a raw argv slice into a "flags first, positionals
