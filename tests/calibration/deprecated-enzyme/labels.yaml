@@ -8,3 +8,6 @@ expected:
   - type: deprecatedTestPattern
     file: src/login-form.test.jsx
     notes: "enzyme shallow() — deprecated React testing API"
+  - type: migrationBlocker
+    file: src/login-form.test.jsx
+    notes: "enzyme is a hard migration blocker"

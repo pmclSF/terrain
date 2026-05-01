@@ -9,3 +9,6 @@ expected:
   - type: unsupportedSetup
     file: src/login.test.js
     notes: "Cypress.Commands.add — framework-specific custom command"
+  - type: migrationBlocker
+    file: src/login.test.js
+    notes: "unsupported setup escalates to a hard migration blocker"
