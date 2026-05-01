@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/pmclSF/terrain/internal/models"
 )
@@ -30,6 +31,15 @@ func TestParallelForEachIndexCtx_CancelledBeforeStart(t *testing.T) {
 
 // TestParallelForEachIndexCtx_CancelMidway verifies that cancellation
 // during processing stops further work items from being dispatched.
+//
+// fn deliberately sleeps so per-item processing dwarfs cancel-propagation
+// latency. Without the sleep, the production code is correctly responsive
+// but workers can race past hundreds of items in the few microseconds
+// between cancel() being called and the next ctx.Err() check — making
+// this test flaky on heavily-loaded CI runners (observed processed=498
+// on Ubuntu race-detector). With sleep, cancel propagates well before
+// workers can pull more items, so the threshold reflects "cancellation
+// stopped work" rather than "cancel-propagation was instantaneous".
 func TestParallelForEachIndexCtx_CancelMidway(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -40,11 +50,13 @@ func TestParallelForEachIndexCtx_CancelMidway(t *testing.T) {
 		if n == 10 {
 			cancel()
 		}
+		time.Sleep(time.Millisecond)
 	})
 
 	processed := atomic.LoadInt64(&count)
-	// With cancellation after 10 items, we should process far fewer than 1000.
-	// Allow some slack for in-flight items.
+	// With cancellation after 10 items + 1ms sleep per item, in-flight
+	// work is bounded by GOMAXPROCS * (cancel-propagation time / 1ms).
+	// 100 leaves plenty of headroom for slow runners.
 	if processed >= 100 {
 		t.Errorf("expected significantly fewer than 1000 items, got %d", processed)
 	}

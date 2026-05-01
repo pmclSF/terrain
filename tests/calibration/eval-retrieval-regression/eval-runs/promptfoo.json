@@ -1,0 +1,12 @@
+{
+  "evalId": "calibration-retrieval",
+  "createdAt": 1735689600,
+  "results": [
+    { "id": "case-1", "success": true, "score": 1.0, "namedScores": { "context_relevance": 0.62, "faithfulness": 0.93, "answer_relevancy": 0.88 } },
+    { "id": "case-2", "success": true, "score": 1.0, "namedScores": { "context_relevance": 0.55, "faithfulness": 0.92, "answer_relevancy": 0.86 } },
+    { "id": "case-3", "success": true, "score": 1.0, "namedScores": { "context_relevance": 0.68, "faithfulness": 0.95, "answer_relevancy": 0.90 } },
+    { "id": "case-4", "success": true, "score": 1.0, "namedScores": { "context_relevance": 0.51, "faithfulness": 0.91, "answer_relevancy": 0.85 } },
+    { "id": "case-5", "success": true, "score": 1.0, "namedScores": { "context_relevance": 0.60, "faithfulness": 0.94, "answer_relevancy": 0.89 } }
+  ],
+  "stats": { "successes": 5, "failures": 0, "errors": 0 }
+}

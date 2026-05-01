@@ -1,0 +1,16 @@
+schemaVersion: 1
+fixture: eval-cost-regression
+description: |
+  Two paired Promptfoo runs, same five CaseIDs across both. Average
+  cost-per-case rose from 0.0028 → 0.0084, a +200% increase against
+  the 25% default threshold. aiCostRegression must fire on the
+  current run.
+
+  Exercises the regression-pair plumbing: the calibration runner
+  picks up baseline/eval-runs/promptfoo.json, synthesises a baseline
+  snapshot, and feeds it to the pipeline as Baseline alongside the
+  current eval-runs/promptfoo.json.
+expected:
+  - type: aiCostRegression
+    file: eval-runs/promptfoo.json
+    notes: "avg cost rose 0.0028 → 0.0084 (+200% vs 25% threshold)"

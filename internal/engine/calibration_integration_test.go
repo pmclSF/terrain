@@ -1,6 +1,8 @@
 package engine_test
 
 import (
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -9,6 +11,53 @@ import (
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/models"
 )
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// buildBaselineFile synthesises a baseline snapshot from any framework
+// artifacts found under baselineDir/eval-runs/ and writes it to a temp
+// file under outDir. Returns the temp file path or "" when no artifacts
+// were found. Author convenience: regression-shaped detector fixtures
+// (aiCostRegression, aiRetrievalRegression) only need to drop the
+// previous run's framework JSON into baseline/eval-runs/, not hand-author
+// a snapshot.
+func buildBaselineFile(t *testing.T, baselineDir, outDir string) string {
+	t.Helper()
+
+	opts := engine.PipelineOptions{}
+	if exists(filepath.Join(baselineDir, "eval-runs/promptfoo.json")) {
+		opts.PromptfooPaths = []string{filepath.Join(baselineDir, "eval-runs/promptfoo.json")}
+	}
+	if exists(filepath.Join(baselineDir, "eval-runs/deepeval.json")) {
+		opts.DeepEvalPaths = []string{filepath.Join(baselineDir, "eval-runs/deepeval.json")}
+	}
+	if exists(filepath.Join(baselineDir, "eval-runs/ragas.json")) {
+		opts.RagasPaths = []string{filepath.Join(baselineDir, "eval-runs/ragas.json")}
+	}
+	if len(opts.PromptfooPaths)+len(opts.DeepEvalPaths)+len(opts.RagasPaths) == 0 {
+		return ""
+	}
+
+	result, err := engine.RunPipeline(baselineDir, opts)
+	if err != nil {
+		t.Fatalf("buildBaselineFile: %v", err)
+	}
+
+	// The baseline snapshot only needs the EvalRuns the regression
+	// detectors look at; the rest is harmless to include.
+	bytes, err := json.Marshal(result.Snapshot)
+	if err != nil {
+		t.Fatalf("marshal baseline: %v", err)
+	}
+	out := filepath.Join(outDir, "baseline.synthesized.json")
+	if err := os.WriteFile(out, bytes, 0o644); err != nil {
+		t.Fatalf("write baseline: %v", err)
+	}
+	return out
+}
 
 // TestCalibration_CorpusRunner runs the real engine pipeline against the
 // in-tree calibration corpus and confirms the runner reports sane
@@ -39,7 +88,34 @@ func TestCalibration_CorpusRunner(t *testing.T) {
 	}
 
 	analyse := func(fixturePath string) ([]models.Signal, error) {
-		result, err := engine.RunPipeline(fixturePath)
+		opts := engine.PipelineOptions{}
+		// Auto-discover per-fixture eval artifacts. Each path is added to
+		// PipelineOptions only when the file exists; fixtures without
+		// these artifacts behave exactly as before.
+		fixtureFile := func(rel string) string { return filepath.Join(fixturePath, rel) }
+		if exists(fixtureFile("eval-runs/promptfoo.json")) {
+			opts.PromptfooPaths = []string{fixtureFile("eval-runs/promptfoo.json")}
+		}
+		if exists(fixtureFile("eval-runs/deepeval.json")) {
+			opts.DeepEvalPaths = []string{fixtureFile("eval-runs/deepeval.json")}
+		}
+		if exists(fixtureFile("eval-runs/ragas.json")) {
+			opts.RagasPaths = []string{fixtureFile("eval-runs/ragas.json")}
+		}
+		if exists(fixtureFile("baseline.json")) {
+			opts.BaselineSnapshotPath = fixtureFile("baseline.json")
+		} else if exists(fixtureFile("baseline")) {
+			// Synthesise the baseline snapshot from baseline/eval-runs/
+			// framework artifacts. Cheaper to author than a hand-written
+			// snapshot JSON with base64-encoded payloads.
+			tmpDir := t.TempDir()
+			synth := buildBaselineFile(t, fixtureFile("baseline"), tmpDir)
+			if synth != "" {
+				opts.BaselineSnapshotPath = synth
+			}
+		}
+
+		result, err := engine.RunPipeline(fixturePath, opts)
 		if err != nil {
 			return nil, err
 		}

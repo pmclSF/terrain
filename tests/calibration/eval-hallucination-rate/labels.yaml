@@ -1,0 +1,15 @@
+schemaVersion: 1
+fixture: eval-hallucination-rate
+description: |
+  A Promptfoo eval result file shows 3 of 8 cases (37.5%) hallucinated
+  — failure reasons mention "fabricated", "ungrounded", "hallucinated".
+  The default threshold is 5%, so the rate is well over. The detector
+  fires aiHallucinationRate on the run.
+
+  This is the first calibration fixture exercising the eval-data
+  ingestion path: the runner auto-discovers eval-runs/promptfoo.json
+  in the fixture root and feeds it to the pipeline as PromptfooPaths.
+expected:
+  - type: aiHallucinationRate
+    file: eval-runs/promptfoo.json
+    notes: "3/8 cases hallucinated, 37.5% > 5% threshold"
