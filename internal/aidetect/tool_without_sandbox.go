@@ -153,7 +153,7 @@ func analyseToolConfig(path string) []toolFinding {
 		if !looksDestructive(t.name + " " + t.description) {
 			continue
 		}
-		if hasApprovalMarker(t.raw) {
+		if hasApprovalMarkerOnEntry(t) {
 			continue
 		}
 		out = append(out, toolFinding{
@@ -168,7 +168,8 @@ func analyseToolConfig(path string) []toolFinding {
 type toolEntry struct {
 	name        string
 	description string
-	raw         string // serialised tree fragment for marker scanning
+	raw         string                // serialised tree fragment (legacy substring scanning fallback)
+	fields      map[string]*yaml.Node // structural keys; preferred for marker checks
 }
 
 // extractToolEntries walks the YAML tree looking for entries that look
@@ -201,11 +202,11 @@ func extractToolEntries(n *yaml.Node) []toolEntry {
 			return
 		}
 
-		entry := toolEntry{name: nameNode.Value}
+		entry := toolEntry{name: nameNode.Value, fields: fields}
 		if desc, ok := fields["description"]; ok {
 			entry.description = desc.Value
 		}
-		// Serialise the mapping for marker scanning.
+		// Serialise the mapping for marker scanning (legacy fallback).
 		buf, err := yaml.Marshal(n)
 		if err == nil {
 			entry.raw = string(buf)
@@ -249,10 +250,75 @@ func looksDestructive(s string) bool {
 	return false
 }
 
+// hasApprovalMarker (legacy) — kept for any external callers, but
+// the per-entry path is what the detector uses. Substring match
+// against the marshalled tree was bypassable: typing "preview" or
+// "sandbox" anywhere in a tool's description disabled detection
+// (adversarial bypass).
 func hasApprovalMarker(raw string) bool {
 	low := strings.ToLower(raw)
 	for _, m := range approvalMarkers {
 		if strings.Contains(low, m) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasApprovalMarkerOnEntry checks the structural keys of a single tool
+// entry rather than the marshalled-tree substring, closing the
+// adversarial-bypass loophole. A marker counts when:
+//   - The tool entry has a top-level key whose lowercased name
+//     contains an approval marker substring
+//     (e.g. `sandbox`, `requires_approval`, `dry_run`), AND
+//   - The value is truthy (`true`, non-empty string, non-empty map).
+//
+// The "key contains marker" rule (vs strict equality) preserves
+// backwards compat with shapes like `requires_approval: true` and
+// `dry_run_mode: enabled` while still rejecting the substring-bypass
+// where a description happens to contain the word "preview".
+func hasApprovalMarkerOnEntry(t toolEntry) bool {
+	if t.fields == nil {
+		// Legacy fallback for callers that didn't populate fields:
+		// retain substring behaviour rather than emit a false positive.
+		return hasApprovalMarker(t.raw)
+	}
+	// Skip these scalar text fields — they're free-form prose, not
+	// structural opt-ins. A description containing "preview" or
+	// "sandbox" no longer disables the finding.
+	textFields := map[string]bool{
+		"description": true,
+		"summary":     true,
+		"name":        true,
+		"label":       true,
+		"comment":     true,
+		"docstring":   true,
+	}
+	for keyName, node := range t.fields {
+		lowKey := strings.ToLower(keyName)
+		if textFields[lowKey] || node == nil {
+			continue
+		}
+		matched := false
+		for _, marker := range approvalMarkers {
+			if strings.Contains(lowKey, marker) {
+				matched = true
+				break
+			}
+		}
+		if !matched {
+			continue
+		}
+		// Truthy: scalar with non-empty / non-false value, or any
+		// non-empty mapping/sequence.
+		if node.Kind == yaml.ScalarNode {
+			v := strings.ToLower(strings.TrimSpace(node.Value))
+			if v != "" && v != "false" && v != "no" && v != "0" && v != "null" {
+				return true
+			}
+			continue
+		}
+		if (node.Kind == yaml.MappingNode || node.Kind == yaml.SequenceNode) && len(node.Content) > 0 {
 			return true
 		}
 	}

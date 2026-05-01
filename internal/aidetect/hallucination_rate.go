@@ -57,16 +57,28 @@ func (d *HallucinationRateDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 		if err != nil || result == nil {
 			continue
 		}
-		total := len(result.Cases)
-		if total == 0 {
-			continue
-		}
+		// Denominator: only count cases that produced a meaningful
+		// score. Errored cases (provider crashed, network timeout, no
+		// scoring at all) dilute the hallucination rate — pre-0.2.x a
+		// 50-case suite with 40 errors and 5 hallucinated valid cases
+		// reported 10% (5/50) instead of the actual 50% (5/10) among
+		// scoreable cases. Catastrophic eval suite degradation hid the
+		// hallucination signal in infra noise.
+		scoreable := 0
 		hallucinated := 0
 		for _, c := range result.Cases {
+			if !caseIsScoreable(c) {
+				continue
+			}
+			scoreable++
 			if caseLooksHallucinated(c) {
 				hallucinated++
 			}
 		}
+		if scoreable == 0 {
+			continue
+		}
+		total := scoreable
 		rate := float64(hallucinated) / float64(total)
 		if rate <= threshold {
 			continue
@@ -110,6 +122,41 @@ func (d *HallucinationRateDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 	return out
 }
 
+// caseIsScoreable returns true when an eval case produced a real
+// score we can interpret. Excludes cases that errored before
+// evaluation (no NamedScores, no Score, no Success bool that would
+// itself be meaningless without a grader) — including these in the
+// denominator dilutes the hallucination rate.
+func caseIsScoreable(c airun.EvalCase) bool {
+	if len(c.NamedScores) > 0 {
+		return true
+	}
+	if c.Success {
+		return true
+	}
+	if c.Score > 0 {
+		return true
+	}
+	// A failure with a FailureReason is grading output we should count.
+	if c.FailureReason != "" {
+		return true
+	}
+	return false
+}
+
+// hallucinationGroundingKeys lists named-score keys whose semantics are
+// "low value means ungrounded / hallucinated." Pre-0.2.x the detector
+// matched any key containing the substring "ground", which collided
+// with non-AI metric names like `background_score` or
+// `playground_metric`. Whitelist instead.
+var hallucinationGroundingKeys = map[string]bool{
+	"groundedness":           true,
+	"groundtruth":            true,
+	"answer_grounding":       true,
+	"answer_grounding_score": true,
+	"retrieval_grounding":    true,
+}
+
 // caseLooksHallucinated returns true when the case's named scores or
 // failure reason indicate a hallucination-shaped problem.
 func caseLooksHallucinated(c airun.EvalCase) bool {
@@ -124,8 +171,7 @@ func caseLooksHallucinated(c airun.EvalCase) bool {
 			return true
 		case key == "hallucination" && v > 0.5:
 			return true
-		case strings.Contains(key, "ground") && v < 0.5:
-			// answerGroundingScore, retrievalGroundingScore, etc.
+		case hallucinationGroundingKeys[key] && v < 0.5:
 			return true
 		}
 	}
