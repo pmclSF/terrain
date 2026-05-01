@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/pmclSF/terrain/internal/aidetect"
+	"github.com/pmclSF/terrain/internal/airun"
 	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/coverage"
 	"github.com/pmclSF/terrain/internal/depgraph"
@@ -75,6 +77,26 @@ type PipelineOptions struct {
 	// GauntletPaths are paths to Gauntlet AI eval result artifacts (JSON).
 	// When set, Gauntlet results are ingested and applied to scenarios.
 	GauntletPaths []string
+
+	// PromptfooPaths are paths to Promptfoo `--output` JSON files.
+	// When set, the Promptfoo adapter ingests them into snap.EvalRuns.
+	// SignalV2 0.2 field — see internal/airun/promptfoo.go.
+	PromptfooPaths []string
+
+	// DeepEvalPaths are paths to DeepEval `--export` JSON files.
+	// Same destination as PromptfooPaths: each result lands in
+	// snap.EvalRuns through internal/airun/deepeval.go.
+	DeepEvalPaths []string
+
+	// RagasPaths are paths to Ragas eval result JSON files.
+	// Same destination as PromptfooPaths / DeepEvalPaths.
+	RagasPaths []string
+
+	// BaselineSnapshotPath, when set, points at a previous snapshot
+	// JSON file. The pipeline loads it and attaches the result to
+	// snap.Baseline so regression-aware detectors (aiCostRegression,
+	// aiRetrievalRegression) can compare current vs baseline.
+	BaselineSnapshotPath string
 
 	// SlowTestThresholdMs overrides the default slow test threshold.
 	SlowTestThresholdMs float64
@@ -167,11 +189,17 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		terrainCfgErr     error
 		ownerResolver     *ownership.Resolver
 		runtimeResults    []runtime.TestResult
-		runtimeIngestErr  error
-		coverageArtifacts []coverage.CoverageArtifact
-		coverageIngestErr error
-		gauntletArtifacts []*gauntlet.Artifact
-		gauntletIngestErr error
+		runtimeIngestErr     error
+		coverageArtifacts    []coverage.CoverageArtifact
+		coverageIngestErr    error
+		gauntletArtifacts    []*gauntlet.Artifact
+		gauntletIngestErr    error
+		promptfooEnvelopes   []models.EvalRunEnvelope
+		promptfooIngestErr   error
+		deepevalEnvelopes    []models.EvalRunEnvelope
+		deepevalIngestErr    error
+		ragasEnvelopes       []models.EvalRunEnvelope
+		ragasIngestErr       error
 
 		staticAnalysisDuration  time.Duration
 		policyLoadDuration      time.Duration
@@ -275,6 +303,33 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 				return err
 			}
 			gauntletArtifacts, gauntletIngestErr = ingestGauntletArtifacts(opt.GauntletPaths)
+			return nil
+		})
+	}
+	if len(opt.PromptfooPaths) > 0 {
+		startTask(&prepWG, func(taskCtx context.Context) error {
+			if err := taskCtx.Err(); err != nil {
+				return err
+			}
+			promptfooEnvelopes, promptfooIngestErr = ingestPromptfooArtifacts(opt.PromptfooPaths)
+			return nil
+		})
+	}
+	if len(opt.DeepEvalPaths) > 0 {
+		startTask(&prepWG, func(taskCtx context.Context) error {
+			if err := taskCtx.Err(); err != nil {
+				return err
+			}
+			deepevalEnvelopes, deepevalIngestErr = ingestDeepEvalArtifacts(opt.DeepEvalPaths)
+			return nil
+		})
+	}
+	if len(opt.RagasPaths) > 0 {
+		startTask(&prepWG, func(taskCtx context.Context) error {
+			if err := taskCtx.Err(); err != nil {
+				return err
+			}
+			ragasEnvelopes, ragasIngestErr = ingestRagasArtifacts(opt.RagasPaths)
 			return nil
 		})
 	}
@@ -462,6 +517,83 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 				Detail: fmt.Sprintf("%d artifact(s) ingested", len(opt.GauntletPaths)),
 			})
 		}
+	}
+
+	// Step 4d: Apply Promptfoo eval-run envelopes (the 0.2 adapter
+	// path; the runtime-aware AI detectors will consume these).
+	if len(opt.PromptfooPaths) > 0 {
+		if promptfooIngestErr != nil {
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "promptfoo",
+				Status: models.DataSourceError,
+				Detail: promptfooIngestErr.Error(),
+				Impact: "Promptfoo results are unavailable. Per-case scoring + token usage will not feed cost/hallucination/retrieval detectors.",
+			})
+		} else {
+			snapshot.EvalRuns = append(snapshot.EvalRuns, promptfooEnvelopes...)
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "promptfoo",
+				Status: models.DataSourceAvailable,
+				Detail: fmt.Sprintf("%d artifact(s) ingested", len(opt.PromptfooPaths)),
+			})
+		}
+	}
+
+	// Step 4d-bis: Apply DeepEval eval-run envelopes (same destination
+	// as Promptfoo; both adapters write into snap.EvalRuns).
+	if len(opt.DeepEvalPaths) > 0 {
+		if deepevalIngestErr != nil {
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "deepeval",
+				Status: models.DataSourceError,
+				Detail: deepevalIngestErr.Error(),
+				Impact: "DeepEval results are unavailable. Per-case scoring + token usage will not feed cost/hallucination/retrieval detectors.",
+			})
+		} else {
+			snapshot.EvalRuns = append(snapshot.EvalRuns, deepevalEnvelopes...)
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "deepeval",
+				Status: models.DataSourceAvailable,
+				Detail: fmt.Sprintf("%d artifact(s) ingested", len(opt.DeepEvalPaths)),
+			})
+		}
+	}
+
+	// Step 4d-tris: Apply Ragas eval-run envelopes.
+	if len(opt.RagasPaths) > 0 {
+		if ragasIngestErr != nil {
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "ragas",
+				Status: models.DataSourceError,
+				Detail: ragasIngestErr.Error(),
+				Impact: "Ragas results are unavailable. Per-case retrieval/faithfulness scores will not feed retrieval/hallucination detectors.",
+			})
+		} else {
+			snapshot.EvalRuns = append(snapshot.EvalRuns, ragasEnvelopes...)
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "ragas",
+				Status: models.DataSourceAvailable,
+				Detail: fmt.Sprintf("%d artifact(s) ingested", len(opt.RagasPaths)),
+			})
+		}
+	}
+
+	// Step 4e: Load baseline snapshot when --baseline was provided.
+	// Attaches the parsed result to snap.Baseline so regression-aware
+	// detectors can compare current vs baseline. Failure is loud
+	// rather than degraded: the user explicitly asked for the
+	// comparison, so a malformed baseline should fail the run.
+	if opt.BaselineSnapshotPath != "" {
+		baseline, err := loadBaselineSnapshot(opt.BaselineSnapshotPath)
+		if err != nil {
+			return nil, fmt.Errorf("load --baseline %s: %w", opt.BaselineSnapshotPath, err)
+		}
+		snapshot.Baseline = baseline
+		snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+			Name:   "baseline-snapshot",
+			Status: models.DataSourceAvailable,
+			Detail: fmt.Sprintf("loaded from %s (eval runs: %d)", opt.BaselineSnapshotPath, len(baseline.EvalRuns)),
+		})
 	}
 
 	if err := ctx.Err(); err != nil {
@@ -986,6 +1118,89 @@ func ingestGauntletArtifacts(paths []string) ([]*gauntlet.Artifact, error) {
 		artifacts = append(artifacts, art)
 	}
 	return artifacts, nil
+}
+
+// loadBaselineSnapshot reads a previous snapshot from disk and returns
+// it as a fully-decoded TestSuiteSnapshot. The result is attached to
+// snap.Baseline by the pipeline so regression-aware detectors can
+// compare current vs baseline state.
+//
+// Returns an error rather than nil when the file is missing or
+// malformed — the user explicitly asked for the comparison via
+// --baseline, so a silent fallback would mask intent.
+func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read: %w", err)
+	}
+	var snap models.TestSuiteSnapshot
+	if err := json.Unmarshal(data, &snap); err != nil {
+		return nil, fmt.Errorf("decode: %w", err)
+	}
+	return &snap, nil
+}
+
+// ingestPromptfooArtifacts parses each Promptfoo `--output` JSON file
+// and returns the resulting envelope per file. Errors abort early so a
+// malformed file fails the run loudly.
+//
+// The actual parsing lives in internal/airun.ParsePromptfooJSON; this
+// helper is the thin pipeline-side wrapper that translates each
+// EvalRunResult into the snapshot envelope.
+func ingestPromptfooArtifacts(paths []string) ([]models.EvalRunEnvelope, error) {
+	out := make([]models.EvalRunEnvelope, 0, len(paths))
+	for _, p := range paths {
+		result, err := airun.LoadPromptfooFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("promptfoo artifact %s: %w", p, err)
+		}
+		env, err := result.ToEnvelope(p)
+		if err != nil {
+			return nil, fmt.Errorf("promptfoo envelope for %s: %w", p, err)
+		}
+		out = append(out, env)
+	}
+	return out, nil
+}
+
+// ingestDeepEvalArtifacts mirrors ingestPromptfooArtifacts for the
+// DeepEval adapter. Both adapters target the same EvalRunEnvelope
+// shape; the runtime-aware AI detectors don't care which framework
+// produced the data.
+func ingestDeepEvalArtifacts(paths []string) ([]models.EvalRunEnvelope, error) {
+	out := make([]models.EvalRunEnvelope, 0, len(paths))
+	for _, p := range paths {
+		result, err := airun.LoadDeepEvalFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("deepeval artifact %s: %w", p, err)
+		}
+		env, err := result.ToEnvelope(p)
+		if err != nil {
+			return nil, fmt.Errorf("deepeval envelope for %s: %w", p, err)
+		}
+		out = append(out, env)
+	}
+	return out, nil
+}
+
+// ingestRagasArtifacts mirrors the Promptfoo / DeepEval helpers for
+// the Ragas adapter. Ragas's named-score axes (faithfulness,
+// context_relevance, answer_relevancy) feed aiRetrievalRegression
+// directly via the same EvalRunEnvelope plumbing.
+func ingestRagasArtifacts(paths []string) ([]models.EvalRunEnvelope, error) {
+	out := make([]models.EvalRunEnvelope, 0, len(paths))
+	for _, p := range paths {
+		result, err := airun.LoadRagasFile(p)
+		if err != nil {
+			return nil, fmt.Errorf("ragas artifact %s: %w", p, err)
+		}
+		env, err := result.ToEnvelope(p)
+		if err != nil {
+			return nil, fmt.Errorf("ragas envelope for %s: %w", p, err)
+		}
+		out = append(out, env)
+	}
+	return out, nil
 }
 
 func applyCoverageArtifacts(snapshot *models.TestSuiteSnapshot, artifacts []coverage.CoverageArtifact) {

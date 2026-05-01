@@ -1,0 +1,1186 @@
+{
+  "schemaVersion": "1.0.0",
+  "entries": [
+    {
+      "type": "slowTest",
+      "constName": "SignalSlowTest",
+      "domain": "health",
+      "status": "stable",
+      "title": "Slow Test",
+      "description": "Tests exceed expected runtime budget and slow feedback loops.",
+      "remediation": "Profile slow paths and split or optimize expensive tests.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-HEALTH-001",
+      "ruleUri": "docs/rules/health/slow-test.md"
+    },
+    {
+      "type": "flakyTest",
+      "constName": "SignalFlakyTest",
+      "domain": "health",
+      "status": "stable",
+      "title": "Flaky Test",
+      "description": "Tests exhibit inconsistent pass/fail behavior across runs.",
+      "remediation": "Stabilize timing, shared state, and external dependency handling.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-HEALTH-002",
+      "ruleUri": "docs/rules/health/flaky-test.md",
+      "promotionPlan": "Today's detector is retry-based, not statistical failure-rate. Statistical detection lands in 0.3 with the calibration corpus."
+    },
+    {
+      "type": "skippedTest",
+      "constName": "SignalSkippedTest",
+      "domain": "health",
+      "status": "stable",
+      "title": "Skipped Test",
+      "description": "Tests are skipped and may hide latent regressions.",
+      "remediation": "Unskip, remove, or explicitly justify skipped tests in policy.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime",
+        "structural-pattern"
+      ],
+      "ruleId": "TER-HEALTH-003",
+      "ruleUri": "docs/rules/health/skipped-test.md"
+    },
+    {
+      "type": "deadTest",
+      "constName": "SignalDeadTest",
+      "domain": "health",
+      "status": "stable",
+      "title": "Dead Test",
+      "description": "Tests may no longer validate meaningful behavior.",
+      "remediation": "Remove obsolete tests or reconnect them to active behavior.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.6,
+      "confidenceMax": 0.8,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-HEALTH-004",
+      "ruleUri": "docs/rules/health/dead-test.md"
+    },
+    {
+      "type": "unstableSuite",
+      "constName": "SignalUnstableSuite",
+      "domain": "health",
+      "status": "stable",
+      "title": "Unstable Suite",
+      "description": "The suite has concentrated instability signals.",
+      "remediation": "Prioritize stabilization in the highest-instability areas.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-HEALTH-005",
+      "ruleUri": "docs/rules/health/unstable-suite.md"
+    },
+    {
+      "type": "untestedExport",
+      "constName": "SignalUntestedExport",
+      "domain": "quality",
+      "status": "stable",
+      "title": "Untested Export",
+      "description": "Exported code units are not directly covered by tests.",
+      "remediation": "Add direct tests for public exports to protect API behavior.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.5,
+      "confidenceMax": 0.7,
+      "evidenceSources": [
+        "path-name",
+        "graph-traversal"
+      ],
+      "ruleId": "TER-QUAL-001",
+      "ruleUri": "docs/rules/quality/untested-export.md"
+    },
+    {
+      "type": "weakAssertion",
+      "constName": "SignalWeakAssertion",
+      "domain": "quality",
+      "status": "stable",
+      "title": "Weak Assertion",
+      "description": "Tests use weak or low-density assertions, reducing defect-catching power.",
+      "remediation": "Add behavior-focused assertions on outputs, state transitions, and side effects.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.4,
+      "confidenceMax": 0.8,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-QUAL-002",
+      "ruleUri": "docs/rules/quality/weak-assertion.md",
+      "promotionPlan": "Detector is regex/density-based; AST-based semantic scoring lands in 0.3 alongside the calibration corpus."
+    },
+    {
+      "type": "mockHeavyTest",
+      "constName": "SignalMockHeavyTest",
+      "domain": "quality",
+      "status": "stable",
+      "title": "Mock-Heavy Test",
+      "description": "Tests rely heavily on mocks and may miss integration-level regressions.",
+      "remediation": "Replace brittle mocks with real collaborators where practical.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.6,
+      "confidenceMax": 0.8,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-QUAL-003",
+      "ruleUri": "docs/rules/quality/mock-heavy.md"
+    },
+    {
+      "type": "testsOnlyMocks",
+      "constName": "SignalTestsOnlyMocks",
+      "domain": "quality",
+      "status": "stable",
+      "title": "Tests Only Mocks",
+      "description": "Test files contain mock setup but zero assertions, verifying wiring only.",
+      "remediation": "Add assertions on outputs, state changes, or side effects to validate real behavior.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-QUAL-004",
+      "ruleUri": "docs/rules/quality/tests-only-mocks.md"
+    },
+    {
+      "type": "snapshotHeavyTest",
+      "constName": "SignalSnapshotHeavyTest",
+      "domain": "quality",
+      "status": "stable",
+      "title": "Snapshot-Heavy Test",
+      "description": "Test files over-rely on snapshot assertions, reducing defect specificity.",
+      "remediation": "Supplement snapshots with targeted assertions on critical behavior.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.5,
+      "confidenceMax": 0.75,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-QUAL-005",
+      "ruleUri": "docs/rules/quality/snapshot-heavy.md"
+    },
+    {
+      "type": "coverageBlindSpot",
+      "constName": "SignalCoverageBlindSpot",
+      "domain": "quality",
+      "status": "stable",
+      "title": "Coverage Blind Spot",
+      "description": "Code units appear unprotected or weakly protected by current coverage mix.",
+      "remediation": "Add unit/integration tests where only broad or indirect coverage exists.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.5,
+      "confidenceMax": 0.8,
+      "evidenceSources": [
+        "coverage",
+        "graph-traversal"
+      ],
+      "ruleId": "TER-QUAL-006",
+      "ruleUri": "docs/rules/quality/coverage-blind-spot.md"
+    },
+    {
+      "type": "coverageThresholdBreak",
+      "constName": "SignalCoverageThresholdBreak",
+      "domain": "quality",
+      "status": "stable",
+      "title": "Coverage Threshold Break",
+      "description": "Measured coverage falls below configured thresholds.",
+      "remediation": "Target low-coverage, high-risk areas and raise meaningful coverage first.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.9,
+      "confidenceMax": 0.99,
+      "evidenceSources": [
+        "coverage"
+      ],
+      "ruleId": "TER-QUAL-007",
+      "ruleUri": "docs/rules/quality/coverage-threshold.md",
+      "promotionPlan": "Severity flips at hard 100%-gap boundary; smooth gradient lands in 0.3 per docs/scoring-rubric.md."
+    },
+    {
+      "type": "staticSkippedTest",
+      "constName": "SignalStaticSkippedTest",
+      "domain": "quality",
+      "status": "stable",
+      "title": "Static Skipped Test",
+      "description": "Tests are statically marked as skipped (it.skip, xit, @skip, etc.).",
+      "remediation": "Re-enable, replace, or document skip markers older than the policy threshold.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-QUAL-008",
+      "ruleUri": "docs/rules/quality/static-skip.md"
+    },
+    {
+      "type": "assertionFreeTest",
+      "constName": "SignalAssertionFreeTest",
+      "domain": "quality",
+      "status": "stable",
+      "title": "Assertion-Free Test",
+      "description": "Test files contain test function signatures but no detectable assertions.",
+      "remediation": "Add assertions to validate behavior — tests without assertions verify nothing.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-QUAL-009",
+      "ruleUri": "docs/rules/quality/assertion-free.md"
+    },
+    {
+      "type": "orphanedTestFile",
+      "constName": "SignalOrphanedTestFile",
+      "domain": "quality",
+      "status": "stable",
+      "title": "Orphaned Test File",
+      "description": "Test files do not import any source modules from the repository.",
+      "remediation": "Connect orphaned tests to source code or remove if obsolete.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.4,
+      "confidenceMax": 0.7,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "TER-QUAL-010",
+      "ruleUri": "docs/rules/quality/orphaned-test.md"
+    },
+    {
+      "type": "frameworkMigration",
+      "constName": "SignalFrameworkMigration",
+      "domain": "migration",
+      "status": "stable",
+      "title": "Framework Migration Opportunity",
+      "description": "The repository or package appears suitable for migration to a target framework.",
+      "remediation": "Evaluate candidates with `terrain migration readiness` and plan staged migration.",
+      "defaultSeverity": "info",
+      "confidenceMin": 0.5,
+      "confidenceMax": 0.8,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-MIG-001",
+      "ruleUri": "docs/rules/migration/framework-migration.md"
+    },
+    {
+      "type": "migrationBlocker",
+      "constName": "SignalMigrationBlocker",
+      "domain": "migration",
+      "status": "stable",
+      "title": "Migration Blocker",
+      "description": "Detected patterns will complicate framework migration.",
+      "remediation": "Address blockers incrementally before broad migration changes.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-MIG-002",
+      "ruleUri": "docs/rules/migration/migration-blocker.md"
+    },
+    {
+      "type": "deprecatedTestPattern",
+      "constName": "SignalDeprecatedTestPattern",
+      "domain": "migration",
+      "status": "stable",
+      "title": "Deprecated Test Pattern",
+      "description": "Deprecated test patterns increase migration and maintenance risk.",
+      "remediation": "Replace deprecated APIs with supported alternatives.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-MIG-003",
+      "ruleUri": "docs/rules/migration/deprecated-pattern.md"
+    },
+    {
+      "type": "dynamicTestGeneration",
+      "constName": "SignalDynamicTestGeneration",
+      "domain": "migration",
+      "status": "stable",
+      "title": "Dynamic Test Generation",
+      "description": "Dynamic test generation may reduce migration and analysis confidence.",
+      "remediation": "Prefer explicit, static test declarations for critical paths.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.5,
+      "confidenceMax": 0.75,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-MIG-004",
+      "ruleUri": "docs/rules/migration/dynamic-generation.md"
+    },
+    {
+      "type": "customMatcherRisk",
+      "constName": "SignalCustomMatcherRisk",
+      "domain": "migration",
+      "status": "stable",
+      "title": "Custom Matcher Risk",
+      "description": "Custom matcher behavior can be difficult to migrate safely.",
+      "remediation": "Audit matcher semantics and provide migration-safe equivalents.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.4,
+      "confidenceMax": 0.7,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-MIG-005",
+      "ruleUri": "docs/rules/migration/custom-matcher.md"
+    },
+    {
+      "type": "unsupportedSetup",
+      "constName": "SignalUnsupportedSetup",
+      "domain": "migration",
+      "status": "stable",
+      "title": "Unsupported Setup",
+      "description": "Setup/teardown patterns may not port cleanly to target frameworks.",
+      "remediation": "Refactor setup boundaries toward framework-agnostic patterns.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.4,
+      "confidenceMax": 0.7,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-MIG-006",
+      "ruleUri": "docs/rules/migration/unsupported-setup.md"
+    },
+    {
+      "type": "policyViolation",
+      "constName": "SignalPolicyViolation",
+      "domain": "governance",
+      "status": "stable",
+      "title": "Policy Violation",
+      "description": "Repository state violates configured Terrain policy rules.",
+      "remediation": "Resolve violations or intentionally update policy thresholds.",
+      "defaultSeverity": "high",
+      "confidenceMin": 1,
+      "confidenceMax": 1,
+      "evidenceSources": [
+        "policy"
+      ],
+      "ruleId": "TER-GOV-001",
+      "ruleUri": "docs/rules/governance/policy-violation.md"
+    },
+    {
+      "type": "legacyFrameworkUsage",
+      "constName": "SignalLegacyFrameworkUsage",
+      "domain": "governance",
+      "status": "stable",
+      "title": "Legacy Framework Usage",
+      "description": "Legacy framework usage remains where policy discourages it.",
+      "remediation": "Plan and execute incremental migration away from legacy frameworks.",
+      "defaultSeverity": "high",
+      "confidenceMin": 1,
+      "confidenceMax": 1,
+      "evidenceSources": [
+        "policy",
+        "structural-pattern"
+      ],
+      "ruleId": "TER-GOV-002",
+      "ruleUri": "docs/rules/governance/legacy-framework.md"
+    },
+    {
+      "type": "skippedTestsInCI",
+      "constName": "SignalSkippedTestsInCI",
+      "domain": "governance",
+      "status": "stable",
+      "title": "Skipped Tests In CI",
+      "description": "Skipped tests are present where CI policy disallows them.",
+      "remediation": "Investigate skip conditions and re-enable tests or replace with targeted alternatives.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 1,
+      "confidenceMax": 1,
+      "evidenceSources": [
+        "policy",
+        "structural-pattern"
+      ],
+      "ruleId": "TER-GOV-003",
+      "ruleUri": "docs/rules/governance/skipped-in-ci.md"
+    },
+    {
+      "type": "runtimeBudgetExceeded",
+      "constName": "SignalRuntimeBudgetExceeded",
+      "domain": "governance",
+      "status": "stable",
+      "title": "Runtime Budget Exceeded",
+      "description": "Observed runtimes exceed configured policy budget.",
+      "remediation": "Reduce runtime hotspots or adjust policy to reflect intentional tradeoffs.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 1,
+      "confidenceMax": 1,
+      "evidenceSources": [
+        "policy",
+        "runtime"
+      ],
+      "ruleId": "TER-GOV-004",
+      "ruleUri": "docs/rules/governance/runtime-budget.md"
+    },
+    {
+      "type": "uncoveredAISurface",
+      "constName": "SignalUncoveredAISurface",
+      "domain": "ai",
+      "status": "experimental",
+      "title": "Uncovered AI Surface",
+      "description": "AI surfaces (prompts, tools, datasets) have zero test or scenario coverage.",
+      "remediation": "Add eval scenarios that exercise this AI surface — untested prompts and tools can change behavior silently.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "graph-traversal",
+        "structural-pattern"
+      ],
+      "ruleId": "TER-STRUCT-001",
+      "ruleUri": "docs/rules/structural/uncovered-ai-surface.md",
+      "promotionPlan": "Coverage attribution depends on .terrain/terrain.yaml scenario declarations; precision/recall calibrated in 0.2 against the AI fixture corpus."
+    },
+    {
+      "type": "phantomEvalScenario",
+      "constName": "SignalPhantomEvalScenario",
+      "domain": "ai",
+      "status": "experimental",
+      "title": "Phantom Eval Scenario",
+      "description": "Eval scenarios claim to validate AI surfaces but have no import-graph path to those surfaces.",
+      "remediation": "Verify the test file actually imports and exercises the target code, or correct the surface mapping.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.6,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "TER-STRUCT-002",
+      "ruleUri": "docs/rules/structural/phantom-eval.md",
+      "promotionPlan": "Promote once .terrain/terrain.yaml scenario declarations are validated against the AI fixture corpus in 0.2. Today's traversal can miss surfaces declared by ID without a corresponding code path; calibration in 0.3 closes the gap."
+    },
+    {
+      "type": "untestedPromptFlow",
+      "constName": "SignalUntestedPromptFlow",
+      "domain": "ai",
+      "status": "experimental",
+      "title": "Untested Prompt Flow",
+      "description": "A prompt flows through multiple source files via imports with zero test coverage at any point in the chain.",
+      "remediation": "Add integration tests at the prompt's consumption points to catch behavioral regressions.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.6,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "TER-STRUCT-003",
+      "ruleUri": "docs/rules/structural/untested-prompt-flow.md",
+      "promotionPlan": "Detection currently misses prompt flows that go through framework abstractions (LangChain runnables, LlamaIndex query engines). 0.2 ships AST-based prompt-flow tracing; promote once recall measures \u003e=0.8 on the AI fixture corpus."
+    },
+    {
+      "type": "blastRadiusHotspot",
+      "constName": "SignalBlastRadiusHotspot",
+      "domain": "structure",
+      "status": "stable",
+      "title": "Blast-Radius Hotspot",
+      "description": "Source files where a change would impact an unusually large number of tests.",
+      "remediation": "Ensure high direct test coverage and consider adding contract tests at interface boundaries.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "TER-STRUCT-004",
+      "ruleUri": "docs/rules/structural/blast-radius.md"
+    },
+    {
+      "type": "fixtureFragilityHotspot",
+      "constName": "SignalFixtureFragilityHotspot",
+      "domain": "structure",
+      "status": "stable",
+      "title": "Fixture Fragility Hotspot",
+      "description": "Fixtures depended on by many tests, where a single change cascades widely.",
+      "remediation": "Extract smaller, focused fixtures to reduce cascading test failures.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "TER-STRUCT-005",
+      "ruleUri": "docs/rules/structural/fixture-fragility.md"
+    },
+    {
+      "type": "assertionFreeImport",
+      "constName": "SignalAssertionFreeImport",
+      "domain": "structure",
+      "status": "stable",
+      "title": "Assertion-Free Import",
+      "description": "Test files import production code but contain zero assertions — exercising code without verifying behavior.",
+      "remediation": "Add assertions to validate behavior or remove tests that verify nothing.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.8,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "graph-traversal",
+        "structural-pattern"
+      ],
+      "ruleId": "TER-STRUCT-006",
+      "ruleUri": "docs/rules/structural/assertion-free-import.md"
+    },
+    {
+      "type": "capabilityValidationGap",
+      "constName": "SignalCapabilityValidationGap",
+      "domain": "ai",
+      "status": "experimental",
+      "title": "Capability Validation Gap",
+      "description": "Inferred AI capabilities have no eval scenarios validating them.",
+      "remediation": "Add eval scenarios that exercise this capability to ensure behavioral regression detection.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.5,
+      "confidenceMax": 0.8,
+      "evidenceSources": [
+        "graph-traversal",
+        "structural-pattern"
+      ],
+      "ruleId": "TER-STRUCT-007",
+      "ruleUri": "docs/rules/structural/capability-gap.md",
+      "promotionPlan": "Capability inference is heuristic in 0.1.2; 0.2 introduces the AI taxonomy v2 with explicit capability tags so this signal can fire only on declared capabilities, eliminating false positives. Promote once precision \u003e=0.8."
+    },
+    {
+      "type": "evalFailure",
+      "constName": "SignalEvalFailure",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Eval Failure",
+      "description": "An AI eval scenario reported a hard failure.",
+      "remediation": "Investigate the failing case in the eval framework's report and patch the prompt or guardrail.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.9,
+      "confidenceMax": 1,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-001",
+      "ruleUri": "docs/rules/ai/eval-failure.md",
+      "promotionPlan": "Detector lands in 0.2 with eval-framework metric ingestion."
+    },
+    {
+      "type": "evalRegression",
+      "constName": "SignalEvalRegression",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Eval Regression",
+      "description": "",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-002",
+      "ruleUri": "docs/rules/ai/eval-regression.md",
+      "promotionPlan": "0.2: ingest baseline-vs-current metrics from Promptfoo / DeepEval / Ragas."
+    },
+    {
+      "type": "accuracyRegression",
+      "constName": "SignalAccuracyRegression",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Accuracy Regression",
+      "description": "",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-003",
+      "ruleUri": "docs/rules/ai/accuracy-regression.md",
+      "promotionPlan": "0.2"
+    },
+    {
+      "type": "citationMissing",
+      "constName": "SignalCitationMissing",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Citation Missing",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.6,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-004",
+      "ruleUri": "docs/rules/ai/citation-missing.md",
+      "promotionPlan": "0.3 — RAG-specific detectors."
+    },
+    {
+      "type": "retrievalMiss",
+      "constName": "SignalRetrievalMiss",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Retrieval Miss",
+      "description": "",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-005",
+      "ruleUri": "docs/rules/ai/retrieval-miss.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "answerGroundingFailure",
+      "constName": "SignalAnswerGroundingFailure",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Answer Grounding Failure",
+      "description": "",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-006",
+      "ruleUri": "docs/rules/ai/grounding-failure.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "toolSelectionError",
+      "constName": "SignalToolSelectionError",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Tool Selection Error",
+      "description": "",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-007",
+      "ruleUri": "docs/rules/ai/tool-selection-error.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "schemaParseFailure",
+      "constName": "SignalSchemaParseFailure",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Schema Parse Failure",
+      "description": "",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-008",
+      "ruleUri": "docs/rules/ai/schema-parse-failure.md",
+      "promotionPlan": "0.2"
+    },
+    {
+      "type": "safetyFailure",
+      "constName": "SignalSafetyFailure",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Safety Failure",
+      "description": "",
+      "defaultSeverity": "critical",
+      "confidenceMin": 0.9,
+      "confidenceMax": 1,
+      "evidenceSources": [
+        "runtime",
+        "policy"
+      ],
+      "ruleId": "TER-AI-009",
+      "ruleUri": "docs/rules/ai/safety-failure.md",
+      "promotionPlan": "0.2 — first-class safety eval signals."
+    },
+    {
+      "type": "aiPolicyViolation",
+      "constName": "SignalAIPolicyViolation",
+      "domain": "ai",
+      "status": "planned",
+      "title": "AI Policy Violation",
+      "description": "",
+      "defaultSeverity": "critical",
+      "confidenceMin": 1,
+      "confidenceMax": 1,
+      "evidenceSources": [
+        "policy"
+      ],
+      "ruleId": "TER-AI-010",
+      "ruleUri": "docs/rules/ai/ai-policy-violation.md",
+      "promotionPlan": "0.2"
+    },
+    {
+      "type": "hallucinationDetected",
+      "constName": "SignalHallucinationDetected",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Hallucination Detected",
+      "description": "",
+      "defaultSeverity": "critical",
+      "confidenceMin": 0.6,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-011",
+      "ruleUri": "docs/rules/ai/hallucination.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "latencyRegression",
+      "constName": "SignalLatencyRegression",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Latency Regression",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-012",
+      "ruleUri": "docs/rules/ai/latency-regression.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "costRegression",
+      "constName": "SignalCostRegression",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Cost Regression",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-013",
+      "ruleUri": "docs/rules/ai/cost-regression.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "contextOverflowRisk",
+      "constName": "SignalContextOverflowRisk",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Context Overflow Risk",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.6,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "structural-pattern",
+        "runtime"
+      ],
+      "ruleId": "TER-AI-014",
+      "ruleUri": "docs/rules/ai/context-overflow.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "wrongSourceSelected",
+      "constName": "SignalWrongSourceSelected",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Wrong Source Selected",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.6,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-015",
+      "ruleUri": "docs/rules/ai/wrong-source.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "citationMismatch",
+      "constName": "SignalCitationMismatch",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Citation Mismatch",
+      "description": "",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-016",
+      "ruleUri": "docs/rules/ai/citation-mismatch.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "staleSourceRisk",
+      "constName": "SignalStaleSourceRisk",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Stale Source Risk",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.5,
+      "confidenceMax": 0.8,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-017",
+      "ruleUri": "docs/rules/ai/stale-source.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "chunkingRegression",
+      "constName": "SignalChunkingRegression",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Chunking Regression",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-018",
+      "ruleUri": "docs/rules/ai/chunking-regression.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "rerankerRegression",
+      "constName": "SignalRerankerRegression",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Reranker Regression",
+      "description": "",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-019",
+      "ruleUri": "docs/rules/ai/reranker-regression.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "topKRegression",
+      "constName": "SignalTopKRegression",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Top-K Regression",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-020",
+      "ruleUri": "docs/rules/ai/topk-regression.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "toolRoutingError",
+      "constName": "SignalToolRoutingError",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Tool Routing Error",
+      "description": "",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-021",
+      "ruleUri": "docs/rules/ai/tool-routing-error.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "toolGuardrailViolation",
+      "constName": "SignalToolGuardrailViolation",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Tool Guardrail Violation",
+      "description": "",
+      "defaultSeverity": "critical",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime",
+        "policy"
+      ],
+      "ruleId": "TER-AI-022",
+      "ruleUri": "docs/rules/ai/tool-guardrail.md",
+      "promotionPlan": "0.2 — tools-without-sandbox detection."
+    },
+    {
+      "type": "toolBudgetExceeded",
+      "constName": "SignalToolBudgetExceeded",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Tool Budget Exceeded",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime",
+        "policy"
+      ],
+      "ruleId": "TER-AI-023",
+      "ruleUri": "docs/rules/ai/tool-budget.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "agentFallbackTriggered",
+      "constName": "SignalAgentFallbackTriggered",
+      "domain": "ai",
+      "status": "planned",
+      "title": "Agent Fallback Triggered",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-024",
+      "ruleUri": "docs/rules/ai/agent-fallback.md",
+      "promotionPlan": "0.3"
+    },
+    {
+      "type": "aiSafetyEvalMissing",
+      "constName": "SignalAISafetyEvalMissing",
+      "domain": "ai",
+      "status": "stable",
+      "title": "AI Safety Eval Missing",
+      "description": "Agent or prompt has no eval scenario covering the documented safety category (jailbreak, harm, leak).",
+      "remediation": "Add an eval scenario tagged with the missing safety category and re-run the gauntlet.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern",
+        "graph-traversal"
+      ],
+      "ruleId": "TER-AI-100",
+      "ruleUri": "docs/rules/ai/safety-eval-missing.md"
+    },
+    {
+      "type": "aiPromptVersioning",
+      "constName": "SignalAIPromptVersioning",
+      "domain": "ai",
+      "status": "stable",
+      "title": "Prompt Versioning",
+      "description": "Prompt-kind surface ships without a recognisable version marker (filename suffix, inline `version:` field, or `# version:` comment). Future content changes will silently drift; consumers can't detect the change.",
+      "remediation": "Add a `version:` field, a `_v\u003cN\u003e` filename suffix, or a `# version: ...` comment so downstream consumers can detect content drift.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.92,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-101",
+      "ruleUri": "docs/rules/ai/prompt-versioning.md"
+    },
+    {
+      "type": "aiPromptInjectionRisk",
+      "constName": "SignalAIPromptInjectionRisk",
+      "domain": "ai",
+      "status": "experimental",
+      "title": "Prompt-Injection-Shaped Concatenation",
+      "description": "User-controlled input is concatenated into a prompt without escaping, system-prompt boundaries, or structured input boundaries.",
+      "remediation": "Use a prompt template with explicit user-content boundaries, or run user input through a sanitiser.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.6,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-102",
+      "ruleUri": "docs/rules/ai/prompt-injection-risk.md",
+      "promotionPlan": "0.2 ships heuristic regex detection. Promotes to stable in 0.3 when AST-precise taint-flow analysis lands."
+    },
+    {
+      "type": "aiHardcodedAPIKey",
+      "constName": "SignalAIHardcodedAPIKey",
+      "domain": "ai",
+      "status": "stable",
+      "title": "Hard-Coded API Key in AI Configuration",
+      "description": "API-key-shaped string appears in an eval YAML, prompt config, or agent definition.",
+      "remediation": "Move the secret to an environment variable or secrets store and reference it through the runner's secret-resolution path.",
+      "defaultSeverity": "critical",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-103",
+      "ruleUri": "docs/rules/ai/hardcoded-api-key.md"
+    },
+    {
+      "type": "aiToolWithoutSandbox",
+      "constName": "SignalAIToolWithoutSandbox",
+      "domain": "ai",
+      "status": "stable",
+      "title": "Destructive Tool Without Sandbox",
+      "description": "An agent tool definition can perform an irreversible operation (delete, drop, exec) without an explicit approval gate, sandbox, or dry-run mode.",
+      "remediation": "Wrap the tool in an approval gate or restrict its capability surface to a sandbox.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-104",
+      "ruleUri": "docs/rules/ai/tool-without-sandbox.md"
+    },
+    {
+      "type": "aiNonDeterministicEval",
+      "constName": "SignalAINonDeterministicEval",
+      "domain": "ai",
+      "status": "stable",
+      "title": "Non-Deterministic Eval Configuration",
+      "description": "An LLM eval runs without temperature pinned to 0 or a deterministic seed, so re-runs produce noisy comparisons.",
+      "remediation": "Pin temperature: 0 and a seed in the eval config, or document the non-determinism budget.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.9,
+      "confidenceMax": 0.98,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-105",
+      "ruleUri": "docs/rules/ai/non-deterministic-eval.md"
+    },
+    {
+      "type": "aiModelDeprecationRisk",
+      "constName": "SignalAIModelDeprecationRisk",
+      "domain": "ai",
+      "status": "stable",
+      "title": "Model Pinned to Deprecated or Floating Tag",
+      "description": "Code references a model name that resolves to a deprecated version or a floating tag (e.g. `gpt-4`, `gpt-3.5-turbo`).",
+      "remediation": "Pin to a dated model variant or upgrade to a supported tier.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.8,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-106",
+      "ruleUri": "docs/rules/ai/model-deprecation-risk.md"
+    },
+    {
+      "type": "aiCostRegression",
+      "constName": "SignalAICostRegression",
+      "domain": "ai",
+      "status": "stable",
+      "title": "Prompt Token-Cost Regression",
+      "description": "A prompt change increases the token count by more than 25% versus the recorded baseline.",
+      "remediation": "Investigate the change for unintended bloat; bump the baseline if the increase is intentional.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-107",
+      "ruleUri": "docs/rules/ai/cost-regression.md"
+    },
+    {
+      "type": "aiHallucinationRate",
+      "constName": "SignalAIHallucinationRate",
+      "domain": "ai",
+      "status": "stable",
+      "title": "Hallucination Rate Above Threshold",
+      "description": "An eval reports fabricated outputs at a rate above the project-configured threshold (default 5%).",
+      "remediation": "Investigate failing scenarios; tighten retrieval or grounding before merging.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.8,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-108",
+      "ruleUri": "docs/rules/ai/hallucination-rate.md"
+    },
+    {
+      "type": "aiFewShotContamination",
+      "constName": "SignalAIFewShotContamination",
+      "domain": "ai",
+      "status": "experimental",
+      "title": "Few-Shot Contamination",
+      "description": "Few-shot examples in a prompt overlap verbatim with the inputs of eval scenarios that exercise that prompt, inflating reported scores.",
+      "remediation": "Hold out the contaminated examples from the prompt's few-shot block, or rewrite the eval input so it isn't a copy of an example. Re-run the eval after de-duplication.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.55,
+      "confidenceMax": 0.83,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-109",
+      "ruleUri": "docs/rules/ai/few-shot-contamination.md",
+      "promotionPlan": "Substring-overlap detector ships in 0.2; promotes to stable in 0.3 once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes."
+    },
+    {
+      "type": "aiEmbeddingModelChange",
+      "constName": "SignalAIEmbeddingModelChange",
+      "domain": "ai",
+      "status": "stable",
+      "title": "Embedding Model Swap Without Re-Evaluation",
+      "description": "A repository references an embedding model in source code without a retrieval-shaped eval scenario, so a future model swap will silently change retrieval quality.",
+      "remediation": "Add a retrieval eval scenario (Ragas, Promptfoo, or DeepEval) that exercises this surface so embedding swaps surface as a measurable regression.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.88,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "TER-AI-110",
+      "ruleUri": "docs/rules/ai/embedding-model-change.md",
+      "promotionPlan": "0.2 ships the static precondition (embedding referenced + no retrieval coverage). Cross-snapshot content-hash diff variant lands in 0.3 once snapshot fingerprints are recorded."
+    },
+    {
+      "type": "aiRetrievalRegression",
+      "constName": "SignalAIRetrievalRegression",
+      "domain": "ai",
+      "status": "stable",
+      "title": "Retrieval Quality Regression",
+      "description": "Context relevance, nDCG, or coverage dropped versus the recorded baseline.",
+      "remediation": "Investigate the regression; revert the offending change or re-tune retrieval before merging.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "TER-AI-111",
+      "ruleUri": "docs/rules/ai/retrieval-regression.md"
+    }
+  ]
+}

@@ -46,6 +46,12 @@ type ScenarioEntry struct {
 	// Owner is the team or individual responsible.
 	Owner string `yaml:"owner"`
 
+	// Description is free-form scenario context. Detectors that compare
+	// scenario inputs against prompt content (e.g. aiFewShotContamination)
+	// read from this field, so it should describe the actual eval input
+	// rather than the scenario's intent.
+	Description string `yaml:"description"`
+
 	// Surfaces lists CodeSurface IDs this scenario validates.
 	Surfaces []string `yaml:"surfaces"`
 
@@ -185,6 +191,7 @@ func (c *TerrainConfig) ToScenarios() []models.Scenario {
 			ScenarioID:        scenarioID,
 			Name:              entry.Name,
 			Category:          entry.Category,
+			Description:       entry.Description,
 			Path:              entry.Path,
 			Framework:         framework,
 			Owner:             entry.Owner,

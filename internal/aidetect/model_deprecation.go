@@ -1,0 +1,222 @@
+package aidetect
+
+import (
+	"bufio"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+
+	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/signals"
+)
+
+// modelDeprecationList is the curated registry of model identifiers that
+// either refer to a deprecated/sunset model OR are floating tags whose
+// resolution silently changes over time. Each entry carries:
+//
+//   - the matched literal (case-insensitive)
+//   - a category: "deprecated" or "floating"
+//   - a one-line explanation surfaced in the signal
+//
+// The list is hand-curated and intentionally conservative. We expand it
+// as the calibration corpus grows. False positives are tracked under
+// `expectedAbsent: aiModelDeprecationRisk` in the corpus.
+var modelDeprecationList = []deprecationRule{
+	// Floating / undated tags.
+	{Match: "gpt-4", Category: "floating", Explanation: "model tag `gpt-4` resolves to whatever the provider currently maps it to; pin a dated variant (e.g. gpt-4-0613)"},
+	{Match: "gpt-3.5-turbo", Category: "floating", Explanation: "model tag `gpt-3.5-turbo` is a moving alias; pin a dated variant"},
+	{Match: "claude-3-opus", Category: "floating", Explanation: "model tag `claude-3-opus` floats across provider releases; pin claude-3-opus-YYYYMMDD"},
+	{Match: "claude-3-sonnet", Category: "floating", Explanation: "model tag `claude-3-sonnet` floats; pin a dated variant"},
+	{Match: "claude-3-haiku", Category: "floating", Explanation: "model tag `claude-3-haiku` floats; pin a dated variant"},
+
+	// Sunset / deprecated lineage.
+	{Match: "text-davinci-003", Category: "deprecated", Explanation: "OpenAI text-davinci-003 reached EOL in early 2024; switch to gpt-4-* or gpt-3.5-turbo-*"},
+	{Match: "text-davinci-002", Category: "deprecated", Explanation: "OpenAI text-davinci-002 is sunset; switch to a current chat model"},
+	{Match: "code-davinci", Category: "deprecated", Explanation: "OpenAI code-davinci-* is sunset; use gpt-4 with code prompts"},
+	{Match: "claude-2", Category: "deprecated", Explanation: "Anthropic claude-2 lineage is being sunset; migrate to claude-3.x"},
+	{Match: "claude-1", Category: "deprecated", Explanation: "Anthropic claude-1 is sunset"},
+}
+
+type deprecationRule struct {
+	Match       string
+	Category    string
+	Explanation string
+}
+
+// modelMatchPatterns are precompiled boundary-anchored regexes for the
+// deprecation list. Built once on package init.
+//
+// The trailing `(?:[^-0-9A-Za-z_]|$)` is the dated-variant guard: we
+// match the literal tag only when the next character ends the token
+// (whitespace / quote / punctuation / EOL). A real-world dated variant
+// like `gpt-4-0613` has `-0` after `gpt-4`, which fails the guard, so
+// it does NOT match the bare `gpt-4` rule. RE2 doesn't support
+// lookaround, so the guard consumes the trailing character — which is
+// fine because the only consumer (FindString) just checks for any
+// non-empty match.
+var modelMatchPatterns = func() []*regexp.Regexp {
+	out := make([]*regexp.Regexp, 0, len(modelDeprecationList))
+	for _, r := range modelDeprecationList {
+		anchor := `\b` + regexp.QuoteMeta(r.Match) + `(?:[^-0-9A-Za-z_]|$)`
+		out = append(out, regexp.MustCompile(`(?i)`+anchor))
+	}
+	return out
+}()
+
+// modelScanExts narrows the file scan to text formats where model
+// identifiers typically live: configs and source files.
+var modelScanExts = map[string]bool{
+	".yaml": true, ".yml": true, ".json": true, ".toml": true,
+	".env": true, ".ini": true, ".cfg": true,
+	".py": true, ".js": true, ".ts": true, ".tsx": true, ".jsx": true,
+	".go": true, ".java": true, ".rb": true, ".rs": true,
+}
+
+// ModelDeprecationDetector flags references to deprecated or floating
+// model tags in repository config and source files. Lives in the AI
+// domain because the consequence is "your eval / agent silently drifts
+// when the provider remaps the tag".
+type ModelDeprecationDetector struct {
+	// Root is the absolute path of the repo. Snapshot paths are
+	// repo-relative.
+	Root string
+}
+
+// Detect emits SignalAIModelDeprecationRisk for each (file, line) where
+// a deprecated or floating tag appears. One signal per line; multiple
+// matches on the same line are deduplicated.
+func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
+	if d == nil || snap == nil {
+		return nil
+	}
+	paths := d.gatherScanPaths(snap)
+
+	var out []models.Signal
+	for _, relPath := range paths {
+		abs := filepath.Join(d.Root, relPath)
+		hits := scanFileForModelTags(abs)
+		for _, h := range hits {
+			out = append(out, models.Signal{
+				Type:        signals.SignalAIModelDeprecationRisk,
+				Category:    models.CategoryAI,
+				Severity:    models.SeverityMedium,
+				Confidence:  0.88,
+				Location:    models.SignalLocation{File: relPath, Line: h.Line},
+				Explanation: h.Rule.Explanation,
+				SuggestedAction: "Pin to a dated model variant or upgrade to a supported tier.",
+
+				SeverityClauses: []string{"sev-medium-005"},
+				Actionability:   models.ActionabilityScheduled,
+				LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
+				AIRelevance:     models.AIRelevanceHigh,
+				RuleID:          "TER-AI-106",
+				RuleURI:         "docs/rules/ai/model-deprecation-risk.md",
+				DetectorVersion: "0.2.0",
+				ConfidenceDetail: &models.ConfidenceDetail{
+					Value:        0.88,
+					IntervalLow:  0.78,
+					IntervalHigh: 0.94,
+					Quality:      "heuristic",
+					Sources:      []models.EvidenceSource{models.SourceStructuralPattern},
+				},
+				EvidenceSource:   models.SourceStructuralPattern,
+				EvidenceStrength: models.EvidenceModerate,
+				Metadata: map[string]any{
+					"category": h.Rule.Category,
+					"match":    h.Rule.Match,
+				},
+			})
+		}
+	}
+	return out
+}
+
+// gatherScanPaths returns files to scan. Combines snapshot files with
+// a repo walk so model identifiers in non-test source still get
+// flagged. The extension filter is applied to both sources.
+func (d *ModelDeprecationDetector) gatherScanPaths(snap *models.TestSuiteSnapshot) []string {
+	fromSnap := snapshotPaths(snap)
+	fromWalk := walkRepoForConfigs(d.Root, scanOpts{
+		extensions: modelScanExts,
+	})
+	merged := uniquePaths(fromSnap, fromWalk)
+
+	var out []string
+	for _, p := range merged {
+		if modelScanExts[strings.ToLower(filepath.Ext(p))] {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// modelHit is one match in one file.
+type modelHit struct {
+	Line int
+	Rule deprecationRule
+}
+
+// scanFileForModelTags streams the file and emits modelHit per matched
+// pattern, deduplicating multiple hits on the same line for the same
+// rule. Files that fail to open are silently skipped.
+func scanFileForModelTags(path string) []modelHit {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	var hits []modelHit
+	sc := bufio.NewScanner(f)
+	const maxLine = 1 << 20
+	buf := make([]byte, 64*1024)
+	sc.Buffer(buf, maxLine)
+
+	type lineRule struct {
+		line  int
+		match string
+	}
+	emitted := map[lineRule]bool{}
+	line := 0
+	for sc.Scan() {
+		line++
+		text := sc.Text()
+		// Skip comment-only lines in source — our patterns can hit
+		// changelog entries documenting deprecations.
+		if commentLooksLikeChangeLog(text) {
+			continue
+		}
+		for i, rx := range modelMatchPatterns {
+			if !rx.MatchString(text) {
+				continue
+			}
+			rule := modelDeprecationList[i]
+			key := lineRule{line: line, match: rule.Match}
+			if emitted[key] {
+				continue
+			}
+			emitted[key] = true
+			hits = append(hits, modelHit{Line: line, Rule: rule})
+		}
+	}
+	return hits
+}
+
+// commentLooksLikeChangeLog returns true if a line is overwhelmingly
+// likely to be a changelog or docs comment about a deprecation, where
+// the whole point is to mention the deprecated tag — flagging that as
+// a finding would be inverted.
+func commentLooksLikeChangeLog(text string) bool {
+	t := strings.TrimSpace(text)
+	if !strings.HasPrefix(t, "#") && !strings.HasPrefix(t, "//") && !strings.HasPrefix(t, "*") {
+		return false
+	}
+	low := strings.ToLower(t)
+	for _, marker := range []string{"deprecat", "sunset", "removed", "eol", "changelog", "switch to", "migrate"} {
+		if strings.Contains(low, marker) {
+			return true
+		}
+	}
+	return false
+}

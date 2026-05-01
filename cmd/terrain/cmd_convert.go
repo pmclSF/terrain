@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	conv "github.com/pmclSF/terrain/internal/convert"
@@ -22,6 +23,7 @@ type convertCommandOptions struct {
 	Validate          bool
 	DryRun            bool
 	Plan              bool
+	Preview           bool
 	AutoDetect        bool
 	StrictValidate    bool
 	JSON              bool
@@ -77,6 +79,7 @@ func runConvertCLI(args []string) error {
 	fs.IntVar(&opts.Concurrency, "concurrency", 4, "number of files to convert in parallel in batch mode")
 	fs.BoolVar(&opts.DryRun, "dry-run", false, "show what would be converted without making changes")
 	fs.BoolVar(&opts.Plan, "plan", false, "show structured conversion plan")
+	fs.BoolVar(&opts.Preview, "preview", false, "run conversion to a temp dir and print unified diffs without writing")
 	fs.BoolVar(&opts.AutoDetect, "auto-detect", false, "auto-detect source framework from source content")
 	fs.BoolVar(&opts.StrictValidate, "strict-validate", false, "force strict validation even when best-effort handling is requested")
 	fs.BoolVar(&opts.JSON, "json", false, "JSON output")
@@ -116,6 +119,7 @@ func runShorthandCLI(alias string, args []string) error {
 	fs.StringVar(&opts.Output, "o", "", "output path for converted tests")
 	fs.BoolVar(&opts.DryRun, "dry-run", false, "preview without writing")
 	fs.BoolVar(&opts.Plan, "plan", false, "show structured conversion plan")
+	fs.BoolVar(&opts.Preview, "preview", false, "run conversion to a temp dir and print unified diffs without writing")
 	fs.IntVar(&opts.Concurrency, "concurrency", 4, "number of files to convert in parallel in batch mode")
 	fs.StringVar(&opts.OnError, "on-error", "skip", "error handling: skip|fail|best-effort")
 	fs.BoolVar(&opts.JSON, "json", false, "JSON output")
@@ -196,6 +200,9 @@ func runConvert(source string, opts convertCommandOptions) error {
 		ValidationMode:    string(validationMode),
 		Plan:              opts.Plan,
 		DryRun:            opts.DryRun,
+		Preview:           opts.Preview,
+		HistoryRoot:       resolveHistoryRoot(source),
+		TerrainVersion:    version,
 	})
 	if err != nil {
 		var inputErr conv.ConversionInputError
@@ -217,10 +224,47 @@ func runConvert(source string, opts convertCommandOptions) error {
 	if result.Plan != nil {
 		return renderConvertPlan(*result.Plan, opts.JSON)
 	}
+	if len(result.Preview) > 0 || opts.Preview {
+		return renderConvertPreview(result.Preview, result.Direction, opts.JSON)
+	}
 	if result.Execution != nil {
 		return renderConvertExecution(*result.Execution, result.Direction, opts.JSON)
 	}
 	return fmt.Errorf("native test migration produced no result")
+}
+
+// renderConvertPreview prints the per-file unified diffs returned by a
+// preview run. JSON output emits the slice verbatim; text output prints
+// a header per file followed by the diff body.
+func renderConvertPreview(previews []conv.FilePreview, direction conv.Direction, jsonOutput bool) error {
+	if jsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(struct {
+			Direction conv.Direction     `json:"direction"`
+			Previews  []conv.FilePreview `json:"previews"`
+		}{
+			Direction: direction,
+			Previews:  previews,
+		})
+	}
+	if len(previews) == 0 {
+		fmt.Println("Preview: no files would be converted.")
+		return nil
+	}
+	fmt.Printf("Preview: %s -> %s (%d file%s)\n\n", direction.From, direction.To, len(previews), pluralS(len(previews)))
+	for _, p := range previews {
+		fmt.Println(p.Diff)
+	}
+	fmt.Println("(preview only — no files were written)")
+	return nil
+}
+
+func pluralS(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
 }
 
 func renderConvertExecution(result conv.ExecutionResult, direction conv.Direction, jsonOutput bool) error {
@@ -456,6 +500,45 @@ var shorthandFlagsWithValue = map[string]bool{
 	"-o":            true,
 	"--concurrency": true,
 	"--on-error":    true,
+}
+
+// resolveHistoryRoot returns the directory under which terrain
+// should write its `.terrain/conversion-history/log.jsonl` audit
+// log. Walks up from the source path looking for a go.mod /
+// package.json / .git marker; falls back to the source's parent dir
+// if no marker is found, so users running `terrain convert` outside
+// a real repo still get history alongside their work.
+//
+// Returns "" only when the source path itself can't be resolved.
+func resolveHistoryRoot(source string) string {
+	abs, err := filepath.Abs(source)
+	if err != nil {
+		return ""
+	}
+	info, err := os.Stat(abs)
+	if err != nil {
+		return ""
+	}
+	dir := abs
+	if !info.IsDir() {
+		dir = filepath.Dir(abs)
+	}
+	for {
+		for _, marker := range []string{"go.mod", "package.json", ".git"} {
+			if _, err := os.Stat(filepath.Join(dir, marker)); err == nil {
+				return dir
+			}
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	if info.IsDir() {
+		return abs
+	}
+	return filepath.Dir(abs)
 }
 
 // reorderCLIArgs splits a raw argv slice into a "flags first, positionals

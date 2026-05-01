@@ -8,7 +8,8 @@ GO_OWNED_PKGS := ./cmd/... ./internal/...
 
 .PHONY: build test lint clean demo benchmark-fetch benchmark-smoke benchmark-full benchmark-stress benchmark-summary benchmark-convert install \
        test-golden test-determinism test-schema test-adversarial test-e2e test-cli test-bench golden-update pr-gate release-gate \
-       sbom sbom-cyclonedx sbom-spdx release-dry-run go-release-verify js-release-verify extension-verify release-verify
+       sbom sbom-cyclonedx sbom-spdx release-dry-run go-release-verify js-release-verify extension-verify release-verify \
+       docs-gen docs-verify calibrate bench-baseline bench-gate
 
 # Build the CLI binary
 build:
@@ -132,6 +133,45 @@ extension-verify:
 	npm --prefix extension/vscode ci
 	npm --prefix extension/vscode run compile
 	npm --prefix extension/vscode test
+
+# ── Generated documentation ─────────────────────────────────
+# `docs-gen` rewrites docs/signals/manifest.json from
+# internal/signals.allSignalManifest. `docs-verify` writes to a tempdir
+# and diffs against the committed copy so CI fails when a manifest
+# change ships without the regenerated docs.
+docs-gen:
+	go run ./cmd/terrain-docs-gen
+
+docs-verify:
+	@scripts/docs-verify.sh
+
+# ── Calibration corpus ──────────────────────────────────────
+# Runs the engine pipeline against every fixture under tests/calibration/
+# and prints precision/recall per detector. Today a smoke gate (advisory
+# misses); flips to a hard ≥90% precision gate once the corpus is
+# populated. See docs/calibration/CORPUS.md.
+calibrate:
+	go test -count=1 -v -run TestCalibration ./internal/engine/...
+
+# ── Performance regression gate ─────────────────────────────
+# bench-baseline writes a fresh baseline benchmark snapshot. Run on a
+# main-branch commit and commit the result.
+# bench-gate runs the same benchmarks now and compares against the
+# committed baseline; fails if any benchmark regressed >10%.
+bench-baseline:
+	go test -run '^$$' -bench 'BenchmarkRunPipeline|BenchmarkSignalDetection|BenchmarkBuildImportGraph|BenchmarkRiskScore|BenchmarkExtractTestCases' \
+		-count=5 ./internal/engine ./internal/analysis ./internal/scoring ./internal/testcase \
+		> benchmarks/baseline.txt
+	@echo "Wrote benchmarks/baseline.txt"
+
+bench-gate:
+	@tmp=$$(mktemp) ; \
+	go test -run '^$$' -bench 'BenchmarkRunPipeline|BenchmarkSignalDetection|BenchmarkBuildImportGraph|BenchmarkRiskScore|BenchmarkExtractTestCases' \
+		-count=5 ./internal/engine ./internal/analysis ./internal/scoring ./internal/testcase > $$tmp ; \
+	go run ./cmd/terrain-bench-gate --base benchmarks/baseline.txt --head $$tmp --threshold 10 ; \
+	rc=$$? ; \
+	rm -f $$tmp ; \
+	exit $$rc
 
 release-verify:
 	$(MAKE) go-release-verify

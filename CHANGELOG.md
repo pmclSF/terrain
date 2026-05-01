@@ -5,7 +5,31 @@ All notable changes to Terrain are documented here. The format follows
 
 ## [Unreleased]
 
-(intentionally empty — track 0.2 work in `docs/release/0.2.md`)
+Tracking 0.2 work — see `docs/release/0.2.md` for the full milestone.
+
+### Added
+
+- **Generated signal manifest export.** `docs/signals/manifest.json` is
+  regenerated from `internal/signals.allSignalManifest` via
+  `cmd/terrain-docs-gen`. `make docs-gen` writes; `make docs-verify` diffs.
+- **CI hard-fail gate** on `make docs-verify` (extended ubuntu runner).
+  Editing the manifest without committing the regenerated JSON now fails
+  the PR. Carries the 0.1.2 scaffold to enforcement per the 0.2 plan
+  (critical path item 1).
+- **`TestManifestExport_StableEntriesHaveRuleURI`** tightens the manifest
+  contract: status=stable requires a non-empty `RuleURI`. Experimental
+  and planned entries may still leave it blank.
+- **Eval framework adapter — Promptfoo.** `internal/airun.ParsePromptfooJSON`
+  reads Promptfoo `--output` payloads (v3 nested + v4 flat shapes) into a
+  normalised `EvalRunResult`. `TestSuiteSnapshot.EvalRuns` carries the
+  envelope; per-case payloads decode via `airun.ParseEvalRunPayload`.
+  Foundation for the runtime-aware AI detectors (aiCostRegression,
+  aiHallucinationRate, aiRetrievalRegression) that land later in 0.2.
+
+### Changed
+
+- `package.json`, `extension/vscode/package.json`, `package-lock.json`
+  bumped to `0.2.0` to mark the start of the 0.2 cycle.
 
 ## [0.1.2] — Truth-up & foundation
 

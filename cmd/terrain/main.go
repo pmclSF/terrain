@@ -105,10 +105,14 @@ func main() {
 		coverageRunLabelFlag := analyzeCmd.String("coverage-run-label", "", "coverage run label: unit, integration, or e2e")
 		runtimeFlag := analyzeCmd.String("runtime", "", "path to runtime artifact (JUnit XML, Jest JSON); comma-separated for multiple")
 		gauntletFlag := analyzeCmd.String("gauntlet", "", "path to Gauntlet eval result artifact (JSON); comma-separated for multiple")
+		promptfooFlag := analyzeCmd.String("promptfoo-results", "", "path to Promptfoo --output result file(s); comma-separated for multiple")
+		deepevalFlag := analyzeCmd.String("deepeval-results", "", "path to DeepEval --export result file(s); comma-separated for multiple")
+		ragasFlag := analyzeCmd.String("ragas-results", "", "path to Ragas eval result file(s); comma-separated for multiple")
+		baselineFlag := analyzeCmd.String("baseline", "", "path to a previous snapshot JSON file; enables regression-aware detectors (aiCostRegression, aiRetrievalRegression)")
 		slowThreshold := analyzeCmd.Float64("slow-threshold", defaultSlowThresholdMs, "slow test threshold in ms")
 		redactPathsFlag := analyzeCmd.Bool("redact-paths", false, "rewrite absolute paths in --format=sarif output to repo-relative form (or basename if outside repo)")
 		_ = analyzeCmd.Parse(os.Args[2:])
-		if err := runAnalyze(*rootFlag, *jsonFlag, *formatFlag, *verboseFlag, *writeSnapshot, *coverageFlag, *coverageRunLabelFlag, *runtimeFlag, *gauntletFlag, *slowThreshold, *redactPathsFlag); err != nil {
+		if err := runAnalyze(*rootFlag, *jsonFlag, *formatFlag, *verboseFlag, *writeSnapshot, *coverageFlag, *coverageRunLabelFlag, *runtimeFlag, *gauntletFlag, *promptfooFlag, *deepevalFlag, *ragasFlag, *baselineFlag, *slowThreshold, *redactPathsFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}

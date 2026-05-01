@@ -1,0 +1,21 @@
+schemaVersion: 1
+fixture: few-shot-contamination
+description: |
+  A prompt template (.prompt) carries a few-shot example whose body
+  is also the description of a scenario in .terrain/terrain.yaml that
+  covers the prompt surface. The verbatim overlap exceeds the
+  detector's 40-character threshold, so aiFewShotContamination must
+  fire — the eval is grading the model on text it has already seen.
+expected:
+  - type: aiFewShotContamination
+    file: prompts/classifier.prompt
+    notes: "scenario description overlaps verbatim with few-shot example"
+  - type: aiPromptVersioning
+    file: prompts/classifier.prompt
+    notes: "no version marker on the prompt"
+  - type: aiSafetyEvalMissing
+    file: prompts/classifier.prompt
+    notes: "covered prompt has no safety-shaped scenario"
+  - type: capabilityValidationGap
+    file: ""
+    notes: "scenario coverage doesn't include any AI capability validation"

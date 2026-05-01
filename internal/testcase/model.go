@@ -26,6 +26,13 @@ type TestCase struct {
 	// TestName is the normalized test name.
 	TestName string `json:"testName"`
 
+	// DisplayName is a human-readable name for the test when the
+	// framework supports one (JUnit 5 @DisplayName, Vitest "test
+	// description", etc.) and it differs from TestName. SignalV2 0.2
+	// field; downstream renderers should prefer DisplayName for
+	// presentation when set, and fall back to TestName for identity.
+	DisplayName string `json:"displayName,omitempty"`
+
 	// Framework is the detected framework for this test.
 	Framework string `json:"framework"`
 
@@ -77,4 +84,11 @@ type ParameterizationInfo struct {
 	// EstimatedInstances is the estimated number of parameter combinations
 	// if statically determinable.
 	EstimatedInstances int `json:"estimatedInstances,omitempty"`
+
+	// Values is the literal source text of each parametrize entry, when
+	// the decorator's value list was a static literal we could parse.
+	// One entry per row in @pytest.mark.parametrize(args, [v1, v2, ...]).
+	// Empty when values are computed at runtime, fetched from a fixture,
+	// or otherwise non-static. SignalV2 0.2 field.
+	Values []string `json:"values,omitempty"`
 }

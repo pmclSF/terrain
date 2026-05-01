@@ -68,7 +68,12 @@ type RiskSurface struct {
 //     understand (see ValidateSchemaVersion).
 //
 // Full policy: docs/schema/COMPAT.md.
-const SnapshotSchemaVersion = "1.0.0"
+//
+// 1.1.0 added SignalV2 fields (severityClauses, confidenceDetail,
+// actionability, lifecycleStages, aiRelevance, ruleId, ruleUri,
+// detectorVersion, relatedSignals). All additive and omitempty;
+// v1 consumers ignore them.
+const SnapshotSchemaVersion = "1.1.0"
 
 // MaxSupportedMajorSchema is the highest snapshot schema major version
 // this binary can read. Newer snapshots must be downgraded or read with a
@@ -164,6 +169,28 @@ type TestSuiteSnapshot struct {
 	DeviceConfigs []DeviceConfig `json:"deviceConfigs,omitempty"`
 
 	Signals []Signal `json:"signals,omitempty"`
+
+	// EvalRuns carries normalised eval-framework results when an
+	// adapter (Promptfoo, DeepEval, Ragas, ...) parsed an artifact
+	// during analyse. Detectors that compare against a baseline
+	// (aiCostRegression, aiHallucinationRate, aiRetrievalRegression)
+	// consume this field; today only the Promptfoo adapter ships, so
+	// most snapshots leave it empty. SignalV2 0.2 field.
+	//
+	// The actual EvalRunResult type lives in internal/airun to avoid
+	// dragging adapter dependencies into models. The snapshot keeps a
+	// raw JSON envelope so consumers can decode it via airun without
+	// circular imports.
+	EvalRuns []EvalRunEnvelope `json:"evalRuns,omitempty"`
+
+	// Baseline is an optional previous-snapshot pointer used by the
+	// regression-aware detectors (aiCostRegression,
+	// aiRetrievalRegression). Populated by the pipeline when the user
+	// passes `--baseline path/to/old-snapshot.json` on terrain analyze.
+	// Marked json:"-" so we don't double the size of every emitted
+	// snapshot — the baseline is an in-memory adjunct, not part of
+	// the serialised contract.
+	Baseline *TestSuiteSnapshot `json:"-"`
 
 	Risk []RiskSurface `json:"risk,omitempty"`
 

@@ -130,7 +130,9 @@ func TestRunAI_CommandsRequireScenarioContext(t *testing.T) {
 		{"baseline", func() error { return runAIBaseline(".", false) }},
 	}
 	for _, sub := range subs {
-		if err := sub.fn(); err == nil {
+		// runCaptured serializes via captureRunMu so direct calls
+		// don't race against other parallel tests that swap os.Stdout.
+		if err := runCaptured(sub.fn); err == nil {
 			t.Errorf("terrain ai %s should fail without runnable scenario context", sub.name)
 		}
 	}
