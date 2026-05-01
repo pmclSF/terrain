@@ -487,16 +487,23 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	decision := evaluateAIRunDecision(snap, result)
 	exitCode := 0
 	if decision.Action == actionBlock {
-		exitCode = 1
+		// exitAIGateBlock = 4 is the documented "AI gate blocks the run"
+		// exit code per cmd/terrain/main.go's exit-code scheme. Pre-0.2.x
+		// this path used exitError = 1, so CI scripts couldn't
+		// distinguish AI-gate failure from any other runtime error.
+		exitCode = exitAIGateBlock
 	}
 	if execErr != nil {
+		// Eval execution failure is a runtime error, not an AI-gate
+		// block — keep exit 1 so the two cases are distinguishable
+		// upstream.
 		decision.Action = actionBlock
 		if stderr := stderrBuf.String(); stderr != "" {
 			decision.Reason = fmt.Sprintf("eval execution failed: %v\n%s", execErr, stderr)
 		} else {
 			decision.Reason = fmt.Sprintf("eval execution failed: %v", execErr)
 		}
-		exitCode = 1
+		exitCode = exitError
 	}
 
 	// Step 7b: Compute content hashes and build persistent artifact.

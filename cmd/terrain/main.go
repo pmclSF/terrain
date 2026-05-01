@@ -112,6 +112,7 @@ func main() {
 		slowThreshold := analyzeCmd.Float64("slow-threshold", defaultSlowThresholdMs, "slow test threshold in ms")
 		redactPathsFlag := analyzeCmd.Bool("redact-paths", false, "rewrite absolute paths in --format=sarif output to repo-relative form (or basename if outside repo)")
 		_ = analyzeCmd.Parse(os.Args[2:])
+		mountPositionalAsRoot("analyze", analyzeCmd.Args(), rootFlag)
 		if err := runAnalyze(*rootFlag, *jsonFlag, *formatFlag, *verboseFlag, *writeSnapshot, *coverageFlag, *coverageRunLabelFlag, *runtimeFlag, *gauntletFlag, *promptfooFlag, *deepevalFlag, *ragasFlag, *baselineFlag, *slowThreshold, *redactPathsFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -135,6 +136,7 @@ func main() {
 		showFlag := impactCmd.String("show", "", "drill-down view: units, gaps, tests, owners, graph, selected")
 		ownerFlag := impactCmd.String("owner", "", "filter results by owner")
 		_ = impactCmd.Parse(os.Args[2:])
+		mountPositionalAsRoot("impact", impactCmd.Args(), rootFlag)
 		if err := runImpact(*rootFlag, *baseRef, *jsonFlag, *showFlag, *ownerFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -229,6 +231,7 @@ func main() {
 		jsonFlag := metricsCmd.Bool("json", false, "output JSON metrics snapshot")
 		verboseFlag := metricsCmd.Bool("verbose", false, "show detailed metric breakdowns")
 		_ = metricsCmd.Parse(os.Args[2:])
+		mountPositionalAsRoot("metrics", metricsCmd.Args(), rootFlag)
 		if err := runMetrics(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -240,6 +243,7 @@ func main() {
 		jsonFlag := postureCmd.Bool("json", false, "output JSON posture snapshot")
 		verboseFlag := postureCmd.Bool("verbose", false, "show measurement values and thresholds")
 		_ = postureCmd.Parse(os.Args[2:])
+		mountPositionalAsRoot("posture", postureCmd.Args(), rootFlag)
 		if err := runPosture(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -251,6 +255,7 @@ func main() {
 		jsonFlag := portfolioCmd.Bool("json", false, "output JSON portfolio snapshot")
 		verboseFlag := portfolioCmd.Bool("verbose", false, "show per-asset details")
 		_ = portfolioCmd.Parse(os.Args[2:])
+		mountPositionalAsRoot("portfolio", portfolioCmd.Args(), rootFlag)
 		if err := runPortfolio(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -262,6 +267,7 @@ func main() {
 		jsonFlag := insightsCmd.Bool("json", false, "output JSON insights")
 		verboseFlag := insightsCmd.Bool("verbose", false, "show per-finding evidence and file details")
 		_ = insightsCmd.Parse(os.Args[2:])
+		mountPositionalAsRoot("insights", insightsCmd.Args(), rootFlag)
 		if err := runInsights(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -307,6 +313,7 @@ func main() {
 		jsonFlag := summaryCmd.Bool("json", false, "output JSON summary with heatmap")
 		verboseFlag := summaryCmd.Bool("verbose", false, "show detailed heatmap breakdown")
 		_ = summaryCmd.Parse(os.Args[2:])
+		mountPositionalAsRoot("summary", summaryCmd.Args(), rootFlag)
 		if err := runSummary(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -318,6 +325,7 @@ func main() {
 		jsonFlag := focusCmd.Bool("json", false, "output JSON focus summary")
 		verboseFlag := focusCmd.Bool("verbose", false, "show full rationale and dependency chains")
 		_ = focusCmd.Parse(os.Args[2:])
+		mountPositionalAsRoot("focus", focusCmd.Args(), rootFlag)
 		if err := runFocus(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -376,6 +384,7 @@ func main() {
 		baseRef := stCmd.String("base", "", "git base ref for diff (default: HEAD~1)")
 		jsonFlag := stCmd.Bool("json", false, "output JSON protective test set")
 		_ = stCmd.Parse(os.Args[2:])
+		mountPositionalAsRoot("select-tests", stCmd.Args(), rootFlag)
 		if err := runSelectTests(*rootFlag, *baseRef, *jsonFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -388,6 +397,7 @@ func main() {
 		jsonFlag := prCmd.Bool("json", false, "output JSON PR analysis")
 		formatFlag := prCmd.String("format", "", "output format: markdown, comment, annotation")
 		_ = prCmd.Parse(os.Args[2:])
+		mountPositionalAsRoot("pr", prCmd.Args(), rootFlag)
 		if err := runPR(*rootFlag, *baseRef, *jsonFlag, *formatFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -754,6 +764,32 @@ var knownCommands = []string{
 // closest to candidate by Levenshtein distance, sorted nearest-first.
 // Suggestions are emitted only for distance <= 2 — any further away is
 // noisy more often than helpful.
+// mountPositionalAsRoot mounts the first non-flag positional as the
+// `--root` value. This makes `terrain <command> <path>` work alongside
+// `terrain <command> --root=<path>` for every analysis-style command.
+//
+// Pre-0.2.x, most analysis commands silently ignored positionals — a
+// user typing `terrain analyze ./myproj` got cwd analysis with no
+// warning. Adversarial review caught this on analyze, ai run, ai list,
+// ai doctor, debug graph, debug coverage, report impact, report
+// insights — fix is uniform across the family.
+//
+// Errors out with exit 2 (usage error) if more than one positional was
+// supplied. Callers must pass the FlagSet's args slice (post-Parse).
+func mountPositionalAsRoot(commandName string, args []string, root *string) {
+	if len(args) == 0 {
+		return
+	}
+	if args[0] != "" {
+		*root = args[0]
+	}
+	if len(args) > 1 {
+		fmt.Fprintf(os.Stderr, "error: terrain %s takes at most one positional path; got %d (%s)\n",
+			commandName, len(args), strings.Join(args, " "))
+		os.Exit(2)
+	}
+}
+
 func didYouMean(candidate string, maxResults int) []string {
 	candidate = strings.ToLower(candidate)
 	type scored struct {
