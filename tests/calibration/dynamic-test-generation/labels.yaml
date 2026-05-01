@@ -1,0 +1,11 @@
+schemaVersion: 1
+fixture: dynamic-test-generation
+description: |
+  A Jest test file uses test.each() with an inline data table to
+  generate three test cases dynamically. Migration tooling needs to
+  flatten dynamic generation into static cases first; the detector
+  flags it.
+expected:
+  - type: dynamicTestGeneration
+    file: src/parametrized.test.js
+    notes: "test.each() generates three cases at runtime"
