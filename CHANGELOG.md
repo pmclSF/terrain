@@ -5,31 +5,184 @@ All notable changes to Terrain are documented here. The format follows
 
 ## [Unreleased]
 
-Tracking 0.2 work — see `docs/release/0.2.md` for the full milestone.
+Post-0.2 work tracked separately.
 
-### Added
+## [0.2.0] — AI parity, calibration gate, CLI compression
+
+The release that turns Terrain's AI story into something testable. Twelve
+new AI detectors ship with calibration anchors at 100% precision/recall
+on a 27-fixture corpus; the CLI surface compresses 35→11 commands; the
+calibration runner becomes a load-bearing regression gate. Per
+`docs/release/0.2.md`.
+
+### AI detector batch (12/12 from the round-4 plan)
+
+- **`aiHardcodedAPIKey`** — config files leaking provider API keys.
+- **`aiNonDeterministicEval`** — eval configs declaring a model without
+  pinning `temperature: 0`.
+- **`aiModelDeprecationRisk`** — floating model tags (`gpt-4`,
+  `claude-3-opus`, etc.) instead of dated variants.
+- **`aiPromptInjectionRisk`** — user-input concatenated into prompt-shaped
+  variables without sanitisation.
+- **`aiToolWithoutSandbox`** — destructive agent tools without an approval
+  gate, sandbox flag, or dry-run path.
+- **`aiSafetyEvalMissing`** — safety-critical AI surfaces (prompt / agent /
+  tool / context) with no safety-shaped scenario coverage.
+- **`aiHallucinationRate`** — eval runs with hallucination-shaped failure
+  rate above the configured threshold.
+- **`aiCostRegression`** — paired-case avg cost-per-case rising more than
+  the configured threshold versus a baseline snapshot.
+- **`aiRetrievalRegression`** — retrieval-quality named scores
+  (`context_relevance`, `nDCG`, `coverage`, `faithfulness`) dropping
+  versus baseline.
+- **`aiPromptVersioning`** — prompt-kind surfaces shipping without a
+  recognisable version marker (filename suffix / inline / comment).
+- **`aiFewShotContamination`** — prompt few-shot examples overlapping
+  verbatim with the inputs of eval scenarios that cover them.
+- **`aiEmbeddingModelChange`** — repos referencing an embedding model in
+  source without a retrieval-shaped eval scenario. Prefers structured
+  RAG surfaces (EvidenceStrong) when present; falls back to file-scan
+  (EvidenceModerate).
+
+### Calibration corpus + load-bearing gate
+
+- **27 fixtures × 33 distinct signal types at 100% precision/recall.**
+  Spans AI, quality, health, migration, structural, and runtime domains.
+- **Calibration gate is now load-bearing.** `t.Errorf` (not `t.Logf`) on
+  any unmatched expected label. A future detector change that drops a
+  labelled signal fails CI rather than logging silently.
+- **Eval-data fixture authoring.** Calibration runner auto-discovers
+  per-fixture `eval-runs/{promptfoo,deepeval,ragas}.json` and
+  `baseline.json`. Synthesises baseline snapshots from
+  `baseline/eval-runs/` so regression-shaped fixtures are authored as two
+  pairs of framework JSON files, not hand-written snapshot blobs.
+- **`terrain.yaml` `scenarios.description` field.** Propagates onto
+  `models.Scenario.Description` for detectors that compare scenario
+  inputs to prompt content.
+
+### CLI restructure — phase A (35→11 commands)
+
+The canonical 11-command surface ships as non-breaking aliases. Legacy
+top-level commands keep working through 0.2; deprecation note in 0.2.x;
+removal in 0.3.
+
+```
+1.  terrain init
+2.  terrain analyze
+3.  terrain report <verb>     # 9 read-side verbs
+4.  terrain migrate <verb>    # 11 verbs (merged convert + migrate)
+5.  terrain ai <verb>
+6.  terrain portfolio <verb>
+7.  terrain config <verb>
+8.  terrain doctor
+9.  terrain debug <verb>
+10. terrain serve
+11. terrain version
+```
+
+Two former top-level commands collapse into flags:
+`focus` → `report summary --focus=<path>`; `export` → `--output=<path>`.
+
+### Eval framework adapters
+
+- **Promptfoo.** `internal/airun.ParsePromptfooJSON` reads `--output` JSON
+  (v3 nested + v4 flat shapes). Wired through `--promptfoo-results` flag.
+- **DeepEval.** `--deepeval-results` flag, same envelope shape.
+- **Ragas.** `--ragas-results` flag, same envelope shape.
+- **Baseline-snapshot mechanism.** `--baseline <path>` loads a previous
+  `TestSuiteSnapshot` and attaches it to the current run for
+  regression-aware detectors.
+
+### RAG structured parser — Go + Java added
+
+`ParseRAGStructured` was JS+Python only in 0.1; 0.2 adds langchaingo
+(Go) and langchain4j (Java) parsers. Same six component kinds across
+all four languages: embedding model, vector store, text splitter,
+retriever, document loader, reranker. Config extraction
+(`ChunkSize`, `TopK`, `ModelName`) maps to `RAGComponentConfig` so
+the embedding-model-change detector gets the high-confidence
+structured-surface path on Go and Java codebases too.
+
+### SignalV2 schema
+
+Nine new fields on `models.Signal`, all `omitempty`:
+`SeverityClauses`, `Actionability`, `LifecycleStages`, `AIRelevance`,
+`RuleID`, `RuleURI`, `DetectorVersion`, `RelatedSignals`,
+`ConfidenceDetail`. Schema bumped from 1.0.0 → 1.1.0.
+
+### Severity rubric
+
+18 stable clauses (`sev-{critical,high,medium,low,info}-NNN`) named in
+`internal/severity/rubric.go`, rendered to `docs/severity-rubric.md`
+via `cmd/terrain-docs-gen`. Each detector quotes the clauses it
+exercises in its emitted signals.
+
+### Auto-generated rule docs
+
+`docs/rules/<domain>/<rule>.md` auto-generated for all 68 rules by
+`cmd/terrain-docs-gen`. Hand-authored prose below the
+`<!-- docs-gen: end stub -->` marker is preserved across regenerations.
+Drift fails `make docs-verify` (CI gate).
+
+### Other infrastructure
 
 - **Generated signal manifest export.** `docs/signals/manifest.json` is
   regenerated from `internal/signals.allSignalManifest` via
   `cmd/terrain-docs-gen`. `make docs-gen` writes; `make docs-verify` diffs.
 - **CI hard-fail gate** on `make docs-verify` (extended ubuntu runner).
-  Editing the manifest without committing the regenerated JSON now fails
-  the PR. Carries the 0.1.2 scaffold to enforcement per the 0.2 plan
-  (critical path item 1).
-- **`TestManifestExport_StableEntriesHaveRuleURI`** tightens the manifest
-  contract: status=stable requires a non-empty `RuleURI`. Experimental
-  and planned entries may still leave it blank.
-- **Eval framework adapter — Promptfoo.** `internal/airun.ParsePromptfooJSON`
-  reads Promptfoo `--output` payloads (v3 nested + v4 flat shapes) into a
-  normalised `EvalRunResult`. `TestSuiteSnapshot.EvalRuns` carries the
-  envelope; per-case payloads decode via `airun.ParseEvalRunPayload`.
-  Foundation for the runtime-aware AI detectors (aiCostRegression,
-  aiHallucinationRate, aiRetrievalRegression) that land later in 0.2.
+- **Performance regression gate.** `make bench-gate` +
+  `terrain-bench-gate` fail PRs that regress benchmarks >10%.
+- **SLSA L2 build provenance.** `actions/attest-build-provenance@v3`
+  emits a signed in-toto attestation per release archive.
+- **Tree-sitter parser pool.** `sync.Pool` reuses parsers across calls.
+- **Pytest fixture dependency graph.** `@pytest.fixture` parameter
+  extraction feeds the import graph.
+- **JUnit 5 `@Nested` + `@DisplayName` extraction.** Hierarchical test
+  identification matches the framework's reporting model.
+- **Hierarchical Go `t.Run` extraction.** Sub-test stack tracking.
+- **Vitest in-source tests.** `if (import.meta.vitest)` blocks discovered
+  alongside conventional spec files.
+- **TSConfig path resolution.** `extends` chain + multi-target +
+  `jsconfig.json` fallback.
+- **`.terrain/conversion-history/` audit trail.** Every conversion writes
+  a JSONL line.
+- **Per-file conversion confidence.** Per-file scores expose where the
+  converter was uncertain.
+- **`terrain convert --preview`.** LCS-based unified diff.
+- **AI surface detection expansion.** Datasets, pgvector cursor calls,
+  MCP tool definitions, in-memory FAISS indexes.
+- **Capability validation gap detector.** Pairs AI capabilities with
+  eval scenarios; flags capabilities without validation.
+- **`terrain ai run` captures eval framework output** to
+  `.terrain/artifacts/`.
+- **Cosign keyless signing + npm provenance + SLSA attestations** on
+  every release archive.
 
 ### Changed
 
 - `package.json`, `extension/vscode/package.json`, `package-lock.json`
-  bumped to `0.2.0` to mark the start of the 0.2 cycle.
+  at 0.2.0.
+
+### Fixed
+
+- Race detector failure on Ubuntu CI from `os.Stdout`-touching parallel
+  tests; `runCaptured` wraps the previously-unprotected callers.
+- `TestParallelForEachIndexCtx_CancelMidway` flaky on Ubuntu race
+  runners; per-item sleep makes cancellation propagation visible.
+- Calibration coverage fixture wasn't tracked
+  (`.gitignore` filtered `coverage/`); exception added.
+- `docs-verify.sh` lacked the executable bit in the git index.
+
+### Deferred to 0.3
+
+- **Scoring v2 band re-anchoring** — needs a corpus of labelled
+  *repositories* (not just per-detector calibration fixtures) to derive
+  percentile-based band thresholds.
+- **Conversion top-3 fixture corpora to A-grade** — bulk content
+  authoring.
+- **CLI restructure phase B** — fold `policy` into
+  `analyze --policy=<file>` and `compare` into `analyze --against=<ref>`.
+  Different exit-code semantics; deserves its own review.
 
 ## [0.1.2] — Truth-up & foundation
 
