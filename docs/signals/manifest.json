@@ -1133,19 +1133,19 @@
       "type": "aiFewShotContamination",
       "constName": "SignalAIFewShotContamination",
       "domain": "ai",
-      "status": "planned",
+      "status": "experimental",
       "title": "Few-Shot Contamination",
-      "description": "Few-shot examples in a prompt overlap with the eval test set, inflating reported scores.",
-      "remediation": "De-duplicate or hold out the contaminated examples; re-run the eval.",
+      "description": "Few-shot examples in a prompt overlap verbatim with the inputs of eval scenarios that exercise that prompt, inflating reported scores.",
+      "remediation": "Hold out the contaminated examples from the prompt's few-shot block, or rewrite the eval input so it isn't a copy of an example. Re-run the eval after de-duplication.",
       "defaultSeverity": "medium",
-      "confidenceMin": 0.7,
-      "confidenceMax": 0.9,
+      "confidenceMin": 0.55,
+      "confidenceMax": 0.83,
       "evidenceSources": [
-        "graph-traversal"
+        "structural-pattern"
       ],
       "ruleId": "TER-AI-109",
       "ruleUri": "docs/rules/ai/few-shot-contamination.md",
-      "promotionPlan": "0.2 — string-similarity detector across the prompt-surface inventory."
+      "promotionPlan": "Substring-overlap detector ships in 0.2; promotes to stable in 0.3 once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes."
     },
     {
       "type": "aiEmbeddingModelChange",
