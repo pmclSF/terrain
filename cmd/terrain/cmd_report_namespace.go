@@ -19,10 +19,13 @@ import (
 //   terrain report posture       (was: posture)
 //   terrain report select-tests  (was: select-tests)
 //
-// Two former top-level commands collapse into flags on existing verbs:
-//
-//   focus  → `report summary --focus=<path>` (also valid on insights/metrics)
-//   export → `report --output=<path>` (every verb already accepts this)
+// The `focus → --focus=<path>` and `export → --output=<path>` flag
+// collapses are DEFERRED to Phase B — the underlying runners
+// (runFocus, runExport*) don't yet accept the path/output parameters
+// these flags would set, so wiring the flags here would silently drop
+// the user's value. Until Phase B lands the runner-side plumbing,
+// use the legacy top-level commands (`terrain focus`, `terrain
+// export`).
 //
 // The 9 read-side legacy top-level commands keep working unchanged
 // through 0.2; they get a deprecation note in 0.2.x and removal in 0.3.
@@ -107,14 +110,7 @@ func runReportSummaryCLI(args []string) error {
 	root := fs.String("root", ".", "repository root to analyze")
 	jsonOut := fs.Bool("json", false, "output JSON summary with heatmap")
 	verbose := fs.Bool("verbose", false, "show detailed heatmap breakdown")
-	focus := fs.String("focus", "", "narrow to a path (replaces legacy 'terrain focus')")
 	_ = fs.Parse(args)
-	if *focus != "" {
-		// `--focus=<path>` is the canonical way to express what the
-		// legacy `terrain focus` did. Route to the focus runner so the
-		// behaviour stays identical.
-		return runFocus(*root, *jsonOut, *verbose)
-	}
 	return runSummary(*root, *jsonOut, *verbose)
 }
 

@@ -47,20 +47,34 @@ var migrateVerbs = map[string]bool{
 	"preview":    true,
 }
 
-// runMigrateNamespaceCLI dispatches `terrain migrate ...` (and the
-// `terrain convert ...` alias) against the canonical-verb table.
-// Unknown first args fall through to runMigrateCLI for legacy direct
-// invocation.
+// runMigrateNamespaceCLI dispatches `terrain migrate ...` against the
+// canonical-verb table. Unknown first args fall through to
+// runMigrateCLI (the directory-mode runner) — `terrain migrate
+// <directory>` was the legacy shape.
 func runMigrateNamespaceCLI(args []string) error {
+	return runMigrateOrConvertNamespaceCLI(args, runMigrateCLI)
+}
+
+// runConvertNamespaceCLI dispatches `terrain convert ...` against the
+// same canonical-verb table. Unknown first args fall through to
+// runConvertCLI (the legacy per-file converter — `terrain convert
+// path/to/spec.cy.ts --to playwright`). Splitting the fall-through
+// dispatchers preserves both shapes — otherwise per-file conversion
+// regresses to the directory-mode runner and errors with
+// "--from <framework> is required".
+func runConvertNamespaceCLI(args []string) error {
+	return runMigrateOrConvertNamespaceCLI(args, runConvertCLI)
+}
+
+func runMigrateOrConvertNamespaceCLI(args []string, fallthroughFn func([]string) error) error {
 	if len(args) == 0 {
-		return runMigrateCLI(args)
+		return fallthroughFn(args)
 	}
 
 	verb := args[0]
 	if !migrateVerbs[verb] {
-		// Legacy direct invocation (e.g. terrain migrate cypress-playwright)
-		// or flag-prefixed call (e.g. terrain migrate --help).
-		return runMigrateCLI(args)
+		// Legacy direct invocation or flag-prefixed call.
+		return fallthroughFn(args)
 	}
 
 	rest := args[1:]
@@ -85,7 +99,7 @@ func runMigrateNamespaceCLI(args []string) error {
 		return runMigrationLegacySubcommand(verb, rest)
 	}
 
-	return runMigrateCLI(args)
+	return fallthroughFn(args)
 }
 
 // runMigrationLegacySubcommand wraps the historical `terrain migration
