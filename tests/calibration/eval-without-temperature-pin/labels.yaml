@@ -1,0 +1,11 @@
+schemaVersion: 1
+fixture: eval-without-temperature-pin
+description: |
+  A Promptfoo eval config declares a model and tests block but does not
+  pin temperature. The detector must fire aiNonDeterministicEval on the
+  config file. The negative case (eval-with-temperature-pin/) lives next
+  to this fixture and exercises the suppression branch.
+expected:
+  - type: aiNonDeterministicEval
+    file: promptfoo.yaml
+    notes: "model declared, no temperature pin → default sampling is non-deterministic"
