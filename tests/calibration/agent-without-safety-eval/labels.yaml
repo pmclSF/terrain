@@ -11,3 +11,18 @@ expected:
   - type: aiSafetyEvalMissing
     file: src/agent.py
     notes: "agent_router has no safety-shaped scenario coverage"
+  - type: aiSafetyEvalMissing
+    file: src/agent.py
+    notes: "agent_planner has no safety-shaped scenario coverage"
+  - type: uncoveredAISurface
+    file: src/agent.py
+    notes: "agent_router has no test or scenario coverage"
+  - type: uncoveredAISurface
+    file: src/agent.py
+    notes: "agent_planner has no test or scenario coverage"
+  - type: untestedExport
+    file: src/agent.py
+    notes: "agent_router exported but not tested"
+  - type: untestedExport
+    file: src/agent.py
+    notes: "agent_planner exported but not tested"

@@ -11,3 +11,9 @@ expected:
   - type: aiPromptVersioning
     file: classifier.prompt
     notes: "no filename, inline, or comment version marker"
+  - type: aiSafetyEvalMissing
+    file: classifier.prompt
+    notes: "prompt surface with no safety-shaped scenario"
+  - type: uncoveredAISurface
+    file: classifier.prompt
+    notes: "prompt has no test or scenario coverage at all"

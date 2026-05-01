@@ -10,3 +10,12 @@ expected:
   - type: aiFewShotContamination
     file: prompts/classifier.prompt
     notes: "scenario description overlaps verbatim with few-shot example"
+  - type: aiPromptVersioning
+    file: prompts/classifier.prompt
+    notes: "no version marker on the prompt"
+  - type: aiSafetyEvalMissing
+    file: prompts/classifier.prompt
+    notes: "covered prompt has no safety-shaped scenario"
+  - type: capabilityValidationGap
+    file: ""
+    notes: "scenario coverage doesn't include any AI capability validation"
