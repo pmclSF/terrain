@@ -20,13 +20,12 @@ import (
 // New labels caught here trip the test until the corresponding detector
 // is updated, which is exactly the regression gate we want.
 //
-// As of 0.2 the corpus covers 24 fixtures and 26 distinct signal
-// types spanning AI, quality, health, migration, and runtime
-// domains, all at 1.00 precision/recall. The 25-fixture content
-// target from docs/release/0.2.md has been reached, so the advisory
-// `t.Logf` block below is the last hop before flipping to `t.Errorf`
-// (load-bearing gate). That flip is a separate decision because the
-// signal-coverage breadth matters more than the raw fixture count.
+// As of 0.2 the corpus covers 24 fixtures and 30 distinct signal
+// types spanning AI, quality, health, migration, structural, and
+// runtime domains at 1.00 precision/recall, and the gate is now
+// LOAD-BEARING: any unmatched expected label fails the test. Adding
+// a new fixture with a label that doesn't fire is a regression that
+// blocks merge.
 func TestCalibration_CorpusRunner(t *testing.T) {
 	t.Parallel()
 
@@ -55,19 +54,18 @@ func TestCalibration_CorpusRunner(t *testing.T) {
 		t.Fatalf("calibration.Run: %v", err)
 	}
 
-	// 0.2 ships the calibration *infrastructure*; the regression gate
-	// runs in advisory mode (t.Logf, not t.Errorf). The corpus is at
-	// 24 fixtures × 26 distinct detector types with zero advisory
-	// misses — past the 25 milestone in docs/release/0.2.md. Flipping
-	// to t.Errorf is a separate decision and waits on broader detector
-	// coverage (eval-data-dependent AI detectors and the structural
-	// detectors are not yet labelled).
+	// 0.2's gate is load-bearing: every labelled fixture must still
+	// fire its expected detector. We crossed the 25-fixture milestone
+	// from docs/release/0.2.md with 24 fixtures × 30 detector types
+	// at 100% precision/recall and zero misses — the corpus is now a
+	// regression gate. Any future detector change that drops a
+	// labelled signal trips this block.
 	rec := corpus.RecallByType()
 	for _, ftr := range corpus.Fixtures {
 		for _, m := range ftr.Matches {
 			if m.Outcome == calibration.OutcomeFalseNegative {
-				t.Logf(
-					"calibration miss (advisory): fixture %q expected %s on %s but detector did not fire (notes: %s)",
+				t.Errorf(
+					"calibration regression: fixture %q expected %s on %s but detector did not fire (notes: %s)",
 					ftr.Fixture, m.Type, m.File, m.Notes,
 				)
 			}
