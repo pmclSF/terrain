@@ -489,6 +489,162 @@ func TestLinkRAGSurfacesToCodeSurfaces(t *testing.T) {
 	}
 }
 
+// --- Go (langchaingo) tests ---
+
+func TestRAGStructuredGo_EmbeddingWithModelName(t *testing.T) {
+	t.Parallel()
+	src := `
+package rag
+
+import "github.com/tmc/langchaingo/embeddings/openai"
+
+func newEmbedder() (*openai.Embedder, error) {
+	return openai.NewEmbeddings(openai.WithModel("text-embedding-3-large"))
+}
+`
+	components := ParseRAGStructured("internal/rag/embed.go", src, "go")
+	embed := findRAGByKind(components, models.RAGEmbedding)
+	if embed == nil {
+		t.Fatalf("expected embedding component, got %v", ragNames(components))
+	}
+	if embed.Framework != "langchaingo" {
+		t.Errorf("framework = %q, want langchaingo", embed.Framework)
+	}
+	if embed.Config.ModelName != "text-embedding-3-large" {
+		t.Errorf("ModelName = %q", embed.Config.ModelName)
+	}
+}
+
+func TestRAGStructuredGo_VectorStoreAndRetriever(t *testing.T) {
+	t.Parallel()
+	src := `
+package rag
+
+import "github.com/tmc/langchaingo/vectorstores/pinecone"
+
+func search(ctx context.Context, store pinecone.Store, query string) {
+	store, _ = pinecone.New(ctx, opts...)
+	docs, _ := store.SimilaritySearch(ctx, query, 5, vectorstores.WithNumDocuments(5))
+	_ = docs
+}
+`
+	components := ParseRAGStructured("internal/rag/search.go", src, "go")
+	if findRAGByKind(components, models.RAGVectorStore) == nil {
+		t.Errorf("expected vector store, got %v", ragNames(components))
+	}
+	if findRAGByKind(components, models.RAGRetriever) == nil {
+		t.Errorf("expected retriever, got %v", ragNames(components))
+	}
+}
+
+func TestRAGStructuredGo_TextSplitterWithChunkSize(t *testing.T) {
+	t.Parallel()
+	src := `
+package rag
+
+import "github.com/tmc/langchaingo/textsplitter"
+
+func splitter() textsplitter.TextSplitter {
+	return textsplitter.NewRecursiveCharacterTextSplitter(
+		textsplitter.WithChunkSize(500),
+		textsplitter.WithChunkOverlap(50),
+	)
+}
+`
+	components := ParseRAGStructured("internal/rag/split.go", src, "go")
+	chunk := findRAGByKind(components, models.RAGChunking)
+	if chunk == nil {
+		t.Fatalf("expected chunking component, got %v", ragNames(components))
+	}
+	if chunk.Config.ChunkSize != 500 {
+		t.Errorf("ChunkSize = %d, want 500", chunk.Config.ChunkSize)
+	}
+	if chunk.Config.ChunkOverlap != 50 {
+		t.Errorf("ChunkOverlap = %d, want 50", chunk.Config.ChunkOverlap)
+	}
+}
+
+// --- Java (langchain4j) tests ---
+
+func TestRAGStructuredJava_EmbeddingWithModelName(t *testing.T) {
+	t.Parallel()
+	src := `
+import dev.langchain4j.model.openai.OpenAiEmbeddingModel;
+
+public class RagConfig {
+    EmbeddingModel embeddingModel() {
+        return OpenAiEmbeddingModel.builder()
+            .modelName("text-embedding-3-large")
+            .build();
+    }
+}
+`
+	components := ParseRAGStructured("src/main/java/RagConfig.java", src, "java")
+	embed := findRAGByKind(components, models.RAGEmbedding)
+	if embed == nil {
+		t.Fatalf("expected embedding component, got %v", ragNames(components))
+	}
+	if embed.Framework != "langchain4j" {
+		t.Errorf("framework = %q, want langchain4j", embed.Framework)
+	}
+	if embed.Config.ModelName != "text-embedding-3-large" {
+		t.Errorf("ModelName = %q", embed.Config.ModelName)
+	}
+}
+
+func TestRAGStructuredJava_RetrieverWithMaxResults(t *testing.T) {
+	t.Parallel()
+	src := `
+ContentRetriever retriever = EmbeddingStoreContentRetriever.builder()
+    .embeddingStore(store)
+    .embeddingModel(model)
+    .maxResults(5)
+    .build();
+`
+	components := ParseRAGStructured("src/main/java/Search.java", src, "java")
+	r := findRAGByKind(components, models.RAGRetriever)
+	if r == nil {
+		t.Fatalf("expected retriever, got %v", ragNames(components))
+	}
+	if r.Config.TopK != 5 {
+		t.Errorf("TopK = %d, want 5", r.Config.TopK)
+	}
+}
+
+func TestRAGStructuredJava_VectorStore(t *testing.T) {
+	t.Parallel()
+	src := `
+EmbeddingStore<TextSegment> store = PineconeEmbeddingStore.builder()
+    .apiKey("k")
+    .build();
+`
+	components := ParseRAGStructured("src/main/java/Vector.java", src, "java")
+	v := findRAGByKind(components, models.RAGVectorStore)
+	if v == nil {
+		t.Fatalf("expected vector store, got %v", ragNames(components))
+	}
+	if v.Config.Provider != "pinecone" {
+		t.Errorf("Provider = %q, want pinecone", v.Config.Provider)
+	}
+}
+
+func TestRAGStructuredJava_Splitter(t *testing.T) {
+	t.Parallel()
+	src := `
+DocumentSplitter splitter = DocumentBySentenceSplitter.builder()
+    .maxSegmentSizeInTokens(500)
+    .build();
+`
+	components := ParseRAGStructured("src/main/java/Splitter.java", src, "java")
+	c := findRAGByKind(components, models.RAGChunking)
+	if c == nil {
+		t.Fatalf("expected chunking component, got %v", ragNames(components))
+	}
+	if c.Config.ChunkSize != 500 {
+		t.Errorf("ChunkSize = %d, want 500", c.Config.ChunkSize)
+	}
+}
+
 // --- Helpers ---
 
 func findRAGByKind(components []models.RAGPipelineSurface, kind models.RAGComponentKind) *models.RAGPipelineSurface {
