@@ -1,0 +1,13 @@
+schemaVersion: 1
+fixture: eval-retrieval-regression
+description: |
+  Two paired Promptfoo runs, same five CaseIDs across both. The
+  context_relevance retrieval axis dropped from avg ≈0.90 → ≈0.59
+  (-31 pts vs the 5-pt default threshold). faithfulness and
+  answer_relevancy stayed within tolerance. aiRetrievalRegression
+  must fire on the current run, naming context_relevance as the
+  regressed axis.
+expected:
+  - type: aiRetrievalRegression
+    file: eval-runs/promptfoo.json
+    notes: "context_relevance avg 0.90 → 0.59 (-31 pts vs 5-pt threshold)"
