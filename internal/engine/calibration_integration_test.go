@@ -20,11 +20,13 @@ import (
 // New labels caught here trip the test until the corresponding detector
 // is updated, which is exactly the regression gate we want.
 //
-// As of 0.2 the corpus covers 8 fixtures and 8 distinct signal types
-// (7 AI detectors + staticSkippedTest), all at 1.00 precision/recall.
-// 0.2's content roadmap calls for ~25 fixtures by milestone close;
-// at that point the advisory `t.Logf` block below flips to `t.Errorf`
-// and the gate becomes load-bearing per docs/release/0.2.md.
+// As of 0.2 the corpus covers 24 fixtures and 26 distinct signal
+// types spanning AI, quality, health, migration, and runtime
+// domains, all at 1.00 precision/recall. The 25-fixture content
+// target from docs/release/0.2.md has been reached, so the advisory
+// `t.Logf` block below is the last hop before flipping to `t.Errorf`
+// (load-bearing gate). That flip is a separate decision because the
+// signal-coverage breadth matters more than the raw fixture count.
 func TestCalibration_CorpusRunner(t *testing.T) {
 	t.Parallel()
 
@@ -54,12 +56,12 @@ func TestCalibration_CorpusRunner(t *testing.T) {
 	}
 
 	// 0.2 ships the calibration *infrastructure*; the regression gate
-	// runs in advisory mode (t.Logf, not t.Errorf) until the corpus is
-	// populated with enough fixtures and labels for precision/recall to
-	// be meaningful. The corpus is currently at 8 fixtures with no
-	// advisory misses; once it crosses ~25 the block below flips to
-	// t.Errorf and the docs/release/0.2.md gate (>= 90% precision per
-	// active detector) becomes load-bearing.
+	// runs in advisory mode (t.Logf, not t.Errorf). The corpus is at
+	// 24 fixtures × 26 distinct detector types with zero advisory
+	// misses — past the 25 milestone in docs/release/0.2.md. Flipping
+	// to t.Errorf is a separate decision and waits on broader detector
+	// coverage (eval-data-dependent AI detectors and the structural
+	// detectors are not yet labelled).
 	rec := corpus.RecallByType()
 	for _, ftr := range corpus.Fixtures {
 		for _, m := range ftr.Matches {

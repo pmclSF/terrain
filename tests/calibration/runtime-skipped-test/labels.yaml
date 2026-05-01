@@ -9,6 +9,9 @@ expected:
   - type: skippedTest
     file: ""
     notes: "JUnit <skipped/> element on handles MFA challenge"
+  - type: deadTest
+    file: auth
+    notes: "test only ever observed in skipped state — DeadTestDetector"
   - type: orphanedTestFile
     file: src/auth.test.js
     notes: "synthetic repo, no source linkage"
