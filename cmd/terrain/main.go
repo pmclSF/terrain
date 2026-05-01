@@ -129,6 +129,7 @@ func main() {
 		}
 
 	case "impact":
+		legacyDeprecationNotice("impact", "report impact")
 		impactCmd := flag.NewFlagSet("impact", flag.ExitOnError)
 		rootFlag := impactCmd.String("root", ".", "repository root to analyze")
 		baseRef := impactCmd.String("base", "", "git base ref for diff (default: HEAD~1)")
@@ -153,12 +154,14 @@ func main() {
 		}
 
 	case "convert-config":
+		legacyDeprecationNotice("convert-config", "migrate config")
 		if err := runConvertConfigCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
 
 	case "list", "list-conversions":
+		legacyDeprecationNotice("list-conversions", "migrate list")
 		if err := runListConversionsCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
@@ -226,6 +229,7 @@ func main() {
 		os.Exit(exitCode)
 
 	case "metrics":
+		legacyDeprecationNotice("metrics", "report metrics")
 		metricsCmd := flag.NewFlagSet("metrics", flag.ExitOnError)
 		rootFlag := metricsCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := metricsCmd.Bool("json", false, "output JSON metrics snapshot")
@@ -238,6 +242,7 @@ func main() {
 		}
 
 	case "posture":
+		legacyDeprecationNotice("posture", "report posture")
 		postureCmd := flag.NewFlagSet("posture", flag.ExitOnError)
 		rootFlag := postureCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := postureCmd.Bool("json", false, "output JSON posture snapshot")
@@ -262,6 +267,7 @@ func main() {
 		}
 
 	case "insights":
+		legacyDeprecationNotice("insights", "report insights")
 		insightsCmd := flag.NewFlagSet("insights", flag.ExitOnError)
 		rootFlag := insightsCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := insightsCmd.Bool("json", false, "output JSON insights")
@@ -274,6 +280,7 @@ func main() {
 		}
 
 	case "explain":
+		legacyDeprecationNotice("explain", "report explain")
 		explainCmd := flag.NewFlagSet("explain", flag.ExitOnError)
 		rootFlag := explainCmd.String("root", ".", "repository root to analyze")
 		baseRef := explainCmd.String("base", "", "git base ref for diff (default: HEAD~1)")
@@ -308,6 +315,7 @@ func main() {
 		}
 
 	case "summary":
+		legacyDeprecationNotice("summary", "report summary")
 		summaryCmd := flag.NewFlagSet("summary", flag.ExitOnError)
 		rootFlag := summaryCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := summaryCmd.Bool("json", false, "output JSON summary with heatmap")
@@ -379,6 +387,7 @@ func main() {
 		}
 
 	case "select-tests":
+		legacyDeprecationNotice("select-tests", "report select-tests")
 		stCmd := flag.NewFlagSet("select-tests", flag.ExitOnError)
 		rootFlag := stCmd.String("root", ".", "repository root to analyze")
 		baseRef := stCmd.String("base", "", "git base ref for diff (default: HEAD~1)")
@@ -391,6 +400,7 @@ func main() {
 		}
 
 	case "pr":
+		legacyDeprecationNotice("pr", "report pr")
 		prCmd := flag.NewFlagSet("pr", flag.ExitOnError)
 		rootFlag := prCmd.String("root", ".", "repository root to analyze")
 		baseRef := prCmd.String("base", "", "git base ref for diff (default: HEAD~1)")
@@ -648,6 +658,7 @@ func main() {
 		}
 
 	case "feedback":
+		legacyDeprecationNotice("feedback", "config feedback")
 		url := "https://github.com/pmclSF/terrain/issues/new?template=feedback.md&title=Feedback:+&labels=feedback"
 		fmt.Println("Open the following URL to share feedback:")
 		fmt.Println()
@@ -656,6 +667,7 @@ func main() {
 		fmt.Println("Or email: terrain-feedback@pmcl.dev")
 
 	case "telemetry":
+		legacyDeprecationNotice("telemetry", "config telemetry")
 		if len(os.Args) < 3 {
 			fmt.Println("Telemetry:", telemetry.Status())
 			fmt.Println()

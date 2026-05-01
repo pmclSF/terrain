@@ -100,3 +100,35 @@ func TestModelDeprecation_DedupsPerLineMatch(t *testing.T) {
 		t.Errorf("got %d signals, want 1 (dedup)", len(got))
 	}
 }
+
+// TestModelDeprecation_DotVersionedDoesNotMatchUndatedParent locks in
+// the 0.2 ship-blocker fix — `claude-2.1` and `gpt-3.5-turbo-0125`
+// must not match their undated parents (`claude-2`, `gpt-3.5-turbo`).
+// Pre-0.2 the trailing-boundary class did not exclude `.`, so any
+// dot-versioned variant was a guaranteed false positive.
+func TestModelDeprecation_DotVersionedDoesNotMatchUndatedParent(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"claude_2_1", `model: claude-2.1`},
+		{"claude_2_0", `model: claude-2.0`},
+		{"gpt_3_5_turbo_0125", `model: gpt-3.5-turbo-0125`},
+		{"gpt_4_0613", `model: gpt-4-0613`},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			rel := writeFile(t, root, "evals/eval.yaml", tc.body)
+			got := (&ModelDeprecationDetector{Root: root}).Detect(&models.TestSuiteSnapshot{
+				TestFiles: []models.TestFile{{Path: rel}},
+			})
+			if len(got) != 0 {
+				t.Errorf("dot-versioned variant should not match undated parent; got %d signals: %+v", len(got), got)
+			}
+		})
+	}
+}
