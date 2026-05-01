@@ -463,6 +463,17 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		},
 		Detector: &aidetect.PromptVersioningDetector{Root: cfg.RepoRoot},
 	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.few-shot-contamination",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Flag prompts whose few-shot examples overlap verbatim with the inputs of eval scenarios that cover them.",
+			SignalTypes:    []models.SignalType{signals.SignalAIFewShotContamination},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.FewShotContaminationDetector{Root: cfg.RepoRoot},
+	})
 
 	// Governance detectors (depend on signals from quality/migration detectors).
 	if cfg.PolicyConfig != nil && !cfg.PolicyConfig.IsEmpty() {

@@ -5,26 +5,26 @@
 **Type:** `aiFewShotContamination`  
 **Domain:** ai  
 **Default severity:** medium  
-**Status:** planned
+**Status:** experimental
 
 ## Summary
 
-Few-shot examples in a prompt overlap with the eval test set, inflating reported scores.
+Few-shot examples in a prompt overlap verbatim with the inputs of eval scenarios that exercise that prompt, inflating reported scores.
 
 ## Remediation
 
-De-duplicate or hold out the contaminated examples; re-run the eval.
+Hold out the contaminated examples from the prompt's few-shot block, or rewrite the eval input so it isn't a copy of an example. Re-run the eval after de-duplication.
 
 ## Promotion plan
 
-0.2 — string-similarity detector across the prompt-surface inventory.
+Substring-overlap detector ships in 0.2; promotes to stable in 0.3 once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes.
 
 ## Evidence sources
 
-- `graph-traversal`
+- `structural-pattern`
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.70, 0.90] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.55, 0.83] (heuristic in 0.2; calibration in 0.3).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
