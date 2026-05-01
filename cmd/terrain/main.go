@@ -141,7 +141,10 @@ func main() {
 		}
 
 	case "convert":
-		if err := runConvertCLI(os.Args[2:]); err != nil {
+		// 0.2: `terrain convert` is now an alias for `terrain migrate`.
+		// Both share the canonical-verb table; legacy direct invocation
+		// (`terrain convert cypress-playwright`) keeps working.
+		if err := runMigrateNamespaceCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
@@ -171,7 +174,7 @@ func main() {
 		}
 
 	case "migrate":
-		if err := runMigrateCLI(os.Args[2:]); err != nil {
+		if err := runMigrateNamespaceCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
