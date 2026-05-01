@@ -180,8 +180,12 @@ func detectFromSource(root string, result *DetectResult) {
 			return nil
 		}
 		if d.IsDir() {
-			name := d.Name()
-			if name == "node_modules" || name == ".git" || name == "__pycache__" || name == ".venv" || name == "venv" {
+			// Use the same canonical skip set as walkRepoForConfigs and
+			// internal/analysis/repository_scan.go. Pre-0.2.x this site
+			// only skipped 5 dirs and would descend into dist/, build/,
+			// .terrain/, vendor/, target/, etc. — a major contributor to
+			// multi-walk amplification on real repos.
+			if skipDirs[d.Name()] {
 				return filepath.SkipDir
 			}
 			return nil
