@@ -7,7 +7,8 @@ on:
 
 permissions:
   contents: write
-  id-token: write    # required for npm provenance AND Sigstore keyless signing
+  id-token: write       # required for npm provenance + Sigstore keyless signing
+  attestations: write   # 0.2: SLSA L2 build-provenance attestations
 
 jobs:
   # Gate: single source of truth — same script locally and in CI.
@@ -232,6 +233,20 @@ jobs:
           dist/checksums.txt
       env:
         COSIGN_EXPERIMENTAL: "1"
+
+    # SLSA L2 build-provenance attestation (0.2). actions/attest-build-provenance
+    # signs a SLSA-compliant in-toto statement against every binary archive
+    # using the workflow's OIDC identity. The attestation is uploaded to
+    # GitHub's attestations API and downloadable via `gh attestation verify`.
+    # Independent of the cosign blob signatures (which sign the file bytes
+    # without provenance metadata) — both are useful, neither replaces the
+    # other.
+    - name: Generate SLSA L2 build provenance
+      uses: actions/attest-build-provenance@v3
+      with:
+        subject-path: |
+          dist/*.tar.gz
+          dist/*.zip
 
     - name: Create GitHub Release
       env:
