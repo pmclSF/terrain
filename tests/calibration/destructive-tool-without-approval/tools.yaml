@@ -1,0 +1,16 @@
+tools:
+  - name: search_users
+    description: Look up users by email or ID. Read-only.
+    parameters:
+      type: object
+      properties:
+        query:
+          type: string
+
+  - name: delete_user
+    description: Permanently remove a user account and all associated data.
+    parameters:
+      type: object
+      properties:
+        user_id:
+          type: string
