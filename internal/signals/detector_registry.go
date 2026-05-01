@@ -2,12 +2,42 @@ package signals
 
 import (
 	"fmt"
+	"runtime/debug"
 	"sort"
 	"sync"
 
 	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/models"
 )
+
+// safeDetect wraps a detector call with panic recovery. Pre-0.2.x a
+// nil deref or index-out-of-range in any of ~30 detectors would
+// terminate the whole pipeline goroutine, taking down `terrain
+// analyze` and the calibration test along with the offending fixture.
+// With recovery in place, a single broken detector emits zero signals
+// for that run instead — the rest of the pipeline continues.
+//
+// When a panic is caught, we leave a marker in the returned slice
+// (Severity=Critical, Type=detectorPanic) so the user sees there was a
+// problem and can rerun with --log-level=debug for the stack trace.
+func safeDetect(reg DetectorRegistration, fn func() []models.Signal) (out []models.Signal) {
+	defer func() {
+		if r := recover(); r != nil {
+			out = []models.Signal{{
+				Type:        "detectorPanic",
+				Category:    models.CategoryQuality,
+				Severity:    models.SeverityCritical,
+				Confidence:  1.0,
+				Explanation: fmt.Sprintf("detector %q panicked: %v", reg.Meta.ID, r),
+				SuggestedAction: fmt.Sprintf(
+					"This is a bug. Re-run with --log-level=debug for the stack trace, then file an issue. Stack: %s",
+					string(debug.Stack()),
+				),
+			}}
+		}
+	}()
+	return fn()
+}
 
 // Domain classifies a detector's area of concern.
 type Domain string
@@ -158,7 +188,7 @@ func (r *DetectorRegistry) Run(snap *models.TestSuiteSnapshot) {
 		wg.Add(1)
 		go func(idx int, reg DetectorRegistration) {
 			defer wg.Done()
-			found := reg.Detector.Detect(snap)
+			found := safeDetect(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
 			mu.Lock()
 			results = append(results, result{idx: idx, signals: found})
 			mu.Unlock()
@@ -175,7 +205,7 @@ func (r *DetectorRegistry) Run(snap *models.TestSuiteSnapshot) {
 
 	// Dependent detectors run after independent outputs are available.
 	for _, reg := range dependents {
-		found := reg.Detector.Detect(snap)
+		found := safeDetect(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
 		snap.Signals = append(snap.Signals, found...)
 	}
 }
@@ -219,7 +249,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 		wg.Add(1)
 		go func(idx int, reg DetectorRegistration) {
 			defer wg.Done()
-			found := reg.Detector.Detect(snap)
+			found := safeDetect(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
 			mu.Lock()
 			results = append(results, result{idx: idx, signals: found})
 			mu.Unlock()
@@ -244,13 +274,13 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 				continue
 			}
 			wg2.Add(1)
-			go func(idx int, gd GraphDetector) {
+			go func(idx int, reg DetectorRegistration, gd GraphDetector) {
 				defer wg2.Done()
-				found := gd.DetectWithGraph(snap, g)
+				found := safeDetect(reg, func() []models.Signal { return gd.DetectWithGraph(snap, g) })
 				mu.Lock()
 				graphResults = append(graphResults, result{idx: idx, signals: found})
 				mu.Unlock()
-			}(graphIdxs[i], gd)
+			}(graphIdxs[i], reg, gd)
 		}
 		wg2.Wait()
 
@@ -264,7 +294,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 
 	// Phase 3: Signal-dependent detectors (sequential).
 	for _, reg := range dependents {
-		found := reg.Detector.Detect(snap)
+		found := safeDetect(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
 		snap.Signals = append(snap.Signals, found...)
 	}
 }
@@ -273,7 +303,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 func (r *DetectorRegistry) RunDomain(snap *models.TestSuiteSnapshot, domain Domain) {
 	for _, reg := range r.registrations {
 		if reg.Meta.Domain == domain {
-			found := reg.Detector.Detect(snap)
+			found := safeDetect(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
 			snap.Signals = append(snap.Signals, found...)
 		}
 	}
