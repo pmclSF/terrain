@@ -1,0 +1,70 @@
+{
+  "evalId": "calibration-hallucination",
+  "createdAt": 1735689600,
+  "results": [
+    {
+      "id": "case-001",
+      "description": "summarise the policy",
+      "success": true,
+      "score": 1.0,
+      "namedScores": { "faithfulness": 0.95 }
+    },
+    {
+      "id": "case-002",
+      "description": "summarise the policy",
+      "success": false,
+      "score": 0.0,
+      "namedScores": { "faithfulness": 0.10 },
+      "failureReason": "model fabricated unsourced claims"
+    },
+    {
+      "id": "case-003",
+      "description": "summarise the policy",
+      "success": false,
+      "score": 0.0,
+      "namedScores": { "faithfulness": 0.20 },
+      "failureReason": "ungrounded answer not supported by the context"
+    },
+    {
+      "id": "case-004",
+      "description": "summarise the policy",
+      "success": false,
+      "score": 0.0,
+      "namedScores": { "faithfulness": 0.05 },
+      "failureReason": "hallucinated entity not in source"
+    },
+    {
+      "id": "case-005",
+      "description": "summarise the policy",
+      "success": true,
+      "score": 1.0,
+      "namedScores": { "faithfulness": 0.92 }
+    },
+    {
+      "id": "case-006",
+      "description": "summarise the policy",
+      "success": true,
+      "score": 1.0,
+      "namedScores": { "faithfulness": 0.97 }
+    },
+    {
+      "id": "case-007",
+      "description": "summarise the policy",
+      "success": true,
+      "score": 1.0,
+      "namedScores": { "faithfulness": 0.99 }
+    },
+    {
+      "id": "case-008",
+      "description": "summarise the policy",
+      "success": true,
+      "score": 1.0,
+      "namedScores": { "faithfulness": 0.90 }
+    }
+  ],
+  "stats": {
+    "successes": 5,
+    "failures": 3,
+    "errors": 0
+  }
+}

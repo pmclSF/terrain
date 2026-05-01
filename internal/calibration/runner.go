@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
 )
@@ -295,18 +296,33 @@ func matchFixture(labels FixtureLabels, signals []models.Signal, fixtureDir stri
 		return string(e.Type) + "\x00" + e.File
 	}
 
+	// Detectors that ingest external artifacts (eval framework outputs)
+	// stamp the absolute path of the artifact into Signal.Location.File.
+	// Labels list paths relative to the fixture directory, so we strip
+	// the fixture prefix before matching.
+	relSignalFile := func(sigFile string) string {
+		if sigFile == "" {
+			return ""
+		}
+		if rel, err := filepath.Rel(fixtureDir, sigFile); err == nil && !strings.HasPrefix(rel, "..") {
+			return filepath.ToSlash(rel)
+		}
+		return sigFile
+	}
+
 	for _, sig := range signals {
 		// Try to match against an expected (positive) label.
 		matched := false
+		sigFile := relSignalFile(sig.Location.File)
 		for i, exp := range labels.Expected {
 			if consumed[i] {
 				continue
 			}
-			if expectedKey(exp) == string(sig.Type)+"\x00"+sig.Location.File {
+			if expectedKey(exp) == string(sig.Type)+"\x00"+sigFile {
 				consumed[i] = true
 				out.Matches = append(out.Matches, Match{
 					Type:    sig.Type,
-					File:    sig.Location.File,
+					File:    sigFile,
 					Outcome: OutcomeTruePositive,
 					Notes:   exp.Notes,
 				})
