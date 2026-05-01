@@ -1,0 +1,13 @@
+schemaVersion: 1
+fixture: agent-without-safety-eval
+description: |
+  A Python module declares an agent_router function. The surface
+  inference classifies it as SurfaceAgent. No scenarios reference
+  safety / jailbreak / adversarial / harm / abuse / injection / leak
+  / pii / redteam / toxic / policy_violation, so the agent surface
+  has no safety-shaped coverage. The detector must fire
+  aiSafetyEvalMissing.
+expected:
+  - type: aiSafetyEvalMissing
+    file: src/agent.py
+    notes: "agent_router has no safety-shaped scenario coverage"
