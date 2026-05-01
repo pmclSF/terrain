@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="checkout" tests="2" failures="0" errors="0" time="12.5">
+    <testcase classname="checkout" name="processes a normal order" time="0.42"/>
+    <testcase classname="checkout" name="processes a high-volume backfill" time="12.08"/>
+  </testsuite>
+</testsuites>
