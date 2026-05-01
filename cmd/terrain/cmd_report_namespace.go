@@ -111,6 +111,7 @@ func runReportSummaryCLI(args []string) error {
 	jsonOut := fs.Bool("json", false, "output JSON summary with heatmap")
 	verbose := fs.Bool("verbose", false, "show detailed heatmap breakdown")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report summary", fs.Args(), root)
 	return runSummary(*root, *jsonOut, *verbose)
 }
 
@@ -120,6 +121,7 @@ func runReportInsightsCLI(args []string) error {
 	jsonOut := fs.Bool("json", false, "output JSON insights")
 	verbose := fs.Bool("verbose", false, "show per-finding evidence and file details")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report insights", fs.Args(), root)
 	return runInsights(*root, *jsonOut, *verbose)
 }
 
@@ -129,6 +131,7 @@ func runReportMetricsCLI(args []string) error {
 	jsonOut := fs.Bool("json", false, "output JSON metrics snapshot")
 	verbose := fs.Bool("verbose", false, "show detailed metric breakdowns")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report metrics", fs.Args(), root)
 	return runMetrics(*root, *jsonOut, *verbose)
 }
 
@@ -198,6 +201,7 @@ func runReportImpactCLI(args []string) error {
 	show := fs.String("show", "", "drill-down view: units, gaps, tests, owners, graph, selected")
 	owner := fs.String("owner", "", "filter results by owner")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report impact", fs.Args(), root)
 	return runImpact(*root, *baseRef, *jsonOut, *show, *owner)
 }
 
@@ -208,6 +212,7 @@ func runReportPRCLI(args []string) error {
 	jsonOut := fs.Bool("json", false, "output JSON PR analysis")
 	format := fs.String("format", "", "output format: markdown, comment, annotation")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report pr", fs.Args(), root)
 	return runPR(*root, *baseRef, *jsonOut, *format)
 }
 
@@ -217,6 +222,7 @@ func runReportPostureCLI(args []string) error {
 	jsonOut := fs.Bool("json", false, "output JSON posture snapshot")
 	verbose := fs.Bool("verbose", false, "show measurement values and thresholds")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report posture", fs.Args(), root)
 	return runPosture(*root, *jsonOut, *verbose)
 }
 
@@ -226,5 +232,6 @@ func runReportSelectTestsCLI(args []string) error {
 	baseRef := fs.String("base", "", "git base ref for diff (default: HEAD~1)")
 	jsonOut := fs.Bool("json", false, "output JSON protective test set")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report select-tests", fs.Args(), root)
 	return runSelectTests(*root, *baseRef, *jsonOut)
 }

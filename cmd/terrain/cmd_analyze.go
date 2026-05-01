@@ -228,6 +228,18 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		return nil
 	}
 
+	// `--write-snapshot` runs first so it persists regardless of the
+	// output format. Pre-0.2.x the persist call lived after the
+	// rendering switch, so `--write-snapshot --json` returned from the
+	// JSON branch before the snapshot was written — the canonical CI
+	// shape (capture JSON to stdout, save snapshot to disk) silently
+	// dropped the snapshot.
+	if writeSnap {
+		if err := persistSnapshot(result.Snapshot, root); err != nil {
+			return err
+		}
+	}
+
 	if strings.EqualFold(strings.TrimSpace(format), "html") {
 		return reporting.RenderAnalyzeHTML(os.Stdout, report)
 	}
@@ -254,10 +266,6 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		for _, hint := range hints {
 			fmt.Printf("  %s\n", hint)
 		}
-	}
-
-	if writeSnap {
-		return persistSnapshot(result.Snapshot, root)
 	}
 
 	return nil
