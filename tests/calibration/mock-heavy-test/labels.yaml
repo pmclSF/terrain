@@ -1,0 +1,12 @@
+schemaVersion: 1
+fixture: mock-heavy-test
+description: |
+  A Jest test file declares 4 jest.mock() calls (covering all four
+  notifier channels) and 2 expect() assertions. With 4 mocks > 2
+  assertions and >2× ratio, the high-severity branch of MockHeavyDetector
+  fires mockHeavyTest. This is the "mocks dominate behavior" case the
+  detector targets.
+expected:
+  - type: mockHeavyTest
+    file: src/notifier.test.js
+    notes: "4 mocks vs 2 assertions, ≥2× ratio → high severity"
