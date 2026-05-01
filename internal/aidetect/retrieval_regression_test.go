@@ -126,3 +126,46 @@ func TestRetrievalRegression_RequiresBaseline(t *testing.T) {
 		t.Errorf("expected no signals without baseline, got %d", len(got))
 	}
 }
+
+// TestRetrievalRegression_FiresOnRagasModernKeys locks in the 0.2
+// ship-blocker fix — Ragas's current key (`context_precision`,
+// `context_recall`, `context_entity_recall`) and LangSmith's
+// `relevance_score` must trigger the regression detector. Pre-0.2.x
+// only the legacy `context_relevance` was in the allowlist; against a
+// real Ragas run the detector fired zero signals.
+func TestRetrievalRegression_FiresOnRagasModernKeys(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		key  string
+	}{
+		{"context_precision", "context_precision"},
+		{"context_recall", "context_recall"},
+		{"context_entity_recall", "context_entity_recall"},
+		{"relevance_score", "relevance_score"},
+	}
+	for _, tc := range cases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			baseline := envelopeWithCases(t, "ragas-modern", []airun.EvalCase{
+				{CaseID: "a", NamedScores: map[string]float64{tc.key: 0.92}},
+				{CaseID: "b", NamedScores: map[string]float64{tc.key: 0.88}},
+			})
+			current := envelopeWithCases(t, "ragas-modern", []airun.EvalCase{
+				{CaseID: "a", NamedScores: map[string]float64{tc.key: 0.70}},
+				{CaseID: "b", NamedScores: map[string]float64{tc.key: 0.65}},
+			})
+			snap := &models.TestSuiteSnapshot{
+				EvalRuns: []models.EvalRunEnvelope{current},
+				Baseline: &models.TestSuiteSnapshot{
+					EvalRuns: []models.EvalRunEnvelope{baseline},
+				},
+			}
+			got := (&RetrievalRegressionDetector{}).Detect(snap)
+			if len(got) == 0 {
+				t.Fatalf("expected at least 1 signal for %s drop, got none", tc.key)
+			}
+		})
+	}
+}
