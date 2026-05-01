@@ -34,12 +34,22 @@ type RetrievalRegressionDetector struct {
 // retrieval-quality axes. Lowercased for matching; we accept a few
 // common naming variants.
 var retrievalScoreKeys = []string{
+	// Ragas modern (mid-2024+) — the actual keys current Ragas emits.
+	// Without these, aiRetrievalRegression silently fires zero signals
+	// on real Ragas runs, defeating the headline use case of the Ragas
+	// adapter.
+	"context_precision", "context-precision", "contextprecision",
+	"context_recall", "context-recall", "contextrecall",
+	"context_entity_recall", "context-entity-recall",
+	// Ragas legacy + community variants.
 	"context_relevance", "context-relevance", "contextrelevance",
 	"ndcg", "ndcg@10", "ndcg@5",
 	"coverage",
-	"faithfulness", // when populated by Ragas
+	"faithfulness",
 	"answer_relevancy", "answer-relevancy", "answerrelevancy",
 	"retrieval_score", "retrievalscore",
+	// LangSmith-style relevance.
+	"relevance_score", "relevance-score", "relevancescore",
 }
 
 // Detect emits SignalAIRetrievalRegression per regressed axis per run.

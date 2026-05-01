@@ -58,7 +58,13 @@ type deprecationRule struct {
 var modelMatchPatterns = func() []*regexp.Regexp {
 	out := make([]*regexp.Regexp, 0, len(modelDeprecationList))
 	for _, r := range modelDeprecationList {
-		anchor := `\b` + regexp.QuoteMeta(r.Match) + `(?:[^-0-9A-Za-z_]|$)`
+		// Trailing boundary excludes `.` so dot-versioned variants like
+		// `claude-2.1` and `gpt-3.5-turbo-0125` aren't matched by their
+		// undated parent (`claude-2`, `gpt-3.5-turbo`). Without this,
+		// pinning to a current dated model fires the deprecation
+		// detector — guaranteed false positive on any 2024+ model that
+		// happens to share a prefix with a deprecated tag.
+		anchor := `\b` + regexp.QuoteMeta(r.Match) + `(?:[^-.0-9A-Za-z_]|$)`
 		out = append(out, regexp.MustCompile(`(?i)`+anchor))
 	}
 	return out

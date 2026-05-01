@@ -141,10 +141,11 @@ func main() {
 		}
 
 	case "convert":
-		// 0.2: `terrain convert` is now an alias for `terrain migrate`.
-		// Both share the canonical-verb table; legacy direct invocation
-		// (`terrain convert cypress-playwright`) keeps working.
-		if err := runMigrateNamespaceCLI(os.Args[2:]); err != nil {
+		// 0.2: `terrain convert` shares the canonical-verb table with
+		// `terrain migrate`, but unknown first args fall through to
+		// runConvertCLI (per-file converter) so the historical
+		// `terrain convert <file> --to <framework>` shape keeps working.
+		if err := runConvertNamespaceCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
