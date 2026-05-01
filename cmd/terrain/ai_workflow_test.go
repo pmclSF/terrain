@@ -270,8 +270,9 @@ func TestAIWorkflow_AIListShowsScenarios(t *testing.T) {
 		t.Skip("ai-eval-suite fixture not found")
 	}
 
-	// runAIList should succeed and show scenarios.
-	if err := runAIList(root, false, false); err != nil {
+	// runCaptured serializes via captureRunMu so we don't race against
+	// other parallel tests that swap os.Stdout.
+	if err := runCaptured(func() error { return runAIList(root, false, false) }); err != nil {
 		t.Fatalf("runAIList: %v", err)
 	}
 }

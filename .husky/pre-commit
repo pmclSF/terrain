@@ -1,18 +1,28 @@
 #!/usr/bin/env sh
 
-# Block accidental commits of large or binary files.
+# Block accidental commits of large files, binaries, and likely secrets.
 #
 # Round 1/2 review confirmed that prebuilt `terrain` and `terrain-bench`
 # binaries had been seen sitting in the working tree (gitignored, but
-# easy to add by mistake). This hook keeps that surface narrow:
+# easy to add by mistake). 0.2 expands the hook to also block secrets-
+# shaped files and archive blobs, since the pasted-token incident in
+# the 0.1.2 release cycle (npm token in chat history) made the cost of
+# accidental commits visible.
+#
+# Rules:
 #
 #   - any file > 5 MB is rejected
-#   - any file with a binary-only extension (.exe, .so, .dylib, .a)
+#   - any file with a binary-only extension (.exe, .so, .dylib, .a, ...)
 #     is rejected outright, even below the size threshold
+#   - any file with an archive extension (.zip, .tar.gz, .tgz, .7z) is
+#     rejected — release artefacts belong in goreleaser, not git
+#   - any file matching a secrets-shaped name (.env, *.pem, *.p12,
+#     credentials.json, etc.) is rejected
 #
-# Override with `git commit --no-verify` if you actually meant to add a
-# binary asset, but please consider whether that's the right call —
-# Terrain ships binaries via goreleaser, not as repo content.
+# Override with `git commit --no-verify` if you genuinely meant to add
+# a binary or secrets-named file (e.g. .env.example for a fixture).
+# The authoritative convention is to keep examples under .example
+# suffixes (e.g. .env.example), which the rules below permit.
 
 set -e
 
@@ -23,11 +33,35 @@ reject() {
   exit 1
 }
 
-# Iterate every file in the staging area.
+# Iterate every file in the staging area. Newly-added or modified only
+# (-AM); deletions are fine.
 git diff --cached --name-only --diff-filter=AM | while IFS= read -r file; do
+  basename=$(basename "$file")
   case "$file" in
+    # Compiled binaries and object files.
     *.exe|*.so|*.dylib|*.a|*.o|*.dll|*.pyd|*.pyc|*.class|*.jar|*.war)
       reject "$file" "binary file extension is not allowed in commits"
+      ;;
+    # Archives — release artefacts ship through goreleaser.
+    *.zip|*.tar.gz|*.tgz|*.7z|*.rar)
+      reject "$file" "archive in commits — use goreleaser for release artefacts"
+      ;;
+  esac
+  # Secret-shaped names. The .example suffix is the documented escape
+  # hatch for committed templates.
+  case "$basename" in
+    .env|.env.local|.env.production|credentials.json|secrets.json|service-account.json)
+      reject "$file" "looks like a secrets file — commit a .example variant instead"
+      ;;
+    *.pem|*.p12|*.pfx|*.key)
+      case "$basename" in
+        # Allow `.example` placeholder variants for documentation.
+        *.example|*.example.pem|*.example.key)
+          ;;
+        *)
+          reject "$file" "private-key-shaped file — confirm this is not a real key, then --no-verify if so"
+          ;;
+      esac
       ;;
   esac
 

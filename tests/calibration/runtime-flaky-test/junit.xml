@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="payments" tests="3" failures="0" errors="0" time="2.0">
+    <testcase classname="payments" name="processes a charge" time="0.3"/>
+    <testcase classname="payments" name="reaches the gateway" time="0.4">
+      <failure message="connection reset">timeout</failure>
+    </testcase>
+    <testcase classname="payments" name="reaches the gateway" time="0.5"/>
+  </testsuite>
+</testsuites>

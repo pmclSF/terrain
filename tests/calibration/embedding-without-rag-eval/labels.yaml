@@ -1,0 +1,15 @@
+schemaVersion: 1
+fixture: embedding-without-rag-eval
+description: |
+  A small Python RAG embed module references text-embedding-3-large via
+  the langchain OpenAIEmbeddings constructor. There is no scenario whose
+  category, name, or description references retrieval, RAG, embedding,
+  vector, or knn — and no scenario covers a SurfaceRetrieval/SurfaceAgent
+  surface. So aiEmbeddingModelChange must fire exactly once on the
+  embed.py file. The structured-RAG-surface path is preferred and emits
+  EvidenceStrong; the file-scan fallback is only exercised when the
+  structured parser misses.
+expected:
+  - type: aiEmbeddingModelChange
+    file: src/rag/embed.py
+    notes: "OpenAIEmbeddings(model=text-embedding-3-large) with no retrieval-shaped eval scenario"

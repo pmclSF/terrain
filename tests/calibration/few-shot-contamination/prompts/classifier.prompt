@@ -1,0 +1,14 @@
+You are a helpful assistant. Your role is to classify customer support
+messages.
+
+Examples:
+Input: The customer reports the device overheats during gameplay sessions
+Output: hardware-issue
+
+Input: The order shipped to the wrong address last week
+Output: shipping-issue
+
+Now classify the next input.
+
+Context:
+{{message}}

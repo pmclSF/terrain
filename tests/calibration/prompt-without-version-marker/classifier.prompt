@@ -1,0 +1,9 @@
+You are a helpful assistant. Your role is to classify customer support
+messages into one of three buckets: hardware-issue, shipping-issue, or
+billing-issue.
+
+Given the context below, respond with the bucket name only. Do not
+include any explanation.
+
+Context:
+{{message}}

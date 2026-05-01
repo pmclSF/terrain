@@ -6,25 +6,29 @@ import (
 
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/java"
+
+	"github.com/pmclSF/terrain/internal/parserpool"
 )
 
 // extractJavaWithAST uses tree-sitter to parse Java source and extract test cases.
 func extractJavaWithAST(src, relPath, framework string) []TestCase {
 	srcBytes := []byte(src)
 
-	parser := sitter.NewParser()
-	defer parser.Close()
-	parser.SetLanguage(java.GetLanguage())
-
-	tree, err := parser.ParseCtx(context.Background(), nil, srcBytes)
-	if err != nil || tree == nil {
+	var cases []TestCase
+	parsed := false
+	_ = parserpool.With(java.GetLanguage(), func(parser *sitter.Parser) error {
+		tree, perr := parser.ParseCtx(context.Background(), nil, srcBytes)
+		if perr != nil || tree == nil {
+			return perr
+		}
+		defer tree.Close()
+		walkJavaNode(tree.RootNode(), srcBytes, nil, &cases)
+		parsed = true
+		return nil
+	})
+	if !parsed {
 		return extractJava(src, relPath, framework)
 	}
-	defer tree.Close()
-
-	root := tree.RootNode()
-	var cases []TestCase
-	walkJavaNode(root, srcBytes, nil, &cases)
 	return cases
 }
 
@@ -37,13 +41,30 @@ func walkJavaNode(node *sitter.Node, src []byte, suiteStack []string, cases *[]T
 	switch node.Type() {
 	case "class_declaration":
 		nameNode := node.ChildByFieldName("name")
-		if nameNode != nil {
-			className := nodeText(nameNode, src)
-			newStack := append(append([]string{}, suiteStack...), className)
+		if nameNode == nil {
+			return
+		}
+		className := nodeText(nameNode, src)
+		// Inner classes only contribute to the suite hierarchy when
+		// they're explicitly @Nested. The outer class (suiteStack
+		// is empty when we hit it) is always a suite. Without this
+		// gate, helper inner classes that happen to live in a test
+		// file inflate the hierarchy.
+		isNested := hasJavaAnnotation(node, src, "Nested")
+		isOuter := len(suiteStack) == 0
+		if !isOuter && !isNested {
+			// Skip helper inner classes — but still recurse so any
+			// @Nested grand-children are caught.
 			body := node.ChildByFieldName("body")
 			if body != nil {
-				walkJavaClassBody(body, src, newStack, cases)
+				walkJavaClassBody(body, src, suiteStack, cases)
 			}
+			return
+		}
+		newStack := append(append([]string{}, suiteStack...), className)
+		body := node.ChildByFieldName("body")
+		if body != nil {
+			walkJavaClassBody(body, src, newStack, cases)
 		}
 		return
 
@@ -69,6 +90,9 @@ func walkJavaNode(node *sitter.Node, src []byte, suiteStack []string, cases *[]T
 					Line:           int(node.StartPoint().Row) + 1,
 					ExtractionKind: ExtractionStatic,
 					Confidence:     ConfidenceNamedPattern,
+				}
+				if displayName := javaDisplayName(node, src); displayName != "" {
+					tc.DisplayName = displayName
 				}
 				if isParameterized {
 					tc.ExtractionKind = ExtractionParameterizedTemplate
@@ -156,4 +180,122 @@ func extractAnnotationName(annotNode *sitter.Node, src []byte) string {
 		}
 	}
 	return ""
+}
+
+// hasJavaAnnotation reports whether `target` is decorated with the named
+// annotation, examining both sibling annotations (when the grammar
+// places them as previous siblings) and child `modifiers` blocks. Used
+// by the @Nested gate on class_declaration nodes.
+func hasJavaAnnotation(target *sitter.Node, src []byte, name string) bool {
+	prev := target.PrevNamedSibling()
+	for prev != nil {
+		switch prev.Type() {
+		case "marker_annotation", "annotation":
+			if extractAnnotationName(prev, src) == name {
+				return true
+			}
+			prev = prev.PrevNamedSibling()
+		default:
+			prev = nil
+		}
+	}
+	for i := 0; i < int(target.NamedChildCount()); i++ {
+		child := target.NamedChild(i)
+		if child.Type() == "modifiers" {
+			for j := 0; j < int(child.NamedChildCount()); j++ {
+				mod := child.NamedChild(j)
+				if mod.Type() == "marker_annotation" || mod.Type() == "annotation" {
+					if extractAnnotationName(mod, src) == name {
+						return true
+					}
+				}
+			}
+		}
+	}
+	return false
+}
+
+// javaDisplayName returns the string argument of a @DisplayName("...")
+// annotation on `target`, or "" if no such annotation. Looks at both
+// sibling and child-modifier placements to mirror the same robustness
+// in checkJavaTestAnnotations.
+func javaDisplayName(target *sitter.Node, src []byte) string {
+	if v := annotationStringArg(target.PrevNamedSibling(), src, "DisplayName", true); v != "" {
+		return v
+	}
+	for i := 0; i < int(target.NamedChildCount()); i++ {
+		child := target.NamedChild(i)
+		if child.Type() == "modifiers" {
+			for j := 0; j < int(child.NamedChildCount()); j++ {
+				mod := child.NamedChild(j)
+				if v := annotationStringArg(mod, src, "DisplayName", false); v != "" {
+					return v
+				}
+			}
+		}
+	}
+	return ""
+}
+
+// annotationStringArg walks back through annotation siblings (when
+// walkPrev is true) or examines a single annotation node (walkPrev
+// false) and returns the unquoted string-literal argument of the
+// annotation whose name matches `wantName`.
+func annotationStringArg(start *sitter.Node, src []byte, wantName string, walkPrev bool) string {
+	cur := start
+	for cur != nil {
+		switch cur.Type() {
+		case "annotation", "marker_annotation":
+			if extractAnnotationName(cur, src) == wantName {
+				if v := firstStringArgInAnnotation(cur, src); v != "" {
+					return v
+				}
+			}
+		default:
+			if walkPrev {
+				return ""
+			}
+			return ""
+		}
+		if !walkPrev {
+			return ""
+		}
+		cur = cur.PrevNamedSibling()
+	}
+	return ""
+}
+
+// firstStringArgInAnnotation finds the first string literal in an
+// annotation's argument list and returns it without surrounding quotes.
+func firstStringArgInAnnotation(annot *sitter.Node, src []byte) string {
+	for i := 0; i < int(annot.NamedChildCount()); i++ {
+		child := annot.NamedChild(i)
+		if child.Type() == "annotation_argument_list" || child.Type() == "argument_list" {
+			for j := 0; j < int(child.NamedChildCount()); j++ {
+				gc := child.NamedChild(j)
+				if gc.Type() == "string_literal" {
+					return unquoteJavaString(nodeText(gc, src))
+				}
+			}
+		}
+		if child.Type() == "string_literal" {
+			return unquoteJavaString(nodeText(child, src))
+		}
+	}
+	return ""
+}
+
+// unquoteJavaString strips the surrounding double quotes from a Java
+// string literal and processes the most common escapes (\" and \\).
+// Conservative — doesn't try to handle Unicode escapes or text blocks.
+func unquoteJavaString(s string) string {
+	if len(s) < 2 {
+		return s
+	}
+	if s[0] == '"' && s[len(s)-1] == '"' {
+		s = s[1 : len(s)-1]
+	}
+	s = strings.ReplaceAll(s, `\"`, `"`)
+	s = strings.ReplaceAll(s, `\\`, `\`)
+	return s
 }

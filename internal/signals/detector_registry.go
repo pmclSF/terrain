@@ -19,6 +19,12 @@ const (
 	DomainHealth     Domain = "health"
 	DomainCoverage   Domain = "coverage"
 	DomainStructural Domain = "structural"
+	// DomainAI is the home for the 0.2 AI-domain detectors (hardcoded
+	// API keys, prompt-injection-shaped concatenation, non-deterministic
+	// eval configs, etc.). Distinct from DomainStructural because the
+	// AI detectors don't need a graph and they read source / config
+	// files directly.
+	DomainAI Domain = "ai"
 )
 
 // EvidenceType describes how a detector obtains its evidence.

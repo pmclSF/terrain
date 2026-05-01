@@ -1,0 +1,10 @@
+schemaVersion: 1
+fixture: orphaned-test
+description: |
+  A Jest test file that imports nothing from the repository and tests
+  only built-in language constructs. With LinkedCodeUnits empty, the
+  detector flags it as orphanedTestFile.
+expected:
+  - type: orphanedTestFile
+    file: src/floating.test.js
+    notes: "no require() of repo source — LinkedCodeUnits empty"

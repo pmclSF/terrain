@@ -1,0 +1,90 @@
+name: homebrew-update
+
+# Updates the source-build formula in pmclSF/homebrew-terrain to point at
+# the source tarball for a given tag. The existing formula is source-build
+# (downloads refs/tags/<tag>.tar.gz and runs `go build`), so we just need
+# the version and the tarball SHA256 — goreleaser is not involved.
+#
+# Triggers automatically when a v* tag is pushed AND when a release is
+# published (so it runs after the main release workflow finishes), and
+# also on manual workflow_dispatch as a recovery path.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.1.2)'
+        required: true
+        type: string
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  update-formula:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.event.release.tag_name }}"
+          fi
+          VERSION="${TAG#v}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Updating brew formula for $TAG (version $VERSION)"
+
+      - name: Compute source tarball SHA256
+        id: sha
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          URL="https://github.com/pmclSF/terrain/archive/refs/tags/${TAG}.tar.gz"
+          curl --fail --location --silent --show-error -o /tmp/source.tar.gz "$URL"
+          SHA=$(sha256sum /tmp/source.tar.gz | awk '{print $1}')
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "SHA256: $SHA"
+
+      - name: Check out homebrew tap
+        uses: actions/checkout@v6
+        with:
+          repository: pmclSF/homebrew-terrain
+          token: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+          path: tap
+
+      - name: Update Formula/mapterrain.rb
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+          SHA="${{ steps.sha.outputs.sha }}"
+          FORMULA=tap/Formula/mapterrain.rb
+
+          # Replace the url line (matches refs/tags/<tag>.tar.gz suffix).
+          sed -i -E "s|refs/tags/v[0-9.]+\.tar\.gz|refs/tags/${TAG}.tar.gz|" "$FORMULA"
+          # Replace the sha256 line (the first one, since the formula has only
+          # one url/sha256 pair).
+          sed -i -E "0,/sha256 \"[a-f0-9]+\"/{s|sha256 \"[a-f0-9]+\"|sha256 \"${SHA}\"|}" "$FORMULA"
+
+          echo "=== Updated formula ==="
+          cat "$FORMULA"
+
+      - name: Commit + push formula update
+        working-directory: tap
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.tag.outputs.tag }}"
+
+          if git diff --quiet; then
+            echo "Formula already up-to-date for $TAG; nothing to commit."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/mapterrain.rb
+          git commit -m "mapterrain ${TAG}"
+          git push origin main

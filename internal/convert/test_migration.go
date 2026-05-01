@@ -28,6 +28,25 @@ type TestMigrationOptions struct {
 	ValidationMode    string `json:"validationMode,omitempty"`
 	Plan              bool   `json:"plan,omitempty"`
 	DryRun            bool   `json:"dryRun,omitempty"`
+
+	// HistoryRoot, when set, points at the repository root that owns
+	// `.terrain/conversion-history/`. The runtime appends one record
+	// per successful conversion. Empty disables history (preserves
+	// pre-0.2 behaviour for callers that haven't opted in).
+	HistoryRoot string `json:"historyRoot,omitempty"`
+
+	// TerrainVersion is stamped into the history record so audit
+	// readers know which engine produced the conversion. Plumbed
+	// from the CLI's main.version build var.
+	TerrainVersion string `json:"terrainVersion,omitempty"`
+
+	// Preview runs the conversion to a temp directory and returns
+	// per-file unified diffs without writing to the user's --output.
+	// Distinct from DryRun (which produces a structured plan only):
+	// Preview shows the actual converted content as a diff against
+	// the source, useful when the structural plan is fine but you
+	// want to eyeball the output before committing.
+	Preview bool `json:"preview,omitempty"`
 }
 
 // TestMigrationPlan describes a native conversion plan or dry-run preview.
@@ -53,6 +72,22 @@ type TestMigrationResult struct {
 	SourceDetection *Detection         `json:"sourceDetection,omitempty"`
 	Plan            *TestMigrationPlan `json:"plan,omitempty"`
 	Execution       *ExecutionResult   `json:"execution,omitempty"`
+
+	// Preview is populated when TestMigrationOptions.Preview was set.
+	// One entry per converted file with the unified diff against the
+	// original source. Mutually exclusive with Execution: preview runs
+	// to a temp directory and the temp output is discarded after the
+	// diff is captured.
+	Preview []FilePreview `json:"preview,omitempty"`
+}
+
+// FilePreview is one converted file's diff captured during a Preview run.
+type FilePreview struct {
+	SourcePath string `json:"sourcePath"`
+	OutputPath string `json:"outputPath,omitempty"`
+	Status     string `json:"status,omitempty"`
+	Changed    bool   `json:"changed"`
+	Diff       string `json:"diff"`
 }
 
 // RunTestMigration plans or executes a single native test migration request.
@@ -90,6 +125,18 @@ func RunTestMigration(source string, options TestMigrationOptions) (TestMigratio
 		)
 	}
 
+	// Preview mode: run the conversion to a temp directory, build
+	// per-file unified diffs, then discard the temp output. The user's
+	// --output (if set) is ignored — preview is read-only.
+	if options.Preview {
+		previews, err := runPreview(source, direction, options)
+		if err != nil {
+			return result, err
+		}
+		result.Preview = previews
+		return result, nil
+	}
+
 	execution, err := Execute(source, direction, ExecuteOptions{
 		Output:            options.Output,
 		PreserveStructure: options.PreserveStructure,
@@ -99,6 +146,11 @@ func RunTestMigration(source string, options TestMigrationOptions) (TestMigratio
 	if err != nil {
 		return result, err
 	}
+	// 0.2 per-file confidence: walk Files, compute heuristic
+	// covered/lossy/confidence for each (source, output) pair. The
+	// metrics surface in JSON output and feed the report renderer.
+	annotateFileConfidence(&execution)
+
 	validationMode := normalizeValidationMode(options.ValidationMode)
 	execution.ValidationMode = string(validationMode)
 	validationErr := ValidateExecutionResultForDirection(execution, direction)
@@ -114,6 +166,19 @@ func RunTestMigration(source string, options TestMigrationOptions) (TestMigratio
 	case ValidationModeBestEffort:
 		execution.Warnings = append(execution.Warnings, validationWarningsForError(validationMode, validationErr)...)
 		execution.Validated = validationErr == nil
+	}
+
+	// 0.2 conversion history: append AFTER validation so the record
+	// reflects the final Validated state. Errors here do not fail
+	// the conversion — by the time we reach this point the user's
+	// output is already on disk and an audit-log failure shouldn't
+	// undo their successful run.
+	if options.HistoryRoot != "" {
+		rec := HistoryRecordFromExecution(execution, options.TerrainVersion)
+		if err := AppendConversionHistory(options.HistoryRoot, rec); err != nil {
+			execution.Warnings = append(execution.Warnings,
+				fmt.Sprintf("conversion history append failed: %v", err))
+		}
 	}
 
 	result.Execution = &execution

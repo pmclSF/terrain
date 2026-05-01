@@ -1,0 +1,11 @@
+schemaVersion: 1
+fixture: untested-export
+description: |
+  utils.go exports two top-level functions: FormatCurrency and
+  ShouldExpire. The test file exercises only FormatCurrency.
+  ShouldExpire has no test linkage, so the detector flags it as
+  untestedExport.
+expected:
+  - type: untestedExport
+    file: expiry/expiry.go
+    notes: "ShouldExpire exported in subpackage with no tests"

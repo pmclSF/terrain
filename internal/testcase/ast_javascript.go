@@ -8,6 +8,8 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/javascript"
 	tsTypescript "github.com/smacker/go-tree-sitter/typescript/typescript"
+
+	"github.com/pmclSF/terrain/internal/parserpool"
 )
 
 // extractJSWithAST uses tree-sitter to parse JS/TS source and extract test cases.
@@ -16,26 +18,28 @@ import (
 func extractJSWithAST(src, relPath, framework string) []TestCase {
 	srcBytes := []byte(src)
 
-	parser := sitter.NewParser()
-	defer parser.Close()
-
 	// Choose language based on file extension.
+	lang := javascript.GetLanguage()
 	if strings.HasSuffix(relPath, ".ts") || strings.HasSuffix(relPath, ".tsx") {
-		parser.SetLanguage(tsTypescript.GetLanguage())
-	} else {
-		parser.SetLanguage(javascript.GetLanguage())
+		lang = tsTypescript.GetLanguage()
 	}
 
-	tree, err := parser.ParseCtx(context.Background(), nil, srcBytes)
-	if err != nil || tree == nil {
+	var cases []TestCase
+	parsed := false
+	_ = parserpool.With(lang, func(parser *sitter.Parser) error {
+		tree, perr := parser.ParseCtx(context.Background(), nil, srcBytes)
+		if perr != nil || tree == nil {
+			return perr
+		}
+		defer tree.Close()
+		walkJSNode(tree.RootNode(), srcBytes, nil, &cases)
+		parsed = true
+		return nil
+	})
+	if !parsed {
 		// Fallback to regex-based extraction on parse failure.
 		return extractJS(src, relPath, framework)
 	}
-	defer tree.Close()
-
-	root := tree.RootNode()
-	var cases []TestCase
-	walkJSNode(root, srcBytes, nil, &cases)
 	return cases
 }
 

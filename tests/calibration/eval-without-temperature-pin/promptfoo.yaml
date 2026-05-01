@@ -1,0 +1,22 @@
+description: Classifier eval — temperature unpinned (intentional negative).
+
+providers:
+  - id: openai:chat:gpt-4o-mini
+    config:
+      model: gpt-4o-mini
+      # temperature deliberately omitted to exercise aiNonDeterministicEval.
+
+prompts:
+  - file://prompts/classify.txt
+
+tests:
+  - vars:
+      input: "Order shipped to wrong address."
+    assert:
+      - type: contains
+        value: shipping-issue
+  - vars:
+      input: "Device overheats during play."
+    assert:
+      - type: contains
+        value: hardware-issue

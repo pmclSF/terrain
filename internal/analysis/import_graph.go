@@ -322,14 +322,54 @@ func resolveFromRoot(root, pathNoExt string) []string {
 	return nil
 }
 
+// loadTSPathAliases resolves TypeScript path aliases from the project
+// root, walking the `extends` chain so paths declared in a shared base
+// tsconfig (a common monorepo pattern) are picked up by leaf projects.
+//
+// Resolution order:
+//   1. tsconfig.json at root (highest priority)
+//   2. jsconfig.json at root (JS-only projects use the same shape)
+//
+// For each tsconfig the loader merges in `extends` results first, then
+// overlays the leaf's own paths. Each path entry can map to multiple
+// targets — we now emit one alias per target so consumers see all the
+// candidate locations (round-4 finding "TypeScript tsconfig.json paths
+// consistent across import resolution").
 func loadTSPathAliases(root string) []pathAlias {
-	path := filepath.Join(root, "tsconfig.json")
+	for _, name := range []string{"tsconfig.json", "jsconfig.json"} {
+		path := filepath.Join(root, name)
+		if _, err := os.Stat(path); err != nil {
+			continue
+		}
+		seen := map[string]bool{}
+		if aliases := loadTSPathAliasesFromFile(root, path, seen); len(aliases) > 0 {
+			return aliases
+		}
+	}
+	return nil
+}
+
+// loadTSPathAliasesFromFile loads aliases from a specific tsconfig
+// path, recursively resolving `extends`. Returns the merged alias
+// list. seen tracks already-visited config paths so a circular
+// extends graph terminates instead of looping.
+func loadTSPathAliasesFromFile(root, path string, seen map[string]bool) []pathAlias {
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return nil
+	}
+	if seen[abs] {
+		return nil
+	}
+	seen[abs] = true
+
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
 	}
 
 	var cfg struct {
+		Extends         string `json:"extends,omitempty"`
 		CompilerOptions struct {
 			BaseURL string              `json:"baseUrl"`
 			Paths   map[string][]string `json:"paths"`
@@ -338,41 +378,114 @@ func loadTSPathAliases(root string) []pathAlias {
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil
 	}
+
+	var aliases []pathAlias
+
+	// Recurse into the extends chain first; the leaf overlays.
+	if cfg.Extends != "" {
+		parentPath := resolveTSExtendsPath(filepath.Dir(path), cfg.Extends)
+		if parentPath != "" {
+			aliases = append(aliases, loadTSPathAliasesFromFile(root, parentPath, seen)...)
+		}
+	}
+
 	if len(cfg.CompilerOptions.Paths) == 0 {
-		return nil
+		return aliases
 	}
 
 	baseURL := cfg.CompilerOptions.BaseURL
 	if baseURL == "" {
 		baseURL = "."
 	}
-	baseURL = filepath.ToSlash(filepath.Clean(baseURL))
+	// baseURL is relative to the directory that contains THIS
+	// tsconfig, not the project root. We rewrite it relative to
+	// `root` so the resulting alias targets stay valid.
+	baseRelToRoot := tsBaseURLRelativeToRoot(root, filepath.Dir(path), baseURL)
 
-	var aliases []pathAlias
 	for key, targets := range cfg.CompilerOptions.Paths {
-		if len(targets) == 0 {
+		if key == "" || len(targets) == 0 {
 			continue
 		}
-		target := targets[0]
-		if key == "" || target == "" {
-			continue
-		}
-		keyWildcard := strings.HasSuffix(key, "/*")
-		targetWildcard := strings.HasSuffix(target, "/*")
-		keyPrefix := strings.TrimSuffix(key, "/*")
-		targetPrefix := strings.TrimSuffix(target, "/*")
+		// Emit one alias per target so consumers see every
+		// candidate; the first match wins at resolve time but the
+		// graph carries the full set.
+		for _, target := range targets {
+			if target == "" {
+				continue
+			}
+			keyWildcard := strings.HasSuffix(key, "/*")
+			targetWildcard := strings.HasSuffix(target, "/*")
+			keyPrefix := strings.TrimSuffix(key, "/*")
+			targetPrefix := strings.TrimSuffix(target, "/*")
 
-		joined := normalizeAliasPrefix(filepath.Join(baseURL, targetPrefix), keyWildcard && targetWildcard)
-		aliases = append(aliases, pathAlias{
-			keyPrefix:    keyPrefix,
-			keySuffix:    "",
-			targetPrefix: joined,
-			targetSuffix: "",
-			hasWildcard:  keyWildcard && targetWildcard,
-			targetHasExt: filepath.Ext(joined) != "",
-		})
+			joined := normalizeAliasPrefix(filepath.Join(baseRelToRoot, targetPrefix), keyWildcard && targetWildcard)
+			aliases = append(aliases, pathAlias{
+				keyPrefix:    keyPrefix,
+				keySuffix:    "",
+				targetPrefix: joined,
+				targetSuffix: "",
+				hasWildcard:  keyWildcard && targetWildcard,
+				targetHasExt: filepath.Ext(joined) != "",
+			})
+		}
 	}
 	return aliases
+}
+
+// resolveTSExtendsPath turns a tsconfig `extends` value into the
+// absolute path of the referenced config. Handles three cases:
+//   - "./shared/tsconfig.base.json"  — relative to current config dir
+//   - "../tsconfig.base.json"        — same; relative
+//   - "@scope/tsconfig"              — node_modules lookup; we resolve
+//                                      via node_modules/<name>/tsconfig.json
+//                                      when present, otherwise drop.
+func resolveTSExtendsPath(configDir, extends string) string {
+	if strings.HasPrefix(extends, ".") || strings.HasPrefix(extends, "/") {
+		candidate := filepath.Join(configDir, extends)
+		if !strings.HasSuffix(candidate, ".json") {
+			candidate += ".json"
+		}
+		if _, err := os.Stat(candidate); err == nil {
+			return candidate
+		}
+		return ""
+	}
+	// node_modules-style lookup: walk up looking for
+	// node_modules/<extends>/tsconfig.json or <extends>.json.
+	dir := configDir
+	for i := 0; i < 8; i++ {
+		nm := filepath.Join(dir, "node_modules", extends)
+		if !strings.HasSuffix(nm, ".json") {
+			if _, err := os.Stat(filepath.Join(nm, "tsconfig.json")); err == nil {
+				return filepath.Join(nm, "tsconfig.json")
+			}
+			if _, err := os.Stat(nm + ".json"); err == nil {
+				return nm + ".json"
+			}
+		} else if _, err := os.Stat(nm); err == nil {
+			return nm
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			break
+		}
+		dir = parent
+	}
+	return ""
+}
+
+// tsBaseURLRelativeToRoot rewrites a tsconfig baseURL that's relative
+// to its config file into a path that's relative to the project root.
+// Without this fix, an extended config in `apps/web/tsconfig.json`
+// with `baseUrl: "."` would emit aliases pointing at the project
+// root rather than at `apps/web`.
+func tsBaseURLRelativeToRoot(root, configDir, baseURL string) string {
+	abs := filepath.Clean(filepath.Join(configDir, baseURL))
+	rel, err := filepath.Rel(root, abs)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return filepath.ToSlash(filepath.Clean(baseURL))
+	}
+	return filepath.ToSlash(rel)
 }
 
 func loadPackageImportAliases(root string) []pathAlias {

@@ -204,6 +204,20 @@ See [Canonical User Journeys](docs/product/canonical-user-journeys.md) for the f
 
 **System health, not individual productivity.** Terrain measures the test system. It never attributes quality to individual developers. Ownership information is used for routing and triage, not scoring.
 
+## What Terrain Is Not
+
+It's worth stating what Terrain *doesn't* try to do, because the test-tooling space has a lot of overlapping vendors and the boundaries matter.
+
+- **Not a test runner.** Terrain doesn't execute your tests. It analyzes the test system around them. Pair it with `jest`, `pytest`, `go test`, your existing CI runner — Terrain reads the artifacts those produce, it doesn't replace them.
+- **Not a coverage tool.** Terrain ingests coverage reports if you have them and uses them as evidence, but it doesn't instrument code or compute coverage itself. Bring coverage from `c8`, `istanbul`, `coverage.py`, `gcov` — Terrain is the layer that turns coverage into structural insight.
+- **Not a static analyzer for application code.** Terrain inspects *test* code structure (assertions, mocks, framework patterns, scenario coverage). Tools like Sonar, Semgrep, and CodeQL stay better-positioned for source-side bug-finding; Terrain doesn't compete.
+- **Not an LLM eval framework.** Terrain understands AI surfaces (prompts, scenarios, RAG pipelines) and the eval *artifacts* that promptfoo / DeepEval / Ragas produce, but it doesn't run the evals itself. Use those tools to execute; use Terrain to analyze what they produce in CI.
+- **Not a test-flake whack-a-mole tool.** Terrain reports flakiness as a signal among many. If your only need is "rerun flaky tests until they pass", point-tools like `pytest-rerunfailures` or `jest-circus` ship that directly.
+- **Not a developer-productivity dashboard.** Terrain measures the test system, not the people writing tests. It deliberately produces no leaderboards, no per-developer metrics, no "engineer productivity" rankings. Ownership data is used for routing, not scoring.
+- **Not a service.** Terrain runs locally and in your CI. There is no SaaS offering, no telemetry sent off your infrastructure, no account required. Reports stay where you produce them.
+
+If you're evaluating Terrain against another tool and the boundary isn't obvious, please open an issue — we'll write the comparison entry under `docs/compare/`.
+
 ## Who Uses Terrain
 
 Terrain is framework-agnostic and language-aware. The same analysis model applies across:
@@ -314,6 +328,102 @@ terrain impact --base main
 
 # Get prioritized recommendations
 terrain insights
+```
+
+## GitHub Actions templates
+
+Drop one of these into `.github/workflows/terrain.yml` and you're done.
+
+### Minimal — analyze on every PR
+
+```yaml
+name: terrain
+on:
+  pull_request:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.x'
+
+      - run: npm install -g mapterrain
+      - run: terrain analyze --root . --json > terrain-report.json
+      - run: terrain impact --base origin/main --root .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: terrain-report
+          path: terrain-report.json
+```
+
+### Strict — block on Critical / High signals
+
+```yaml
+name: terrain-gate
+on:
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - run: |
+          curl -L https://github.com/pmclSF/terrain/releases/latest/download/terrain_linux_amd64.tar.gz \
+            | tar -xz
+
+      - run: ./terrain analyze --root . --json > terrain.json
+
+      # Fail the job if any Critical or High severity signals are
+      # present in the analysis. Distinct exit codes per docs/cli-spec.md.
+      - run: |
+          jq -e '.signals | map(select(.severity == "critical" or .severity == "high")) | length == 0' terrain.json
+```
+
+### AI-aware — gate on AI-domain Criticals only
+
+```yaml
+name: terrain-ai-gate
+on:
+  pull_request:
+    paths:
+      - '**/*.py'
+      - '**/*.js'
+      - '**/*.ts'
+      - '**/.terrain/**'
+      - '**/promptfoo*.yaml'
+      - '**/eval*.yaml'
+
+jobs:
+  ai-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - run: npm install -g mapterrain
+      - run: terrain ai list --root . --json > ai-inventory.json
+
+      # Fail only on aiHardcodedAPIKey or any AI-domain Critical.
+      - run: |
+          terrain analyze --root . --json |
+            jq -e '[.signals[] | select(.category == "ai" and .severity == "critical")] | length == 0'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ai-inventory
+          path: ai-inventory.json
 ```
 
 ## Commands

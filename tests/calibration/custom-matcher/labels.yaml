@@ -1,0 +1,10 @@
+schemaVersion: 1
+fixture: custom-matcher
+description: |
+  A Jest test file installs a custom matcher via expect.extend({...}).
+  Custom matchers don't transfer cleanly to other frameworks, so
+  CustomMatcherDetector flags this as a migration risk.
+expected:
+  - type: customMatcherRisk
+    file: src/payment.test.js
+    notes: "expect.extend({toBeApprovedPayment, ...}) custom matcher"

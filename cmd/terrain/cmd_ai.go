@@ -434,7 +434,7 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	}
 
 	// Step 4: Build execution command.
-	cmdArgs := buildEvalCommand(framework, det, selected, snap)
+	cmdArgs, evalOutputPath := buildEvalCommandWithOutput(framework, det, selected, snap)
 
 	// Step 5: Execute (unless dry-run).
 	var execErr error
@@ -449,6 +449,27 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 			execCmd.Stderr = os.Stderr
 		}
 		execErr = execCmd.Run()
+	}
+
+	// Step 5b: If the framework wrote structured results, parse them
+	// via the matching airun adapter and stash on the snapshot so
+	// downstream detectors / reports can see the per-case data.
+	// Errors are surfaced as warnings — the eval ran, we just couldn't
+	// ingest its output.
+	var evalRun *airun.EvalRunResult
+	if !dryRun && execErr == nil && evalOutputPath != "" {
+		if loaded, err := loadEvalRunByFramework(framework, evalOutputPath); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: failed to parse %s output: %v\n", framework, err)
+		} else {
+			evalRun = loaded
+			if env, eerr := loaded.ToEnvelope(evalOutputPath); eerr == nil {
+				snap.EvalRuns = append(snap.EvalRuns, env)
+			}
+			// Best-effort cleanup: framework wrote into a temp
+			// path we own, so removing it after parse keeps
+			// the user's tree tidy.
+			_ = os.Remove(evalOutputPath)
+		}
 	}
 
 	// Step 6: Collect AI signals from snapshot.
@@ -492,6 +513,7 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	persistArt.Selected = selected
 	persistArt.Skipped = skipped
 	persistArt.Signals = signalEntries
+	persistArt.EvalRun = evalRun
 	if savedPath, saveErr := airun.SaveArtifact(root, persistArt); saveErr != nil {
 		fmt.Fprintf(os.Stderr, "Warning: failed to save artifact: %v\n", saveErr)
 	} else if !jsonOutput {
@@ -580,20 +602,60 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	return nil
 }
 
-func buildEvalCommand(framework string, det *aidetect.DetectResult, selected []aiRunScenario, snap *models.TestSuiteSnapshot) []string {
+// newEvalOutputPath returns a temp-file path the eval framework can
+// be asked to write its result to. Each terrain ai run owns its own
+// temp file; cleanup happens after parse.
+func newEvalOutputPath(framework string) string {
+	return filepath.Join(os.TempDir(), fmt.Sprintf("terrain-ai-run-%s-%d.json", framework, os.Getpid()))
+}
+
+// loadEvalRunByFramework picks the right airun adapter for the
+// framework name and parses the file. Returns an error when the
+// framework is unsupported or the file is malformed.
+func loadEvalRunByFramework(framework, path string) (*airun.EvalRunResult, error) {
 	switch framework {
 	case "promptfoo":
-		args := []string{"npx", "promptfoo", "eval"}
+		return airun.LoadPromptfooFile(path)
+	case "deepeval":
+		return airun.LoadDeepEvalFile(path)
+	case "ragas":
+		return airun.LoadRagasFile(path)
+	}
+	return nil, fmt.Errorf("framework %q has no airun adapter yet", framework)
+}
+
+// buildEvalCommand returns the argv to execute the configured eval
+// framework. The 0.2 evolution adds an outputPath return: when the
+// framework supports a structured output flag, we ask it to write to
+// a temp file and the caller parses that via the airun adapter to
+// surface aggregates + per-case data into the AI run artifact.
+func buildEvalCommand(framework string, det *aidetect.DetectResult, selected []aiRunScenario, snap *models.TestSuiteSnapshot) []string {
+	args, _ := buildEvalCommandWithOutput(framework, det, selected, snap)
+	return args
+}
+
+// buildEvalCommandWithOutput returns argv plus the output path the
+// framework will (be asked to) write to. Returns "" when the
+// framework's CLI doesn't expose a structured-output flag we
+// recognise.
+func buildEvalCommandWithOutput(framework string, det *aidetect.DetectResult, selected []aiRunScenario, snap *models.TestSuiteSnapshot) (args []string, outputPath string) {
+	switch framework {
+	case "promptfoo":
+		args = []string{"npx", "promptfoo", "eval"}
 		if len(det.Frameworks) > 0 && det.Frameworks[0].ConfigFile != "" {
 			args = append(args, "-c", det.Frameworks[0].ConfigFile)
 		}
-		return args
+		// 0.2: write structured results to a temp file so the
+		// post-execute path can ingest them via the Promptfoo adapter.
+		out := newEvalOutputPath("promptfoo")
+		args = append(args, "--output", out)
+		return args, out
 	case "deepeval":
-		return []string{"deepeval", "test", "run"}
+		return []string{"deepeval", "test", "run"}, ""
 	case "ragas":
-		return []string{"python", "-m", "ragas", "evaluate"}
+		return []string{"python", "-m", "ragas", "evaluate"}, ""
 	case "langsmith":
-		return []string{"langsmith", "test", "run"}
+		return []string{"langsmith", "test", "run"}, ""
 	}
 
 	// Generic: run eval files with detected test runner.
@@ -604,7 +666,7 @@ func buildEvalCommand(framework string, det *aidetect.DetectResult, selected []a
 		}
 	}
 	if len(evalFiles) == 0 {
-		return nil
+		return nil, ""
 	}
 
 	runner := []string{"npx", "vitest", "run"}
@@ -618,7 +680,7 @@ func buildEvalCommand(framework string, det *aidetect.DetectResult, selected []a
 			break
 		}
 	}
-	return append(runner, evalFiles...)
+	return append(runner, evalFiles...), ""
 }
 
 func evaluateAIRunDecision(snap *models.TestSuiteSnapshot, result *engine.PipelineResult) aiRunDecision {

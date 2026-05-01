@@ -1,0 +1,11 @@
+schemaVersion: 1
+fixture: snapshot-heavy
+description: |
+  A Jest test file with 4 toMatchSnapshot() calls and zero direct
+  semantic assertions. Snapshot count ≥3 with ratio ∞ → high severity
+  branch of SnapshotHeavyDetector fires. Snapshots dominate behavior
+  verification.
+expected:
+  - type: snapshotHeavyTest
+    file: src/widget.test.js
+    notes: "4 snapshots, 0 semantic assertions — high severity"

@@ -295,6 +295,7 @@ func detectPythonFixtures(src, relPath, framework string) []models.FixtureSurfac
 					Shared:        isSharedFile,
 					DetectionTier: models.TierStructural,
 					Confidence:    0.95,
+					Dependencies:  extractPyFixtureDeps(trimmed),
 				})
 				hasPendingFixture = false
 				continue
@@ -378,6 +379,91 @@ func detectPythonFixtures(src, relPath, framework string) []models.FixtureSurfac
 	}
 
 	return fixtures
+}
+
+// pyDefSignaturePattern matches a Python def line with the parameter
+// list captured. Tolerant of whitespace and async; does NOT consume
+// the trailing `:` so the regex still matches multi-line signatures
+// (we just look at the first line).
+var pyDefSignaturePattern = regexp.MustCompile(`^(?:async\s+)?def\s+\w+\s*\(([^)]*)\)`)
+
+// pyFixtureDepDenylist holds parameter names that aren't real fixture
+// deps and should be filtered out:
+//
+//   - self, cls       — method receivers
+//   - request          — pytest's special fixture; not a code unit
+//   - tmp_path,
+//     tmpdir,
+//     monkeypatch,
+//     capsys,
+//     caplog            — pytest built-ins; reporting them as deps
+//                         would inflate the graph with infrastructure
+var pyFixtureDepDenylist = map[string]bool{
+	"self": true, "cls": true,
+	"request":         true,
+	"tmp_path":        true,
+	"tmp_path_factory": true,
+	"tmpdir":          true,
+	"tmpdir_factory":  true,
+	"monkeypatch":     true,
+	"capsys":          true,
+	"capsysbinary":    true,
+	"capfd":           true,
+	"capfdbinary":     true,
+	"caplog":          true,
+	"recwarn":         true,
+	"pytestconfig":    true,
+}
+
+// extractPyFixtureDeps parses the parameter list of a Python `def`
+// line and returns the parameter names that look like fixture
+// dependencies. Filters method receivers and pytest built-ins.
+//
+// Default values are stripped (`db=None` → "db"). Type annotations
+// are stripped (`db: Database` → "db"). *args / **kwargs are
+// dropped. The line is assumed to be the first (or only) line of
+// the def signature; multi-line signatures lose later parameters.
+func extractPyFixtureDeps(line string) []string {
+	m := pyDefSignaturePattern.FindStringSubmatch(line)
+	if m == nil {
+		return nil
+	}
+	params := strings.Split(m[1], ",")
+	var deps []string
+	for _, p := range params {
+		name := normalisePyParam(p)
+		if name == "" {
+			continue
+		}
+		if pyFixtureDepDenylist[name] {
+			continue
+		}
+		deps = append(deps, name)
+	}
+	return deps
+}
+
+// normalisePyParam strips type annotation, default value, and decorators
+// from a single Python parameter declaration, returning just the name.
+// Returns "" for *args / **kwargs / empty entries.
+func normalisePyParam(p string) string {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return ""
+	}
+	// *args / **kwargs / *.
+	if strings.HasPrefix(p, "*") {
+		return ""
+	}
+	// Strip default value: `db=None` → `db`.
+	if eq := strings.Index(p, "="); eq >= 0 {
+		p = strings.TrimSpace(p[:eq])
+	}
+	// Strip type annotation: `db: Database` → `db`.
+	if colon := strings.Index(p, ":"); colon >= 0 {
+		p = strings.TrimSpace(p[:colon])
+	}
+	return p
 }
 
 func classifyPythonHelper(name string) models.FixtureKind {

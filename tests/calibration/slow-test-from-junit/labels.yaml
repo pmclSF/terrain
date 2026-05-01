@@ -1,0 +1,14 @@
+schemaVersion: 1
+fixture: slow-test-from-junit
+description: |
+  A junit.xml runtime artifact records two checkout tests; one ran
+  for 12.08 s, well past the 5 s default slow threshold. The runtime
+  health detector reads the artifact and fires slowTest on the slow
+  case.
+expected:
+  - type: slowTest
+    file: checkout
+    notes: "JUnit classname=checkout, time=12.08 s exceeds 5 s threshold"
+  - type: orphanedTestFile
+    file: src/checkout.test.js
+    notes: "test file imports nothing from the repo"

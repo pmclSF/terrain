@@ -68,6 +68,15 @@ type FixtureSurface struct {
 	// Reason explains why this fixture was detected and classified.
 	// Format: "[detectorID] description" for traceability.
 	Reason string `json:"reason,omitempty"`
+
+	// Dependencies lists the names of other fixtures this fixture
+	// depends on, derived from the function signature parameters
+	// (`def my_fixture(db, request, redis)` → ["db", "redis"];
+	// `request` and method receivers like `self`/`cls` are filtered).
+	// Closes the round-4 finding "Pytest fixture dependency graph"
+	// — consumers walk this list to compute transitive depth and
+	// identify fanout bottlenecks. SignalV2 0.2 field.
+	Dependencies []string `json:"dependencies,omitempty"`
 }
 
 // Evidence returns a unified DetectionEvidence view.

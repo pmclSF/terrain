@@ -1,0 +1,12 @@
+schemaVersion: 1
+fixture: multi-framework
+description: |
+  Two test files in the same project use different unit-test
+  frameworks: Jest (describe/test/expect) and Mocha
+  (describe/it/chai.expect). FrameworkMigrationDetector flags this as
+  a migration opportunity. Repository-level signal — Location.File
+  is empty so labels.yaml's file is "" too.
+expected:
+  - type: frameworkMigration
+    file: ""
+    notes: "two unit frameworks (jest + mocha) coexisting"

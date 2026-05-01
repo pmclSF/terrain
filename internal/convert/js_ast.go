@@ -7,10 +7,13 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/javascript"
 	tsTypescript "github.com/smacker/go-tree-sitter/typescript/typescript"
+
+	"github.com/pmclSF/terrain/internal/parserpool"
 )
 
 type jsSyntaxTree struct {
 	parser *sitter.Parser
+	lang   *sitter.Language // pool key for Release on Close
 	tree   *sitter.Tree
 	src    []byte
 }
@@ -29,13 +32,13 @@ func parseJSSyntaxTree(source string) (*jsSyntaxTree, bool) {
 	}
 
 	for _, language := range languages {
-		parser := sitter.NewParser()
-		parser.SetLanguage(language)
+		parser := parserpool.Acquire(language)
 
 		tree, err := parser.ParseCtx(context.Background(), nil, src)
 		if err == nil && tree != nil && !tree.RootNode().HasError() {
 			return &jsSyntaxTree{
 				parser: parser,
+				lang:   language,
 				tree:   tree,
 				src:    src,
 			}, true
@@ -43,7 +46,7 @@ func parseJSSyntaxTree(source string) (*jsSyntaxTree, bool) {
 		if tree != nil {
 			tree.Close()
 		}
-		parser.Close()
+		parserpool.Release(language, parser)
 	}
 
 	return nil, false
@@ -57,7 +60,8 @@ func (t *jsSyntaxTree) Close() {
 		t.tree.Close()
 	}
 	if t.parser != nil {
-		t.parser.Close()
+		// Pooled parser: return it for reuse instead of Close().
+		parserpool.Release(t.lang, t.parser)
 	}
 }
 

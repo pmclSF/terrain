@@ -85,6 +85,22 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	"toolGuardrailViolation": {Source: SignalSourceGauntlet},
 	"toolBudgetExceeded":     {Source: SignalSourceGauntlet},
 	"agentFallbackTriggered": {Source: SignalSourceGauntlet},
+
+	// 0.2 AI signals — declared planned per docs/release/0.2.md.
+	// Detection lands in subsequent 0.2 commits; these reservations
+	// keep the catalog and manifest in sync until then.
+	"aiSafetyEvalMissing":    {Source: SignalSourceStatic},
+	"aiPromptVersioning":     {Source: SignalSourceStatic},
+	"aiPromptInjectionRisk":  {Source: SignalSourceStatic},
+	"aiHardcodedAPIKey":      {Source: SignalSourceStatic},
+	"aiToolWithoutSandbox":   {Source: SignalSourceStatic},
+	"aiNonDeterministicEval": {Source: SignalSourceStatic},
+	"aiModelDeprecationRisk": {Source: SignalSourceStatic},
+	"aiCostRegression":       {Source: SignalSourceGauntlet},
+	"aiHallucinationRate":    {Source: SignalSourceGauntlet},
+	"aiFewShotContamination": {Source: SignalSourceStatic},
+	"aiEmbeddingModelChange": {Source: SignalSourceStatic},
+	"aiRetrievalRegression":  {Source: SignalSourceGauntlet},
 }
 
 // KnownSignalTypes is the canonical signal vocabulary accepted by snapshot

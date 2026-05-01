@@ -7,7 +7,8 @@ on:
 
 permissions:
   contents: write
-  id-token: write    # required for npm provenance AND Sigstore keyless signing
+  id-token: write       # required for npm provenance + Sigstore keyless signing
+  attestations: write   # 0.2: SLSA L2 build-provenance attestations
 
 jobs:
   # Gate: single source of truth — same script locally and in CI.
@@ -45,24 +46,27 @@ jobs:
   # one runner per OS family. Linux runner produces both amd64 (native) and
   # arm64 (cross-compiled with gcc-aarch64-linux-gnu).
   #
-  # Each runner builds its own slice via goreleaser `build --id=<list>`, then
-  # packages/signs via `release --skip-build --skip=publish,validate`. The
-  # aggregator job below downloads all artifacts and creates a single GitHub
-  # Release.
+  # Each runner builds its own slice via goreleaser `build --id <each>`, then
+  # packages/signs via `release --skip=publish,validate,build`. The aggregator
+  # job below downloads all artifacts and creates a single GitHub Release.
   go-release-build:
     needs: verify
     strategy:
       fail-fast: false
       matrix:
         include:
+          # build_args is the verbatim --id flag list passed to goreleaser
+          # build. Goreleaser v2's --id is singular and does NOT accept
+          # comma-separated values, so multi-id builds need one --id flag
+          # per id (the linux runner produces both amd64 and arm64).
           - os: ubuntu-latest
-            build_ids: terrain-linux-amd64,terrain-linux-arm64
+            build_args: --id terrain-linux-amd64 --id terrain-linux-arm64
             artifact_name: terrain-linux
           - os: macos-latest
-            build_ids: terrain-darwin
+            build_args: --id terrain-darwin
             artifact_name: terrain-darwin
           - os: windows-latest
-            build_ids: terrain-windows
+            build_args: --id terrain-windows
             artifact_name: terrain-windows
     runs-on: ${{ matrix.os }}
     steps:
@@ -95,22 +99,85 @@ jobs:
       uses: goreleaser/goreleaser-action@v6
       with:
         version: '~> v2'
-        args: build --clean --id ${{ matrix.build_ids }}
+        args: build --clean ${{ matrix.build_args }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         COSIGN_ENABLED: "1"
 
-    # Run goreleaser's release pipeline (archives, SBOMs, signs, checksums)
-    # without publishing or rebuilding. The build step above already produced
-    # binaries for this matrix entry.
-    - name: Package + sign artifacts
-      uses: goreleaser/goreleaser-action@v6
-      with:
-        version: '~> v2'
-        args: release --clean --skip=publish,validate --skip-build
+    # Goreleaser v2 cannot skip the build phase from `release` (the valid
+    # --skip phases don't include "build"), and there's no clean way to
+    # archive+SBOM+sign already-built binaries through goreleaser's own
+    # pipeline in split-OS matrix mode. Inline the archive/SBOM/sign work
+    # with the same tools (tar/zip, syft, cosign) the goreleaser config
+    # would have invoked.
+    - name: Archive, SBOM, and sign artifacts
+      shell: bash
+      run: |
+        set -euo pipefail
+        cd dist
+        DIST_ABS="$(pwd)"
+        VERSION="${GITHUB_REF_NAME#v}"
+
+        echo "=== Built binaries ==="
+        find . -maxdepth 2 -type f \( -name terrain -o -name terrain.exe \) -print
+
+        # Goreleaser writes binaries to dist/<id>_<goos>_<goarch>[_<variant>]/<binary>
+        # e.g. dist/terrain-linux-amd64_linux_amd64_v1/terrain
+        #      dist/terrain-darwin_darwin_arm64_v8.0/terrain
+        #      dist/terrain-windows_windows_amd64_v1/terrain.exe
+        while IFS= read -r binary_path; do
+          binary_dir=$(dirname "$binary_path")
+          dir_basename=$(basename "$binary_dir")
+          bin_name=$(basename "$binary_path")
+
+          case "$dir_basename" in
+            *_linux_amd64*)   goos="linux";   goarch="amd64" ;;
+            *_linux_arm64*)   goos="linux";   goarch="arm64" ;;
+            *_darwin_amd64*)  goos="darwin";  goarch="amd64" ;;
+            *_darwin_arm64*)  goos="darwin";  goarch="arm64" ;;
+            *_windows_amd64*) goos="windows"; goarch="amd64" ;;
+            *) echo "::error::unrecognised goreleaser output dir: $dir_basename"; exit 1 ;;
+          esac
+
+          archive_base="terrain_${VERSION}_${goos}_${goarch}"
+          if [[ "$goos" == "windows" ]]; then
+            archive="${archive_base}.zip"
+            # 7z is preinstalled on GitHub-hosted Windows runners. cd into
+            # the binary dir so the zip contains terrain.exe at the root
+            # (not <id>/terrain.exe). Use DIST_ABS captured before any cd
+            # since OLDPWD inside the subshell would point at the prior
+            # parent, not the dist root.
+            (cd "$binary_dir" && 7z a "${DIST_ABS}/${archive}" "$bin_name" > /dev/null)
+          else
+            archive="${archive_base}.tar.gz"
+            tar -czf "$archive" -C "$binary_dir" "$bin_name"
+          fi
+          echo "  archived: $archive"
+        done < <(find . -maxdepth 2 -type f \( -name terrain -o -name terrain.exe \))
+
+        echo "=== Generating SBOMs ==="
+        for archive in *.tar.gz *.zip; do
+          [ -f "$archive" ] || continue
+          syft "$archive" \
+            -o "cyclonedx-json=${archive}.cdx.json" \
+            -o "spdx-json=${archive}.spdx.json"
+          echo "  sbom: $archive → ${archive}.cdx.json + ${archive}.spdx.json"
+        done
+
+        echo "=== Signing artifacts (cosign keyless, Sigstore OIDC) ==="
+        for f in *.tar.gz *.zip *.cdx.json *.spdx.json; do
+          [ -f "$f" ] || continue
+          cosign sign-blob --yes \
+            --output-signature="${f}.sig" \
+            --output-certificate="${f}.pem" \
+            "$f"
+          echo "  signed: $f"
+        done
+
+        echo "=== Final dist/ contents ==="
+        ls -la
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        COSIGN_ENABLED: "1"
+        COSIGN_EXPERIMENTAL: "1"
 
     - name: Upload OS artifacts
       uses: actions/upload-artifact@v4
@@ -167,6 +234,20 @@ jobs:
       env:
         COSIGN_EXPERIMENTAL: "1"
 
+    # SLSA L2 build-provenance attestation (0.2). actions/attest-build-provenance
+    # signs a SLSA-compliant in-toto statement against every binary archive
+    # using the workflow's OIDC identity. The attestation is uploaded to
+    # GitHub's attestations API and downloadable via `gh attestation verify`.
+    # Independent of the cosign blob signatures (which sign the file bytes
+    # without provenance metadata) — both are useful, neither replaces the
+    # other.
+    - name: Generate SLSA L2 build provenance
+      uses: actions/attest-build-provenance@v3
+      with:
+        subject-path: |
+          dist/*.tar.gz
+          dist/*.zip
+
     - name: Create GitHub Release
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -177,35 +258,11 @@ jobs:
           --generate-notes \
           dist/*
 
-  # Homebrew tap update runs after the GitHub Release is live so it can pull
-  # darwin archives. Uses the same goreleaser config but only the brews block.
-  homebrew-publish:
-    needs: go-release-publish
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v6
-      with:
-        fetch-depth: 0
-
-    - uses: actions/setup-go@v6
-      with:
-        go-version-file: go.mod
-
-    - name: Install syft
-      uses: anchore/sbom-action/download-syft@v0
-      with:
-        syft-version: 'v1.18.1'
-
-    - name: Run GoReleaser (publish brews only)
-      uses: goreleaser/goreleaser-action@v6
-      with:
-        version: '~> v2'
-        # Re-runs the darwin build then publishes the brew formula. Skips signs
-        # because we don't need Sigstore signatures for the formula update.
-        args: release --clean --skip=publish,validate,sign
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        HOMEBREW_TAP_GITHUB_TOKEN: ${{ secrets.HOMEBREW_TAP_GITHUB_TOKEN }}
+  # Homebrew tap update is handled by the separate homebrew-update.yml
+  # workflow, which fires on `release: published` (and on workflow_dispatch
+  # for recovery). It updates the source-build formula in-place — no
+  # goreleaser involvement, no cross-compiler needed, no rebuild on the
+  # macos runner of artifacts that already exist in the GitHub release.
 
   npm-release:
     needs: [verify, go-release-publish]

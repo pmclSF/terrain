@@ -1,0 +1,13 @@
+schemaVersion: 1
+fixture: coverage-below-threshold
+description: |
+  Includes an Istanbul coverage-summary.json showing 42.5% line
+  coverage. The default threshold is 80%, so the detector emits a
+  coverageThresholdBreak signal at the repository level. Includes a
+  trivial test+source pair so the pipeline has at least one test
+  file (otherwise some preconditions short-circuit before reaching
+  the coverage stage).
+expected:
+  - type: coverageThresholdBreak
+    file: ""
+    notes: "lines coverage 42.5% < 80% threshold"

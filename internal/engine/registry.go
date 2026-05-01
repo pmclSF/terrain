@@ -7,6 +7,7 @@ package engine
 import (
 	"fmt"
 
+	"github.com/pmclSF/terrain/internal/aidetect"
 	"github.com/pmclSF/terrain/internal/governance"
 	"github.com/pmclSF/terrain/internal/health"
 	"github.com/pmclSF/terrain/internal/migration"
@@ -350,6 +351,139 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			RequiresGraph: true,
 		},
 		Detector: &structural.CapabilityValidationGapDetector{},
+	})
+
+	// AI detectors (0.2). Each reads files referenced by the snapshot
+	// (TestFiles + Scenarios) and emits AI-domain signals. They run
+	// after quality/migration so any signals they reference (when 0.3
+	// adds compound-evidence) are already in the snapshot.
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.hardcoded-api-key",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Detect hard-coded API keys in AI configuration files.",
+			SignalTypes:    []models.SignalType{signals.SignalAIHardcodedAPIKey},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.HardcodedAPIKeyDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.non-deterministic-eval",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Detect eval configs missing temperature: 0 / seed pin.",
+			SignalTypes:    []models.SignalType{signals.SignalAINonDeterministicEval},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.NonDeterministicEvalDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.model-deprecation-risk",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Detect floating or deprecated model tags (gpt-4, text-davinci-003, ...).",
+			SignalTypes:    []models.SignalType{signals.SignalAIModelDeprecationRisk},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.ModelDeprecationDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.prompt-injection-risk",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Detect prompt-injection-shaped concatenation of user input.",
+			SignalTypes:    []models.SignalType{signals.SignalAIPromptInjectionRisk},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.PromptInjectionDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.tool-without-sandbox",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Detect destructive agent tools without an approval gate or sandbox.",
+			SignalTypes:    []models.SignalType{signals.SignalAIToolWithoutSandbox},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.ToolWithoutSandboxDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "ai.safety-eval-missing",
+			Domain:       signals.DomainAI,
+			EvidenceType: signals.EvidenceGraphTraversal,
+			Description:  "Detect safety-critical surfaces with no safety-shaped scenario coverage.",
+			SignalTypes:  []models.SignalType{signals.SignalAISafetyEvalMissing},
+		},
+		Detector: &aidetect.SafetyEvalMissingDetector{},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "ai.hallucination-rate",
+			Domain:       signals.DomainAI,
+			EvidenceType: signals.EvidenceRuntime,
+			Description:  "Flag eval runs whose hallucination-shaped failure rate exceeds the configured threshold.",
+			SignalTypes:  []models.SignalType{signals.SignalAIHallucinationRate},
+		},
+		Detector: &aidetect.HallucinationRateDetector{},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "ai.cost-regression",
+			Domain:       signals.DomainAI,
+			EvidenceType: signals.EvidenceRuntime,
+			Description:  "Flag avg cost-per-case rising more than the configured threshold against a baseline snapshot.",
+			SignalTypes:  []models.SignalType{signals.SignalAICostRegression},
+		},
+		Detector: &aidetect.CostRegressionDetector{},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "ai.retrieval-regression",
+			Domain:       signals.DomainAI,
+			EvidenceType: signals.EvidenceRuntime,
+			Description:  "Flag drops in retrieval-quality named-scores (context_relevance, nDCG, coverage, etc.) vs baseline.",
+			SignalTypes:  []models.SignalType{signals.SignalAIRetrievalRegression},
+		},
+		Detector: &aidetect.RetrievalRegressionDetector{},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.prompt-versioning",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Flag prompt-kind surfaces with no recognisable version marker (filename, inline, or comment).",
+			SignalTypes:    []models.SignalType{signals.SignalAIPromptVersioning},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.PromptVersioningDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.few-shot-contamination",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Flag prompts whose few-shot examples overlap verbatim with the inputs of eval scenarios that cover them.",
+			SignalTypes:    []models.SignalType{signals.SignalAIFewShotContamination},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.FewShotContaminationDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.embedding-model-change",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Flag repos that reference an embedding model in source code without any retrieval-shaped eval scenario.",
+			SignalTypes:    []models.SignalType{signals.SignalAIEmbeddingModelChange},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.EmbeddingModelChangeDetector{Root: cfg.RepoRoot},
 	})
 
 	// Governance detectors (depend on signals from quality/migration detectors).

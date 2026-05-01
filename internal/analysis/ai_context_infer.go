@@ -80,6 +80,16 @@ func InferAIContextSurfacesFromList(root string, testFiles []models.TestFile, ex
 	// Pass 3: Detect RAG config files (YAML/JSON with retrieval settings).
 	surfaces = append(surfaces, detectRAGConfigFiles(root, existingIDs)...)
 
+	// Pass 4 (0.2): dataset filenames, DB-cursor / pgvector retrieval,
+	// MCP tool definitions. Skipped on the parallel cached path; this
+	// non-cached path is the one InferAIContextSurfaces() invokes.
+	for _, s := range DetectExtraAISurfaces(root, testFiles, surfaces, sourceFiles) {
+		if !existingIDs[s.SurfaceID] {
+			existingIDs[s.SurfaceID] = true
+			surfaces = append(surfaces, s)
+		}
+	}
+
 	return surfaces
 }
 

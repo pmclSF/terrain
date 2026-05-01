@@ -14,6 +14,7 @@ npm-debug.log*
 # === Coverage ===
 coverage/
 !internal/coverage/
+!tests/calibration/**/coverage/
 *.lcov
 
 # === Build output ===

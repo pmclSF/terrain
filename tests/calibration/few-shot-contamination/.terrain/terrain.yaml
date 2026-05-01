@@ -1,0 +1,8 @@
+scenarios:
+  - name: classifier-overheat
+    category: accuracy
+    framework: custom
+    description: The customer reports the device overheats during gameplay sessions
+    surfaces:
+      - "surface:prompts/classifier.prompt:template_file"
+    path: tests/eval/classifier-overheat.test.js
