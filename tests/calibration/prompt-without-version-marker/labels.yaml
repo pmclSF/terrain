@@ -1,0 +1,13 @@
+schemaVersion: 1
+fixture: prompt-without-version-marker
+description: |
+  A standalone prompt template file (.prompt) carries AI instruction
+  markers ("You are a helpful assistant", "Your role is …") so the
+  surface inference classifies it as SurfacePrompt. The file lacks any
+  recognised version marker (no filename suffix v1/v2, no inline
+  version: key, no comment-style version). aiPromptVersioning must
+  fire on it.
+expected:
+  - type: aiPromptVersioning
+    file: classifier.prompt
+    notes: "no filename, inline, or comment version marker"
