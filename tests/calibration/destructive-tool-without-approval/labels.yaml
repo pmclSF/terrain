@@ -1,0 +1,11 @@
+schemaVersion: 1
+fixture: destructive-tool-without-approval
+description: |
+  An agent tools.yaml declares two tools: one read-only (search_users)
+  and one destructive (delete_user) without any approval / sandbox /
+  dry-run markers. The detector must fire aiToolWithoutSandbox on the
+  destructive tool and stay quiet on the read-only one.
+expected:
+  - type: aiToolWithoutSandbox
+    file: tools.yaml
+    notes: "delete_user has destructive verb pattern, no approval marker"
