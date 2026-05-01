@@ -1,0 +1,18 @@
+schemaVersion: 1
+fixture: runtime-flaky-test
+description: |
+  A junit.xml runtime artifact records the same test name twice
+  ("reaches the gateway") — first failed, then passed. The parser
+  treats this as a retry; FlakyTestDetector emits flakyTest. Distinct
+  from a single-run pass/fail: this is the same suite re-running the
+  same case after a failure.
+expected:
+  - type: flakyTest
+    file: payments
+    notes: "JUnit suite=payments, duplicate test name with mixed outcomes"
+  - type: unstableSuite
+    file: payments
+    notes: "elevated failure rate triggers UnstableSuiteDetector"
+  - type: orphanedTestFile
+    file: src/payments.test.js
+    notes: "synthetic repo, no source linkage"
