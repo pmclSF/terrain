@@ -1,0 +1,12 @@
+{
+  "evalId": "calibration-cost",
+  "createdAt": 1735689600,
+  "results": [
+    { "id": "case-a", "success": true, "score": 1.0, "response": { "tokenUsage": { "total": 1800, "cost": 0.0072 } } },
+    { "id": "case-b", "success": true, "score": 1.0, "response": { "tokenUsage": { "total": 2200, "cost": 0.0088 } } },
+    { "id": "case-c", "success": true, "score": 1.0, "response": { "tokenUsage": { "total": 2700, "cost": 0.0108 } } },
+    { "id": "case-d", "success": true, "score": 1.0, "response": { "tokenUsage": { "total": 1700, "cost": 0.0068 } } },
+    { "id": "case-e", "success": true, "score": 1.0, "response": { "tokenUsage": { "total": 2100, "cost": 0.0084 } } }
+  ],
+  "stats": { "successes": 5, "failures": 0, "errors": 0 }
+}
