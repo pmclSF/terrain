@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="auth" tests="3" failures="0" errors="0" skipped="1" time="0.5">
+    <testcase classname="auth" name="logs in valid user" time="0.1"/>
+    <testcase classname="auth" name="rejects invalid password" time="0.2"/>
+    <testcase classname="auth" name="handles MFA challenge" time="0.0">
+      <skipped message="MFA flow under construction"/>
+    </testcase>
+  </testsuite>
+</testsuites>

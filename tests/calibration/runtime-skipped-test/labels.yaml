@@ -1,0 +1,14 @@
+schemaVersion: 1
+fixture: runtime-skipped-test
+description: |
+  A junit.xml runtime artifact records 3 auth tests; one is wrapped
+  in a <skipped/> element. The runtime SkippedTestDetector reads the
+  artifact and fires skippedTest for the skipped case. Distinct from
+  staticSkippedTest, which keys on source-code skip markers.
+expected:
+  - type: skippedTest
+    file: ""
+    notes: "JUnit <skipped/> element on handles MFA challenge"
+  - type: orphanedTestFile
+    file: src/auth.test.js
+    notes: "synthetic repo, no source linkage"
