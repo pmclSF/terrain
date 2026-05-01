@@ -1,0 +1,10 @@
+schemaVersion: 1
+fixture: deprecated-enzyme
+description: |
+  A Jest test file uses enzyme's shallow() rendering API, which is the
+  deprecated React testing approach (replaced by react-testing-library).
+  The migration detector flags this as a deprecated pattern.
+expected:
+  - type: deprecatedTestPattern
+    file: src/login-form.test.jsx
+    notes: "enzyme shallow() — deprecated React testing API"
