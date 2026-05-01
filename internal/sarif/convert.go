@@ -91,6 +91,18 @@ func redactPath(p, repoRoot string) string {
 }
 
 // buildRules derives SARIF rules from the KeyFindings categories.
+//
+// 0.2 emits a `helpUri` per rule (pre-0.2.x this field was missing
+// entirely, so SARIF findings in GitHub Code Scanning had no
+// clickthrough to documentation). The URI maps each legacy
+// category-derived rule ID to its rendered Markdown docs page.
+//
+// Phase B (deferred to 0.3 alongside the broader CLI restructure)
+// switches SARIF emission to walk Snapshot.Signals directly so the
+// rule IDs become the canonical TER-<DOMAIN>-NNN namespace from
+// internal/signals/manifest.go. That requires threading signals
+// through the analyze.Report API and is out of scope for the 0.2
+// ship-blocker pass.
 func buildRules(r *analyze.Report) []Rule {
 	seen := map[string]bool{}
 	var rules []Rule
@@ -105,10 +117,30 @@ func buildRules(r *analyze.Report) []Rule {
 			ID:               ruleID,
 			ShortDescription: Message{Text: ruleDescription(kf.Category)},
 			DefaultConfig:    RuleConfig{Level: severityToLevel(kf.Severity)},
+			HelpURI:          ruleHelpURI(ruleID),
 		})
 	}
 
 	return rules
+}
+
+// ruleHelpURI maps a legacy category-derived rule ID to its
+// documentation page. Returns the canonical GitHub URL when known so
+// SARIF consumers can open it directly. Empty string when the rule
+// has no rendered docs page yet.
+func ruleHelpURI(ruleID string) string {
+	const docBase = "https://github.com/pmclSF/terrain/blob/main/docs/rules/"
+	switch ruleID {
+	case "terrain/duplicate-tests":
+		return docBase + "quality/snapshot-heavy-test.md"
+	case "terrain/high-fanout":
+		return docBase + "structural/blast-radius-hotspot.md"
+	case "terrain/weak-coverage":
+		return docBase + "coverage/coverage-blind-spot.md"
+	case "terrain/reliability":
+		return docBase + "health/flaky-test.md"
+	}
+	return ""
 }
 
 // buildResults converts each KeyFinding into a SARIF Result, attaching

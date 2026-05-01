@@ -577,7 +577,7 @@
       ],
       "ruleId": "TER-AI-001",
       "ruleUri": "docs/rules/ai/eval-failure.md",
-      "promotionPlan": "Detector lands in 0.2 with eval-framework metric ingestion."
+      "promotionPlan": "0.3 — generic per-case failure surfacing on top of the 0.2 airun eval ingestion. Today's per-case failures route through the specific aiHallucinationRate / aiCostRegression / aiRetrievalRegression detectors."
     },
     {
       "type": "evalRegression",
@@ -594,7 +594,7 @@
       ],
       "ruleId": "TER-AI-002",
       "ruleUri": "docs/rules/ai/eval-regression.md",
-      "promotionPlan": "0.2: ingest baseline-vs-current metrics from Promptfoo / DeepEval / Ragas."
+      "promotionPlan": "0.3 — umbrella evalRegression detector. Concrete shapes (aiCostRegression, aiRetrievalRegression) shipped in 0.2 and cover the practical cases today."
     },
     {
       "type": "accuracyRegression",
@@ -611,7 +611,7 @@
       ],
       "ruleId": "TER-AI-003",
       "ruleUri": "docs/rules/ai/accuracy-regression.md",
-      "promotionPlan": "0.2"
+      "promotionPlan": "0.3 — accuracy axis regression detector. Per-case score data lands in EvalRuns via the 0.2 airun adapters; detector wiring is the remaining work."
     },
     {
       "type": "citationMissing",
@@ -696,7 +696,7 @@
       ],
       "ruleId": "TER-AI-008",
       "ruleUri": "docs/rules/ai/schema-parse-failure.md",
-      "promotionPlan": "0.2"
+      "promotionPlan": "0.3 — depends on airun adapters surfacing parse-error buckets distinct from assertion-failure buckets (currently lumped into Failures)."
     },
     {
       "type": "safetyFailure",
@@ -714,7 +714,7 @@
       ],
       "ruleId": "TER-AI-009",
       "ruleUri": "docs/rules/ai/safety-failure.md",
-      "promotionPlan": "0.2 — first-class safety eval signals."
+      "promotionPlan": "0.3 — depends on a uniform safety-verdict field across Promptfoo / DeepEval / Ragas adapters. The structural counterpart (aiSafetyEvalMissing) shipped in 0.2."
     },
     {
       "type": "aiPolicyViolation",

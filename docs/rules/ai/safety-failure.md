@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — first-class safety eval signals.
+0.3 — depends on a uniform safety-verdict field across Promptfoo / DeepEval / Ragas adapters. The structural counterpart (aiSafetyEvalMissing) shipped in 0.2.
 
 ## Evidence sources
 

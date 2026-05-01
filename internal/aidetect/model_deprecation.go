@@ -33,7 +33,16 @@ var modelDeprecationList = []deprecationRule{
 	// Sunset / deprecated lineage.
 	{Match: "text-davinci-003", Category: "deprecated", Explanation: "OpenAI text-davinci-003 reached EOL in early 2024; switch to gpt-4-* or gpt-3.5-turbo-*"},
 	{Match: "text-davinci-002", Category: "deprecated", Explanation: "OpenAI text-davinci-002 is sunset; switch to a current chat model"},
+	// code-davinci lineage: pre-0.2.x had a bare `code-davinci` rule, but
+	// the trailing boundary class excludes `-`, so neither `code-davinci-001`
+	// nor `code-davinci-002` (the actual identifiers in the wild) matched.
+	// Enumerate the dated variants explicitly. The bare `code-davinci`
+	// stays for the exact-string case.
 	{Match: "code-davinci", Category: "deprecated", Explanation: "OpenAI code-davinci-* is sunset; use gpt-4 with code prompts"},
+	{Match: "code-davinci-001", Category: "deprecated", Explanation: "OpenAI code-davinci-001 is sunset (Codex deprecation, 2023-03); use gpt-4 with code prompts"},
+	{Match: "code-davinci-002", Category: "deprecated", Explanation: "OpenAI code-davinci-002 is sunset (Codex deprecation, 2023-03); use gpt-4 with code prompts"},
+	{Match: "code-davinci-edit-001", Category: "deprecated", Explanation: "OpenAI code-davinci-edit-001 is sunset; the edits API itself was deprecated in 2024"},
+	{Match: "code-cushman-001", Category: "deprecated", Explanation: "OpenAI code-cushman-001 is sunset (Codex deprecation, 2023-03); use gpt-3.5-turbo or gpt-4"},
 	{Match: "claude-2", Category: "deprecated", Explanation: "Anthropic claude-2 lineage is being sunset; migrate to claude-3.x"},
 	{Match: "claude-1", Category: "deprecated", Explanation: "Anthropic claude-1 is sunset"},
 }
@@ -58,7 +67,13 @@ type deprecationRule struct {
 var modelMatchPatterns = func() []*regexp.Regexp {
 	out := make([]*regexp.Regexp, 0, len(modelDeprecationList))
 	for _, r := range modelDeprecationList {
-		anchor := `\b` + regexp.QuoteMeta(r.Match) + `(?:[^-0-9A-Za-z_]|$)`
+		// Trailing boundary excludes `.` so dot-versioned variants like
+		// `claude-2.1` and `gpt-3.5-turbo-0125` aren't matched by their
+		// undated parent (`claude-2`, `gpt-3.5-turbo`). Without this,
+		// pinning to a current dated model fires the deprecation
+		// detector — guaranteed false positive on any 2024+ model that
+		// happens to share a prefix with a deprecated tag.
+		anchor := `\b` + regexp.QuoteMeta(r.Match) + `(?:[^-.0-9A-Za-z_]|$)`
 		out = append(out, regexp.MustCompile(`(?i)`+anchor))
 	}
 	return out
@@ -207,9 +222,27 @@ func scanFileForModelTags(path string) []modelHit {
 // likely to be a changelog or docs comment about a deprecation, where
 // the whole point is to mention the deprecated tag — flagging that as
 // a finding would be inverted.
+//
+// Comment-prefix coverage: pre-0.2.x this only recognised `#`, `//`,
+// and `*` (block-comment continuation), missing the styles used by SQL
+// (`--`), Lua/Haskell (`--`), config (`;`), shell-doc (`#:`), Lisp
+// (`;;`), HTML/Markdown (`<!--`), reStructuredText (`..`), and
+// markdown bullet/header lines that prose-document deprecations
+// (`-`, `*`, `1.`, `>`, `#`). Source files quoting deprecated model
+// names inside CHANGELOG-shaped lines were producing false positives.
 func commentLooksLikeChangeLog(text string) bool {
 	t := strings.TrimSpace(text)
-	if !strings.HasPrefix(t, "#") && !strings.HasPrefix(t, "//") && !strings.HasPrefix(t, "*") {
+	if t == "" {
+		return false
+	}
+	hasCommentPrefix := false
+	for _, prefix := range commentLikePrefixes {
+		if strings.HasPrefix(t, prefix) {
+			hasCommentPrefix = true
+			break
+		}
+	}
+	if !hasCommentPrefix {
 		return false
 	}
 	low := strings.ToLower(t)
@@ -219,4 +252,29 @@ func commentLooksLikeChangeLog(text string) bool {
 		}
 	}
 	return false
+}
+
+// commentLikePrefixes is the union of comment / prose-line markers we
+// treat as "this line is documentation, not source." Order doesn't
+// matter — we test all of them with HasPrefix. Multi-character prefixes
+// (`<!--`, `--`, `;;`) intentionally precede their single-character
+// substrings in the slice so that future readers see them grouped, but
+// HasPrefix is order-independent.
+var commentLikePrefixes = []string{
+	"<!--", // HTML / Markdown
+	"-->",  // closing marker, occasionally on own line
+	"//",   // C / Go / JS
+	"/*",   // C / Java block-comment open
+	"*/",   // close
+	"--",   // SQL / Lua / Haskell
+	";;",   // Lisp double semicolon
+	";",    // INI / Lisp
+	"#",    // Python / Ruby / Shell / YAML / Markdown header
+	"%",    // Erlang / Prolog / TeX
+	".. ",  // reStructuredText comment marker
+	"> ",   // Markdown blockquote (often used in CHANGELOG snippets)
+	"* ",   // block-comment continuation OR markdown bullet
+	"- ",   // markdown bullet
+	"+ ",   // markdown bullet (alt)
+	"'",    // VB / older BASIC dialects
 }

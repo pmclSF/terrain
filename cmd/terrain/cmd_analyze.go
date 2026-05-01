@@ -175,7 +175,12 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	opt.RagasPaths = parsedRagas
 	opt.BaselineSnapshotPath = baselinePath
 	opt.OnProgress = newProgressFunc(jsonOutput)
-	result, err := engine.RunPipeline(root, opt)
+	// Honour Ctrl-C: pre-0.2.x analyze exited abruptly on SIGINT with no
+	// cleanup. runPipelineWithSignals wraps RunPipelineContext with a
+	// SIGINT-aware context so in-flight detectors check ctx.Err and
+	// unwind cooperatively. Same helper is used by every other
+	// analysis command since 0.2.
+	result, err := runPipelineWithSignals(root, opt)
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -228,6 +233,18 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		return nil
 	}
 
+	// `--write-snapshot` runs first so it persists regardless of the
+	// output format. Pre-0.2.x the persist call lived after the
+	// rendering switch, so `--write-snapshot --json` returned from the
+	// JSON branch before the snapshot was written — the canonical CI
+	// shape (capture JSON to stdout, save snapshot to disk) silently
+	// dropped the snapshot.
+	if writeSnap {
+		if err := persistSnapshot(result.Snapshot, root); err != nil {
+			return err
+		}
+	}
+
 	if strings.EqualFold(strings.TrimSpace(format), "html") {
 		return reporting.RenderAnalyzeHTML(os.Stdout, report)
 	}
@@ -254,10 +271,6 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		for _, hint := range hints {
 			fmt.Printf("  %s\n", hint)
 		}
-	}
-
-	if writeSnap {
-		return persistSnapshot(result.Snapshot, root)
 	}
 
 	return nil
@@ -310,7 +323,7 @@ func runPolicyCheck(root string, jsonOutput bool, coveragePath, coverageRunLabel
 
 	// Reuse the main analysis pipeline so policy evaluation can use runtime and
 	// coverage artifacts when provided.
-	result, err := engine.RunPipeline(root, opt)
+	result, err := runPipelineWithSignals(root, opt)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: analysis failed: %v\n", err)
 		return exitError

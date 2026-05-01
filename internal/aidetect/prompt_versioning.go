@@ -66,9 +66,23 @@ var filenameVersionPattern = regexp.MustCompile(`(?:[_\-.]v\d+)$`)
 
 // inlineVersionPattern matches a YAML / config / comment-style
 // version declaration anywhere in the first 64 lines of the file.
-// Conservative — requires the literal token "version" followed by
-// `:` or `=`.
-var inlineVersionPattern = regexp.MustCompile(`(?i)(?:^|\s)(?:#|//|\*)?\s*"?version"?\s*[:=]`)
+// Requires a non-empty value matching digits / semver / calver / a
+// quoted token.
+//
+// Pre-0.2.x the pattern only required `version:` followed by anything
+// (or nothing). `version: TODO` and `version:` with no value satisfied
+// the check, defeating the detector's intent — silent prompt drift.
+// Now we require a recognisable version literal.
+var inlineVersionPattern = regexp.MustCompile(
+	`(?i)(?:^|\s)(?:#|//|\*)?\s*"?version"?\s*[:=]\s*` +
+		`(?:` +
+		`["']?\d+(?:\.\d+){0,2}["']?` + // 1, 1.2, 1.2.3 (optionally quoted)
+		`|["']?v\d+(?:\.\d+){0,2}["']?` + // v1, v1.2
+		`|["']?\d{4}-\d{2}-\d{2}["']?` + // calver
+		`|"[^"\s][^"]*"` + // quoted non-empty token
+		`|'[^'\s][^']*'` +
+		`)`,
+)
 
 // Detect emits SignalAIPromptVersioning per unversioned prompt surface.
 func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
@@ -110,7 +124,7 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			Explanation: "Prompt file `" + surface.Path + "` has no recognisable version marker. Future content changes will silently drift; consumers can't detect the change.",
 			SuggestedAction: "Add a `version:` field, a `_v<N>` suffix to the filename, or a `# version: ...` comment so downstream consumers can detect content drift.",
 
-			SeverityClauses: []string{"sev-medium-005"},
+			SeverityClauses: []string{"sev-medium-007"},
 			Actionability:   models.ActionabilityScheduled,
 			LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 			AIRelevance:     models.AIRelevanceHigh,

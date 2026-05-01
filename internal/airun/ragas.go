@@ -90,20 +90,37 @@ func ParseRagasJSON(data []byte) (*EvalRunResult, error) {
 			Description: question,
 			NamedScores: named,
 		}
-		// Mean score across the named-score axes; success := all >= threshold.
-		if len(named) == 0 {
+		// Mean score across the QUALITY axes only; success := all >= threshold.
+		// Pre-0.2.x every numeric column flowed into the success vote,
+		// including ancillary metrics like `cost`, `latency_ms`, or any
+		// custom user-added column. A faithfulness=0.45 alongside
+		// `cost: 0.003` flipped the case to failed because cost < 0.5
+		// (nonsensical: small cost is GOOD). We now restrict the
+		// threshold check to keys that pass `isRagasQualityKey`.
+		qualityScores := make([]float64, 0, len(named))
+		for k, v := range named {
+			if isRagasQualityKey(k) {
+				qualityScores = append(qualityScores, v)
+			}
+		}
+		switch {
+		case len(qualityScores) == 0 && len(named) == 0:
 			c.Score = 0
 			c.Success = false
-		} else {
+		case len(qualityScores) == 0:
+			// Row had only ancillary numerics; no opinion on success.
+			c.Score = 0
+			c.Success = true
+		default:
 			var sum float64
 			c.Success = true
-			for _, v := range named {
+			for _, v := range qualityScores {
 				sum += v
 				if v < successThreshold {
 					c.Success = false
 				}
 			}
-			c.Score = sum / float64(len(named))
+			c.Score = sum / float64(len(qualityScores))
 		}
 		out.Cases = append(out.Cases, c)
 
@@ -126,12 +143,67 @@ func LoadRagasFile(path string) (*EvalRunResult, error) {
 	return ParseRagasJSON(data)
 }
 
+// ragasQualityKeys lists the named-score keys whose semantics are
+// "0–1 quality axis where higher is better." Other numeric columns
+// (cost, latency, token counts, custom metrics) must NOT flow into
+// the success vote because they have different polarity / range.
+//
+// Keep this aligned with retrieval_regression.go's retrievalScoreKeys
+// — anything in that retrieval-detector allowlist is also a quality
+// axis here, plus a few more (faithfulness, answer_correctness, etc.)
+// that aren't retrieval-shaped but still belong to the quality vote.
+var ragasQualityKeys = map[string]bool{
+	"context_precision":      true,
+	"context_recall":         true,
+	"context_entity_recall":  true,
+	"context_relevance":      true,
+	"faithfulness":           true,
+	"answer_relevancy":       true,
+	"answer_relevance":       true,
+	"answer_correctness":     true,
+	"answer_similarity":      true,
+	"semantic_similarity":    true,
+	"factuality":             true,
+	"groundedness":           true,
+	"helpfulness":            true,
+	"harmfulness":            true, // inverse polarity, but still 0-1
+	"coherence":              true,
+	"conciseness":            true,
+	"relevance":              true,
+	"relevance_score":        true,
+	"retrieval_score":        true,
+	"ndcg":                   true,
+	"coverage":               true,
+}
+
+// isRagasQualityKey reports whether a NamedScore key is a quality
+// axis whose value should flow into success/failure synthesis.
+// Variants (hyphens, suffixed `_score`) are normalised.
+func isRagasQualityKey(key string) bool {
+	low := strings.ToLower(strings.TrimSpace(key))
+	low = strings.ReplaceAll(low, "-", "_")
+	low = strings.TrimSuffix(low, "_score")
+	return ragasQualityKeys[low]
+}
+
 // numericValue extracts a float64 from a JSON-decoded value if it
 // looks numeric. Booleans / strings / nested objects return false.
+//
+// Pre-0.2.x this only accepted float64 / json.Number, so wrappers that
+// emit ints (Ragas DataFrame export through certain helpers, custom
+// JSON encoders) silently dropped the score.
 func numericValue(v any) (float64, bool) {
 	switch x := v.(type) {
 	case float64:
 		return x, true
+	case float32:
+		return float64(x), true
+	case int:
+		return float64(x), true
+	case int32:
+		return float64(x), true
+	case int64:
+		return float64(x), true
 	case json.Number:
 		f, err := x.Float64()
 		if err != nil {

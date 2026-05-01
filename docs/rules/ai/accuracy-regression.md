@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2
+0.3 — accuracy axis regression detector. Per-case score data lands in EvalRuns via the 0.2 airun adapters; detector wiring is the remaining work.
 
 ## Evidence sources
 

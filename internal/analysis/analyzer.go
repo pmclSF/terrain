@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	goruntime "runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -58,7 +59,12 @@ func (a *Analyzer) AnalyzeContext(ctx context.Context) (*models.TestSuiteSnapsho
 	if err != nil {
 		return nil, err
 	}
-	analyzedAt := time.Now().UTC()
+	// Snapshot timestamp. Honour SOURCE_DATE_EPOCH so reproducible
+	// builds and byte-for-byte snapshot determinism are achievable
+	// (round-4 review pinned this; pre-0.2.x the wall clock leaked
+	// unconditionally, breaking `terrain compare` byte equality and
+	// `terrain ai replay` artifact hashing).
+	analyzedAt := deterministicNowUTC()
 
 	// Check context before starting work.
 	if err := ctx.Err(); err != nil {
@@ -410,4 +416,20 @@ func gitInfo(root string) (sha, branch string) {
 		branch = strings.TrimSpace(string(out))
 	}
 	return
+}
+
+// deterministicNowUTC returns time.Now().UTC() unless SOURCE_DATE_EPOCH
+// is set, in which case it returns the parsed epoch. SOURCE_DATE_EPOCH
+// is the Reproducible Builds standard (https://reproducible-builds.org)
+// — when set, every wall-clock reference in build artefacts must use
+// it instead of real time. Round-4 review flagged the snapshot's
+// generatedAt as the one place determinism leaked; this honours the
+// standard so CI snapshots can be byte-compared.
+func deterministicNowUTC() time.Time {
+	if v := os.Getenv("SOURCE_DATE_EPOCH"); v != "" {
+		if secs, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64); err == nil {
+			return time.Unix(secs, 0).UTC()
+		}
+	}
+	return time.Now().UTC()
 }

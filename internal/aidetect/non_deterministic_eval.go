@@ -1,6 +1,7 @@
 package aidetect
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -131,10 +132,16 @@ type evalFinding struct {
 	Explanation string
 }
 
-// analyseEvalConfig parses the YAML/JSON file and returns 0..1 findings.
-// We keep it to one finding per file: most repos have many configs and
-// a single "the eval is non-deterministic" message per file is more
-// actionable than multiple per-knob signals.
+// analyseEvalConfig parses the YAML/JSON file and returns one finding
+// per non-deterministic provider/test entry.
+//
+// Pre-0.2.x this scanned for the FIRST `temperature` anywhere in the
+// file and emitted one verdict total. Multi-provider configs where
+// one provider pins temperature and another doesn't got a single
+// binary verdict — the second provider's missing pin was silently
+// missed. Per-provider scoping fixes the multi-provider case while
+// retaining single-finding behaviour for the common single-provider
+// shape.
 func analyseEvalConfig(path string) []evalFinding {
 	raw, err := os.ReadFile(path)
 	if err != nil {
@@ -147,20 +154,108 @@ func analyseEvalConfig(path string) []evalFinding {
 		return nil
 	}
 
-	tempState := scanForKey(&node, "temperature")
-	hasModel := scanForKey(&node, "model").present
-
-	switch {
-	case tempState.present && tempState.numericValue != 0:
-		return []evalFinding{{
-			Explanation: "Eval config sets temperature ≠ 0; runs will be non-deterministic.",
-		}}
-	case !tempState.present && hasModel:
-		return []evalFinding{{
-			Explanation: "Eval config declares a model but does not pin temperature; default sampling is non-deterministic.",
-		}}
+	// Walk every mapping subtree that declares a `model` (or
+	// `provider.config.model`) — those are the per-provider entries.
+	providers := collectProviderEntries(&node)
+	if len(providers) == 0 {
+		// No provider entries; fall back to the file-global check.
+		tempState := scanForKey(&node, "temperature")
+		hasModel := scanForKey(&node, "model").present
+		switch {
+		case tempState.present && tempState.numericValue != 0:
+			return []evalFinding{{
+				Explanation: "Eval config sets temperature ≠ 0; runs will be non-deterministic.",
+			}}
+		case !tempState.present && hasModel:
+			return []evalFinding{{
+				Explanation: "Eval config declares a model but does not pin temperature; default sampling is non-deterministic.",
+			}}
+		}
+		return nil
 	}
-	return nil
+
+	var out []evalFinding
+	seen := map[string]bool{}
+	for _, prov := range providers {
+		tempState := scanForKey(prov.node, "temperature")
+		var msg string
+		switch {
+		case tempState.present && tempState.numericValue != 0:
+			msg = fmt.Sprintf("Eval provider %q sets temperature %.2f (≠ 0); runs will be non-deterministic.", prov.label, tempState.numericValue)
+		case !tempState.present:
+			msg = fmt.Sprintf("Eval provider %q declares a model but does not pin temperature; default sampling is non-deterministic.", prov.label)
+		default:
+			continue
+		}
+		if seen[msg] {
+			continue
+		}
+		seen[msg] = true
+		out = append(out, evalFinding{Explanation: msg})
+	}
+	return out
+}
+
+// providerEntry holds one provider/model declaration for per-provider
+// non-determinism analysis. label is a best-effort human-readable
+// identifier (model name, provider id, or "provider#N").
+type providerEntry struct {
+	label string
+	node  *yaml.Node
+}
+
+// collectProviderEntries finds every mapping subtree that declares a
+// `model` key, treating each as a distinct provider/test entry.
+// Mirrors the structures Promptfoo / DeepEval / custom configs use.
+func collectProviderEntries(n *yaml.Node) []providerEntry {
+	var out []providerEntry
+	walkProviders(n, &out, "")
+	// Dedup by node pointer (a config that lists the same provider
+	// twice should still emit twice; this just guards against loops).
+	return out
+}
+
+func walkProviders(n *yaml.Node, out *[]providerEntry, parentLabel string) {
+	if n == nil {
+		return
+	}
+	switch n.Kind {
+	case yaml.DocumentNode:
+		for _, c := range n.Content {
+			walkProviders(c, out, parentLabel)
+		}
+	case yaml.MappingNode:
+		hasModel := false
+		var modelLabel string
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			k := n.Content[i]
+			v := n.Content[i+1]
+			if k.Value == "model" && v.Kind == yaml.ScalarNode {
+				hasModel = true
+				modelLabel = v.Value
+			}
+		}
+		if hasModel {
+			label := modelLabel
+			if label == "" {
+				label = parentLabel
+			}
+			if label == "" {
+				label = fmt.Sprintf("provider#%d", len(*out)+1)
+			}
+			*out = append(*out, providerEntry{label: label, node: n})
+		}
+		// Always recurse — nested provider blocks (e.g. promptfoo's
+		// providers list under tests) need their own entries.
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			v := n.Content[i+1]
+			walkProviders(v, out, modelLabel)
+		}
+	case yaml.SequenceNode:
+		for _, c := range n.Content {
+			walkProviders(c, out, parentLabel)
+		}
+	}
 }
 
 // keyState summarises whether a key was present in the parsed config

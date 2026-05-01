@@ -531,7 +531,13 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "TER-AI-001",
 		RuleURI:         "docs/rules/ai/eval-failure.md",
-		PromotionPlan:   "Detector lands in 0.2 with eval-framework metric ingestion.",
+		// 0.2 shipped the airun eval-framework adapters (Promptfoo,
+		// DeepEval, Ragas) which emit per-case failure data into the
+		// snapshot's EvalRuns, but the standalone evalFailure detector
+		// did not ship — the failures surface today via the more
+		// specific aiHallucinationRate / aiCostRegression /
+		// aiRetrievalRegression detectors. Reframe for 0.3.
+		PromotionPlan: "0.3 — generic per-case failure surfacing on top of the 0.2 airun eval ingestion. Today's per-case failures route through the specific aiHallucinationRate / aiCostRegression / aiRetrievalRegression detectors.",
 	},
 	{
 		Type: SignalEvalRegression, ConstName: "SignalEvalRegression",
@@ -541,7 +547,10 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "TER-AI-002", RuleURI: "docs/rules/ai/eval-regression.md",
-		PromotionPlan: "0.2: ingest baseline-vs-current metrics from Promptfoo / DeepEval / Ragas.",
+		// 0.2 shipped baseline-vs-current ingestion, but the umbrella
+		// evalRegression detector did not — concrete regression types
+		// (cost / retrieval / hallucination) ship instead.
+		PromotionPlan: "0.3 — umbrella evalRegression detector. Concrete shapes (aiCostRegression, aiRetrievalRegression) shipped in 0.2 and cover the practical cases today.",
 	},
 	{
 		Type: SignalAccuracyRegression, ConstName: "SignalAccuracyRegression",
@@ -550,7 +559,10 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "TER-AI-003", RuleURI: "docs/rules/ai/accuracy-regression.md",
-		PromotionPlan: "0.2",
+		// Did not ship in 0.2; deferred. The airun adapters surface
+		// per-case score data into the snapshot, so the detector
+		// itself is plumbing-only when it lands.
+		PromotionPlan: "0.3 — accuracy axis regression detector. Per-case score data lands in EvalRuns via the 0.2 airun adapters; detector wiring is the remaining work.",
 	},
 	{
 		Type: SignalCitationMissing, ConstName: "SignalCitationMissing",
@@ -595,7 +607,13 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "TER-AI-008", RuleURI: "docs/rules/ai/schema-parse-failure.md",
-		PromotionPlan: "0.2",
+		// 0.2 closed the structural side (aiToolWithoutSandbox now
+		// reads typed fields, prompt-versioning rejects empty values,
+		// embedding-change detector sees env-var-loaded models). The
+		// runtime side — schema parse failures from eval frameworks —
+		// did not ship; deferred to 0.3 once the airun adapters expose
+		// `errors` buckets distinct from `failures`.
+		PromotionPlan: "0.3 — depends on airun adapters surfacing parse-error buckets distinct from assertion-failure buckets (currently lumped into Failures).",
 	},
 	{
 		Type: SignalSafetyFailure, ConstName: "SignalSafetyFailure",
@@ -604,7 +622,13 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.9, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"runtime", "policy"},
 		RuleID:          "TER-AI-009", RuleURI: "docs/rules/ai/safety-failure.md",
-		PromotionPlan: "0.2 — first-class safety eval signals.",
+		// 0.2 shipped the structural counterpart aiSafetyEvalMissing,
+		// which warns when no safety-shaped scenario covers the AI
+		// surfaces. Runtime first-class safety failures (where the
+		// eval framework explicitly grades a case as a safety
+		// violation) wait on a uniform `safetyVerdict` field across
+		// adapters — slated for 0.3.
+		PromotionPlan: "0.3 — depends on a uniform safety-verdict field across Promptfoo / DeepEval / Ragas adapters. The structural counterpart (aiSafetyEvalMissing) shipped in 0.2.",
 	},
 	{
 		Type: SignalAIPolicyViolation, ConstName: "SignalAIPolicyViolation",

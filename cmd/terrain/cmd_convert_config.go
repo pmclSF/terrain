@@ -151,7 +151,16 @@ func runConvertConfig(source string, opts convertConfigCommandOptions) error {
 }
 
 func printConvertConfigUsage() {
-	fmt.Fprintln(os.Stderr, "Usage: terrain convert-config <source> --to <framework> [flags]")
+	// Lead with the canonical 0.2 shape (`terrain migrate config ...`).
+	// The legacy `terrain convert-config ...` form continues to work
+	// in 0.2 — both shapes route through the same runner — but the
+	// help output should point new users at the canonical path so
+	// they don't memorize a name we plan to remove in 0.3. The
+	// migrate-namespace dispatch transparently strips the verb before
+	// reaching this function, so the same usage block serves both
+	// legacy and canonical entry points.
+	fmt.Fprintln(os.Stderr, "Usage: terrain migrate config <source> --to <framework> [flags]")
+	fmt.Fprintln(os.Stderr, "       (legacy alias: terrain convert-config <source> --to <framework> [flags])")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Key flags:")
 	fmt.Fprintln(os.Stderr, "  --from, -f         source framework (auto-detected from filename if omitted)")

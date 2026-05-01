@@ -139,6 +139,33 @@ var clauses = []Clause{
 			"deployed prompt has no scenario tagged `category: safety`",
 		},
 	},
+	{
+		ID:          "sev-high-005",
+		Severity:    models.SeverityHigh,
+		Title:       "Destructive tool without approval gate",
+		Description: "A tool definition matches a destructive verb pattern (`delete`, `exec`, `send_payment`, `drop_table`) and has no truthy approval / sandbox / dry-run marker key.",
+		Examples: []string{
+			"`tools.yaml` defines `delete_user` with `parameters` but no `requires_approval: true` or `sandbox` mode",
+		},
+	},
+	{
+		ID:          "sev-high-006",
+		Severity:    models.SeverityHigh,
+		Title:       "Hallucination rate above threshold",
+		Description: "Eval run reports a hallucination-shaped failure rate (faithfulness / factuality / grounding under threshold, or matching keywords in failure reason) above the detector's configured threshold.",
+		Examples: []string{
+			"3 of 8 scoreable cases hallucinated (37.5% > 5% threshold)",
+		},
+	},
+	{
+		ID:          "sev-high-007",
+		Severity:    models.SeverityHigh,
+		Title:       "Retrieval-quality regression",
+		Description: "Retrieval-quality named score (context_precision / nDCG / coverage / faithfulness) dropped versus baseline by more than the configured absolute threshold (default 5 percentage points).",
+		Examples: []string{
+			"context_relevance avg: 0.90 (baseline) → 0.59 (current), -31 pp vs 5 pp threshold",
+		},
+	},
 
 	// ── Medium ─────────────────────────────────────────────────────
 	{
@@ -190,6 +217,45 @@ var clauses = []Clause{
 		Examples: []string{
 			"`model: \"claude-3-opus\"` without a version date suffix",
 			"`gpt-4` instead of `gpt-4-0613`",
+		},
+	},
+	{
+		ID:          "sev-medium-006",
+		Severity:    models.SeverityMedium,
+		Title:       "Cost-per-case regression",
+		Description: "Average per-case cost rose more than the configured percentage threshold versus a paired baseline run, with the absolute delta above the noise floor.",
+		Examples: []string{
+			"`avgCost: 0.012 → 0.024` over 200 paired cases (+100% versus 25% threshold)",
+		},
+		CounterExamples: []string{
+			"micro-cost suites where the absolute delta is below `MinAbsDelta` (configurable; default $0.0005/case)",
+		},
+	},
+	{
+		ID:          "sev-medium-007",
+		Severity:    models.SeverityMedium,
+		Title:       "Prompt drift without version marker",
+		Description: "A prompt-kind surface ships without a recognisable version marker (filename suffix, inline `version:` literal, or comment-style version), so future content changes can't be tracked.",
+		Examples: []string{
+			"`prompts/system.md` with no `_v1` suffix and no inline `version:` line",
+		},
+	},
+	{
+		ID:          "sev-medium-008",
+		Severity:    models.SeverityMedium,
+		Title:       "Embedding model referenced without retrieval eval",
+		Description: "An embedding model identifier appears in source without a retrieval-shaped eval scenario covering it, so a future model swap will silently change retrieval quality.",
+		Examples: []string{
+			"`text-embedding-3-large` referenced in source; no scenario with category=retrieval / nDCG / faithfulness",
+		},
+	},
+	{
+		ID:          "sev-medium-009",
+		Severity:    models.SeverityMedium,
+		Title:       "Few-shot contamination",
+		Description: "A prompt's few-shot examples overlap verbatim with the inputs of an eval scenario covering that prompt, inflating reported scores.",
+		Examples: []string{
+			"prompt `classifier.yaml` example `Input: device overheats during gameplay sessions` matches verbatim a scenario description",
 		},
 	},
 

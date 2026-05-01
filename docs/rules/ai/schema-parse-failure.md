@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2
+0.3 — depends on airun adapters surfacing parse-error buckets distinct from assertion-failure buckets (currently lumped into Failures).
 
 ## Evidence sources
 

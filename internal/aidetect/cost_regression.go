@@ -29,6 +29,14 @@ type CostRegressionDetector struct {
 	// Threshold is the maximum acceptable proportional cost increase.
 	// 0 uses the default of 0.25 (25%).
 	Threshold float64
+
+	// MinAbsDelta is the minimum absolute change in avg cost-per-case
+	// (in USD) required before the relative-percentage check fires.
+	// Pre-0.2.x this floor didn't exist, so a tiny absolute regression
+	// (e.g. $0.0001 → $0.0002 = +100%) paged at High severity. Default
+	// 0.0005 USD per case — large enough to ignore single-token
+	// fluctuations on cheap models, small enough to catch real shifts.
+	MinAbsDelta float64
 }
 
 // Detect emits SignalAICostRegression per regressed eval run.
@@ -39,6 +47,10 @@ func (d *CostRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []models
 	threshold := d.Threshold
 	if threshold <= 0 {
 		threshold = 0.25
+	}
+	minAbs := d.MinAbsDelta
+	if minAbs <= 0 {
+		minAbs = 0.0005
 	}
 
 	var out []models.Signal
@@ -64,6 +76,12 @@ func (d *CostRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []models
 		if delta <= threshold {
 			continue
 		}
+		// Both relative AND absolute have to clear. Fixes the "cried
+		// wolf on tiny costs" regression: 0.0001→0.0002 = +100% but
+		// the absolute delta is $0.0001/case — operationally noise.
+		if curAvg-baseAvg < minAbs {
+			continue
+		}
 		out = append(out, models.Signal{
 			Type:        signals.SignalAICostRegression,
 			Category:    models.CategoryAI,
@@ -74,7 +92,7 @@ func (d *CostRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []models
 				delta*100, baseAvg, curAvg, paired, threshold*100),
 			SuggestedAction: "Investigate the prompt or model change for unintended bloat. Bump the baseline if the increase is intentional.",
 
-			SeverityClauses: []string{"sev-medium-005"},
+			SeverityClauses: []string{"sev-medium-006"},
 			Actionability:   models.ActionabilityScheduled,
 			LifecycleStages: []models.LifecycleStage{models.StageMaintenance, models.StageCIRun},
 			AIRelevance:     models.AIRelevanceHigh,

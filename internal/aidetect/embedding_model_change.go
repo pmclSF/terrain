@@ -46,7 +46,7 @@ var embeddingModelPatterns = []*regexp.Regexp{
 	// OpenAI.
 	regexp.MustCompile(`\btext-embedding-(?:ada-002|3-small|3-large)\b`),
 	// Voyage AI.
-	regexp.MustCompile(`\bvoyage-(?:large-2|code-2|2)\b`),
+	regexp.MustCompile(`\bvoyage-(?:large-2|code-2|2|3|3-large)\b`),
 	// Cohere.
 	regexp.MustCompile(`\bembed-english-(?:v2\.0|v3\.0|light-v3\.0)\b`),
 	regexp.MustCompile(`\bembed-multilingual-(?:v2\.0|v3\.0|light-v3\.0)\b`),
@@ -56,6 +56,28 @@ var embeddingModelPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`\bsentence-transformers/all-mpnet-base-v2\b`),
 	// Google.
 	regexp.MustCompile(`\btextembedding-gecko(?:@\d+)?\b`),
+}
+
+// embeddingConstructorPatterns matches the framework constructor calls
+// commonly used to instantiate an embedding model — `OpenAIEmbeddings`,
+// `HuggingFaceEmbeddings`, `VoyageAIClient(...)`, etc. — so that
+// invocations whose model literal is loaded from an env var or config
+// (`os.environ["EMBED_MODEL"]`, `cfg["embedding"]`) still get caught.
+//
+// Pre-0.2.x the detector required a known model literal on the same
+// line as the call, missing the most common production shape (env-var
+// driven model selection). The constructor patterns expand recall for
+// that case at the cost of a slightly higher false-positive rate when
+// the constructor is imported but used elsewhere — confidence stays
+// at EvidenceModerate to reflect that.
+var embeddingConstructorPatterns = []*regexp.Regexp{
+	// langchain (Python + JS): `OpenAIEmbeddings(...)`.
+	regexp.MustCompile(`\b(?:OpenAI|HuggingFace|Cohere|Voyage|Bedrock|Azure|Vertex|Ollama|InProcess)Embeddings?\s*\(`),
+	// langchain.js / langchain4j shapes that omit "Embeddings" suffix.
+	regexp.MustCompile(`\bSentenceTransformer\s*\(`),
+	regexp.MustCompile(`\bVoyageAIClient\s*\(`),
+	// langchaingo.
+	regexp.MustCompile(`\b(?:openai|ollama|vertexai|huggingface|cohere|voyageai)\.NewEmbeddings?\b`),
 }
 
 // embeddingScanExtensions is the source-file extension allowlist.
@@ -141,7 +163,7 @@ func buildEmbeddingChangeSignal(path string, line int, identifier string, matche
 		Explanation:     "File references embedding model `" + identifier + "` but the project has no retrieval-shaped eval scenario. A future model swap will silently change retrieval quality.",
 		SuggestedAction: "Add a retrieval eval scenario (Ragas, Promptfoo, or DeepEval) that exercises this surface so future embedding swaps surface as a quality regression instead of going unnoticed.",
 
-		SeverityClauses: []string{"sev-medium-005"},
+		SeverityClauses: []string{"sev-medium-008"},
 		Actionability:   models.ActionabilityScheduled,
 		LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 		AIRelevance:     models.AIRelevanceHigh,
@@ -249,6 +271,7 @@ func scanFileForEmbeddingModels(path string) []embeddingHit {
 	for sc.Scan() {
 		line++
 		text := sc.Text()
+		// First pass: known model literals.
 		for _, rx := range embeddingModelPatterns {
 			match := rx.FindString(text)
 			if match == "" {
@@ -259,6 +282,27 @@ func scanFileForEmbeddingModels(path string) []embeddingHit {
 			}
 			seen[match] = true
 			hits = append(hits, embeddingHit{Identifier: match, Line: line})
+		}
+		// Second pass: constructor invocations (OpenAIEmbeddings(...),
+		// SentenceTransformer(...), etc.) — catches the env-var loaded
+		// case where the model literal isn't on the same line.
+		// Recorded with the synthetic identifier "<constructor> with
+		// non-literal model" so the user sees the constructor name.
+		for _, rx := range embeddingConstructorPatterns {
+			match := rx.FindString(text)
+			if match == "" {
+				continue
+			}
+			// Strip the trailing `(` so the user-facing identifier
+			// reads `OpenAIEmbeddings` rather than `OpenAIEmbeddings(`.
+			ident := strings.TrimSuffix(strings.TrimSpace(match), "(")
+			ident = strings.TrimSpace(ident)
+			synth := ident + " (model loaded indirectly)"
+			if seen[synth] {
+				continue
+			}
+			seen[synth] = true
+			hits = append(hits, embeddingHit{Identifier: synth, Line: line})
 		}
 	}
 	return hits

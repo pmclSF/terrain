@@ -517,7 +517,9 @@ Repository scan  →  Signal detection  →  Risk modeling  →  Reporting
 - **Reports** synthesize signals, risk, trends, and benchmark readiness into actionable output
 
 ```
-cmd/terrain/     CLI (30+ commands)
+cmd/terrain/     CLI — 11 canonical commands (analyze, report, migrate,
+                 convert, posture, score, doctor, ai, serve, version, help);
+                 35+ legacy aliases retained through 0.2.x
 internal/        47 Go packages covering analysis, signals, risk,
                  impact, depgraph, measurement, reporting, and more
 ```
