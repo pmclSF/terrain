@@ -1,6 +1,7 @@
 package engine_test
 
 import (
+	"os"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -9,6 +10,11 @@ import (
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/models"
 )
+
+func exists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
 
 // TestCalibration_CorpusRunner runs the real engine pipeline against the
 // in-tree calibration corpus and confirms the runner reports sane
@@ -39,7 +45,25 @@ func TestCalibration_CorpusRunner(t *testing.T) {
 	}
 
 	analyse := func(fixturePath string) ([]models.Signal, error) {
-		result, err := engine.RunPipeline(fixturePath)
+		opts := engine.PipelineOptions{}
+		// Auto-discover per-fixture eval artifacts. Each path is added to
+		// PipelineOptions only when the file exists; fixtures without
+		// these artifacts behave exactly as before.
+		fixtureFile := func(rel string) string { return filepath.Join(fixturePath, rel) }
+		if exists(fixtureFile("eval-runs/promptfoo.json")) {
+			opts.PromptfooPaths = []string{fixtureFile("eval-runs/promptfoo.json")}
+		}
+		if exists(fixtureFile("eval-runs/deepeval.json")) {
+			opts.DeepEvalPaths = []string{fixtureFile("eval-runs/deepeval.json")}
+		}
+		if exists(fixtureFile("eval-runs/ragas.json")) {
+			opts.RagasPaths = []string{fixtureFile("eval-runs/ragas.json")}
+		}
+		if exists(fixtureFile("baseline.json")) {
+			opts.BaselineSnapshotPath = fixtureFile("baseline.json")
+		}
+
+		result, err := engine.RunPipeline(fixturePath, opts)
 		if err != nil {
 			return nil, err
 		}
