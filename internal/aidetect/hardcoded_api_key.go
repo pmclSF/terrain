@@ -79,14 +79,24 @@ var placeholderMarkers = []string{
 // configFileExts is the allowlist of file extensions the detector
 // scans. Keeping the surface narrow avoids the cost of regex-walking
 // every text file in a repo; AI evals/configs live in a small set.
+//
+// Pre-0.2.x this list missed several real-world key-leak surfaces:
+// .properties (Java configs), .tfvars (Terraform), .sh (env-export
+// shell scripts), .config (.NET/generic), .dockerfile/Dockerfile.
+// Polyglot AI infra repos commonly stash keys in these — added.
 var configFileExts = map[string]bool{
-	".yaml": true,
-	".yml":  true,
-	".json": true,
-	".env":  true,
-	".toml": true,
-	".ini":  true,
-	".cfg":  true,
+	".yaml":       true,
+	".yml":        true,
+	".json":       true,
+	".env":        true,
+	".toml":       true,
+	".ini":        true,
+	".cfg":        true,
+	".properties": true, // Java
+	".tfvars":     true, // Terraform
+	".sh":         true, // env-export shell scripts
+	".config":     true, // .NET / generic
+	".dockerfile": true, // explicit dockerfile extension
 }
 
 // HardcodedAPIKeyDetector identifies API keys embedded in AI configuration
