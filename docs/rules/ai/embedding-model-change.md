@@ -5,27 +5,26 @@
 **Type:** `aiEmbeddingModelChange`  
 **Domain:** ai  
 **Default severity:** medium  
-**Status:** planned
+**Status:** stable
 
 ## Summary
 
-An embedding model name or version changed in the codebase without a corresponding RAG re-evaluation in the gauntlet.
+A repository references an embedding model in source code without a retrieval-shaped eval scenario, so a future model swap will silently change retrieval quality.
 
 ## Remediation
 
-Run the RAG eval suite against the new embeddings; commit the updated baseline.
+Add a retrieval eval scenario (Ragas, Promptfoo, or DeepEval) that exercises this surface so embedding swaps surface as a measurable regression.
 
 ## Promotion plan
 
-0.2 — git-blame detector. Promotes to stable once the embedding-aware surface scanner ships.
+0.2 ships the static precondition (embedding referenced + no retrieval coverage). Cross-snapshot content-hash diff variant lands in 0.3 once snapshot fingerprints are recorded.
 
 ## Evidence sources
 
 - `structural-pattern`
-- `graph-traversal`
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.85, 0.95] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.70, 0.88] (heuristic in 0.2; calibration in 0.3).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

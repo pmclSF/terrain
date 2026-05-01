@@ -1151,20 +1151,19 @@
       "type": "aiEmbeddingModelChange",
       "constName": "SignalAIEmbeddingModelChange",
       "domain": "ai",
-      "status": "planned",
+      "status": "stable",
       "title": "Embedding Model Swap Without Re-Evaluation",
-      "description": "An embedding model name or version changed in the codebase without a corresponding RAG re-evaluation in the gauntlet.",
-      "remediation": "Run the RAG eval suite against the new embeddings; commit the updated baseline.",
+      "description": "A repository references an embedding model in source code without a retrieval-shaped eval scenario, so a future model swap will silently change retrieval quality.",
+      "remediation": "Add a retrieval eval scenario (Ragas, Promptfoo, or DeepEval) that exercises this surface so embedding swaps surface as a measurable regression.",
       "defaultSeverity": "medium",
-      "confidenceMin": 0.85,
-      "confidenceMax": 0.95,
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.88,
       "evidenceSources": [
-        "structural-pattern",
-        "graph-traversal"
+        "structural-pattern"
       ],
       "ruleId": "TER-AI-110",
       "ruleUri": "docs/rules/ai/embedding-model-change.md",
-      "promotionPlan": "0.2 — git-blame detector. Promotes to stable once the embedding-aware surface scanner ships."
+      "promotionPlan": "0.2 ships the static precondition (embedding referenced + no retrieval coverage). Cross-snapshot content-hash diff variant lands in 0.3 once snapshot fingerprints are recorded."
     },
     {
       "type": "aiRetrievalRegression",

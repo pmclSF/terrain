@@ -474,6 +474,17 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		},
 		Detector: &aidetect.FewShotContaminationDetector{Root: cfg.RepoRoot},
 	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.embedding-model-change",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Flag repos that reference an embedding model in source code without any retrieval-shaped eval scenario.",
+			SignalTypes:    []models.SignalType{signals.SignalAIEmbeddingModelChange},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.EmbeddingModelChangeDetector{Root: cfg.RepoRoot},
+	})
 
 	// Governance detectors (depend on signals from quality/migration detectors).
 	if cfg.PolicyConfig != nil && !cfg.PolicyConfig.IsEmpty() {
