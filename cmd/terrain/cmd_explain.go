@@ -8,7 +8,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/explain"
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/models"
@@ -32,7 +31,7 @@ func printShowUsage() {
 }
 
 func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
+	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -219,7 +218,7 @@ func runShow(entity, id, root string, jsonOutput bool) error {
 		return fmt.Errorf("missing ID for show %q", entity)
 	}
 
-	result, err := engine.RunPipeline(root, defaultPipelineOptions())
+	result, err := runPipelineWithSignals(root, defaultPipelineOptions())
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}

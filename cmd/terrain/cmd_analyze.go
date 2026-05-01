@@ -1,11 +1,9 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strings"
 
@@ -178,11 +176,11 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	opt.BaselineSnapshotPath = baselinePath
 	opt.OnProgress = newProgressFunc(jsonOutput)
 	// Honour Ctrl-C: pre-0.2.x analyze exited abruptly on SIGINT with no
-	// cleanup. The context-aware variant lets in-flight detectors check
-	// ctx.Err and unwind cooperatively.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
-	defer stop()
-	result, err := engine.RunPipelineContext(ctx, root, opt)
+	// cleanup. runPipelineWithSignals wraps RunPipelineContext with a
+	// SIGINT-aware context so in-flight detectors check ctx.Err and
+	// unwind cooperatively. Same helper is used by every other
+	// analysis command since 0.2.
+	result, err := runPipelineWithSignals(root, opt)
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -325,7 +323,7 @@ func runPolicyCheck(root string, jsonOutput bool, coveragePath, coverageRunLabel
 
 	// Reuse the main analysis pipeline so policy evaluation can use runtime and
 	// coverage artifacts when provided.
-	result, err := engine.RunPipeline(root, opt)
+	result, err := runPipelineWithSignals(root, opt)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: analysis failed: %v\n", err)
 		return exitError
