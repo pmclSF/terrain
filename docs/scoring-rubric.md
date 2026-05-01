@@ -138,7 +138,7 @@ When the calibration corpus lands:
 - Every numeric value gets a confidence interval reported in
   `terrain explain`.
 
-The migration plan is to ship the new model behind `--scoring=v3` for one
+The migration plan is to ship the new model behind `--scoring=v2` for one
 release, give consumers time to recalibrate their CI gates, then make it
 default. Bands and band names are stable; only the math underneath
 changes.

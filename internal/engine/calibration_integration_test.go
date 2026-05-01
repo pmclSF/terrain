@@ -83,8 +83,16 @@ func TestCalibration_CorpusRunner(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindFixtures: %v", err)
 	}
+	// Pre-0.2.x this called t.Skipf if the corpus dir was empty, so
+	// anyone who renamed or moved tests/calibration/ silently bypassed
+	// the load-bearing gate. Now hard-fail on missing corpus and
+	// require at least 25 fixtures (per docs/release/0.2.md).
 	if len(dirs) == 0 {
-		t.Skipf("no calibration fixtures under %s; corpus is empty", corpusRoot)
+		t.Fatalf("calibration corpus missing at %s — gate cannot be bypassed by deletion", corpusRoot)
+	}
+	const minFixtures = 25
+	if len(dirs) < minFixtures {
+		t.Fatalf("calibration corpus has %d fixtures; require at least %d", len(dirs), minFixtures)
 	}
 
 	analyse := func(fixturePath string) ([]models.Signal, error) {

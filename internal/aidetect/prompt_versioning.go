@@ -124,7 +124,7 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			Explanation: "Prompt file `" + surface.Path + "` has no recognisable version marker. Future content changes will silently drift; consumers can't detect the change.",
 			SuggestedAction: "Add a `version:` field, a `_v<N>` suffix to the filename, or a `# version: ...` comment so downstream consumers can detect content drift.",
 
-			SeverityClauses: []string{"sev-medium-005"},
+			SeverityClauses: []string{"sev-medium-007"},
 			Actionability:   models.ActionabilityScheduled,
 			LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 			AIRelevance:     models.AIRelevanceHigh,

@@ -97,7 +97,7 @@ func (d *RetrievalRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []m
 					key, baseAvg, curAvg, drop, paired, threshold),
 				SuggestedAction: "Investigate the regression; revert the offending change or re-tune retrieval before merging.",
 
-				SeverityClauses: []string{"sev-high-004"},
+				SeverityClauses: []string{"sev-high-007"},
 				Actionability:   models.ActionabilityImmediate,
 				LifecycleStages: []models.LifecycleStage{models.StageMaintenance, models.StageCIRun},
 				AIRelevance:     models.AIRelevanceHigh,

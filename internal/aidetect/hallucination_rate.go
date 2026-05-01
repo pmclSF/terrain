@@ -93,7 +93,7 @@ func (d *HallucinationRateDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 				rate*100, hallucinated, total, threshold*100),
 			SuggestedAction: "Investigate the failing cases; tighten retrieval or grounding before merging. Bump the threshold only with documented justification.",
 
-			SeverityClauses: []string{"sev-high-004"},
+			SeverityClauses: []string{"sev-high-006"},
 			Actionability:   models.ActionabilityImmediate,
 			LifecycleStages: []models.LifecycleStage{models.StageCIRun},
 			AIRelevance:     models.AIRelevanceHigh,

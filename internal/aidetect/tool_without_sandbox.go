@@ -74,7 +74,7 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 				Explanation: f.Explanation,
 				SuggestedAction: "Wrap the tool in an approval gate, or restrict its capability surface to a sandbox / dry-run mode.",
 
-				SeverityClauses: []string{"sev-high-004"},
+				SeverityClauses: []string{"sev-high-005"},
 				Actionability:   models.ActionabilityImmediate,
 				LifecycleStages: []models.LifecycleStage{models.StageDesign},
 				AIRelevance:     models.AIRelevanceHigh,
