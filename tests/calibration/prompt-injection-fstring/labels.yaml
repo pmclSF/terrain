@@ -1,0 +1,11 @@
+schemaVersion: 1
+fixture: prompt-injection-fstring
+description: |
+  A Python handler concatenates request body data into a prompt-shaped
+  f-string without sanitisation. The detector must fire
+  aiPromptInjectionRisk on the handler. The f-string interpolation
+  pattern is the second of the two passes the detector runs.
+expected:
+  - type: aiPromptInjectionRisk
+    file: handler.py
+    notes: "f-string prompt with raw request.body interpolation"
