@@ -10,7 +10,6 @@ import (
 
 	"github.com/pmclSF/terrain/internal/benchmark"
 	"github.com/pmclSF/terrain/internal/comparison"
-	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/metrics"
 	"github.com/pmclSF/terrain/internal/migration"
@@ -19,7 +18,7 @@ import (
 )
 
 func runMigration(subCmd, root string, jsonOutput bool, file, scope string) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
+	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -83,7 +82,7 @@ func runMigration(subCmd, root string, jsonOutput bool, file, scope string) erro
 
 // runExportBenchmark performs analysis and outputs a benchmark-safe JSON export.
 func runExportBenchmark(root string) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptions())
+	result, err := runPipelineWithSignals(root, defaultPipelineOptions())
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}

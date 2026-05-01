@@ -33,7 +33,7 @@ const (
 // runAIList produces a comprehensive AI inventory view showing what AI systems
 // exist in a repo, what capabilities they support, and what's missing validation.
 func runAIList(root string, jsonOutput, verbose bool) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
+	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -351,7 +351,7 @@ type aiRunDecision = airun.Decision
 
 func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) error {
 	// Step 1: Run pipeline.
-	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
+	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -742,7 +742,7 @@ func evaluateAIRunDecision(snap *models.TestSuiteSnapshot, result *engine.Pipeli
 
 // runAIRecord saves the latest eval run results as a baseline snapshot.
 func runAIRecord(root string, jsonOutput bool) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
+	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -885,7 +885,7 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 	}
 
 	// Run current analysis to get current scenario state.
-	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
+	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -1009,7 +1009,7 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 
 func runAIReplay(root string, jsonOutput bool, artifactPath string) error {
 	// Run pipeline for current state.
-	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
+	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -1062,7 +1062,7 @@ func runAIReplay(root string, jsonOutput bool, artifactPath string) error {
 }
 
 func runAIDoctor(root string, jsonOutput bool) error {
-	result, err := engine.RunPipeline(root, defaultPipelineOptionsWithProgress(jsonOutput))
+	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
