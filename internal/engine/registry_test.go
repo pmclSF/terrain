@@ -13,9 +13,9 @@ func TestDefaultRegistry_WithoutPolicy(t *testing.T) {
 
 	// 5 quality + 2 coverage + 4 health (assertion-free + orphaned-test +
 	// static-skip + 5 runtime adapters) + 5 migration + 7 structural +
-	// 9 AI = 35, no governance.
-	if r.Len() != 35 {
-		t.Errorf("DefaultRegistry without policy: Len() = %d, want 35", r.Len())
+	// 10 AI = 36, no governance.
+	if r.Len() != 36 {
+		t.Errorf("DefaultRegistry without policy: Len() = %d, want 36", r.Len())
 	}
 
 	quality := r.ByDomain(signals.DomainQuality)
@@ -34,8 +34,8 @@ func TestDefaultRegistry_WithoutPolicy(t *testing.T) {
 	}
 
 	ai := r.ByDomain(signals.DomainAI)
-	if len(ai) != 9 {
-		t.Errorf("ai detectors = %d, want 9 (0.2 batch + halluc/cost/retrieval regression)", len(ai))
+	if len(ai) != 10 {
+		t.Errorf("ai detectors = %d, want 10 (0.2 batch + halluc/cost/retrieval regression + prompt-versioning)", len(ai))
 	}
 
 	governance := r.ByDomain(signals.DomainGovernance)
@@ -57,9 +57,9 @@ func TestDefaultRegistry_WithPolicy(t *testing.T) {
 	}
 	r, _ := DefaultRegistry(cfg)
 
-	// Same 35 plus the policy governance detector.
-	if r.Len() != 36 {
-		t.Errorf("DefaultRegistry with policy: Len() = %d, want 36", r.Len())
+	// Same 36 plus the policy governance detector.
+	if r.Len() != 37 {
+		t.Errorf("DefaultRegistry with policy: Len() = %d, want 37", r.Len())
 	}
 
 	governance := r.ByDomain(signals.DomainGovernance)
@@ -108,6 +108,7 @@ func TestDefaultRegistry_DetectorIDs(t *testing.T) {
 		"ai.hallucination-rate",
 		"ai.cost-regression",
 		"ai.retrieval-regression",
+		"ai.prompt-versioning",
 	}
 
 	all := r.All()

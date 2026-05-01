@@ -452,6 +452,17 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		},
 		Detector: &aidetect.RetrievalRegressionDetector{},
 	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "ai.prompt-versioning",
+			Domain:         signals.DomainAI,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Flag prompt-kind surfaces with no recognisable version marker (filename, inline, or comment).",
+			SignalTypes:    []models.SignalType{signals.SignalAIPromptVersioning},
+			RequiresFileIO: true,
+		},
+		Detector: &aidetect.PromptVersioningDetector{Root: cfg.RepoRoot},
+	})
 
 	// Governance detectors (depend on signals from quality/migration detectors).
 	if cfg.PolicyConfig != nil && !cfg.PolicyConfig.IsEmpty() {
