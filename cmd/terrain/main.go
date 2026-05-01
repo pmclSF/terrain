@@ -81,6 +81,13 @@ const (
 	exitUsageError      = 2
 	exitPolicyViolation = 2 // overloaded with exitUsageError until 0.2; see comment above
 	exitAIGateBlock     = 4
+	// exitNotFound distinguishes "the entity you asked about does not
+	// exist in this repo" from "analysis itself failed." Used by
+	// `terrain show` and `terrain explain` so CI scripts can branch on
+	// "missing entity" without parsing stderr text. Pre-0.2.x these
+	// commands collapsed not-found into exit 1, indistinguishable from
+	// a real analysis crash.
+	exitNotFound = 5
 )
 
 func main() {
@@ -311,7 +318,7 @@ func main() {
 		}
 		if err := runExplain(explainArgs[0], *rootFlag, *baseRef, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
+			os.Exit(exitCodeForCLIError(err))
 		}
 
 	case "summary":
@@ -469,7 +476,7 @@ func main() {
 		jsonFlag := &showJSON
 		if err := runShow(showSubCmd, showID, *rootFlag, *jsonFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
+			os.Exit(exitCodeForCLIError(err))
 		}
 
 	case "export":

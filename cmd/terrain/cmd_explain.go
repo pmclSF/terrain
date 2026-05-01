@@ -184,7 +184,10 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 		}
 	}
 
-	return fmt.Errorf("entity not found: %s\n\nTry: a test file path, test ID, scenario ID, or 'selection'", target)
+	return cliExitError{
+		code:    exitNotFound,
+		message: fmt.Sprintf("entity not found: %s\n\nTry: a test file path, test ID, scenario ID, or 'selection'", target),
+	}
 }
 
 // computeImpactForExplain runs impact analysis using git diff to detect changes.
@@ -259,7 +262,7 @@ func showTest(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) error 
 			return nil
 		}
 	}
-	return fmt.Errorf("test not found: %s", id)
+	return cliExitError{code: exitNotFound, message: fmt.Sprintf("test not found: %s", id)}
 }
 
 func showCodeUnit(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) error {
@@ -273,7 +276,7 @@ func showCodeUnit(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) er
 			return nil
 		}
 	}
-	return fmt.Errorf("code unit not found: %s", id)
+	return cliExitError{code: exitNotFound, message: fmt.Sprintf("code unit not found: %s", id)}
 }
 
 func showOwner(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) error {
@@ -318,7 +321,7 @@ func showOwner(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) error
 	}
 
 	if len(data.OwnedFiles) == 0 && len(data.TestFiles) == 0 && data.SignalCount == 0 {
-		return fmt.Errorf("owner not found: %s", id)
+		return cliExitError{code: exitNotFound, message: fmt.Sprintf("owner not found: %s", id)}
 	}
 
 	if jsonOutput {
@@ -387,7 +390,7 @@ func showFinding(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) err
 			return nil
 		}
 	}
-	return fmt.Errorf("finding not found: %s", id)
+	return cliExitError{code: exitNotFound, message: fmt.Sprintf("finding not found: %s", id)}
 }
 
 func isUniqueCodeUnitName(snap *models.TestSuiteSnapshot, name string) bool {
