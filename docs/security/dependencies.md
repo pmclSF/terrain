@@ -67,6 +67,28 @@ host. The release pipeline pins `cosign-installer@v3` (via SHA in
 `.github/workflows/release.yml`) so the verification chain is fixed
 at the workflow level.
 
+## SLSA L2 build provenance
+
+In addition to per-archive cosign signatures, the release workflow
+emits a SLSA L2 build-provenance attestation per binary archive via
+`actions/attest-build-provenance@v3`. The attestation is a signed
+in-toto statement that records:
+
+- which workflow run produced the artifact
+- the source repo + commit SHA at build time
+- the runner, builder identity, and signing key
+
+Verify against a downloaded archive:
+
+```bash
+gh attestation verify terrain_0.2.0_linux_amd64.tar.gz \
+  --owner pmclSF
+```
+
+The cosign signatures and SLSA attestations are independent layers
+— cosign signs the file bytes, SLSA captures the build context.
+Both are kept; neither replaces the other.
+
 ## When in doubt
 
 If a Dependabot PR has no clear story in this file, comment-block the
