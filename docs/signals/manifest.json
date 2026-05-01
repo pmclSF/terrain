@@ -996,20 +996,18 @@
       "type": "aiPromptVersioning",
       "constName": "SignalAIPromptVersioning",
       "domain": "ai",
-      "status": "planned",
-      "title": "Prompt Changed Without Version Bump",
-      "description": "Prompt content changed between commits without a corresponding version field bump or filename version suffix.",
-      "remediation": "Bump the prompt's version metadata or rename the file with a new version suffix before merging.",
+      "status": "stable",
+      "title": "Prompt Versioning",
+      "description": "Prompt-kind surface ships without a recognisable version marker (filename suffix, inline `version:` field, or `# version:` comment). Future content changes will silently drift; consumers can't detect the change.",
+      "remediation": "Add a `version:` field, a `_v\u003cN\u003e` filename suffix, or a `# version: ...` comment so downstream consumers can detect content drift.",
       "defaultSeverity": "medium",
-      "confidenceMin": 0.85,
-      "confidenceMax": 0.95,
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.92,
       "evidenceSources": [
-        "structural-pattern",
-        "graph-traversal"
+        "structural-pattern"
       ],
       "ruleId": "TER-AI-101",
-      "ruleUri": "docs/rules/ai/prompt-versioning.md",
-      "promotionPlan": "0.2 — git-blame-driven detector lands with the prompt-surface expansion."
+      "ruleUri": "docs/rules/ai/prompt-versioning.md"
     },
     {
       "type": "aiPromptInjectionRisk",
