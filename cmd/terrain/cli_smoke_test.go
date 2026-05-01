@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -183,4 +184,45 @@ func captureRun(fn func() error) ([]byte, error) {
 func runCaptured(fn func() error) error {
 	_, err := captureRun(fn)
 	return err
+}
+
+// captureStderr is the stderr counterpart of captureRun. Some commands
+// route help / usage output to stderr (per long-standing CLI
+// convention so that `cmd > out` doesn't hide the usage on error), so
+// tests asserting on usage text need to read from stderr rather than
+// stdout. Same single-shot semantics as captureRun: not safe for
+// concurrent use.
+func captureStderr(fn func() error) (string, error) {
+	captureRunMu.Lock()
+	defer captureRunMu.Unlock()
+
+	old := os.Stderr
+	r, w, pipeErr := os.Pipe()
+	if pipeErr != nil {
+		return "", pipeErr
+	}
+	os.Stderr = w
+
+	var buf bytes.Buffer
+	done := make(chan struct{})
+	go func() {
+		io.Copy(&buf, r)
+		close(done)
+	}()
+
+	fnErr := fn()
+
+	w.Close()
+	os.Stderr = old
+	<-done
+	r.Close()
+
+	return buf.String(), fnErr
+}
+
+// contains is a thin wrapper around strings.Contains kept for test
+// readability; reads better than `strings.Contains(out, x)` in dense
+// assertion blocks.
+func contains(haystack, needle string) bool {
+	return strings.Contains(haystack, needle)
 }

@@ -107,17 +107,32 @@ function isCosignAvailable() {
   }
 }
 
-// Sigstore signature verification. 0.2 makes verification mandatory:
-// a missing/failed verification aborts the install. Two escape hatches:
+// Sigstore signature verification.
 //
-//   - TERRAIN_INSTALLER_SKIP_VERIFY=1 — opt out (CI / air-gapped). Prints
-//     a clear warning so the bypass is auditable.
-//   - cosign not installed — falls back to a checksum-only contract
-//     since requiring cosign on every npm-install host would block
-//     adoption. The installer still writes a clear notice that cosign
-//     would have provided stronger integrity guarantees.
+// 0.2.x policy: Sigstore verification is MANDATORY by default. If
+// `cosign` is not available on the host, the install fails with a
+// clear remediation pointer. The escape for trusted/CI/air-gapped
+// environments is the documented opt-out
+// `TERRAIN_INSTALLER_SKIP_VERIFY=1`.
 //
-// Once cosign is on the host, every other failure is a hard error.
+// Pre-0.2.x silently degraded to "checksum-only" when cosign was
+// missing, which meant a typical npm-install on a host without cosign
+// (most macOS / Linux dev machines) skipped Sigstore entirely without
+// any signal in the install log beyond a one-line "falling back"
+// message. Adversarial review flagged this as the headline gap in our
+// supply-chain story: the strong-integrity guarantee we advertise
+// degrades silently to weak by default. Promotion to mandatory closes
+// the gap; the env-var escape keeps adoption viable.
+//
+// Escape hatches:
+//
+//   - TERRAIN_INSTALLER_SKIP_VERIFY=1 — fully opt out (CI / air-gapped).
+//     Prints a WARNING so the bypass is auditable.
+//   - TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1 — opt-in degrade-to-
+//     checksum behaviour for hosts that genuinely cannot install
+//     cosign. Pre-0.2.x default; opt-in in 0.2.x.
+//
+// Once cosign is on the host, every verify failure is a hard error.
 async function verifySignatureBestEffort({
   archivePath,
   version,
@@ -136,13 +151,29 @@ async function verifySignatureBestEffort({
   }
 
   if (!isCosignAvailable()) {
-    log(
-      'cosign not found on PATH. Falling back to checksum verification only. ' +
-        'For stronger integrity guarantees install cosign ' +
-        '(https://github.com/sigstore/cosign) and reinstall.',
-      quiet
+    if (env.TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN === '1') {
+      log(
+        'cosign not found on PATH. Continuing with checksum-only verification ' +
+          'because TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1 is set. ' +
+          'For stronger integrity guarantees install cosign ' +
+          '(https://github.com/sigstore/cosign) and reinstall.',
+        quiet
+      );
+      return { verified: false, reason: 'cosign-missing-allowed' };
+    }
+    throw new Error(
+      'cosign is required to verify the Sigstore signature on the Terrain ' +
+        'release archive, but was not found on PATH.\n\n' +
+        'Resolve by one of:\n' +
+        '  1. Install cosign: https://github.com/sigstore/cosign#installation\n' +
+        '     (Homebrew: `brew install cosign`. Linux: see release notes.)\n' +
+        '  2. If this host genuinely cannot install cosign and you trust the ' +
+        'GitHub-provided checksum file, set ' +
+        'TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1 to fall back to ' +
+        'checksum-only verification.\n' +
+        '  3. To skip integrity verification entirely (NOT recommended), ' +
+        'set TERRAIN_INSTALLER_SKIP_VERIFY=1.'
     );
-    return { verified: false, reason: 'cosign-missing' };
   }
 
   const sigPath = path.join(tempDir, `${path.basename(archivePath)}.sig`);
