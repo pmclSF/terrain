@@ -17,7 +17,7 @@ Investigate the failing case in the eval framework's report and patch the prompt
 
 ## Promotion plan
 
-Detector lands in 0.2 with eval-framework metric ingestion.
+0.3 — generic per-case failure surfacing on top of the 0.2 airun eval ingestion. Today's per-case failures route through the specific aiHallucinationRate / aiCostRegression / aiRetrievalRegression detectors.
 
 ## Evidence sources
 
