@@ -9,9 +9,14 @@ import (
 )
 
 // skipDirs are directories the AI-config walker never descends into.
-// These mirror the global skip set in internal/analysis/repository_scan.go
-// — vendored / build-output / VCS / IDE noise that almost never houses
-// AI configs we care about.
+// These MUST match the canonical set in
+// internal/analysis/repository_scan.go — drift here causes detectors to
+// re-scan trees other walkers correctly avoid. Worst case (the bug we
+// just fixed): descending into .terrain/ and re-detecting the engine's
+// own previously-saved snapshots, which inflated signal counts on every
+// successive `terrain analyze --write-snapshot` run (18 → 22 → 38 on
+// three identical runs). The .terrain entry was missing from this list
+// entirely.
 var skipDirs = map[string]bool{
 	".git":          true,
 	"node_modules":  true,
@@ -31,6 +36,7 @@ var skipDirs = map[string]bool{
 	"venv":          true,
 	".idea":         true,
 	".vscode":       true,
+	".terrain":      true,
 	"target":        true,
 }
 

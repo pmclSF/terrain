@@ -2,6 +2,7 @@ package aidetect
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -78,14 +79,24 @@ var placeholderMarkers = []string{
 // configFileExts is the allowlist of file extensions the detector
 // scans. Keeping the surface narrow avoids the cost of regex-walking
 // every text file in a repo; AI evals/configs live in a small set.
+//
+// Pre-0.2.x this list missed several real-world key-leak surfaces:
+// .properties (Java configs), .tfvars (Terraform), .sh (env-export
+// shell scripts), .config (.NET/generic), .dockerfile/Dockerfile.
+// Polyglot AI infra repos commonly stash keys in these — added.
 var configFileExts = map[string]bool{
-	".yaml": true,
-	".yml":  true,
-	".json": true,
-	".env":  true,
-	".toml": true,
-	".ini":  true,
-	".cfg":  true,
+	".yaml":       true,
+	".yml":        true,
+	".json":       true,
+	".env":        true,
+	".toml":       true,
+	".ini":        true,
+	".cfg":        true,
+	".properties": true, // Java
+	".tfvars":     true, // Terraform
+	".sh":         true, // env-export shell scripts
+	".config":     true, // .NET / generic
+	".dockerfile": true, // explicit dockerfile extension
 }
 
 // HardcodedAPIKeyDetector identifies API keys embedded in AI configuration
@@ -200,6 +211,11 @@ func scanFileForAPIKeys(path string) []keyHit {
 	sc.Buffer(buf, maxLine)
 
 	line := 0
+	// Track which (line, provider) we've already emitted so a config
+	// that lists `openai_key=... aws_key=...` on a single line emits
+	// both findings — pre-0.2.x the per-line `break` after the first
+	// match swallowed the second key.
+	emitted := map[string]bool{}
 	for sc.Scan() {
 		line++
 		text := sc.Text()
@@ -211,9 +227,21 @@ func scanFileForAPIKeys(path string) []keyHit {
 			if isPlaceholder(match) {
 				continue
 			}
+			key := fmt.Sprintf("%d:%s", line, rule.Name)
+			if emitted[key] {
+				continue
+			}
+			emitted[key] = true
 			hits = append(hits, keyHit{Provider: rule.Name, Line: line})
-			break // one finding per line is enough; avoid duplicate signals
 		}
+	}
+	// Pre-0.2.x sc.Err() was never checked, so a single line longer
+	// than 1 MB (minified YAML, embedded blob) would silently drop
+	// the rest of the file — secret never detected. Surface scanner
+	// errors as a degraded-coverage hit so the caller knows the file
+	// wasn't fully read.
+	if err := sc.Err(); err != nil {
+		hits = append(hits, keyHit{Provider: "scan-error:" + err.Error(), Line: line})
 	}
 	return hits
 }

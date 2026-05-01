@@ -1133,10 +1133,33 @@ func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read: %w", err)
 	}
+	if len(data) == 0 {
+		return nil, fmt.Errorf("baseline file is empty")
+	}
 	var snap models.TestSuiteSnapshot
 	if err := json.Unmarshal(data, &snap); err != nil {
 		return nil, fmt.Errorf("decode: %w", err)
 	}
+	// A null JSON value decodes to a zero TestSuiteSnapshot — non-nil
+	// but empty. Detectors that check `snap.Baseline == nil` (cost,
+	// retrieval) would silently disable themselves with no diagnostic.
+	// Reject explicitly.
+	if snap.SnapshotMeta.SchemaVersion == "" && len(snap.Signals) == 0 && len(snap.TestFiles) == 0 && len(snap.EvalRuns) == 0 {
+		return nil, fmt.Errorf("baseline appears empty (no schemaVersion, signals, testFiles, or evalRuns)")
+	}
+	// Reject snapshots from a future major version we don't understand.
+	// Pre-0.2.x this check was missing, so a 2.0.0 baseline would
+	// silently decode into the v1 struct, losing fields.
+	if err := models.ValidateSchemaVersion(snap.SnapshotMeta.SchemaVersion); err != nil {
+		return nil, fmt.Errorf("baseline schema: %w", err)
+	}
+	// Migrate older snapshots forward in place (idempotent for current).
+	// Pre-0.2.x this call was missing, so 0.1.x baselines decoded
+	// raw and were silently compared as-if same-schema. Migration runs
+	// the same code path as cmd_compare.go uses; returned notes are
+	// discarded here (the warn is structural, not actionable for the
+	// regression detectors).
+	_ = models.MigrateSnapshotInPlace(&snap)
 	return &snap, nil
 }
 

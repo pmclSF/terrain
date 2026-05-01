@@ -250,15 +250,24 @@ func isLikelyTestPath(path string) bool {
 		return false
 	}
 
-	lower := strings.ToLower(path)
 	base := strings.ToLower(filepath.Base(path))
 	if strings.Contains(base, ".test.") || strings.Contains(base, ".spec.") {
 		return true
 	}
-	for _, fragment := range []string{"/test/", "/tests/", "/__tests__/", "/e2e/", "/integration/"} {
-		if strings.Contains(lower, fragment) {
-			return true
-		}
+
+	// Pre-0.2.x this matched any path containing "/tests/" anywhere,
+	// counting `tests/fixtures/<repo>/src/app.js` as a test file. A
+	// terrain doctor on the terrain repo reported 34,399 "test files"
+	// (vs 9,852 actual). Tighten to "the immediate parent directory is
+	// a recognised test-dir name" — fixture source under tests/fixtures
+	// no longer inflates the count, while genuinely-tests files (whose
+	// parent IS `__tests__` or `tests` or `e2e` or `integration`) still
+	// match.
+	dir := filepath.Dir(path)
+	parent := strings.ToLower(filepath.Base(dir))
+	switch parent {
+	case "test", "tests", "__tests__", "e2e", "integration":
+		return true
 	}
 	return false
 }

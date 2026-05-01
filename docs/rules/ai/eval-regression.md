@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2: ingest baseline-vs-current metrics from Promptfoo / DeepEval / Ragas.
+0.3 — umbrella evalRegression detector. Concrete shapes (aiCostRegression, aiRetrievalRegression) shipped in 0.2 and cover the practical cases today.
 
 ## Evidence sources
 

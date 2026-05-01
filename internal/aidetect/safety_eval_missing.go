@@ -48,15 +48,39 @@ func (d *SafetyEvalMissingDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 		return nil
 	}
 
-	// Index scenarios by the surface IDs they cover, for surfaces
-	// with at least one safety-shaped scenario.
+	// Index scenarios by the surface IDs they cover, for scenarios
+	// that look safety-shaped. Two paths:
+	//
+	//   1. Explicit: scenario.CoveredSurfaceIDs lists surface IDs.
+	//   2. Implicit: scenario sits in an eval directory with empty
+	//      CoveredSurfaceIDs (the common shape produced by
+	//      DeriveScenarios). Pre-0.2.x this case caused the detector
+	//      to flood false positives on every safety-critical surface
+	//      in repos using auto-derived scenarios — the default path.
+	//      We now treat such scenarios as covering all
+	//      safety-critical surfaces under the same top-level path
+	//      directory as the scenario.
 	safelyCoveredSurfaces := map[string]bool{}
+	safelyCoveredDirs := map[string]bool{}
 	for _, sc := range snap.Scenarios {
 		if !scenarioLooksSafety(sc) {
 			continue
 		}
-		for _, sid := range sc.CoveredSurfaceIDs {
-			safelyCoveredSurfaces[sid] = true
+		if len(sc.CoveredSurfaceIDs) > 0 {
+			for _, sid := range sc.CoveredSurfaceIDs {
+				safelyCoveredSurfaces[sid] = true
+			}
+			continue
+		}
+		// Implicit path-based coverage — the scenario doesn't list
+		// surface IDs, so any same-directory safety-critical surface
+		// is treated as covered.
+		if sc.Path == "" {
+			continue
+		}
+		dir := topLevelDir(sc.Path)
+		if dir != "" {
+			safelyCoveredDirs[dir] = true
 		}
 	}
 
@@ -66,6 +90,9 @@ func (d *SafetyEvalMissingDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 			continue
 		}
 		if safelyCoveredSurfaces[surface.SurfaceID] {
+			continue
+		}
+		if dir := topLevelDir(surface.Path); dir != "" && safelyCoveredDirs[dir] {
 			continue
 		}
 		out = append(out, models.Signal{
@@ -112,4 +139,24 @@ func scenarioLooksSafety(sc models.Scenario) bool {
 		}
 	}
 	return false
+}
+
+// topLevelDir returns the first directory segment of a repo-relative
+// path (e.g. "internal/aidetect/foo.go" → "internal"). Used to
+// approximate "same package" for implicit safety-coverage attribution
+// when a scenario doesn't list specific surface IDs.
+func topLevelDir(p string) string {
+	p = strings.TrimSpace(p)
+	if p == "" {
+		return ""
+	}
+	for i, c := range p {
+		if c == '/' || c == '\\' {
+			if i == 0 {
+				continue
+			}
+			return p[:i]
+		}
+	}
+	return ""
 }

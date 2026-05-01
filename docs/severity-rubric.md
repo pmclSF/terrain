@@ -98,6 +98,30 @@ An LLM agent or autonomous workflow has no eval scenario covering the documented
 - agent.yaml references `tools.execute_code` with no eval covering misuse
 - deployed prompt has no scenario tagged `category: safety`
 
+#### `sev-high-005` — Destructive tool without approval gate
+
+A tool definition matches a destructive verb pattern (`delete`, `exec`, `send_payment`, `drop_table`) and has no truthy approval / sandbox / dry-run marker key.
+
+**Applies when:**
+
+- `tools.yaml` defines `delete_user` with `parameters` but no `requires_approval: true` or `sandbox` mode
+
+#### `sev-high-006` — Hallucination rate above threshold
+
+Eval run reports a hallucination-shaped failure rate (faithfulness / factuality / grounding under threshold, or matching keywords in failure reason) above the detector's configured threshold.
+
+**Applies when:**
+
+- 3 of 8 scoreable cases hallucinated (37.5% > 5% threshold)
+
+#### `sev-high-007` — Retrieval-quality regression
+
+Retrieval-quality named score (context_precision / nDCG / coverage / faithfulness) dropped versus baseline by more than the configured absolute threshold (default 5 percentage points).
+
+**Applies when:**
+
+- context_relevance avg: 0.90 (baseline) → 0.59 (current), -31 pp vs 5 pp threshold
+
 ### Medium
 
 #### `sev-medium-001` — Weak assertion (semantically loose)
@@ -146,6 +170,42 @@ An LLM call references a model name that resolves to whatever the provider curre
 
 - `model: "claude-3-opus"` without a version date suffix
 - `gpt-4` instead of `gpt-4-0613`
+
+#### `sev-medium-006` — Cost-per-case regression
+
+Average per-case cost rose more than the configured percentage threshold versus a paired baseline run, with the absolute delta above the noise floor.
+
+**Applies when:**
+
+- `avgCost: 0.012 → 0.024` over 200 paired cases (+100% versus 25% threshold)
+
+**Does not apply when:**
+
+- micro-cost suites where the absolute delta is below `MinAbsDelta` (configurable; default $0.0005/case)
+
+#### `sev-medium-007` — Prompt drift without version marker
+
+A prompt-kind surface ships without a recognisable version marker (filename suffix, inline `version:` literal, or comment-style version), so future content changes can't be tracked.
+
+**Applies when:**
+
+- `prompts/system.md` with no `_v1` suffix and no inline `version:` line
+
+#### `sev-medium-008` — Embedding model referenced without retrieval eval
+
+An embedding model identifier appears in source without a retrieval-shaped eval scenario covering it, so a future model swap will silently change retrieval quality.
+
+**Applies when:**
+
+- `text-embedding-3-large` referenced in source; no scenario with category=retrieval / nDCG / faithfulness
+
+#### `sev-medium-009` — Few-shot contamination
+
+A prompt's few-shot examples overlap verbatim with the inputs of an eval scenario covering that prompt, inflating reported scores.
+
+**Applies when:**
+
+- prompt `classifier.yaml` example `Input: device overheats during gameplay sessions` matches verbatim a scenario description
 
 ### Low
 

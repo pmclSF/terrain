@@ -19,7 +19,7 @@ import (
 // performs impact analysis, and applies edge-case policy. This is the shared
 // core for runImpact, runSelectTests, and runPR.
 func runImpactPipeline(root, baseRef string, opts engine.PipelineOptions) (*impact.ImpactResult, *engine.PipelineResult, error) {
-	result, err := engine.RunPipeline(root, opts)
+	result, err := runPipelineWithSignals(root, opts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("analysis failed: %w", err)
 	}

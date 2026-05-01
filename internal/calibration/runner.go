@@ -292,8 +292,14 @@ func matchFixture(labels FixtureLabels, signals []models.Signal, fixtureDir stri
 	}
 
 	consumed := make([]bool, len(labels.Expected))
+	// Match key is now (Type, File, Symbol) — pre-0.2.x Symbol was
+	// ignored, so two distinct expected labels with the same
+	// (Type, File) couldn't be distinguished from "one signal that
+	// should fire twice." Symbol-bearing labels now pin per-symbol
+	// arity; labels that omit Symbol still match against signals
+	// whose Symbol is empty (back-compat).
 	expectedKey := func(e ExpectedSignal) string {
-		return string(e.Type) + "\x00" + e.File
+		return string(e.Type) + "\x00" + e.File + "\x00" + e.Symbol
 	}
 
 	// Detectors that ingest external artifacts (eval framework outputs)
@@ -309,6 +315,22 @@ func matchFixture(labels FixtureLabels, signals []models.Signal, fixtureDir stri
 		}
 		return sigFile
 	}
+	// Build the match key for a signal. If a label sets Symbol,
+	// match only when the signal carries the same Symbol; if the label
+	// omits Symbol, match signals regardless (back-compat with
+	// pre-0.2 fixtures).
+	signalMatches := func(exp ExpectedSignal, sig models.Signal, sigFile string) bool {
+		if exp.Type != sig.Type {
+			return false
+		}
+		if exp.File != sigFile {
+			return false
+		}
+		if exp.Symbol == "" {
+			return true
+		}
+		return exp.Symbol == sig.Location.Symbol
+	}
 
 	for _, sig := range signals {
 		// Try to match against an expected (positive) label.
@@ -318,7 +340,7 @@ func matchFixture(labels FixtureLabels, signals []models.Signal, fixtureDir stri
 			if consumed[i] {
 				continue
 			}
-			if expectedKey(exp) == string(sig.Type)+"\x00"+sigFile {
+			if signalMatches(exp, sig, sigFile) {
 				consumed[i] = true
 				out.Matches = append(out.Matches, Match{
 					Type:    sig.Type,
@@ -334,11 +356,14 @@ func matchFixture(labels FixtureLabels, signals []models.Signal, fixtureDir stri
 			continue
 		}
 		// Check for explicit false-positive guard.
+		// Pre-0.2.x this used the non-normalised sig.Location.File,
+		// which was silently broken for eval-data detectors that
+		// stamp absolute paths. Use sigFile (normalised) here too.
 		for _, abs := range labels.ExpectedAbsent {
-			if expectedKey(abs) == string(sig.Type)+"\x00"+sig.Location.File {
+			if signalMatches(abs, sig, sigFile) {
 				out.Matches = append(out.Matches, Match{
 					Type:    sig.Type,
-					File:    sig.Location.File,
+					File:    sigFile,
 					Outcome: OutcomeFalsePositive,
 					Notes:   abs.Notes,
 				})
@@ -347,6 +372,7 @@ func matchFixture(labels FixtureLabels, signals []models.Signal, fixtureDir stri
 		}
 		// Otherwise: out-of-scope — corpus doesn't claim either way.
 	}
+	_ = expectedKey // retained for callers that may key on it
 
 	// Unconsumed expected entries are false negatives.
 	for i, exp := range labels.Expected {

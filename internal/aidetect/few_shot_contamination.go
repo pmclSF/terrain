@@ -124,7 +124,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 				Explanation: "Scenario `" + sc.Name + "` contains text that appears verbatim in prompt `" + promptPath[surfaceID] + "`. Few-shot examples that overlap with the eval test set inflate scores.",
 				SuggestedAction: "Hold the matching examples out of the prompt's few-shot block, or rewrite the eval input so it isn't a copy of an example. Re-run the eval after de-duplication.",
 
-				SeverityClauses: []string{"sev-medium-005"},
+				SeverityClauses: []string{"sev-medium-009"},
 				Actionability:   models.ActionabilityScheduled,
 				LifecycleStages: []models.LifecycleStage{models.StageTestAuthoring, models.StageMaintenance},
 				AIRelevance:     models.AIRelevanceHigh,
@@ -153,16 +153,24 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 }
 
 // findContaminationOverlap returns (true, candidate) when any
-// candidate string of length >= threshold appears verbatim (case-
-// insensitive) inside content. The matched candidate is returned for
-// reporting.
+// candidate string passes both a character-length threshold and a
+// distinct-word-count threshold and appears verbatim inside content
+// (case-insensitive).
 //
-// Candidates shorter than threshold are skipped — short scenario
-// descriptions like "happy path" would otherwise match every
-// English-language prompt by accident.
+// Pre-0.2.x this was a pure substring match with the 40-character
+// threshold. Adversarial review flagged that 40 chars of English
+// boilerplate ("Please describe the issue you're seeing") matches
+// every customer-support-style prompt by accident. The new check
+// requires the candidate to also have at least 5 distinct alphanumeric
+// tokens — short of a real n-gram overlap (planned for 0.3) but
+// substantially harder to trigger on shared boilerplate.
 func findContaminationOverlap(content string, candidates []string, threshold int) (bool, string) {
+	const minDistinctWords = 5
 	for _, c := range candidates {
 		if len(c) < threshold {
+			continue
+		}
+		if distinctWordCount(c) < minDistinctWords {
 			continue
 		}
 		needle := strings.ToLower(c)
@@ -171,6 +179,30 @@ func findContaminationOverlap(content string, candidates []string, threshold int
 		}
 	}
 	return false, ""
+}
+
+// distinctWordCount returns the number of unique alphanumeric tokens
+// in s (case-folded). Tokens are split on any non-alphanumeric.
+func distinctWordCount(s string) int {
+	seen := map[string]bool{}
+	cur := strings.Builder{}
+	flush := func() {
+		if cur.Len() == 0 {
+			return
+		}
+		seen[strings.ToLower(cur.String())] = true
+		cur.Reset()
+	}
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			cur.WriteRune(r)
+		default:
+			flush()
+		}
+	}
+	flush()
+	return len(seen)
 }
 
 func truncateExcerpt(s string, max int) string {

@@ -19,10 +19,13 @@ import (
 //   terrain report posture       (was: posture)
 //   terrain report select-tests  (was: select-tests)
 //
-// Two former top-level commands collapse into flags on existing verbs:
-//
-//   focus  → `report summary --focus=<path>` (also valid on insights/metrics)
-//   export → `report --output=<path>` (every verb already accepts this)
+// The `focus → --focus=<path>` and `export → --output=<path>` flag
+// collapses are DEFERRED to Phase B — the underlying runners
+// (runFocus, runExport*) don't yet accept the path/output parameters
+// these flags would set, so wiring the flags here would silently drop
+// the user's value. Until Phase B lands the runner-side plumbing,
+// use the legacy top-level commands (`terrain focus`, `terrain
+// export`).
 //
 // The 9 read-side legacy top-level commands keep working unchanged
 // through 0.2; they get a deprecation note in 0.2.x and removal in 0.3.
@@ -107,14 +110,8 @@ func runReportSummaryCLI(args []string) error {
 	root := fs.String("root", ".", "repository root to analyze")
 	jsonOut := fs.Bool("json", false, "output JSON summary with heatmap")
 	verbose := fs.Bool("verbose", false, "show detailed heatmap breakdown")
-	focus := fs.String("focus", "", "narrow to a path (replaces legacy 'terrain focus')")
 	_ = fs.Parse(args)
-	if *focus != "" {
-		// `--focus=<path>` is the canonical way to express what the
-		// legacy `terrain focus` did. Route to the focus runner so the
-		// behaviour stays identical.
-		return runFocus(*root, *jsonOut, *verbose)
-	}
+	mountPositionalAsRoot("report summary", fs.Args(), root)
 	return runSummary(*root, *jsonOut, *verbose)
 }
 
@@ -124,6 +121,7 @@ func runReportInsightsCLI(args []string) error {
 	jsonOut := fs.Bool("json", false, "output JSON insights")
 	verbose := fs.Bool("verbose", false, "show per-finding evidence and file details")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report insights", fs.Args(), root)
 	return runInsights(*root, *jsonOut, *verbose)
 }
 
@@ -133,6 +131,7 @@ func runReportMetricsCLI(args []string) error {
 	jsonOut := fs.Bool("json", false, "output JSON metrics snapshot")
 	verbose := fs.Bool("verbose", false, "show detailed metric breakdowns")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report metrics", fs.Args(), root)
 	return runMetrics(*root, *jsonOut, *verbose)
 }
 
@@ -202,6 +201,7 @@ func runReportImpactCLI(args []string) error {
 	show := fs.String("show", "", "drill-down view: units, gaps, tests, owners, graph, selected")
 	owner := fs.String("owner", "", "filter results by owner")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report impact", fs.Args(), root)
 	return runImpact(*root, *baseRef, *jsonOut, *show, *owner)
 }
 
@@ -212,6 +212,7 @@ func runReportPRCLI(args []string) error {
 	jsonOut := fs.Bool("json", false, "output JSON PR analysis")
 	format := fs.String("format", "", "output format: markdown, comment, annotation")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report pr", fs.Args(), root)
 	return runPR(*root, *baseRef, *jsonOut, *format)
 }
 
@@ -221,6 +222,7 @@ func runReportPostureCLI(args []string) error {
 	jsonOut := fs.Bool("json", false, "output JSON posture snapshot")
 	verbose := fs.Bool("verbose", false, "show measurement values and thresholds")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report posture", fs.Args(), root)
 	return runPosture(*root, *jsonOut, *verbose)
 }
 
@@ -230,5 +232,6 @@ func runReportSelectTestsCLI(args []string) error {
 	baseRef := fs.String("base", "", "git base ref for diff (default: HEAD~1)")
 	jsonOut := fs.Bool("json", false, "output JSON protective test set")
 	_ = fs.Parse(args)
+	mountPositionalAsRoot("report select-tests", fs.Args(), root)
 	return runSelectTests(*root, *baseRef, *jsonOut)
 }
