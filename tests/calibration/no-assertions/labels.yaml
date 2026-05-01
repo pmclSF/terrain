@@ -12,3 +12,6 @@ expected:
   - type: assertionFreeTest
     file: src/order.test.js
     notes: "per-file assertion-free emit"
+  - type: assertionFreeImport
+    file: src/order.test.js
+    notes: "test file imports source but never asserts on it"
