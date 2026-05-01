@@ -1,0 +1,14 @@
+schemaVersion: 1
+fixture: floating-model-tag
+description: |
+  Eval config pins a floating model tag, which resolves to whatever the
+  provider currently maps it to. The detector must fire
+  aiModelDeprecationRisk on the config. Detection runs against
+  repo-walked YAML/JSON/source files; this fixture is a single config.
+
+  Notes intentionally avoid spelling out the floating tag verbatim so
+  this labels.yaml does not also trip the detector.
+expected:
+  - type: aiModelDeprecationRisk
+    file: config.yaml
+    notes: "pinned to floating tag (should pin a dated variant)"
