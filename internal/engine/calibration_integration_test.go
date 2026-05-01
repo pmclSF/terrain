@@ -20,9 +20,11 @@ import (
 // New labels caught here trip the test until the corresponding detector
 // is updated, which is exactly the regression gate we want.
 //
-// Today the corpus has one tiny fixture (skipped-without-ticket). 0.2's
-// content roadmap calls for ~50 fixtures by milestone close; this test
-// is the framework that scales to that size without further changes.
+// As of 0.2 the corpus covers 8 fixtures and 8 distinct signal types
+// (7 AI detectors + staticSkippedTest), all at 1.00 precision/recall.
+// 0.2's content roadmap calls for ~25 fixtures by milestone close;
+// at that point the advisory `t.Logf` block below flips to `t.Errorf`
+// and the gate becomes load-bearing per docs/release/0.2.md.
 func TestCalibration_CorpusRunner(t *testing.T) {
 	t.Parallel()
 
@@ -54,9 +56,10 @@ func TestCalibration_CorpusRunner(t *testing.T) {
 	// 0.2 ships the calibration *infrastructure*; the regression gate
 	// runs in advisory mode (t.Logf, not t.Errorf) until the corpus is
 	// populated with enough fixtures and labels for precision/recall to
-	// be meaningful. Once the content roadmap reaches ~25 fixtures, this
-	// block flips to t.Errorf and the docs/release/0.2.md gate (>= 90%
-	// precision per active detector) becomes load-bearing.
+	// be meaningful. The corpus is currently at 8 fixtures with no
+	// advisory misses; once it crosses ~25 the block below flips to
+	// t.Errorf and the docs/release/0.2.md gate (>= 90% precision per
+	// active detector) becomes load-bearing.
 	rec := corpus.RecallByType()
 	for _, ftr := range corpus.Fixtures {
 		for _, m := range ftr.Matches {
