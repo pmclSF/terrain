@@ -473,6 +473,18 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "report":
+		if err := runReportNamespaceCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "config":
+		if err := runConfigNamespaceCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
 	case "debug":
 		if len(os.Args) < 3 {
 			printDebugUsage()
@@ -733,6 +745,8 @@ var knownCommands = []string{
 	"ai", "feedback", "telemetry",
 	"debug", "depgraph",
 	"version", "serve", "help", "--help", "-h",
+	// Phase A namespaces — added 0.2.
+	"report", "config",
 }
 
 // didYouMean returns up to maxResults command names from knownCommands
