@@ -6,6 +6,6 @@ description: |
   skippedTest. The src/ file has no tests-not-asserting issues so we
   list nothing else; out-of-scope detections are silent.
 expected:
-  - type: skippedTest
+  - type: staticSkippedTest
     file: src/login.test.js
-    notes: ".skip without a ticket reference"
+    notes: "test.skip() in source, no ticket reference"
