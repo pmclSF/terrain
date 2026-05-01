@@ -50,6 +50,14 @@ type Artifact struct {
 
 	// ExitCode is the process exit code (0 = pass, 1 = block).
 	ExitCode int `json:"exitCode"`
+
+	// EvalRun is the parsed result of the eval framework's structured
+	// output, when the framework supports a --output flag the airun
+	// adapter recognises. Populated from a temp file the runner asks
+	// the framework to write; nil when the run was a dry-run, the
+	// framework doesn't expose structured output, or parsing failed.
+	// SignalV2 0.2 field — closes "terrain ai run real execution".
+	EvalRun *EvalRunResult `json:"evalRun,omitempty"`
 }
 
 // ScenarioEntry represents a scenario in the run artifact.
