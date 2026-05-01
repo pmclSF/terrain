@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
 
@@ -175,7 +177,12 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	opt.RagasPaths = parsedRagas
 	opt.BaselineSnapshotPath = baselinePath
 	opt.OnProgress = newProgressFunc(jsonOutput)
-	result, err := engine.RunPipeline(root, opt)
+	// Honour Ctrl-C: pre-0.2.x analyze exited abruptly on SIGINT with no
+	// cleanup. The context-aware variant lets in-flight detectors check
+	// ctx.Err and unwind cooperatively.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+	result, err := engine.RunPipelineContext(ctx, root, opt)
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}

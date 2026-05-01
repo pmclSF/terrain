@@ -45,8 +45,14 @@ var promptInjectionScanExts = map[string]bool{
 // promptIdentifierPattern is the "this looks prompt-related" half. We
 // require the identifier to be assigned, concatenated, or appended to
 // — i.e. a write context. Reading a `prompt` var is fine.
+//
+// Pre-0.2.x the assignment branch matched `[+]?=`, which also matched
+// `==` (equality) — `if prompt == user_input:` tripped a
+// High-severity false positive. The branch now uses negative lookahead
+// `=(?!=)` so equality (`==`, `===`), `!==`, `>=`, `<=` are excluded;
+// `+=` and assignment (`=`) are retained.
 var promptIdentifierPattern = regexp.MustCompile(
-	`(?i)\b(?:system_?prompt|user_?prompt|prompt|instruction|message[s]?)\s*(?:[+]?=|\.append\(|\.format\()`,
+	`(?i)\b(?:system_?prompt|user_?prompt|prompt|instruction|message[s]?)\s*(?:\+=|=(?:[^=]|$)|\.append\(|\.format\()`,
 )
 
 // userInputShapes is the "this looks user-controlled" half. Each entry
