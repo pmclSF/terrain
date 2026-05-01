@@ -1,0 +1,14 @@
+schemaVersion: 1
+fixture: no-assertions
+description: |
+  A Jest test file declares 3 tests but zero expect() calls. Two
+  detectors fire on the same file: weakAssertion (high-severity
+  zero-assertion branch) and assertionFreeTest (per-file emit). The
+  fixture exercises the multi-signal-per-file path of the matcher.
+expected:
+  - type: weakAssertion
+    file: src/order.test.js
+    notes: "0 assertions, 3 tests — high-severity branch"
+  - type: assertionFreeTest
+    file: src/order.test.js
+    notes: "per-file assertion-free emit"
