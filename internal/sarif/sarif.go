@@ -36,6 +36,12 @@ type Rule struct {
 	ID               string     `json:"id"`
 	ShortDescription Message    `json:"shortDescription"`
 	DefaultConfig    RuleConfig `json:"defaultConfiguration,omitempty"`
+	// HelpURI links to the rule's documentation. SARIF consumers
+	// (GitHub Code Scanning, IDE integrations) render this as a
+	// clickthrough so a finding pivots to its docs/rules/<rule>.md
+	// page. Pre-0.2.x this field was missing entirely; rule pages were
+	// dead-end strings.
+	HelpURI string `json:"helpUri,omitempty"`
 }
 
 // RuleConfig specifies the default severity level.

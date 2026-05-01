@@ -65,7 +65,7 @@ real-shaped key would risk repository secret-scanner alerts — see
 
 ### Calibration corpus + load-bearing gate
 
-- **27 fixtures × 32 distinct AI/quality/health/migration/structural/
+- **27 fixtures × 33 distinct AI/quality/health/migration/structural/
   runtime signal types fire on real-shaped fixtures.** *The gate is a
   recall gate, not a precision gate*: extra signals emitted but not
   labelled are silent (counted neither as TP nor FP). The "100%"
@@ -94,8 +94,8 @@ real-shaped key would risk repository secret-scanner alerts — see
 
 The canonical 11-command surface ships as non-breaking namespace
 dispatchers (`terrain report`, `terrain migrate`, `terrain config`)
-alongside the historical 33 top-level commands. The binary today
-accepts ~44 top-level entries; the 11-command shape is the
+alongside the historical 32 top-level commands. The binary today
+accepts ~43 top-level entries; the 11-command shape is the
 *recommended* surface, not the only-reachable surface, and `terrain
 --help` still lists the legacy commands. Legacy commands remain
 through 0.2; in-band deprecation warnings are deferred to 0.2.x;

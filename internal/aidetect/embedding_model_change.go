@@ -141,7 +141,7 @@ func buildEmbeddingChangeSignal(path string, line int, identifier string, matche
 		Explanation:     "File references embedding model `" + identifier + "` but the project has no retrieval-shaped eval scenario. A future model swap will silently change retrieval quality.",
 		SuggestedAction: "Add a retrieval eval scenario (Ragas, Promptfoo, or DeepEval) that exercises this surface so future embedding swaps surface as a quality regression instead of going unnoticed.",
 
-		SeverityClauses: []string{"sev-medium-005"},
+		SeverityClauses: []string{"sev-medium-008"},
 		Actionability:   models.ActionabilityScheduled,
 		LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 		AIRelevance:     models.AIRelevanceHigh,

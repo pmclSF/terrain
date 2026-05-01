@@ -12,13 +12,35 @@ release blocker.
 ## Versioning
 
 Snapshots carry a `snapshotMeta.schemaVersion` field formatted as
-`MAJOR.MINOR.PATCH`. Current value: **`1.0.0`** (locked in 0.1.2).
+`MAJOR.MINOR.PATCH`. Current value: **`1.1.0`** (bumped in 0.2.0).
 
 | Bump | Meaning | Allowed without major version change |
 |---|---|---|
-| Patch (`1.0.0` → `1.0.1`) | Documentation, validator messages, JSON Schema clarifications | Always |
+| Patch (`1.1.0` → `1.1.1`) | Documentation, validator messages, JSON Schema clarifications | Always |
 | Minor (`1.0.0` → `1.1.0`) | New optional fields. Consumers ignore unknown fields and continue working | Yes |
 | Major (`1.x.x` → `2.0.0`) | Removing fields, changing field types, changing field semantics, renaming fields | **No** — requires explicit migration |
+
+### Version history
+
+| Version | Release | What changed |
+|---|---|---|
+| `1.0.0` | 0.1.2 | Initial locked schema. |
+| `1.1.0` | 0.2.0 | Added 9 SignalV2 fields on `models.Signal` (all `omitempty`): `severityClauses`, `actionability`, `lifecycleStages`, `aiRelevance`, `ruleId`, `ruleUri`, `detectorVersion`, `relatedSignals`, `confidenceDetail`. Plus `EvalRunEnvelope`, `EvalRunAggregates` types and the `evalRuns []EvalRunEnvelope` field on the snapshot. Plus `scenarios.description` field on terrain.yaml `ScenarioEntry`. Strictly additive. |
+
+### Independent version namespaces
+
+Three version strings ship in 0.2 and are **independent** — a consumer
+that pins one against another will misread:
+
+| String | Where | Current value |
+|---|---|---|
+| Snapshot schema | `snapshotMeta.schemaVersion` in `--json` output | `1.1.0` |
+| Manifest export schema | `schemaVersion` at the top of `docs/signals/manifest.json` | `1.0.0` |
+| SARIF format | `version` in `--format=sarif` output | `2.1.0` |
+
+The manifest export schema is independent because it describes the
+shape of the manifest *file*, not the snapshot. SARIF tracks the
+external standard. Always check the field name, not just the value.
 
 ## Reader behaviour
 

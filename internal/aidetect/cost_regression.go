@@ -92,7 +92,7 @@ func (d *CostRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []models
 				delta*100, baseAvg, curAvg, paired, threshold*100),
 			SuggestedAction: "Investigate the prompt or model change for unintended bloat. Bump the baseline if the increase is intentional.",
 
-			SeverityClauses: []string{"sev-medium-005"},
+			SeverityClauses: []string{"sev-medium-006"},
 			Actionability:   models.ActionabilityScheduled,
 			LifecycleStages: []models.LifecycleStage{models.StageMaintenance, models.StageCIRun},
 			AIRelevance:     models.AIRelevanceHigh,

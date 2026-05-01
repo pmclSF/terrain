@@ -124,7 +124,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 				Explanation: "Scenario `" + sc.Name + "` contains text that appears verbatim in prompt `" + promptPath[surfaceID] + "`. Few-shot examples that overlap with the eval test set inflate scores.",
 				SuggestedAction: "Hold the matching examples out of the prompt's few-shot block, or rewrite the eval input so it isn't a copy of an example. Re-run the eval after de-duplication.",
 
-				SeverityClauses: []string{"sev-medium-005"},
+				SeverityClauses: []string{"sev-medium-009"},
 				Actionability:   models.ActionabilityScheduled,
 				LifecycleStages: []models.LifecycleStage{models.StageTestAuthoring, models.StageMaintenance},
 				AIRelevance:     models.AIRelevanceHigh,
