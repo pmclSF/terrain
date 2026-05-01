@@ -295,8 +295,11 @@ func detectTemplateFiles(root string, existingIDs map[string]bool) []models.Code
 	_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			if info != nil && info.IsDir() {
-				base := filepath.Base(path)
-				if base == "node_modules" || base == ".git" || base == "vendor" || base == "__pycache__" {
+				// Use the same canonical skip set as discoverTestFiles.
+				// Pre-0.2.x this inline list omitted .terrain, dist, build,
+				// target, .next, .venv, etc., causing extra walks on dirs
+				// other walkers correctly avoid.
+				if skipDirs[filepath.Base(path)] {
 					return filepath.SkipDir
 				}
 			}
@@ -368,8 +371,8 @@ func detectRAGConfigFiles(root string, existingIDs map[string]bool) []models.Cod
 	_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			if info != nil && info.IsDir() {
-				base := filepath.Base(path)
-				if base == "node_modules" || base == ".git" || base == "vendor" || base == "__pycache__" || base == ".terrain" {
+				// Canonical skip set; see discoverTestFiles.
+				if skipDirs[filepath.Base(path)] {
 					return filepath.SkipDir
 				}
 			}
