@@ -1,0 +1,10 @@
+schemaVersion: 1
+fixture: weak-assertion-density
+description: |
+  A Jest unit-test file declares 4 tests but only 1 expect() assertion.
+  Density 0.25/test is well below the unit threshold (1.0). The
+  detector must fire weakAssertion (low-density branch).
+expected:
+  - type: weakAssertion
+    file: src/checkout.test.js
+    notes: "4 tests, 1 assertion — 0.25/test is below the 1.0 unit threshold"
