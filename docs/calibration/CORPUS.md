@@ -11,7 +11,7 @@ which it should NOT fire (false-positive guards).
 the integration gate runs in advisory mode (misses log warnings rather
 than failing CI). Per `docs/release/0.2.md`:
 
-- Target by 0.2 close: 50 labelled fixtures.
+- Target by 0.2 close: 50 labeled fixtures.
 - Once the corpus reaches ~25 fixtures, flip the gate from advisory
   (`t.Logf`) to hard-fail (`t.Errorf`) in
   `internal/engine/calibration_integration_test.go`.

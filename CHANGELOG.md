@@ -7,7 +7,7 @@ All notable changes to Terrain are documented here. The format follows
 
 Post-0.2 work tracked separately.
 
-## [0.2.0] — AI parity, calibration gate, CLI compression
+## [0.2.0] — 2026-05-02 — AI parity, calibration gate, CLI compression
 
 The release that turns Terrain's AI story into something testable. Twelve
 new AI detectors ship with calibration anchors at 100% precision/recall
@@ -26,61 +26,91 @@ real-shaped key would risk repository secret-scanner alerts — see
 - **`aiHardcodedAPIKey`** `[stable]` — config files leaking provider API
   keys. *No calibration fixture; tested via unit tests only.*
 - **`aiNonDeterministicEval`** `[stable]` — eval configs declaring a model
-  without pinning `temperature: 0`. Known limitation: scans for the
-  *first* `temperature` key in the file, so multi-provider configs where
-  one provider pins and another doesn't get a single binary verdict.
+  without pinning `temperature: 0`. Per-provider scoping (multi-provider
+  configs emit one verdict per provider entry, not one for the whole
+  file). Accepts `.yaml`, `.yml`, `.json`, `.toml`.
 - **`aiModelDeprecationRisk`** `[stable]` — floating model tags
-  (`gpt-4`, `claude-3-opus`, etc.) instead of dated variants.
+  (`gpt-4`, `claude-3-opus`, etc.) and sunset variants
+  (`text-davinci-003`, `code-davinci-001/002`, `claude-2`). Severity by
+  category: deprecated → High, floating → Medium. Comment-prefix
+  detection covers SQL `--`, INI `;`, HTML `<!--`, Markdown bullet/
+  blockquote, RST `..`, VB `'`.
 - **`aiPromptInjectionRisk`** `[experimental]` — user-input concatenated
-  into prompt-shaped variables without sanitisation. Known false-positive:
-  matches `prompt == user_input` (equality) as well as assignment.
+  into prompt-shaped variables without sanitisation. Multi-line
+  concatenation supported (3-line window). User-input shapes cover
+  Express/Koa, FastAPI typed-parameter constructs, Flask, Django,
+  Pyramid, gRPC, and CLI-arg-driven input.
 - **`aiToolWithoutSandbox`** `[stable]` — destructive agent tools without
-  an approval gate, sandbox flag, or dry-run path. Known limitation:
-  `approvalMarkers` are matched as raw substrings against the marshalled
-  YAML; a description containing the word "preview" or "sandbox" can
-  inadvertently suppress the finding.
+  an approval gate, sandbox flag, or dry-run path. Structural
+  key-name + truthy-value check (description fields excluded so
+  adversarial bypass via prose doesn't suppress the finding).
+  Benign-object whitelist (`delete_cache`, `purge_logs`, etc.) suppresses
+  the bounded-blast-radius cases; always-high verbs (`exec`, `eval`,
+  `send_payment`) keep firing regardless.
 - **`aiSafetyEvalMissing`** `[stable]` — safety-critical AI surfaces
   (prompt / agent / tool / context) with no safety-shaped scenario
-  coverage. Known noise: floods false positives when scenarios are
-  auto-derived (default path) with empty `CoveredSurfaceIDs`.
+  coverage. Implicit path-based coverage when `CoveredSurfaceIDs` is
+  empty (the default for auto-derived scenarios) so the detector
+  doesn't flood false positives on the dominant scenario shape.
 - **`aiHallucinationRate`** `[stable]` — eval runs with
   hallucination-shaped failure rate above the configured threshold.
+  Denominator excludes errored cases (provider crash / timeout) via
+  `caseIsScoreable` so infra noise doesn't dilute the rate.
+  Keyword set covers 17 stems including "not in source", "no
+  evidence", "unsupported", "outside scope", "off-topic".
 - **`aiCostRegression`** `[stable]` — paired-case avg cost-per-case rising
-  more than the configured threshold versus a baseline snapshot. Known
-  caveat: relative-only comparison fires loudly on tiny absolute deltas
-  (e.g. $0.0001 → $0.0002 = +100%); add `MinAbsDelta` is on the 0.3 list.
+  more than the configured threshold versus a baseline snapshot. Both
+  relative AND absolute deltas must clear (default `MinAbsDelta` =
+  $0.0005/case) so $0.0001 → $0.0002 noise doesn't fire. Confidence
+  scales by paired-case count (0.5 at paired=1, plateau at 0.9 from
+  paired≥20). Catastrophic regressions (≥2× cost) escalate to High
+  via `sev-high-008`.
 - **`aiRetrievalRegression`** `[stable]` — retrieval-quality named scores
   dropping versus baseline. Allowlist covers Ragas modern
   (`context_precision`, `context_recall`, `context_entity_recall`),
   Ragas legacy (`context_relevance`), `nDCG`, `coverage`, `faithfulness`,
-  `answer_relevancy`, and LangSmith `relevance_score`.
+  `answer_relevancy`, and LangSmith `relevance_score`. Confidence
+  scales by paired-case count (shared helper with `aiCostRegression`).
 - **`aiPromptVersioning`** `[stable]` — prompt-kind surfaces shipping
-  without a recognisable version marker.
+  without a recognisable version marker. Placeholder tokens
+  (`version: TODO`, `version: TBD`, `version: ???`,
+  `version: placeholder`, `version: none`, `version: unknown`) do NOT
+  satisfy the requirement.
 - **`aiFewShotContamination`** `[experimental]` — prompt few-shot examples
   overlapping verbatim with the inputs of eval scenarios that cover them.
+  Implicit path-based coverage matches the dominant auto-derived
+  scenario shape (empty `CoveredSurfaceIDs`).
 - **`aiEmbeddingModelChange`** `[stable]` — repos referencing an embedding
   model in source without a retrieval-shaped eval scenario. Prefers
   structured RAG surfaces (EvidenceStrong) when present; falls back to
-  file-scan (EvidenceModerate).
+  file-scan (EvidenceModerate). Catches env-var-loaded models via
+  framework constructor patterns (`OpenAIEmbeddings`,
+  `SentenceTransformer`, `langchaingo.NewEmbeddings`, etc.).
 
 ### Calibration corpus + load-bearing gate
 
 - **27 fixtures × 33 distinct AI/quality/health/migration/structural/
   runtime signal types fire on real-shaped fixtures.** *The gate is a
-  recall gate, not a precision gate*: extra signals emitted but not
-  labelled are silent (counted neither as TP nor FP). The "100%"
-  framing in earlier drafts was misleading — the metric measures
-  whether labelled signals still fire, not whether the detector is
-  noise-free. Future false-positive regressions can slip through.
-- **Calibration gate is now load-bearing.** `t.Errorf` (not `t.Logf`)
-  on any unmatched expected label. A future detector change that drops
-  a labelled signal fails CI rather than logging silently.
-- **Known gaps**: `aiHardcodedAPIKey` has no fixture; no DeepEval or
-  Ragas-shaped fixtures (only Promptfoo); no near-threshold fixtures
-  for cost/retrieval/coverage detectors so a comparator-flip regression
-  could survive; matcher key is `(Type, File)` ignoring Symbol so
-  per-symbol arity drift isn't fully detected; `ExpectedAbsent`
-  matching path is wired but unused by any current fixture.
+  recall gate*: every labeled signal must still fire after a detector
+  change. Extra signals emitted but not labeled are silent (counted
+  neither as TP nor FP). The precision-floor companion gate (≥90%
+  precision against a labeled-repo corpus) slipped to 0.3 — see
+  `0.2-known-gaps.md` "Calibration corpus follow-ups".
+- **Calibration gate is now load-bearing.** `t.Errorf` on any
+  unmatched expected label. Empty-corpus bypass closed: `t.Skipf` →
+  `t.Fatalf` with `minFixtures=25` assertion. Deletion no longer
+  skips the gate.
+- **Match-key precision improved.** Matcher key now includes `Symbol`
+  in addition to `(Type, File)` so multi-symbol fixtures distinguish
+  "fired per-symbol" from "fired once on the same line."
+  `ExpectedAbsent` path matching uses the same normalization as the
+  positive-match path, fixing eval-data detectors that stamp absolute
+  paths.
+- **Known gaps deferred to 0.3**: `aiHardcodedAPIKey` has no fixture
+  (constructing a real-shaped key risks repo secret-scanner alerts);
+  no DeepEval or Ragas-shaped fixtures (only Promptfoo); no near-
+  threshold fixtures for cost/retrieval/coverage detectors so a
+  comparator-flip regression could survive.
 - **Eval-data fixture authoring.** Calibration runner auto-discovers
   per-fixture `eval-runs/{promptfoo,deepeval,ragas}.json` and
   `baseline.json`. Synthesises baseline snapshots from
@@ -207,7 +237,7 @@ Drift fails `make docs-verify` (CI gate).
   `cosign` is not installed on the host (returns
   `verified: false, reason: 'cosign-missing'`) rather than aborting.
   The hard-fail framing in `docs/release/0.2.md` overstates the
-  current behaviour. Promoting to mandatory cosign verification
+  current behavior. Promoting to mandatory cosign verification
   (with `TERRAIN_INSTALLER_SKIP_VERIFY=1` as the documented
   escape) is on the 0.2.x list.
 
@@ -237,14 +267,72 @@ Drift fails `make docs-verify` (CI gate).
   `convert` its own namespace dispatcher with `runConvertCLI` as the
   fall-through.
 
+### Polish (release-prep adversarial review fixes)
+
+Beyond the headline detector + CLI work, two parallel adversarial-
+review passes (`/gambit:parallel-agents` × 7 domains, ~245 findings
+after dedup) closed the verified P0/P1 subset before tag:
+
+- **Release infra**: `npm-release` job adds `setup-go` (would have
+  crashed at first publish via `prepublishOnly → verify-pack.js → go
+  build`); `supply-chain.md` drops a phantom `windows/arm64` artifact
+  goreleaser doesn't build; SLSA L2 build-provenance via
+  `actions/attest-build-provenance@v3` is documented; new
+  `release-smoke` job downloads + verifies the published archive
+  reports the tag's version.
+- **Engine self-diagnostic**: `detectorPanic` added to
+  `models.SignalCatalog` + manifest. Pre-fix `safeDetect`'s panic-
+  recovery emitted a sentinel that `ValidateSnapshot` then rejected as
+  unknown, dropping the whole snapshot — defeating the graceful-
+  degradation promise. `RequiresGraph` mismatch now surfaces a
+  detectorPanic-shaped diagnostic instead of silently dropping the
+  registration.
+- **Eval adapters**: Promptfoo errors-bucket wired through the row-
+  derived stats fallback so provider-crash rows land in
+  `Aggregates.Errors` (not `Failures`); per-case cost falls back to
+  top-level `cost` field when `r.response.tokenUsage.cost` is zero;
+  `createdAt` magnitude check (seconds vs millis) handles v4 CLI
+  variants. DeepEval gains `runId` fallback (newer 1.x shape) and
+  metric-name whitespace normalization. Ragas accepts
+  `evaluation_results` (modern ≥0.1.0) and `scores` (DataFrame export)
+  shapes alongside legacy `results`. Envelope `SourcePath` now
+  repo-relative (forward-slash normalized) so SARIF output doesn't
+  leak developer home directories.
+- **CLI**: 14 legacy commands gain `legacyDeprecationNotice` calls so
+  `TERRAIN_LEGACY_HINT=1` produces uniform migration prompts;
+  `--read-only` on `terrain serve` promoted from no-op to actual HTTP
+  405 enforcement; `terrain version --json` includes
+  `schemaVersion`; `terrain show`/`explain` use a dedicated `exit 5
+  (not found)` so CI scripts can branch on missing-entity vs analysis
+  failure. `runDepgraph` routed through `AnalyzeContext` for Ctrl-C
+  unwind.
+- **Determinism**: `sortSignals` adds `Symbol` as a tiebreaker after
+  `Line` and switches to `sort.SliceStable` so byte-identical snapshot
+  output under `SOURCE_DATE_EPOCH` survives signals on the same
+  (Type, File, Line) but different symbols.
+- **Supply chain hardening**: every PR-triggered workflow gains
+  `concurrency` + `cancel-in-progress` so force-pushes don't pile up
+  runs; `timeout-minutes` on every job (15-45min); CodeQL Python
+  matrix dropped (no production Python under analysis);
+  `COSIGN_EXPERIMENTAL=1` removed from cosign 2.x invocations;
+  installer redirect chain capped at 5; goreleaser archives ship
+  `LICENSE` + `README.md`.
+- **Documentation**: `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1);
+  three issue templates (bug-report, false-positive, feature-request);
+  new `docs/glossary.md`, `docs/versioning.md`,
+  `docs/compatibility.md`; per-framework integration guides under
+  `docs/integrations/{promptfoo,deepeval,ragas}.md`;
+  `docs/internal/README.md` disclaimer so the public docs tree
+  doesn't mix planning artifacts with shipping documentation.
+
 ### Deferred to 0.3
 
 Items called out in `docs/release/0.2.md` that didn't ship and are
 explicitly deferred:
 
-- **Scoring v2 band re-anchoring** — needs a corpus of labelled
+- **Scoring v2 band re-anchoring** — needs a corpus of labeled
   *repositories* (not just per-detector calibration fixtures) to derive
-  percentile-based band thresholds. The 50-labelled-repo corpus
+  percentile-based band thresholds. The 50-labeled-repo corpus
   promised as 0.2 critical-path item #4 also slips here.
 - **Conversion top-3 fixture corpora to A-grade with 95% post-conversion
   pass rate** — was a Tier-2 release gate in `docs/release/0.2.md`;

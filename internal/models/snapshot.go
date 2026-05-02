@@ -170,9 +170,9 @@ type TestSuiteSnapshot struct {
 
 	Signals []Signal `json:"signals,omitempty"`
 
-	// EvalRuns carries normalised eval-framework results when an
+	// EvalRuns carries normalized eval-framework results when an
 	// adapter (Promptfoo, DeepEval, Ragas, ...) parsed an artifact
-	// during analyse. Detectors that compare against a baseline
+	// during analyze. Detectors that compare against a baseline
 	// (aiCostRegression, aiHallucinationRate, aiRetrievalRegression)
 	// consume this field; today only the Promptfoo adapter ships, so
 	// most snapshots leave it empty. SignalV2 0.2 field.

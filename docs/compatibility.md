@@ -55,7 +55,7 @@ calibration corpus and conversion-direction A-grade ratings.
 
 Tier 1 = stable detector + structural model + at least one
 calibration fixture. Tier 2 = detected and counted, but with
-shallower structural modelling.
+shallower structural modeling.
 
 ### AI eval frameworks
 
@@ -65,7 +65,7 @@ shallower structural modelling.
 | DeepEval | testCases shape (older) + runId shape (1.x) |
 | Ragas | results / evaluation_results / scores shapes; ≥0.1.0 modern metrics |
 
-Adapter behaviour: each framework's per-case score, cost, and
+Adapter behavior: each framework's per-case score, cost, and
 failure-reason data flow into the snapshot's `EvalRuns` envelope
 and feed `aiCostRegression` / `aiHallucinationRate` /
 `aiRetrievalRegression`.
@@ -93,5 +93,5 @@ The full version history is in
 ## CLI / output stability
 
 See [`docs/versioning.md`](versioning.md) for the semver contract,
-including which surface changes are breaking vs behaviour-only vs
+including which surface changes are breaking vs behavior-only vs
 bug-fix.

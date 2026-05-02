@@ -19,7 +19,7 @@ verified against:
 
 - The upstream Tree-sitter grammar repos for each language. The
   smacker bindings vendor a specific snapshot of each grammar; any
-  change to that snapshot can shift parser behaviour, even within a
+  change to that snapshot can shift parser behavior, even within a
   same-language upgrade.
 - CGO toolchain compatibility. Tree-sitter requires a C compiler at
   build time; new bindings revisions occasionally bump the minimum
@@ -49,7 +49,7 @@ fixture set if a grammar's coverage is light.
 
 `gopkg.in/yaml.v3` parses eval configs, agent definitions, and the
 calibration `labels.yaml` schema. Pinned to the v3 line because the
-v3 → v4 migration changed default behaviours (escaping, anchor
+v3 → v4 migration changed default behaviors (escaping, anchor
 handling) that would break existing fixtures.
 
 ## NPM lockfile policy

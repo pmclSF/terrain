@@ -141,7 +141,7 @@ func TestModelDeprecation_FlagsCodeDavinciDatedVariants(t *testing.T) {
 }
 
 // TestModelDeprecation_BroaderCommentPrefixes locks in the 0.2
-// ship-blocker that pre-0.2 commentLooksLikeChangeLog only recognised
+// ship-blocker that pre-0.2 commentLooksLikeChangeLog only recognized
 // `#`, `//`, `*`. SQL/Lua `--`, INI `;`, HTML `<!--`, Markdown bullet
 // `-` / `*` / `>`, and reStructuredText `..` styles all caused false
 // positives in CHANGELOG-shaped snippets that quoted deprecated tags.

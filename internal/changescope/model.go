@@ -103,11 +103,17 @@ type AIScenarioSummary struct {
 	Reason     string `json:"reason"`
 }
 
-// AISignalSummary is a compact signal entry for PR display.
+// AISignalSummary is a compact signal entry for PR display. File +
+// Line let the renderer surface concrete navigation targets and
+// group/dedupe by location instead of dumping repeated taxonomy lines
+// into the PR comment.
 type AISignalSummary struct {
 	Type        string `json:"type"`
 	Severity    string `json:"severity"`
 	Explanation string `json:"explanation"`
+	File        string `json:"file,omitempty"`
+	Line        int    `json:"line,omitempty"`
+	Symbol      string `json:"symbol,omitempty"`
 }
 
 // TestSelection is a recommended test with reasoning about why it was selected.

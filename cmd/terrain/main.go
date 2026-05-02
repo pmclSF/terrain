@@ -80,7 +80,7 @@ const defaultSlowThresholdMs = 5000.0
 //	     Lets CI distinguish "the thing you asked about isn't here"
 //	     from "the analysis crashed."
 //
-// Splitting code 2 cleanly into "usage" vs "policy" is a behaviour-breaking
+// Splitting code 2 cleanly into "usage" vs "policy" is a behavior-breaking
 // change that needs a migration window. It's documented in 0.2 as an
 // explicit milestone in docs/release/0.2.md.
 const (

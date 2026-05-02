@@ -14,12 +14,12 @@ but specific.
 
 <!-- Check all that apply. -->
 
-- [ ] Bug fix (no behaviour change beyond the fix)
-- [ ] New feature (additive only — no changes to existing behaviour)
-- [ ] Breaking change (alters existing behaviour, schema, CLI, or output shape)
+- [ ] Bug fix (no behavior change beyond the fix)
+- [ ] New feature (additive only — no changes to existing behavior)
+- [ ] Breaking change (alters existing behavior, schema, CLI, or output shape)
 - [ ] Documentation only
 - [ ] Test or tooling only
-- [ ] Refactor (behaviour-preserving)
+- [ ] Refactor (behavior-preserving)
 
 ## Reviewer checklist
 
@@ -61,5 +61,5 @@ note. If unsure, see docs/schema/COMPAT.md for the contract.
 <!--
 - [ ] Smoke-tested locally with: ...
 - [ ] Added unit / integration tests for: ...
-- [ ] Regression-tested existing behaviour for: ...
+- [ ] Regression-tested existing behavior for: ...
 -->

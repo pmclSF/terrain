@@ -644,7 +644,7 @@ func buildEvalCommand(framework string, det *aidetect.DetectResult, selected []a
 // buildEvalCommandWithOutput returns argv plus the output path the
 // framework will (be asked to) write to. Returns "" when the
 // framework's CLI doesn't expose a structured-output flag we
-// recognise.
+// recognize.
 func buildEvalCommandWithOutput(framework string, det *aidetect.DetectResult, selected []aiRunScenario, snap *models.TestSuiteSnapshot) (args []string, outputPath string) {
 	switch framework {
 	case "promptfoo":

@@ -1,6 +1,6 @@
 package models
 
-// EvalRunEnvelope is the snapshot-level wrapper around one normalised
+// EvalRunEnvelope is the snapshot-level wrapper around one normalized
 // eval-framework result. The detailed EvalRunResult lives in
 // internal/airun (so models doesn't depend on adapter implementations);
 // the envelope carries enough metadata for the renderer + detectors

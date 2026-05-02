@@ -58,7 +58,7 @@ func printConfigUsage() {
 	fmt.Println("  telemetry [--on|--off|--status] manage local telemetry config")
 }
 
-// runConfigFeedbackCLI mirrors the legacy `terrain feedback` behaviour.
+// runConfigFeedbackCLI mirrors the legacy `terrain feedback` behavior.
 // Pure side-effect prints; no state change. Kept here so the legacy
 // dispatch in main.go can call the same function once we collapse the
 // inline implementation.

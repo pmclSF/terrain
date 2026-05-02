@@ -15,7 +15,7 @@ calibration work lands.
 
 ## What the engine produces
 
-For every analysed repository the risk engine emits a list of
+For every analyzed repository the risk engine emits a list of
 `RiskSurface` entries. Each surface has:
 
 - a **type** (`reliability`, `change`, `speed`, `governance`)
@@ -85,7 +85,7 @@ score ≥ 16              → critical
 These four thresholds are uncalibrated. They were chosen during 0.1.0 to
 produce three roughly evenly-sized bands across our internal sample of
 ~30 repos. 0.3 replaces them with corpus-percentile-derived values
-calibrated against 50–100 labelled repositories; see
+calibrated against 50–100 labeled repositories; see
 `docs/release/0.2.md` for the calibration plan and
 `docs/release/feature-status.md` for the status of related work.
 
@@ -112,11 +112,11 @@ inline in `risk_engine.go` and tested in `risk_engine_test.go`.
 ## Why these numbers, today?
 
 Short answer: they were carried forward from 0.1.0 because changing them
-is a behaviour-breaking event for every customer that has tuned policy
-gates around current band assignments. 0.1.2 made the existing behaviour
+is a behavior-breaking event for every customer that has tuned policy
+gates around current band assignments. 0.1.2 made the existing behavior
 transparent and inspectable; 0.2.0 ships the calibration corpus runner
 that provides the regression gate without changing the model. The model
-itself is replaced in 0.3 once the labelled-corpus calibration lands.
+itself is replaced in 0.3 once the labeled-corpus calibration lands.
 
 Long answer:
 
@@ -127,16 +127,16 @@ Long answer:
    a representative sample of repositories, eyeballed where the
    boundaries should land, and locked them.
 3. We have always known **calibration is needed**. The plan since 0.1.0
-   has been to land it once we had a labelled corpus large enough to
+   has been to land it once we had a labeled corpus large enough to
    resist over-fitting. The 0.2.0 calibration corpus is the load-bearing
-   gate (regression-only); the labelled corpus + tuned constants arrive
+   gate (regression-only); the labeled corpus + tuned constants arrive
    in 0.3.
 
 ## What 0.3 changes
 
 When the calibration corpus lands:
 
-- Severity weights become whatever maximises labelled-repo precision/recall.
+- Severity weights become whatever maximises labeled-repo precision/recall.
 - Band thresholds become corpus percentiles (e.g., the 75th-percentile
   score across the corpus might become the Medium/High boundary).
 - The hybrid `max(density, absolute)` formula is re-evaluated against

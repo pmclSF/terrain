@@ -129,7 +129,7 @@ function isCosignAvailable() {
 //   - TERRAIN_INSTALLER_SKIP_VERIFY=1 — fully opt out (CI / air-gapped).
 //     Prints a WARNING so the bypass is auditable.
 //   - TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1 — opt-in degrade-to-
-//     checksum behaviour for hosts that genuinely cannot install
+//     checksum behavior for hosts that genuinely cannot install
 //     cosign. Pre-0.2.x default; opt-in in 0.2.x.
 //
 // Once cosign is on the host, every verify failure is a hard error.
