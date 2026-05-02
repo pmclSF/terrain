@@ -1129,15 +1129,24 @@ func ingestGauntletArtifacts(paths []string) ([]*gauntlet.Artifact, error) {
 // malformed — the user explicitly asked for the comparison via
 // --baseline, so a silent fallback would mask intent.
 func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
-	data, err := os.ReadFile(path)
+	// 0.2.0 final-polish: stream-decode via json.NewDecoder rather
+	// than loading the whole file into memory. A 100MB historical
+	// snapshot is tractable; multi-repo / multi-month historical
+	// snapshots can run several hundred MB and used to spike RSS by
+	// the same amount under os.ReadFile + json.Unmarshal.
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("read: %w", err)
 	}
-	if len(data) == 0 {
+	defer f.Close()
+	// Empty-file check via stat to avoid pulling the file content
+	// into memory just to count length.
+	if fi, statErr := f.Stat(); statErr == nil && fi.Size() == 0 {
 		return nil, fmt.Errorf("baseline file is empty")
 	}
 	var snap models.TestSuiteSnapshot
-	if err := json.Unmarshal(data, &snap); err != nil {
+	dec := json.NewDecoder(f)
+	if err := dec.Decode(&snap); err != nil {
 		return nil, fmt.Errorf("decode: %w", err)
 	}
 	// A null JSON value decodes to a zero TestSuiteSnapshot — non-nil
