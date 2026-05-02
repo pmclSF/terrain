@@ -52,8 +52,11 @@ type Config struct {
 	// Port is the bind port. Defaults to DefaultPort.
 	Port int
 
-	// ReadOnly, when true, rejects any future state-changing API endpoint.
-	// Today every handler is read-only; the flag is reserved.
+	// ReadOnly, when true, rejects any non-GET/HEAD/OPTIONS request with
+	// HTTP 405 in the security middleware. Every endpoint shipped in 0.2
+	// is read-only (GET-only routes), so this is a contract gate for
+	// future state-changing endpoints rather than a behaviour change for
+	// today's traffic.
 	ReadOnly bool
 }
 
@@ -139,6 +142,23 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 // fetch() calls to 127.0.0.1) are rejected with 403.
 func (s *Server) withSecurity(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// ReadOnly enforcement: when set, only GET / HEAD / OPTIONS are
+		// allowed. 0.2.0 promotes this from "reserved no-op" to active
+		// enforcement so users who set --read-only get the contract
+		// they ticked the box for, even though every current handler
+		// is GET. Any future state-changing endpoint will be rejected
+		// here without the handler needing per-route logic.
+		if s.cfg.ReadOnly {
+			switch r.Method {
+			case http.MethodGet, http.MethodHead, http.MethodOptions:
+				// allowed
+			default:
+				w.Header().Set("Allow", "GET, HEAD, OPTIONS")
+				w.WriteHeader(http.StatusMethodNotAllowed)
+				fmt.Fprintln(w, "method not allowed: server is in --read-only mode")
+				return
+			}
+		}
 		// Reject requests whose Origin/Referer don't match the bind host.
 		// Empty Origin/Referer (e.g. curl, server-to-server) is allowed
 		// because the only attacker we're filtering here is a browser.

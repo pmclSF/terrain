@@ -295,7 +295,7 @@ chmod +x terrain
 sudo mv terrain /usr/local/bin/
 ```
 
-Binaries are available for macOS, Linux, and Windows (amd64 and arm64).
+Binaries are available for macOS (amd64 + arm64), Linux (amd64 + arm64), and Windows (amd64).
 
 ### Build from source
 
@@ -328,6 +328,9 @@ terrain impact --base main
 
 # Get prioritized recommendations
 terrain insights
+
+# Drill into a specific test, code unit, owner, or finding
+terrain explain src/auth/login.test.ts
 ```
 
 ## GitHub Actions templates
@@ -574,6 +577,9 @@ Exit code 0 = pass, 2 = violations found, 1 = error.
 - [Canonical User Journeys](docs/product/canonical-user-journeys.md) — primary workflows and expected outcomes
 - [Signal Model](docs/signal-model.md) — the core signal abstraction
 - [Architecture](docs/architecture/) — design documents and technical specifications
+- [Feature Status](docs/release/feature-status.md) — what's stable, experimental, or planned in the current release
+- [CHANGELOG](CHANGELOG.md) — release history and per-version changes
+- [Security](SECURITY.md) — supported versions and vulnerability disclosure
 - [Contributing](CONTRIBUTING.md) — how to build, test, and extend Terrain
 
 ## Development
