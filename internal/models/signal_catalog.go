@@ -110,6 +110,12 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	// the entire snapshot the moment any detector panicked, defeating
 	// the panic-recovery shipped in 0.2.
 	"detectorPanic": {Source: SignalSourceStatic},
+
+	// suppressionExpired is emitted by the suppression-loading pass
+	// when a `.terrain/suppressions.yaml` entry has passed its
+	// `expires` date. The user-facing finding it covered fires again,
+	// AND this signal surfaces so silent rot doesn't accumulate.
+	"suppressionExpired": {Source: SignalSourceStatic},
 }
 
 // KnownSignalTypes is the canonical signal vocabulary accepted by snapshot

@@ -113,6 +113,15 @@ type PipelineOptions struct {
 	// If nil, no progress is reported. Progress is always written to
 	// stderr (not stdout) to avoid interfering with JSON or report output.
 	OnProgress ProgressFunc
+
+	// SuppressionsPath, when set, points at a `.terrain/suppressions.yaml`
+	// file. The pipeline loads it after sorting + ID assignment and
+	// removes matching signals from the snapshot. If unset, the engine
+	// falls back to `.terrain/suppressions.yaml` under the analyzed
+	// root; missing file is not an error.
+	//
+	// See `internal/suppression` for the schema and matching semantics.
+	SuppressionsPath string
 }
 
 // RunPipeline executes the full analysis pipeline:
@@ -719,6 +728,15 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	// rename/move of the signal's underlying location. See
 	// `internal/identity.BuildFindingID` for the format.
 	assignFindingIDs(snapshot)
+
+	// Step 10c: apply user-defined suppressions from
+	// `.terrain/suppressions.yaml` (or opt.SuppressionsPath).
+	// Suppressions match against FindingID (set in 10b) or against
+	// (signal_type, file glob). Expired entries surface as
+	// `suppressionExpired` warning signals so silent rot doesn't
+	// accumulate. Missing file is fine — most users won't have one
+	// in 0.2.0.
+	applySuppressions(snapshot, root, opt.SuppressionsPath, time.Now())
 
 	if err := models.ValidateSnapshot(snapshot); err != nil {
 		return nil, fmt.Errorf("invalid snapshot produced by pipeline: %w", err)

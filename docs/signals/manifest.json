@@ -1198,6 +1198,23 @@
       ],
       "ruleId": "TER-ENGINE-001",
       "ruleUri": "docs/rules/engine/detector-panic.md"
+    },
+    {
+      "type": "suppressionExpired",
+      "constName": "SignalSuppressionExpired",
+      "domain": "governance",
+      "status": "stable",
+      "title": "Suppression Expired",
+      "description": "A `.terrain/suppressions.yaml` entry has passed its `expires` date and is no longer in effect. The underlying findings will fire again until the entry is renewed or removed.",
+      "remediation": "Edit `.terrain/suppressions.yaml`: extend the `expires` date if the suppression is still warranted, or remove the entry if the underlying issue is resolved.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 1,
+      "confidenceMax": 1,
+      "evidenceSources": [
+        "policy"
+      ],
+      "ruleId": "TER-ENGINE-002",
+      "ruleUri": "docs/rules/engine/suppression-expired.md"
     }
   ]
 }
