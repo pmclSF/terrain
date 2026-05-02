@@ -13,7 +13,7 @@ User-controlled input is concatenated into a prompt without escaping, system-pro
 
 ## Remediation
 
-Use a prompt template with explicit user-content boundaries, or run user input through a sanitiser.
+Use a prompt template with explicit user-content boundaries, or run user input through a sanitizer.
 
 ## Promotion plan
 
@@ -112,7 +112,7 @@ prompt = (
 ## Why it might be a false positive
 
 - The "user input" variable is actually trusted (e.g. a hard-coded
-  config value, or already-sanitised). Add an `expectedAbsent` entry
+  config value, or already-sanitized). Add an `expectedAbsent` entry
   in the relevant calibration fixture.
 - The `prompt` variable name is reused for something that isn't
   actually a prompt (e.g. a CLI prompt string). Rename or add a
@@ -124,5 +124,5 @@ prompt = (
   AST-precise taint analysis lands in 0.3.
 - Skips comment-only lines. A genuinely vulnerable line that ends
   with a trailing `# explanatory comment` is still flagged.
-- Doesn't recognize framework-specific sanitisers — your
+- Doesn't recognize framework-specific sanitizers — your
   `escape(user_input)` is treated identically to the bare value.

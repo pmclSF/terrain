@@ -10,12 +10,19 @@ installer) ship for:
 
 | OS | Architectures | Tier |
 |----|---------------|------|
-| Linux | amd64, arm64 | Tier 1 (full CI matrix) |
-| macOS | amd64, arm64 | Tier 1 (full CI matrix) |
-| Windows | amd64 | Tier 1 (full CI matrix) |
+| Linux | amd64, arm64 | Tier 1 (extended CI: race detector, determinism, smoke) |
+| macOS | amd64, arm64 | Tier 1 binary target (CI: unit-test parity) |
+| Windows | amd64 | Tier 1 binary target (CI: unit-test parity) |
 | Windows arm64 | — | Not built (planned 0.3) |
 
-Tier 1 means CI runs `go test ./...` on every PR before merge.
+Tier 1 means a pre-built binary ships for that OS/arch and `go test
+./...` runs in CI on every PR before merge. Extended gates (race
+detector, byte-identical determinism check, post-release smoke) run on
+Linux only today; macOS and Windows are unit-test parity. The
+linux/amd64 release archive is the only platform smoke-tested
+post-publish — extending to darwin/arm64 and windows/amd64 is on the
+0.2.x release-workflow list.
+
 Source builds work on any platform Go 1.23+ supports.
 
 ## Build-time
@@ -33,7 +40,9 @@ Source builds work on any platform Go 1.23+ supports.
 
 Terrain's `analyze` command structurally models tests for the
 following frameworks. "Tier" reflects fixture coverage in the
-calibration corpus and conversion-direction A-grade ratings.
+calibration corpus. (Conversion-direction A-grade ratings, originally
+planned to feed this tier, slipped to 0.3 — see `CHANGELOG.md`
+"Deferred to 0.3".)
 
 | Framework | Language | Tier |
 |-----------|----------|------|

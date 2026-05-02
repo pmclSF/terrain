@@ -490,8 +490,8 @@ Two workflow templates are provided in `.github/workflows/`:
 ### `terrain-pr.yml` — Test Selection Gate
 Runs on every PR. Analyzes impact, selects relevant tests, runs them, and posts a PR comment with the results.
 
-### `terrain-ai.yml` — AI Validation Gate
-Runs on every PR. Checks AI surface coverage, runs impact-scoped eval scenario selection, and posts a PR comment with AI validation results. Blocks the PR if the AI gate returns "block" (uncovered safety-critical surfaces, accuracy regressions, etc.).
+### `terrain-ai.yml` — AI Risk Review Gate
+Runs on every PR. Checks AI surface coverage, runs impact-scoped eval scenario selection, and posts a PR comment summarizing the AI risk review (uncovered surfaces, blocking signals, eval regressions). Blocks the PR if the gate returns "block" (uncovered safety-critical surfaces, accuracy regressions, etc.). The 0.2 detector set is regex/heuristic for the AI surface area; AST-grade taint analysis and labeled-repo precision floors land in 0.3.
 
 Both workflows are opt-in — copy them to your repository's `.github/workflows/` directory to enable.
 

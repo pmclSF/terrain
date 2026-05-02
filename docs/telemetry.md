@@ -34,14 +34,18 @@ The local file exists so you (or your team) can optionally analyze usage pattern
 
 ```bash
 # Check current status
-terrain telemetry
+terrain config telemetry
 
 # Enable
-terrain telemetry --on
+terrain config telemetry --on
 
 # Disable
-terrain telemetry --off
+terrain config telemetry --off
 ```
+
+The bare `terrain telemetry` form is a legacy alias and prints a
+deprecation hint when `TERRAIN_LEGACY_HINT=1` is set. Removal targets
+0.3.
 
 Or set the environment variable (overrides file config):
 

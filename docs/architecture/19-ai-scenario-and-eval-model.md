@@ -17,7 +17,7 @@
 
 ### Graph Nodes
 
-Five node types support AI validation in the dependency graph:
+Five node types support AI risk review in the dependency graph:
 
 | Node Type | Family | Status | Purpose |
 |-----------|--------|--------|---------|
@@ -31,7 +31,7 @@ Scenario nodes implement `ValidationTarget` and participate in all validation qu
 
 ### Reasoning Path
 
-The full AI validation reasoning path traverses five graph families:
+The full AI risk review reasoning path traverses five graph families:
 
 ```
 CodeSurface → BehaviorSurface → Scenario → Environment → ExecutionRun

@@ -31,7 +31,7 @@ import (
 //
 //   ---
 //
-//   ### AI Validation
+//   ### AI Risk Review
 //
 //   ---
 //
@@ -141,7 +141,7 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 		renderTestRecommendations(line, pr)
 	}
 
-	// --- AI Validation ---
+	// --- AI Risk Review ---
 	if pr.AI != nil {
 		hr()
 		renderAISection(line, pr)
@@ -175,7 +175,7 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 // renderFindingsCards renders up to limit findings using the parallel
 // "card" shape — file path first in code-format, severity badge in
 // line, dash separator, plain description, and an optional action
-// arrow. Matches the AI Validation render so the whole comment has a
+// arrow. Matches the AI Risk Review render so the whole comment has a
 // consistent visual rhythm. Trails a blank line so the next section
 // header has breathing room.
 func renderFindingsCards(line func(string, ...any), findings []ChangeScopedFinding, limit int) {
@@ -401,9 +401,9 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 		blank()
 	}
 
-	// AI validation summary.
+	// AI risk review summary.
 	if ai := pr.AI; ai != nil {
-		line("AI Validation")
+		line("AI Risk Review")
 		line(strings.Repeat("-", 40))
 		line("  Scenarios: %d of %d selected", ai.SelectedScenarios, ai.TotalScenarios)
 		if len(ai.ImpactedCapabilities) > 0 {
@@ -453,14 +453,14 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 	}
 }
 
-// renderAISection renders the AI validation summary in markdown.
+// renderAISection renders the AI risk review summary in markdown.
 func renderAISection(line func(string, ...any), pr *PRAnalysis) {
 	ai := pr.AI
 	if ai == nil {
 		return
 	}
 
-	line("### AI Validation")
+	line("### AI Risk Review")
 	line("")
 
 	// Compact context line: capabilities + scenarios in one row.

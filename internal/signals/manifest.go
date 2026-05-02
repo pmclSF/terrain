@@ -794,7 +794,7 @@ var allSignalManifest = []ManifestEntry{
 		Domain: models.CategoryAI, Status: StatusExperimental,
 		Title:           "Prompt-Injection-Shaped Concatenation",
 		Description:     "User-controlled input is concatenated into a prompt without escaping, system-prompt boundaries, or structured input boundaries.",
-		Remediation:     "Use a prompt template with explicit user-content boundaries, or run user input through a sanitiser.",
+		Remediation:     "Use a prompt template with explicit user-content boundaries, or run user input through a sanitizer.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"structural-pattern"},

@@ -1,25 +1,34 @@
 # Terrain
 
-**Map your test terrain.** Understand your test system in 30 seconds.
+**Map your test terrain.** Understand your test system in seconds — typical
+service repos in 5–15s, large monorepos take longer (the headline "30
+seconds" claim refers to repos ≤ 1,000 test files; see Performance below).
 
 ```bash
 # Homebrew
 brew install pmclSF/terrain/mapterrain
 
-# npm
+# npm — note: requires cosign on PATH for signed-binary verification.
+# brew install cosign  (macOS / Linux)
+# scoop install cosign (Windows)
+# Set TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1 to fall back to checksum-only,
+# or TERRAIN_INSTALLER_SKIP_VERIFY=1 to skip verification entirely.
 npm install -g mapterrain
 
 cd your-repo
 terrain analyze
 ```
 
-That's it. No config, no setup, no test execution required.
+No config and no test execution are required for the basic scan. Stronger
+findings (runtime health, eval regression, policy enforcement) are unlocked
+by optional artifacts; degrade gracefully when absent.
 
 > **New here?** Read the [Quickstart Guide](docs/quickstart.md) to understand your first report in 5 minutes.
+> **What ships in 0.2?** See [What 0.2 is and isn't](#what-02-is-and-isnt) below before adopting in CI.
 
 ---
 
-Terrain is a test system intelligence platform. It reads your repository — test code, source structure, coverage data, runtime artifacts, ownership files, and local policy — and builds a structural model of how your tests relate to your code. From that model it surfaces risk, quality gaps, redundancy, fragile dependencies, and migration readiness, all without running a single test.
+Terrain is a test system intelligence platform. It reads your repository — test code, source structure, and (when available) coverage data, runtime artifacts, ownership files, and local policy — and builds a structural model of how your tests relate to your code. From that model it surfaces risk, quality gaps, redundancy, fragile dependencies, and migration readiness on a best-effort basis without running a single test.
 
 The core idea: every codebase has a *test terrain* — the shape of its testing infrastructure, the density of coverage across areas, the hidden fault lines where a fixture change cascades into thousands of tests. Terrain makes that shape visible and navigable so you can make informed decisions about what to test, what to fix, and where to invest.
 
@@ -214,9 +223,45 @@ It's worth stating what Terrain *doesn't* try to do, because the test-tooling sp
 - **Not an LLM eval framework.** Terrain understands AI surfaces (prompts, scenarios, RAG pipelines) and the eval *artifacts* that promptfoo / DeepEval / Ragas produce, but it doesn't run the evals itself. Use those tools to execute; use Terrain to analyze what they produce in CI.
 - **Not a test-flake whack-a-mole tool.** Terrain reports flakiness as a signal among many. If your only need is "rerun flaky tests until they pass", point-tools like `pytest-rerunfailures` or `jest-circus` ship that directly.
 - **Not a developer-productivity dashboard.** Terrain measures the test system, not the people writing tests. It deliberately produces no leaderboards, no per-developer metrics, no "engineer productivity" rankings. Ownership data is used for routing, not scoring.
-- **Not a service.** Terrain runs locally and in your CI. There is no SaaS offering, no telemetry sent off your infrastructure, no account required. Reports stay where you produce them.
+- **Not a service.** Terrain analysis is local. No SaaS, no analytics, no account required. Reports stay where you produce them. (Note: `npm install -g mapterrain` and `brew install` download signed binaries from GitHub Releases as part of installation; analysis itself does not phone home.)
 
 If you're evaluating Terrain against another tool and the boundary isn't obvious, please open an issue — we'll write the comparison entry under `docs/compare/`.
+
+## What 0.2 Is and Isn't
+
+Read this before adopting in CI. Source of truth per-feature is
+[`docs/release/feature-status.md`](docs/release/feature-status.md);
+this is the summary view.
+
+**Stable in 0.2** — covered by tests, documented behavior, won't change
+shape in 0.2.x:
+
+- repository scan + framework detection (Tier-1 frameworks)
+- snapshot generation + schema versioning
+- signal registry + manifest export
+- AI surface inventory (prompt / agent / tool / context / eval / model / scenario)
+- Promptfoo / DeepEval / Ragas eval-artifact ingestion
+- recall regression gate via the 27-fixture calibration corpus
+- 10 of the 12 new AI detectors marked `[stable]`
+- canonical 11-command CLI shape (legacy aliases still work; removal targets 0.3)
+
+**Experimental** — useful but not yet hardened; expect signal/UX changes:
+
+- `aiPromptInjectionRisk` and `aiFewShotContamination` detectors (regex-based; AST-grade taint is 0.3)
+- `terrain serve` local HTTP server (no auth, localhost-only, single-developer use)
+- `terrain portfolio` multi-repo analysis
+- portfolio-level scoring thresholds
+- AI surface inference *precision* (recall is calibration-anchored; precision against a labeled-repo corpus is 0.3)
+
+**Planned for 0.3**:
+
+- per-detector precision benchmarking against a labeled-repo corpus
+- AST-grade taint analysis for prompt injection
+- suppression model (`.terrain/suppressions.yaml`) and the false-positive workflow it enables
+- `terrain ai gate` standalone command
+- plugin architecture for community adapters
+- sandboxing for eval execution
+- removal of the legacy CLI aliases (with a 0.2.x deprecation runway)
 
 ## Who Uses Terrain
 
@@ -448,7 +493,7 @@ jobs:
 | `terrain summary` | Executive summary with risk, trends, benchmark readiness |
 | `terrain focus` | Prioritized next actions |
 | `terrain posture` | Detailed posture breakdown with measurement evidence |
-| `terrain portfolio` | Portfolio intelligence: cost, breadth, leverage, redundancy |
+| `terrain portfolio` | Portfolio intelligence: cost, breadth, leverage, redundancy. *(Top-level canonical command, but feature-status: experimental — multi-repo rollups solidify in 0.3.)* |
 | `terrain metrics` | Aggregate metrics scorecard |
 | `terrain compare` | Compare two snapshots for trend tracking |
 | `terrain select-tests` | Recommend protective test set for a change |

@@ -524,7 +524,7 @@ func TestBuildAIValidationSummary_WithScenarios(t *testing.T) {
 }
 
 // TestBuildAIValidationSummary_WithSignals locks in the contract that
-// the AI validation summary in `terrain pr` output is impact-scoped:
+// the AI risk review summary in `terrain pr` output is impact-scoped:
 // only AI signals whose Location.File appears in the PR's changed-
 // files set are reported as Blocking / Warning. Pre-fix the loop
 // included every AI signal in the snapshot, so a doc-only PR

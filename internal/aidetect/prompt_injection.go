@@ -111,7 +111,7 @@ func (d *PromptInjectionDetector) Detect(snap *models.TestSuiteSnapshot) []model
 				Confidence:  0.7,
 				Location:    models.SignalLocation{File: relPath, Line: h.Line},
 				Explanation: h.Explanation,
-				SuggestedAction: "Use a prompt template with explicit user-content boundaries, or run user input through a sanitiser before concatenation.",
+				SuggestedAction: "Use a prompt template with explicit user-content boundaries, or run user input through a sanitizer before concatenation.",
 
 				SeverityClauses: []string{"sev-high-003"},
 				Actionability:   models.ActionabilityScheduled,
@@ -194,7 +194,7 @@ func scanFileForPromptInjection(path string) []injectionHit {
 				window += "\n" + lines[i+j]
 			}
 			if hasUserInputShape(window) {
-				explanation := "User-controlled input concatenated into a prompt-shaped variable without visible sanitisation."
+				explanation := "User-controlled input concatenated into a prompt-shaped variable without visible sanitization."
 				if !hasUserInputShape(text) {
 					explanation = "Prompt-shaped variable on this line is followed by user-controlled input on the next line(s); review concatenation for escape boundaries."
 				}

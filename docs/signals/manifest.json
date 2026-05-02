@@ -1016,7 +1016,7 @@
       "status": "experimental",
       "title": "Prompt-Injection-Shaped Concatenation",
       "description": "User-controlled input is concatenated into a prompt without escaping, system-prompt boundaries, or structured input boundaries.",
-      "remediation": "Use a prompt template with explicit user-content boundaries, or run user input through a sanitiser.",
+      "remediation": "Use a prompt template with explicit user-content boundaries, or run user input through a sanitizer.",
       "defaultSeverity": "high",
       "confidenceMin": 0.6,
       "confidenceMax": 0.85,

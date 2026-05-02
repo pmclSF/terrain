@@ -10,17 +10,65 @@ Post-0.2 work tracked separately.
 ## [0.2.0] — 2026-05-02 — AI parity, calibration gate, CLI compression
 
 The release that turns Terrain's AI story into something testable. Twelve
-new AI detectors ship with calibration anchors at 100% precision/recall
-on a 27-fixture corpus; the CLI surface compresses 35→11 commands; the
+new AI detectors ship with calibration anchors at **100% recall on a
+27-fixture corpus** (the gate is a recall regression gate; per-detector
+*precision* floors against a labeled-repo corpus are deferred to 0.3 —
+see `docs/release/0.2-known-gaps.md`). The CLI surface compresses 35→11
+canonical commands while keeping every legacy alias working. The
 calibration runner becomes a load-bearing regression gate. Per
 `docs/release/0.2.md`.
+
+### What's stable in 0.2
+
+Read this before adopting 0.2 in CI. Source of truth for per-feature
+detail is `docs/release/feature-status.md`.
+
+**Stable** — covered by tests, documented behavior, won't change shape
+in 0.2.x:
+
+- repository scan + framework detection (Tier-1 frameworks)
+- snapshot generation + schema versioning
+- signal registry + manifest export
+- AI surface inventory (prompt/agent/tool/context/eval/model/scenario)
+- Promptfoo / DeepEval / Ragas eval-artifact ingestion
+- recall regression gate via the 27-fixture calibration corpus
+- 10 of 12 new AI detectors marked `[stable]`
+- canonical 11-command CLI shape (legacy aliases still work; removal
+  targets 0.3)
+
+**Experimental** — useful but not yet hardened; expect signal/UX
+changes:
+
+- `aiPromptInjectionRisk` and `aiFewShotContamination` detectors
+  (regex-based; AST-grade taint is 0.3 work)
+- `terrain serve` local HTTP server (no auth model, localhost-only)
+- `terrain portfolio` multi-repo analysis
+- portfolio-level scoring thresholds
+- AI surface inference *precision* (recall is calibration-anchored;
+  precision against a labeled-repo corpus is 0.3)
+
+**Planned (0.3)**:
+
+- per-detector precision benchmarking against a labeled-repo corpus
+- AST-grade taint analysis for prompt injection
+- suppression model (`.terrain/suppressions.yaml`) and the false-
+  positive workflow it enables
+- `terrain ai gate` standalone command
+- plugin architecture for community adapters
+- sandboxing for eval execution
+- removal of the legacy CLI aliases (with a 0.2.x deprecation runway)
 
 ### AI detector batch (12/12 from the round-4 plan)
 
 10 ship `[stable]`, 2 ship `[experimental]`. 11 of 12 carry calibration
-anchors at 1.00 precision/recall on the per-detector fixture corpus;
-`aiHardcodedAPIKey` ships without a fixture (constructing a non-example
-real-shaped key would risk repository secret-scanner alerts — see
+anchors at **1.00 recall** on the per-detector fixture corpus; precision
+on the same corpus is also 1.00, but the fixture corpus is small (27
+fixtures) and only labeled signals participate, so the precision number
+should be read as "the detectors don't fire spuriously on the *seeded*
+shapes" rather than as a real-world precision floor. The labeled-repo
+precision benchmark is 0.3 work. `aiHardcodedAPIKey` ships without a
+calibration fixture (constructing a non-example real-shaped key would
+risk repository secret-scanner alerts — see
 `docs/release/0.2-known-gaps.md` for the calibration plan in 0.3).
 
 - **`aiHardcodedAPIKey`** `[stable]` — config files leaking provider API
@@ -232,14 +280,18 @@ Drift fails `make docs-verify` (CI gate).
 - **`terrain ai run` captures eval framework output** to
   `.terrain/artifacts/`.
 - **Cosign keyless signing + npm provenance + SLSA attestations** on
-  every release archive. *Caveat*: the npm postinstaller verifier
-  (`bin/terrain-installer.js`) **degrades to checksum-only** when
-  `cosign` is not installed on the host (returns
-  `verified: false, reason: 'cosign-missing'`) rather than aborting.
-  The hard-fail framing in `docs/release/0.2.md` overstates the
-  current behavior. Promoting to mandatory cosign verification
-  (with `TERRAIN_INSTALLER_SKIP_VERIFY=1` as the documented
-  escape) is on the 0.2.x list.
+  every release archive. The npm postinstall verifier
+  (`bin/terrain-installer.js`) requires cosign by default and
+  hard-fails when it isn't on `PATH`. Two opt-out env vars are
+  supported and documented in the failure message:
+  `TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1` for checksum-only
+  verification, `TERRAIN_INSTALLER_SKIP_VERIFY=1` to skip
+  verification entirely. *Known UX gap (tracked for 0.2.1)*:
+  `bin/postinstall.js` currently catches the verifier error and
+  prints a warning rather than failing `npm install`, so a host
+  without cosign gets a successful install + a deferred fetch
+  retry on first run. Either propagating the failure or surfacing
+  it loudly on first run is on the 0.2.1 list.
 
 ### Changed
 
@@ -611,7 +663,7 @@ AI surfaces receive the same CI treatment as regular tests:
 - Impact selection: `terrain ai run --base main` selects only impacted eval scenarios
 - Protection gaps: changed AI surfaces without eval coverage appear in `terrain impact` and `terrain pr`
 - Policy enforcement: 7 AI-specific policy rules (`block_on_safety_failure`, `block_on_uncovered_context`, etc.)
-- PR comments: AI Validation section in `terrain pr` output (markdown + text)
+- PR comments: AI Risk Review section in `terrain pr` output (markdown + text)
 - GitHub Action: `terrain-ai.yml` template for AI CI gates
 - Health insights: uncovered AI surfaces appear in `terrain insights`
 
