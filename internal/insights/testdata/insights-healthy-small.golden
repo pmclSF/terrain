@@ -5,8 +5,8 @@
   "categories": {
     "coverage_debt": 1
   },
-  "topFinding": "2 untested source file(s) — start with src/auth.js",
-  "topRec": "2 untested source file(s) — start with src/auth.js",
+  "topFinding": "2 untested source files — start with src/auth.js",
+  "topRec": "Add tests for 0 uncovered source files",
   "limitationCount": 4,
   "dataSources": 4
 }

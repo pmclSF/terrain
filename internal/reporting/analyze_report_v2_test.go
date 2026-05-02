@@ -54,7 +54,7 @@ func TestRenderAnalyzeReportV2_KeyFindings(t *testing.T) {
 	}
 
 	// Remaining count.
-	if !strings.Contains(output, "3 more finding(s) available") {
+	if !strings.Contains(output, "3 more findings available") {
 		t.Error("output should show remaining finding count")
 	}
 	if !strings.Contains(output, "terrain insights") {
@@ -107,7 +107,7 @@ func TestRenderAnalyzeReportV2_NextStepsShowsFindingCount(t *testing.T) {
 	output := buf.String()
 
 	// Next steps should reference the total finding count.
-	if !strings.Contains(output, "5 finding(s)") {
+	if !strings.Contains(output, "5 findings") {
 		t.Error("next steps should mention total finding count")
 	}
 }

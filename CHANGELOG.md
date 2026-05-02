@@ -324,6 +324,20 @@ after dedup) closed the verified P0/P1 subset before tag:
   `docs/integrations/{promptfoo,deepeval,ragas}.md`;
   `docs/internal/README.md` disclaimer so the public docs tree
   doesn't mix planning artifacts with shipping documentation.
+- **CLI visual polish** (PR #130): dropped a stray `file:` loader-
+  prefix in `terrain insights` source paths; replaced `n thing(s)`
+  pluralisation notation with proper plural forms across analyze /
+  insights / summary / reporting (~19 sites); switched dimension
+  display labels to sentence case (`Coverage Depth` →
+  `Coverage depth`) for inline use; added polarity-aware band
+  rendering so risk-shaped dimensions read naturally
+  (`Structural risk: Strong` → `Structural risk: Low`); replaced
+  band-only posture lines with concrete totals
+  (`Health: Strong  (28 / 772 skipped)`) and dropped zero-valued
+  measurements so the line shows what moved the band; added
+  `debug <verb>` verb list to top-level help for parity with the
+  other namespace dispatchers; `terrain export benchmark` now
+  accepts `--json` (no-op; output is always JSON) for flag parity.
 
 ### Deferred to 0.3
 

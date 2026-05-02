@@ -36,6 +36,12 @@ func TestCLI_HelpExitCode(t *testing.T) {
 }
 
 // TestCLI_HelpContainsAllCommands verifies help text lists all commands.
+//
+// 0.2 layout: top-level help uses namespace dispatchers (`report <verb>`,
+// `ai <verb>`, etc.) with the verb list shown inline rather than every
+// `terrain ai list`/`terrain ai run` enumerated as a separate row. The
+// test verifies (a) the namespace dispatcher line is present and (b)
+// every expected verb appears alongside it.
 func TestCLI_HelpContainsAllCommands(t *testing.T) {
 	t.Parallel()
 	cmd := exec.Command("go", "run", "./cmd/terrain/", "--help")
@@ -59,10 +65,14 @@ func TestCLI_HelpContainsAllCommands(t *testing.T) {
 		}
 	}
 
-	aiCommands := []string{"ai list", "ai run", "ai replay", "ai record", "ai baseline", "ai doctor"}
-	for _, c := range aiCommands {
-		if !strings.Contains(output, c) {
-			t.Errorf("help text missing AI command %q", c)
+	// AI namespace dispatcher + verb list (canonical 0.2 layout).
+	if !strings.Contains(output, "ai <verb>") {
+		t.Errorf("help text missing AI namespace dispatcher %q", "ai <verb>")
+	}
+	aiVerbs := []string{"list", "run", "replay", "record", "baseline", "doctor"}
+	for _, v := range aiVerbs {
+		if !strings.Contains(output, v) {
+			t.Errorf("help text missing AI verb %q", v)
 		}
 	}
 }
@@ -160,7 +170,13 @@ func TestCLI_SummaryTestdata(t *testing.T) {
 	}
 }
 
-// TestCLI_HelpContainsPrimaryCommands verifies help prominently lists the four canonical commands.
+// TestCLI_HelpContainsPrimaryCommands verifies help prominently lists the canonical commands.
+//
+// 0.2 layout: only `analyze` survives as a top-level primary command —
+// `insights`, `impact`, `explain` moved under the `report <verb>`
+// namespace dispatcher. The journey-question form is preserved for
+// `analyze` (the one command users invoke first); the report verbs
+// are advertised in the "Typical flow:" walkthrough instead.
 func TestCLI_HelpContainsPrimaryCommands(t *testing.T) {
 	t.Parallel()
 	cmd := exec.Command("go", "run", "./cmd/terrain/", "--help")
@@ -168,29 +184,24 @@ func TestCLI_HelpContainsPrimaryCommands(t *testing.T) {
 	out, _ := cmd.CombinedOutput()
 	output := string(out)
 
-	// The help output must contain a "Primary commands:" section.
-	if !strings.Contains(output, "Primary commands:") {
-		t.Error("help text missing 'Primary commands:' section header")
+	if !strings.Contains(output, "Canonical commands") {
+		t.Error("help text missing 'Canonical commands' section header")
 	}
-
-	// Each canonical command must appear with its journey question.
-	journeys := map[string]string{
-		"analyze":  "What is the state of our test system?",
-		"impact":   "What validations matter for this change?",
-		"insights": "What should we fix in our test system?",
-		"explain":  "Why did Terrain make this decision?",
+	if !strings.Contains(output, "What is the state of our test system?") {
+		t.Error("help text missing analyze journey question")
 	}
-	for cmd, question := range journeys {
-		if !strings.Contains(output, cmd) {
-			t.Errorf("help text missing primary command %q", cmd)
-		}
-		if !strings.Contains(output, question) {
-			t.Errorf("help text missing journey question for %q: %q", cmd, question)
+	for _, c := range []string{"analyze", "report", "impact", "insights", "explain"} {
+		if !strings.Contains(output, c) {
+			t.Errorf("help text missing command/verb %q", c)
 		}
 	}
 }
 
 // TestCLI_HelpContainsCanonicalWorkflow verifies help includes the standard journey walkthrough.
+//
+// 0.2 layout: the typical-flow block recommends the canonical
+// namespace forms (`terrain report insights`, `terrain report impact`,
+// `terrain report explain`) rather than the legacy bare-command forms.
 func TestCLI_HelpContainsCanonicalWorkflow(t *testing.T) {
 	t.Parallel()
 	cmd := exec.Command("go", "run", "./cmd/terrain/", "--help")
@@ -201,9 +212,9 @@ func TestCLI_HelpContainsCanonicalWorkflow(t *testing.T) {
 	workflow := []string{
 		"Typical flow:",
 		"terrain analyze",
-		"terrain insights",
-		"terrain impact",
-		"terrain explain <target>",
+		"terrain report insights",
+		"terrain report impact",
+		"terrain report explain",
 	}
 	for _, expected := range workflow {
 		if !strings.Contains(output, expected) {
@@ -213,6 +224,9 @@ func TestCLI_HelpContainsCanonicalWorkflow(t *testing.T) {
 }
 
 // TestCLI_HelpContainsDebugNamespace verifies debug commands appear in help.
+//
+// 0.2 layout: top-level help shows `debug <verb>` with the verb list
+// inline, matching the pattern used by `report`/`migrate`/`ai`/`config`.
 func TestCLI_HelpContainsDebugNamespace(t *testing.T) {
 	t.Parallel()
 	cmd := exec.Command("go", "run", "./cmd/terrain/", "--help")
@@ -220,10 +234,13 @@ func TestCLI_HelpContainsDebugNamespace(t *testing.T) {
 	out, _ := cmd.CombinedOutput()
 	output := string(out)
 
-	debugCmds := []string{"debug graph", "debug coverage", "debug fanout", "debug duplicates", "debug depgraph"}
-	for _, c := range debugCmds {
-		if !strings.Contains(output, c) {
-			t.Errorf("help text missing debug command %q", c)
+	if !strings.Contains(output, "debug <verb>") {
+		t.Errorf("help text missing debug namespace dispatcher %q", "debug <verb>")
+	}
+	debugVerbs := []string{"graph", "coverage", "fanout", "duplicates", "depgraph"}
+	for _, v := range debugVerbs {
+		if !strings.Contains(output, v) {
+			t.Errorf("help text missing debug verb %q", v)
 		}
 	}
 }

@@ -42,7 +42,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		}
 		remaining := r.TotalFindingCount - len(r.KeyFindings)
 		if remaining > 0 {
-			line("  %d more finding(s) available — run `terrain insights` for the full report.", remaining)
+			line("  %d more %s available — run `terrain insights` for the full report.", remaining, Plural(remaining, "finding"))
 		}
 		blank()
 	}
@@ -163,7 +163,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 			if a.TestCount == 0 {
 				line("  %-40s no structural coverage", a.Path)
 			} else {
-				line("  %-40s %d test(s)", a.Path, a.TestCount)
+				line("  %-40s %d %s", a.Path, a.TestCount, Plural(a.TestCount, "test"))
 			}
 		}
 		blank()
@@ -233,7 +233,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		line(strings.Repeat("-", 60))
 		line("  Redundant tests:  %d across %d clusters", br.RedundantTestCount, len(br.Clusters))
 		if br.CrossFrameworkOverlaps > 0 {
-			line("  Cross-framework:  %d cluster(s)", br.CrossFrameworkOverlaps)
+			line("  Cross-framework:  %d %s", br.CrossFrameworkOverlaps, Plural(br.CrossFrameworkOverlaps, "cluster"))
 		}
 		limit := 5
 		if len(br.Clusters) < limit {
@@ -249,7 +249,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 			line("         %s", c.Rationale)
 		}
 		if len(br.Clusters) > 5 {
-			line("  ... and %d more cluster(s)", len(br.Clusters)-5)
+			line("  ... and %d more %s", len(br.Clusters)-5, Plural(len(br.Clusters)-5, "cluster"))
 		}
 		blank()
 	}
@@ -270,14 +270,14 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 			line("         %s", c.Remediation)
 		}
 		if len(sc.Clusters) > 5 {
-			line("  ... and %d more cluster(s)", len(sc.Clusters)-5)
+			line("  ... and %d more %s", len(sc.Clusters)-5, Plural(len(sc.Clusters)-5, "cluster"))
 		}
 		blank()
 	} else if r.SkippedTestBurden.SkippedCount > 0 {
 		// When we have skip data but no clusters, show skip-based stability hint.
 		line("Stability")
 		line(strings.Repeat("-", 60))
-		line("  %d skipped test(s) detected. Skipped tests may mask instability.", r.SkippedTestBurden.SkippedCount)
+		line("  %d skipped %s detected. Skipped tests may mask instability.", r.SkippedTestBurden.SkippedCount, Plural(r.SkippedTestBurden.SkippedCount, "test"))
 		line("  Provide --runtime artifacts to unlock flaky/slow/dead detection and root-cause clustering.")
 		blank()
 	} else if !hasDataSource(r.DataCompleteness, "runtime") {
@@ -395,7 +395,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// Next steps
 	line("Next steps:")
 	if r.TotalFindingCount > len(r.KeyFindings) {
-		line("  terrain insights                    prioritized actions for %d finding(s)", r.TotalFindingCount)
+		line("  terrain insights                    prioritized actions for %d %s", r.TotalFindingCount, Plural(r.TotalFindingCount, "finding"))
 	} else {
 		line("  terrain insights                    prioritized actions and recommendations")
 	}

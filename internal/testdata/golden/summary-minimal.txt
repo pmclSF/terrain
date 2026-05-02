@@ -13,15 +13,15 @@ Key Numbers
 Posture Dimensions
 --------------------------------------------------
   health:                  STRONG
-    Health posture is strong across 4 measurement(s).
+    Health posture is strong across 4 measurements.
   coverage_depth:          STRONG
-    Coverage Depth posture is strong across 3 measurement(s).
+    Coverage depth posture is strong across 3 measurements.
   coverage_diversity:      STRONG
-    Coverage Diversity posture is strong across 5 measurement(s).
+    Coverage diversity posture is strong across 5 measurements.
   structural_risk:         STRONG
-    Structural Risk posture is strong across 3 measurement(s).
+    Structural risk is low across 3 measurements.
   operational_risk:        STRONG
-    Operational Risk posture is strong across 3 measurement(s).
+    Operational risk is low across 3 measurements.
 
 Next steps:
   terrain posture       evidence behind each dimension

@@ -17,12 +17,15 @@ package summary
 
 import (
 	"fmt"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/benchmark"
 	"github.com/pmclSF/terrain/internal/comparison"
 	"github.com/pmclSF/terrain/internal/heatmap"
+	"github.com/pmclSF/terrain/internal/measurement"
 	"github.com/pmclSF/terrain/internal/metrics"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
@@ -80,10 +83,44 @@ type PostureSummary struct {
 	Dimensions []DimensionPosture `json:"dimensions,omitempty"`
 }
 
-// DimensionPosture is the posture for a single risk dimension.
+// DimensionPosture is the posture for a single risk dimension. 0.2.0:
+// gained `KeyMeasurements` so the executive renderer can surface
+// concrete numbers ("0.7% uncovered exports · 7.6% weak assertions")
+// instead of just band labels ("Strong"). Bands are categorical
+// compression of these numbers; the renderer's job is to give the
+// reader the actual measurements alongside (or instead of) the band.
 type DimensionPosture struct {
-	Dimension string          `json:"dimension"`
-	Band      models.RiskBand `json:"band"`
+	Dimension       string           `json:"dimension"`
+	Band            models.RiskBand  `json:"band"`
+	KeyMeasurements []KeyMeasurement `json:"keyMeasurements,omitempty"`
+}
+
+// KeyMeasurement is a single measurement surfaced in the executive
+// summary, compact-formatted for one-line display.
+type KeyMeasurement struct {
+	// ID is the stable measurement identifier (e.g. "health.flaky_share").
+	// Carried for stability + JSON roundtrip; renderers don't display it
+	// directly.
+	ID string `json:"id"`
+	// ShortLabel is the human-readable noun the renderer pairs with
+	// the formatted value (e.g. "flaky", "uncovered exports",
+	// "high-fanout fixtures"). Derived from the measurement ID via
+	// `measurementShortLabel` in this package.
+	ShortLabel string `json:"shortLabel"`
+	// FormattedValue is the value pre-rendered for display
+	// ("3 / 850", "891", "low"). Lets renderers stay agnostic
+	// about Units; storage carries both for tooling that wants to
+	// re-render.
+	FormattedValue string `json:"formattedValue"`
+	// Value + Units carry the raw measurement so JSON consumers can
+	// re-render in their own format.
+	Value float64 `json:"value"`
+	Units string  `json:"units,omitempty"`
+	// Numerator/Denominator carry the totals parsed from the
+	// measurement explanation (e.g. 28 / 772). Present when the
+	// explanation exposes counts; zero when not applicable.
+	Numerator   int `json:"numerator,omitempty"`
+	Denominator int `json:"denominator,omitempty"`
 }
 
 // FocusArea identifies a concentrated risk area.
@@ -174,6 +211,132 @@ type BuildInput struct {
 	HasPolicy  bool
 }
 
+// plural returns the singular form when n == 1, otherwise singular +
+// "s". Local helper used in recommendation titles to avoid awkward
+// `n thing(s)` notation in user-visible text.
+func plural(n int, singular string) string {
+	if n == 1 {
+		return singular
+	}
+	return singular + "s"
+}
+
+// measurementShortLabels maps the canonical measurement IDs to a
+// short noun the executive renderer can pair with the formatted
+// value (e.g. "0.0% flaky", "3.6% skipped", "891 high-fanout
+// fixtures"). Only shipping measurements appear here; unknown IDs
+// fall through to the bare measurement-id suffix.
+var measurementShortLabels = map[string]string{
+	// Health.
+	"health.flaky_share":      "flaky",
+	"health.skip_density":     "skipped",
+	"health.dead_test_share":  "dead",
+	"health.slow_test_share":  "slow",
+	// Coverage depth.
+	"coverage_depth.uncovered_exports":     "uncovered exports",
+	"coverage_depth.weak_assertion_share":  "weak assertions",
+	"coverage_depth.coverage_breach_share": "coverage breaches",
+	// Coverage diversity.
+	"coverage_diversity.mock_heavy_share":          "mock-heavy",
+	"coverage_diversity.framework_fragmentation":   "frameworks",
+	"coverage_diversity.e2e_concentration":         "e2e-concentrated",
+	"coverage_diversity.e2e_only_units":            "e2e-only units",
+	"coverage_diversity.unit_test_coverage":        "unit-test covered",
+	// Structural risk.
+	"structural_risk.migration_blocker_density": "migration blockers",
+	"structural_risk.deprecated_pattern_share":  "deprecated patterns",
+	"structural_risk.dynamic_generation_share":  "dynamic generation",
+	// Operational risk.
+	"operational_risk.policy_violation_density": "policy violations",
+	"operational_risk.legacy_framework_share":   "legacy frameworks",
+	"operational_risk.runtime_budget_breach":    "runtime-budget breaches",
+}
+
+// numeratorDenominatorRe extracts the first two integers from a
+// measurement explanation. Every shipping measurement formats its
+// explanation as "%d of %d ..." or "%d ... out of %d ..." or "%d
+// ... across %d ..." so a leading-pair extractor reliably surfaces
+// numerator and denominator without needing each measurement to
+// carry separate fields.
+var numeratorDenominatorRe = regexp.MustCompile(`(\d+)\D+(\d+)`)
+
+// toKeyMeasurement converts a models.MeasurementResult into the
+// compact KeyMeasurement shape used by the executive summary. The
+// preferred display form is "N / D label" (e.g. "28 / 772 skipped"),
+// extracted from the measurement explanation. When the explanation
+// does not expose counts (band-typed measurements, count-only
+// totals), formats fall back to:
+//
+//	count   → "891"    (no unit suffix; renderer pairs with label)
+//	band    → "low"    (the band word itself; pairs with label like "structural risk")
+//	ratio   → "3.6%"   (× 100, one decimal — fallback when N/D parse fails)
+//	percent → "3.6%"   (already a percent — same fallback)
+//
+// Unknown units fall back to the raw value formatted with %v.
+func toKeyMeasurement(m models.MeasurementResult) KeyMeasurement {
+	label := measurementShortLabels[m.ID]
+	if label == "" {
+		// Fallback: use the part after the last dot ("uncovered_exports"
+		// → "uncovered exports") with underscores → spaces.
+		if dot := strings.LastIndex(m.ID, "."); dot >= 0 && dot < len(m.ID)-1 {
+			label = strings.ReplaceAll(m.ID[dot+1:], "_", " ")
+		} else {
+			label = m.ID
+		}
+	}
+
+	num, den := parseNumeratorDenominator(m.Explanation)
+
+	return KeyMeasurement{
+		ID:             m.ID,
+		ShortLabel:     label,
+		FormattedValue: formatMeasurementValue(m, num, den),
+		Value:          m.Value,
+		Units:          m.Units,
+		Numerator:      num,
+		Denominator:    den,
+	}
+}
+
+// parseNumeratorDenominator extracts the leading two integers from a
+// measurement explanation. Returns (0, 0) if no pair was found.
+func parseNumeratorDenominator(explanation string) (int, int) {
+	m := numeratorDenominatorRe.FindStringSubmatch(explanation)
+	if len(m) != 3 {
+		return 0, 0
+	}
+	num, err1 := strconv.Atoi(m[1])
+	den, err2 := strconv.Atoi(m[2])
+	if err1 != nil || err2 != nil {
+		return 0, 0
+	}
+	return num, den
+}
+
+// formatMeasurementValue renders the numeric value of a measurement
+// in the units convention the user expects. Used by toKeyMeasurement.
+// When numerator/denominator were parsed from the explanation, the
+// "N / D" form is preferred over a percentage — concrete totals are
+// more legible than a percentage that hides scale ("28 / 772 skipped"
+// versus "3.6% skipped").
+func formatMeasurementValue(m models.MeasurementResult, num, den int) string {
+	if den > 0 {
+		return fmt.Sprintf("%d / %d", num, den)
+	}
+	switch measurement.Units(m.Units) {
+	case measurement.UnitsRatio:
+		return fmt.Sprintf("%.1f%%", m.Value*100)
+	case measurement.UnitsPercent:
+		return fmt.Sprintf("%.1f%%", m.Value)
+	case measurement.UnitsCount:
+		return fmt.Sprintf("%d", int(m.Value))
+	case measurement.UnitsBand:
+		return m.Band
+	default:
+		return fmt.Sprintf("%v", m.Value)
+	}
+}
+
 // Build creates an ExecutiveSummary from the provided inputs.
 func Build(in *BuildInput) *ExecutiveSummary {
 	es := &ExecutiveSummary{
@@ -220,10 +383,62 @@ func buildPosture(snap *models.TestSuiteSnapshot, h *heatmap.Heatmap) PostureSum
 	// Include measurement-layer posture if available (preferred).
 	if snap.Measurements != nil && len(snap.Measurements.Posture) > 0 {
 		for _, p := range snap.Measurements.Posture {
-			ps.Dimensions = append(ps.Dimensions, DimensionPosture{
+			dp := DimensionPosture{
 				Dimension: p.Dimension,
 				Band:      models.RiskBand(p.Band),
-			})
+			}
+			// Surface up to 4 measurements per dimension so the
+			// executive renderer can show concrete numbers alongside
+			// (or instead of) the band. Driving measurements first
+			// (by ID match), then any remaining measurement from the
+			// dimension to fill the slot. Measurements with a zero
+			// numerator are dropped — "0 / 772 flaky" is noise, not
+			// signal, and crowds out the measurements that actually
+			// changed.
+			driving := map[string]bool{}
+			for _, id := range p.DrivingMeasurements {
+				driving[id] = true
+			}
+			const maxKeyMeasurements = 4
+			appendKM := func(m models.MeasurementResult) {
+				km := toKeyMeasurement(m)
+				// Hide zero-valued measurements. Two cases share the
+				// same skip rule:
+				//   1. counted form parsed: "0 / 772 flaky" — true
+				//      zero, redundant given the band already says
+				//      "Strong"
+				//   2. no-data fallback: "0.0% slow" — measurement
+				//      was bypassed because evidence was weak/none,
+				//      so the value is structurally zero, not
+				//      empirically zero
+				// Both are noise; they crowd out the measurements
+				// that actually moved the band.
+				if km.Numerator == 0 && km.Value == 0 {
+					return
+				}
+				dp.KeyMeasurements = append(dp.KeyMeasurements, km)
+			}
+			// Pass 1: driving measurements (most informative).
+			for _, m := range p.Measurements {
+				if len(dp.KeyMeasurements) >= maxKeyMeasurements {
+					break
+				}
+				if !driving[m.ID] {
+					continue
+				}
+				appendKM(m)
+			}
+			// Pass 2: fill remaining slots with non-driving measurements.
+			for _, m := range p.Measurements {
+				if len(dp.KeyMeasurements) >= maxKeyMeasurements {
+					break
+				}
+				if driving[m.ID] {
+					continue
+				}
+				appendKM(m)
+			}
+			ps.Dimensions = append(ps.Dimensions, dp)
 		}
 		return ps
 	}
@@ -701,7 +916,7 @@ func appendCoverageRecommendations(recs []Recommendation, snap *models.TestSuite
 		}
 		if maxCount >= 2 {
 			recs = append(recs, Recommendation{
-				What:             fmt.Sprintf("Investigate %d test(s) with concentrated instability", len(healthByTest)),
+				What:             fmt.Sprintf("Investigate %d %s with concentrated instability", len(healthByTest), plural(len(healthByTest), "test")),
 				Why:              "Health signals (slow, flaky, skipped) cluster around specific persistent tests.",
 				Where:            "see health signals with testId metadata for specific tests",
 				EvidenceStrength: models.EvidenceStrong,

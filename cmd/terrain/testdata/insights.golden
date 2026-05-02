@@ -3,7 +3,7 @@
   "findingCount": 3,
   "healthGrade": "D",
   "highFanoutNodes": 0,
-  "recommendationCount": 3,
+  "recommendationCount": 2,
   "repoProfile": {
     "testVolume": "small",
     "ciPressure": "medium",

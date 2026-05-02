@@ -8,7 +8,7 @@ Terrain Posture Report
 
 [ok] HEALTH
   Posture: STRONG
-  Health posture is strong across 4 measurement(s).
+  Health posture is strong across 4 measurements.
 
   Measurements:
     health.flaky_share                       0.0% [unknown]
@@ -32,7 +32,7 @@ Terrain Posture Report
 
 [ok] COVERAGE DEPTH
   Posture: STRONG
-  Coverage Depth posture is strong across 3 measurement(s).
+  Coverage depth posture is strong across 3 measurements.
 
   Measurements:
     coverage_depth.uncovered_exports         0.0% [strong]
@@ -51,7 +51,7 @@ Terrain Posture Report
 
 [ok] COVERAGE DIVERSITY
   Posture: STRONG
-  Coverage Diversity posture is strong across 5 measurement(s).
+  Coverage diversity posture is strong across 5 measurements.
 
   Measurements:
     coverage_diversity.mock_heavy_share      0.0% [strong]
@@ -76,7 +76,7 @@ Terrain Posture Report
 
 [ok] STRUCTURAL RISK
   Posture: STRONG
-  Structural Risk posture is strong across 3 measurement(s).
+  Structural risk is low across 3 measurements.
 
   Measurements:
     structural_risk.migration_blocker_density 0.0% [strong]
@@ -93,7 +93,7 @@ Terrain Posture Report
 
 [ok] OPERATIONAL RISK
   Posture: STRONG
-  Operational Risk posture is strong across 3 measurement(s).
+  Operational risk is low across 3 measurements.
 
   Measurements:
     operational_risk.policy_violation_density 0.0% [strong]
