@@ -60,22 +60,35 @@ func severityGateBlocked(gate severityGate, summary analyze.SignalBreakdown) (bo
 		return false, ""
 	case severityGateCritical:
 		if summary.Critical > 0 {
-			return true, fmt.Sprintf("%d critical finding(s)", summary.Critical)
+			return true, fmt.Sprintf("%d critical %s", summary.Critical, plural(summary.Critical, "finding"))
 		}
 	case severityGateHigh:
-		if summary.Critical > 0 || summary.High > 0 {
+		total := summary.Critical + summary.High
+		if total > 0 {
 			return true, fmt.Sprintf(
-				"%d critical + %d high finding(s)",
-				summary.Critical, summary.High,
+				"%d critical + %d high (%d %s total)",
+				summary.Critical, summary.High, total, plural(total, "finding"),
 			)
 		}
 	case severityGateMedium:
-		if summary.Critical > 0 || summary.High > 0 || summary.Medium > 0 {
+		total := summary.Critical + summary.High + summary.Medium
+		if total > 0 {
 			return true, fmt.Sprintf(
-				"%d critical + %d high + %d medium finding(s)",
-				summary.Critical, summary.High, summary.Medium,
+				"%d critical + %d high + %d medium (%d %s total)",
+				summary.Critical, summary.High, summary.Medium, total, plural(total, "finding"),
 			)
 		}
 	}
 	return false, ""
+}
+
+// plural is a small helper to avoid the awkward `n thing(s)` notation
+// in user-visible text. Mirrors the pluralization helper added in the
+// 0.2 polish PRs (internal/reporting/plural.go) but kept local here
+// so the cmd package doesn't pull in reporting just for one call.
+func plural(n int, singular string) string {
+	if n == 1 {
+		return singular
+	}
+	return singular + "s"
 }
