@@ -57,11 +57,28 @@ func ParseDeepEvalJSON(data []byte) (*EvalRunResult, error) {
 		return nil, fmt.Errorf("deepeval payload has no testCases")
 	}
 
+	// 0.2.0 final-polish: DeepEval newer schemas write `runId` instead of
+	// `testRunId`. When TestRunID is empty fall back to the secondary
+	// field. Without this, downstream baseline matching dropped into
+	// the "first envelope of matching framework" fallback and could
+	// cross-attribute runs in repos with multiple eval suites.
+	runID := raw.TestRunID
+	if runID == "" {
+		runID = raw.RunID
+	}
 	out := &EvalRunResult{
 		Framework: "deepeval",
-		RunID:     raw.TestRunID,
+		RunID:     runID,
 	}
+	// DeepEval CreatedAt is variously RFC3339 (newer), space-separated
+	// `2026-04-30 12:00:00` (older), or unix-epoch numeric. Try each
+	// shape; failures are silent (zero CreatedAt is non-fatal).
 	if t, err := time.Parse(time.RFC3339, raw.CreatedAt); err == nil {
+		out.CreatedAt = t.UTC()
+	} else if t, err := time.Parse("2006-01-02 15:04:05", raw.CreatedAt); err == nil {
+		out.CreatedAt = t.UTC()
+	} else if t, err := time.Parse("2006-01-02T15:04:05.999999", raw.CreatedAt); err == nil {
+		// Microsecond fractional without timezone — treat as UTC.
 		out.CreatedAt = t.UTC()
 	}
 
@@ -121,7 +138,14 @@ func aggregateMetricsData(metrics []deepEvalMetricEntry) (success bool, score fl
 			success = false
 		}
 		sum += m.Score
+		// 0.2.0 final-polish: DeepEval emits metric names in two
+		// shapes — snake_case (`answer_relevancy`) and human-readable
+		// (`Answer Relevancy`). The latter contains internal spaces
+		// that must be normalised to underscores; otherwise the keys
+		// mismatch retrievalScoreKeys / hallucinationGroundingKeys
+		// whitelists in the consumer detectors.
 		key := strings.ToLower(strings.TrimSpace(m.Name))
+		key = strings.ReplaceAll(key, " ", "_")
 		if key != "" {
 			named[key] = m.Score
 		}
@@ -152,6 +176,8 @@ func deepEvalFailureReason(tc deepEvalTestCase) string {
 
 type deepEvalEnvelope struct {
 	TestRunID string             `json:"testRunId,omitempty"`
+	// RunID is the newer DeepEval (1.x) field name for the same value.
+	RunID     string             `json:"runId,omitempty"`
 	CreatedAt string             `json:"createdAt,omitempty"`
 	TestCases []deepEvalTestCase `json:"testCases"`
 }

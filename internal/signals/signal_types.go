@@ -82,6 +82,10 @@ const (
 	SignalAIFewShotContamination   models.SignalType = "aiFewShotContamination"
 	SignalAIEmbeddingModelChange   models.SignalType = "aiEmbeddingModelChange"
 	SignalAIRetrievalRegression    models.SignalType = "aiRetrievalRegression"
+
+	// Engine self-diagnostic signals — emitted by the pipeline itself,
+	// not by registered detectors.
+	SignalDetectorPanic models.SignalType = "detectorPanic"
 )
 
 // Canonical signal type sets. Import these rather than duplicating

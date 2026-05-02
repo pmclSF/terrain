@@ -35,10 +35,15 @@ type NonDeterministicEvalDetector struct {
 // formats where determinism knobs are typically declared as data
 // (YAML / JSON / TOML). Source files would need full AST analysis,
 // which is out of scope for this detector.
+// 0.2.0 final-polish: docstring (above) named TOML as in-scope but
+// the actual map didn't include it. Promptfoo and DeepEval support
+// TOML config; without `.toml` here a Promptfoo TOML config never
+// reached the detector.
 var evalConfigExts = map[string]bool{
 	".yaml": true,
 	".yml":  true,
 	".json": true,
+	".toml": true,
 }
 
 // evalFilenameMarkers identifies files we're confident are eval/agent

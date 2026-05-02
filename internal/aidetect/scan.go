@@ -134,3 +134,29 @@ func snapshotPaths(snap *models.TestSuiteSnapshot) []string {
 	}
 	return out
 }
+
+// pairedConfidence scales confidence by the number of paired cases
+// behind a regression inference. A drift over 1 paired case is much
+// weaker evidence than the same drift over 100 — consumers shouldn't
+// see both at the same alarm level. Used by aiCostRegression and
+// aiRetrievalRegression.
+//
+// Curve: 0.5 at paired=1, 0.7 at paired=5, 0.85 at paired=10, plateau
+// at 0.9 from paired>=20. Linear interpolation inside each band keeps
+// the function easy to reason about and matches the rough "you need
+// double-digit case counts before a regression call is high-confidence"
+// intuition the calibration corpus carries today.
+func pairedConfidence(paired int) float64 {
+	switch {
+	case paired <= 1:
+		return 0.5
+	case paired < 5:
+		return 0.5 + 0.2*float64(paired-1)/4
+	case paired < 10:
+		return 0.7 + 0.15*float64(paired-5)/5
+	case paired < 20:
+		return 0.85 + 0.05*float64(paired-10)/10
+	default:
+		return 0.9
+	}
+}

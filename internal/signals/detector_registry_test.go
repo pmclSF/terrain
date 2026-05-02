@@ -2,6 +2,7 @@ package signals
 
 import (
 	"testing"
+	"time"
 
 	"github.com/pmclSF/terrain/internal/models"
 )
@@ -131,6 +132,69 @@ func TestRegistry_Run(t *testing.T) {
 	}
 	if snap.Signals[2].Type != "dynamicTestGeneration" {
 		t.Errorf("signal[2].Type = %s, want dynamicTestGeneration", snap.Signals[2].Type)
+	}
+}
+
+// panicDetector deliberately panics so safeDetect's recovery path can
+// be exercised in tests.
+type panicDetector struct{ msg string }
+
+func (d *panicDetector) Detect(_ *models.TestSuiteSnapshot) []models.Signal {
+	panic(d.msg)
+}
+
+// TestRegistry_RunRecoversFromDetectorPanic_ProducesValidSnapshot is
+// the regression test for the 0.2.0 final-polish fix: pre-fix the
+// `detectorPanic` sentinel signal that safeDetect emitted on panic
+// recovery was NOT in models.SignalCatalog, so the snapshot
+// produced by the panic-recovery path failed ValidateSnapshot. The
+// "graceful degradation" promise was broken — a single broken
+// detector still tanked the run, just with a different error
+// message.
+//
+// Lock-in: panic recovery must produce a snapshot that
+// ValidateSnapshot accepts.
+func TestRegistry_RunRecoversFromDetectorPanic_ProducesValidSnapshot(t *testing.T) {
+	t.Parallel()
+	r := NewRegistry()
+	mustRegDetector(t, r, DetectorRegistration{
+		Meta: DetectorMeta{ID: "good", Domain: DomainQuality},
+		Detector: &stubDetector{signals: []models.Signal{{
+			Type:        "weakAssertion",
+			Category:    models.CategoryQuality,
+			Severity:    models.SeverityMedium,
+			Confidence:  0.8,
+			Explanation: "stub signal for panic-recovery test",
+		}}},
+	})
+	mustRegDetector(t, r, DetectorRegistration{
+		Meta:     DetectorMeta{ID: "panicker", Domain: DomainQuality},
+		Detector: &panicDetector{msg: "synthetic test panic"},
+	})
+
+	snap := &models.TestSuiteSnapshot{
+		SnapshotMeta: models.SnapshotMeta{SchemaVersion: models.SnapshotSchemaVersion},
+		Repository:   models.RepositoryMetadata{Name: "test-repo"},
+		GeneratedAt:  time.Unix(1700000000, 0).UTC(),
+	}
+	r.Run(snap)
+
+	// Find the detectorPanic signal.
+	var panicSig *models.Signal
+	for i := range snap.Signals {
+		if snap.Signals[i].Type == "detectorPanic" {
+			panicSig = &snap.Signals[i]
+			break
+		}
+	}
+	if panicSig == nil {
+		t.Fatalf("expected detectorPanic signal in output; got %+v", snap.Signals)
+	}
+	if !models.IsKnownSignalType(panicSig.Type) {
+		t.Errorf("detectorPanic must be a known signal type so ValidateSnapshot accepts it; got unknown")
+	}
+	if err := models.ValidateSnapshot(snap); err != nil {
+		t.Errorf("snapshot from panic-recovery path must pass ValidateSnapshot, got: %v", err)
 	}
 }
 

@@ -117,7 +117,15 @@ content: |
 	}
 }
 
-func TestFewShotContamination_RequiresCoverage(t *testing.T) {
+// TestFewShotContamination_FiresOnImplicitCoverage_AutoDerivedScenario
+// locks in the 0.2.0 final-polish fix: pre-fix, a scenario with empty
+// `CoveredSurfaceIDs` (the default for auto-derived scenarios — the
+// dominant shape in the wild) silently disabled the detector. The fix
+// adds path-based implicit coverage (matching the same pattern
+// aiSafetyEvalMissing already uses). The detector should fire when the
+// scenario file and prompt file share a top-level directory, OR when
+// the scenario has no Path at all (whole-repo fallback).
+func TestFewShotContamination_FiresOnImplicitCoverage_AutoDerivedScenario(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
@@ -126,7 +134,6 @@ role: system
 content: |
   The customer reports the device overheats during gameplay sessions.
 `)
-	// Scenario doesn't reference the prompt → no contamination check.
 	snap := &models.TestSuiteSnapshot{
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: rel, Name: "classifier", Kind: models.SurfacePrompt},
@@ -136,11 +143,52 @@ content: |
 				ScenarioID:  "scenario:1",
 				Name:        "device overheats",
 				Description: "The customer reports the device overheats during gameplay sessions",
-				// CoveredSurfaceIDs intentionally empty.
+				// CoveredSurfaceIDs intentionally empty (auto-derived shape).
+				// Path empty too → whole-repo fallback should apply.
+			},
+		},
+	}
+	got := (&FewShotContaminationDetector{Root: root}).Detect(snap)
+	if len(got) != 1 {
+		t.Fatalf("auto-derived scenario should fire under implicit coverage, got %d", len(got))
+	}
+	if got[0].Type != signals.SignalAIFewShotContamination {
+		t.Errorf("type = %q", got[0].Type)
+	}
+}
+
+// TestFewShotContamination_ImplicitCoverage_RespectsTopLevelDir
+// verifies that when a scenario DOES have a Path, only prompts under
+// the same top-level directory are checked — not prompts in unrelated
+// subprojects. Without this scope, a scenario in `service-a/` could
+// match a prompt in `service-b/`, generating cross-project noise.
+func TestFewShotContamination_ImplicitCoverage_RespectsTopLevelDir(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	// Prompt in service-b — should NOT be matched against a scenario
+	// rooted in service-a, even though the text overlaps.
+	relB := writeFewShotPrompt(t, root, "service-b/prompts/classifier.yaml", `
+role: system
+content: |
+  The customer reports the device overheats during gameplay sessions.
+`)
+	snap := &models.TestSuiteSnapshot{
+		CodeSurfaces: []models.CodeSurface{
+			{SurfaceID: "s1", Path: relB, Name: "classifier", Kind: models.SurfacePrompt},
+		},
+		Scenarios: []models.Scenario{
+			{
+				ScenarioID:  "scenario:1",
+				Name:        "device overheats",
+				Description: "The customer reports the device overheats during gameplay sessions",
+				Path:        "service-a/scenarios/overheat.yaml",
+				// CoveredSurfaceIDs empty; implicit coverage should
+				// scope to service-a/* prompts only.
 			},
 		},
 	}
 	if got := (&FewShotContaminationDetector{Root: root}).Detect(snap); len(got) != 0 {
-		t.Errorf("uncovered scenario should not fire, got %d", len(got))
+		t.Errorf("scenario in service-a should not match prompt in service-b under implicit coverage, got %d", len(got))
 	}
 }

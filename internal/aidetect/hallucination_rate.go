@@ -37,8 +37,26 @@ type HallucinationRateDetector struct {
 
 // hallucinationKeywords are FailureReason substrings that mark a case
 // as hallucination-shaped, used when NamedScores aren't populated.
+//
+// 0.2.0 final-polish: pre-fix this list was closed-class English with
+// only 5 stems. Real failure-reason text from production evaluators
+// uses richer phrasing — "no evidence in source", "not in context",
+// "outside the document scope", "no citation found", "answer not
+// supported", "off-topic from passage". Expanding the list is pure
+// data; precision unchanged because all stems are unambiguous.
 var hallucinationKeywords = []string{
-	"fabricat", "hallucinat", "grounding", "made up", "ungrounded",
+	"fabricat",                                // fabricated, fabrication
+	"hallucinat",                              // hallucinated, hallucination
+	"grounding",                               // grounding failure
+	"made up", "ungrounded",                   // older phrasing
+	"not in source", "not in the source",      // common eval phrasing
+	"not in context", "not in the context",    // RAG-shaped
+	"no evidence",                             // citation-quality eval phrasing
+	"no citation",                             // citation-quality eval phrasing
+	"unsupported",                             // "answer is unsupported by passages"
+	"outside scope", "outside the scope",      // out-of-domain
+	"off-topic", "off topic",                  // off-topic
+	"contradicts source", "contradicts the source", // grounding contradiction
 }
 
 // Detect emits SignalAIHallucinationRate per offending EvalRun.
@@ -80,6 +98,12 @@ func (d *HallucinationRateDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 		}
 		total := scoreable
 		rate := float64(hallucinated) / float64(total)
+		// Boundary: fire when rate is STRICTLY GREATER than the threshold,
+		// matching how the rubric is documented ("5% > 5% threshold
+		// fires"). Pre-0.2.x final-polish, `rate <= threshold` skipped
+		// the equal-to-threshold case, so a project that set
+		// threshold=0.05 expecting "fire above 5%" would silently miss
+		// runs at exactly 5%.
 		if rate <= threshold {
 			continue
 		}

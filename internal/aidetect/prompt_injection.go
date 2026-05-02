@@ -1,7 +1,6 @@
 package aidetect
 
 import (
-	"bufio"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -56,16 +55,33 @@ var promptIdentifierPattern = regexp.MustCompile(
 )
 
 // userInputShapes is the "this looks user-controlled" half. Each entry
-// is a regex tested against the same line.
+// is a regex tested against the same line OR the next 1–2 lines (see
+// scanFileForPromptInjection). The 0.2.0 final-polish pass added
+// FastAPI / Flask / Django / Pyramid / gRPC shapes that the original
+// list missed — production codebases routinely route user input
+// through these framework constructs, so a list anchored on
+// `request.body`/`req.json` only saw a small slice of real-world
+// prompt-injection patterns.
 var userInputShapes = []*regexp.Regexp{
-	regexp.MustCompile(`\brequest\.(?:body|query|params|json|args)\b`),
-	regexp.MustCompile(`\breq\.(?:body|query|params|json)\b`),
+	// Express.js / Koa / generic Node web frameworks.
+	regexp.MustCompile(`\brequest\.(?:body|query|params|json|args|form|files|cookies|headers)\b`),
+	regexp.MustCompile(`\breq\.(?:body|query|params|json|form|files|cookies|headers)\b`),
+	// FastAPI typed-parameter constructs (`= Body(...)`, `= Query(...)`,
+	// `= Form(...)`, `= File(...)`, `= Header(...)`, `= Cookie(...)`).
+	regexp.MustCompile(`=\s*(?:Body|Query|Form|File|Header|Cookie|Path)\s*\(`),
+	// Flask / Pyramid / Django request shapes.
+	regexp.MustCompile(`\brequest\.(?:GET|POST|FILES|COOKIES|META|json|values|form)\b`),
+	// gRPC: `request.<field>` is too generic, but explicit `request.message`
+	// and `request.payload` are the common shapes.
+	regexp.MustCompile(`\brequest\.(?:message|payload|prompt|input|query|content)\b`),
+	// Generic identifier shapes that consistently denote user content.
 	regexp.MustCompile(`(?i)\buser_?input\b`),
 	regexp.MustCompile(`(?i)\bprompt_?input\b`),
 	regexp.MustCompile(`\bargs\.(?:message|prompt|input|query)\b`),
 	regexp.MustCompile(`\bparams\.(?:message|prompt|input|query)\b`),
 	regexp.MustCompile(`\binput\(\s*\)`),                  // python input()
 	regexp.MustCompile(`\bos\.environ\["?USER_INPUT"?\]`), // env-driven user input
+	regexp.MustCompile(`\bsys\.(?:stdin|argv)\b`),         // CLI-arg-driven user input
 }
 
 // fStringPromptPattern catches Python f-string and JS template-literal
@@ -141,39 +157,58 @@ type injectionHit struct {
 }
 
 func scanFileForPromptInjection(path string) []injectionHit {
-	f, err := os.Open(path)
+	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil
 	}
-	defer f.Close()
+	lines := strings.Split(string(data), "\n")
+	if len(lines) == 0 {
+		return nil
+	}
 
-	sc := bufio.NewScanner(f)
-	const maxLine = 1 << 20
-	buf := make([]byte, 64*1024)
-	sc.Buffer(buf, maxLine)
-
+	// 0.2.0 final-polish: real-world code routinely splits prompt
+	// concatenation across multiple lines (`prompt += \n  user.input`),
+	// because Black / Prettier wrap long expressions. The pre-fix
+	// scanner only saw the prompt-write line, missed the user-input
+	// line, and emitted zero findings on the most common shape.
+	//
+	// New approach: when the prompt-identifier pattern matches a line,
+	// the user-input scan looks at that line PLUS the next 2 lines
+	// (the typical wrap window). Same-line matches are still preferred
+	// for the explanation; multi-line matches carry a slightly weaker
+	// confidence in their explanation text.
 	var hits []injectionHit
-	line := 0
-	for sc.Scan() {
-		line++
-		text := sc.Text()
-		// Skip comment-only lines: documenting an attack pattern in a
-		// docstring shouldn't fire the detector.
+	for i, text := range lines {
+		// Skip comment-only lines.
 		if isCommentLine(text) {
 			continue
 		}
-		// Pass 1: prompt-shape with user-input on same line.
-		if promptIdentifierPattern.MatchString(text) && hasUserInputShape(text) {
-			hits = append(hits, injectionHit{
-				Line:        line,
-				Explanation: "User-controlled input concatenated into a prompt-shaped variable without visible sanitisation.",
-			})
-			continue
+		// Pass 1: prompt-shape with user-input on same line OR within
+		// the next 2 lines.
+		if promptIdentifierPattern.MatchString(text) {
+			window := text
+			for j := 1; j <= 2 && i+j < len(lines); j++ {
+				if isCommentLine(lines[i+j]) {
+					break
+				}
+				window += "\n" + lines[i+j]
+			}
+			if hasUserInputShape(window) {
+				explanation := "User-controlled input concatenated into a prompt-shaped variable without visible sanitisation."
+				if !hasUserInputShape(text) {
+					explanation = "Prompt-shaped variable on this line is followed by user-controlled input on the next line(s); review concatenation for escape boundaries."
+				}
+				hits = append(hits, injectionHit{
+					Line:        i + 1,
+					Explanation: explanation,
+				})
+				continue
+			}
 		}
 		// Pass 2: f-string / template literal interpolation pattern.
 		if fStringPromptPattern.MatchString(text) {
 			hits = append(hits, injectionHit{
-				Line:        line,
+				Line:        i + 1,
 				Explanation: "Prompt-shaped string literal interpolates user-input-shaped variable; review escaping or boundary tokens.",
 			})
 			continue

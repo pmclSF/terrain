@@ -168,8 +168,15 @@ func discoverByWalk(root string, d *ArtifactDiscovery, seen map[string]bool) {
 				return nil // skip errors
 			}
 			if fi.IsDir() {
-				// Enforce depth limit.
-				rel, _ := filepath.Rel(walkRoot, path)
+				// Enforce depth limit. Pre-0.2.x final-polish, this
+				// discarded the filepath.Rel error and treated a
+				// computation failure as depth=0 — which silently let
+				// pathological symlink loops past the depth gate. Now
+				// any Rel error is treated as "skip this branch."
+				rel, relErr := filepath.Rel(walkRoot, path)
+				if relErr != nil {
+					return filepath.SkipDir
+				}
 				depth := strings.Count(rel, string(filepath.Separator))
 				if depth >= walkMaxDepth {
 					return filepath.SkipDir

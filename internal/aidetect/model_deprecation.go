@@ -112,10 +112,21 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 		abs := filepath.Join(d.Root, relPath)
 		hits := scanFileForModelTags(abs)
 		for _, h := range hits {
+			// 0.2.0 final-polish: severity now tracks the category.
+			// "deprecated" tags (text-davinci-003, code-davinci-002,
+			// claude-1) are sunset and the next API call WILL break;
+			// these are High. "floating" tags (gpt-4, claude-3-opus)
+			// merely drift over time as the provider remaps the alias;
+			// these stay Medium. Pre-fix every category was Medium,
+			// which under-prioritized the genuinely-broken cases.
+			severity := models.SeverityMedium
+			if h.Rule.Category == "deprecated" {
+				severity = models.SeverityHigh
+			}
 			out = append(out, models.Signal{
 				Type:        signals.SignalAIModelDeprecationRisk,
 				Category:    models.CategoryAI,
-				Severity:    models.SeverityMedium,
+				Severity:    severity,
 				Confidence:  0.88,
 				Location:    models.SignalLocation{File: relPath, Line: h.Line},
 				Explanation: h.Rule.Explanation,
@@ -276,5 +287,5 @@ var commentLikePrefixes = []string{
 	"* ",   // block-comment continuation OR markdown bullet
 	"- ",   // markdown bullet
 	"+ ",   // markdown bullet (alt)
-	"'",    // VB / older BASIC dialects
+	"' ",   // VB / older BASIC dialects (require trailing space to avoid Python single-quoted strings at column 0)
 }

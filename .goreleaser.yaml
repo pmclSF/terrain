@@ -93,6 +93,13 @@ archives:
     format_overrides:
       - goos: windows
         formats: [ 'zip' ]
+    # 0.2.0 final-polish: include README + LICENSE in every archive.
+    # Pre-fix archives shipped only the binary; users who downloaded
+    # the tarball had no in-tree license text — a soft compliance
+    # issue for any company-policy review of OSS dependencies.
+    files:
+      - LICENSE
+      - README.md
 
 checksum:
   name_template: "checksums.txt"

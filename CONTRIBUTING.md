@@ -13,9 +13,9 @@ go test ./cmd/... ./internal/...
 ## Project Structure
 
 ```
-cmd/terrain/          CLI entry point (30+ commands)
+cmd/terrain/          CLI entry point (10 canonical commands + legacy aliases)
 cmd/terrain-bench/    Benchmark harness
-internal/             47 Go packages (83k lines)
+internal/             49 Go packages
 ├── analysis/        Repository scanning and code surface inference
 ├── convert/         Go-native test conversion (25 directions)
 ├── depgraph/        Dependency graph with 5 reasoning engines
@@ -33,7 +33,7 @@ internal/             47 Go packages (83k lines)
 # Build
 go build -o terrain ./cmd/terrain
 
-# Test all Go packages (48 packages)
+# Test all Go packages
 go test ./cmd/... ./internal/...
 
 # Verify formatting

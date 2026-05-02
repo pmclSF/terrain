@@ -58,7 +58,7 @@ terrain impact      "What validations matter for this change?"
 terrain explain     "Why did Terrain make this decision?"
 ```
 
-> **About the example outputs below.** The CLI dumps in this section illustrate the *shape* of Terrain's reports on a large pandas-style repository — they are not literal output from a single live run. A few specific signals shown (`xfailAccumulation` age, statistical flaky-test failure rates, the `0.91+` duplicate similarity threshold) are marked `[experimental]` or `[planned]` in 0.1.2; see [docs/release/feature-status.md](docs/release/feature-status.md) for what's stable, what's experimental, and what's planned. The headline "30 seconds" promise refers to small-to-medium repos (≤ 1,000 test files) on commodity hardware; expect 5–15 seconds on a typical service repo and longer on monorepos.
+> **About the example outputs below.** The CLI dumps in this section illustrate the *shape* of Terrain's reports on a large pandas-style repository — they are not literal output from a single live run. A few specific signals shown (`xfailAccumulation` age, statistical flaky-test failure rates, the `0.91+` duplicate similarity threshold) are marked `[experimental]` or `[planned]` in 0.2.0; see [docs/release/feature-status.md](docs/release/feature-status.md) for what's stable, what's experimental, and what's planned. The headline "30 seconds" promise refers to small-to-medium repos (≤ 1,000 test files) on commodity hardware; expect 5–15 seconds on a typical service repo and longer on monorepos.
 
 ### 1. Analyze — understand the test system
 
@@ -295,7 +295,7 @@ chmod +x terrain
 sudo mv terrain /usr/local/bin/
 ```
 
-Binaries are available for macOS, Linux, and Windows (amd64 and arm64).
+Binaries are available for macOS (amd64 + arm64), Linux (amd64 + arm64), and Windows (amd64).
 
 ### Build from source
 
@@ -328,6 +328,9 @@ terrain impact --base main
 
 # Get prioritized recommendations
 terrain insights
+
+# Drill into a specific test, code unit, owner, or finding
+terrain explain src/auth/login.test.ts
 ```
 
 ## GitHub Actions templates
@@ -517,9 +520,9 @@ Repository scan  →  Signal detection  →  Risk modeling  →  Reporting
 - **Reports** synthesize signals, risk, trends, and benchmark readiness into actionable output
 
 ```
-cmd/terrain/     CLI — 11 canonical commands (analyze, report, migrate,
-                 convert, posture, score, doctor, ai, serve, version, help);
-                 35+ legacy aliases retained through 0.2.x
+cmd/terrain/     CLI — canonical surface (analyze, report, migrate,
+                 convert, posture, doctor, ai, serve, version, help)
+                 plus legacy aliases retained through 0.2.x
 internal/        47 Go packages covering analysis, signals, risk,
                  impact, depgraph, measurement, reporting, and more
 ```
@@ -573,7 +576,15 @@ Exit code 0 = pass, 2 = violations found, 1 = error.
 - [Example Reports](docs/examples/) — analyze, impact, insights, explain output samples
 - [Canonical User Journeys](docs/product/canonical-user-journeys.md) — primary workflows and expected outcomes
 - [Signal Model](docs/signal-model.md) — the core signal abstraction
+- [Glossary](docs/glossary.md) — Terrain-specific vocabulary in one page
 - [Architecture](docs/architecture/) — design documents and technical specifications
+- [Versioning Policy](docs/versioning.md) — what's a breaking change vs behaviour change vs bug fix
+- [Compatibility](docs/compatibility.md) — supported OSes, Go versions, frameworks
+- [Integrations](docs/integrations/) — Promptfoo / DeepEval / Ragas wiring guides
+- [Feature Status](docs/release/feature-status.md) — what's stable, experimental, or planned in the current release
+- [CHANGELOG](CHANGELOG.md) — release history and per-version changes
+- [Security](SECURITY.md) — supported versions and vulnerability disclosure
+- [Code of Conduct](CODE_OF_CONDUCT.md) — community standards
 - [Contributing](CONTRIBUTING.md) — how to build, test, and extend Terrain
 
 ## Development

@@ -5,6 +5,16 @@ on:
     tags:
       - 'v*'
 
+# Release runs are NEVER cancelled mid-flight: once the OIDC certs
+# are issued and uploaded to the public Sigstore log, cancelling
+# leaves orphan certs that look like a partial release. `cancel-in-
+# progress: false` is explicit so anyone re-running the release
+# (e.g. for a hotfix tag) doesn't accidentally cancel an in-flight
+# canonical run.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 permissions:
   contents: write
   id-token: write       # required for npm provenance + Sigstore keyless signing
@@ -15,6 +25,7 @@ jobs:
   # Runs once on a single OS; build matrix below is gated on this passing.
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v6
       with:
@@ -69,6 +80,7 @@ jobs:
             build_args: --id terrain-windows
             artifact_name: terrain-windows
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
     steps:
     - uses: actions/checkout@v6
       with:
@@ -176,9 +188,9 @@ jobs:
 
         echo "=== Final dist/ contents ==="
         ls -la
-      env:
-        COSIGN_EXPERIMENTAL: "1"
-
+      # COSIGN_EXPERIMENTAL was required for keyless signing in cosign
+      # 1.x. cosign 2.x (which we're on) makes it the default and emits
+      # a deprecation notice when set; drop the env var.
     - name: Upload OS artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -198,6 +210,7 @@ jobs:
   go-release-publish:
     needs: go-release-build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
     - uses: actions/checkout@v6
       with:
@@ -231,8 +244,9 @@ jobs:
           --output-signature=dist/checksums.txt.sig \
           --output-certificate=dist/checksums.txt.pem \
           dist/checksums.txt
-      env:
-        COSIGN_EXPERIMENTAL: "1"
+      # COSIGN_EXPERIMENTAL=1 was required by cosign 1.x for keyless;
+      # cosign 2.x makes keyless the default and emits a deprecation
+      # notice when the env var is set. Removed in 0.2.0 final-polish.
 
     # SLSA L2 build-provenance attestation (0.2). actions/attest-build-provenance
     # signs a SLSA-compliant in-toto statement against every binary archive
@@ -258,6 +272,46 @@ jobs:
           --generate-notes \
           dist/*
 
+  # Post-release smoke test: download the just-published linux/amd64
+  # archive, extract, and verify `terrain version --json` reports the
+  # tagged version. Catches the class of "release published but
+  # archive contains a stale build / wrong version string" bugs that
+  # previously could only be caught by a user installing from the
+  # release after the fact. Runs after the GitHub release is created
+  # so the artifact URLs resolve.
+  release-smoke:
+    needs: go-release-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Download and verify linux/amd64 archive
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        set -euo pipefail
+        TAG="${GITHUB_REF_NAME}"
+        VERSION="${TAG#v}"
+        ARCHIVE="terrain_${VERSION}_linux_amd64.tar.gz"
+
+        echo "Downloading $ARCHIVE from release $TAG..."
+        gh release download "$TAG" --pattern "$ARCHIVE" --clobber
+
+        echo "Extracting..."
+        tar -xzf "$ARCHIVE"
+        chmod +x ./terrain
+
+        echo "Running ./terrain version --json:"
+        OUTPUT=$(./terrain version --json)
+        echo "$OUTPUT"
+
+        # Parse the version field and assert it matches the tag.
+        REPORTED=$(echo "$OUTPUT" | grep -oE '"version"\s*:\s*"[^"]+"' | head -1 | sed -E 's/.*"version"\s*:\s*"([^"]+)".*/\1/')
+        if [ "$REPORTED" != "$VERSION" ]; then
+          echo "❌ Version mismatch: archive reports '$REPORTED', expected '$VERSION'" >&2
+          exit 1
+        fi
+        echo "✅ Smoke test passed: published archive reports version $VERSION."
+
   # Homebrew tap update is handled by the separate homebrew-update.yml
   # workflow, which fires on `release: published` (and on workflow_dispatch
   # for recovery). It updates the source-build formula in-place — no
@@ -267,12 +321,27 @@ jobs:
   npm-release:
     needs: [verify, go-release-publish]
     runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write  # required for npm provenance
     steps:
     - uses: actions/checkout@v6
     - uses: actions/setup-node@v6
       with:
         node-version: '22.x'
         registry-url: 'https://registry.npmjs.org'
+
+    # Go is required because `prepublishOnly` runs `npm test` which
+    # invokes `scripts/verify-pack.js`, which calls `go build` to
+    # exercise the binary path through `npm pack`. Without Go, the
+    # publish fails with `go: not found`. Found in the 0.2.0 final
+    # polish review — the previous shape would have crashed on first
+    # release attempt.
+    - uses: actions/setup-go@v6
+      with:
+        go-version-file: go.mod
+        cache: true
 
     - name: Install dependencies
       run: npm ci

@@ -172,10 +172,14 @@ func (r *DetectorRegistry) Run(snap *models.TestSuiteSnapshot) {
 		signals []models.Signal
 	}
 
+	// Pre-allocate results to len(r.registrations) so the per-goroutine
+	// append doesn't trigger repeated copy-grow under the mutex. Cheap
+	// micro-optimization, but useful at scale: with ~30 detectors the
+	// pre-fix slice grew through 0/1/2/4/8/16/32 reallocations.
 	var (
 		wg         sync.WaitGroup
 		mu         sync.Mutex
-		results    []result
+		results    = make([]result, 0, len(r.registrations))
 		dependents []DetectorRegistration
 	)
 
@@ -266,11 +270,27 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 
 	// Phase 2: Graph-powered detectors (concurrent — graph is sealed).
 	if g != nil && len(graphRegs) > 0 {
-		var graphResults []result
+		graphResults := make([]result, 0, len(graphRegs))
 		var wg2 sync.WaitGroup
 		for i, reg := range graphRegs {
 			gd, ok := reg.Detector.(GraphDetector)
 			if !ok {
+				// 0.2.0 final-polish: pre-fix this branch silently
+				// dropped the registration with no signal, no log, no
+				// diagnostic — a detector declared `RequiresGraph: true`
+				// but whose runtime type didn't satisfy the GraphDetector
+				// interface vanished from the pipeline entirely. Now we
+				// emit a detectorPanic-shaped diagnostic so the user
+				// sees something is wrong instead of getting a quietly
+				// half-empty snapshot.
+				snap.Signals = append(snap.Signals, models.Signal{
+					Type:        "detectorPanic",
+					Category:    models.CategoryQuality,
+					Severity:    models.SeverityCritical,
+					Confidence:  1.0,
+					Explanation: fmt.Sprintf("detector %q declared RequiresGraph=true but does not implement GraphDetector — registration silently skipped pre-0.2.x; surfaced now as a configuration bug.", reg.Meta.ID),
+					SuggestedAction: "Verify that the detector's concrete type implements DetectWithGraph(*TestSuiteSnapshot, *Graph), or set RequiresGraph=false in the registration.",
+				})
 				continue
 			}
 			wg2.Add(1)

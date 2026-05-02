@@ -8,6 +8,10 @@ on:
   schedule:
     - cron: '0 6 * * 1' # weekly Monday 6am UTC
 
+concurrency:
+  group: codeql-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   security-events: write
   contents: read
@@ -15,11 +19,17 @@ permissions:
 jobs:
   analyze:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     strategy:
       fail-fast: false
+      # 0.2.0 final-polish: dropped `python` from the language matrix.
+      # The repo has only a handful of Python helper scripts (no
+      # production Python under analysis); CodeQL Python autobuild was
+      # spending ~5 min/week with effectively no coverage. Re-add when
+      # the engine itself analyses Python source.
       matrix:
-        language: [go, javascript-typescript, python]
+        language: [go, javascript-typescript]
 
     steps:
       - name: Checkout repository

@@ -30,11 +30,16 @@ type ToolWithoutSandboxDetector struct {
 // description marks the tool as potentially irreversible. The list is
 // intentionally generous — a false positive ("delete_cache" is fine)
 // is cheaper than a false negative ("delete_user" without sandbox).
+// destructiveVerbs trailing class: `(?:_|\b)` rather than `\b` alone.
+// Go's `\b` treats `_` as a word character, so `\bdelete\b` would not
+// match `delete_user`. Allowing `_` as a boundary catches the common
+// `verb_object` snake-case form that almost every real-world tool
+// definition uses.
 var destructiveVerbs = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)\b(delete|destroy|remove|drop|truncate|purge)\b`),
-	regexp.MustCompile(`(?i)\b(exec|execute|run_shell|run_command|spawn|eval)\b`),
-	regexp.MustCompile(`(?i)\b(write|overwrite|replace|patch)_(?:file|disk|prod)\b`),
-	regexp.MustCompile(`(?i)\b(send_email|send_payment|charge|refund|transfer)\b`),
+	regexp.MustCompile(`(?i)\b(delete|destroy|remove|drop|truncate|purge)(?:_|\b)`),
+	regexp.MustCompile(`(?i)\b(exec|execute|run_shell|run_command|spawn|eval)(?:_|\b)`),
+	regexp.MustCompile(`(?i)\b(write|overwrite|replace|patch)_(?:file|disk|prod)(?:_|\b)`),
+	regexp.MustCompile(`(?i)\b(send_email|send_payment|charge|refund|transfer)(?:_|\b)`),
 }
 
 // approvalMarkers are substrings/keys that, when present in the tool
@@ -150,7 +155,13 @@ func analyseToolConfig(path string) []toolFinding {
 	tools := extractToolEntries(&node)
 	var out []toolFinding
 	for _, t := range tools {
-		if !looksDestructive(t.name + " " + t.description) {
+		// classifyDestructive (added in 0.2.0 final-polish) suppresses
+		// the well-known benign forms — `delete_cache`, `purge_logs`,
+		// `remove_session`, etc. — where the verb's blast radius is
+		// bounded by the object noun. Always-high verbs (`exec`,
+		// `transfer`, `send_payment`) stay flagged regardless of
+		// object.
+		if !classifyDestructive(t.name + " " + t.description) {
 			continue
 		}
 		if hasApprovalMarkerOnEntry(t) {
@@ -241,6 +252,32 @@ func walkYAMLNodes(n *yaml.Node, visit func(*yaml.Node)) {
 	}
 }
 
+// benignDestructiveObjects identifies object nouns where a "delete" /
+// "purge" / "remove" verb is almost certainly safe — caches, log
+// buffers, temp files, sessions, cookies. These are the noisiest
+// false positives in the wild (e.g. `delete_cache`, `purge_logs`).
+// We don't suppress destructive verbs categorically — `exec`, `eval`,
+// `transfer`, `send_payment` stay flagged regardless of object — but
+// for the verb tier that depends on context (delete/destroy/remove/
+// drop/truncate/purge), an explicit benign-object match downgrades
+// the finding to a warning-tier no-op.
+var benignDestructiveObjects = regexp.MustCompile(
+	`(?i)\b(?:delete|destroy|remove|drop|truncate|purge)_(?:cache|caches|log|logs|tmp|temp|tempfile|tmpfile|session|sessions|cookie|cookies|buffer|history|local_state)\b`,
+)
+
+// destructiveVerbsAlwaysHigh matches verbs whose destructive intent
+// stands regardless of object: shell exec, code evaluation, payment
+// movement. These never get the benign-object downgrade because the
+// blast radius isn't bounded by the object noun.
+//
+// Trailing boundary is `(?:_|\b)` rather than `\b` alone — Go's `\b`
+// treats `_` as a word character, so `\bexec\b` does NOT match
+// `exec_command`. Allowing `_` lets the `verb_object` form match
+// (`exec_command`, `run_shell`, `send_payment`).
+var destructiveVerbsAlwaysHigh = regexp.MustCompile(
+	`(?i)\b(?:exec|execute|run_shell|run_command|spawn|eval|send_email|send_payment|charge|refund|transfer)(?:_|\b)`,
+)
+
 func looksDestructive(s string) bool {
 	for _, rx := range destructiveVerbs {
 		if rx.MatchString(s) {
@@ -248,6 +285,24 @@ func looksDestructive(s string) bool {
 		}
 	}
 	return false
+}
+
+// classifyDestructive returns true if the matched destructive verb
+// should fire a finding (i.e. it's not the benign-object form). For
+// always-high verbs it always returns true; for delete-style verbs it
+// returns false when the object noun is in the benign whitelist
+// (cache, log, tmp, session, cookie, etc.).
+func classifyDestructive(s string) bool {
+	if !looksDestructive(s) {
+		return false
+	}
+	if destructiveVerbsAlwaysHigh.MatchString(s) {
+		return true
+	}
+	if benignDestructiveObjects.MatchString(s) {
+		return false
+	}
+	return true
 }
 
 // hasApprovalMarker (legacy) — kept for any external callers, but

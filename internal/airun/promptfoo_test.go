@@ -192,3 +192,56 @@ func TestEvalAggregates_SuccessRate(t *testing.T) {
 		t.Errorf("empty SuccessRate = %v, want 0", got)
 	}
 }
+
+// TestParsePromptfoo_RowDerivedFallback_RoutesErroredRowsToErrors
+// locks in the 0.2.0 final-polish fix: when stats are absent (Promptfoo
+// v3 small runs, or a raw row dump), the row-derived fallback used to
+// classify every non-success row as Failure. Rows where the provider
+// crashed (`error: "..."`) should land in Aggregates.Errors instead so
+// aiHallucinationRate's `caseIsScoreable` denominator excludes them
+// rather than treating them as legitimate evaluation failures.
+func TestParsePromptfoo_RowDerivedFallback_RoutesErroredRowsToErrors(t *testing.T) {
+	t.Parallel()
+	// Nested-results shape with no stats; one success, one assertion
+	// failure, one provider crash (error field set).
+	body := `{"results":[
+		{"id":"a","success":true,"score":1.0,"response":{"tokenUsage":{"total":10}}},
+		{"id":"b","success":false,"failureReason":"output mismatch","response":{"tokenUsage":{"total":12}}},
+		{"id":"c","success":false,"error":"provider 503 timeout","response":{"tokenUsage":{"total":0}}}
+	]}`
+	got, err := ParsePromptfooJSON([]byte(body))
+	if err != nil {
+		t.Fatalf("ParsePromptfooJSON: %v", err)
+	}
+	if got.Aggregates.Successes != 1 {
+		t.Errorf("Successes = %d, want 1", got.Aggregates.Successes)
+	}
+	if got.Aggregates.Failures != 1 {
+		t.Errorf("Failures = %d, want 1 (assertion failure)", got.Aggregates.Failures)
+	}
+	if got.Aggregates.Errors != 1 {
+		t.Errorf("Errors = %d, want 1 (provider crash)", got.Aggregates.Errors)
+	}
+}
+
+// TestParsePromptfoo_PerCaseCostFallback locks in the 0.2.0 fix where
+// per-case cost reads from `r.cost` when `r.response.tokenUsage.cost`
+// is absent. Modern Promptfoo writes the same value to both; the
+// adapter pre-fix only read response-level, so cost regressions
+// silently no-op'd when Promptfoo only populated the top-level field.
+func TestParsePromptfoo_PerCaseCostFallback(t *testing.T) {
+	t.Parallel()
+	body := `{"results":[
+		{"id":"a","success":true,"cost":0.0042,"response":{}}
+	]}`
+	got, err := ParsePromptfooJSON([]byte(body))
+	if err != nil {
+		t.Fatalf("ParsePromptfooJSON: %v", err)
+	}
+	if len(got.Cases) != 1 {
+		t.Fatalf("expected 1 case, got %d", len(got.Cases))
+	}
+	if got.Cases[0].TokenUsage.Cost != 0.0042 {
+		t.Errorf("per-case cost = %v, want 0.0042 (top-level fallback)", got.Cases[0].TokenUsage.Cost)
+	}
+}

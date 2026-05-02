@@ -6,10 +6,12 @@ of signals into the **risk surfaces** users see in `terrain analyze`,
 the second half (`docs/health-grade-rubric.md`) explains the per-report
 A/B/C/D health grade.
 
-The 0.1.2 release locks every magic number that affects scoring behind a
-named constant in `internal/scoring/risk_engine.go`. This document explains
-what each one means today and exactly what changes when 0.3's calibration
-work lands.
+The 0.1.2 release locked every magic number that affects scoring behind a
+named constant in `internal/scoring/risk_engine.go`; 0.2.0 carries those
+constants forward unchanged while the calibration corpus runner provides
+the regression gate that lets 0.3 calibrate them. This document explains
+what each constant means today and exactly what changes when 0.3's
+calibration work lands.
 
 ## What the engine produces
 
@@ -30,7 +32,7 @@ two snapshots quantitatively.
 ## Severity weights
 
 Each contributing signal is weighted by its severity. The weights are
-fixed for 0.1.x:
+fixed for 0.1.x and unchanged in 0.2.x:
 
 | Severity | Weight | Constant in code |
 |---|---|---|
@@ -111,8 +113,10 @@ inline in `risk_engine.go` and tested in `risk_engine_test.go`.
 
 Short answer: they were carried forward from 0.1.0 because changing them
 is a behaviour-breaking event for every customer that has tuned policy
-gates around current band assignments. 0.1.2's job is to make the
-existing behaviour transparent and inspectable, not to replace the model.
+gates around current band assignments. 0.1.2 made the existing behaviour
+transparent and inspectable; 0.2.0 ships the calibration corpus runner
+that provides the regression gate without changing the model. The model
+itself is replaced in 0.3 once the labelled-corpus calibration lands.
 
 Long answer:
 
@@ -124,7 +128,9 @@ Long answer:
    boundaries should land, and locked them.
 3. We have always known **calibration is needed**. The plan since 0.1.0
    has been to land it once we had a labelled corpus large enough to
-   resist over-fitting. That arrives in 0.3.
+   resist over-fitting. The 0.2.0 calibration corpus is the load-bearing
+   gate (regression-only); the labelled corpus + tuned constants arrive
+   in 0.3.
 
 ## What 0.3 changes
 

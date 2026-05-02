@@ -246,7 +246,14 @@ function log(message, quiet = false) {
   }
 }
 
-async function downloadFile(url, destinationPath) {
+// MAX_REDIRECTS caps redirect chains to defend against misconfigured
+// proxies that loop. 5 covers every normal redirect chain (GitHub
+// release → CDN → storage backend) with margin to spare. 0.2.0
+// final-polish: pre-fix the recursion was unbounded — a redirect
+// loop hung the installer until the OS killed it.
+const MAX_REDIRECTS = 5;
+
+async function downloadFile(url, destinationPath, redirectsRemaining = MAX_REDIRECTS) {
   await new Promise((resolve, reject) => {
     const request = https.get(
       url,
@@ -263,8 +270,18 @@ async function downloadFile(url, destinationPath) {
           response.headers.location
         ) {
           response.resume();
+          if (redirectsRemaining <= 0) {
+            reject(
+              new Error(
+                `download exceeded ${MAX_REDIRECTS} redirects for ${url}; ` +
+                  'check for proxy redirect loops or set ' +
+                  'TERRAIN_INSTALLER_BASE_URL to a direct download host.'
+              )
+            );
+            return;
+          }
           try {
-            await downloadFile(response.headers.location, destinationPath);
+            await downloadFile(response.headers.location, destinationPath, redirectsRemaining - 1);
             resolve();
           } catch (error) {
             reject(error);
