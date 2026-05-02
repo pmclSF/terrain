@@ -35,8 +35,18 @@ func ParsePromptfooJSON(data []byte) (*EvalRunResult, error) {
 		RunID:     raw.EvalID,
 	}
 	if raw.CreatedAt > 0 {
-		// Promptfoo writes createdAt as a unix-millis number.
-		out.CreatedAt = time.UnixMilli(raw.CreatedAt).UTC()
+		// Promptfoo's `createdAt` magnitude varies by version: v3+ writes
+		// unix-millis; some v4 CLI paths emit unix-seconds. Pre-0.2.x
+		// final-polish, the adapter assumed millis universally — a
+		// 10-digit second-epoch timestamp from 2026 silently decoded as
+		// 1970. Magnitude check: anything < 1e12 is treated as seconds
+		// (which covers the entire range from 1970 through year 33658),
+		// otherwise millis.
+		if raw.CreatedAt < 1e12 {
+			out.CreatedAt = time.Unix(raw.CreatedAt, 0).UTC()
+		} else {
+			out.CreatedAt = time.UnixMilli(raw.CreatedAt).UTC()
+		}
 	} else if raw.CreatedAtISO != "" {
 		if t, err := time.Parse(time.RFC3339, raw.CreatedAtISO); err == nil {
 			out.CreatedAt = t.UTC()

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	goruntime "runtime"
 	"sort"
 	"strings"
@@ -311,7 +312,7 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 			if err := taskCtx.Err(); err != nil {
 				return err
 			}
-			promptfooEnvelopes, promptfooIngestErr = ingestPromptfooArtifacts(opt.PromptfooPaths)
+			promptfooEnvelopes, promptfooIngestErr = ingestPromptfooArtifacts(root, opt.PromptfooPaths)
 			return nil
 		})
 	}
@@ -320,7 +321,7 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 			if err := taskCtx.Err(); err != nil {
 				return err
 			}
-			deepevalEnvelopes, deepevalIngestErr = ingestDeepEvalArtifacts(opt.DeepEvalPaths)
+			deepevalEnvelopes, deepevalIngestErr = ingestDeepEvalArtifacts(root, opt.DeepEvalPaths)
 			return nil
 		})
 	}
@@ -329,7 +330,7 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 			if err := taskCtx.Err(); err != nil {
 				return err
 			}
-			ragasEnvelopes, ragasIngestErr = ingestRagasArtifacts(opt.RagasPaths)
+			ragasEnvelopes, ragasIngestErr = ingestRagasArtifacts(root, opt.RagasPaths)
 			return nil
 		})
 	}
@@ -1172,6 +1173,32 @@ func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
 	return &snap, nil
 }
 
+// relativeArtifactPath converts a CLI-provided path into a repo-
+// relative form when possible. 0.2.0 final-polish: pre-fix the
+// SourcePath stamped into EvalRunEnvelope was whatever the user
+// passed on the CLI — `--promptfoo-results /Users/alice/proj/...`
+// produced absolute paths in SARIF output, leaking developer home
+// directories. Now `filepath.Rel(root, p)` is attempted; on failure
+// (different volume, error) we fall back to the original path.
+func relativeArtifactPath(root, p string) string {
+	if root == "" || p == "" {
+		return p
+	}
+	absRoot, err := filepath.Abs(root)
+	if err != nil {
+		return p
+	}
+	absP, err := filepath.Abs(p)
+	if err != nil {
+		return p
+	}
+	rel, err := filepath.Rel(absRoot, absP)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return p
+	}
+	return rel
+}
+
 // ingestPromptfooArtifacts parses each Promptfoo `--output` JSON file
 // and returns the resulting envelope per file. Errors abort early so a
 // malformed file fails the run loudly.
@@ -1179,14 +1206,14 @@ func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
 // The actual parsing lives in internal/airun.ParsePromptfooJSON; this
 // helper is the thin pipeline-side wrapper that translates each
 // EvalRunResult into the snapshot envelope.
-func ingestPromptfooArtifacts(paths []string) ([]models.EvalRunEnvelope, error) {
+func ingestPromptfooArtifacts(root string, paths []string) ([]models.EvalRunEnvelope, error) {
 	out := make([]models.EvalRunEnvelope, 0, len(paths))
 	for _, p := range paths {
 		result, err := airun.LoadPromptfooFile(p)
 		if err != nil {
 			return nil, fmt.Errorf("promptfoo artifact %s: %w", p, err)
 		}
-		env, err := result.ToEnvelope(p)
+		env, err := result.ToEnvelope(relativeArtifactPath(root, p))
 		if err != nil {
 			return nil, fmt.Errorf("promptfoo envelope for %s: %w", p, err)
 		}
@@ -1199,14 +1226,14 @@ func ingestPromptfooArtifacts(paths []string) ([]models.EvalRunEnvelope, error) 
 // DeepEval adapter. Both adapters target the same EvalRunEnvelope
 // shape; the runtime-aware AI detectors don't care which framework
 // produced the data.
-func ingestDeepEvalArtifacts(paths []string) ([]models.EvalRunEnvelope, error) {
+func ingestDeepEvalArtifacts(root string, paths []string) ([]models.EvalRunEnvelope, error) {
 	out := make([]models.EvalRunEnvelope, 0, len(paths))
 	for _, p := range paths {
 		result, err := airun.LoadDeepEvalFile(p)
 		if err != nil {
 			return nil, fmt.Errorf("deepeval artifact %s: %w", p, err)
 		}
-		env, err := result.ToEnvelope(p)
+		env, err := result.ToEnvelope(relativeArtifactPath(root, p))
 		if err != nil {
 			return nil, fmt.Errorf("deepeval envelope for %s: %w", p, err)
 		}
@@ -1219,14 +1246,14 @@ func ingestDeepEvalArtifacts(paths []string) ([]models.EvalRunEnvelope, error) {
 // the Ragas adapter. Ragas's named-score axes (faithfulness,
 // context_relevance, answer_relevancy) feed aiRetrievalRegression
 // directly via the same EvalRunEnvelope plumbing.
-func ingestRagasArtifacts(paths []string) ([]models.EvalRunEnvelope, error) {
+func ingestRagasArtifacts(root string, paths []string) ([]models.EvalRunEnvelope, error) {
 	out := make([]models.EvalRunEnvelope, 0, len(paths))
 	for _, p := range paths {
 		result, err := airun.LoadRagasFile(p)
 		if err != nil {
 			return nil, fmt.Errorf("ragas artifact %s: %w", p, err)
 		}
-		env, err := result.ToEnvelope(p)
+		env, err := result.ToEnvelope(relativeArtifactPath(root, p))
 		if err != nil {
 			return nil, fmt.Errorf("ragas envelope for %s: %w", p, err)
 		}

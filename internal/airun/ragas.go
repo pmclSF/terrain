@@ -46,8 +46,9 @@ func ParseRagasJSON(data []byte) (*EvalRunResult, error) {
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("parse ragas payload: %w", err)
 	}
-	if len(raw.Results) == 0 {
-		return nil, fmt.Errorf("ragas payload has no results")
+	rows := raw.rowsForParsing()
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("ragas payload has no results, evaluation_results, or scores")
 	}
 
 	out := &EvalRunResult{
@@ -63,8 +64,8 @@ func ParseRagasJSON(data []byte) (*EvalRunResult, error) {
 	// NamedScores when they're numeric.
 	const successThreshold = 0.5
 
-	out.Cases = make([]EvalCase, 0, len(raw.Results))
-	for i, row := range raw.Results {
+	out.Cases = make([]EvalCase, 0, len(rows))
+	for i, row := range rows {
 		named := map[string]float64{}
 		for k, v := range row {
 			n, ok := numericValue(v)
@@ -174,14 +175,26 @@ var ragasQualityKeys = map[string]bool{
 	"retrieval_score":        true,
 	"ndcg":                   true,
 	"coverage":               true,
+	// Ragas 0.2 modern metrics (added in 0.2.0 final-polish to keep this
+	// whitelist aligned with retrievalScoreKeys in aiRetrievalRegression).
+	"context_utilization": true,
+	"noise_sensitivity":   true,
+	"summarization":       true,
+	"factual_correctness": true,
 }
 
 // isRagasQualityKey reports whether a NamedScore key is a quality
 // axis whose value should flow into success/failure synthesis.
-// Variants (hyphens, suffixed `_score`) are normalised.
+// Variants (hyphens, spaces, leading `eval_`, suffixed `_score`) are
+// normalised. 0.2.0 final-polish: added space→underscore and `eval_`
+// prefix-strip to handle the `ragas-evaluate-helpers` library's
+// `eval_faithfulness` / `eval context_relevance` shapes that the
+// pre-fix pattern missed.
 func isRagasQualityKey(key string) bool {
 	low := strings.ToLower(strings.TrimSpace(key))
 	low = strings.ReplaceAll(low, "-", "_")
+	low = strings.ReplaceAll(low, " ", "_")
+	low = strings.TrimPrefix(low, "eval_")
 	low = strings.TrimSuffix(low, "_score")
 	return ragasQualityKeys[low]
 }
@@ -226,5 +239,26 @@ func stringField(row map[string]any, key string) string {
 type ragasEnvelope struct {
 	RunID     string           `json:"run_id,omitempty"`
 	CreatedAt string           `json:"created_at,omitempty"`
-	Results   []map[string]any `json:"results"`
+	// 0.2.0 final-polish: modern Ragas (≥0.1.0) emits `evaluation_results`
+	// instead of `results`; some users export via DataFrame.to_json
+	// which produces just `scores`. We accept any of the three field
+	// names and merge them in the parser.
+	Results            []map[string]any `json:"results"`
+	EvaluationResults  []map[string]any `json:"evaluation_results"`
+	Scores             []map[string]any `json:"scores"`
+}
+
+// rowsForParsing returns the populated row list, preferring
+// EvaluationResults (modern), then Results (legacy), then Scores
+// (DataFrame export). At most one is populated in a real Ragas dump.
+func (r ragasEnvelope) rowsForParsing() []map[string]any {
+	switch {
+	case len(r.EvaluationResults) > 0:
+		return r.EvaluationResults
+	case len(r.Results) > 0:
+		return r.Results
+	case len(r.Scores) > 0:
+		return r.Scores
+	}
+	return nil
 }
