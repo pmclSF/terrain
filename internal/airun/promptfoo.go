@@ -9,7 +9,7 @@ import (
 )
 
 // ParsePromptfooJSON parses a Promptfoo `--output result.json` payload
-// and returns a normalised EvalRunResult.
+// and returns a normalized EvalRunResult.
 //
 // Promptfoo's JSON format has shifted across major versions (v3 / v4
 // most commonly seen in the wild). This adapter handles both shapes:
@@ -17,7 +17,7 @@ import (
 //   v3 (current): top-level { evalId, results: { results: [...], stats: {...} } }
 //   v4+ (newer):  top-level { evalId, results: [...], stats: {...} }
 //
-// Anything we can't recognise is returned as an error rather than
+// Anything we can't recognize is returned as an error rather than
 // silently producing an empty result; the calibration corpus catches
 // adapter regressions explicitly.
 func ParsePromptfooJSON(data []byte) (*EvalRunResult, error) {

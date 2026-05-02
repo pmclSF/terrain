@@ -124,5 +124,5 @@ prompt = (
   AST-precise taint analysis lands in 0.3.
 - Skips comment-only lines. A genuinely vulnerable line that ends
   with a trailing `# explanatory comment` is still flagged.
-- Doesn't recognise framework-specific sanitisers — your
+- Doesn't recognize framework-specific sanitisers — your
   `escape(user_input)` is treated identically to the bare value.

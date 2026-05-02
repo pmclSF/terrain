@@ -32,7 +32,7 @@ type TestMigrationOptions struct {
 	// HistoryRoot, when set, points at the repository root that owns
 	// `.terrain/conversion-history/`. The runtime appends one record
 	// per successful conversion. Empty disables history (preserves
-	// pre-0.2 behaviour for callers that haven't opted in).
+	// pre-0.2 behavior for callers that haven't opted in).
 	HistoryRoot string `json:"historyRoot,omitempty"`
 
 	// TerrainVersion is stamped into the history record so audit

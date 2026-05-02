@@ -14,7 +14,7 @@ A Terrain release version `MAJOR.MINOR.PATCH` means:
   breaking change.
 - **MINOR** — New canonical CLI commands, new signal types, new
   fields in JSON output, new detectors. May include
-  behaviour-affecting bugfixes.
+  behavior-affecting bugfixes.
 - **PATCH** — Bug fixes that don't add capabilities. May tighten
   detector precision (fewer false positives), but should not
   introduce new false negatives.
@@ -43,7 +43,7 @@ bump (until 1.0) or MAJOR bump (after 1.0):
 7. **Severity clause ID renamed.** Clauses are cited by detectors
    and by external policy rules; renaming breaks both.
 
-## What counts as behaviour change (NOT breaking)
+## What counts as behavior change (NOT breaking)
 
 These move detector outputs around but don't break the contract:
 

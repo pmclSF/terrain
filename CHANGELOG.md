@@ -91,10 +91,10 @@ real-shaped key would risk repository secret-scanner alerts — see
 
 - **27 fixtures × 33 distinct AI/quality/health/migration/structural/
   runtime signal types fire on real-shaped fixtures.** *The gate is a
-  recall gate*: every labelled signal must still fire after a detector
-  change. Extra signals emitted but not labelled are silent (counted
+  recall gate*: every labeled signal must still fire after a detector
+  change. Extra signals emitted but not labeled are silent (counted
   neither as TP nor FP). The precision-floor companion gate (≥90%
-  precision against a labelled-repo corpus) slipped to 0.3 — see
+  precision against a labeled-repo corpus) slipped to 0.3 — see
   `0.2-known-gaps.md` "Calibration corpus follow-ups".
 - **Calibration gate is now load-bearing.** `t.Errorf` on any
   unmatched expected label. Empty-corpus bypass closed: `t.Skipf` →
@@ -103,7 +103,7 @@ real-shaped key would risk repository secret-scanner alerts — see
 - **Match-key precision improved.** Matcher key now includes `Symbol`
   in addition to `(Type, File)` so multi-symbol fixtures distinguish
   "fired per-symbol" from "fired once on the same line."
-  `ExpectedAbsent` path matching uses the same normalisation as the
+  `ExpectedAbsent` path matching uses the same normalization as the
   positive-match path, fixing eval-data detectors that stamp absolute
   paths.
 - **Known gaps deferred to 0.3**: `aiHardcodedAPIKey` has no fixture
@@ -237,7 +237,7 @@ Drift fails `make docs-verify` (CI gate).
   `cosign` is not installed on the host (returns
   `verified: false, reason: 'cosign-missing'`) rather than aborting.
   The hard-fail framing in `docs/release/0.2.md` overstates the
-  current behaviour. Promoting to mandatory cosign verification
+  current behavior. Promoting to mandatory cosign verification
   (with `TERRAIN_INSTALLER_SKIP_VERIFY=1` as the documented
   escape) is on the 0.2.x list.
 
@@ -293,10 +293,10 @@ after dedup) closed the verified P0/P1 subset before tag:
   top-level `cost` field when `r.response.tokenUsage.cost` is zero;
   `createdAt` magnitude check (seconds vs millis) handles v4 CLI
   variants. DeepEval gains `runId` fallback (newer 1.x shape) and
-  metric-name whitespace normalisation. Ragas accepts
+  metric-name whitespace normalization. Ragas accepts
   `evaluation_results` (modern ≥0.1.0) and `scores` (DataFrame export)
   shapes alongside legacy `results`. Envelope `SourcePath` now
-  repo-relative (forward-slash normalised) so SARIF output doesn't
+  repo-relative (forward-slash normalized) so SARIF output doesn't
   leak developer home directories.
 - **CLI**: 14 legacy commands gain `legacyDeprecationNotice` calls so
   `TERRAIN_LEGACY_HINT=1` produces uniform migration prompts;
@@ -330,9 +330,9 @@ after dedup) closed the verified P0/P1 subset before tag:
 Items called out in `docs/release/0.2.md` that didn't ship and are
 explicitly deferred:
 
-- **Scoring v2 band re-anchoring** — needs a corpus of labelled
+- **Scoring v2 band re-anchoring** — needs a corpus of labeled
   *repositories* (not just per-detector calibration fixtures) to derive
-  percentile-based band thresholds. The 50-labelled-repo corpus
+  percentile-based band thresholds. The 50-labeled-repo corpus
   promised as 0.2 critical-path item #4 also slips here.
 - **Conversion top-3 fixture corpora to A-grade with 95% post-conversion
   pass rate** — was a Tier-2 release gate in `docs/release/0.2.md`;

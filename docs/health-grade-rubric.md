@@ -1,6 +1,6 @@
 # Health Grade Rubric
 
-`terrain insights` summarises an entire analysis with a single letter
+`terrain insights` summarizes an entire analysis with a single letter
 grade — A, B, C, or D. This document is the canonical explanation of how
 that grade is derived.
 
@@ -76,7 +76,7 @@ for risk surfaces (see `scoring-rubric.md`). We didn't, for three reasons:
 
 ## What 0.3 changes
 
-When the labelled corpus arrives:
+When the labeled corpus arrives:
 
 - Threshold constants will be re-derived from corpus distribution
   rather than gut-feel.

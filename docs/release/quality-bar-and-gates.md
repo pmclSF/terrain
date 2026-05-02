@@ -46,7 +46,7 @@ release is tagged.
 | CLI regression | Binary builds, runs, and produces expected output for all commands |
 | Docs consistency | CLI help text matches documented commands and flags |
 | `make docs-verify` (added in 0.2) | manifest.json + severity-rubric.md + rule-doc stubs are zero-diff against the generators; drift between code and docs is treated as a release blocker |
-| `make calibrate` (load-bearing in 0.2) | Calibration corpus runner asserts every labelled fixture's expected signal still fires (no false negatives); empty-corpus bypass closed via `t.Fatalf` + `minFixtures=25` |
+| `make calibrate` (load-bearing in 0.2) | Calibration corpus runner asserts every labeled fixture's expected signal still fires (no false negatives); empty-corpus bypass closed via `t.Fatalf` + `minFixtures=25` |
 | `make bench-gate` (added in 0.2) | Performance regression gate compares against the recorded baseline; >10% regression blocks merge |
 
 Release gates are run manually before tagging a release or automatically

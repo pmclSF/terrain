@@ -202,7 +202,7 @@ func (c CorpusResult) SortedDetectorTypes() []models.SignalType {
 	return out
 }
 
-// AnalyzerFunc runs Terrain's analyse pipeline against a fixture path
+// AnalyzerFunc runs Terrain's analyze pipeline against a fixture path
 // and returns the emitted Signals. Injected by callers so the package
 // is decoupled from the engine import (avoids cycles).
 type AnalyzerFunc func(fixturePath string) ([]models.Signal, error)
@@ -237,7 +237,7 @@ func FindFixtures(corpusRoot string) ([]string, error) {
 // for matching today — they are advisory and shown in mismatch reports.
 // This trades label maintainability (line numbers shift on edits) for
 // recall accuracy on noisy-line-number detectors.
-func Run(corpusRoot string, analyse AnalyzerFunc) (CorpusResult, error) {
+func Run(corpusRoot string, analyze AnalyzerFunc) (CorpusResult, error) {
 	dirs, err := FindFixtures(corpusRoot)
 	if err != nil {
 		return CorpusResult{}, fmt.Errorf("find fixtures under %s: %w", corpusRoot, err)
@@ -255,9 +255,9 @@ func Run(corpusRoot string, analyse AnalyzerFunc) (CorpusResult, error) {
 			return result, err
 		}
 
-		signals, err := analyse(fixtureDir)
+		signals, err := analyze(fixtureDir)
 		if err != nil {
-			return result, fmt.Errorf("analyse %s: %w", fixtureDir, err)
+			return result, fmt.Errorf("analyze %s: %w", fixtureDir, err)
 		}
 
 		fr := matchFixture(*labels, signals, fixtureDir)
@@ -356,9 +356,9 @@ func matchFixture(labels FixtureLabels, signals []models.Signal, fixtureDir stri
 			continue
 		}
 		// Check for explicit false-positive guard.
-		// Pre-0.2.x this used the non-normalised sig.Location.File,
+		// Pre-0.2.x this used the non-normalized sig.Location.File,
 		// which was silently broken for eval-data detectors that
-		// stamp absolute paths. Use sigFile (normalised) here too.
+		// stamp absolute paths. Use sigFile (normalized) here too.
 		for _, abs := range labels.ExpectedAbsent {
 			if signalMatches(abs, sig, sigFile) {
 				out.Matches = append(out.Matches, Match{

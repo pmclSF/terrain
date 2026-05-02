@@ -13,7 +13,7 @@ import (
 )
 
 // parallelForEachIndexCtx is like parallelForEachIndex but checks ctx.Done()
-// before dispatching each work item. When cancelled, remaining items are
+// before dispatching each work item. When canceled, remaining items are
 // skipped and the function returns promptly. Items already in-flight run
 // to completion (they are per-file and fast).
 func parallelForEachIndexCtx(ctx context.Context, n int, fn func(i int)) {

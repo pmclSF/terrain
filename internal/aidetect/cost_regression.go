@@ -10,7 +10,7 @@ import (
 
 // CostRegressionDetector flags a per-case token-cost regression
 // between the current eval run and its baseline. Pairs with the
-// --baseline mechanism in the analyse pipeline (commit on this
+// --baseline mechanism in the analyze pipeline (commit on this
 // branch); when no baseline is attached the detector stays quiet.
 //
 // Detection model:

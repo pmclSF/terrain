@@ -234,7 +234,7 @@ func scanFileForModelTags(path string) []modelHit {
 // the whole point is to mention the deprecated tag — flagging that as
 // a finding would be inverted.
 //
-// Comment-prefix coverage: pre-0.2.x this only recognised `#`, `//`,
+// Comment-prefix coverage: pre-0.2.x this only recognized `#`, `//`,
 // and `*` (block-comment continuation), missing the styles used by SQL
 // (`--`), Lua/Haskell (`--`), config (`;`), shell-doc (`#:`), Lisp
 // (`;;`), HTML/Markdown (`<!--`), reStructuredText (`..`), and

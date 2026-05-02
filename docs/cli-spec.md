@@ -457,14 +457,14 @@ and not yet shipped.
 Usage: `terrain serve [--root PATH] [--port N] [--host HOST] [--read-only]`
 
 Flags:
-- `--root PATH` — repository root to analyse (default: `.`).
+- `--root PATH` — repository root to analyze (default: `.`).
 - `--port N` — bind port (default: 8421).
 - `--host HOST` — bind host (default: `127.0.0.1`). Setting any other
   value emits a stderr warning because the server has no built-in
   authentication.
 - `--read-only` — reject any non-GET/HEAD/OPTIONS request with HTTP 405.
   Every handler shipped in 0.2 is GET-only, so this is a contract gate
-  for any future state-changing endpoint rather than a behaviour change
+  for any future state-changing endpoint rather than a behavior change
   for current traffic. Users who set `--read-only=true` get the
   enforcement they ticked the box for.
 

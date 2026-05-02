@@ -84,7 +84,7 @@ the 0.2 changes; the manifest is authoritative.
 | `aiPromptInjectionRisk` | Pattern-based; assignment-anchored (`==` equality excluded); 3-line concatenation window so Black/Prettier-formatted multi-line concatenation is caught. User-input shapes cover Express/Koa, FastAPI typed params, Flask, Django, Pyramid, gRPC, CLI args. AST-precise taint-flow analysis is 0.3. |
 | `aiFewShotContamination` | Substring overlap with 40-character minimum chunk + 5-distinct-word guard; implicit path-based coverage matches auto-derived scenarios. Full n-gram overlap is 0.3. |
 | AI surface inference (`SurfacePrompt`, `SurfaceContext`, `SurfaceDataset`, `SurfaceToolDef`, `SurfaceRetrieval`) | Detection works; precision/recall uncalibrated. |
-| Risk band + Health Grade thresholds | Code is deterministic but thresholds (4 / 9 / 16; A/B/C/D cutoffs) are uncalibrated against a labelled corpus. Calibrated v2 scoring is 0.3. |
+| Risk band + Health Grade thresholds | Code is deterministic but thresholds (4 / 9 / 16; A/B/C/D cutoffs) are uncalibrated against a labeled corpus. Calibrated v2 scoring is 0.3. |
 | `terrain compare` snapshot diff | Implemented; output format may shift. |
 
 ### Planned (referenced in docs but not yet implemented)

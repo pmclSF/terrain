@@ -1183,7 +1183,7 @@ func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
 //
 // Result is always slash-separated. `filepath.Rel` returns native
 // separators (backslash on Windows); snapshot JSON, calibration
-// labels, and SARIF all expect forward slashes, so we normalise to
+// labels, and SARIF all expect forward slashes, so we normalize to
 // `/` as the final step. Without this, Windows builds produced
 // backslash-separated SourcePaths that mismatched forward-slash
 // labels in the calibration corpus.
