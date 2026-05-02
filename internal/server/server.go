@@ -19,12 +19,14 @@
 //     Referrer-Policy) are set on every response.
 //   - Read-only flag enforces HTTP 405 on state-changing endpoints.
 //
-// Known issues tracked for 0.2.1:
-//   - The analysis call inside getResult holds Server.mu for the full
-//     analysis duration, so one long analysis serializes all server
-//     requests behind it. Singleflight-based fix is on the 0.2.1 list.
-//   - HTTP handlers don't thread the request context into the engine,
-//     so client disconnect doesn't cancel in-flight analyses. Same PR.
+// Concurrency model:
+//   - Cache reads use a sync.RWMutex; warm-cache hits don't block writers.
+//   - The slow path runs the analysis under singleflight so concurrent
+//     callers wait on a single in-flight analysis instead of stacking up.
+//   - Each handler threads r.Context() through getResult; a client
+//     disconnect returns ctx.Err() immediately, but the underlying
+//     analysis continues for any other waiters. (A future iteration
+//     could ref-count waiters and cancel when none remain.)
 //
 // Sandboxing AI eval execution and an actual auth model are 0.3 work;
 // until then, this is a *local development tool*, not a team dashboard.
@@ -38,6 +40,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/sync/singleflight"
 
 	"github.com/pmclSF/terrain/internal/analyze"
 	"github.com/pmclSF/terrain/internal/engine"
@@ -73,7 +77,12 @@ type Server struct {
 	root string
 	cfg  Config
 
-	mu           sync.Mutex
+	// flight deduplicates concurrent in-flight analyses. Multiple
+	// pending requests for the same root share one analysis call;
+	// other handlers (e.g. /api/health) are not blocked.
+	flight singleflight.Group
+
+	mu           sync.RWMutex
 	cachedAt     time.Time
 	cachedResult *engine.PipelineResult
 	cachedReport *analyze.Report
@@ -222,29 +231,74 @@ func (s *Server) originAllowed(r *http.Request) bool {
 const cacheTTL = 5 * time.Second
 
 // getResult returns a cached or fresh pipeline result and report.
-func (s *Server) getResult() (*engine.PipelineResult, *analyze.Report, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+//
+// The fast path is read-locked: cache hits don't block writers or each
+// other. The slow path runs the analysis once per cache window even
+// under concurrent load via singleflight; additional callers wait on
+// the in-flight analysis instead of running their own. The caller's
+// context (typically r.Context()) controls how long this function
+// blocks: when the client disconnects, the function returns with
+// ctx.Err() and the analysis continues in the background for any other
+// waiters. A future iteration could reference-count waiters and cancel
+// the analysis when none remain.
+func (s *Server) getResult(ctx context.Context) (*engine.PipelineResult, *analyze.Report, error) {
+	// Fast path: cached and fresh.
+	s.mu.RLock()
 	if s.cachedResult != nil && time.Since(s.cachedAt) < cacheTTL {
-		return s.cachedResult, s.cachedReport, nil
+		result, report := s.cachedResult, s.cachedReport
+		s.mu.RUnlock()
+		return result, report, nil
+	}
+	s.mu.RUnlock()
+
+	type cached struct {
+		result *engine.PipelineResult
+		report *analyze.Report
 	}
 
-	result, err := engine.RunPipeline(s.root, engine.PipelineOptions{
-		EngineVersion: "serve",
+	ch := s.flight.DoChan("analyze", func() (any, error) {
+		// Re-check the cache under singleflight: another caller might
+		// have populated it while we were queued.
+		s.mu.RLock()
+		if s.cachedResult != nil && time.Since(s.cachedAt) < cacheTTL {
+			c := &cached{result: s.cachedResult, report: s.cachedReport}
+			s.mu.RUnlock()
+			return c, nil
+		}
+		s.mu.RUnlock()
+
+		// The shared analysis runs with context.Background() so a single
+		// caller's disconnect doesn't cancel an analysis that other
+		// waiters depend on. Per-caller cancellation is handled by the
+		// select below.
+		result, err := engine.RunPipelineContext(context.Background(), s.root, engine.PipelineOptions{
+			EngineVersion: "serve",
+		})
+		if err != nil {
+			return nil, err
+		}
+		report := analyze.Build(&analyze.BuildInput{
+			Snapshot:  result.Snapshot,
+			HasPolicy: result.HasPolicy,
+		})
+
+		s.mu.Lock()
+		s.cachedResult = result
+		s.cachedReport = report
+		s.cachedAt = time.Now()
+		s.mu.Unlock()
+
+		return &cached{result: result, report: report}, nil
 	})
-	if err != nil {
-		return nil, nil, err
+
+	select {
+	case res := <-ch:
+		if res.Err != nil {
+			return nil, nil, res.Err
+		}
+		c := res.Val.(*cached)
+		return c.result, c.report, nil
+	case <-ctx.Done():
+		return nil, nil, ctx.Err()
 	}
-
-	report := analyze.Build(&analyze.BuildInput{
-		Snapshot:  result.Snapshot,
-		HasPolicy: result.HasPolicy,
-	})
-
-	s.cachedResult = result
-	s.cachedReport = report
-	s.cachedAt = time.Now()
-
-	return result, report, nil
 }
