@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/pmclSF/terrain/internal/analyze"
 	"github.com/pmclSF/terrain/internal/engine"
@@ -126,7 +127,7 @@ func relativeToRoot(path, root string) string {
 	return path
 }
 
-func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, promptfooPaths string, deepevalPaths string, ragasPaths string, baselinePath string, slowThreshold float64, redactPaths bool) error {
+func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, promptfooPaths string, deepevalPaths string, ragasPaths string, baselinePath string, slowThreshold float64, redactPaths bool, gate severityGate, timeout time.Duration) error {
 	parsedRuntime := parseRuntimePaths(runtimePaths)
 	parsedGauntlet := parseRuntimePaths(gauntletPaths)        // same comma-split logic
 	parsedPromptfoo := parseRuntimePaths(promptfooPaths)      // same comma-split logic
@@ -175,12 +176,13 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	opt.RagasPaths = parsedRagas
 	opt.BaselineSnapshotPath = baselinePath
 	opt.OnProgress = newProgressFunc(jsonOutput)
-	// Honour Ctrl-C: pre-0.2.x analyze exited abruptly on SIGINT with no
-	// cleanup. runPipelineWithSignals wraps RunPipelineContext with a
-	// SIGINT-aware context so in-flight detectors check ctx.Err and
-	// unwind cooperatively. Same helper is used by every other
-	// analysis command since 0.2.
-	result, err := runPipelineWithSignals(root, opt)
+	// Honour Ctrl-C and the optional --timeout: pre-0.2.x analyze
+	// exited abruptly on SIGINT with no cleanup, and unbounded
+	// monorepo scans could block CI indefinitely.
+	// runPipelineWithSignalsAndTimeout wraps RunPipelineContext with a
+	// SIGINT-aware context plus an optional deadline so in-flight
+	// detectors check ctx.Err and unwind cooperatively.
+	result, err := runPipelineWithSignalsAndTimeout(root, opt, timeout)
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -271,6 +273,14 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		for _, hint := range hints {
 			fmt.Printf("  %s\n", hint)
 		}
+	}
+
+	// --fail-on gate: evaluated last so the report is always rendered
+	// before the exit code is decided. Returning errSeverityGateBlocked
+	// lets main.go map this to exitSeverityGateBlock without confusing
+	// it for an analysis error.
+	if blocked, summary := severityGateBlocked(gate, report.SignalSummary); blocked {
+		return fmt.Errorf("%w: --fail-on=%s matched %s", errSeverityGateBlocked, gate, summary)
 	}
 
 	return nil
