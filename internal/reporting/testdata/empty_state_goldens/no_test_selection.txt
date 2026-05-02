@@ -1,0 +1,2 @@
+No tests selected for this change.
+  → Either the change is purely structural (docs, config) or its impact graph is empty. Re-run with `--explain-selection` to see why.
