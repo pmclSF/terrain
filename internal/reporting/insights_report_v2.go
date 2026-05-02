@@ -166,7 +166,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 			line("         %s", c.Remediation)
 		}
 		if len(sc.Clusters) > 3 {
-			line("  ... and %d more cluster(s)", len(sc.Clusters)-3)
+			line("  ... and %d more %s", len(sc.Clusters)-3, Plural(len(sc.Clusters)-3, "cluster"))
 		}
 		blank()
 	}

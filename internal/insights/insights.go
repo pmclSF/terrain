@@ -335,7 +335,7 @@ func duplicateFindings(input *BuildInput) []Finding {
 			top := dupes.Clusters[0]
 			f.Description = fmt.Sprintf("Largest cluster has %d tests with %.0f%% similarity. Consolidating duplicates reduces CI runtime and maintenance burden.",
 				len(top.Tests), top.Similarity*100)
-			f.Scope = fmt.Sprintf("%d cluster(s)", len(dupes.Clusters))
+			f.Scope = fmt.Sprintf("%d %s", len(dupes.Clusters), plural(len(dupes.Clusters), "cluster"))
 		}
 
 		findings = append(findings, f)
@@ -736,7 +736,12 @@ func aiCoverageFindings(input *BuildInput) []Finding {
 	}
 
 	f := Finding{
-		Title: fmt.Sprintf("%d AI surface(s) have no eval scenario coverage", uncovered),
+		Title: func() string {
+			if uncovered == 1 {
+				return "1 AI surface has no eval scenario coverage"
+			}
+			return fmt.Sprintf("%d AI surfaces have no eval scenario coverage", uncovered)
+		}(),
 		Description: fmt.Sprintf(
 			"Changes to uncovered AI surfaces (prompts, contexts, datasets, tool definitions) "+
 				"cannot be validated automatically. Add eval scenarios to catch behavioral regressions."),
@@ -1113,7 +1118,13 @@ func capabilityGapFindings(input *BuildInput) []Finding {
 	sort.Strings(gappedCaps)
 
 	findings = append(findings, Finding{
-		Title: fmt.Sprintf("%d capability(ies) have no adversarial or safety scenarios", len(gappedCaps)),
+		Title: func() string {
+			n := len(gappedCaps)
+			if n == 1 {
+				return "1 capability has no adversarial or safety scenarios"
+			}
+			return fmt.Sprintf("%d capabilities have no adversarial or safety scenarios", n)
+		}(),
 		Description: "These capabilities are validated for correctness (accuracy, quality, regression) " +
 			"but have no scenarios testing failure modes, safety boundaries, or adversarial inputs. " +
 			"Consider adding scenarios with categories like 'safety', 'adversarial', or 'robustness'.",

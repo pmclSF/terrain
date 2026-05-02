@@ -233,7 +233,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		line(strings.Repeat("-", 60))
 		line("  Redundant tests:  %d across %d clusters", br.RedundantTestCount, len(br.Clusters))
 		if br.CrossFrameworkOverlaps > 0 {
-			line("  Cross-framework:  %d cluster(s)", br.CrossFrameworkOverlaps)
+			line("  Cross-framework:  %d %s", br.CrossFrameworkOverlaps, Plural(br.CrossFrameworkOverlaps, "cluster"))
 		}
 		limit := 5
 		if len(br.Clusters) < limit {
@@ -249,7 +249,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 			line("         %s", c.Rationale)
 		}
 		if len(br.Clusters) > 5 {
-			line("  ... and %d more cluster(s)", len(br.Clusters)-5)
+			line("  ... and %d more %s", len(br.Clusters)-5, Plural(len(br.Clusters)-5, "cluster"))
 		}
 		blank()
 	}
@@ -270,7 +270,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 			line("         %s", c.Remediation)
 		}
 		if len(sc.Clusters) > 5 {
-			line("  ... and %d more cluster(s)", len(sc.Clusters)-5)
+			line("  ... and %d more %s", len(sc.Clusters)-5, Plural(len(sc.Clusters)-5, "cluster"))
 		}
 		blank()
 	} else if r.SkippedTestBurden.SkippedCount > 0 {
