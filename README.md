@@ -24,7 +24,8 @@ Everything else is a deeper view *off* this primary workflow.
 # Homebrew
 brew install pmclSF/terrain/mapterrain
 
-# npm — requires cosign on PATH for signed-binary verification.
+# npm — requires Node 22+ and cosign on PATH for signed-binary verification.
+# (CI on Node 20 LTS? Use the brew or `go install` path above.)
 # brew install cosign  (macOS / Linux)
 # scoop install cosign (Windows)
 # Set TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1 to fall back to checksum-only,
@@ -364,6 +365,12 @@ brew install mapterrain
 ```bash
 npm install -g mapterrain
 ```
+
+> **Node 22 required.** The npm postinstall verifies signed binaries
+> with cosign and uses APIs (`fetch`, top-level await, modern stream
+> primitives) that landed in Node 22. CI images on Node 20 LTS
+> should use the Homebrew or `go install` path until 0.3 ships
+> Node-20 compat. Run `node --version` to check.
 
 ### Go install
 
