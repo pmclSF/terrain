@@ -10,20 +10,21 @@ catches the bugs a non-AI tool would miss.
 | Signal | Severity | What it flags |
 |---|---|---|
 | `aiHardcodedAPIKey` | Critical | API key embedded in eval YAML / agent config / source. Eight providers covered (OpenAI, Anthropic, Google, AWS, GitHub, HuggingFace, Slack, Stripe). |
-| `aiPromptInjectionRisk` | High | User-controlled input concatenated into a prompt without escaping. Pattern detector in 0.2; AST-precise taint flow in 0.3. |
-| `aiSafetyEvalMissing` *(planned)* | High | Agent / prompt with no eval scenario covering safety (jailbreak, harm, leak). |
-| `aiToolWithoutSandbox` *(planned)* | High | Destructive agent tool (delete / exec / drop) with no approval gate or sandbox. |
+| `aiPromptInjectionRisk` *(experimental)* | High | User-controlled input concatenated into a prompt without escaping. Pattern detector in 0.2; AST-precise taint flow in 0.3. |
+| `aiSafetyEvalMissing` | High | Agent / prompt with no eval scenario covering safety (jailbreak, harm, leak). |
+| `aiToolWithoutSandbox` | High | Destructive agent tool (delete / exec / drop) with no approval gate or sandbox. |
 | `aiNonDeterministicEval` | Medium | Eval config without `temperature: 0` / seed pinned; CI comparisons get noisy. |
 | `aiModelDeprecationRisk` | Medium | Floating model tag (`gpt-4`, `claude-3-opus`) or sunset model (`text-davinci-003`). Dated variants (`gpt-4-0613`) are the safe form. |
-| `aiPromptVersioning` *(planned)* | Medium | Prompt content changed without a version bump in metadata or filename. |
-| `aiCostRegression` *(planned)* | Medium | Prompt change increases token count >25% vs baseline. |
-| `aiHallucinationRate` *(planned)* | High | Eval reports fabricated outputs above project threshold. |
-| `aiFewShotContamination` *(planned)* | Medium | Few-shot examples overlap with the eval test set. |
-| `aiEmbeddingModelChange` *(planned)* | Medium | Embedding model swap with no RAG re-evaluation. |
-| `aiRetrievalRegression` *(planned)* | High | Context relevance / nDCG / coverage dropped vs baseline. |
+| `aiPromptVersioning` | Medium | Prompt content changed without a version bump in metadata or filename. |
+| `aiCostRegression` | Medium | Prompt / model change moves per-case cost above the configured floor + relative-delta threshold. |
+| `aiHallucinationRate` | High | Eval reports fabricated outputs above project threshold (denominator excludes errored cases). |
+| `aiFewShotContamination` *(experimental)* | Medium | Few-shot examples overlap with eval test inputs (5-distinct-word guard against boilerplate). |
+| `aiEmbeddingModelChange` | Medium | Embedding model swap with no retrieval-shaped eval scenario. |
+| `aiRetrievalRegression` | High | Context relevance / nDCG / coverage / Ragas-modern axes dropped vs baseline. |
 
-*(planned)* signals reserve names and shapes; detectors land before
-0.2 close. See `docs/signals/manifest.json` for the full status.
+All 12 detectors ship in 0.2.0 (10 stable + 2 experimental). See
+`docs/release/feature-status.md` and `docs/signals/manifest.json` for
+the full status table including confidence ranges.
 
 ## What Terrain does NOT do for AI
 

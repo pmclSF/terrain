@@ -58,7 +58,7 @@ terrain impact      "What validations matter for this change?"
 terrain explain     "Why did Terrain make this decision?"
 ```
 
-> **About the example outputs below.** The CLI dumps in this section illustrate the *shape* of Terrain's reports on a large pandas-style repository — they are not literal output from a single live run. A few specific signals shown (`xfailAccumulation` age, statistical flaky-test failure rates, the `0.91+` duplicate similarity threshold) are marked `[experimental]` or `[planned]` in 0.1.2; see [docs/release/feature-status.md](docs/release/feature-status.md) for what's stable, what's experimental, and what's planned. The headline "30 seconds" promise refers to small-to-medium repos (≤ 1,000 test files) on commodity hardware; expect 5–15 seconds on a typical service repo and longer on monorepos.
+> **About the example outputs below.** The CLI dumps in this section illustrate the *shape* of Terrain's reports on a large pandas-style repository — they are not literal output from a single live run. A few specific signals shown (`xfailAccumulation` age, statistical flaky-test failure rates, the `0.91+` duplicate similarity threshold) are marked `[experimental]` or `[planned]` in 0.2.0; see [docs/release/feature-status.md](docs/release/feature-status.md) for what's stable, what's experimental, and what's planned. The headline "30 seconds" promise refers to small-to-medium repos (≤ 1,000 test files) on commodity hardware; expect 5–15 seconds on a typical service repo and longer on monorepos.
 
 ### 1. Analyze — understand the test system
 
@@ -517,9 +517,9 @@ Repository scan  →  Signal detection  →  Risk modeling  →  Reporting
 - **Reports** synthesize signals, risk, trends, and benchmark readiness into actionable output
 
 ```
-cmd/terrain/     CLI — 11 canonical commands (analyze, report, migrate,
-                 convert, posture, score, doctor, ai, serve, version, help);
-                 35+ legacy aliases retained through 0.2.x
+cmd/terrain/     CLI — canonical surface (analyze, report, migrate,
+                 convert, posture, doctor, ai, serve, version, help)
+                 plus legacy aliases retained through 0.2.x
 internal/        47 Go packages covering analysis, signals, risk,
                  impact, depgraph, measurement, reporting, and more
 ```

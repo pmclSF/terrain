@@ -100,7 +100,27 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 		if len(candidates) == 0 {
 			continue
 		}
-		for _, surfaceID := range sc.CoveredSurfaceIDs {
+		// Resolve which prompt surfaces this scenario should be checked
+		// against. Pre-0.2.x final-polish, this loop iterated only
+		// `sc.CoveredSurfaceIDs`; auto-derived scenarios (the dominant
+		// shape — empty CoveredSurfaceIDs) silenced the detector
+		// entirely. aiSafetyEvalMissing already shipped this same
+		// implicit-coverage fallback in 0.2; aligning here closes the
+		// gap so contamination fires on the default scenario shape too.
+		surfaceIDs := sc.CoveredSurfaceIDs
+		if len(surfaceIDs) == 0 {
+			// Implicit coverage: check this scenario against every
+			// prompt surface in the same top-level directory as the
+			// scenario file, falling back to "all prompts" when the
+			// scenario has no Path set.
+			scenarioDir := topLevelDir(sc.Path)
+			for surfaceID, surfacePath := range promptPath {
+				if scenarioDir == "" || topLevelDir(surfacePath) == scenarioDir {
+					surfaceIDs = append(surfaceIDs, surfaceID)
+				}
+			}
+		}
+		for _, surfaceID := range surfaceIDs {
 			content, ok := promptContent[surfaceID]
 			if !ok {
 				continue

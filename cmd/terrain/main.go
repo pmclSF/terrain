@@ -45,6 +45,7 @@ import (
 	conv "github.com/pmclSF/terrain/internal/convert"
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/logging"
+	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/server"
 	"github.com/pmclSF/terrain/internal/telemetry"
 )
@@ -716,14 +717,21 @@ func main() {
 		if *jsonFlag {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
+			// schemaVersion is the snapshot-JSON contract version this
+			// binary produces; CI tooling that pins on the snapshot
+			// shape can gate on this field. Pre-0.2.x the JSON output
+			// only carried version/commit/date — consumers had to load
+			// a snapshot and read its `meta.schemaVersion` to find out.
 			_ = enc.Encode(map[string]string{
-				"version": version,
-				"commit":  commit,
-				"date":    date,
+				"version":       version,
+				"commit":        commit,
+				"date":          date,
+				"schemaVersion": models.SnapshotSchemaVersion,
 			})
 			return
 		}
-		fmt.Printf("terrain %s (commit %s, built %s)\n", version, commit, date)
+		fmt.Printf("terrain %s (commit %s, built %s; snapshot schema %s)\n",
+			version, commit, date, models.SnapshotSchemaVersion)
 
 	case "serve":
 		serveCmd := flag.NewFlagSet("serve", flag.ExitOnError)
