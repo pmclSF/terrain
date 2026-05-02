@@ -88,6 +88,7 @@ const (
 	SignalDetectorPanic          models.SignalType = "detectorPanic"
 	SignalDetectorBudgetExceeded models.SignalType = "detectorBudgetExceeded"
 	SignalDetectorMissingInput   models.SignalType = "detectorMissingInput"
+	SignalSuppressionExpired     models.SignalType = "suppressionExpired"
 )
 
 // Canonical signal type sets. Import these rather than duplicating
