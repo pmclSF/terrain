@@ -859,9 +859,21 @@ var allSignalManifest = []ManifestEntry{
 	{
 		Type: SignalAIHallucinationRate, ConstName: "SignalAIHallucinationRate",
 		Domain: models.CategoryAI, Status: StatusStable,
-		Title:           "Hallucination Rate Above Threshold",
-		Description:     "An eval reports fabricated outputs at a rate above the project-configured threshold (default 5%).",
-		Remediation:     "Investigate failing scenarios; tighten retrieval or grounding before merging.",
+		// Title + Description tightened for 0.2.0: the detector does NOT
+		// judge hallucinations directly — it reads hallucination-shaped
+		// failure metadata that the eval framework (Promptfoo / DeepEval
+		// / Ragas) already produced and computes the rate. The original
+		// "Hallucination Rate Above Threshold" name implies Terrain is
+		// judging model truthfulness; that's the mis-claim flagged in
+		// the launch-readiness review. The detector's job is to surface
+		// what the eval framework reported. Renaming the signal type
+		// itself to `aiEvalFlaggedHallucinationShare` is 0.3 work
+		// (deprecation alias, then removal); for 0.2.0 we keep the
+		// type name for back-compat and tighten the description /
+		// remediation so the trust framing is correct.
+		Title:       "Eval-Flagged Hallucination Share",
+		Description: "The eval framework's own hallucination metadata reports a share of cases above the project-configured threshold (default 5%). Terrain reads this from the framework output (Promptfoo / DeepEval / Ragas) — Terrain does not judge hallucinations directly.",
+		Remediation: "Investigate the underlying eval-flagged cases; tighten retrieval or grounding before merging. If you disagree with the eval framework's classification, fix the eval scenario or raise the threshold (with a documented justification).",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
