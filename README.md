@@ -576,10 +576,15 @@ Exit code 0 = pass, 2 = violations found, 1 = error.
 - [Example Reports](docs/examples/) — analyze, impact, insights, explain output samples
 - [Canonical User Journeys](docs/product/canonical-user-journeys.md) — primary workflows and expected outcomes
 - [Signal Model](docs/signal-model.md) — the core signal abstraction
+- [Glossary](docs/glossary.md) — Terrain-specific vocabulary in one page
 - [Architecture](docs/architecture/) — design documents and technical specifications
+- [Versioning Policy](docs/versioning.md) — what's a breaking change vs behaviour change vs bug fix
+- [Compatibility](docs/compatibility.md) — supported OSes, Go versions, frameworks
+- [Integrations](docs/integrations/) — Promptfoo / DeepEval / Ragas wiring guides
 - [Feature Status](docs/release/feature-status.md) — what's stable, experimental, or planned in the current release
 - [CHANGELOG](CHANGELOG.md) — release history and per-version changes
 - [Security](SECURITY.md) — supported versions and vulnerability disclosure
+- [Code of Conduct](CODE_OF_CONDUCT.md) — community standards
 - [Contributing](CONTRIBUTING.md) — how to build, test, and extend Terrain
 
 ## Development
