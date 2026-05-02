@@ -523,9 +523,28 @@ func TestBuildAIValidationSummary_WithScenarios(t *testing.T) {
 	}
 }
 
+// TestBuildAIValidationSummary_WithSignals locks in the contract that
+// the AI validation summary in `terrain pr` output is impact-scoped:
+// only AI signals whose Location.File appears in the PR's changed-
+// files set are reported as Blocking / Warning. Pre-fix the loop
+// included every AI signal in the snapshot, so a doc-only PR
+// surfaced every calibration-corpus fixture as a "blocking" finding.
+//
+// Fixture: three AI signals + one Quality signal. Two of the AI
+// signals are on a changed file ("src/prompt.ts"); one is on an
+// unchanged file ("internal/aidetect/foo.go"). Expectations:
+//   - Critical AI signal on changed file → BlockingSignals (1 entry)
+//   - Medium AI signal on changed file → WarningSignals (1 entry)
+//   - High AI signal on UNCHANGED file → dropped (impact filter)
+//   - Quality signal → dropped (category filter)
 func TestBuildAIValidationSummary_WithSignals(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{
+		Scope: impact.ChangeScope{
+			ChangedFiles: []impact.ChangedFile{
+				{Path: "src/prompt.ts"},
+			},
+		},
 		ImpactedScenarios: []impact.ImpactedScenario{
 			{Name: "test", Capability: "search"},
 		},
@@ -535,9 +554,15 @@ func TestBuildAIValidationSummary_WithSignals(t *testing.T) {
 			{ScenarioID: "sc:1", Name: "test"},
 		},
 		Signals: []models.Signal{
-			{Type: "safetyFailure", Category: models.CategoryAI, Severity: models.SeverityCritical, Explanation: "safety eval failed"},
-			{Type: "costRegression", Category: models.CategoryAI, Severity: models.SeverityMedium, Explanation: "cost increased 20%"},
-			{Type: "weakAssertion", Category: models.CategoryQuality, Severity: models.SeverityMedium, Explanation: "not AI"},
+			{Type: "safetyFailure", Category: models.CategoryAI, Severity: models.SeverityCritical,
+				Explanation: "safety eval failed", Location: models.SignalLocation{File: "src/prompt.ts"}},
+			{Type: "costRegression", Category: models.CategoryAI, Severity: models.SeverityMedium,
+				Explanation: "cost increased 20%", Location: models.SignalLocation{File: "src/prompt.ts"}},
+			{Type: "aiModelDeprecationRisk", Category: models.CategoryAI, Severity: models.SeverityHigh,
+				Explanation: "pre-existing on a file the PR didn't touch",
+				Location: models.SignalLocation{File: "internal/aidetect/foo.go"}},
+			{Type: "weakAssertion", Category: models.CategoryQuality, Severity: models.SeverityMedium,
+				Explanation: "not AI", Location: models.SignalLocation{File: "src/prompt.ts"}},
 		},
 	}
 
@@ -546,10 +571,49 @@ func TestBuildAIValidationSummary_WithSignals(t *testing.T) {
 		t.Fatal("expected non-nil AI summary")
 	}
 	if len(ai.BlockingSignals) != 1 {
-		t.Errorf("blocking signals = %d, want 1 (critical)", len(ai.BlockingSignals))
+		t.Errorf("blocking signals = %d, want 1 (critical on changed file)", len(ai.BlockingSignals))
 	}
 	if len(ai.WarningSignals) != 1 {
-		t.Errorf("warning signals = %d, want 1 (medium)", len(ai.WarningSignals))
+		t.Errorf("warning signals = %d, want 1 (medium on changed file)", len(ai.WarningSignals))
+	}
+}
+
+// TestBuildAIValidationSummary_DropsSignalsOnUnchangedFiles is the
+// regression test for the noisy-AI-gate bug: a doc-only PR shouldn't
+// surface calibration-corpus fixture signals as merge blockers.
+func TestBuildAIValidationSummary_DropsSignalsOnUnchangedFiles(t *testing.T) {
+	t.Parallel()
+	result := &impact.ImpactResult{
+		Scope: impact.ChangeScope{
+			// Doc-only PR — no source files changed.
+			ChangedFiles: []impact.ChangedFile{
+				{Path: "docs/feature-status.md"},
+				{Path: "CHANGELOG.md"},
+			},
+		},
+	}
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			// Calibration-fixture-shaped signal: pre-existing in repo,
+			// not introduced by this PR.
+			{Type: "aiModelDeprecationRisk", Category: models.CategoryAI, Severity: models.SeverityHigh,
+				Explanation: "OpenAI text-davinci-003 reached EOL",
+				Location: models.SignalLocation{File: "tests/calibration/floating-model-tag/config.yaml"}},
+			{Type: "aiToolWithoutSandbox", Category: models.CategoryAI, Severity: models.SeverityHigh,
+				Explanation: "Tool delete_user matches a destructive-verb pattern",
+				Location: models.SignalLocation{File: "tests/calibration/agent-without-safety-eval/agent.yaml"}},
+			// Whole-repo emergent signal with no Location.File — also
+			// shouldn't appear in PR-scoped output.
+			{Type: "uncoveredAISurface", Category: models.CategoryAI, Severity: models.SeverityHigh,
+				Explanation: "emergent — no Location.File",
+				Location: models.SignalLocation{}},
+		},
+	}
+
+	ai := buildAIValidationSummary(result, snap)
+	if ai != nil && len(ai.BlockingSignals) > 0 {
+		t.Errorf("doc-only PR should produce zero blocking signals; got %d: %+v",
+			len(ai.BlockingSignals), ai.BlockingSignals)
 	}
 }
 
