@@ -317,6 +317,21 @@ func TestSummarizeFindingsBySeverity(t *testing.T) {
 
 // --- AI PR Section Tests ---
 
+// TestRenderPRSummaryMarkdown_AISection asserts the 0.2 contract for
+// the AI Validation section in `terrain pr --format markdown` output.
+//
+// Pre-fix the section dumped one bullet per signal with the detector
+// taxonomy (`aiPromptInjectionRisk`) as the headline and no file
+// path. After the fix:
+//   - bullets are grouped by (file, type), so 12 prompt-injection hits
+//     across 4 files become 4 bullets
+//   - each bullet leads with `**\`path:line[, line, line]\`**` so the
+//     file is the navigation target, not the taxonomy
+//   - the bullet text is the plain-language summary from
+//     `humanSummary`, not the raw detector explanation
+//   - a `→ <action>` line follows with the concrete next step
+//   - the section header reads "N new finding(s) introduced by this
+//     PR" instead of "Blocking signals (N)"
 func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
@@ -331,10 +346,16 @@ func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 				{Name: "safety-guardrail", Capability: "refund-explanation", Reason: "prompt changed (safetyOverlay)"},
 			},
 			BlockingSignals: []AISignalSummary{
-				{Type: "safetyFailure", Severity: "critical", Explanation: "Safety eval failed"},
+				{Type: "aiPromptInjectionRisk", Severity: "high", Explanation: "raw detector text",
+					File: "src/auth/login.ts", Line: 42},
+				{Type: "aiPromptInjectionRisk", Severity: "high", Explanation: "raw detector text",
+					File: "src/auth/login.ts", Line: 47},
+				{Type: "aiToolWithoutSandbox", Severity: "high", Explanation: "raw detector text",
+					File: "src/agent/tools.yaml", Symbol: "delete_user"},
 			},
 			WarningSignals: []AISignalSummary{
-				{Type: "latencyRegression", Severity: "medium", Explanation: "p95 latency regressed"},
+				{Type: "aiNonDeterministicEval", Severity: "medium", Explanation: "raw detector text",
+					File: "evals/agent.yaml", Line: 12},
 			},
 			UncoveredContexts: []string{"customerContext (src/context.ts)"},
 		},
@@ -344,33 +365,48 @@ func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 	RenderPRSummaryMarkdown(&buf, pr)
 	output := buf.String()
 
-	// AI section header.
+	// Section header.
 	if !strings.Contains(output, "### AI Validation") {
 		t.Error("expected AI Validation section")
 	}
-	// Capabilities.
-	if !strings.Contains(output, "refund-explanation") {
-		t.Error("expected refund-explanation capability")
+	// Capabilities + scenario count framing.
+	if !strings.Contains(output, "refund-explanation") || !strings.Contains(output, "enterprise-search") {
+		t.Error("expected impacted capabilities listed")
 	}
-	if !strings.Contains(output, "enterprise-search") {
-		t.Error("expected enterprise-search capability")
-	}
-	// Scenario counts.
 	if !strings.Contains(output, "3 of 8 selected") {
 		t.Error("expected scenario count '3 of 8 selected'")
 	}
-	// Blocking signals.
-	if !strings.Contains(output, "Blocking signals") {
-		t.Error("expected blocking signals section")
+	// Blocking section is now framed in terms of new findings on this PR.
+	if !strings.Contains(output, "new finding(s) introduced by this PR") {
+		t.Errorf("expected new-finding framing in output; got:\n%s", output)
 	}
-	if !strings.Contains(output, "safetyFailure") {
-		t.Error("expected safetyFailure in output")
+	// Two prompt-injection hits in the same file should collapse to ONE
+	// bullet with both line numbers.
+	if !strings.Contains(output, "src/auth/login.ts:42, 47") {
+		t.Errorf("expected grouped file:line locator `src/auth/login.ts:42, 47`; got:\n%s", output)
 	}
-	// Warning signals (collapsed).
-	if !strings.Contains(output, "Warning signals") {
-		t.Error("expected warning signals section")
+	// Plain-language summary, not raw detector text.
+	if !strings.Contains(output, "User input flows into a prompt without visible escaping") {
+		t.Error("expected plain-language summary for aiPromptInjectionRisk")
 	}
-	// Uncovered contexts.
+	// Concrete action arrow.
+	if !strings.Contains(output, "→ Wrap user input through a sanitizer") {
+		t.Error("expected actionable next step for aiPromptInjectionRisk")
+	}
+	// Symbol-keyed locator for the tool finding (no line number).
+	if !strings.Contains(output, "src/agent/tools.yaml (delete_user)") {
+		t.Errorf("expected symbol-keyed locator for tool finding; got:\n%s", output)
+	}
+	// Warning signals collapsed under a details block.
+	if !strings.Contains(output, "advisory finding(s)") {
+		t.Errorf("expected advisory-finding framing for warnings; got:\n%s", output)
+	}
+	// Raw detector taxonomy should NOT appear as the bold headline.
+	// Confirm by looking for the pre-fix shape `[HIGH] **aiPromptInjectionRisk**:`.
+	if strings.Contains(output, "**aiPromptInjectionRisk**:") {
+		t.Error("raw detector taxonomy leaked into headline; should be plain-language summary")
+	}
+	// Uncovered contexts unchanged.
 	if !strings.Contains(output, "customerContext") {
 		t.Error("expected uncovered context")
 	}

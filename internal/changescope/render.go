@@ -337,9 +337,28 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 			line("  Capabilities: %s", strings.Join(ai.ImpactedCapabilities, ", "))
 		}
 		if len(ai.BlockingSignals) > 0 {
-			line("  Blocking: %d signal(s)", len(ai.BlockingSignals))
-			for _, s := range ai.BlockingSignals {
-				line("    [%s] %s: %s", strings.ToUpper(s.Severity), s.Type, s.Explanation)
+			groups := groupSignalsByFileAndType(ai.BlockingSignals)
+			line("  %d new finding(s) on changed files:", len(groups))
+			for _, g := range groups {
+				summary := humanSummary[g.Type]
+				if summary == "" {
+					summary = g.Explanation
+				}
+				loc := g.File
+				switch {
+				case len(g.Lines) > 0:
+					strs := make([]string, len(g.Lines))
+					for i, ln := range g.Lines {
+						strs[i] = fmt.Sprintf("%d", ln)
+					}
+					loc = fmt.Sprintf("%s:%s", g.File, strings.Join(strs, ","))
+				case len(g.Symbols) > 0:
+					loc = fmt.Sprintf("%s (%s)", g.File, strings.Join(g.Symbols, ", "))
+				}
+				line("    [%s] %s — %s", strings.ToUpper(g.Severity), loc, summary)
+				if action := humanAction[g.Type]; action != "" {
+					line("      → %s", action)
+				}
 			}
 		}
 		if len(ai.UncoveredContexts) > 0 {
@@ -381,22 +400,32 @@ func renderAISection(line func(string, ...any), pr *PRAnalysis) {
 	line("Scenarios: %d of %d selected", ai.SelectedScenarios, ai.TotalScenarios)
 	line("")
 
-	// Blocking signals.
+	// Blocking signals — grouped by (file, type) so 12 prompt-injection
+	// hits across 4 files become 4 bullets, not 12. Each bullet leads
+	// with the file:line locator and a plain-language summary instead
+	// of detector taxonomy. See ai_signal_humanize.go.
 	if len(ai.BlockingSignals) > 0 {
-		line("**Blocking signals (%d):**", len(ai.BlockingSignals))
+		groups := groupSignalsByFileAndType(ai.BlockingSignals)
+		line("**%d new finding(s) introduced by this PR:**", len(groups))
 		line("")
-		for _, s := range ai.BlockingSignals {
-			line("- [%s] **%s**: %s", strings.ToUpper(s.Severity), s.Type, s.Explanation)
+		for _, g := range groups {
+			for _, l := range renderGroupedSignal(g) {
+				line("%s", l)
+			}
 		}
 		line("")
 	}
 
-	// Warning signals.
+	// Warning signals follow the same grouping. Wrapped in a details
+	// element so they're collapsed by default in GitHub.
 	if len(ai.WarningSignals) > 0 {
-		line("<details><summary>Warning signals (%d)</summary>", len(ai.WarningSignals))
+		groups := groupSignalsByFileAndType(ai.WarningSignals)
+		line("<details><summary>%d advisory finding(s)</summary>", len(groups))
 		line("")
-		for _, s := range ai.WarningSignals {
-			line("- [%s] %s: %s", s.Severity, s.Type, s.Explanation)
+		for _, g := range groups {
+			for _, l := range renderGroupedSignal(g) {
+				line("%s", l)
+			}
 		}
 		line("")
 		line("</details>")

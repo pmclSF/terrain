@@ -292,8 +292,12 @@ func buildAIValidationSummary(result *impact.ImpactResult, snap *models.TestSuit
 			continue
 		}
 		entry := AISignalSummary{
-			Type: string(sig.Type), Severity: string(sig.Severity),
+			Type:        string(sig.Type),
+			Severity:    string(sig.Severity),
 			Explanation: sig.Explanation,
+			File:        sig.Location.File,
+			Line:        sig.Location.Line,
+			Symbol:      sig.Location.Symbol,
 		}
 		if sig.Severity == models.SeverityCritical || sig.Severity == models.SeverityHigh {
 			ai.BlockingSignals = append(ai.BlockingSignals, entry)
