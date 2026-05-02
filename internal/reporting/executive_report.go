@@ -1,9 +1,11 @@
 package reporting
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/measurement"
 	"github.com/pmclSF/terrain/internal/summary"
 )
 
@@ -18,13 +20,34 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	line(strings.Repeat("=", 50))
 	blank()
 
-	// Overall posture — title-case the dimension labels and bands so
-	// the section reads like a sentence rather than a snake_case dump
-	// (`coverage_depth: strong` → `Coverage depth: Strong`).
+	// Overall posture — surface the underlying measurements alongside
+	// the band. 0.2.0 polish: previously this section showed only the
+	// band label ("Health: Strong"), which is a categorical
+	// compression of the measurements that drove it. The reader had
+	// to take the band on faith. Now the line is:
+	//
+	//   Health: Strong  (0.0% flaky · 3.6% skipped · 0.0% dead · 0.0% slow)
+	//
+	// — so the reader sees both the verdict (the band, polarity-
+	// translated) and the concrete numbers. `terrain posture` retains
+	// the full measurement breakdown with evidence + caveats; this
+	// summary view trims to a one-line digest.
 	line("Overall Posture")
 	line(strings.Repeat("-", 50))
 	for _, d := range es.Posture.Dimensions {
-		line("  %-22s %s", titleCaseDimension(d.Dimension)+":", titleCaseBand(string(d.Band)))
+		dim := measurement.Dimension(d.Dimension)
+		label := measurement.DimensionDisplayName(dim)
+		band := measurement.BandDisplayForDimension(dim, measurement.PostureBand(d.Band))
+		if len(d.KeyMeasurements) == 0 {
+			line("  %-22s %s", label+":", band)
+			continue
+		}
+		// Compact "value label" pairs joined by middle dot.
+		parts := make([]string, 0, len(d.KeyMeasurements))
+		for _, m := range d.KeyMeasurements {
+			parts = append(parts, fmt.Sprintf("%s %s", m.FormattedValue, m.ShortLabel))
+		}
+		line("  %-22s %s  (%s)", label+":", band, strings.Join(parts, " · "))
 	}
 	if len(es.Posture.Dimensions) == 0 {
 		line("  (no risk surfaces computed)")
@@ -56,7 +79,16 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 		line("Top Risk Areas")
 		line(strings.Repeat("-", 50))
 		for _, a := range es.TopRiskAreas {
-			line("  %-25s %s %s risk", a.Name, titleCaseBand(string(a.Band)), a.RiskType)
+			// "Top Risk Areas" is unambiguously risk-shaped output —
+			// translate Strong → Low, Weak → Significant, etc. so
+			// "low migration risk" / "critical quality risk" both
+			// read naturally. Use a synthetic risk-polarity dim to
+			// reuse the helper.
+			band := measurement.BandDisplayForDimension(
+				measurement.DimensionStructuralRisk,
+				measurement.PostureBand(a.Band),
+			)
+			line("  %-25s %s %s risk", a.Name, band, a.RiskType)
 		}
 		blank()
 	}
@@ -159,30 +191,3 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	blank()
 }
 
-// titleCaseDimension renders a posture-dimension key (`coverage_depth`,
-// `health`, `structural_risk`, etc.) in sentence case for display:
-//
-//	"coverage_depth"   → "Coverage depth"
-//	"health"           → "Health"
-//	"structural_risk"  → "Structural risk"
-//
-// Snake-case is the storage form (preserves API stability + JSON
-// roundtrip); the display form humanizes it for terminal output.
-func titleCaseDimension(s string) string {
-	if s == "" {
-		return s
-	}
-	out := strings.ReplaceAll(s, "_", " ")
-	// Capitalize first character only — sentence case, not Title Case.
-	return strings.ToUpper(out[:1]) + out[1:]
-}
-
-// titleCaseBand renders a posture band ("strong" / "moderate" /
-// "weak" / "elevated" / "critical") with first-letter capitalization.
-func titleCaseBand(s string) string {
-	if s == "" {
-		return s
-	}
-	low := strings.ToLower(s)
-	return strings.ToUpper(low[:1]) + low[1:]
-}

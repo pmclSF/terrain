@@ -214,11 +214,27 @@ func resolvePostureBand(bands []string) PostureBand {
 	return PostureUnknown
 }
 
+// buildPostureExplanation produces a human-readable sentence
+// describing the dimension's current band. 0.2.0 polish: branches on
+// dimension polarity so risk-shaped dimensions read with risk
+// language ("Structural risk is low") instead of the awkward
+// "Structural risk posture is strong" which inverts on the natural-
+// English read.
 func buildPostureExplanation(dim Dimension, band PostureBand, drivers []string, total int) string {
 	dimName := DimensionDisplayName(dim)
+	if dimensionPolarityOf(dim) == polarityRisk {
+		return riskPostureExplanation(dimName, band, drivers, total)
+	}
+	return positivePostureExplanation(dimName, band, drivers, total)
+}
+
+// positivePostureExplanation renders the sentence for positive-
+// polarity dimensions (Health, Coverage depth, Coverage diversity).
+// The band word reads directly: strong = good, critical = bad.
+func positivePostureExplanation(dimName string, band PostureBand, drivers []string, total int) string {
 	switch band {
 	case PostureStrong:
-		return fmt.Sprintf("%s posture is strong across %d measurement(s).", dimName, total)
+		return fmt.Sprintf("%s posture is strong across %d %s.", dimName, total, plural(total, "measurement"))
 	case PostureModerate:
 		return fmt.Sprintf("%s posture is moderate. Some measurements indicate room for improvement.", dimName)
 	case PostureWeak:
@@ -226,7 +242,7 @@ func buildPostureExplanation(dim Dimension, band PostureBand, drivers []string, 
 			sort.Strings(drivers)
 			return fmt.Sprintf("%s posture is weak. Driven by: %s.", dimName, joinMax(drivers, 3))
 		}
-		return fmt.Sprintf("%s posture is weak across %d measurement(s).", dimName, total)
+		return fmt.Sprintf("%s posture is weak across %d %s.", dimName, total, plural(total, "measurement"))
 	case PostureElevated:
 		return fmt.Sprintf("%s posture is elevated. Significant issues detected in %s.", dimName, joinMax(drivers, 3))
 	case PostureCritical:
@@ -234,6 +250,41 @@ func buildPostureExplanation(dim Dimension, band PostureBand, drivers []string, 
 	default:
 		return fmt.Sprintf("%s posture could not be determined.", dimName)
 	}
+}
+
+// riskPostureExplanation renders the sentence for risk-polarity
+// dimensions (Structural risk, Operational risk). Drops the
+// "posture is" framing — "Structural risk is low" reads better than
+// "Structural risk posture is low" — and uses risk-language band
+// words (low / moderate / significant / elevated / critical).
+func riskPostureExplanation(dimName string, band PostureBand, drivers []string, total int) string {
+	switch band {
+	case PostureStrong:
+		return fmt.Sprintf("%s is low across %d %s.", dimName, total, plural(total, "measurement"))
+	case PostureModerate:
+		return fmt.Sprintf("%s is moderate. Some measurements indicate elevated friction.", dimName)
+	case PostureWeak:
+		if len(drivers) > 0 {
+			sort.Strings(drivers)
+			return fmt.Sprintf("%s is significant. Driven by: %s.", dimName, joinMax(drivers, 3))
+		}
+		return fmt.Sprintf("%s is significant across %d %s.", dimName, total, plural(total, "measurement"))
+	case PostureElevated:
+		return fmt.Sprintf("%s is elevated. Significant issues detected in %s.", dimName, joinMax(drivers, 3))
+	case PostureCritical:
+		return fmt.Sprintf("%s is critical. Immediate attention needed.", dimName)
+	default:
+		return fmt.Sprintf("%s could not be determined.", dimName)
+	}
+}
+
+// plural is a private helper used by the explanation builders to
+// avoid the awkward `n measurement(s)` notation in user-visible text.
+func plural(n int, singular string) string {
+	if n == 1 {
+		return singular
+	}
+	return singular + "s"
 }
 
 func joinMax(items []string, max int) string {
