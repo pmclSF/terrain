@@ -1180,23 +1180,30 @@ func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
 // produced absolute paths in SARIF output, leaking developer home
 // directories. Now `filepath.Rel(root, p)` is attempted; on failure
 // (different volume, error) we fall back to the original path.
+//
+// Result is always slash-separated. `filepath.Rel` returns native
+// separators (backslash on Windows); snapshot JSON, calibration
+// labels, and SARIF all expect forward slashes, so we normalise to
+// `/` as the final step. Without this, Windows builds produced
+// backslash-separated SourcePaths that mismatched forward-slash
+// labels in the calibration corpus.
 func relativeArtifactPath(root, p string) string {
 	if root == "" || p == "" {
-		return p
+		return filepath.ToSlash(p)
 	}
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
-		return p
+		return filepath.ToSlash(p)
 	}
 	absP, err := filepath.Abs(p)
 	if err != nil {
-		return p
+		return filepath.ToSlash(p)
 	}
 	rel, err := filepath.Rel(absRoot, absP)
 	if err != nil || strings.HasPrefix(rel, "..") {
-		return p
+		return filepath.ToSlash(p)
 	}
-	return rel
+	return filepath.ToSlash(rel)
 }
 
 // ingestPromptfooArtifacts parses each Promptfoo `--output` JSON file
