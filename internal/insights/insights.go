@@ -175,6 +175,16 @@ type BuildInput struct {
 	DepgraphSkipReason string
 }
 
+// plural returns the singular form when n == 1, otherwise singular +
+// "s". Local helper used in finding titles to avoid `n thing(s)`
+// notation in user-visible text.
+func plural(n int, singular string) string {
+	if n == 1 {
+		return singular
+	}
+	return singular + "s"
+}
+
 // Build constructs an insights Report from analysis results.
 //
 // nil-safe: a nil input or a non-nil input with a nil Snapshot returns
@@ -921,7 +931,7 @@ func testNextFindings(input *BuildInput) []Finding {
 	}
 
 	findings = append(findings, Finding{
-		Title: fmt.Sprintf("%d untested source file(s) — start with %s", len(candidates), topDesc),
+		Title: fmt.Sprintf("%d untested source %s — start with %s", len(candidates), plural(len(candidates), "file"), topDesc),
 		Description: fmt.Sprintf(
 			"These source files have exported code units with no covering tests. "+
 				"Prioritized by dependency count: files with more dependents create larger blind spots "+
@@ -1009,7 +1019,13 @@ func aiBehaviorChainFindings(input *BuildInput) []Finding {
 	}
 
 	findings = append(findings, Finding{
-		Title: fmt.Sprintf("%d file(s) have partially covered AI behavior chains", len(partialChains)),
+		Title: func() string {
+			n := len(partialChains)
+			if n == 1 {
+				return "1 file has partially covered AI behavior chains"
+			}
+			return fmt.Sprintf("%d files have partially covered AI behavior chains", n)
+		}(),
 		Description: "These files contain multiple AI surface types (e.g., prompt + context, or " +
 			"retrieval + tool definition) where some surfaces are tested but others are not. " +
 			"A change to the untested surface can alter downstream AI behavior without detection.",

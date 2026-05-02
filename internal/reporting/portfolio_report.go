@@ -160,7 +160,7 @@ func renderOwnerSummary(w io.Writer, p *models.PortfolioSnapshot) {
 		limit = len(entries)
 	}
 	for _, e := range entries[:limit] {
-		line("  %-24s %d finding(s)", e.owner, e.findings)
+		line("  %-24s %d %s", e.owner, e.findings, Plural(e.findings, "finding"))
 	}
 	blank()
 }
@@ -186,11 +186,11 @@ func RenderPortfolioSection(w io.Writer, p *models.PortfolioSnapshot) {
 	}
 
 	if agg.HighLeverageCount > 0 {
-		line("  %d high-leverage test(s) provide outsized protection", agg.HighLeverageCount)
+		line("  %d high-leverage %s provide outsized protection", agg.HighLeverageCount, Plural(agg.HighLeverageCount, "test"))
 	}
 	problems := agg.RedundancyCandidateCount + agg.OverbroadCount + agg.LowValueHighCostCount
 	if problems > 0 {
-		line("  %d test(s) flagged for redundancy, overbreadth, or low value", problems)
+		line("  %d %s flagged for redundancy, overbreadth, or low value", problems, Plural(problems, "test"))
 	}
 	blank()
 }

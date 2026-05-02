@@ -18,11 +18,13 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	line(strings.Repeat("=", 50))
 	blank()
 
-	// Overall posture
+	// Overall posture — title-case the dimension labels and bands so
+	// the section reads like a sentence rather than a snake_case dump
+	// (`coverage_depth: strong` → `Coverage depth: Strong`).
 	line("Overall Posture")
 	line(strings.Repeat("-", 50))
 	for _, d := range es.Posture.Dimensions {
-		line("  %-20s %s", d.Dimension+":", strings.ToLower(string(d.Band)))
+		line("  %-22s %s", titleCaseDimension(d.Dimension)+":", titleCaseBand(string(d.Band)))
 	}
 	if len(es.Posture.Dimensions) == 0 {
 		line("  (no risk surfaces computed)")
@@ -54,7 +56,7 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 		line("Top Risk Areas")
 		line(strings.Repeat("-", 50))
 		for _, a := range es.TopRiskAreas {
-			line("  %-25s %s %s risk", a.Name, strings.ToLower(string(a.Band)), a.RiskType)
+			line("  %-25s %s %s risk", a.Name, titleCaseBand(string(a.Band)), a.RiskType)
 		}
 		blank()
 	}
@@ -155,4 +157,32 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	line("  terrain analyze       full signal-level detail")
 	line("  terrain export benchmark   privacy-safe export")
 	blank()
+}
+
+// titleCaseDimension renders a posture-dimension key (`coverage_depth`,
+// `health`, `structural_risk`, etc.) in sentence case for display:
+//
+//	"coverage_depth"   → "Coverage depth"
+//	"health"           → "Health"
+//	"structural_risk"  → "Structural risk"
+//
+// Snake-case is the storage form (preserves API stability + JSON
+// roundtrip); the display form humanizes it for terminal output.
+func titleCaseDimension(s string) string {
+	if s == "" {
+		return s
+	}
+	out := strings.ReplaceAll(s, "_", " ")
+	// Capitalize first character only — sentence case, not Title Case.
+	return strings.ToUpper(out[:1]) + out[1:]
+}
+
+// titleCaseBand renders a posture band ("strong" / "moderate" /
+// "weak" / "elevated" / "critical") with first-letter capitalization.
+func titleCaseBand(s string) string {
+	if s == "" {
+		return s
+	}
+	low := strings.ToLower(s)
+	return strings.ToUpper(low[:1]) + low[1:]
 }

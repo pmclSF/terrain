@@ -174,6 +174,16 @@ type BuildInput struct {
 	HasPolicy  bool
 }
 
+// plural returns the singular form when n == 1, otherwise singular +
+// "s". Local helper used in recommendation titles to avoid awkward
+// `n thing(s)` notation in user-visible text.
+func plural(n int, singular string) string {
+	if n == 1 {
+		return singular
+	}
+	return singular + "s"
+}
+
 // Build creates an ExecutiveSummary from the provided inputs.
 func Build(in *BuildInput) *ExecutiveSummary {
 	es := &ExecutiveSummary{
@@ -701,7 +711,7 @@ func appendCoverageRecommendations(recs []Recommendation, snap *models.TestSuite
 		}
 		if maxCount >= 2 {
 			recs = append(recs, Recommendation{
-				What:             fmt.Sprintf("Investigate %d test(s) with concentrated instability", len(healthByTest)),
+				What:             fmt.Sprintf("Investigate %d %s with concentrated instability", len(healthByTest), plural(len(healthByTest), "test")),
 				Why:              "Health signals (slow, flaky, skipped) cluster around specific persistent tests.",
 				Where:            "see health signals with testId metadata for specific tests",
 				EvidenceStrength: models.EvidenceStrong,
