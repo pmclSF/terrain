@@ -166,6 +166,15 @@ var clauses = []Clause{
 			"context_relevance avg: 0.90 (baseline) → 0.59 (current), -31 pp vs 5 pp threshold",
 		},
 	},
+	{
+		ID:          "sev-high-008",
+		Severity:    models.SeverityHigh,
+		Title:       "Catastrophic cost regression",
+		Description: "Average cost-per-case at least doubled versus baseline (relative delta ≥ 100%). Escalates the medium-severity cost-regression clause for cases where the increase is large enough that operating-budget impact alone is high. Cited by `aiCostRegression` when delta ≥ 1.0.",
+		Examples: []string{
+			"avg cost-per-case 0.0010 (baseline) → 0.0030 (current), +200% — model swap regression that shipped",
+		},
+	},
 
 	// ── Medium ─────────────────────────────────────────────────────
 	{

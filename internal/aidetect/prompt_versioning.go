@@ -161,6 +161,12 @@ func filenameLooksVersioned(path string) bool {
 // file contain a version-shaped declaration. Bounds the read so a
 // huge prompt file doesn't trigger a full scan; versioning markers
 // virtually always appear at the top.
+//
+// 0.2.0 final-polish: even after `inlineVersionPattern` was tightened
+// to require a recognisable version literal, quoted-non-empty branch
+// still accepted `"TODO"`, `"tbd"`, `"xxx"`, `"?"`, `"unknown"` etc.
+// Reject those placeholder tokens explicitly so a comment like
+// `version: "TODO"` doesn't silence the detector.
 func fileHasInlineVersion(absPath string) bool {
 	f, err := os.Open(absPath)
 	if err != nil {
@@ -180,9 +186,27 @@ func fileHasInlineVersion(absPath string) bool {
 		if count > probeLines {
 			break
 		}
-		if inlineVersionPattern.MatchString(sc.Text()) {
-			return true
+		text := sc.Text()
+		if !inlineVersionPattern.MatchString(text) {
+			continue
 		}
+		if lineLooksLikePlaceholderVersion(text) {
+			continue
+		}
+		return true
 	}
 	return false
+}
+
+// versionPlaceholderPattern catches `version: "TODO"` / `version=TBD`
+// / `version: ???` and other obvious placeholders that should NOT
+// satisfy the inline-version requirement. The pattern is
+// case-insensitive and matches the value side of the assignment only.
+var versionPlaceholderPattern = regexp.MustCompile(
+	`(?i)(?:^|\s)(?:#|//|\*)?\s*"?version"?\s*[:=]\s*` +
+		`["']?(?:TODO|TBD|FIXME|XXX|\?+|unknown|placeholder|none)["']?\s*$`,
+)
+
+func lineLooksLikePlaceholderVersion(text string) bool {
+	return versionPlaceholderPattern.MatchString(strings.TrimSpace(text))
 }
