@@ -98,7 +98,7 @@ terrain analyze --root . \
 ### AI Workflow
 
 ```bash
-# 1. See what Terrain knows about your AI validation
+# 1. See what Terrain knows about your AI risk review
 terrain ai list
 
 # 2. Run Gauntlet execution

@@ -329,7 +329,7 @@ func TestSummarizeFindingsBySeverity(t *testing.T) {
 // --- AI PR Section Tests ---
 
 // TestRenderPRSummaryMarkdown_AISection asserts the 0.2 contract for
-// the AI Validation section in `terrain pr --format markdown` output.
+// the AI Risk Review section in `terrain pr --format markdown` output.
 //
 // Pre-fix the section dumped one bullet per signal with the detector
 // taxonomy (`aiPromptInjectionRisk`) as the headline and no file
@@ -377,8 +377,8 @@ func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 	output := buf.String()
 
 	// Section header.
-	if !strings.Contains(output, "### AI Validation") {
-		t.Error("expected AI Validation section")
+	if !strings.Contains(output, "### AI Risk Review") {
+		t.Error("expected AI Risk Review section")
 	}
 	// Capabilities + scenario count framing.
 	if !strings.Contains(output, "refund-explanation") || !strings.Contains(output, "enterprise-search") {
@@ -435,7 +435,7 @@ func TestRenderPRSummaryMarkdown_NoAISection(t *testing.T) {
 	RenderPRSummaryMarkdown(&buf, pr)
 	output := buf.String()
 
-	if strings.Contains(output, "AI Validation") {
+	if strings.Contains(output, "AI Risk Review") {
 		t.Error("expected no AI section for traditional PR")
 	}
 }
@@ -477,8 +477,8 @@ func TestRenderPRSummaryMarkdown_MixedTraditionalAndAI(t *testing.T) {
 	if !strings.Contains(output, "Recommended tests") {
 		t.Error("expected traditional Recommended tests section")
 	}
-	if !strings.Contains(output, "### AI Validation") {
-		t.Error("expected AI Validation section")
+	if !strings.Contains(output, "### AI Risk Review") {
+		t.Error("expected AI Risk Review section")
 	}
 	if !strings.Contains(output, "search-quality") {
 		t.Error("expected AI scenario in output")

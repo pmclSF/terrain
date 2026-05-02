@@ -21,7 +21,7 @@ weak points are.
 - **Mock-heavy unit tests** — components mocked so deeply the test
   validates the mock instead of the component (`mockHeavyTest`).
 - **Snapshot saturation** — components with ten snapshots and zero
-  behavioural assertions (`snapshotHeavyTest`). Snapshots are valid;
+  behavioral assertions (`snapshotHeavyTest`). Snapshots are valid;
   ten of them on one component usually isn't.
 - **Coverage blind spots** — exported components with no test, or
   tested only at the E2E layer (slow, brittle, expensive

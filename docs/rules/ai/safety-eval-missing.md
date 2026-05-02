@@ -91,7 +91,7 @@ once the scenario covers the surface.
 ## Why it might be a false positive
 
 - The surface is a non-user-facing prompt (e.g. an internal tool's
-  prompt that takes only sanitised input). Mark the surface as such
+  prompt that takes only sanitized input). Mark the surface as such
   via the `safety_required: false` field on the surface declaration,
   or add an `expectedAbsent: aiSafetyEvalMissing` entry in the
   calibration fixture.

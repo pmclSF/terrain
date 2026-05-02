@@ -65,7 +65,7 @@ type PRAnalysis struct {
 	// Limitations notes data gaps.
 	Limitations []string `json:"limitations,omitempty"`
 
-	// AI holds the AI validation summary for this PR.
+	// AI holds the AI risk review summary for this PR.
 	AI *AIValidationSummary `json:"ai,omitempty"`
 
 	// ImpactResult is the full impact analysis result.

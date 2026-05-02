@@ -54,7 +54,7 @@ function handle(req, res) {
 func TestPromptInjection_IgnoresClean(t *testing.T) {
 	t.Parallel()
 
-	// Templated prompt with sanitised input — no concatenation, no
+	// Templated prompt with sanitized input — no concatenation, no
 	// f-string boundary issue.
 	root := t.TempDir()
 	rel := writeFile(t, root, "agent.py", `
@@ -68,7 +68,7 @@ def chat(user_input):
 	got := (&PromptInjectionDetector{Root: root}).Detect(&models.TestSuiteSnapshot{
 		TestFiles: []models.TestFile{{Path: rel}},
 	})
-	// .format() with sanitised input should not fire — neither pattern
+	// .format() with sanitized input should not fire — neither pattern
 	// matches user_input on the .format line.
 	if len(got) != 0 {
 		t.Errorf("clean handler should not fire, got %d signals: %+v", len(got), got)

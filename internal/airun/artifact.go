@@ -1,4 +1,4 @@
-// Package airun implements the artifact model for AI validation runs,
+// Package airun implements the artifact model for AI risk review runs,
 // including content hashing for reproducibility and replay support.
 package airun
 

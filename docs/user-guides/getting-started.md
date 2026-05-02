@@ -1,11 +1,40 @@
 # Getting Started with Terrain
 
+## Prerequisites
+
+The npm install path verifies signed binaries with cosign before
+extracting them. Cosign needs to be on `PATH` before you run `npm
+install`:
+
+```bash
+# macOS / Linux
+brew install cosign
+# Linux (Debian/Ubuntu)
+apt-get install cosign     # 22.04+; otherwise use the Sigstore release
+# Windows
+scoop install cosign
+```
+
+If you can't or don't want to install cosign, two opt-out env vars
+are recognized by the npm installer:
+
+| Env var | Effect |
+|---------|--------|
+| `TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1` | Falls back to checksum-only verification |
+| `TERRAIN_INSTALLER_SKIP_VERIFY=1` | Skips verification entirely (not recommended) |
+
+Homebrew and `go install` paths handle their own verification and
+do not need cosign on `PATH`.
+
+See [`docs/release/supply-chain.md`](../release/supply-chain.md) for
+the full signing / attestation story.
+
 ## Install
 
 ```bash
 brew install pmclSF/terrain/mapterrain
 # or
-npm install -g mapterrain
+npm install -g mapterrain          # see Prerequisites above re: cosign
 # or
 go install github.com/pmclSF/terrain/cmd/terrain@latest
 ```
