@@ -5,7 +5,7 @@ on:
     tags:
       - 'v*'
 
-# Release runs are NEVER cancelled mid-flight: once the OIDC certs
+# Release runs are NEVER canceled mid-flight: once the OIDC certs
 # are issued and uploaded to the public Sigstore log, cancelling
 # leaves orphan certs that look like a partial release. `cancel-in-
 # progress: false` is explicit so anyone re-running the release

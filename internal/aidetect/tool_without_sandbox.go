@@ -335,7 +335,7 @@ func hasApprovalMarker(raw string) bool {
 func hasApprovalMarkerOnEntry(t toolEntry) bool {
 	if t.fields == nil {
 		// Legacy fallback for callers that didn't populate fields:
-		// retain substring behaviour rather than emit a false positive.
+		// retain substring behavior rather than emit a false positive.
 		return hasApprovalMarker(t.raw)
 	}
 	// Skip these scalar text fields — they're free-form prose, not

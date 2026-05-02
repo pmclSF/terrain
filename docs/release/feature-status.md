@@ -63,15 +63,15 @@ the 0.2 changes; the manifest is authoritative.
 | `policyViolation` | `internal/governance/evaluate.go` | |
 | `assertionFreeImport` | `internal/structural/assertion_free_import.go` | |
 | `aiHardcodedAPIKey` | `internal/aidetect/hardcoded_api_key.go` | **No calibration fixture** (would risk repository secret-scanner alerts on synthetic high-entropy keys). Tested via unit tests only. |
-| `aiNonDeterministicEval` | `internal/aidetect/non_deterministic_eval.go` | Known limitation: scans for the *first* `temperature` key, so multi-provider configs get a single binary verdict. Tracked in `0.2-known-gaps.md`. |
-| `aiModelDeprecationRisk` | `internal/aidetect/model_deprecation.go` | Trailing-boundary class excludes `.` so dot-versioned variants (`claude-2.1`) no longer match their undated parent. |
-| `aiToolWithoutSandbox` | `internal/aidetect/tool_without_sandbox.go` | Approval markers checked structurally (key name + truthy value), not raw substring — closes the description-bypass loophole. |
-| `aiSafetyEvalMissing` | `internal/aidetect/safety_eval_missing.go` | Known noise: floods false positives when scenarios are auto-derived with empty `CoveredSurfaceIDs`. Tracked. |
-| `aiHallucinationRate` | `internal/aidetect/hallucination_rate.go` | Denominator restricted to scoreable cases (errored cases excluded). |
-| `aiCostRegression` | `internal/aidetect/cost_regression.go` | Both relative threshold AND absolute floor (`MinAbsDelta`, default $0.0005/case) must clear. |
-| `aiRetrievalRegression` | `internal/aidetect/retrieval_regression.go` | Allowlist covers Ragas modern (`context_precision`, `context_recall`, `context_entity_recall`), Ragas legacy, nDCG, faithfulness, LangSmith `relevance_score`. |
-| `aiPromptVersioning` | `internal/aidetect/prompt_versioning.go` | Inline-version pattern requires a non-empty literal (digits/semver/calver/quoted). |
-| `aiEmbeddingModelChange` | `internal/aidetect/embedding_model_change.go` | Prefers structured RAG surfaces (EvidenceStrong, conf 0.85); falls back to file-scan (EvidenceModerate, conf 0.80). |
+| `aiNonDeterministicEval` | `internal/aidetect/non_deterministic_eval.go` | Per-provider scoping (multi-provider configs emit one verdict per provider entry). Accepts YAML / JSON / TOML. |
+| `aiModelDeprecationRisk` | `internal/aidetect/model_deprecation.go` | Severity by category: deprecated → High, floating → Medium. Trailing-boundary class excludes `.` so dot-versioned variants (`claude-2.1`) no longer match their undated parent. Comment-prefix detection covers SQL `--`, INI `;`, HTML, Markdown, RST, VB. Dated `code-davinci-{001,002,edit-001}` + `code-cushman-001` enumerated. |
+| `aiToolWithoutSandbox` | `internal/aidetect/tool_without_sandbox.go` | Approval markers checked structurally (key name + truthy value, description fields excluded) — closes the description-bypass loophole. Benign-object whitelist (`delete_cache`, `purge_logs`, etc.) suppresses bounded-blast-radius cases; always-high verbs (`exec`, `eval`, `send_payment`) keep firing regardless. |
+| `aiSafetyEvalMissing` | `internal/aidetect/safety_eval_missing.go` | Implicit path-based coverage when `CoveredSurfaceIDs` is empty (the default for auto-derived scenarios) so the detector matches the dominant scenario shape without flooding false positives. |
+| `aiHallucinationRate` | `internal/aidetect/hallucination_rate.go` | Denominator restricted to scoreable cases (errored cases excluded). 17 keyword stems including "not in source", "no evidence", "unsupported", "outside scope", "off-topic". |
+| `aiCostRegression` | `internal/aidetect/cost_regression.go` | Both relative threshold AND absolute floor (`MinAbsDelta`, default $0.0005/case) must clear. Confidence scales by paired-case count (0.5 at paired=1, plateau at 0.9 from paired≥20). Catastrophic regressions (≥2× cost) escalate to High via `sev-high-008`. |
+| `aiRetrievalRegression` | `internal/aidetect/retrieval_regression.go` | Allowlist covers Ragas modern (`context_precision`, `context_recall`, `context_entity_recall`), Ragas legacy, nDCG, faithfulness, LangSmith `relevance_score`. Confidence scales by paired-case count (shared helper with `aiCostRegression`). |
+| `aiPromptVersioning` | `internal/aidetect/prompt_versioning.go` | Inline-version pattern requires a non-empty literal (digits/semver/calver/quoted). Placeholder tokens (`TODO`, `TBD`, `???`, `placeholder`, `none`, `unknown`) explicitly rejected. |
+| `aiEmbeddingModelChange` | `internal/aidetect/embedding_model_change.go` | Prefers structured RAG surfaces (EvidenceStrong, conf 0.85); falls back to file-scan (EvidenceModerate, conf 0.80). Catches env-var-loaded models via framework constructor patterns. |
 | `uncoveredAISurface` | `internal/structural/uncovered_ai_surface.go` | Emits, but coverage attribution depends on scenario declarations. |
 | `phantomEvalScenario` | `internal/structural/phantom_eval_scenario.go` | |
 | `capabilityValidationGap` | `internal/structural/capability_validation_gap.go` | |
@@ -81,10 +81,10 @@ the 0.2 changes; the manifest is authoritative.
 
 | Signal | Notes |
 |---|---|
-| `aiPromptInjectionRisk` | Known false-positive: `prompt == user_input` (equality) was matched pre-0.2.x; now anchored on assignment via negative lookahead. Heuristic remains coarse. |
-| `aiFewShotContamination` | Naive substring overlap with 40-character minimum chunk; n-gram overlap planned for 0.3. |
+| `aiPromptInjectionRisk` | Pattern-based; assignment-anchored (`==` equality excluded); 3-line concatenation window so Black/Prettier-formatted multi-line concatenation is caught. User-input shapes cover Express/Koa, FastAPI typed params, Flask, Django, Pyramid, gRPC, CLI args. AST-precise taint-flow analysis is 0.3. |
+| `aiFewShotContamination` | Substring overlap with 40-character minimum chunk + 5-distinct-word guard; implicit path-based coverage matches auto-derived scenarios. Full n-gram overlap is 0.3. |
 | AI surface inference (`SurfacePrompt`, `SurfaceContext`, `SurfaceDataset`, `SurfaceToolDef`, `SurfaceRetrieval`) | Detection works; precision/recall uncalibrated. |
-| Risk band + Health Grade thresholds | Code is deterministic but thresholds (4 / 9 / 16; A/B/C/D cutoffs) are uncalibrated against a labelled corpus. Calibrated v2 scoring is 0.3. |
+| Risk band + Health Grade thresholds | Code is deterministic but thresholds (4 / 9 / 16; A/B/C/D cutoffs) are uncalibrated against a labeled corpus. Calibrated v2 scoring is 0.3. |
 | `terrain compare` snapshot diff | Implemented; output format may shift. |
 
 ### Planned (referenced in docs but not yet implemented)
@@ -112,7 +112,7 @@ the 0.2 changes; the manifest is authoritative.
 | Homebrew install on macOS | Goreleaser pipeline builds darwin amd64 + arm64; brew tap publish runs post-release. |
 | `npm install -g mapterrain` | Works on darwin/linux/windows × amd64/arm64. |
 | Signed binaries | Cosign signatures attached to archives, SBOMs, and checksums. SLSA L2 build provenance attestation per archive. |
-| Cosign verification on npm install | Hard-fail when `cosign` is installed; **degrades to checksum-only** when `cosign` is absent. Mandatory cosign with `TERRAIN_INSTALLER_SKIP_VERIFY=1` escape is on the 0.2.x list. |
+| Cosign verification on npm install | **Mandatory** by default. Missing cosign aborts the install with a clear remediation block. Escapes: `TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1` (degrade to checksum-only) and `TERRAIN_INSTALLER_SKIP_VERIFY=1` (skip entirely). Installer redirect chain capped at 5 hops. |
 
 ## "AI-native era" claim
 

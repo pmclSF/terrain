@@ -21,7 +21,7 @@ import (
 // The regexes deliberately match the **prefix shape** rather than the
 // exact char count for each provider, since providers occasionally shift
 // length. False positives are caught by tests/calibration/ fixtures
-// labelled `expectedAbsent: aiHardcodedAPIKey` (e.g. literal placeholders
+// labeled `expectedAbsent: aiHardcodedAPIKey` (e.g. literal placeholders
 // like `sk-fake-key`).
 var aiAPIKeyPatterns = []apiKeyRule{
 	{
@@ -109,7 +109,7 @@ var configFileExts = map[string]bool{
 // The detector emits SignalAIHardcodedAPIKey with severity Critical and
 // SeverityClauses citing sev-critical-001 from docs/severity-rubric.md.
 type HardcodedAPIKeyDetector struct {
-	// Root is the absolute path of the repo being analysed. The
+	// Root is the absolute path of the repo being analyzed. The
 	// detector reads files under this root; the snapshot only carries
 	// relative paths.
 	Root string

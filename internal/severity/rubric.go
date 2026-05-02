@@ -222,7 +222,7 @@ var clauses = []Clause{
 		ID:          "sev-medium-005",
 		Severity:    models.SeverityMedium,
 		Title:       "Floating model tag",
-		Description: "An LLM call references a model name that resolves to whatever the provider currently maps it to (e.g. `gpt-4`), so behaviour silently drifts.",
+		Description: "An LLM call references a model name that resolves to whatever the provider currently maps it to (e.g. `gpt-4`), so behavior silently drifts.",
 		Examples: []string{
 			"`model: \"claude-3-opus\"` without a version date suffix",
 			"`gpt-4` instead of `gpt-4-0613`",

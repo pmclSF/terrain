@@ -7,7 +7,7 @@ assignees: ''
 ---
 
 Detector false positives directly affect calibration (precision). The
-more concrete the reproduction, the easier it is to add a labelled
+more concrete the reproduction, the easier it is to add a labeled
 fixture under `tests/calibration/` so the regression doesn't come back.
 
 ## Detector

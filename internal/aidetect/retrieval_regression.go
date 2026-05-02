@@ -30,7 +30,7 @@ type RetrievalRegressionDetector struct {
 	Threshold float64
 }
 
-// retrievalScoreKeys is the list of NamedScore keys recognised as
+// retrievalScoreKeys is the list of NamedScore keys recognized as
 // retrieval-quality axes. Lowercased for matching; we accept a few
 // common naming variants.
 var retrievalScoreKeys = []string{

@@ -5,7 +5,7 @@ import (
 )
 
 // TestReportNamespace_KnownVerbsAreNotRejected verifies the dispatcher
-// recognises every canonical verb. We can't easily invoke the verbs
+// recognizes every canonical verb. We can't easily invoke the verbs
 // for-real without the legacy parsers calling os.Exit on --help, so
 // the test stops short of routing — it just confirms the dispatcher
 // itself accepts each name (no "unknown report verb" error).

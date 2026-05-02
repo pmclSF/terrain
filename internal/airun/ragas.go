@@ -9,7 +9,7 @@ import (
 )
 
 // ParseRagasJSON parses a Ragas eval result payload into a
-// normalised EvalRunResult. Pairs with ParsePromptfooJSON +
+// normalized EvalRunResult. Pairs with ParsePromptfooJSON +
 // ParseDeepEvalJSON; same target shape, same downstream detectors.
 //
 // Ragas typically writes a JSON like:
@@ -186,7 +186,7 @@ var ragasQualityKeys = map[string]bool{
 // isRagasQualityKey reports whether a NamedScore key is a quality
 // axis whose value should flow into success/failure synthesis.
 // Variants (hyphens, spaces, leading `eval_`, suffixed `_score`) are
-// normalised. 0.2.0 final-polish: added space→underscore and `eval_`
+// normalized. 0.2.0 final-polish: added space→underscore and `eval_`
 // prefix-strip to handle the `ragas-evaluate-helpers` library's
 // `eval_faithfulness` / `eval context_relevance` shapes that the
 // pre-fix pattern missed.

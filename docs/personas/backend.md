@@ -20,7 +20,7 @@ and shows you the bottlenecks.
   `@Disabled` on tests that have been disabled longer than the
   configured budget (`skippedTestsInCI`).
 - **Runtime budget creep** — slow tests from CI runtime artefacts,
-  with the per-package breakdown so you know which suite to optimise.
+  with the per-package breakdown so you know which suite to optimize.
 - **Migration blockers** — pytest fixtures with implicit ordering,
   JUnit 4 patterns mid-migration to JUnit 5, custom matchers that
   don't translate (`migrationBlocker`, `customMatcherRisk`).
@@ -98,5 +98,5 @@ jobs:
 
 - `docs/cli-spec.md` — full command reference.
 - `docs/signal-catalog.md` — every signal type and when it fires.
-- `docs/calibration/CORPUS.md` — the labelled-fixture set we use to
+- `docs/calibration/CORPUS.md` — the labeled-fixture set we use to
   measure detector precision/recall, including backend-shaped fixtures.

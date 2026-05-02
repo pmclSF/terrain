@@ -6,7 +6,7 @@ import (
 
 // TestMigrateNamespace_VerbsRouteToLegacyRunners verifies the canonical
 // shape (`terrain migrate <verb>`) reaches the existing per-verb runner
-// without behaviour change. We can't easily assert the output here, but
+// without behavior change. We can't easily assert the output here, but
 // we can prove the dispatcher routes correctly by feeding each verb a
 // flag-only invocation that the legacy runner treats as "show usage"
 // or "no-op". Anything else (panic, dispatch error) trips the test.
@@ -47,7 +47,7 @@ func TestMigrateNamespace_VerbsRouteToLegacyRunners(t *testing.T) {
 // `terrain migrate cypress-playwright` (no verb prefix) falls through
 // to the legacy runner. We pass an obviously-invalid framework pair
 // and assert we get an error from the legacy runner rather than a
-// "verb not recognised" error from the dispatcher.
+// "verb not recognized" error from the dispatcher.
 func TestMigrateNamespace_LegacyDirectInvocationStillWorks(t *testing.T) {
 	t.Parallel()
 

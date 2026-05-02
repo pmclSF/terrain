@@ -9,7 +9,7 @@ import (
 )
 
 // ParseDeepEvalJSON parses a DeepEval `--export results.json` payload
-// into a normalised EvalRunResult. Pairs with ParsePromptfooJSON; both
+// into a normalized EvalRunResult. Pairs with ParsePromptfooJSON; both
 // adapters emit the same shape so the runtime-aware AI detectors
 // (aiHallucinationRate, aiCostRegression, aiRetrievalRegression) work
 // against either eval framework.
@@ -34,7 +34,7 @@ import (
 //	  ]
 //	}
 //
-// We normalise as follows:
+// We normalize as follows:
 //   - one EvalCase per testCase
 //   - Success := all metricsData entries' success==true (a single
 //     metric failure flips the case to false)
@@ -141,7 +141,7 @@ func aggregateMetricsData(metrics []deepEvalMetricEntry) (success bool, score fl
 		// 0.2.0 final-polish: DeepEval emits metric names in two
 		// shapes — snake_case (`answer_relevancy`) and human-readable
 		// (`Answer Relevancy`). The latter contains internal spaces
-		// that must be normalised to underscores; otherwise the keys
+		// that must be normalized to underscores; otherwise the keys
 		// mismatch retrievalScoreKeys / hallucinationGroundingKeys
 		// whitelists in the consumer detectors.
 		key := strings.ToLower(strings.TrimSpace(m.Name))

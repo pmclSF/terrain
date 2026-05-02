@@ -6,7 +6,7 @@ the CLI's `--json` output, on-disk snapshots in `.terrain/`, the VS Code
 extension, the future hosted experience, and any third-party tool that
 parses the artefact.
 
-This document is the contract. Drift between behaviour and this policy is a
+This document is the contract. Drift between behavior and this policy is a
 release blocker.
 
 ## Versioning
@@ -42,7 +42,7 @@ The manifest export schema is independent because it describes the
 shape of the manifest *file*, not the snapshot. SARIF tracks the
 external standard. Always check the field name, not just the value.
 
-## Reader behaviour
+## Reader behavior
 
 A Terrain binary is willing to read snapshots whose major version is **less
 than or equal to** the value of `models.MaxSupportedMajorSchema` (currently

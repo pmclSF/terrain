@@ -27,7 +27,7 @@ const RiskModelVersion = "2.0.0"
 // per-dimension risk. They are NOT corpus-calibrated — values were chosen by
 // hand so that one Critical finding outweighs ~1.3 High findings, and one
 // High outweighs 1.5 Medium findings, which roughly matches reviewer intuition
-// on a sample of customer repos. Calibration against a labelled corpus lands
+// on a sample of customer repos. Calibration against a labeled corpus lands
 // in 0.3 (see docs/release/0.2.md → 0.3 plan); when it does, both these
 // weights and the band thresholds below will shift. The current values
 // represent the "best guess" that 0.1.0 shipped with; we are documenting

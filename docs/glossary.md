@@ -64,7 +64,7 @@ surface and what to footnote.
 
 ## Calibration corpus
 
-The labelled fixture set under `tests/calibration/`. Each fixture
+The labeled fixture set under `tests/calibration/`. Each fixture
 declares the signals that *must* fire (and optionally the signals
 that *must not* fire) so a detector regression is caught at CI
 time. The runner is `internal/calibration/runner.go`; the gate is

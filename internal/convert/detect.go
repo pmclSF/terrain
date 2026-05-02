@@ -259,7 +259,7 @@ func isLikelyTestPath(path string) bool {
 	// counting `tests/fixtures/<repo>/src/app.js` as a test file. A
 	// terrain doctor on the terrain repo reported 34,399 "test files"
 	// (vs 9,852 actual). Tighten to "the immediate parent directory is
-	// a recognised test-dir name" — fixture source under tests/fixtures
+	// a recognized test-dir name" — fixture source under tests/fixtures
 	// no longer inflates the count, while genuinely-tests files (whose
 	// parent IS `__tests__` or `tests` or `e2e` or `integration`) still
 	// match.

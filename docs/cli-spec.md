@@ -11,14 +11,40 @@ It must be:
 - readable
 - machine-friendly
 
+## Surface — canonical 11 + legacy aliases
+
+0.2.0 introduces three new namespace dispatchers
+(`terrain report`, `terrain migrate`, `terrain config`) plus
+`terrain debug`. The canonical surface is 10 top-level verbs:
+
+| Canonical | What it does |
+|---|---|
+| `terrain analyze` | Full snapshot pipeline; the headline command |
+| `terrain report <verb>` | Read-side views: summary, insights, explain, posture, portfolio, metrics, focus, show, impact, pr, select-tests |
+| `terrain migrate <verb>` | Conversion + migration: run, config, list, detect, shorthands, estimate, status, checklist, readiness, blockers, preview |
+| `terrain convert <file>` | Per-file conversion (legacy fall-through preserved) |
+| `terrain config <verb>` | feedback, telemetry, reset |
+| `terrain doctor` | Migration-readiness diagnostic |
+| `terrain ai <verb>` | AI surface inventory + eval orchestration |
+| `terrain serve` | Local HTTP server with HTML report + JSON API |
+| `terrain version` | Version, commit, build date, snapshot schema version |
+| `terrain help` | Top-level help surface |
+
+The legacy top-level commands documented in this file
+(`terrain summary`, `terrain insights`, etc.) continue to work
+through 0.2.x as aliases that route to the same runners. Set
+`TERRAIN_LEGACY_HINT=1` to see deprecation hints. Removal targets
+0.3.
+
 ### `terrain version`
 Purpose:
-Print version, commit, and build date.
+Print version, commit, build date, and snapshot schema version.
 
-Output: `terrain <version> (commit <sha>, built <date>)`
+Output: `terrain <version> (commit <sha>, built <date>; snapshot schema <version>)`
 
 Flags:
-- `--json` — output machine-readable version metadata
+- `--json` — output machine-readable version metadata, including
+  `schemaVersion` so CI tools can pin on the snapshot contract.
 
 ---
 
@@ -431,14 +457,16 @@ and not yet shipped.
 Usage: `terrain serve [--root PATH] [--port N] [--host HOST] [--read-only]`
 
 Flags:
-- `--root PATH` — repository root to analyse (default: `.`).
+- `--root PATH` — repository root to analyze (default: `.`).
 - `--port N` — bind port (default: 8421).
 - `--host HOST` — bind host (default: `127.0.0.1`). Setting any other
   value emits a stderr warning because the server has no built-in
   authentication.
-- `--read-only` — reject future state-changing API endpoints. No-op in
-  0.1.2 (every handler is read-only); reserved so users who flip it now
-  keep that guarantee when 0.2 introduces write APIs.
+- `--read-only` — reject any non-GET/HEAD/OPTIONS request with HTTP 405.
+  Every handler shipped in 0.2 is GET-only, so this is a contract gate
+  for any future state-changing endpoint rather than a behavior change
+  for current traffic. Users who set `--read-only=true` get the
+  enforcement they ticked the box for.
 
 Security:
 - Binds to `127.0.0.1` by default.

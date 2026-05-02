@@ -145,7 +145,7 @@ type evalFinding struct {
 // one provider pins temperature and another doesn't got a single
 // binary verdict — the second provider's missing pin was silently
 // missed. Per-provider scoping fixes the multi-provider case while
-// retaining single-finding behaviour for the common single-provider
+// retaining single-finding behavior for the common single-provider
 // shape.
 func analyseEvalConfig(path string) []evalFinding {
 	raw, err := os.ReadFile(path)
@@ -263,7 +263,7 @@ func walkProviders(n *yaml.Node, out *[]providerEntry, parentLabel string) {
 	}
 }
 
-// keyState summarises whether a key was present in the parsed config
+// keyState summarizes whether a key was present in the parsed config
 // and (when scalar and numeric) what its value was. The detector only
 // cares about presence + numeric for `temperature` today.
 type keyState struct {

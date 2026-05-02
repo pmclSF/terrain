@@ -41,7 +41,7 @@ const DefaultPort = 8421
 // DefaultHost is the default bind host. Localhost-only by design.
 const DefaultHost = "127.0.0.1"
 
-// Config controls server behaviour. The zero value is safe; New applies
+// Config controls server behavior. The zero value is safe; New applies
 // sensible defaults for any field that is left empty.
 type Config struct {
 	// Host is the bind address. Defaults to "127.0.0.1". Setting this to
@@ -55,7 +55,7 @@ type Config struct {
 	// ReadOnly, when true, rejects any non-GET/HEAD/OPTIONS request with
 	// HTTP 405 in the security middleware. Every endpoint shipped in 0.2
 	// is read-only (GET-only routes), so this is a contract gate for
-	// future state-changing endpoints rather than a behaviour change for
+	// future state-changing endpoints rather than a behavior change for
 	// today's traffic.
 	ReadOnly bool
 }
@@ -92,7 +92,7 @@ func NewWithConfig(root string, cfg Config) *Server {
 	return &Server{root: root, cfg: cfg}
 }
 
-// ListenAndServe starts the HTTP server and blocks until the context is cancelled.
+// ListenAndServe starts the HTTP server and blocks until the context is canceled.
 func (s *Server) ListenAndServe(ctx context.Context) error {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleRoot)
@@ -110,7 +110,7 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	// Shutdown gracefully when context is cancelled.
+	// Shutdown gracefully when context is canceled.
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

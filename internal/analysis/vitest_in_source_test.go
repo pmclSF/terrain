@@ -37,7 +37,7 @@ if (import.meta.vitest) {
 }
 `)
 	if !hasVitestInSourceMarker(rel, abs) {
-		t.Errorf("expected vitest in-source marker to be recognised in %q", rel)
+		t.Errorf("expected vitest in-source marker to be recognized in %q", rel)
 	}
 }
 

@@ -2,7 +2,7 @@ package airun
 
 import "time"
 
-// EvalRunResult is Terrain's normalised representation of one execution
+// EvalRunResult is Terrain's normalized representation of one execution
 // of an eval framework (Promptfoo, DeepEval, Ragas, ...). Each adapter
 // parses its framework's native output into this shape; downstream
 // detectors and reports consume EvalRunResult without caring which
@@ -30,7 +30,7 @@ type EvalRunResult struct {
 	// Promptfoo run with 50 tests × 2 providers produces 100 entries.
 	Cases []EvalCase `json:"cases,omitempty"`
 
-	// Aggregates summarises the run. Populated either from the
+	// Aggregates summarizes the run. Populated either from the
 	// framework's own summary fields or computed by the adapter.
 	Aggregates EvalAggregates `json:"aggregates"`
 }
@@ -92,7 +92,7 @@ type TokenUsage struct {
 	Cost       float64 `json:"cost,omitempty"`
 }
 
-// EvalAggregates summarises an eval run.
+// EvalAggregates summarizes an eval run.
 type EvalAggregates struct {
 	// Successes / Failures / Errors mirror Promptfoo's three-bucket
 	// stats. A "failure" is an assertion fail; an "error" is a runtime

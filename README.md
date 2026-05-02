@@ -578,7 +578,7 @@ Exit code 0 = pass, 2 = violations found, 1 = error.
 - [Signal Model](docs/signal-model.md) — the core signal abstraction
 - [Glossary](docs/glossary.md) — Terrain-specific vocabulary in one page
 - [Architecture](docs/architecture/) — design documents and technical specifications
-- [Versioning Policy](docs/versioning.md) — what's a breaking change vs behaviour change vs bug fix
+- [Versioning Policy](docs/versioning.md) — what's a breaking change vs behavior change vs bug fix
 - [Compatibility](docs/compatibility.md) — supported OSes, Go versions, frameworks
 - [Integrations](docs/integrations/) — Promptfoo / DeepEval / Ragas wiring guides
 - [Feature Status](docs/release/feature-status.md) — what's stable, experimental, or planned in the current release

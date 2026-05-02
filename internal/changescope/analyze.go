@@ -262,14 +262,42 @@ func buildAIValidationSummary(result *impact.ImpactResult, snap *models.TestSuit
 	}
 	sort.Strings(ai.ImpactedCapabilities)
 
-	// Collect AI signals, split into blocking vs warning.
+	// Build the changed-files set early — we use it both to filter the AI
+	// signals collection (so pre-existing whole-repo signals don't bleed
+	// into PR-scoped output) and the uncovered-surface check below.
+	changedPaths := map[string]bool{}
+	for _, cf := range result.Scope.ChangedFiles {
+		changedPaths[cf.Path] = true
+	}
+
+	// Collect AI signals introduced (or co-located with files changed) by
+	// this PR, split into blocking vs warning.
+	//
+	// Filter by changedPaths: the impact-scoped scenarios block above
+	// already only reports scenarios touched by the PR. Pre-fix, this
+	// signals loop iterated EVERY AI signal in the snapshot, so a docs-
+	// only PR that touched zero source files still surfaced calibration-
+	// corpus fixtures (which are intentionally bad — they're regression
+	// tests for the detectors) as "blocking." That made the AI gate
+	// noisy on every PR regardless of whether the PR introduced any AI
+	// risk. Now: only signals whose Location.File appears in the PR's
+	// changed-files set are reported. Signals without a Location.File
+	// (whole-repo emergent signals) are also dropped here — they belong
+	// in `terrain analyze`, not `terrain pr`.
 	for _, sig := range snap.Signals {
 		if sig.Category != models.CategoryAI {
 			continue
 		}
+		if sig.Location.File == "" || !changedPaths[sig.Location.File] {
+			continue
+		}
 		entry := AISignalSummary{
-			Type: string(sig.Type), Severity: string(sig.Severity),
+			Type:        string(sig.Type),
+			Severity:    string(sig.Severity),
 			Explanation: sig.Explanation,
+			File:        sig.Location.File,
+			Line:        sig.Location.Line,
+			Symbol:      sig.Location.Symbol,
 		}
 		if sig.Severity == models.SeverityCritical || sig.Severity == models.SeverityHigh {
 			ai.BlockingSignals = append(ai.BlockingSignals, entry)
@@ -284,10 +312,6 @@ func buildAIValidationSummary(result *impact.ImpactResult, snap *models.TestSuit
 		for _, sid := range sc.CoveredSurfaceIDs {
 			coveredIDs[sid] = true
 		}
-	}
-	changedPaths := map[string]bool{}
-	for _, cf := range result.Scope.ChangedFiles {
-		changedPaths[cf.Path] = true
 	}
 	aiKinds := map[models.CodeSurfaceKind]bool{
 		models.SurfacePrompt:    true,

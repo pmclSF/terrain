@@ -13,7 +13,7 @@ import (
 )
 
 // TestParallelForEachIndexCtx_CancelledBeforeStart verifies that a
-// pre-cancelled context causes no work items to execute.
+// pre-canceled context causes no work items to execute.
 func TestParallelForEachIndexCtx_CancelledBeforeStart(t *testing.T) {
 	t.Parallel()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -25,7 +25,7 @@ func TestParallelForEachIndexCtx_CancelledBeforeStart(t *testing.T) {
 	})
 
 	if count != 0 {
-		t.Errorf("expected 0 items processed with pre-cancelled context, got %d", count)
+		t.Errorf("expected 0 items processed with pre-canceled context, got %d", count)
 	}
 }
 
@@ -66,7 +66,7 @@ func TestParallelForEachIndexCtx_CancelMidway(t *testing.T) {
 }
 
 // TestParallelForEachIndexCtx_CompletesNormally verifies normal execution
-// when context is not cancelled.
+// when context is not canceled.
 func TestParallelForEachIndexCtx_CompletesNormally(t *testing.T) {
 	t.Parallel()
 	ctx := context.Background()
@@ -82,7 +82,7 @@ func TestParallelForEachIndexCtx_CompletesNormally(t *testing.T) {
 }
 
 // TestWalkDirCtx_CancelledBeforeStart verifies that walkDirCtx returns
-// immediately with a pre-cancelled context.
+// immediately with a pre-canceled context.
 func TestWalkDirCtx_CancelledBeforeStart(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -135,7 +135,7 @@ func TestWalkDirCtx_CompletesNormally(t *testing.T) {
 }
 
 // TestCollectSourceFilesCtx_CancelledReturnsError verifies that
-// collectSourceFilesCtx returns an error when cancelled.
+// collectSourceFilesCtx returns an error when canceled.
 func TestCollectSourceFilesCtx_CancelledReturnsError(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -148,7 +148,7 @@ func TestCollectSourceFilesCtx_CancelledReturnsError(t *testing.T) {
 
 	_, err := collectSourceFilesCtx(ctx, root)
 	if err == nil {
-		t.Error("expected error from cancelled context")
+		t.Error("expected error from canceled context")
 	}
 }
 
@@ -170,7 +170,7 @@ func TestCollectSourceFilesCtx_CompletesNormally(t *testing.T) {
 }
 
 // TestAnalyzeContext_CancelledReturnsError verifies that AnalyzeContext
-// returns a context error when cancelled before analysis starts.
+// returns a context error when canceled before analysis starts.
 func TestAnalyzeContext_CancelledReturnsError(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -186,7 +186,7 @@ describe('app', () => { it('works', () => { hello(); }); });
 	a := New(root)
 	_, err := a.AnalyzeContext(ctx)
 	if err == nil {
-		t.Error("expected error from cancelled context")
+		t.Error("expected error from canceled context")
 	}
 	if err != context.Canceled {
 		t.Errorf("expected context.Canceled, got: %v", err)
@@ -194,7 +194,7 @@ describe('app', () => { it('works', () => { hello(); }); });
 }
 
 // TestAnalyzeContext_CompletesNormally verifies that AnalyzeContext produces
-// the same results as Analyze() when context is not cancelled.
+// the same results as Analyze() when context is not canceled.
 func TestAnalyzeContext_CompletesNormally(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -237,7 +237,7 @@ describe('utils', () => { it('adds', () => { expect(add(1,2)).toBe(3); }); });
 }
 
 // TestExtractFixturesCtx_CancelledSkipsWork verifies that ExtractFixturesCtx
-// produces partial or empty results when cancelled.
+// produces partial or empty results when canceled.
 func TestExtractFixturesCtx_CancelledSkipsWork(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -260,9 +260,9 @@ it('test', () => {});
 	cancel()
 
 	fixtures := ExtractFixturesCtx(ctx, root, testFiles)
-	// With pre-cancelled context, should get 0 or very few fixtures.
+	// With pre-canceled context, should get 0 or very few fixtures.
 	if len(fixtures) > 5 {
-		t.Errorf("expected few/no fixtures with cancelled context, got %d", len(fixtures))
+		t.Errorf("expected few/no fixtures with canceled context, got %d", len(fixtures))
 	}
 }
 
@@ -285,9 +285,9 @@ func TestPrewarmSourceFilesCtx_CancelledSkipsWork(t *testing.T) {
 	fc.PrewarmSourceFilesCtx(ctx, files)
 
 	stats := fc.Stats()
-	// With cancelled context, should have cached 0 or very few files.
+	// With canceled context, should have cached 0 or very few files.
 	if stats.CachedFiles > 5 {
-		t.Errorf("expected few cached files with cancelled context, got %d", stats.CachedFiles)
+		t.Errorf("expected few cached files with canceled context, got %d", stats.CachedFiles)
 	}
 }
 

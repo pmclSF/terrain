@@ -57,7 +57,7 @@ fire the detector.
 ## Why it's Medium
 
 Per `sev-medium-005`. A floating tag isn't broken — it's a footgun
-that silently changes behaviour over time. The remediation is fast
+that silently changes behavior over time. The remediation is fast
 (pin a dated variant); leaving it is a deferred cost.
 
 ## What you should do

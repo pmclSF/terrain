@@ -214,7 +214,7 @@ func detectVectorSearchSurfaces(rel, src string) []models.CodeSurface {
 	return out
 }
 
-// mcpToolPatterns recognise MCP tool definitions across language
+// mcpToolPatterns recognize MCP tool definitions across language
 // flavours. Python uses decorators (@mcp.tool, @app.list_tools); JS/TS
 // uses a `server.tool(...)` call shape.
 var mcpToolPatterns = []*regexp.Regexp{

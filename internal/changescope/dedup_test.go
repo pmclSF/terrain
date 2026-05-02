@@ -137,7 +137,7 @@ func TestRenderPRSummaryMarkdown_Deterministic(t *testing.T) {
 	if !strings.Contains(output, "Merge with caution") {
 		t.Error("expected merge recommendation in output")
 	}
-	if !strings.Contains(output, "New Risks (directly changed)") {
+	if !strings.Contains(output, "Coverage gaps in changed code") {
 		t.Error("expected direct risks section")
 	}
 	if !strings.Contains(output, "Indirectly impacted") {
@@ -210,8 +210,10 @@ func TestRenderPRSummaryMarkdown_FindingTruncation(t *testing.T) {
 	RenderPRSummaryMarkdown(&buf, pr)
 	output := buf.String()
 
-	if !strings.Contains(output, "... and 10 more") {
-		t.Error("expected truncation message for >10 findings")
+	// Truncation message — italicized "...and N more (severity counts)"
+	// in the new card-style render.
+	if !strings.Contains(output, "_...and 10 more") {
+		t.Errorf("expected truncation message for >10 findings; got:\n%s", output)
 	}
 }
 
@@ -258,6 +260,15 @@ func TestRenderPRSummaryMarkdown_SuiteSizeContext(t *testing.T) {
 	}
 }
 
+// TestRenderPRSummaryMarkdown_DirectVsIndirectSections verifies the
+// 0.2 layout: directly-changed coverage gaps appear as a top-level
+// section ("Coverage gaps in changed code"), indirectly-impacted gaps
+// appear inside a collapsed `<details>` block (visual hierarchy:
+// direct = scannable on first read, indirect = available on demand).
+//
+// Pre-fix headings were "New Risks (directly changed)" and
+// "Indirectly impacted protection gaps (N)". The new headings prefer
+// sentence case and proper pluralization.
 func TestRenderPRSummaryMarkdown_DirectVsIndirectSections(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
@@ -271,20 +282,20 @@ func TestRenderPRSummaryMarkdown_DirectVsIndirectSections(t *testing.T) {
 	RenderPRSummaryMarkdown(&buf, pr)
 	output := buf.String()
 
-	// Direct risks in main section
-	if !strings.Contains(output, "New Risks (directly changed)") {
-		t.Error("expected 'New Risks (directly changed)' heading")
+	// Direct risks heading + card-shape bullet.
+	if !strings.Contains(output, "### Coverage gaps in changed code") {
+		t.Errorf("expected 'Coverage gaps in changed code' heading; got:\n%s", output)
 	}
-	if !strings.Contains(output, "`src/a.ts`: Direct gap") {
-		t.Error("expected direct finding in main section")
+	if !strings.Contains(output, "**`src/a.ts`** [HIGH] — Direct gap") {
+		t.Errorf("expected card-shape direct finding; got:\n%s", output)
 	}
 
-	// Indirect risks in collapsed section
-	if !strings.Contains(output, "Indirectly impacted protection gaps (1)") {
-		t.Error("expected indirect section with count")
+	// Indirect risks in collapsed section — singular "gap" for count=1.
+	if !strings.Contains(output, "1 indirectly impacted protection gap") {
+		t.Errorf("expected indirect section with count; got:\n%s", output)
 	}
-	if !strings.Contains(output, "`src/b.ts`: Indirect gap") {
-		t.Error("expected indirect finding in collapsed section")
+	if !strings.Contains(output, "**`src/b.ts`** [MED] — Indirect gap") {
+		t.Errorf("expected card-shape indirect finding; got:\n%s", output)
 	}
 }
 
@@ -317,6 +328,21 @@ func TestSummarizeFindingsBySeverity(t *testing.T) {
 
 // --- AI PR Section Tests ---
 
+// TestRenderPRSummaryMarkdown_AISection asserts the 0.2 contract for
+// the AI Validation section in `terrain pr --format markdown` output.
+//
+// Pre-fix the section dumped one bullet per signal with the detector
+// taxonomy (`aiPromptInjectionRisk`) as the headline and no file
+// path. After the fix:
+//   - bullets are grouped by (file, type), so 12 prompt-injection hits
+//     across 4 files become 4 bullets
+//   - each bullet leads with `**\`path:line[, line, line]\`**` so the
+//     file is the navigation target, not the taxonomy
+//   - the bullet text is the plain-language summary from
+//     `humanSummary`, not the raw detector explanation
+//   - a `→ <action>` line follows with the concrete next step
+//   - the section header reads "N new finding(s) introduced by this
+//     PR" instead of "Blocking signals (N)"
 func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
@@ -331,10 +357,16 @@ func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 				{Name: "safety-guardrail", Capability: "refund-explanation", Reason: "prompt changed (safetyOverlay)"},
 			},
 			BlockingSignals: []AISignalSummary{
-				{Type: "safetyFailure", Severity: "critical", Explanation: "Safety eval failed"},
+				{Type: "aiPromptInjectionRisk", Severity: "high", Explanation: "raw detector text",
+					File: "src/auth/login.ts", Line: 42},
+				{Type: "aiPromptInjectionRisk", Severity: "high", Explanation: "raw detector text",
+					File: "src/auth/login.ts", Line: 47},
+				{Type: "aiToolWithoutSandbox", Severity: "high", Explanation: "raw detector text",
+					File: "src/agent/tools.yaml", Symbol: "delete_user"},
 			},
 			WarningSignals: []AISignalSummary{
-				{Type: "latencyRegression", Severity: "medium", Explanation: "p95 latency regressed"},
+				{Type: "aiNonDeterministicEval", Severity: "medium", Explanation: "raw detector text",
+					File: "evals/agent.yaml", Line: 12},
 			},
 			UncoveredContexts: []string{"customerContext (src/context.ts)"},
 		},
@@ -344,33 +376,49 @@ func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 	RenderPRSummaryMarkdown(&buf, pr)
 	output := buf.String()
 
-	// AI section header.
+	// Section header.
 	if !strings.Contains(output, "### AI Validation") {
 		t.Error("expected AI Validation section")
 	}
-	// Capabilities.
-	if !strings.Contains(output, "refund-explanation") {
-		t.Error("expected refund-explanation capability")
+	// Capabilities + scenario count framing.
+	if !strings.Contains(output, "refund-explanation") || !strings.Contains(output, "enterprise-search") {
+		t.Error("expected impacted capabilities listed")
 	}
-	if !strings.Contains(output, "enterprise-search") {
-		t.Error("expected enterprise-search capability")
-	}
-	// Scenario counts.
 	if !strings.Contains(output, "3 of 8 selected") {
 		t.Error("expected scenario count '3 of 8 selected'")
 	}
-	// Blocking signals.
-	if !strings.Contains(output, "Blocking signals") {
-		t.Error("expected blocking signals section")
+	// Blocking section is now framed in terms of new findings on this PR.
+	// Properly pluralized: "findings" for >1, "finding" for 1.
+	if !strings.Contains(output, "new findings introduced by this PR") {
+		t.Errorf("expected new-findings framing in output; got:\n%s", output)
 	}
-	if !strings.Contains(output, "safetyFailure") {
-		t.Error("expected safetyFailure in output")
+	// Two prompt-injection hits in the same file should collapse to ONE
+	// bullet with both line numbers.
+	if !strings.Contains(output, "src/auth/login.ts:42, 47") {
+		t.Errorf("expected grouped file:line locator `src/auth/login.ts:42, 47`; got:\n%s", output)
 	}
-	// Warning signals (collapsed).
-	if !strings.Contains(output, "Warning signals") {
-		t.Error("expected warning signals section")
+	// Plain-language summary, not raw detector text.
+	if !strings.Contains(output, "User input flows into a prompt without visible escaping") {
+		t.Error("expected plain-language summary for aiPromptInjectionRisk")
 	}
-	// Uncovered contexts.
+	// Concrete action arrow.
+	if !strings.Contains(output, "→ Wrap user input through a sanitizer") {
+		t.Error("expected actionable next step for aiPromptInjectionRisk")
+	}
+	// Symbol-keyed locator for the tool finding (no line number).
+	if !strings.Contains(output, "src/agent/tools.yaml (delete_user)") {
+		t.Errorf("expected symbol-keyed locator for tool finding; got:\n%s", output)
+	}
+	// Warning signals collapsed under a details block. Singular for 1.
+	if !strings.Contains(output, "1 advisory finding") {
+		t.Errorf("expected advisory-finding framing for warnings; got:\n%s", output)
+	}
+	// Raw detector taxonomy should NOT appear as the bold headline.
+	// Confirm by looking for the pre-fix shape `[HIGH] **aiPromptInjectionRisk**:`.
+	if strings.Contains(output, "**aiPromptInjectionRisk**:") {
+		t.Error("raw detector taxonomy leaked into headline; should be plain-language summary")
+	}
+	// Uncovered contexts unchanged.
 	if !strings.Contains(output, "customerContext") {
 		t.Error("expected uncovered context")
 	}
@@ -421,12 +469,13 @@ func TestRenderPRSummaryMarkdown_MixedTraditionalAndAI(t *testing.T) {
 	RenderPRSummaryMarkdown(&buf, pr)
 	output := buf.String()
 
-	// Both traditional and AI sections present.
-	if !strings.Contains(output, "New Risks") {
-		t.Error("expected traditional New Risks section")
+	// Both traditional and AI sections present (sentence-case headings
+	// per the 0.2 layout).
+	if !strings.Contains(output, "Coverage gaps in changed code") {
+		t.Error("expected traditional Coverage gaps section")
 	}
-	if !strings.Contains(output, "Recommended Tests") {
-		t.Error("expected traditional Recommended Tests section")
+	if !strings.Contains(output, "Recommended tests") {
+		t.Error("expected traditional Recommended tests section")
 	}
 	if !strings.Contains(output, "### AI Validation") {
 		t.Error("expected AI Validation section")

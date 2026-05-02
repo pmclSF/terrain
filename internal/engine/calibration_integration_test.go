@@ -17,7 +17,7 @@ func exists(path string) bool {
 	return err == nil
 }
 
-// buildBaselineFile synthesises a baseline snapshot from any framework
+// buildBaselineFile synthesizes a baseline snapshot from any framework
 // artifacts found under baselineDir/eval-runs/ and writes it to a temp
 // file under outDir. Returns the temp file path or "" when no artifacts
 // were found. Author convenience: regression-shaped detector fixtures
@@ -95,7 +95,7 @@ func TestCalibration_CorpusRunner(t *testing.T) {
 		t.Fatalf("calibration corpus has %d fixtures; require at least %d", len(dirs), minFixtures)
 	}
 
-	analyse := func(fixturePath string) ([]models.Signal, error) {
+	analyze := func(fixturePath string) ([]models.Signal, error) {
 		opts := engine.PipelineOptions{}
 		// Auto-discover per-fixture eval artifacts. Each path is added to
 		// PipelineOptions only when the file exists; fixtures without
@@ -133,17 +133,17 @@ func TestCalibration_CorpusRunner(t *testing.T) {
 		return result.Snapshot.Signals, nil
 	}
 
-	corpus, err := calibration.Run(corpusRoot, analyse)
+	corpus, err := calibration.Run(corpusRoot, analyze)
 	if err != nil {
 		t.Fatalf("calibration.Run: %v", err)
 	}
 
-	// 0.2's gate is load-bearing: every labelled fixture must still
+	// 0.2's gate is load-bearing: every labeled fixture must still
 	// fire its expected detector. We crossed the 25-fixture milestone
 	// from docs/release/0.2.md with 24 fixtures × 30 detector types
 	// at 100% precision/recall and zero misses — the corpus is now a
 	// regression gate. Any future detector change that drops a
-	// labelled signal trips this block.
+	// labeled signal trips this block.
 	rec := corpus.RecallByType()
 	for _, ftr := range corpus.Fixtures {
 		for _, m := range ftr.Matches {

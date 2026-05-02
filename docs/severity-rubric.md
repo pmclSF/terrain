@@ -172,7 +172,7 @@ Two or more tests share ≥0.60 similarity on test name and assertions, indicati
 
 #### `sev-medium-005` — Floating model tag
 
-An LLM call references a model name that resolves to whatever the provider currently maps it to (e.g. `gpt-4`), so behaviour silently drifts.
+An LLM call references a model name that resolves to whatever the provider currently maps it to (e.g. `gpt-4`), so behavior silently drifts.
 
 **Applies when:**
 

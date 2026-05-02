@@ -54,7 +54,7 @@ first-match fallback and could cross-attribute runs.
 `2026-04-30 12:00:00` shape, and microsecond-fractional without
 timezone.
 
-## Metric name normalisation
+## Metric name normalization
 
 DeepEval emits metric names in two shapes:
 

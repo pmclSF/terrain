@@ -5,7 +5,7 @@ import (
 )
 
 // TestConvertNamespace_KnownVerbsAreNotRejected mirrors the migrate
-// namespace test — verifies the dispatcher recognises the same
+// namespace test — verifies the dispatcher recognizes the same
 // canonical verbs when entered through `terrain convert ...`.
 func TestConvertNamespace_KnownVerbsAreNotRejected(t *testing.T) {
 	t.Parallel()

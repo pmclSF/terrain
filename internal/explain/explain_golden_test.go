@@ -45,7 +45,7 @@ func compareGolden(t *testing.T, name string, data any) {
 
 	// Strip CRs so a Windows checkout with core.autocrlf=true does not
 	// produce a spurious diff. .gitattributes pins golden files to LF on
-	// disk; this normalisation handles the in-memory side.
+	// disk; this normalization handles the in-memory side.
 	actualStr := strings.TrimSpace(strings.ReplaceAll(string(actual), "\r", ""))
 	expectedStr := strings.TrimSpace(strings.ReplaceAll(string(expected), "\r", ""))
 

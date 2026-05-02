@@ -47,9 +47,9 @@ Three Ragas output shapes are accepted (in priority order):
 
 The adapter merges all three into a single internal row list.
 
-## Metric name normalisation
+## Metric name normalization
 
-Ragas metric keys are normalised before matching against the
+Ragas metric keys are normalized before matching against the
 quality-score whitelist:
 
 - lowercased
@@ -74,7 +74,7 @@ quality axes do). They feed `aiCostRegression` via
 
 Ragas-shaped fixtures haven't shipped in the 0.2 corpus. The 0.3
 corpus expansion adds at least one Ragas + one DeepEval fixture
-to lock in adapter behaviour. Contribute via the format described
+to lock in adapter behavior. Contribute via the format described
 in [`promptfoo.md`](promptfoo.md#calibration-fixtures).
 
 ## Troubleshooting

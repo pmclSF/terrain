@@ -111,5 +111,5 @@ jobs:
 
 - `docs/rules/ai/` — per-signal documentation.
 - `docs/severity-rubric.md` — clauses that justify each severity.
-- `docs/calibration/CORPUS.md` — labelled fixtures that drive
+- `docs/calibration/CORPUS.md` — labeled fixtures that drive
   per-detector precision/recall.

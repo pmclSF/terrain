@@ -181,11 +181,11 @@ func TestRedactPath(t *testing.T) {
 			insideRepo, repoRoot, "src/foo.go"},
 		{"abs path outside repo collapses to basename",
 			outsideRepo, repoRoot, "passwd"},
-		{"already relative is normalised",
+		{"already relative is normalized",
 			"src/foo.go", repoRoot, "src/foo.go"},
 		// Note: filepath.ToSlash is a no-op on Unix, so backslash-only
 		// inputs round-trip unchanged on Linux/macOS. On Windows the
-		// separators normalise. The cross-OS contract is: the output
+		// separators normalize. The cross-OS contract is: the output
 		// always uses forward slashes regardless of which separator the
 		// input used.
 	}
