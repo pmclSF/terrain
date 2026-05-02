@@ -49,7 +49,7 @@ func AnalyzePR(scope *impact.ChangeScope, snap *models.TestSuiteSnapshot) *PRAna
 	// Build posture delta.
 	pr.PostureDelta = buildPostureDelta(result)
 
-	// Build AI validation summary.
+	// Build AI risk review summary.
 	pr.AI = buildAIValidationSummary(result, snap)
 
 	// Build summary.

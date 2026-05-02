@@ -58,7 +58,7 @@ type Rules struct {
 	AI *AIRules `yaml:"ai"`
 }
 
-// AIRules defines CI policy for AI validations.
+// AIRules defines CI policy for AI risk review.
 //
 // Example .terrain/policy.yaml:
 //

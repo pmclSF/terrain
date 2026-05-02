@@ -142,7 +142,7 @@ Terrain now ships the framework conversion and migration surface directly in the
 - **6 AI commands** — ai list, ai doctor, ai run, ai replay, ai record, ai baseline
 - **5 debug commands** — debug graph, coverage, fanout, duplicates, depgraph
 
-**AI Validation:**
+**AI Risk Review:**
 - **Scenario model** — first-class validation targets alongside tests
 - **Prompt and dataset inference** — naming convention detection in JS/TS and Python
 - **Scenario impact detection** — changed prompt/dataset surfaces mapped to impacted scenarios

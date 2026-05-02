@@ -147,7 +147,7 @@ terrain ai run --base main --dry-run
 terrain ai doctor
 ```
 
-Terrain gives AI surfaces the same CI treatment as regular tests — impact-scoped selection, protection gap detection, and policy enforcement.
+Terrain starts giving AI surfaces CI-visible structure: inventory, impact-scoped eval selection where configured, protection-gap detection, and reviewable risk signals. Suppression workflows and labeled-repo precision floors are 0.3 work — see [`docs/release/0.2-known-gaps.md`](release/0.2-known-gaps.md) for what 0.2 covers and what it doesn't.
 
 ## The four primary questions
 

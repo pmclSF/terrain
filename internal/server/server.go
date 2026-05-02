@@ -4,8 +4,12 @@
 // endpoints at /api/*. By default it binds to localhost only (127.0.0.1)
 // and is intended for local development use, not production deployment.
 //
-// Security posture (0.1.2):
+// Security posture (0.2.0):
 //
+//   - **No authentication.** Security relies entirely on localhost-only
+//     binding plus origin/referer validation. Adopters running on
+//     multi-user hosts must front the server with external auth
+//     (e.g. an SSH tunnel).
 //   - Bind address defaults to 127.0.0.1; opt-in via Config.Host to bind
 //     elsewhere (with a stderr warning).
 //   - Origin / Referer validation on every request rejects cross-origin
@@ -13,13 +17,17 @@
 //     http://127.0.0.1:8421/api/analyze from an unrelated tab return 403.
 //   - Security response headers (CSP, X-Frame-Options, X-Content-Type-Options,
 //     Referrer-Policy) are set on every response.
-//   - Optional read-only flag disables future state-changing endpoints
-//     before they ship in 0.2; today every handler is read-only so the
-//     flag is a no-op gate.
+//   - Read-only flag enforces HTTP 405 on state-changing endpoints.
 //
-// Sandboxing AI eval execution and authentication for shared dev hosts is
-// 0.3 work; until then, do not expose `terrain serve` on a multi-user
-// machine without external auth (e.g. an SSH tunnel).
+// Known issues tracked for 0.2.1:
+//   - The analysis call inside getResult holds Server.mu for the full
+//     analysis duration, so one long analysis serializes all server
+//     requests behind it. Singleflight-based fix is on the 0.2.1 list.
+//   - HTTP handlers don't thread the request context into the engine,
+//     so client disconnect doesn't cancel in-flight analyses. Same PR.
+//
+// Sandboxing AI eval execution and an actual auth model are 0.3 work;
+// until then, this is a *local development tool*, not a team dashboard.
 package server
 
 import (

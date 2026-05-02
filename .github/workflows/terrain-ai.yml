@@ -1,4 +1,4 @@
-name: Terrain AI Validation
+name: Terrain AI Risk Review
 
 on:
   pull_request:
@@ -60,7 +60,7 @@ jobs:
           # Check which AI surfaces are affected by this change
           ./terrain pr --base "${{ github.event.pull_request.base.sha }}" --json > /tmp/pr-analysis.json
 
-          # Extract AI validation section
+          # Extract AI risk review section
           AI_SELECTED=$(jq '.ai.selectedScenarios // 0' /tmp/pr-analysis.json)
           AI_TOTAL=$(jq '.ai.totalScenarios // 0' /tmp/pr-analysis.json)
           UNCOVERED=$(jq '[.ai.uncoveredContexts // [] | length] | add' /tmp/pr-analysis.json)
@@ -84,14 +84,14 @@ jobs:
           echo "action=$ACTION" >> "$GITHUB_OUTPUT"
           echo "reason=$REASON" >> "$GITHUB_OUTPUT"
 
-      - name: Generate AI validation comment
+      - name: Generate AI risk review comment
         id: ai-comment
         if: steps.ai-check.outputs.skip != 'true'
         run: |
           {
             echo 'body<<TERRAIN_AI_EOF'
-            echo '<!-- terrain-ai-validation -->'
-            echo '### Terrain AI Validation'
+            echo '<!-- terrain-ai-risk-review -->'
+            echo '### Terrain AI Risk Review'
             echo ''
 
             TOTAL="${{ steps.ai-check.outputs.total_surfaces }}"
@@ -118,11 +118,11 @@ jobs:
             echo ''
 
             if [ "$ACTION" = "block" ]; then
-              echo '**Decision: BLOCKED** — AI validation failed.'
+              echo '**Decision: BLOCKED** — AI risk review found blocking signals.'
               echo ''
               echo "Reason: ${{ steps.ai-run.outputs.reason }}"
             elif [ "$ACTION" = "warn" ]; then
-              echo '**Decision: WARNING** — Review AI validation results.'
+              echo '**Decision: WARNING** — review the AI risk findings before merging.'
               echo ''
               echo "Reason: ${{ steps.ai-run.outputs.reason }}"
             else
@@ -139,7 +139,7 @@ jobs:
         with:
           issue-number: ${{ github.event.pull_request.number }}
           comment-author: 'github-actions[bot]'
-          body-includes: '<!-- terrain-ai-validation -->'
+          body-includes: '<!-- terrain-ai-risk-review -->'
 
       - name: Post or update AI comment
         if: steps.ai-check.outputs.skip != 'true'
@@ -153,5 +153,5 @@ jobs:
       - name: Fail if AI gate blocks
         if: steps.ai-run.outputs.action == 'block'
         run: |
-          echo "::error::Terrain AI validation blocked this PR: ${{ steps.ai-run.outputs.reason }}"
+          echo "::error::Terrain AI risk review blocked this PR: ${{ steps.ai-run.outputs.reason }}"
           exit 1
