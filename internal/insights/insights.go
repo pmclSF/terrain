@@ -1180,13 +1180,16 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 			rec.Rationale = "Coverage gaps mean changes in these files cannot trigger targeted test selection."
 			rec.Impact = "improved change-scoped test selection accuracy"
 			rec.Command = "terrain analyze --verbose"
-			// Target files from lowest-coverage sources.
+			// Target files from lowest-coverage sources. Use Path,
+			// not SourceID — SourceID carries the dep-graph node-ID
+			// prefix `file:<path>` which leaks into rendered output
+			// (the user-visible "files: file:bin/...js" bug).
 			for _, src := range input.Coverage.Sources {
 				if len(rec.TargetFiles) >= 5 {
 					break
 				}
 				if src.TestCount == 0 {
-					rec.TargetFiles = append(rec.TargetFiles, src.SourceID)
+					rec.TargetFiles = append(rec.TargetFiles, src.Path)
 				}
 			}
 
