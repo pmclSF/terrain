@@ -362,7 +362,7 @@ func TestComputeOverallPosture_ExplanationContent(t *testing.T) {
 				{Dimension: "health", Band: "strong"},
 				{Dimension: "coverage_depth", Band: "moderate"},
 			},
-			"Coverage Depth",
+			"Coverage depth",
 		},
 		{
 			"weak names driving dimension",
@@ -370,14 +370,14 @@ func TestComputeOverallPosture_ExplanationContent(t *testing.T) {
 				{Dimension: "health", Band: "strong"},
 				{Dimension: "structural_risk", Band: "weak"},
 			},
-			"Structural Risk",
+			"Structural risk",
 		},
 		{
 			"critical names driving dimension",
 			[]models.DimensionPostureResult{
 				{Dimension: "operational_risk", Band: "critical"},
 			},
-			"Operational Risk",
+			"Operational risk",
 		},
 	}
 	for _, tt := range tests {

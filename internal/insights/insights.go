@@ -175,6 +175,16 @@ type BuildInput struct {
 	DepgraphSkipReason string
 }
 
+// plural returns the singular form when n == 1, otherwise singular +
+// "s". Local helper used in finding titles to avoid `n thing(s)`
+// notation in user-visible text.
+func plural(n int, singular string) string {
+	if n == 1 {
+		return singular
+	}
+	return singular + "s"
+}
+
 // Build constructs an insights Report from analysis results.
 //
 // nil-safe: a nil input or a non-nil input with a nil Snapshot returns
@@ -325,7 +335,7 @@ func duplicateFindings(input *BuildInput) []Finding {
 			top := dupes.Clusters[0]
 			f.Description = fmt.Sprintf("Largest cluster has %d tests with %.0f%% similarity. Consolidating duplicates reduces CI runtime and maintenance burden.",
 				len(top.Tests), top.Similarity*100)
-			f.Scope = fmt.Sprintf("%d cluster(s)", len(dupes.Clusters))
+			f.Scope = fmt.Sprintf("%d %s", len(dupes.Clusters), plural(len(dupes.Clusters), "cluster"))
 		}
 
 		findings = append(findings, f)
@@ -726,7 +736,12 @@ func aiCoverageFindings(input *BuildInput) []Finding {
 	}
 
 	f := Finding{
-		Title: fmt.Sprintf("%d AI surface(s) have no eval scenario coverage", uncovered),
+		Title: func() string {
+			if uncovered == 1 {
+				return "1 AI surface has no eval scenario coverage"
+			}
+			return fmt.Sprintf("%d AI surfaces have no eval scenario coverage", uncovered)
+		}(),
 		Description: fmt.Sprintf(
 			"Changes to uncovered AI surfaces (prompts, contexts, datasets, tool definitions) "+
 				"cannot be validated automatically. Add eval scenarios to catch behavioral regressions."),
@@ -921,7 +936,7 @@ func testNextFindings(input *BuildInput) []Finding {
 	}
 
 	findings = append(findings, Finding{
-		Title: fmt.Sprintf("%d untested source file(s) — start with %s", len(candidates), topDesc),
+		Title: fmt.Sprintf("%d untested source %s — start with %s", len(candidates), plural(len(candidates), "file"), topDesc),
 		Description: fmt.Sprintf(
 			"These source files have exported code units with no covering tests. "+
 				"Prioritized by dependency count: files with more dependents create larger blind spots "+
@@ -1009,7 +1024,13 @@ func aiBehaviorChainFindings(input *BuildInput) []Finding {
 	}
 
 	findings = append(findings, Finding{
-		Title: fmt.Sprintf("%d file(s) have partially covered AI behavior chains", len(partialChains)),
+		Title: func() string {
+			n := len(partialChains)
+			if n == 1 {
+				return "1 file has partially covered AI behavior chains"
+			}
+			return fmt.Sprintf("%d files have partially covered AI behavior chains", n)
+		}(),
 		Description: "These files contain multiple AI surface types (e.g., prompt + context, or " +
 			"retrieval + tool definition) where some surfaces are tested but others are not. " +
 			"A change to the untested surface can alter downstream AI behavior without detection.",
@@ -1097,7 +1118,13 @@ func capabilityGapFindings(input *BuildInput) []Finding {
 	sort.Strings(gappedCaps)
 
 	findings = append(findings, Finding{
-		Title: fmt.Sprintf("%d capability(ies) have no adversarial or safety scenarios", len(gappedCaps)),
+		Title: func() string {
+			n := len(gappedCaps)
+			if n == 1 {
+				return "1 capability has no adversarial or safety scenarios"
+			}
+			return fmt.Sprintf("%d capabilities have no adversarial or safety scenarios", n)
+		}(),
 		Description: "These capabilities are validated for correctness (accuracy, quality, regression) " +
 			"but have no scenarios testing failure modes, safety boundaries, or adversarial inputs. " +
 			"Consider adding scenarios with categories like 'safety', 'adversarial', or 'robustness'.",
@@ -1180,13 +1207,16 @@ func buildRecommendations(findings []Finding, input *BuildInput) []Recommendatio
 			rec.Rationale = "Coverage gaps mean changes in these files cannot trigger targeted test selection."
 			rec.Impact = "improved change-scoped test selection accuracy"
 			rec.Command = "terrain analyze --verbose"
-			// Target files from lowest-coverage sources.
+			// Target files from lowest-coverage sources. Use Path,
+			// not SourceID — SourceID carries the dep-graph node-ID
+			// prefix `file:<path>` which leaks into rendered output
+			// (the user-visible "files: file:bin/...js" bug).
 			for _, src := range input.Coverage.Sources {
 				if len(rec.TargetFiles) >= 5 {
 					break
 				}
 				if src.TestCount == 0 {
-					rec.TargetFiles = append(rec.TargetFiles, src.SourceID)
+					rec.TargetFiles = append(rec.TargetFiles, src.Path)
 				}
 			}
 

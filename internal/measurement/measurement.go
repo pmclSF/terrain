@@ -15,7 +15,11 @@
 //   - no fake precision: prefer bands and ratios over decimal scores
 package measurement
 
-import "github.com/pmclSF/terrain/internal/models"
+import (
+	"strings"
+
+	"github.com/pmclSF/terrain/internal/models"
+)
 
 // Dimension identifies which posture dimension a measurement feeds.
 type Dimension string
@@ -34,15 +38,90 @@ func DimensionDisplayName(dim Dimension) string {
 	case DimensionHealth:
 		return "Health"
 	case DimensionCoverageDepth:
-		return "Coverage Depth"
+		return "Coverage depth"
 	case DimensionCoverageDiversity:
-		return "Coverage Diversity"
+		return "Coverage diversity"
 	case DimensionStructuralRisk:
-		return "Structural Risk"
+		return "Structural risk"
 	case DimensionOperationalRisk:
-		return "Operational Risk"
+		return "Operational risk"
 	default:
 		return string(dim)
+	}
+}
+
+// dimensionPolarity classifies a dimension by what its bands MEAN.
+// Positive-polarity dimensions read directly: "Health: Strong" =
+// strong health = good. Risk-polarity dimensions need band
+// translation: a "Strong" structural-risk *posture* means LOW
+// risk, but the natural-English reading of "Structural risk: Strong"
+// is "strong (high) risk" — the opposite. Renderers paired with a
+// dimension-aware band translator (BandDisplayForDimension) can
+// surface the correct human reading.
+type dimensionPolarity int
+
+const (
+	polarityPositive dimensionPolarity = iota // band reads as written
+	polarityRisk                              // band needs translation to risk-language
+)
+
+func dimensionPolarityOf(dim Dimension) dimensionPolarity {
+	switch dim {
+	case DimensionStructuralRisk, DimensionOperationalRisk:
+		return polarityRisk
+	default:
+		return polarityPositive
+	}
+}
+
+// BandDisplayForDimension renders a posture band as the user-visible
+// word for the given dimension. For positive-polarity dimensions
+// (Health, Coverage depth, Coverage diversity) the band passes
+// through capitalized. For risk-polarity dimensions (Structural risk,
+// Operational risk) the band is translated so the rendered phrase
+// reads naturally in English:
+//
+//	(Health, Strong)         → "Strong"        (strong health)
+//	(StructuralRisk, Strong) → "Low"           (low structural risk)
+//	(StructuralRisk, Weak)   → "Significant"   (significant risk)
+//	(StructuralRisk, Critical) → "Critical"    (critical risk — same word, both polarities)
+//
+// 0.2.0 polish: pre-fix the executive report read
+// "Structural risk: Strong" which the natural English interpretation
+// flips upside-down (strong = high risk?), so users mentally inverted
+// the band only for half the dimensions. The translator unifies the
+// reading: Strong/Moderate/Weak/Elevated/Critical for the positive
+// dimensions, Low/Moderate/Significant/Elevated/Critical for the
+// risk dimensions. Storage form is unchanged.
+func BandDisplayForDimension(dim Dimension, band PostureBand) string {
+	if band == "" {
+		return ""
+	}
+	if dimensionPolarityOf(dim) == polarityPositive {
+		// "strong" → "Strong", etc.
+		s := string(band)
+		return strings.ToUpper(s[:1]) + s[1:]
+	}
+	// Risk-polarity translation table.
+	switch band {
+	case PostureStrong:
+		return "Low"
+	case PostureModerate:
+		return "Moderate"
+	case PostureWeak:
+		return "Significant"
+	case PostureElevated:
+		return "Elevated"
+	case PostureCritical:
+		return "Critical"
+	case PostureUnknown:
+		return "Unknown"
+	default:
+		s := string(band)
+		if s == "" {
+			return ""
+		}
+		return strings.ToUpper(s[:1]) + s[1:]
 	}
 }
 

@@ -721,7 +721,7 @@ func deriveKeyFindings(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph
 		}
 		candidates = append(candidates, candidate{
 			finding: KeyFinding{
-				Title:    fmt.Sprintf("%d high-fanout fixture(s) — changes trigger wide test impact", fanout.FlaggedCount),
+				Title:    fmt.Sprintf("%d high-fanout %s — changes trigger wide test impact", fanout.FlaggedCount, plural(fanout.FlaggedCount, "fixture")),
 				Severity: sev,
 				Category: "architecture_debt",
 				Metric:   fmt.Sprintf("%d flagged", fanout.FlaggedCount),
@@ -855,7 +855,7 @@ func deriveKeyFindings(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph
 	if r.SignalSummary.Critical > 0 {
 		candidates = append(candidates, candidate{
 			finding: KeyFinding{
-				Title:    fmt.Sprintf("%d critical signal(s) detected — review recommended", r.SignalSummary.Critical),
+				Title:    fmt.Sprintf("%d critical %s detected — review recommended", r.SignalSummary.Critical, plural(r.SignalSummary.Critical, "signal")),
 				Severity: "high",
 				Category: "reliability",
 				Metric:   fmt.Sprintf("%d critical", r.SignalSummary.Critical),

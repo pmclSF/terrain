@@ -934,15 +934,20 @@ func TestBuildPostureExplanation(t *testing.T) {
 		drivers []string
 		want    string
 	}{
-		{"strong", DimensionHealth, PostureStrong, nil, "Health posture is strong across 3 measurement(s)."},
+		// Positive-polarity dimension (Health) — bands read directly.
+		{"strong", DimensionHealth, PostureStrong, nil, "Health posture is strong across 3 measurements."},
 		{"moderate", DimensionHealth, PostureModerate, nil, "Health posture is moderate. Some measurements indicate room for improvement."},
 		{"weak with drivers", DimensionHealth, PostureWeak, []string{"health.flaky_share"}, "Health posture is weak. Driven by: health.flaky_share."},
-		{"weak no drivers", DimensionHealth, PostureWeak, nil, "Health posture is weak across 3 measurement(s)."},
+		{"weak no drivers", DimensionHealth, PostureWeak, nil, "Health posture is weak across 3 measurements."},
 		{"elevated", DimensionHealth, PostureElevated, []string{"health.flaky_share", "health.skip_density"}, "Health posture is elevated. Significant issues detected in health.flaky_share, health.skip_density."},
 		{"critical", DimensionHealth, PostureCritical, nil, "Health posture is critical. Immediate attention needed."},
 		{"unknown", DimensionHealth, PostureUnknown, nil, "Health posture could not be determined."},
-		{"display name coverage_depth", DimensionCoverageDepth, PostureWeak, []string{"coverage_depth.uncovered_exports"}, "Coverage Depth posture is weak. Driven by: coverage_depth.uncovered_exports."},
-		{"display name structural_risk", DimensionStructuralRisk, PostureStrong, nil, "Structural Risk posture is strong across 3 measurement(s)."},
+		// Coverage-depth: positive polarity, sentence-case display name.
+		{"display name coverage_depth", DimensionCoverageDepth, PostureWeak, []string{"coverage_depth.uncovered_exports"}, "Coverage depth posture is weak. Driven by: coverage_depth.uncovered_exports."},
+		// Risk-polarity dimension — band translates so "is strong" → "is low".
+		// Pre-fix this returned "Structural Risk posture is strong across 3
+		// measurement(s)." which natural-English-reads as high risk.
+		{"display name structural_risk", DimensionStructuralRisk, PostureStrong, nil, "Structural risk is low across 3 measurements."},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -990,10 +995,10 @@ func TestDimensionDisplayName(t *testing.T) {
 		want string
 	}{
 		{DimensionHealth, "Health"},
-		{DimensionCoverageDepth, "Coverage Depth"},
-		{DimensionCoverageDiversity, "Coverage Diversity"},
-		{DimensionStructuralRisk, "Structural Risk"},
-		{DimensionOperationalRisk, "Operational Risk"},
+		{DimensionCoverageDepth, "Coverage depth"},
+		{DimensionCoverageDiversity, "Coverage diversity"},
+		{DimensionStructuralRisk, "Structural risk"},
+		{DimensionOperationalRisk, "Operational risk"},
 		{Dimension("custom"), "custom"},
 	}
 	for _, tt := range tests {
@@ -1227,7 +1232,7 @@ func TestPosture_ExplanationUsesDisplayName(t *testing.T) {
 		{ID: "cd.x", Dimension: DimensionCoverageDepth, Band: "strong", Evidence: EvidenceStrong},
 	}
 	dp := computeDimensionPosture(DimensionCoverageDepth, results)
-	if !strings.Contains(dp.Explanation, "Coverage Depth") {
+	if !strings.Contains(dp.Explanation, "Coverage depth") {
 		t.Errorf("explanation should use display name, got: %q", dp.Explanation)
 	}
 	if strings.Contains(dp.Explanation, "coverage_depth") {

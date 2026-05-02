@@ -2,14 +2,24 @@ package analyze
 
 import "fmt"
 
+// plural returns the singular when n == 1, otherwise singular + "s".
+// Local helper used to avoid `n thing(s)` notation in headline text.
+func plural(n int, singular string) string {
+	if n == 1 {
+		return singular
+	}
+	return singular + "s"
+}
+
 // deriveHeadline produces a single opinionated sentence from the Report.
 // It evaluates conditions in priority order and returns the first match.
 // All data is already computed in the Report — no new analysis.
 func deriveHeadline(r *Report) string {
 	if r.SignalSummary.Critical > 0 {
 		return fmt.Sprintf(
-			"%d high-priority signal(s) detected — review recommended.",
+			"%d high-priority %s detected — review recommended.",
 			r.SignalSummary.Critical,
+			plural(r.SignalSummary.Critical, "signal"),
 		)
 	}
 
