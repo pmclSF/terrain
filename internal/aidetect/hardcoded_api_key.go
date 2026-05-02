@@ -129,6 +129,38 @@ func (d *HardcodedAPIKeyDetector) Detect(snap *models.TestSuiteSnapshot) []model
 		abs := filepath.Join(d.Root, relPath)
 		hits := scanFileForAPIKeys(abs)
 		for _, h := range hits {
+			// 0.2.0 final-polish: scan-error hits surface as a low-
+			// severity diagnostic, not a critical Signal. Pre-fix the
+			// synthetic "scan-error: ..." hit was emitted with
+			// SeverityCritical and looked like a real secret in the
+			// rendered report — confusing users and ranking infra
+			// noise as a top-priority finding. Route through the
+			// detectorPanic-shaped engine-self-diagnostic channel:
+			// SeverityMedium so it surfaces but doesn't dominate the
+			// dashboard, and Type stays aiHardcodedAPIKey for catalog
+			// roundtripping.
+			if h.ScanError {
+				out = append(out, models.Signal{
+					Type:        signals.SignalAIHardcodedAPIKey,
+					Category:    models.CategoryAI,
+					Severity:    models.SeverityMedium,
+					Confidence:  0.5,
+					Location:    models.SignalLocation{File: relPath, Line: h.Line},
+					Explanation: "Secret-scan coverage degraded: scanner failed mid-file (" + strings.TrimPrefix(h.Provider, "scan-error:") + "). The remainder of the file was not scanned for hardcoded API keys.",
+					SuggestedAction: "Investigate why the file is unreadable (oversized line, encoding issue, truncated upload). Re-run after addressing.",
+					SeverityClauses: []string{"sev-medium-005"},
+					Actionability:   models.ActionabilityScheduled,
+					LifecycleStages: []models.LifecycleStage{models.StageMaintenance},
+					AIRelevance:     models.AIRelevanceMedium,
+					RuleID:          "TER-AI-103",
+					RuleURI:         "docs/rules/ai/hardcoded-api-key.md",
+					DetectorVersion: "0.2.0",
+					EvidenceSource:   models.SourceStructuralPattern,
+					EvidenceStrength: models.EvidenceWeak,
+					Metadata: map[string]any{"scanError": true},
+				})
+				continue
+			}
 			out = append(out, models.Signal{
 				Type:        signals.SignalAIHardcodedAPIKey,
 				Category:    models.CategoryAI,
@@ -190,6 +222,13 @@ func (d *HardcodedAPIKeyDetector) gatherConfigPaths(snap *models.TestSuiteSnapsh
 type keyHit struct {
 	Provider string
 	Line     int
+	// ScanError is set for the synthetic "scanner failed mid-file"
+	// hit. Callers route these to diagnostics output rather than
+	// emitting them as critical-severity Signals (pre-0.2.x final-
+	// polish, scan errors landed in the same Signal slice as real
+	// secrets, which painted a binary blob as a high-entropy key
+	// match in the rendered report).
+	ScanError bool
 }
 
 // scanFileForAPIKeys streams the file and returns every API-key match
@@ -238,10 +277,10 @@ func scanFileForAPIKeys(path string) []keyHit {
 	// Pre-0.2.x sc.Err() was never checked, so a single line longer
 	// than 1 MB (minified YAML, embedded blob) would silently drop
 	// the rest of the file — secret never detected. Surface scanner
-	// errors as a degraded-coverage hit so the caller knows the file
-	// wasn't fully read.
+	// errors as a degraded-coverage hit; the caller routes them to
+	// diagnostics output rather than emitting them as Signals.
 	if err := sc.Err(); err != nil {
-		hits = append(hits, keyHit{Provider: "scan-error:" + err.Error(), Line: line})
+		hits = append(hits, keyHit{Provider: "scan-error:" + err.Error(), Line: line, ScanError: true})
 	}
 	return hits
 }

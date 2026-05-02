@@ -902,6 +902,23 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "TER-AI-111", RuleURI: "docs/rules/ai/retrieval-regression.md",
 	},
+
+	// ── Engine self-diagnostic signals ──────────────────────────────
+	// Emitted by the pipeline itself (safeDetect's panic-recovery path)
+	// rather than by a registered detector. Appears in the snapshot so
+	// the user sees that something internal failed instead of a
+	// silently half-empty result.
+	{
+		Type: SignalDetectorPanic, ConstName: "SignalDetectorPanic",
+		Domain: models.CategoryQuality, Status: StatusStable,
+		Title:           "Detector Panic",
+		Description:     "A registered detector panicked during the run; safeDetect caught the panic and emitted this marker so the rest of the pipeline could continue.",
+		Remediation:     "Re-run with --log-level=debug to capture the stack trace, then file an issue at https://github.com/pmclSF/terrain/issues with the detector ID and the input that triggered the panic.",
+		DefaultSeverity: models.SeverityCritical,
+		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
+		EvidenceSources: []string{"static"},
+		RuleID:          "TER-ENGINE-001", RuleURI: "docs/rules/engine/detector-panic.md",
+	},
 }
 
 // Manifest returns a snapshot copy of the canonical signal manifest, sorted

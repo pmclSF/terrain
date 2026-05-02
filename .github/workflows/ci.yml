@@ -6,12 +6,24 @@ on:
   pull_request:
     branches: [main]
 
+# Cancel in-progress CI runs when a new commit is pushed to the same
+# PR / branch. Pre-0.2.x final-polish, force-pushes piled up
+# overlapping runs that all consumed runner minutes pointlessly.
+# `cancel-in-progress: true` on PR-triggered runs keeps the queue
+# clean; we leave main-branch runs uncancelled so post-merge runs
+# always complete (they're rare and the result is load-bearing for
+# release dashboards).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 permissions:
   contents: read
 
 jobs:
   npm-package:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -66,6 +78,7 @@ jobs:
           - os: windows-latest
             extended: false
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
@@ -157,6 +170,7 @@ jobs:
 
   extension:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -176,6 +190,7 @@ jobs:
   go-bench-compare:
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository

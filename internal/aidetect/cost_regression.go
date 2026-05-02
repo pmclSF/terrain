@@ -82,17 +82,35 @@ func (d *CostRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []models
 		if curAvg-baseAvg < minAbs {
 			continue
 		}
+		// 0.2.0 final-polish: scale confidence by paired-case count.
+		// Pre-fix every regression fired at 0.9 regardless of whether
+		// the inference was over 1 paired case or 1000 — a single
+		// outlier hit the same alarm bell as a population-wide drift.
+		// New formula: confidence ramps 0.5 → 0.9 over the [1, 10]
+		// paired range, plateaus at 0.9 thereafter. Cost regressions
+		// over <5 paired cases are still emitted but with explicit
+		// low-confidence framing in ConfidenceDetail.
+		confidence := pairedConfidence(paired)
+		// Severity escalation: a 2× regression (delta >= 1.0) goes
+		// High; merely-above-threshold stays Medium. Lets CI gates
+		// branch on "is this catastrophic vs creep".
+		severity := models.SeverityMedium
+		severityClauses := []string{"sev-medium-006"}
+		if delta >= 1.0 {
+			severity = models.SeverityHigh
+			severityClauses = []string{"sev-high-008"}
+		}
 		out = append(out, models.Signal{
 			Type:        signals.SignalAICostRegression,
 			Category:    models.CategoryAI,
-			Severity:    models.SeverityMedium,
-			Confidence:  0.9,
+			Severity:    severity,
+			Confidence:  confidence,
 			Location:    models.SignalLocation{File: env.SourcePath, ScenarioID: env.RunID},
 			Explanation: fmt.Sprintf("Average cost-per-case rose %.1f%% versus the baseline run (%.4f → %.4f over %d paired cases). Threshold: %.0f%%.",
 				delta*100, baseAvg, curAvg, paired, threshold*100),
 			SuggestedAction: "Investigate the prompt or model change for unintended bloat. Bump the baseline if the increase is intentional.",
 
-			SeverityClauses: []string{"sev-medium-006"},
+			SeverityClauses: severityClauses,
 			Actionability:   models.ActionabilityScheduled,
 			LifecycleStages: []models.LifecycleStage{models.StageMaintenance, models.StageCIRun},
 			AIRelevance:     models.AIRelevanceHigh,
@@ -100,9 +118,9 @@ func (d *CostRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []models
 			RuleURI:         "docs/rules/ai/cost-regression.md",
 			DetectorVersion: "0.2.0",
 			ConfidenceDetail: &models.ConfidenceDetail{
-				Value:        0.9,
-				IntervalLow:  0.85,
-				IntervalHigh: 0.95,
+				Value:        confidence,
+				IntervalLow:  confidence - 0.05,
+				IntervalHigh: confidence + 0.05,
 				Quality:      "heuristic",
 				Sources:      []models.EvidenceSource{models.SourceRuntime},
 			},

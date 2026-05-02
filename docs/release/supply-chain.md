@@ -14,7 +14,6 @@ For a release tagged `v0.2.0`, the Go release job produces:
 | `terrain_0.2.0_darwin_amd64.tar.gz` | tar.gz | macOS Intel binary |
 | `terrain_0.2.0_darwin_arm64.tar.gz` | tar.gz | macOS Apple Silicon binary |
 | `terrain_0.2.0_windows_amd64.zip` | zip | Windows x86-64 binary |
-| `terrain_0.2.0_windows_arm64.zip` | zip | Windows ARM64 binary |
 | `checksums.txt` | SHA-256 | Integrity checksums for all archives |
 | `checksums.txt.sig` | Sigstore | Detached cosign signature for checksums |
 | `checksums.txt.pem` | X.509 | Signing certificate (Sigstore OIDC) |

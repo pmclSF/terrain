@@ -35,8 +35,18 @@ func ParsePromptfooJSON(data []byte) (*EvalRunResult, error) {
 		RunID:     raw.EvalID,
 	}
 	if raw.CreatedAt > 0 {
-		// Promptfoo writes createdAt as a unix-millis number.
-		out.CreatedAt = time.UnixMilli(raw.CreatedAt).UTC()
+		// Promptfoo's `createdAt` magnitude varies by version: v3+ writes
+		// unix-millis; some v4 CLI paths emit unix-seconds. Pre-0.2.x
+		// final-polish, the adapter assumed millis universally — a
+		// 10-digit second-epoch timestamp from 2026 silently decoded as
+		// 1970. Magnitude check: anything < 1e12 is treated as seconds
+		// (which covers the entire range from 1970 through year 33658),
+		// otherwise millis.
+		if raw.CreatedAt < 1e12 {
+			out.CreatedAt = time.Unix(raw.CreatedAt, 0).UTC()
+		} else {
+			out.CreatedAt = time.UnixMilli(raw.CreatedAt).UTC()
+		}
 	} else if raw.CreatedAtISO != "" {
 		if t, err := time.Parse(time.RFC3339, raw.CreatedAtISO); err == nil {
 			out.CreatedAt = t.UTC()
@@ -82,11 +92,20 @@ func ParsePromptfooJSON(data []byte) (*EvalRunResult, error) {
 	// If stats.Successes etc. are zero but rows were present, derive
 	// the aggregates from the rows. Promptfoo v3 dumps occasionally
 	// omit stats entirely on small runs.
+	//
+	// Pre-0.2.x final-polish, this loop classified every non-success
+	// row as Failure, including rows where the provider crashed
+	// (`error: "..."`). That polluted aiHallucinationRate's denominator
+	// (which excludes Errors but counts Failures). Now we route
+	// errored rows into Aggregates.Errors via promptfooRowErrored.
 	if out.Aggregates.CaseCount() == 0 && len(out.Cases) > 0 {
-		for _, c := range out.Cases {
-			if c.Success {
+		for i, c := range out.Cases {
+			switch {
+			case c.Success:
 				out.Aggregates.Successes++
-			} else {
+			case promptfooRowErrored(rows[i]):
+				out.Aggregates.Errors++
+			default:
 				out.Aggregates.Failures++
 			}
 			out.Aggregates.TokenUsage.Total += c.TokenUsage.Total
@@ -111,6 +130,25 @@ func LoadPromptfooFile(path string) (*EvalRunResult, error) {
 
 // normalisePromptfooRow converts one Promptfoo result row to an EvalCase.
 func normalisePromptfooRow(r promptfooResult) EvalCase {
+	// Prefer the response-level cost (long-standing Promptfoo shape).
+	// When zero, fall back to the top-level `cost` field that modern
+	// Promptfoo emits — both fields can carry per-case cost depending
+	// on the version. Without this fallback, aiCostRegression saw zero
+	// per-case cost and silently no-op'd on cost regressions even when
+	// the aggregate was non-zero.
+	cost := r.Response.TokenUsage.Cost
+	if cost == 0 {
+		cost = r.Cost
+	}
+	// FailureReason carries assertion-failure detail; an `error` string
+	// at the row level indicates a runtime/provider crash that should
+	// be surfaced as a separate "this case errored" axis (see
+	// errorRow() below). We keep both, with FailureReason preferring
+	// the assertion message when present.
+	failureReason := strings.TrimSpace(r.FailureReason)
+	if failureReason == "" && r.Error != "" {
+		failureReason = strings.TrimSpace(r.Error)
+	}
 	c := EvalCase{
 		CaseID:        r.ID,
 		Description:   firstNonEmpty(r.TestCase.Description, r.Description),
@@ -119,12 +157,12 @@ func normalisePromptfooRow(r promptfooResult) EvalCase {
 		Success:       r.Success,
 		Score:         r.Score,
 		LatencyMs:     r.LatencyMs,
-		FailureReason: strings.TrimSpace(r.FailureReason),
+		FailureReason: failureReason,
 		TokenUsage: TokenUsage{
 			Prompt:     r.Response.TokenUsage.Prompt,
 			Completion: r.Response.TokenUsage.Completion,
 			Total:      r.Response.TokenUsage.Total,
-			Cost:       r.Response.TokenUsage.Cost,
+			Cost:       cost,
 		},
 	}
 	if len(r.NamedScores) > 0 {
@@ -134,6 +172,14 @@ func normalisePromptfooRow(r promptfooResult) EvalCase {
 		}
 	}
 	return c
+}
+
+// promptfooRowErrored reports whether a row represents a runtime
+// failure (provider crash, schema-parse error, network) as opposed to
+// an assertion failure. Used by the row-derived stats fallback so
+// errored cases land in Aggregates.Errors instead of Aggregates.Failures.
+func promptfooRowErrored(r promptfooResult) bool {
+	return strings.TrimSpace(r.Error) != ""
 }
 
 // flattenProvider resolves the provider identifier across Promptfoo's
@@ -203,17 +249,30 @@ type promptfooResultsNested struct {
 }
 
 type promptfooResult struct {
-	ID            string                  `json:"id,omitempty"`
-	Description   string                  `json:"description,omitempty"`
-	Success       bool                    `json:"success"`
-	Score         float64                 `json:"score,omitempty"`
-	LatencyMs     int                     `json:"latencyMs,omitempty"`
-	NamedScores   map[string]float64      `json:"namedScores,omitempty"`
+	ID            string                   `json:"id,omitempty"`
+	Description   string                   `json:"description,omitempty"`
+	Success       bool                     `json:"success"`
+	Score         float64                  `json:"score,omitempty"`
+	LatencyMs     int                      `json:"latencyMs,omitempty"`
+	NamedScores   map[string]float64       `json:"namedScores,omitempty"`
 	Provider      promptfooProviderAdapter `json:"provider,omitempty"`
-	Prompt        promptfooPrompt         `json:"prompt,omitempty"`
-	Response      promptfooResponse       `json:"response,omitempty"`
-	TestCase      promptfooTestCase       `json:"testCase,omitempty"`
-	FailureReason string                  `json:"failureReason,omitempty"`
+	Prompt        promptfooPrompt          `json:"prompt,omitempty"`
+	Response      promptfooResponse        `json:"response,omitempty"`
+	TestCase      promptfooTestCase        `json:"testCase,omitempty"`
+	FailureReason string                   `json:"failureReason,omitempty"`
+	// Error captures provider/runtime errors (Promptfoo v4+ writes a
+	// per-row `error` string when the provider crashed, the assertion
+	// engine errored, or any non-assertion failure occurred). Pre-0.2.x
+	// final-polish, Promptfoo's `stats.errors` aggregate was wired into
+	// EvalAggregates.Errors, but the row-derived fallback (used when
+	// stats are absent) lumped errored rows into Failures — polluting
+	// aiHallucinationRate's `caseIsScoreable` denominator.
+	Error string `json:"error,omitempty"`
+	// Cost is Promptfoo's top-level per-case cost (parallel to
+	// `r.Response.TokenUsage.Cost`). Modern Promptfoo emits cost both
+	// places; reading both lets aiCostRegression see per-case cost
+	// when the response-level field is empty.
+	Cost float64 `json:"cost,omitempty"`
 }
 
 // promptfooProviderAdapter accepts both `"provider": "openai:gpt-4"`

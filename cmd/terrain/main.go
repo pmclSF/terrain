@@ -45,6 +45,7 @@ import (
 	conv "github.com/pmclSF/terrain/internal/convert"
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/logging"
+	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/server"
 	"github.com/pmclSF/terrain/internal/telemetry"
 )
@@ -69,8 +70,15 @@ const defaultSlowThresholdMs = 5000.0
 //	     `exit 2 == policy fail today`)
 //	3 — reserved (0.2 will move policy violations here once we publish a
 //	     migration guide; do not use for new codepaths)
-//	4 — AI gate block (terrain ai gate; reserved for 0.2's dedicated AI
-//	     gate command)
+//	4 — AI gate block. Returned by `terrain ai run --baseline` when the
+//	     `actionBlock` decision fires (e.g., a high-severity AI signal
+//	     introduced vs. baseline). Reserved by `exitAIGateBlock` so a
+//	     standalone `terrain ai gate` command in 0.3 can use the same
+//	     code without breaking CI scripts that already branch on it.
+//	5 — Not-found. Returned by `terrain show <kind> <id>` and
+//	     `terrain explain <target>` when the entity doesn't exist.
+//	     Lets CI distinguish "the thing you asked about isn't here"
+//	     from "the analysis crashed."
 //
 // Splitting code 2 cleanly into "usage" vs "policy" is a behaviour-breaking
 // change that needs a migration window. It's documented in 0.2 as an
@@ -175,36 +183,43 @@ func main() {
 		}
 
 	case "shorthands":
+		legacyDeprecationNotice("shorthands", "migrate shorthands")
 		if err := runShorthandsCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
 
 	case "detect":
+		legacyDeprecationNotice("detect", "migrate detect")
 		if err := runDetectCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
 
 	case "migrate":
+		// `terrain migrate` is itself canonical (the namespace dispatcher).
+		// No deprecation notice — it's the recommended shape.
 		if err := runMigrateNamespaceCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
 
 	case "estimate":
+		legacyDeprecationNotice("estimate", "migrate estimate")
 		if err := runEstimateCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
 
 	case "status":
+		legacyDeprecationNotice("status", "migrate status")
 		if err := runStatusCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
 
 	case "checklist":
+		legacyDeprecationNotice("checklist", "migrate checklist")
 		if err := runChecklistCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
@@ -214,12 +229,14 @@ func main() {
 		os.Exit(runDoctorCLI(os.Args[2:]))
 
 	case "reset":
+		legacyDeprecationNotice("reset", "config reset")
 		if err := runResetCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
 
 	case "policy":
+		legacyDeprecationNotice("policy check", "analyze --policy=<file>")
 		if len(os.Args) < 3 || os.Args[2] != "check" {
 			fmt.Fprintln(os.Stderr, "Usage: terrain policy check [flags]")
 			os.Exit(2)
@@ -262,6 +279,7 @@ func main() {
 		}
 
 	case "portfolio":
+		legacyDeprecationNotice("portfolio", "report portfolio")
 		portfolioCmd := flag.NewFlagSet("portfolio", flag.ExitOnError)
 		rootFlag := portfolioCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := portfolioCmd.Bool("json", false, "output JSON portfolio snapshot")
@@ -335,6 +353,7 @@ func main() {
 		}
 
 	case "focus":
+		legacyDeprecationNotice("focus", "report focus")
 		focusCmd := flag.NewFlagSet("focus", flag.ExitOnError)
 		rootFlag := focusCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := focusCmd.Bool("json", false, "output JSON focus summary")
@@ -347,6 +366,7 @@ func main() {
 		}
 
 	case "compare":
+		legacyDeprecationNotice("compare", "report compare")
 		compareCmd := flag.NewFlagSet("compare", flag.ExitOnError)
 		fromFlag := compareCmd.String("from", "", "path to baseline snapshot JSON")
 		toFlag := compareCmd.String("to", "", "path to current snapshot JSON")
@@ -359,6 +379,7 @@ func main() {
 		}
 
 	case "migration":
+		legacyDeprecationNotice("migration", "migrate")
 		if len(os.Args) < 3 {
 			printMigrationUsage()
 			os.Exit(2)
@@ -421,6 +442,7 @@ func main() {
 		}
 
 	case "show":
+		legacyDeprecationNotice("show", "report show")
 		if len(os.Args) >= 3 {
 			switch os.Args[2] {
 			case "--help", "-h", "help":
@@ -480,6 +502,7 @@ func main() {
 		}
 
 	case "export":
+		legacyDeprecationNotice("export benchmark", "report export-benchmark")
 		if len(os.Args) < 3 {
 			printExportUsage()
 			os.Exit(2)
@@ -563,6 +586,7 @@ func main() {
 		}
 
 	case "depgraph":
+		legacyDeprecationNotice("depgraph", "debug depgraph")
 		// Backward-compat alias for "debug depgraph".
 		dgCmd := flag.NewFlagSet("depgraph", flag.ExitOnError)
 		rootFlag := dgCmd.String("root", ".", "repository root to analyze")
@@ -716,21 +740,28 @@ func main() {
 		if *jsonFlag {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
+			// schemaVersion is the snapshot-JSON contract version this
+			// binary produces; CI tooling that pins on the snapshot
+			// shape can gate on this field. Pre-0.2.x the JSON output
+			// only carried version/commit/date — consumers had to load
+			// a snapshot and read its `meta.schemaVersion` to find out.
 			_ = enc.Encode(map[string]string{
-				"version": version,
-				"commit":  commit,
-				"date":    date,
+				"version":       version,
+				"commit":        commit,
+				"date":          date,
+				"schemaVersion": models.SnapshotSchemaVersion,
 			})
 			return
 		}
-		fmt.Printf("terrain %s (commit %s, built %s)\n", version, commit, date)
+		fmt.Printf("terrain %s (commit %s, built %s; snapshot schema %s)\n",
+			version, commit, date, models.SnapshotSchemaVersion)
 
 	case "serve":
 		serveCmd := flag.NewFlagSet("serve", flag.ExitOnError)
 		rootFlag := serveCmd.String("root", ".", "repository root to analyze")
 		portFlag := serveCmd.Int("port", server.DefaultPort, "port to listen on")
 		hostFlag := serveCmd.String("host", server.DefaultHost, "bind host (default 127.0.0.1; non-localhost values are unauthenticated and warned about)")
-		readOnlyFlag := serveCmd.Bool("read-only", false, "forbid state-changing API endpoints (no-op in 0.1.2; reserved for 0.2)")
+		readOnlyFlag := serveCmd.Bool("read-only", false, "reject any non-GET/HEAD/OPTIONS request with 405 (every handler in 0.2 is read-only; this flag enforces the contract for any future state-changing endpoint)")
 		_ = serveCmd.Parse(os.Args[2:])
 		if err := runServe(*rootFlag, *portFlag, *hostFlag, *readOnlyFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)

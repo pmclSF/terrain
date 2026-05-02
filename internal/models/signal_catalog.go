@@ -101,6 +101,15 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	"aiFewShotContamination": {Source: SignalSourceStatic},
 	"aiEmbeddingModelChange": {Source: SignalSourceStatic},
 	"aiRetrievalRegression":  {Source: SignalSourceGauntlet},
+
+	// Engine self-diagnostic signals — emitted by the pipeline itself
+	// (not by detectors), surfaced in the snapshot so users see when
+	// something internal failed mid-run instead of a half-empty result.
+	// detectorPanic is emitted by safeDetect when a registered detector
+	// panics; without it in the catalog, ValidateSnapshot would reject
+	// the entire snapshot the moment any detector panicked, defeating
+	// the panic-recovery shipped in 0.2.
+	"detectorPanic": {Source: SignalSourceStatic},
 }
 
 // KnownSignalTypes is the canonical signal vocabulary accepted by snapshot

@@ -99,8 +99,16 @@ func normalizeCodeUnitIDs(snap *TestSuiteSnapshot) {
 }
 
 // sortSignals sorts a slice of signals into canonical order.
+//
+// 0.2.0 final-polish: Symbol added as a tiebreaker after Line so two
+// signals on the same (Category, Type, File, Line) but different
+// Symbols produce a deterministic ordering. Pre-fix `sort.Slice` is
+// not stable, so two such signals could swap positions across runs —
+// breaking byte-identical snapshot output under SOURCE_DATE_EPOCH.
+// Switched to sort.SliceStable too for belt-and-suspenders coverage
+// of any ties not covered by the explicit field list.
 func sortSignals(signals []Signal) {
-	sort.Slice(signals, func(i, j int) bool {
+	sort.SliceStable(signals, func(i, j int) bool {
 		a, b := signals[i], signals[j]
 		if a.Category != b.Category {
 			return a.Category < b.Category
@@ -113,6 +121,9 @@ func sortSignals(signals []Signal) {
 		}
 		if a.Location.Line != b.Location.Line {
 			return a.Location.Line < b.Location.Line
+		}
+		if a.Location.Symbol != b.Location.Symbol {
+			return a.Location.Symbol < b.Location.Symbol
 		}
 		return a.Explanation < b.Explanation
 	})

@@ -87,11 +87,16 @@ func (d *RetrievalRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []m
 			if drop <= threshold {
 				continue
 			}
+			// 0.2.0 final-polish: scale confidence by paired-case count
+			// (shared helper). Single-paired-case retrieval drops are
+			// not the same evidence quality as 100-case drops; without
+			// scaling, both fired at 0.9.
+			confidence := pairedConfidence(paired)
 			out = append(out, models.Signal{
 				Type:        signals.SignalAIRetrievalRegression,
 				Category:    models.CategoryAI,
 				Severity:    models.SeverityHigh,
-				Confidence:  0.9,
+				Confidence:  confidence,
 				Location:    models.SignalLocation{File: env.SourcePath, ScenarioID: env.RunID},
 				Explanation: fmt.Sprintf("Retrieval score `%s` dropped %.3f → %.3f (Δ %.3f) across %d paired cases. Threshold: %.3f.",
 					key, baseAvg, curAvg, drop, paired, threshold),
@@ -105,9 +110,9 @@ func (d *RetrievalRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []m
 				RuleURI:         "docs/rules/ai/retrieval-regression.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{
-					Value:        0.9,
-					IntervalLow:  0.85,
-					IntervalHigh: 0.95,
+					Value:        confidence,
+					IntervalLow:  confidence - 0.05,
+					IntervalHigh: confidence + 0.05,
 					Quality:      "heuristic",
 					Sources:      []models.EvidenceSource{models.SourceRuntime},
 				},
