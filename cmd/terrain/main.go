@@ -518,6 +518,9 @@ func main() {
 		}
 		exportCmd := flag.NewFlagSet("export benchmark", flag.ExitOnError)
 		rootFlag := exportCmd.String("root", ".", "repository root to analyze")
+		// --json is accepted but a no-op: export benchmark always
+		// emits JSON. Kept for flag parity with other commands.
+		_ = exportCmd.Bool("json", false, "machine-readable output (default; this command always emits JSON)")
 		_ = exportCmd.Parse(os.Args[3:])
 		if err := runExportBenchmark(*rootFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -953,7 +956,8 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "                            baseline, replay")
 	fmt.Fprintln(os.Stderr, "  config <verb> [flags]     workspace prefs: feedback, telemetry")
 	fmt.Fprintln(os.Stderr, "  doctor [path]             diagnostics for current setup")
-	fmt.Fprintln(os.Stderr, "  debug <verb> [flags]      dependency graph drill-downs")
+	fmt.Fprintln(os.Stderr, "  debug <verb> [flags]      dependency graph drill-downs:")
+	fmt.Fprintln(os.Stderr, "                            graph, coverage, fanout, duplicates, depgraph")
 	fmt.Fprintln(os.Stderr, "  portfolio [flags]         multi-repo workspace intelligence")
 	fmt.Fprintln(os.Stderr, "  serve [flags]             local HTTP server with HTML report + JSON API")
 	fmt.Fprintln(os.Stderr, "  version                   print version info")
