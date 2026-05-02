@@ -1,0 +1,26 @@
+# Minimal Promptfoo config for the Terrain CI gate walkthrough.
+# Edit the providers, prompts, and tests blocks for your repo;
+# the file structure stays the same.
+
+description: "Refund-eligibility prompt evals (Terrain CI walkthrough)"
+
+providers:
+  - openai:gpt-4o-mini
+
+prompts:
+  - prompts/refund-eligibility.txt
+
+tests: evals/refund-eligibility.yaml
+
+# Threshold for a per-case "pass" verdict. Promptfoo's score
+# blends across the metrics declared per test. Adjust for your
+# tolerance — 0.8 is a common starting point for refund-style
+# decision prompts.
+defaultTest:
+  options:
+    threshold: 0.8
+
+# Output controls. Terrain reads JSON; the markdown rendering is
+# optional for human review of the eval scoreboard separately
+# from Terrain's PR comment.
+outputPath: out/promptfoo.json

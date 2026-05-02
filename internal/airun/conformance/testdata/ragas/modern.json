@@ -1,0 +1,24 @@
+{
+  "samples": [
+    {
+      "question": "What is the refund policy?",
+      "ground_truth": "30 days, items unused",
+      "answer": "Refunds within 30 days for unused items",
+      "contexts": ["Refund policy: 30 days, items must be unused"]
+    },
+    {
+      "question": "When does the offer expire?",
+      "ground_truth": "December 31",
+      "answer": "December 31",
+      "contexts": ["Offer expires December 31"]
+    }
+  ],
+  "scores": {
+    "faithfulness": [0.95, 1.0],
+    "answer_relevancy": [0.92, 0.97],
+    "context_precision": [0.88, 0.94]
+  },
+  "metadata": {
+    "ragas_version": "0.1.18"
+  }
+}
