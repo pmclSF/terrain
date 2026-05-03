@@ -948,6 +948,22 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"static"},
 		RuleID:          "TER-ENGINE-002", RuleURI: "docs/rules/engine/detector-budget.md",
 	},
+	// Track 9.3: emitted by safeDetectChecked when a detector's
+	// declared input requirements (RequiresRuntime / RequiresBaseline
+	// / RequiresEvalArtifact) aren't satisfied by the current
+	// snapshot. Surfaces the gap so adopters know which flag to add
+	// rather than seeing silent zero-output from the affected detector.
+	{
+		Type: SignalDetectorMissingInput, ConstName: "SignalDetectorMissingInput",
+		Domain: models.CategoryQuality, Status: StatusStable,
+		Title:           "Detector Missing Input",
+		Description:     "A registered detector requires inputs (runtime artifacts, baseline snapshot, or eval-framework results) that the current snapshot doesn't carry. The detector was skipped; the rest of the pipeline ran normally.",
+		Remediation:     "The marker explanation lists the specific flag(s) to pass to `terrain analyze` to provide the missing inputs. If you don't need this detector's signals, leave the inputs absent — the marker is informational.",
+		DefaultSeverity: models.SeverityLow,
+		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
+		EvidenceSources: []string{"static"},
+		RuleID:          "TER-ENGINE-003", RuleURI: "docs/rules/engine/detector-missing-input.md",
+	},
 }
 
 // Manifest returns a snapshot copy of the canonical signal manifest, sorted
