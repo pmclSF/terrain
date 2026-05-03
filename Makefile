@@ -9,7 +9,7 @@ GO_OWNED_PKGS := ./cmd/... ./internal/...
 .PHONY: build test lint clean demo benchmark-fetch benchmark-smoke benchmark-full benchmark-stress benchmark-summary benchmark-convert install \
        test-golden test-determinism test-schema test-adversarial test-e2e test-cli test-bench golden-update pr-gate release-gate \
        sbom sbom-cyclonedx sbom-spdx release-dry-run go-release-verify js-release-verify extension-verify release-verify \
-       docs-gen docs-verify calibrate bench-baseline bench-gate
+       docs-gen docs-verify calibrate bench-baseline bench-gate memory-bench
 
 # Build the CLI binary
 build:
@@ -163,6 +163,15 @@ bench-baseline:
 		-count=5 ./internal/engine ./internal/analysis ./internal/scoring ./internal/testcase \
 		> benchmarks/baseline.txt
 	@echo "Wrote benchmarks/baseline.txt"
+
+# `memory-bench` runs the memory ceiling + leak-detection tests
+# (TestMemoryCeiling_*, TestMemoryNoLeak_*). Skipped in the default
+# `go test ./...` loop because they're slow (force GC + run analysis
+# at scale) and surface ceiling regressions per the Track 9.10
+# baseline. Set TERRAIN_MEMORY_BENCH=1 inline; this target does it
+# for you.
+memory-bench:
+	@TERRAIN_MEMORY_BENCH=1 go test -v -count=1 -run 'TestMemory' ./internal/analysis/...
 
 bench-gate:
 	@tmp=$$(mktemp) ; \
