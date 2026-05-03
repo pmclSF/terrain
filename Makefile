@@ -6,7 +6,7 @@ DATE    ?= $(shell date -u +%Y-%m-%dT%H:%M:%SZ)
 LDFLAGS := -s -w -X main.version=$(VERSION) -X main.commit=$(COMMIT) -X main.date=$(DATE)
 GO_OWNED_PKGS := ./cmd/... ./internal/...
 
-.PHONY: build test lint clean demo benchmark-fetch benchmark-smoke benchmark-full benchmark-stress benchmark-summary benchmark-convert install \
+.PHONY: build test lint clean demo benchmark-fetch benchmark-smoke benchmark-full benchmark-stress benchmark-summary benchmark-convert install docs-linkcheck \
        test-golden test-determinism test-schema test-adversarial test-e2e test-cli test-bench golden-update pr-gate release-gate \
        sbom sbom-cyclonedx sbom-spdx release-dry-run go-release-verify js-release-verify extension-verify release-verify \
        docs-gen docs-verify calibrate bench-baseline bench-gate memory-bench
@@ -161,6 +161,15 @@ pillar-parity-json:
 # Compact form: per-area + per-pillar floor map only.
 pillar-parity-floor:
 	@go run ./cmd/terrain-parity-gate --floor-map
+
+# `docs-linkcheck` walks docs/ and verifies that every intra-repo
+# markdown link resolves to a real file. Skips docs/internal/ and
+# docs/legacy/ by default — those subtrees hold planning notes whose
+# link discipline is inherited debt; run with -include-internal to
+# also scan them. External links (http/https/mailto) are out of
+# scope. Track 9.8 deliverable for the 0.2.0 parity plan.
+docs-linkcheck:
+	@go run ./cmd/terrain-docs-linkcheck
 
 # ── Calibration corpus ──────────────────────────────────────
 # Runs the engine pipeline against every fixture under tests/calibration/

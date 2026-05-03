@@ -234,5 +234,5 @@ All commands support `--json` for machine-readable output and `--root PATH` to t
 
 - [CLI Reference](cli-spec.md) -- all commands and flags
 - [Signal Catalog](signal-catalog.md) -- the signal types Terrain detects
-- [Example Reports](examples/) -- sample output for each command
+- [Example Reports](examples/analyze-report.md) -- sample output for each command
 - [Contributing](contributing/adding-a-measurement.md) -- how to extend Terrain
