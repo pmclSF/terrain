@@ -85,7 +85,8 @@ const (
 
 	// Engine self-diagnostic signals — emitted by the pipeline itself,
 	// not by registered detectors.
-	SignalDetectorPanic models.SignalType = "detectorPanic"
+	SignalDetectorPanic          models.SignalType = "detectorPanic"
+	SignalDetectorBudgetExceeded models.SignalType = "detectorBudgetExceeded"
 )
 
 // Canonical signal type sets. Import these rather than duplicating

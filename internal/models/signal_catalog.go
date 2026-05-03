@@ -110,6 +110,13 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	// the entire snapshot the moment any detector panicked, defeating
 	// the panic-recovery shipped in 0.2.
 	"detectorPanic": {Source: SignalSourceStatic},
+	// detectorBudgetExceeded is emitted by safeDetectWithBudget when
+	// a registered detector exceeds its DetectorMeta.Budget (default
+	// DefaultDetectorBudget). Same posture as detectorPanic — without
+	// it in the catalog, ValidateSnapshot would reject the entire
+	// snapshot whenever a detector hit its budget, defeating the
+	// timeout enforcement shipped in 0.2 (Track 9.4).
+	"detectorBudgetExceeded": {Source: SignalSourceStatic},
 }
 
 // KnownSignalTypes is the canonical signal vocabulary accepted by snapshot

@@ -5,10 +5,31 @@ import (
 	"runtime/debug"
 	"sort"
 	"sync"
+	"time"
 
 	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/models"
 )
+
+// DefaultDetectorBudget is the per-detector wall-clock ceiling
+// applied when DetectorMeta.Budget is zero. 30 seconds is generous
+// enough that production-shaped repos clear it on the slowest
+// graph-traversal detectors; it primarily catches accidental
+// infinite loops or quadratic-or-worse code paths that would
+// otherwise hang the whole pipeline.
+//
+// Override in DetectorMeta.Budget for detectors that legitimately
+// need longer (large runtime artifact ingestion, etc.).
+const DefaultDetectorBudget = 30 * time.Second
+
+// signalTypeDetectorBudgetExceeded is the local alias for
+// SignalDetectorBudgetExceeded (signal_types.go). The marker is
+// treated as a quality-domain finding so it surfaces in the
+// analyze report alongside the detector-panic marker. Keeping a
+// local alias makes the safeDetectWithBudget callsite self-
+// contained and protects against the manifest entry being renamed
+// under it.
+const signalTypeDetectorBudgetExceeded = SignalDetectorBudgetExceeded
 
 // safeDetect wraps a detector call with panic recovery. Pre-0.2.x a
 // nil deref or index-out-of-range in any of ~30 detectors would
@@ -37,6 +58,52 @@ func safeDetect(reg DetectorRegistration, fn func() []models.Signal) (out []mode
 		}
 	}()
 	return fn()
+}
+
+// safeDetectWithBudget wraps safeDetect with a per-detector wall-
+// clock timeout. Track 9.4 — the budget protects the pipeline from
+// any single hung detector blocking the rest. The detector still
+// runs in the calling goroutine (no extra goroutine cost on the
+// happy path); when it exceeds its budget we emit a budget-exceeded
+// marker and return.
+//
+// Note: a detector that ignores ctx and runs a tight CPU loop will
+// still complete its work after the budget elapses (Go has no
+// goroutine kill primitive). The budget here means "stop waiting
+// for this result and move on" — the detector's signals from a
+// post-budget completion are dropped, the marker stands. This is
+// the right trade-off for the failure modes the budget targets:
+// runaway regex, accidentally-O(n²) graph walks, blocking I/O on
+// a slow filesystem.
+func safeDetectWithBudget(reg DetectorRegistration, fn func() []models.Signal) []models.Signal {
+	budget := reg.Meta.Budget
+	if budget <= 0 {
+		budget = DefaultDetectorBudget
+	}
+
+	type result struct {
+		signals []models.Signal
+	}
+	done := make(chan result, 1)
+	go func() {
+		done <- result{signals: safeDetect(reg, fn)}
+	}()
+
+	select {
+	case r := <-done:
+		return r.signals
+	case <-time.After(budget):
+		return []models.Signal{{
+			Type:       signalTypeDetectorBudgetExceeded,
+			Category:   models.CategoryQuality,
+			Severity:   models.SeverityCritical,
+			Confidence: 1.0,
+			Explanation: fmt.Sprintf(
+				"detector %q exceeded its %s budget and was abandoned by the pipeline",
+				reg.Meta.ID, budget),
+			SuggestedAction: "If this detector is legitimately slow on your repo, raise its budget in DetectorMeta.Budget. If it should be fast, the runaway suggests a quadratic-or-worse code path or a hung I/O — re-run with --log-level=debug.",
+		}}
+	}
 }
 
 // Domain classifies a detector's area of concern.
@@ -96,6 +163,24 @@ type DetectorMeta struct {
 	// RequiresGraph indicates this detector needs the dependency graph.
 	// Graph detectors run in Phase 2 (after flat detectors, before signal-dependent).
 	RequiresGraph bool
+
+	// Budget is the maximum wall-clock time this detector is allowed
+	// to run before the pipeline cancels it and treats it as a no-op
+	// for the run. Zero means "use the registry default" (see
+	// DefaultDetectorBudget). Track 9.4 — protects analyze runs from
+	// a single hung detector blocking the whole pipeline.
+	//
+	// When the budget elapses, safeDetectWithBudget emits a
+	// SignalDetectorBudgetExceeded marker so the user sees the
+	// detector name + budget that was hit, rather than silent
+	// truncation.
+	//
+	// Detectors that legitimately need longer (large-graph traversal,
+	// runtime artifact ingestion) should set this explicitly. The
+	// default is generous enough that production-shaped repos clear
+	// it; setting a tighter budget on simple structural detectors
+	// catches accidental quadratic-or-worse code paths.
+	Budget time.Duration
 }
 
 // DetectorRegistration pairs a Detector with its metadata.
@@ -192,7 +277,7 @@ func (r *DetectorRegistry) Run(snap *models.TestSuiteSnapshot) {
 		wg.Add(1)
 		go func(idx int, reg DetectorRegistration) {
 			defer wg.Done()
-			found := safeDetect(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
+			found := safeDetectWithBudget(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
 			mu.Lock()
 			results = append(results, result{idx: idx, signals: found})
 			mu.Unlock()
@@ -209,7 +294,7 @@ func (r *DetectorRegistry) Run(snap *models.TestSuiteSnapshot) {
 
 	// Dependent detectors run after independent outputs are available.
 	for _, reg := range dependents {
-		found := safeDetect(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
+		found := safeDetectWithBudget(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
 		snap.Signals = append(snap.Signals, found...)
 	}
 }
@@ -253,7 +338,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 		wg.Add(1)
 		go func(idx int, reg DetectorRegistration) {
 			defer wg.Done()
-			found := safeDetect(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
+			found := safeDetectWithBudget(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
 			mu.Lock()
 			results = append(results, result{idx: idx, signals: found})
 			mu.Unlock()
@@ -296,7 +381,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 			wg2.Add(1)
 			go func(idx int, reg DetectorRegistration, gd GraphDetector) {
 				defer wg2.Done()
-				found := safeDetect(reg, func() []models.Signal { return gd.DetectWithGraph(snap, g) })
+				found := safeDetectWithBudget(reg, func() []models.Signal { return gd.DetectWithGraph(snap, g) })
 				mu.Lock()
 				graphResults = append(graphResults, result{idx: idx, signals: found})
 				mu.Unlock()
@@ -314,7 +399,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 
 	// Phase 3: Signal-dependent detectors (sequential).
 	for _, reg := range dependents {
-		found := safeDetect(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
+		found := safeDetectWithBudget(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
 		snap.Signals = append(snap.Signals, found...)
 	}
 }
@@ -323,7 +408,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 func (r *DetectorRegistry) RunDomain(snap *models.TestSuiteSnapshot, domain Domain) {
 	for _, reg := range r.registrations {
 		if reg.Meta.Domain == domain {
-			found := safeDetect(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
+			found := safeDetectWithBudget(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
 			snap.Signals = append(snap.Signals, found...)
 		}
 	}

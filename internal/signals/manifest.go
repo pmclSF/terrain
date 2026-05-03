@@ -919,6 +919,23 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"static"},
 		RuleID:          "TER-ENGINE-001", RuleURI: "docs/rules/engine/detector-panic.md",
 	},
+	// Track 9.4: per-detector wall-clock timeout budgets. Emitted by
+	// the pipeline (safeDetectWithBudget) when a detector exceeds
+	// its DetectorMeta.Budget (default DefaultDetectorBudget). The
+	// detector's signals from any post-budget completion are
+	// dropped — this marker is the only signal returned for the
+	// abandoned detector.
+	{
+		Type: SignalDetectorBudgetExceeded, ConstName: "SignalDetectorBudgetExceeded",
+		Domain: models.CategoryQuality, Status: StatusStable,
+		Title:           "Detector Budget Exceeded",
+		Description:     "A registered detector exceeded its wall-clock budget and was abandoned by the pipeline. The rest of the pipeline continued without that detector's signals.",
+		Remediation:     "If the detector is legitimately slow on your repo, raise DetectorMeta.Budget for it. If it should be fast, the runaway suggests a quadratic-or-worse code path or a hung I/O — re-run with --log-level=debug.",
+		DefaultSeverity: models.SeverityCritical,
+		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
+		EvidenceSources: []string{"static"},
+		RuleID:          "TER-ENGINE-002", RuleURI: "docs/rules/engine/detector-budget.md",
+	},
 }
 
 // Manifest returns a snapshot copy of the canonical signal manifest, sorted
