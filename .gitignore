@@ -91,3 +91,4 @@ PR_DESCRIPTION.md
 *.tmp
 tmp/
 temp/
+terrain-parity-gate
