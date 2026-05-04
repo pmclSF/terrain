@@ -1,0 +1,352 @@
+# Terrain parity rubric.
+#
+# This file is the *structural* source of truth for what the parity
+# dashboard measures. It defines:
+#
+#   - 12 functional areas (organized into 3 pillars)
+#   - 17 axes scored 1-5 (7 product + 7 engineering + 3 UI/visual)
+#   - per-pillar floor requirements (the release gate)
+#   - cross-cutting uniformity gates
+#
+# Per-cell scores live in `scores.yaml` (separate file) — that's what
+# moves PR-by-PR. This file changes only when we redefine the rubric
+# itself, which should be rare.
+#
+# See `docs/release/0.2.x-maturity-audit.md` for the human-readable
+# companion that explains the rubric in prose and shows the current
+# state.
+
+schema_version: "1"
+
+# Three pillars + cross-cutting "distribution" band.
+# Pillar priority for 0.2.0: Gate > Understand > Align (per plan).
+pillars:
+  - id: understand
+    name: "Understand"
+    job: "See the test universe as one thing"
+    external_framing: "See what's covered, what's missing, what's overlapping"
+    priority: 2
+  - id: align
+    name: "Align"
+    job: "Reduce drift between code, tests, and repos"
+    external_framing: "Standardize and reduce drift across test systems"
+    priority: 3
+  - id: gate
+    name: "Gate"
+    job: "One CI gate over the whole system"
+    external_framing: "Gate PR changes based on the system as a whole"
+    priority: 1
+
+# Per-pillar floor requirements for the 0.2.0 release gate.
+# Gate is publicly claimable (≥ 4); Understand is workable for adopters
+# (≥ 3); Align is soft (warn-only at 3). See `pillar_priority (0.2.0)`
+# section in the plan.
+pillar_floors:
+  understand: 3
+  align: 3
+  gate: 4
+
+# Soft gates print a warning banner but do not fail CI. The Align
+# pillar is soft for 0.2.0 because multi-repo aggregation is genuinely
+# emerging; partial shipping is acceptable.
+soft_gates:
+  - align
+
+# 12 functional areas. Tier proposals match the capability map in the
+# plan; they're scored separately and may diverge in the audit.
+areas:
+  - id: core_analyze
+    name: "Core analyze pipeline"
+    pillar: understand
+    tier: 1
+    surface: "terrain analyze, snapshot, signal manifest"
+    description: "The foundation every other area builds on."
+
+  - id: insights_impact_explain
+    name: "Insights / impact / explain"
+    pillar: understand
+    tier: 1
+    surface: "report insights/impact/explain (and legacy bare forms)"
+    description: "Read-side queries over the snapshot."
+
+  - id: summary_posture_metrics_focus
+    name: "Summary / posture / metrics / focus"
+    pillar: understand
+    tier: 1
+    surface: "report summary/posture/metrics/focus (and legacy bare forms)"
+    description: "Aggregation views over signals; closest area to the alignment narrative."
+
+  - id: pr_change_scoped
+    name: "PR / change-scoped"
+    pillar: gate
+    tier: 1
+    surface: "report pr, report select-tests, compare"
+    description: "Workflow-scoped gating — where adopters meet Terrain."
+
+  - id: ai_risk_inventory
+    name: "AI risk + inventory"
+    pillar: understand
+    tier: 1
+    surface: "aiSurface* detectors, AI surface inference, AI inventory in analyze output"
+    description: "Heuristic detectors; inventory is reliable, hygiene/regression are Tier-2 in 0.2.0."
+
+  - id: ai_eval_ingestion
+    name: "AI eval ingestion"
+    pillar: gate
+    tier: 1
+    surface: "Promptfoo / DeepEval / Ragas adapters; terrain ai run --baseline"
+    description: "Different code path from runtime ingestion; integration-testing target."
+
+  - id: ai_execution_gating
+    name: "AI execution + gating"
+    pillar: gate
+    tier: 2
+    surface: "terrain ai run, ai gate (planned)"
+    description: "Sandbox + secrets concerns; trust-boundary doc is a 0.2.0 deliverable."
+
+  - id: migration_conversion
+    name: "Migration / conversion"
+    pillar: align
+    tier: 1
+    surface: "migrate / convert namespace, framework-pair converters"
+    description: "Used in service of repo alignment; framing pivot to alignment-first in 0.2.0."
+
+  - id: portfolio
+    name: "Portfolio"
+    pillar: align
+    tier: 2
+    surface: "terrain portfolio (multi-repo)"
+    description: "Multi-repo aggregation; partial-ship acceptable in 0.2.0."
+
+  - id: policy_governance
+    name: "Policy / governance"
+    pillar: gate
+    tier: 1
+    surface: "policy check, ownership"
+    description: "Operational risk dimension; needs onboarding lift."
+
+  - id: server
+    name: "Server"
+    pillar: understand
+    tier: 2
+    surface: "terrain serve (local HTTP)"
+    description: "Local development tool; no auth, localhost-only."
+
+  - id: distribution_install
+    name: "Distribution / install"
+    pillar: cross_cutting
+    tier: 1
+    surface: "npm / brew / cosign / postinstall"
+    description: "Pre-first-run trust surface; cross-cutting prerequisite for every pillar."
+
+# 17 axes. Levels 1, 3, 5 are anchor points; 2 and 4 are intermediate
+# (between adjacent anchors).
+axes:
+  # ── Product axes (7) ─────────────────────────────────────────
+  - id: P1
+    name: "Feature completeness"
+    lens: product
+    description: "Does the area cover the user's actual workflow?"
+    levels:
+      "1": "Skeleton; common flows missing"
+      "3": "Common flows work end-to-end; rough edges remain"
+      "5": "Every documented flow works including edge cases"
+
+  - id: P2
+    name: "Output trust"
+    lens: product
+    description: "Can a senior engineer rely on the output without checking?"
+    levels:
+      "1": "Anecdotal / heuristic only"
+      "3": "Calibrated on synthetic fixtures (recall-anchored)"
+      "5": "Calibrated against labeled real-repo corpus with published precision/recall"
+
+  - id: P3
+    name: "Documentation"
+    lens: product
+    description: "Are docs accurate, honest, and complete?"
+    levels:
+      "1": "README mentions exist"
+      "3": "Per-feature doc with caveats; rule pages auto-generated"
+      "5": "Worked example + known false positives + suppression guidance per detector/feature"
+
+  - id: P4
+    name: "Onboarding"
+    lens: product
+    description: "Can a new user get to first value quickly?"
+    levels:
+      "1": "Requires reading source"
+      "3": "Quickstart works on a sample repo"
+      "5": "Quickstart works on an unfamiliar real repo in <15 minutes"
+
+  - id: P5
+    name: "Error UX"
+    lens: product
+    description: "When things go wrong, is the message actionable?"
+    levels:
+      "1": "Stack traces / opaque"
+      "3": "Actionable but inconsistent across commands"
+      "5": "Every error has a remediation pointer; standard template"
+
+  - id: P6
+    name: "Examples"
+    lens: product
+    description: "Are there real, reproducible examples per surface?"
+    levels:
+      "1": "One in README"
+      "3": "Examples per command"
+      "5": "Reproducible per-platform examples in CI"
+
+  - id: P7
+    name: "Use-case fit"
+    lens: product
+    description: "Does this area serve the headline job, or sit adjacent?"
+    levels:
+      "1": "Solves a fraction of the user's actual job"
+      "3": "Solves the headline job for this area"
+      "5": "Solves the job and composes with neighbouring tools cleanly"
+
+  # ── Engineering axes (7) ─────────────────────────────────────
+  - id: E1
+    name: "Test coverage"
+    lens: engineering
+    description: "Unit + integration + golden uniformly across packages."
+    levels:
+      "1": "Unit only, sparse"
+      "3": "Unit + integration"
+      "5": "Unit + integration + golden + property/fuzz"
+
+  - id: E2
+    name: "Calibration"
+    lens: engineering
+    description: "Recall and precision evidence for detectors and parsers."
+    levels:
+      "1": "None"
+      "3": "Recall-anchor fixtures"
+      "5": "Precision floor against real-repo corpus"
+
+  - id: E3
+    name: "Observability"
+    lens: engineering
+    description: "Can the user see how/why a result was produced?"
+    levels:
+      "1": "None"
+      "3": "Logs on demand (--log-level=debug)"
+      "5": "Per-component timing + completeness score in normal output"
+
+  - id: E4
+    name: "Stability"
+    lens: engineering
+    description: "Are output schemas versioned and field tiers documented?"
+    levels:
+      "1": "Schema unversioned"
+      "3": "Schema versioned, fields can move"
+      "5": "Stable/beta/internal field tiers documented"
+
+  - id: E5
+    name: "Performance"
+    lens: engineering
+    description: "Bounded memory + time budgets per repo size class."
+    levels:
+      "1": "Unbounded"
+      "3": "Walks complete on Terrain self-scan"
+      "5": "Memory + time budgets documented per repo size class"
+
+  - id: E6
+    name: "Determinism"
+    lens: engineering
+    description: "Repeatable output under SOURCE_DATE_EPOCH."
+    levels:
+      "1": "None"
+      "3": "SOURCE_DATE_EPOCH honored"
+      "5": "Byte-identical output gate in CI"
+
+  - id: E7
+    name: "Cancellation"
+    lens: engineering
+    description: "context.Context wired through inner loops."
+    levels:
+      "1": "context.Background()"
+      "3": "Context plumbed at top level"
+      "5": "Context honored in inner loops; verified by deliberately-slow tests"
+
+  # ── UI/visual axes (3, new in this plan) ─────────────────────
+  - id: V1
+    name: "Visual consistency"
+    lens: visual
+    description: "Renderers consume from shared design tokens."
+    levels:
+      "1": "Ad-hoc styling per command"
+      "3": "Most user-visible output goes through shared tokens"
+      "5": "Every renderer (terminal, HTML, markdown) uses the same token set; CI catches drift"
+
+  - id: V2
+    name: "Information rhythm"
+    lens: visual
+    description: "Output reads cleanly; signal-to-noise calibrated."
+    levels:
+      "1": "Wall-of-text or scattered output"
+      "3": "Sections are scanned in <5 seconds; signal-to-noise calibrated"
+      "5": "Output reads like a designed document; user knows where to look without instruction"
+
+  - id: V3
+    name: "Fun-to-use polish"
+    lens: visual
+    description: "Empty states, errors, progress, and tone of voice."
+    levels:
+      "1": "Errors are jargon; empty states are blank; first-run is silent"
+      "3": "Error messages have remediation; empty states suggest a next move; first-run greets the user"
+      "5": "Every empty state, error, and progress moment is designed; tone of voice is confident and idiomatic; small delights don't feel out of place"
+
+# Cross-cutting uniformity gates. The parity-gate tool runs each gate
+# in addition to the per-cell floor checks. A uniformity failure blocks
+# the release even when every cell is at its floor.
+uniformity_gates:
+  - id: detector_shape
+    name: "Detector shape uniformity"
+    description: "Every detector has all 8 required fields: stable ID, title, summary, severity rationale, evidence sources, calibration anchor, known false positives, suppression guidance."
+    applies_to: "All shipping detectors (manifest)"
+    verified_by: "cmd/terrain-docs-gen manifest validator"
+    blocking: true
+
+  - id: framework_depth
+    name: "Framework depth uniformity"
+    description: "Every Tier-1 framework hits the same axis floor across all axes — no asymmetry between Jest/pytest/Go test."
+    applies_to: "Tier-1 frameworks: Jest, Vitest, Mocha, Playwright, Cypress, pytest, Go test"
+    verified_by: "Per-framework cell scores in the parity dashboard"
+    blocking: true
+
+  - id: command_shape
+    name: "Command shape uniformity"
+    description: "Every command has the same shape: pillar marker, tier badge, journey question, --help structure, --json envelope, exit-code semantics, error template, suppression respect."
+    applies_to: "Every shipping command"
+    verified_by: "Help-shape golden tests; JSON-envelope schema validation"
+    blocking: true
+
+  - id: doc_scaffold
+    name: "Doc scaffold uniformity"
+    description: "Every per-detector / per-framework page follows the eight-section scaffold: title → status → summary → remediation → promotion plan → evidence sources → known false positives → suppression guidance → calibration status."
+    applies_to: "All docs/rules/* and docs/migration/* pages"
+    verified_by: "make docs-verify (extended)"
+    blocking: true
+
+  - id: renderer_tokens
+    name: "Renderer token uniformity"
+    description: "Terminal, HTML report, and PR-comment markdown all consume from internal/uitokens. No raw color codes or ad-hoc symbols outside that package."
+    applies_to: "Every user-visible code path"
+    verified_by: "Lint / vet rule that flags raw ANSI codes / ad-hoc symbols"
+    blocking: true
+
+  - id: empty_state_coverage
+    name: "Empty-state coverage"
+    description: "Every command that produces a list of findings has a designed empty-state path: zero findings, no AI surfaces, no policy file, first-run."
+    applies_to: "Every list-producing command"
+    verified_by: "Empty-state golden tests on a clean fixture"
+    blocking: true
+
+  - id: voice_and_tone
+    name: "Voice & tone uniformity"
+    description: "No hedging, no jargon-only phrases, plain English, no British spellings."
+    applies_to: "Every user-visible string"
+    verified_by: "Style-lint pass over user-visible strings (custom linter or manual review pass)"
+    blocking: false  # Subjective; advisory in 0.2.0, enforced in 0.2.x.
