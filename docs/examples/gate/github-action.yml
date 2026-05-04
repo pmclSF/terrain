@@ -1,0 +1,109 @@
+# Terrain — recommended GitHub Action workflow.
+#
+# This is the ONE config the project recommends. Drop it into
+# `.github/workflows/terrain-pr.yml`, commit, and you have:
+#
+#   - per-PR `terrain analyze` running on every push
+#   - per-PR `terrain report pr` posting a unified comment with the
+#     test-system risk for the diff
+#   - safe-default mode by default (warn, don't block) so day-one
+#     adoption doesn't brick CI on existing repo debt
+#   - a one-line opt-in to flip on blocking gates once the warning
+#     output is calibrated for your repo
+#
+# The two-step flow at the heart of Terrain (`terrain analyze` →
+# `terrain report pr`) is the workflow's spine. Everything else is
+# an optional add-on.
+#
+# Reference: https://github.com/pmclSF/terrain
+# Vision:    docs/product/vision.md
+# Trust:     docs/product/trust-ladder.md (which mode to run when)
+# Policy:    docs/policy/examples/{minimal,balanced,strict}.yaml
+
+name: Terrain
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel an older Terrain run when a newer commit lands on the same PR.
+concurrency:
+  group: terrain-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write   # required for the PR-comment step
+  checks: write          # required for SARIF / annotations
+
+jobs:
+  terrain:
+    name: Terrain
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out the PR head
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history so `--base main` diffs work
+
+      - name: Install Terrain
+        # Pick the install path that matches your runner image.
+        # Homebrew is the lowest-friction default; npm needs cosign;
+        # `go install` works on any image with Go 1.23+.
+        run: |
+          brew install pmclSF/terrain/mapterrain
+          terrain version
+
+      # ── Step 1 of the primary workflow: understand the test system ──
+      - name: terrain analyze
+        run: |
+          terrain analyze \
+            --write-snapshot \
+            --json > terrain-snapshot.json
+
+      # ── Step 2: gate the PR ────────────────────────────────────────
+      # Default: warn-only. The job stays green; the PR comment shows
+      # what Terrain found. Established repos with debt won't brick CI
+      # on day one.
+      #
+      # To enable blocking gates, uncomment the `--fail-on critical`
+      # line below. Combined with `--new-findings-only --baseline ...`,
+      # the gate fires only on findings introduced AFTER the snapshot
+      # in the baseline file (see `terrain analyze --write-snapshot`
+      # for how to persist the baseline).
+      - name: terrain report pr (warn-only by default)
+        run: |
+          terrain report pr \
+            --base ${{ github.event.pull_request.base.sha }} \
+            --format markdown \
+            --new-findings-only \
+            --baseline terrain-snapshot.json \
+            > terrain-pr-comment.md
+            # --fail-on critical    # uncomment to gate the build
+
+      - name: Post or update the PR comment
+        uses: peter-evans/create-or-update-comment@v5
+        if: github.event_name == 'pull_request'
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-path: terrain-pr-comment.md
+          edit-mode: replace
+          # Stable comment marker so successive runs update the same
+          # thread instead of stacking new comments.
+          body-includes: '<!-- terrain-pr-report -->'
+
+      # Optional: upload SARIF for GitHub code scanning. Adds Terrain
+      # findings to the Security tab alongside CodeQL / Snyk / etc.
+      - name: terrain analyze (SARIF)
+        run: |
+          terrain analyze --format sarif --redact-paths > terrain.sarif
+
+      - name: Upload SARIF to code scanning
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: terrain.sarif
+          category: terrain
