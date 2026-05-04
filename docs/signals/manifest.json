@@ -1198,6 +1198,23 @@
       ],
       "ruleId": "TER-ENGINE-001",
       "ruleUri": "docs/rules/engine/detector-panic.md"
+    },
+    {
+      "type": "detectorBudgetExceeded",
+      "constName": "SignalDetectorBudgetExceeded",
+      "domain": "quality",
+      "status": "stable",
+      "title": "Detector Budget Exceeded",
+      "description": "A registered detector exceeded its wall-clock budget and was abandoned by the pipeline. The rest of the pipeline continued without that detector's signals.",
+      "remediation": "If the detector is legitimately slow on your repo, raise DetectorMeta.Budget for it. If it should be fast, the runaway suggests a quadratic-or-worse code path or a hung I/O — re-run with --log-level=debug.",
+      "defaultSeverity": "critical",
+      "confidenceMin": 1,
+      "confidenceMax": 1,
+      "evidenceSources": [
+        "static"
+      ],
+      "ruleId": "TER-ENGINE-002",
+      "ruleUri": "docs/rules/engine/detector-budget.md"
     }
   ]
 }
