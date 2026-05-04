@@ -1,0 +1,12 @@
+{
+  "test_cases": [
+    {
+      "name": "test_refund_accuracy",
+      "input": "Can I get a refund?",
+      "actual_output": "Refund window is 30 days.",
+      "expected_output": "Refund window is 30 days.",
+      "score": 1.0,
+      "success": true
+    }
+  ]
+}

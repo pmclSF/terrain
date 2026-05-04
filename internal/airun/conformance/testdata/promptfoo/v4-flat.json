@@ -1,0 +1,28 @@
+{
+  "evalId": "eval-2026-02-20-def456",
+  "createdAt": 1739000000000,
+  "results": [
+    {
+      "id": "case-001",
+      "description": "search citations — top-1",
+      "provider": "openai:gpt-4o",
+      "success": true,
+      "score": 0.95,
+      "tokenUsage": { "prompt": 220, "completion": 80, "total": 300, "cost": 0.0042 }
+    },
+    {
+      "id": "case-002",
+      "description": "search citations — top-3",
+      "provider": "openai:gpt-4o",
+      "success": false,
+      "score": 0.4,
+      "tokenUsage": { "prompt": 230, "completion": 110, "total": 340, "cost": 0.0049 }
+    }
+  ],
+  "stats": {
+    "successes": 1,
+    "failures": 1,
+    "errors": 0,
+    "tokenUsage": { "prompt": 450, "completion": 190, "total": 640, "cost": 0.0091 }
+  }
+}

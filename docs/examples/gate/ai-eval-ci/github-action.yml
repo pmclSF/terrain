@@ -1,0 +1,108 @@
+# Drop into .github/workflows/terrain.yml in your repo.
+#
+# This workflow runs Promptfoo against your prompts on every PR,
+# then feeds the results into Terrain's PR gate. Output is one
+# unified comment covering structural coverage + AI eval results.
+#
+# Prerequisites:
+#   - .terrain/snapshots/baseline.json committed to main
+#     (see the README for the one-time baseline step)
+#   - OPENAI_API_KEY (or your provider's key) configured as a
+#     repository secret
+#
+# Trust posture (per docs/product/ai-trust-boundary.md):
+#   - Promptfoo runs the eval (child process)
+#   - Terrain reads Promptfoo's output JSON
+#   - Terrain does not read, log, or proxy your API key
+#   - Terrain does not sandbox the eval (0.3 work)
+
+name: Terrain (Coverage + AI eval gate)
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: write    # post the Terrain comment
+
+jobs:
+  terrain-with-ai-eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    # Promptfoo on Node 22 LTS keeps the npm path supported.
+    # Adjust if your repo's CI image differs.
+    - uses: actions/setup-node@v6
+      with:
+        node-version: '22.x'
+
+    - name: Install Promptfoo
+      run: npm install -g promptfoo
+
+    - name: Install Terrain
+      run: npm install -g mapterrain
+
+    # Run Promptfoo against the prompts in this repo. Output goes
+    # to out/promptfoo.json which Terrain reads in the next step.
+    #
+    # Notes:
+    #   - Use --max-concurrency to bound parallel API calls; the
+    #     default is 4 which is fine for small evals but can burn
+    #     rate-limit budget on large suites.
+    #   - --share is intentionally NOT set: keep your eval data
+    #     in CI artifacts, not in Promptfoo Cloud, unless you've
+    #     reviewed their data-handling policy for your repo.
+    - name: Run Promptfoo eval
+      env:
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      run: |
+        mkdir -p out
+        promptfoo eval \
+          --config promptfoo.config.yaml \
+          --output out/promptfoo.json \
+          --max-concurrency 4 \
+          --no-cache
+
+    # Run Terrain in PR-gating mode with the Promptfoo results
+    # and the baseline snapshot. This produces the unified
+    # markdown comment.
+    #
+    # Recommended-config defaults (Track 8.5 of the parity plan):
+    #   - --new-findings-only --baseline: established repos don't
+    #     brick on legacy debt
+    #   - --fail-on critical: only Tier-1 AI signals (Inventory)
+    #     and explicit policy critical signals can block merges
+    - name: Run Terrain PR gate
+      run: |
+        terrain report pr \
+          --base main \
+          --format markdown \
+          --output out/terrain-pr.md \
+          --new-findings-only \
+          --baseline .terrain/snapshots/baseline.json \
+          --promptfoo-results out/promptfoo.json \
+          --fail-on critical
+
+    # Post the comment. sticky:true avoids comment spam — re-runs
+    # update the existing comment instead of stacking new ones.
+    - name: Post Terrain comment
+      if: always()    # comment even on gate failure so reviewers see why
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        path: out/terrain-pr.md
+        header: terrain-pr-gate
+
+    # Surface eval failures inside Promptfoo's own scoring as a
+    # standalone status check too. This is independent of
+    # Terrain's --fail-on. If Promptfoo reports any failed eval
+    # case, this step fails — useful for teams that want eval
+    # pass/fail to be a blocking signal independent of Terrain's
+    # baseline-aware decision.
+    - name: Promptfoo pass/fail
+      if: always()
+      run: promptfoo eval --config promptfoo.config.yaml --output out/promptfoo.json --no-cache --fail-on-error

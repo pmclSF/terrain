@@ -1,0 +1,9 @@
+[
+  {
+    "question": "What is the refund policy?",
+    "answer": "Refunds within 30 days for unused items",
+    "ground_truth": "30 days, items unused",
+    "faithfulness": 0.95,
+    "answer_relevancy": 0.92
+  }
+]
