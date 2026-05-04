@@ -117,6 +117,12 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	// snapshot whenever a detector hit its budget, defeating the
 	// timeout enforcement shipped in 0.2 (Track 9.4).
 	"detectorBudgetExceeded": {Source: SignalSourceStatic},
+	// detectorMissingInput is emitted by safeDetectChecked when a
+	// detector's RequiresRuntime / RequiresBaseline /
+	// RequiresEvalArtifact metadata is set but the snapshot lacks
+	// the corresponding input. Track 9.3 — surfaces input gaps as
+	// a single per-detector marker instead of silent zero-output.
+	"detectorMissingInput": {Source: SignalSourceStatic},
 }
 
 // KnownSignalTypes is the canonical signal vocabulary accepted by snapshot

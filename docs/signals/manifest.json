@@ -1215,6 +1215,23 @@
       ],
       "ruleId": "TER-ENGINE-002",
       "ruleUri": "docs/rules/engine/detector-budget.md"
+    },
+    {
+      "type": "detectorMissingInput",
+      "constName": "SignalDetectorMissingInput",
+      "domain": "quality",
+      "status": "stable",
+      "title": "Detector Missing Input",
+      "description": "A registered detector requires inputs (runtime artifacts, baseline snapshot, or eval-framework results) that the current snapshot doesn't carry. The detector was skipped; the rest of the pipeline ran normally.",
+      "remediation": "The marker explanation lists the specific flag(s) to pass to `terrain analyze` to provide the missing inputs. If you don't need this detector's signals, leave the inputs absent — the marker is informational.",
+      "defaultSeverity": "low",
+      "confidenceMin": 1,
+      "confidenceMax": 1,
+      "evidenceSources": [
+        "static"
+      ],
+      "ruleId": "TER-ENGINE-003",
+      "ruleUri": "docs/rules/engine/detector-missing-input.md"
     }
   ]
 }
