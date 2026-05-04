@@ -92,3 +92,8 @@ PR_DESCRIPTION.md
 tmp/
 temp/
 terrain-parity-gate
+
+# === Local agent / build scratch ===
+.claude/
+terrain-docs-linkcheck
+terrain-truth-verify
