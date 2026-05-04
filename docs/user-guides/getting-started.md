@@ -2,6 +2,32 @@
 
 ## Prerequisites
 
+### Node 22 (npm path only)
+
+The npm install path requires **Node 22 or later**. The postinstall
+script uses `fetch`, top-level await, and modern stream primitives
+that landed in Node 22 — earlier versions fail at install time, not
+run time.
+
+```bash
+node --version    # expect v22.x or higher
+```
+
+If your CI image is pinned to Node 20 LTS, two recommended
+alternatives keep working without a Node bump:
+
+```bash
+# Homebrew (macOS / Linux)
+brew install pmclSF/terrain/mapterrain
+
+# Go install (any platform with Go 1.23+)
+go install github.com/pmclSF/terrain/cmd/terrain@latest
+```
+
+Node-20 compat for the npm path is on the 0.3 roadmap.
+
+### Cosign (npm path only)
+
 The npm install path verifies signed binaries with cosign before
 extracting them. Cosign needs to be on `PATH` before you run `npm
 install`:
