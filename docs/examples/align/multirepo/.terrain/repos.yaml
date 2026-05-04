@@ -1,0 +1,46 @@
+# Acme Corp engineering portfolio — test alignment manifest.
+#
+# Drop into your org root as `.terrain/repos.yaml` (the aggregator
+# resolves repo paths relative to this file's directory). The
+# manifest schema is locked at version 1 for the 0.2.x window;
+# unrecognized versions refuse to load rather than guessing.
+#
+# Status of the multi-repo aggregator that consumes this file:
+#   - 0.2.0:  manifest format ships (this file is forward-compatible)
+#   - 0.2.x:  cross-repo aggregator + portfolio output ships
+#
+# See ../README.md for the full convergence story this manifest
+# illustrates, and docs/product/alignment-first-migration.md for
+# the broader framing.
+
+version: 1
+description: Acme Corp engineering portfolio (test alignment)
+
+repos:
+  # Tier-1 customer-facing service — already on framework of record.
+  # Listed in the manifest so cross-repo posture rolls it up; no
+  # convergence work expected.
+  - name: web-app
+    path: ../web-app
+    owner: web-team
+    frameworksOfRecord: [jest, playwright]
+    tags: [tier-1, customer-facing]
+
+  # Tier-1 customer-facing service — currently drifts from of-record
+  # framework. The aggregator's recommended sequence prioritizes
+  # convergence here.
+  - name: api-service
+    path: ../api-service
+    owner: backend-team
+    frameworksOfRecord: [jest, playwright]
+    tags: [tier-1, customer-facing]
+
+  # Sunset target — keep visible in the portfolio, exclude from
+  # recommended sequence. Declaring mocha as the framework of
+  # record reflects the team's "current state IS of-record because
+  # we're not migrating" decision.
+  - name: legacy-portal
+    path: ../legacy-portal
+    owner: platform-team
+    frameworksOfRecord: [mocha]
+    tags: [tier-3, sunset-2026q3]
