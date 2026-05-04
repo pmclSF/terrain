@@ -245,4 +245,19 @@ type Signal struct {
 	// evidence aggregation. The renderer uses this to fold corroborating
 	// findings into a single block instead of repeating noise.
 	RelatedSignals []SignalReference `json:"relatedSignals,omitempty"`
+
+	// FindingID is the stable identifier for this finding, used by
+	// suppressions, the `terrain explain finding <id>` round-trip, and
+	// `--new-findings-only` baseline gating. Format and semantics are
+	// owned by `internal/identity.BuildFindingID`. Empty when emitted
+	// before the engine's id-assignment pass runs (during construction
+	// inside detectors); the pipeline populates this field on every
+	// signal before snapshot serialization.
+	//
+	// Stability: same (Type, Location.File, Location.Symbol,
+	// Location.Line) → same FindingID across runs. File rename or
+	// symbol rename produces a new FindingID. Line drift WITHOUT a
+	// symbol changes the ID; AST-anchored 0.3 work removes that
+	// limitation.
+	FindingID string `json:"findingId,omitempty"`
 }

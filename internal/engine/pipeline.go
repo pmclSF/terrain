@@ -713,6 +713,13 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	progress(5, "Writing report")
 	models.SortSnapshot(snapshot)
 
+	// Step 10b: assign stable FindingIDs to every signal. Runs after
+	// the sort so IDs land in canonical order; uses Type + Location
+	// (file/symbol/line) so the IDs survive everything except a
+	// rename/move of the signal's underlying location. See
+	// `internal/identity.BuildFindingID` for the format.
+	assignFindingIDs(snapshot)
+
 	if err := models.ValidateSnapshot(snapshot); err != nil {
 		return nil, fmt.Errorf("invalid snapshot produced by pipeline: %w", err)
 	}
