@@ -1,0 +1,64 @@
+{
+  "snapshotMeta": {
+    "engineVersion": "0.1.4",
+    "createdAt": "2025-12-01T00:00:00Z"
+  },
+  "repository": {
+    "rootPath": "/work/legacy-app",
+    "language": "typescript",
+    "snapshotTimestamp": "2025-12-01T00:00:00Z"
+  },
+  "frameworks": [
+    {
+      "name": "jest",
+      "version": "29.7.0",
+      "type": "unit",
+      "fileCount": 12,
+      "testCount": 47
+    }
+  ],
+  "testFiles": [
+    {
+      "path": "src/auth/login.test.ts",
+      "framework": "jest",
+      "testCount": 5,
+      "assertionCount": 12
+    },
+    {
+      "path": "src/auth/session.test.ts",
+      "framework": "jest",
+      "testCount": 3,
+      "assertionCount": 8
+    }
+  ],
+  "codeUnits": [
+    {
+      "name": "loginUser",
+      "path": "src/auth/login.ts",
+      "kind": "function",
+      "exported": true
+    },
+    {
+      "name": "logoutUser",
+      "path": "src/auth/login.ts",
+      "kind": "function",
+      "exported": true
+    },
+    {
+      "name": "createSession",
+      "path": "src/auth/session.ts",
+      "parentName": "SessionManager",
+      "kind": "method",
+      "exported": true
+    }
+  ],
+  "signals": [
+    {
+      "type": "untestedExport",
+      "category": "structural",
+      "severity": "medium",
+      "path": "src/auth/login.ts",
+      "explanation": "exported function logoutUser has no covering test"
+    }
+  ]
+}
