@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"runtime/debug"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -62,10 +63,7 @@ func safeDetect(reg DetectorRegistration, fn func() []models.Signal) (out []mode
 
 // safeDetectWithBudget wraps safeDetect with a per-detector wall-
 // clock timeout. Track 9.4 — the budget protects the pipeline from
-// any single hung detector blocking the rest. The detector still
-// runs in the calling goroutine (no extra goroutine cost on the
-// happy path); when it exceeds its budget we emit a budget-exceeded
-// marker and return.
+// any single hung detector blocking the rest.
 //
 // Note: a detector that ignores ctx and runs a tight CPU loop will
 // still complete its work after the budget elapses (Go has no
@@ -103,6 +101,97 @@ func safeDetectWithBudget(reg DetectorRegistration, fn func() []models.Signal) [
 				reg.Meta.ID, budget),
 			SuggestedAction: "If this detector is legitimately slow on your repo, raise its budget in DetectorMeta.Budget. If it should be fast, the runaway suggests a quadratic-or-worse code path or a hung I/O — re-run with --log-level=debug.",
 		}}
+	}
+}
+
+// signalTypeMissingInputDiagnostic is the marker emitted by the
+// registry when a detector's RequiresRuntime / RequiresBaseline /
+// RequiresEvalArtifact flag is set but the snapshot doesn't carry
+// the corresponding input. Track 9.3 — adopters running `terrain
+// analyze` without coverage / baseline / eval artifacts get a
+// single visible diagnostic per affected detector instead of
+// silent zero-output.
+const signalTypeMissingInputDiagnostic = SignalDetectorMissingInput
+
+// missingInputs returns a list of human-readable input-name strings
+// that the detector's metadata says it needs but the snapshot
+// doesn't provide. Empty list means the detector can run; non-empty
+// means the registry should emit a missingInputDiagnostic and skip
+// invocation. Each input name corresponds to a CLI flag the user
+// would set to provide the input.
+func missingInputs(meta DetectorMeta, snap *models.TestSuiteSnapshot) []string {
+	if snap == nil {
+		return nil
+	}
+	var missing []string
+	if meta.RequiresRuntime && !snapshotHasRuntime(snap) {
+		missing = append(missing, "runtime artifacts (--runtime path/to/junit.xml or jest.json)")
+	}
+	if meta.RequiresBaseline && snap.Baseline == nil {
+		missing = append(missing, "baseline snapshot (--baseline path/to/old-snapshot.json)")
+	}
+	if meta.RequiresEvalArtifact && len(snap.EvalRuns) == 0 {
+		missing = append(missing, "eval-framework artifact (--promptfoo-results / --deepeval-results / --ragas-results)")
+	}
+	return missing
+}
+
+// snapshotHasRuntime reports whether the snapshot carries any
+// runtime test result data. We look at the test-file inventory
+// rather than walking every signal — the runtime stats live on the
+// TestFile, not on signals.
+func snapshotHasRuntime(snap *models.TestSuiteSnapshot) bool {
+	for i := range snap.TestFiles {
+		if snap.TestFiles[i].RuntimeStats != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// missingInputDiagnostic builds the marker signal emitted when one
+// or more required inputs are absent. The explanation lists every
+// missing input so adopters can fix them all in one re-run rather
+// than playing whack-a-mole.
+func missingInputDiagnostic(meta DetectorMeta, missing []string) models.Signal {
+	return models.Signal{
+		Type:       signalTypeMissingInputDiagnostic,
+		Category:   models.CategoryQuality,
+		Severity:   models.SeverityLow,
+		Confidence: 1.0,
+		Explanation: fmt.Sprintf(
+			"detector %q requires inputs the current snapshot doesn't carry: %s",
+			meta.ID, joinInputNames(missing)),
+		SuggestedAction: "Re-run `terrain analyze` with the listed flags to enable this detector. If you don't need its signals, leave the inputs absent — this diagnostic surfaces the gap without blocking the rest of the pipeline.",
+	}
+}
+
+// safeDetectChecked is the registry's canonical detector-invocation
+// path. It composes Track 9.3 (missing-input check) with Track 9.4
+// (per-detector budget) over Track 9.2's panic recovery: input
+// gates first (skip detectors that can't fire), then budget-bounded
+// invocation that delegates to safeDetect for panic handling.
+// All call sites in Run / RunWithGraph route through here.
+func safeDetectChecked(reg DetectorRegistration, snap *models.TestSuiteSnapshot, fn func() []models.Signal) []models.Signal {
+	if missing := missingInputs(reg.Meta, snap); len(missing) > 0 {
+		return []models.Signal{missingInputDiagnostic(reg.Meta, missing)}
+	}
+	return safeDetectWithBudget(reg, fn)
+}
+
+func joinInputNames(names []string) string {
+	switch len(names) {
+	case 0:
+		return ""
+	case 1:
+		return names[0]
+	case 2:
+		return names[0] + " and " + names[1]
+	default:
+		// Oxford comma, plain English: "a, b, c, and d".
+		// Join all but the last with ", " then append ", and <last>".
+		head := names[:len(names)-1]
+		return strings.Join(head, ", ") + ", and " + names[len(names)-1]
 	}
 }
 
@@ -181,6 +270,57 @@ type DetectorMeta struct {
 	// it; setting a tighter budget on simple structural detectors
 	// catches accidental quadratic-or-worse code paths.
 	Budget time.Duration
+
+	// --- Track 9.1 capability metadata ---
+	//
+	// The fields below describe what a detector consumes beyond the
+	// in-memory snapshot. They're descriptive (so docs / `terrain
+	// doctor` can surface "this detector needs runtime data") AND
+	// load-bearing (Track 9.3 — when a required input is missing
+	// the registry emits a single per-detector missingInputDiagnostic
+	// instead of silently running a detector that can't fire).
+	//
+	// All zero values mean "don't require this input", which keeps
+	// the existing detector roster behaving exactly as before. New
+	// detectors that genuinely need runtime / baseline / eval data
+	// should set the relevant flag so the diagnostic surfaces when
+	// inputs are absent.
+
+	// RequiresRuntime indicates the detector reads RuntimeStats from
+	// the snapshot (populated by JUnit XML / Jest JSON / Go test
+	// JSON ingestion). Without runtime artifacts the snapshot's
+	// runtime fields are empty and the detector cannot fire.
+	RequiresRuntime bool
+
+	// RequiresBaseline indicates the detector compares the current
+	// snapshot against a baseline snapshot (passed via
+	// `terrain analyze --baseline`). Without it, the regression
+	// detectors (aiCostRegression, aiHallucinationRate,
+	// aiRetrievalRegression) have no point of comparison.
+	RequiresBaseline bool
+
+	// RequiresEvalArtifact indicates the detector reads EvalRuns
+	// from the snapshot (populated by Promptfoo / DeepEval / Ragas
+	// adapter ingestion). Without an artifact path passed via the
+	// `--{promptfoo,deepeval,ragas}-results` flags, the snapshot's
+	// EvalRuns is empty and these detectors can't fire.
+	RequiresEvalArtifact bool
+
+	// ContextAware reports whether the detector honors ctx.Err() in
+	// its inner loops. Detectors that don't are still safe — they
+	// run inside safeDetectWithBudget and get abandoned at the
+	// budget cap — but ctx-aware detectors can react faster to
+	// pipeline cancellation. Surfaced in `terrain doctor` so
+	// reviewers can see the cancellation posture per-detector.
+	ContextAware bool
+
+	// Experimental marks the detector as not-yet-stable. Distinct
+	// from the manifest's Status field on individual signals: a
+	// stable signal type can still have an experimental detector
+	// (the type is locked, the detector implementation is not).
+	// Experimental detectors are excluded from the recommended
+	// `--fail-on critical` gate per the trust-tier framing.
+	Experimental bool
 }
 
 // DetectorRegistration pairs a Detector with its metadata.
@@ -277,7 +417,7 @@ func (r *DetectorRegistry) Run(snap *models.TestSuiteSnapshot) {
 		wg.Add(1)
 		go func(idx int, reg DetectorRegistration) {
 			defer wg.Done()
-			found := safeDetectWithBudget(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
+			found := safeDetectChecked(reg, snap, func() []models.Signal { return reg.Detector.Detect(snap) })
 			mu.Lock()
 			results = append(results, result{idx: idx, signals: found})
 			mu.Unlock()
@@ -294,7 +434,7 @@ func (r *DetectorRegistry) Run(snap *models.TestSuiteSnapshot) {
 
 	// Dependent detectors run after independent outputs are available.
 	for _, reg := range dependents {
-		found := safeDetectWithBudget(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
+		found := safeDetectChecked(reg, snap, func() []models.Signal { return reg.Detector.Detect(snap) })
 		snap.Signals = append(snap.Signals, found...)
 	}
 }
@@ -338,7 +478,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 		wg.Add(1)
 		go func(idx int, reg DetectorRegistration) {
 			defer wg.Done()
-			found := safeDetectWithBudget(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
+			found := safeDetectChecked(reg, snap, func() []models.Signal { return reg.Detector.Detect(snap) })
 			mu.Lock()
 			results = append(results, result{idx: idx, signals: found})
 			mu.Unlock()
@@ -381,7 +521,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 			wg2.Add(1)
 			go func(idx int, reg DetectorRegistration, gd GraphDetector) {
 				defer wg2.Done()
-				found := safeDetectWithBudget(reg, func() []models.Signal { return gd.DetectWithGraph(snap, g) })
+				found := safeDetectChecked(reg, snap, func() []models.Signal { return gd.DetectWithGraph(snap, g) })
 				mu.Lock()
 				graphResults = append(graphResults, result{idx: idx, signals: found})
 				mu.Unlock()
@@ -399,7 +539,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 
 	// Phase 3: Signal-dependent detectors (sequential).
 	for _, reg := range dependents {
-		found := safeDetectWithBudget(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
+		found := safeDetectChecked(reg, snap, func() []models.Signal { return reg.Detector.Detect(snap) })
 		snap.Signals = append(snap.Signals, found...)
 	}
 }
@@ -408,7 +548,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 func (r *DetectorRegistry) RunDomain(snap *models.TestSuiteSnapshot, domain Domain) {
 	for _, reg := range r.registrations {
 		if reg.Meta.Domain == domain {
-			found := safeDetectWithBudget(reg, func() []models.Signal { return reg.Detector.Detect(snap) })
+			found := safeDetectChecked(reg, snap, func() []models.Signal { return reg.Detector.Detect(snap) })
 			snap.Signals = append(snap.Signals, found...)
 		}
 	}
