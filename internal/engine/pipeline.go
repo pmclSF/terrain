@@ -410,7 +410,10 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	// Step 2c: Auto-derive AI scenarios from code (no YAML required).
 	// Detects eval frameworks (promptfoo, deepeval, langchain, etc.) and
 	// derives scenarios from eval test files and AI import patterns.
-	aiDetection := aidetect.Detect(root)
+	// DetectContext respects pipeline cancellation in the source-walk
+	// inner loop — pre-Track 5.3 a slow AI scan would block until the
+	// walk completed even when ctx had been cancelled.
+	aiDetection := aidetect.DetectContext(ctx, root)
 	derivedScenarios := aidetect.DeriveScenarios(root, aiDetection, snapshot.CodeSurfaces, snapshot.TestFiles)
 	if len(derivedScenarios) > 0 {
 		// Merge with manual scenarios, avoiding duplicates by ID or by
