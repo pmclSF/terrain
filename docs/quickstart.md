@@ -1,8 +1,18 @@
 # Terrain Quickstart
 
-Understand your test system in 5 minutes. No config, no setup, no test execution required.
+Five minutes from `npm install` to one actionable insight on your repo.
+The walkthrough is structured around the three insights that count toward
+the [first-user success gate](../docs/product/vision.md):
 
-Terrain reads your repository — test code, source structure, coverage data, runtime artifacts — and builds a structural model of how your tests relate to your code. From that model it surfaces risk, quality gaps, redundancy, fragile dependencies, and actionable recommendations.
+1. **PR risk explanation** — a finding tied to a changed file
+2. **Coverage gap with explanation** — a named uncovered export with a
+   remediation pointer
+3. **Test-selection explanation** — chosen tests + reason chains
+
+Terrain operates one layer above your test runners (Jest / pytest / Go
+test / Playwright / Promptfoo). It reads what they produce, models the
+test system as one thing, and gates against it. No config, no setup,
+no test execution required for the walkthrough.
 
 ## Install
 
@@ -21,15 +31,60 @@ git clone https://github.com/pmclSF/terrain.git
 cd terrain && go build -o terrain ./cmd/terrain
 ```
 
-## Your first analysis
+## Step 1 — Understand (90 seconds)
 
-Run this in any repository with test files:
+The primary workflow's first command. Run this in any repository with
+test files:
 
 ```bash
 terrain analyze
 ```
 
-That's it. No configuration, no setup. Terrain auto-detects your test frameworks (Jest, Vitest, Playwright, Cypress, pytest, JUnit, Go testing, and 10 more), builds a structural model, and produces a report.
+You should see a report with the repository profile, signal breakdown,
+risk posture, and key findings. **This is your "coverage gap with
+explanation" insight**: the report names specific uncovered exports
+with remediation pointers ("Add test coverage for 12 uncovered
+exported function(s) — see untestedExport signals for specific
+functions").
+
+That's the first of the three first-user insights. Two more to go.
+
+## Step 2 — Gate (90 seconds)
+
+The primary workflow's second command. On a feature branch with diff
+against main, run:
+
+```bash
+terrain report pr --base main
+```
+
+This emits a change-scoped PR risk report — what your diff actually
+puts at risk, ranked by confidence. **This is your "PR risk
+explanation" insight**: every blocking signal is tied to a specific
+changed file with a "what / why / what-to-do" line.
+
+Add `--fail-on critical` and the command exits non-zero (code 6) when
+any critical-severity finding is present. That's how you wire it
+into CI as a gate. See the [CI integration
+example](examples/gate/github-action.yml) for the recommended config.
+
+## Step 3 — See which tests matter (90 seconds)
+
+```bash
+terrain report impact --base main --explain-selection
+```
+
+This is the **test-selection explanation** insight: chosen tests plus
+the reason chain for why each was selected and why others were not.
+
+> **Note on safe-skip:** Terrain provides explainable selection. It does
+> not assert that any specific test is safe to skip. The "see which
+> tests matter — and why" pitch is a clarity claim, not a safe-skip
+> claim. Whether to skip the unselected tests is your call, with the
+> evidence Terrain hands you.
+
+That's the three first-user insights. From here, the rest of this
+guide goes deeper.
 
 ## Understanding the report
 

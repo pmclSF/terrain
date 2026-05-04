@@ -7,16 +7,43 @@ All notable changes to Terrain are documented here. The format follows
 
 Post-0.2 work tracked separately.
 
-## [0.2.0] — 2026-05-02 — AI parity, calibration gate, CLI compression
+## [0.2.0] — Parity-gated release — control plane for your test system
 
-The release that turns Terrain's AI story into something testable. Twelve
-new AI detectors ship with calibration anchors at **100% recall on a
-27-fixture corpus** (the gate is a recall regression gate; per-detector
-*precision* floors against a labeled-repo corpus are deferred to 0.3 —
-see `docs/release/0.2-known-gaps.md`). The CLI surface compresses 35→11
-canonical commands while keeping every legacy alias working. The
-calibration runner becomes a load-bearing regression gate. Per
-`docs/release/0.2.md`.
+> **Terrain is the control plane for your test system.**
+> It maps how your unit, integration, e2e, and AI tests actually relate
+> to your code — and lets you gate changes based on that system as a
+> whole. See what's covered, what's missing, and what's overlapping.
+> See which tests matter for a PR — and why. Bring AI evals into the
+> same review pipeline as the rest of your tests.
+
+0.2.0 is the first release shipped under the [parity gate]
+(docs/release/0.2.x-maturity-audit.md): every functional area must
+clear its pillar floor (Gate ≥ 4, Understand ≥ 3, Align ≥ 3 soft) before
+the tag cuts. Source of truth for the full vision is
+[`docs/product/vision.md`](docs/product/vision.md); per-capability
+status with pillar + tier is [`docs/release/feature-status.md`]
+(docs/release/feature-status.md).
+
+The release groups deliverables by the three pillars:
+
+- **Understand** (Tier 1): full snapshot pipeline; `report
+  summary/posture/metrics/focus/insights/explain`; AI surface
+  inventory; cross-repo views.
+- **Align** (Tier 1): framework migration with per-file confidence;
+  alignment-first docs; multi-repo manifest format.
+- **Gate** (Tier 1): `report pr / impact` with `--fail-on /
+  --new-findings-only / --timeout`; suppressions
+  (`.terrain/suppressions.yaml`); stable finding IDs;
+  `terrain explain finding <id>`; one recommended GitHub Action
+  template.
+
+Twelve new AI detectors ship with calibration anchors at **100% recall
+on a 27-fixture corpus** (the gate is a recall regression gate;
+per-detector *precision* floors against a labeled-repo corpus are
+deferred to 0.3 — see `docs/release/0.2-known-gaps.md`). The CLI
+surface compresses 35→11 canonical commands while keeping every legacy
+alias working. The calibration runner becomes a load-bearing regression
+gate.
 
 ### What's stable in 0.2
 

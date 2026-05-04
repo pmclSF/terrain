@@ -1,8 +1,18 @@
 # Feature Status — 0.2.0
 
 Single source of truth for what ships in 0.2.0. Every claim in `README.md`,
-`DESIGN.md`, marketing material, and example outputs should map back to a
-status here. Drift is treated as a release blocker.
+`docs/product/vision.md`, marketing material, and example outputs should
+map back to a status here. Drift is treated as a release blocker.
+
+Each shipping capability has three tags:
+
+- **Pillar** — Understand, Align, or Gate (per `docs/product/vision.md`)
+- **Tier** — 1 (publicly claimable, parity floor ≥ 4), 2 (experimental, floor ≥ 3), 3 (in development, no public claim)
+- **Status** — stable / experimental / planned / deprecated
+
+The pillar + tier columns are new in 0.2.0. The pillar tells you which
+of the three workflow questions this capability answers; the tier tells
+you whether marketing claims back it.
 
 Statuses:
 
@@ -17,26 +27,33 @@ If a feature is **planned**, no detector emits its signals today.
 
 ## Workflows
 
-| Feature | Status | Notes |
-|---|---|---|
-| `terrain analyze` | stable | Full snapshot pipeline; `--baseline` flag added in 0.2. Now panics in detectors are recovered to a single `detectorPanic` signal — the rest of the pipeline isolates. |
-| `terrain init` | stable | Bootstrap a `.terrain/` config tree. |
-| `terrain report <verb>` | stable | New 0.2 namespace: 9 read-side verbs (summary, insights, metrics, explain, show, impact, pr, posture, select-tests). Routes to the same runners as the legacy top-level commands; output is byte-identical for the cases reviewed. |
-| `terrain migrate <verb>` | stable | New 0.2 namespace: 11 verbs covering the merged convert + migrate + migration commands. `terrain convert` retains its per-file fall-through (`terrain convert spec.cy.ts --to playwright` works). |
-| `terrain config <verb>` | stable | New 0.2 namespace: feedback, telemetry. |
-| `terrain doctor` | stable | Migration-readiness diagnostic. Test-file count is now restricted to direct test-dir parents (was over-counting fixture trees by ~4×). |
-| `terrain explain` | stable | Reason chains supported; per-detector evidence quality varies. Now also reachable as `terrain report explain`. |
-| `terrain debug <verb>` | stable | graph / coverage / fanout / duplicates / depgraph. |
-| `terrain serve` | experimental | HTTP API on 127.0.0.1 only; the dashboard "embedded charts" claim from earlier docs is **planned**, not shipped. |
-| `terrain ai list` | stable | Surface inventory + scenario detection. |
-| `terrain ai doctor` | stable | Diagnostic check on AI scenario configuration. |
-| `terrain ai run` | stable | Captures eval framework output to `.terrain/artifacts/`. AI-gate exit code is now `4` (was `1`) on `actionBlock` per the documented exit-code scheme. |
-| `terrain ai record` | stable | Record current scenario state as a baseline. |
-| `terrain ai baseline` | stable | List recorded baselines. |
-| `terrain ai replay` | stable | Replay a saved artifact. |
-| `terrain ai compare` | planned | Prompt-pair regression detection. | 0.3 |
-| `terrain ai gate` | planned | Standalone CI gate command. Today, gating goes through `terrain ai run` + `--baseline`. | 0.3 |
-| `terrain portfolio <verb>` | experimental | Multi-repo workspace. |
+| Feature | Pillar | Tier | Status | Notes |
+|---|---|---|---|---|
+| `terrain analyze` | Understand | 1 | stable | Full snapshot pipeline; `--baseline` flag added in 0.2. Detector panics recovered to a single `detectorPanic` signal. `--fail-on / --timeout / --new-findings-only` ship as Gate-pillar primitives. |
+| `terrain init` | cross-cutting | 1 | stable | Bootstrap a `.terrain/` config tree. |
+| `terrain report summary / posture / metrics / focus` | Understand | 1 | stable | Aggregation views over signals. |
+| `terrain report insights / explain` | Understand | 1 | stable | Read-side queries; reason chains supported. |
+| `terrain report impact` | Gate | 1 | stable | Change-scoped selection; `--explain-selection` lands in 0.2.0 (Track 3.2). |
+| `terrain report pr` | Gate | 1 | stable | PR-scoped report + comment template. `--fail-on / --new-findings-only` parity with `analyze` (Track 3.1). |
+| `terrain report select-tests` | Align | 2 | experimental | Recommended protective test set. |
+| `terrain report show <kind> <id>` | Understand | 1 | stable | Drill into test, unit, owner, or finding. |
+| `terrain compare` | Understand | 1 | stable | Snapshots over time. |
+| `terrain migrate <verb>` | Align | 1 | stable | Per-direction tier badges added in 0.2 (Track 6.6). `terrain convert` retains per-file fall-through. |
+| `terrain policy check` | Gate | 1 | stable | Local policy enforcement. `terrain init` emits a starter policy template (Track 7.6). |
+| `terrain config <verb>` | cross-cutting | 1 | stable | feedback, telemetry. |
+| `terrain doctor` | cross-cutting | 2 | stable | Migration-readiness diagnostic; per-pillar maturity view (Track 2.5). |
+| `terrain debug <verb>` | Understand | 2 | stable | graph / coverage / fanout / duplicates / depgraph. |
+| `terrain serve` | Understand | 2 | experimental | Local HTTP report; localhost-only, no auth. PR #132 wires request context + singleflight (Track 4.1). |
+| `terrain ai list` | Gate (inventory) | 1 | stable | AI surface inventory. |
+| `terrain ai doctor` | cross-cutting | 2 | stable | Diagnostic check on AI scenario configuration. |
+| `terrain ai run` | Gate | 2 | stable | Captures eval framework output. AI-gate exit code 4 on `actionBlock`. Trust-boundary doc (Track 7.3) clarifies parses-vs-executes. |
+| `terrain ai run --baseline` | Gate | 2 | stable | Regression-aware AI gate. |
+| `terrain ai record / baseline / replay` | Gate | 2 | stable | Baseline lifecycle. |
+| `terrain ai compare` | Gate | 3 | planned | Prompt-pair regression detection. 0.3. |
+| `terrain ai gate` | Gate | 3 | planned | Standalone CI gate command. Today, gating goes through `terrain ai run` + `--baseline`. 0.3. |
+| `terrain portfolio <verb>` | Align | 2 | experimental | Multi-repo workspace. Multi-repo manifest format + per-repo aggregation lands in 0.2 (Track 6.1–6.3); full closure in 0.2.x. |
+| `terrain explain finding <id>` | Gate | 1 | stable (0.2) | Resolve a stable finding ID back to its evidence. Track 4.6. |
+| `terrain suppress <id>` | Gate | 1 | stable (0.2) | Write a suppression entry. Track 4.7. |
 
 ## Detectors / signal types
 

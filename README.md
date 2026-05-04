@@ -1,14 +1,30 @@
 # Terrain
 
-**Map your test terrain.** Understand your test system in seconds — typical
-service repos in 5–15s, large monorepos take longer (the headline "30
-seconds" claim refers to repos ≤ 1,000 test files; see Performance below).
+> **Terrain is the control plane for your test system.**
+>
+> It maps how your unit, integration, e2e, and AI tests actually relate
+> to your code — and lets you gate changes based on that system as a whole.
+>
+> See what's covered, what's missing, and what's overlapping.
+> See which tests matter for a PR — and why.
+> Bring AI evals into the same review pipeline as the rest of your tests.
+
+*Map your test terrain.* Two commands an adopter learns first, in order:
+
+```bash
+terrain analyze         # Understand your test system
+terrain report pr       # Gate PR changes based on it
+```
+
+Everything else is a deeper view *off* this primary workflow.
+
+## Install
 
 ```bash
 # Homebrew
 brew install pmclSF/terrain/mapterrain
 
-# npm — note: requires cosign on PATH for signed-binary verification.
+# npm — requires cosign on PATH for signed-binary verification.
 # brew install cosign  (macOS / Linux)
 # scoop install cosign (Windows)
 # Set TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1 to fall back to checksum-only,
@@ -24,13 +40,14 @@ findings (runtime health, eval regression, policy enforcement) are unlocked
 by optional artifacts; degrade gracefully when absent.
 
 > **New here?** Read the [Quickstart Guide](docs/quickstart.md) to understand your first report in 5 minutes.
-> **What ships in 0.2?** See [What 0.2 is and isn't](#what-02-is-and-isnt) below before adopting in CI.
+> **Going deeper?** [`docs/product/vision.md`](docs/product/vision.md) is the full product narrative.
+> **Adopting in CI?** See [What 0.2 is and isn't](#what-02-is-and-isnt) below first.
 
 ---
 
-Terrain is a test system intelligence platform. It reads your repository — test code, source structure, and (when available) coverage data, runtime artifacts, ownership files, and local policy — and builds a structural model of how your tests relate to your code. From that model it surfaces risk, quality gaps, redundancy, fragile dependencies, and migration readiness on a best-effort basis without running a single test.
+Terrain operates one layer above the test runners — the same architectural pattern as a Kubernetes control plane, but for the test system. Test runners (Jest / pytest / Go test / Playwright / Promptfoo) continue to execute; Terrain reads what they produce, models the system as one thing, and gates against it.
 
-The core idea: every codebase has a *test terrain* — the shape of its testing infrastructure, the density of coverage across areas, the hidden fault lines where a fixture change cascades into thousands of tests. Terrain makes that shape visible and navigable so you can make informed decisions about what to test, what to fix, and where to invest.
+When the testing surface drifts from the code surface — exports without tests, frameworks fragmenting across directories, AI surfaces shipping without scenarios, one team's posture diverging from another's — Terrain shows where the drift is and what convergence would take. That's the alignment side of the job. Conversion (migrating frameworks, e.g. Jest → Vitest) is one mode of alignment, not a separate product.
 
 ## What "Test Terrain" Means
 
@@ -229,39 +246,64 @@ If you're evaluating Terrain against another tool and the boundary isn't obvious
 
 ## What 0.2 Is and Isn't
 
-Read this before adopting in CI. Source of truth per-feature is
+Read this before adopting in CI. Source of truth per-capability is
 [`docs/release/feature-status.md`](docs/release/feature-status.md);
 this is the summary view.
 
-**Stable in 0.2** — covered by tests, documented behavior, won't change
-shape in 0.2.x:
+Capabilities are tiered:
 
-- repository scan + framework detection (Tier-1 frameworks)
-- snapshot generation + schema versioning
-- signal registry + manifest export
-- AI surface inventory (prompt / agent / tool / context / eval / model / scenario)
-- Promptfoo / DeepEval / Ragas eval-artifact ingestion
-- recall regression gate via the 27-fixture calibration corpus
-- 10 of the 12 new AI detectors marked `[stable]`
-- canonical 11-command CLI shape (legacy aliases still work; removal targets 0.3)
+- **Tier 1** — covered by tests, documented behavior, claimed publicly. Floor ≥ 4 on the parity rubric.
+- **Tier 2** — shipping but explicitly experimental; useful but not yet hardened. Floor ≥ 3.
+- **Tier 3** — in development, opt-in, no public claim. Wait for promotion.
 
-**Experimental** — useful but not yet hardened; expect signal/UX changes:
+### By pillar
 
-- `aiPromptInjectionRisk` and `aiFewShotContamination` detectors (regex-based; AST-grade taint is 0.3)
-- `terrain serve` local HTTP server (no auth, localhost-only, single-developer use)
-- `terrain portfolio` multi-repo analysis
-- portfolio-level scoring thresholds
-- AI surface inference *precision* (recall is calibration-anchored; precision against a labeled-repo corpus is 0.3)
+**Understand** (Tier 1 unless noted):
 
-**Planned for 0.3**:
+- `terrain analyze` — snapshot + signals + posture
+- `terrain report summary / posture / metrics / focus / insights / explain` — read-side queries
+- `terrain compare` — snapshots over time
+- AI surface inventory — what AI surfaces exist, where they are, what evals cover them
+- `terrain serve` (Tier 2) — local HTTP report; localhost-only, no auth
+- `terrain portfolio` (Tier 2, emerging) — multi-repo aggregation; partial in 0.2.0
+- `terrain debug *` (Tier 2) — diagnostic drill-downs
 
-- per-detector precision benchmarking against a labeled-repo corpus
+**Align** (Tier 1):
+
+- `terrain migrate` / `terrain convert` — framework migration with per-file confidence
+- `terrain report select-tests` (Tier 2) — recommended protective test set for a change
+- Alignment views in `posture` and `portfolio` — drift between code surface and test surface
+
+**Gate** (Tier 1 unless noted):
+
+- `terrain report pr` — change-scoped PR risk report
+- `terrain report impact` — impact selection with reason chains (`--explain-selection`)
+- `terrain analyze --fail-on / --timeout / --new-findings-only` — CI gating primitives
+- `terrain policy check` — policy enforcement
+- Eval artifact ingestion — Promptfoo / DeepEval / Ragas adapters
+- AI risk: **inventory** (Tier 1, reliable)
+- AI risk: **hygiene** + **regression** (Tier 2, visible but not gating-critical)
+- `terrain ai run --baseline` (Tier 2) — regression-aware AI gate
+
+### Anti-goals (0.2.x)
+
+These are explicit non-claims:
+
+- **Terrain does not guarantee safe test skipping.** It provides explainable selection and gating signals. The "see which tests matter — and why" pitch is a clarity claim, not a safe-skip claim.
+- **Terrain does not run your tests.** Test runners execute; Terrain reads what they produce.
+- **Terrain does not judge model truthfulness.** AI risk detectors surface heuristic structural patterns and ingest eval-framework metadata.
+- **Terrain does not promise public-grade precision floors in 0.2.x.** Recall-anchored calibration only; labeled-corpus precision floors are 0.3 work.
+
+### Planned for 0.3
+
+- Per-detector precision benchmarking against a labeled-repo corpus
 - AST-grade taint analysis for prompt injection
-- suppression model (`.terrain/suppressions.yaml`) and the false-positive workflow it enables
+- Suppression lifecycle (expiry, owner, audit) — basic suppressions ship in 0.2.0
 - `terrain ai gate` standalone command
-- plugin architecture for community adapters
-- sandboxing for eval execution
-- removal of the legacy CLI aliases (with a 0.2.x deprecation runway)
+- Plugin architecture for community adapters
+- Sandboxing for eval execution
+- Legacy CLI alias removal (with a 0.2.x deprecation runway)
+- AI-aware integration / e2e tests under the control plane (0.4 trajectory)
 
 ## Who Uses Terrain
 
