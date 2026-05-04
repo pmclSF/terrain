@@ -18,6 +18,71 @@ const packageJson = JSON.parse(
 const GITHUB_OWNER = 'pmclSF';
 const GITHUB_REPO = 'terrain';
 
+// installFailureMarkerPath returns the path where a failed install
+// records its error. The CLI trampoline checks this before retrying
+// so users see a clear remediation message instead of a confusing
+// retry of the same failure. ~/.terrain is also where local snapshots
+// live, so the location is already a Terrain working directory.
+function installFailureMarkerPath() {
+  return path.join(os.homedir(), '.terrain', 'install-failure.log');
+}
+
+// writeInstallFailureMarker is called from postinstall.js when
+// `npm install` fails to fetch / verify the binary. It captures the
+// error so the next `terrain` invocation can print it verbatim
+// without attempting another silent retry.
+export async function writeInstallFailureMarker(error) {
+  try {
+    const markerPath = installFailureMarkerPath();
+    await fs.mkdir(path.dirname(markerPath), { recursive: true });
+    const body = JSON.stringify(
+      {
+        timestamp: new Date().toISOString(),
+        message: error?.message ?? String(error),
+        stack: error?.stack ?? null,
+        platform: `${process.platform}/${process.arch}`,
+        version: packageJson.version,
+      },
+      null,
+      2
+    );
+    await fs.writeFile(markerPath, body, 'utf8');
+  } catch (writeErr) {
+    // Failing to write the marker is itself non-fatal; the postinstall
+    // warning has already been printed.
+    process.stderr.write(
+      `[mapterrain] (could not record install-failure marker: ${writeErr.message})\n`
+    );
+  }
+}
+
+// clearInstallFailureMarker removes the marker on a successful
+// install or successful first run. Idempotent.
+export async function clearInstallFailureMarker() {
+  try {
+    await fs.unlink(installFailureMarkerPath());
+  } catch (err) {
+    if (err.code !== 'ENOENT') {
+      // ENOENT is the happy path (no marker existed). Anything else
+      // is unexpected; surface it but don't fail.
+      process.stderr.write(
+        `[mapterrain] (could not clear install-failure marker: ${err.message})\n`
+      );
+    }
+  }
+}
+
+// readInstallFailureMarker returns the recorded error message, or
+// null if no marker exists.
+async function readInstallFailureMarker() {
+  try {
+    const body = await fs.readFile(installFailureMarkerPath(), 'utf8');
+    return JSON.parse(body);
+  } catch (err) {
+    return null;
+  }
+}
+
 function currentTarget() {
   const goosMap = {
     darwin: 'darwin',
@@ -219,7 +284,9 @@ async function verifySignatureBestEffort({
     // Hard error in 0.2: a verify-blob failure means the archive on disk
     // does NOT match the signed certificate. Aborting the install is
     // strictly safer than silently continuing.
-    const detail = error.stderr ? error.stderr.toString().trim() : error.message;
+    const detail = error.stderr
+      ? error.stderr.toString().trim()
+      : error.message;
     throw new Error(
       `cosign verify-blob FAILED for ${path.basename(archivePath)}: ${detail}. ` +
         `The downloaded archive does not match its Sigstore signature; ` +
@@ -253,7 +320,11 @@ function log(message, quiet = false) {
 // loop hung the installer until the OS killed it.
 const MAX_REDIRECTS = 5;
 
-async function downloadFile(url, destinationPath, redirectsRemaining = MAX_REDIRECTS) {
+async function downloadFile(
+  url,
+  destinationPath,
+  redirectsRemaining = MAX_REDIRECTS
+) {
   await new Promise((resolve, reject) => {
     const request = https.get(
       url,
@@ -281,7 +352,11 @@ async function downloadFile(url, destinationPath, redirectsRemaining = MAX_REDIR
             return;
           }
           try {
-            await downloadFile(response.headers.location, destinationPath, redirectsRemaining - 1);
+            await downloadFile(
+              response.headers.location,
+              destinationPath,
+              redirectsRemaining - 1
+            );
             resolve();
           } catch (error) {
             reject(error);
@@ -442,6 +517,25 @@ export async function runTerrainCli(argv = process.argv.slice(2)) {
     return;
   }
 
+  // Check for a recorded install failure before attempting a silent
+  // retry. If `npm install` failed to fetch/verify the binary, the
+  // marker file records the original error; surface it verbatim
+  // instead of pretending nothing happened.
+  const marker = await readInstallFailureMarker();
+  if (marker && !existsSync(installedBinaryPath(rootDir))) {
+    throw new Error(
+      'Terrain binary is not installed.\n\n' +
+        `Recorded install failure (${marker.timestamp}, ${marker.platform}, v${marker.version}):\n` +
+        `  ${marker.message}\n\n` +
+        'Resolve the underlying issue, then either:\n' +
+        '  - Re-run `npm install -g mapterrain` after installing cosign\n' +
+        '  - Set TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1 to fall back to\n' +
+        '    checksum-only verification, or\n' +
+        '  - Set TERRAIN_INSTALLER_SKIP_VERIFY=1 to skip verification entirely.\n\n' +
+        'Marker file: ~/.terrain/install-failure.log'
+    );
+  }
+
   let binaryPath;
   try {
     binaryPath = await ensureTerrainBinary({ rootDir });
@@ -460,6 +554,9 @@ export async function runTerrainCli(argv = process.argv.slice(2)) {
         'Build it with `go build -o terrain ./cmd/terrain` or run the Go CLI directly.'
     );
   }
+
+  // First successful run after a failed install: clear the marker.
+  await clearInstallFailureMarker();
 
   await runBinary(binaryPath, argv);
 }
