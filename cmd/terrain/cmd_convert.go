@@ -399,11 +399,12 @@ func runListConversions(jsonOutput bool) error {
 				direction.From,
 				direction.To,
 				strings.Join(direction.Shorthands, ", "),
-				humanizeGoNativeState(direction.GoNativeState),
+				tierLabelForState(direction.GoNativeState),
 			)
 		}
 		fmt.Println()
 	}
+	fmt.Println("Tiers: Stable = conversion-corpus calibrated; Experimental = end-to-end but expect hand cleanup; Preview = next up for implementation; Cataloged = metadata only.")
 	fmt.Println("Use `terrain convert <source> --from <framework> --to <framework>` to run a Go-native conversion, or add `--plan` to preview.")
 	return nil
 }
@@ -420,10 +421,10 @@ func runShorthands(jsonOutput bool) error {
 
 	fmt.Println("Shorthand command aliases")
 	fmt.Println()
-	fmt.Printf("  %-18s %-14s %-14s %s\n", "Alias", "From", "To", "State")
-	fmt.Printf("  %-18s %-14s %-14s %s\n", strings.Repeat("-", 18), strings.Repeat("-", 14), strings.Repeat("-", 14), strings.Repeat("-", 11))
+	fmt.Printf("  %-18s %-14s %-14s %s\n", "Alias", "From", "To", "Tier")
+	fmt.Printf("  %-18s %-14s %-14s %s\n", strings.Repeat("-", 18), strings.Repeat("-", 14), strings.Repeat("-", 14), strings.Repeat("-", 12))
 	for _, entry := range entries {
-		fmt.Printf("  %-18s %-14s %-14s %s\n", entry.Alias, entry.From, entry.To, humanizeGoNativeState(entry.GoNativeState))
+		fmt.Printf("  %-18s %-14s %-14s %s\n", entry.Alias, entry.From, entry.To, tierLabelForState(entry.GoNativeState))
 	}
 	fmt.Println()
 	fmt.Println("Use a shorthand directly to run the Go-native converter, or add `--plan`/`--dry-run` to preview.")
@@ -602,6 +603,33 @@ func humanizeGoNativeState(state conv.GoNativeState) string {
 		return "prioritized"
 	default:
 		return "cataloged"
+	}
+}
+
+// tierLabelForState renders a conversion direction's GoNativeState as
+// the Tier-badge vocabulary used elsewhere in 0.2 (Stable /
+// Experimental / Preview / Cataloged). Track 6.6 of the parity plan
+// surfaces this in `terrain migrate list` so adopters see the trust
+// posture per direction at a glance, not just the raw state name.
+//
+// The mapping:
+//   - implemented → "Stable"      (top-3 + conversion-corpus calibrated)
+//   - experimental → "Experimental" (works end-to-end; hand cleanup expected)
+//   - prioritized → "Preview"     (next in line for implementation)
+//   - cataloged   → "Cataloged"    (metadata only; no converter today)
+//
+// Returned without surrounding brackets so callers can wrap as needed
+// (the list renderer adds `[ ]`; JSON consumers get the bare label).
+func tierLabelForState(state conv.GoNativeState) string {
+	switch state {
+	case conv.GoNativeStateImplemented:
+		return "Stable"
+	case conv.GoNativeStateExperimental:
+		return "Experimental"
+	case conv.GoNativeStatePrioritized:
+		return "Preview"
+	default:
+		return "Cataloged"
 	}
 }
 
