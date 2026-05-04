@@ -1,0 +1,2 @@
+No migration candidates detected.
+  → Either the repo is already on the framework of record, or none of the supported source frameworks are in use. Run `terrain migrate list` to see what's supported.

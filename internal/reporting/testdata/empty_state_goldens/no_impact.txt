@@ -1,0 +1,2 @@
+This change has no impact on the test system.
+  → Merge with confidence — no impacted units, no protection gaps introduced. Run `terrain analyze` to confirm overall posture is unchanged.

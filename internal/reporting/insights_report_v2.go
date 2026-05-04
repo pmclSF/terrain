@@ -86,9 +86,16 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 		blank()
 	}
 
-	// If no findings at all.
+	// If no findings at all, render the designed empty state with a
+	// next-move nudge instead of the bare line. Track 10.6 — every
+	// list-producing command should reward the clean state with a
+	// designed message.
 	if len(r.Findings) == 0 {
-		line("No significant issues detected.")
+		es := EmptyStateFor(EmptyZeroFindings)
+		line("%s", es.Header)
+		if es.NextMove != "" {
+			line("  → %s", es.NextMove)
+		}
 		blank()
 	}
 

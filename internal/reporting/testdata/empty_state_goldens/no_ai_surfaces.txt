@@ -1,0 +1,2 @@
+No AI surfaces detected in this repo.
+  → Skipping AI risk review. Run `terrain ai list` to confirm if you expected AI surfaces.

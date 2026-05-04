@@ -1,0 +1,2 @@
+No policy file found.
+  → Run `terrain init` to scaffold `.terrain/policy.yaml`, then re-run policy check.
