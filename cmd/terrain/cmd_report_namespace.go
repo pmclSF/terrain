@@ -200,9 +200,10 @@ func runReportImpactCLI(args []string) error {
 	jsonOut := fs.Bool("json", false, "output JSON impact result")
 	show := fs.String("show", "", "drill-down view: units, gaps, tests, owners, graph, selected")
 	owner := fs.String("owner", "", "filter results by owner")
+	explainSelection := fs.Bool("explain-selection", false, "render the selection explanation: which tests matter for this PR — and why")
 	_ = fs.Parse(args)
 	mountPositionalAsRoot("report impact", fs.Args(), root)
-	return runImpact(*root, *baseRef, *jsonOut, *show, *owner)
+	return runImpact(*root, *baseRef, *jsonOut, *show, *owner, *explainSelection)
 }
 
 func runReportPRCLI(args []string) error {
@@ -211,9 +212,14 @@ func runReportPRCLI(args []string) error {
 	baseRef := fs.String("base", "", "git base ref for diff (default: HEAD~1)")
 	jsonOut := fs.Bool("json", false, "output JSON PR analysis")
 	format := fs.String("format", "", "output format: markdown, comment, annotation")
+	failOn := fs.String("fail-on", "", "exit non-zero when a finding at or above this severity is present (critical|high|medium)")
 	_ = fs.Parse(args)
 	mountPositionalAsRoot("report pr", fs.Args(), root)
-	return runPR(*root, *baseRef, *jsonOut, *format)
+	gate, err := parseSeverityGate(*failOn)
+	if err != nil {
+		return err
+	}
+	return runPR(*root, *baseRef, *jsonOut, *format, gate)
 }
 
 func runReportPostureCLI(args []string) error {

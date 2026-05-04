@@ -180,9 +180,10 @@ func main() {
 		jsonFlag := impactCmd.Bool("json", false, "output JSON impact result")
 		showFlag := impactCmd.String("show", "", "drill-down view: units, gaps, tests, owners, graph, selected")
 		ownerFlag := impactCmd.String("owner", "", "filter results by owner")
+		explainFlag := impactCmd.Bool("explain-selection", false, "render the selection explanation: which tests matter for this PR — and why")
 		_ = impactCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("impact", impactCmd.Args(), rootFlag)
-		if err := runImpact(*rootFlag, *baseRef, *jsonFlag, *showFlag, *ownerFlag); err != nil {
+		if err := runImpact(*rootFlag, *baseRef, *jsonFlag, *showFlag, *ownerFlag, *explainFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -463,9 +464,19 @@ func main() {
 		baseRef := prCmd.String("base", "", "git base ref for diff (default: HEAD~1)")
 		jsonFlag := prCmd.Bool("json", false, "output JSON PR analysis")
 		formatFlag := prCmd.String("format", "", "output format: markdown, comment, annotation")
+		failOnFlag := prCmd.String("fail-on", "", "exit "+fmt.Sprintf("%d", exitSeverityGateBlock)+" when at least one finding (NewFindings + AI BlockingSignals) is at or above this severity (critical|high|medium)")
 		_ = prCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("pr", prCmd.Args(), rootFlag)
-		if err := runPR(*rootFlag, *baseRef, *jsonFlag, *formatFlag); err != nil {
+		gate, gateErr := parseSeverityGate(*failOnFlag)
+		if gateErr != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", gateErr)
+			os.Exit(exitUsageError)
+		}
+		if err := runPR(*rootFlag, *baseRef, *jsonFlag, *formatFlag, gate); err != nil {
+			if errors.Is(err, errSeverityGateBlocked) {
+				fmt.Fprintf(os.Stderr, "%v\n", err)
+				os.Exit(exitSeverityGateBlock)
+			}
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
