@@ -964,6 +964,17 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"static"},
 		RuleID:          "TER-ENGINE-003", RuleURI: "docs/rules/engine/detector-missing-input.md",
 	},
+	{
+		Type: SignalSuppressionExpired, ConstName: "SignalSuppressionExpired",
+		Domain: models.CategoryGovernance, Status: StatusStable,
+		Title:           "Suppression Expired",
+		Description:     "A `.terrain/suppressions.yaml` entry has passed its `expires` date and is no longer in effect. The underlying findings will fire again until the entry is renewed or removed.",
+		Remediation:     "Edit `.terrain/suppressions.yaml`: extend the `expires` date if the suppression is still warranted, or remove the entry if the underlying issue is resolved.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
+		EvidenceSources: []string{"policy"},
+		RuleID:          "TER-ENGINE-004", RuleURI: "docs/rules/engine/suppression-expired.md",
+	},
 }
 
 // Manifest returns a snapshot copy of the canonical signal manifest, sorted

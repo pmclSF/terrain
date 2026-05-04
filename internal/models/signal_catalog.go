@@ -123,6 +123,12 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	// the corresponding input. Track 9.3 — surfaces input gaps as
 	// a single per-detector marker instead of silent zero-output.
 	"detectorMissingInput": {Source: SignalSourceStatic},
+
+	// suppressionExpired is emitted by the suppression-loading pass
+	// when a `.terrain/suppressions.yaml` entry has passed its
+	// `expires` date. The user-facing finding it covered fires again,
+	// AND this signal surfaces so silent rot doesn't accumulate.
+	"suppressionExpired": {Source: SignalSourceStatic},
 }
 
 // KnownSignalTypes is the canonical signal vocabulary accepted by snapshot
