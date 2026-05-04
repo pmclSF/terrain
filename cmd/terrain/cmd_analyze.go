@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/pmclSF/terrain/internal/analyze"
 	"github.com/pmclSF/terrain/internal/engine"
@@ -126,7 +127,7 @@ func relativeToRoot(path, root string) string {
 	return path
 }
 
-func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, promptfooPaths string, deepevalPaths string, ragasPaths string, baselinePath string, slowThreshold float64, redactPaths bool) error {
+func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, promptfooPaths string, deepevalPaths string, ragasPaths string, baselinePath string, slowThreshold float64, redactPaths bool, gate severityGate, timeout time.Duration) error {
 	parsedRuntime := parseRuntimePaths(runtimePaths)
 	parsedGauntlet := parseRuntimePaths(gauntletPaths)        // same comma-split logic
 	parsedPromptfoo := parseRuntimePaths(promptfooPaths)      // same comma-split logic
@@ -175,12 +176,13 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	opt.RagasPaths = parsedRagas
 	opt.BaselineSnapshotPath = baselinePath
 	opt.OnProgress = newProgressFunc(jsonOutput)
-	// Honour Ctrl-C: pre-0.2.x analyze exited abruptly on SIGINT with no
-	// cleanup. runPipelineWithSignals wraps RunPipelineContext with a
-	// SIGINT-aware context so in-flight detectors check ctx.Err and
-	// unwind cooperatively. Same helper is used by every other
-	// analysis command since 0.2.
-	result, err := runPipelineWithSignals(root, opt)
+	// Honour Ctrl-C and the optional --timeout: pre-0.2.x analyze
+	// exited abruptly on SIGINT with no cleanup, and unbounded
+	// monorepo scans could block CI indefinitely.
+	// runPipelineWithSignalsAndTimeout wraps RunPipelineContext with a
+	// SIGINT-aware context plus an optional deadline so in-flight
+	// detectors check ctx.Err and unwind cooperatively.
+	result, err := runPipelineWithSignalsAndTimeout(root, opt, timeout)
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -218,6 +220,24 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		DiscoveredArtifacts: discovered,
 	})
 
+	// Compute the gate decision BEFORE rendering so it applies to every
+	// output format (json, sarif, annotation, html, text). Pre-fix, the
+	// gate check was at the bottom and the json/sarif/annotation
+	// branches early-returned before reaching it — `terrain analyze
+	// --json --fail-on=medium` silently exited 0 even with matching
+	// findings. The "JSON stdout purity" property the launch-readiness
+	// review asked for requires that the renderer completes (stdout
+	// stays a valid JSON document) AND the gate decision returns via
+	// the error channel (so main.go writes the gate message to stderr,
+	// not stdout).
+	gateBlocked, gateSummary := severityGateBlocked(gate, report.SignalSummary)
+	gateErr := func() error {
+		if gateBlocked {
+			return fmt.Errorf("%w: --fail-on=%s matched %s", errSeverityGateBlocked, gate, gateSummary)
+		}
+		return nil
+	}
+
 	if sarifOutput {
 		sarifLog := sarif.FromAnalyzeReportWithOptions(report, version, sarif.Options{
 			RedactPaths: redactPaths,
@@ -225,12 +245,15 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		})
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		return enc.Encode(sarifLog)
+		if err := enc.Encode(sarifLog); err != nil {
+			return err
+		}
+		return gateErr()
 	}
 
 	if annotationOutput {
 		reporting.RenderGitHubAnnotations(os.Stdout, report)
-		return nil
+		return gateErr()
 	}
 
 	// `--write-snapshot` runs first so it persists regardless of the
@@ -246,13 +269,19 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	}
 
 	if strings.EqualFold(strings.TrimSpace(format), "html") {
-		return reporting.RenderAnalyzeHTML(os.Stdout, report)
+		if err := reporting.RenderAnalyzeHTML(os.Stdout, report); err != nil {
+			return err
+		}
+		return gateErr()
 	}
 
 	if jsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		return enc.Encode(report)
+		if err := enc.Encode(report); err != nil {
+			return err
+		}
+		return gateErr()
 	}
 
 	if verbose {
@@ -273,7 +302,10 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 		}
 	}
 
-	return nil
+	// --fail-on gate: text-mode renderer falls through to the same
+	// gateErr() the other branches use, so the gate decision applies
+	// uniformly across every output format.
+	return gateErr()
 }
 
 // runPolicyCheck evaluates the repository against its local policy.

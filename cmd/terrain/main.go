@@ -35,6 +35,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -59,17 +60,18 @@ var (
 
 const defaultSlowThresholdMs = 5000.0
 
-// Exit codes. CI scripts can distinguish failure modes from these without
-// parsing stderr. The 0.1.2 contract preserves historical semantics: codes
-// 0–2 keep their existing meanings, and the new code (4) is additive.
+// Exit codes. CI scripts can distinguish failure modes from these
+// without parsing stderr. Codes 0–2 preserve their pre-0.1.2 meanings;
+// codes 4+ are additive.
 //
 //	0 — success
 //	1 — runtime / analysis error (file not found, parse failed, IO error)
-//	2 — usage error OR policy violation (overloaded for back-compat; both
-//	     meanings retained because at least one consumer pattern-matches
-//	     `exit 2 == policy fail today`)
-//	3 — reserved (0.2 will move policy violations here once we publish a
-//	     migration guide; do not use for new codepaths)
+//	2 — usage error OR policy violation (overloaded for back-compat;
+//	     both meanings retained because at least one consumer pattern-
+//	     matches `exit 2 == policy fail today`)
+//	3 — reserved for "policy violation" once code 2's overload is
+//	     split. The split is a behavior-breaking change that needs a
+//	     migration window; do not use for new codepaths until then.
 //	4 — AI gate block. Returned by `terrain ai run --baseline` when the
 //	     `actionBlock` decision fires (e.g., a high-severity AI signal
 //	     introduced vs. baseline). Reserved by `exitAIGateBlock` so a
@@ -79,10 +81,15 @@ const defaultSlowThresholdMs = 5000.0
 //	     `terrain explain <target>` when the entity doesn't exist.
 //	     Lets CI distinguish "the thing you asked about isn't here"
 //	     from "the analysis crashed."
+//	6 — Severity gate block. Returned by `terrain analyze --fail-on`
+//	     when the report contains at least one finding at or above the
+//	     requested severity. Same pattern as code 4 (AI gate); CI
+//	     scripts can branch on "the analysis succeeded but the gate
+//	     blocked us" without parsing stderr.
 //
-// Splitting code 2 cleanly into "usage" vs "policy" is a behavior-breaking
-// change that needs a migration window. It's documented in 0.2 as an
-// explicit milestone in docs/release/0.2.md.
+// Splitting code 2 cleanly into "usage" vs "policy" is a behavior-
+// breaking change that needs a migration window. The split is
+// documented as a 0.2.x → 0.3 milestone in docs/release/0.2.md.
 const (
 	exitOK              = 0
 	exitError           = 1
@@ -96,6 +103,10 @@ const (
 	// commands collapsed not-found into exit 1, indistinguishable from
 	// a real analysis crash.
 	exitNotFound = 5
+	// exitSeverityGateBlock signals that `--fail-on` blocked a
+	// successful analysis. Code 6 leaves room for code 3 (planned for
+	// "policy fail" once 2 is split) without colliding.
+	exitSeverityGateBlock = 6
 )
 
 func main() {
@@ -126,9 +137,27 @@ func main() {
 		baselineFlag := analyzeCmd.String("baseline", "", "path to a previous snapshot JSON file; enables regression-aware detectors (aiCostRegression, aiRetrievalRegression)")
 		slowThreshold := analyzeCmd.Float64("slow-threshold", defaultSlowThresholdMs, "slow test threshold in ms")
 		redactPathsFlag := analyzeCmd.Bool("redact-paths", false, "rewrite absolute paths in --format=sarif output to repo-relative form (or basename if outside repo)")
+		failOnFlag := analyzeCmd.String("fail-on", "", "exit "+fmt.Sprintf("%d", exitSeverityGateBlock)+" when at least one finding is at or above this severity (critical|high|medium)")
+		timeoutFlag := analyzeCmd.Duration("timeout", 0, "abort the analysis after this duration (e.g. 5m); 0 means no timeout")
 		_ = analyzeCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("analyze", analyzeCmd.Args(), rootFlag)
-		if err := runAnalyze(*rootFlag, *jsonFlag, *formatFlag, *verboseFlag, *writeSnapshot, *coverageFlag, *coverageRunLabelFlag, *runtimeFlag, *gauntletFlag, *promptfooFlag, *deepevalFlag, *ragasFlag, *baselineFlag, *slowThreshold, *redactPathsFlag); err != nil {
+		gate, gateErr := parseSeverityGate(*failOnFlag)
+		if gateErr != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", gateErr)
+			os.Exit(exitUsageError)
+		}
+		// Negative timeouts have no meaning; reject explicitly so the
+		// user gets a clear error rather than an immediate
+		// context.DeadlineExceeded that looks like an analysis failure.
+		if *timeoutFlag < 0 {
+			fmt.Fprintf(os.Stderr, "error: --timeout must be non-negative (got %s)\n", *timeoutFlag)
+			os.Exit(exitUsageError)
+		}
+		if err := runAnalyze(*rootFlag, *jsonFlag, *formatFlag, *verboseFlag, *writeSnapshot, *coverageFlag, *coverageRunLabelFlag, *runtimeFlag, *gauntletFlag, *promptfooFlag, *deepevalFlag, *ragasFlag, *baselineFlag, *slowThreshold, *redactPathsFlag, gate, *timeoutFlag); err != nil {
+			if errors.Is(err, errSeverityGateBlocked) {
+				fmt.Fprintf(os.Stderr, "%v\n", err)
+				os.Exit(exitSeverityGateBlock)
+			}
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
