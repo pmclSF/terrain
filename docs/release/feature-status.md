@@ -75,7 +75,7 @@ the 0.2 changes; the manifest is authoritative.
 | `flakyTest` | `internal/health/flaky_detector.go` | Detects retry evidence and same-run mixed outcomes. Statistical >10% failure-rate detection is **planned** for 0.3. |
 | `unstableSuite` | `internal/health/unstable_detector.go` | |
 | `deadTest` | `internal/health/dead_detector.go` | |
-| `duplicateCluster` | `internal/depgraph/duplicate.go` | 0.91+ similarity claim is **planned** for the AST-based upgrade in 0.3. |
+| (duplicate-cluster analysis) | `internal/depgraph/duplicate.go` | Surfaced via `DuplicateClusters` in analyze reports rather than as a `Signal`. 0.91+ similarity claim is **planned** for the AST-based upgrade in 0.3. |
 | `frameworkMigration` | `internal/migration/detectors.go` | |
 | `policyViolation` | `internal/governance/evaluate.go` | |
 | `assertionFreeImport` | `internal/structural/assertion_free_import.go` | |

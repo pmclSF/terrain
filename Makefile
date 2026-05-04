@@ -9,7 +9,7 @@ GO_OWNED_PKGS := ./cmd/... ./internal/...
 .PHONY: build test lint clean demo benchmark-fetch benchmark-smoke benchmark-full benchmark-stress benchmark-summary benchmark-convert install docs-linkcheck \
        test-golden test-determinism test-schema test-adversarial test-e2e test-cli test-bench golden-update pr-gate release-gate \
        sbom sbom-cyclonedx sbom-spdx release-dry-run go-release-verify js-release-verify extension-verify release-verify \
-       docs-gen docs-verify calibrate bench-baseline bench-gate memory-bench
+       docs-gen docs-verify calibrate bench-baseline bench-gate memory-bench truth-verify
 
 # Build the CLI binary
 build:
@@ -170,6 +170,16 @@ pillar-parity-floor:
 # scope. Track 9.8 deliverable for the 0.2.0 parity plan.
 docs-linkcheck:
 	@go run ./cmd/terrain-docs-linkcheck
+
+# `truth-verify` cross-checks docs/release/feature-status.md against
+# the canonical signal manifest. Every signal name documented in the
+# curated table must reference a real manifest entry; references that
+# don't resolve (typo, renamed, removed) fail the build. Orphan stable
+# signals (in the manifest, not in the curated doc) print as
+# advisory warnings — pass --strict-orphans to fail on them too.
+# Track 9.7 deliverable for the 0.2.0 parity plan.
+truth-verify:
+	@go run ./cmd/terrain-truth-verify
 
 # ── Calibration corpus ──────────────────────────────────────
 # Runs the engine pipeline against every fixture under tests/calibration/
