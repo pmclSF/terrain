@@ -272,45 +272,101 @@ jobs:
           --generate-notes \
           dist/*
 
-  # Post-release smoke test: download the just-published linux/amd64
-  # archive, extract, and verify `terrain version --json` reports the
-  # tagged version. Catches the class of "release published but
-  # archive contains a stale build / wrong version string" bugs that
-  # previously could only be caught by a user installing from the
-  # release after the fact. Runs after the GitHub release is created
-  # so the artifact URLs resolve.
+  # Post-release smoke test: download the just-published archive for
+  # each shipped target, extract, and verify `terrain version --json`
+  # reports the tagged version. Catches "release published but archive
+  # contains a stale build / wrong version string" bugs that
+  # previously could only surface after a user installed from the
+  # release. Runs after the GitHub release is created so artifact
+  # URLs resolve.
+  #
+  # Matrix covers the three primary platforms: linux/amd64 (the
+  # historical default), darwin/arm64 (the modern Mac default — Apple
+  # Silicon is the dominant developer hardware), and windows/amd64
+  # (the most likely Windows shape). linux/arm64 and darwin/amd64
+  # archives still ship; they just aren't smoke-tested per release —
+  # they share build infrastructure with the matrixed targets.
   release-smoke:
     needs: go-release-publish
-    runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux_amd64
+            runner: ubuntu-latest
+            archive_ext: tar.gz
+            binary: terrain
+          - name: darwin_arm64
+            runner: macos-14
+            archive_ext: tar.gz
+            binary: terrain
+          - name: windows_amd64
+            runner: windows-latest
+            archive_ext: zip
+            binary: terrain.exe
+    runs-on: ${{ matrix.runner }}
     steps:
-    - name: Download and verify linux/amd64 archive
+    - name: Download and verify ${{ matrix.name }} archive (POSIX)
+      if: matrix.archive_ext == 'tar.gz'
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         set -euo pipefail
         TAG="${GITHUB_REF_NAME}"
         VERSION="${TAG#v}"
-        ARCHIVE="terrain_${VERSION}_linux_amd64.tar.gz"
+        ARCHIVE="terrain_${VERSION}_${{ matrix.name }}.${{ matrix.archive_ext }}"
 
         echo "Downloading $ARCHIVE from release $TAG..."
         gh release download "$TAG" --pattern "$ARCHIVE" --clobber
 
         echo "Extracting..."
         tar -xzf "$ARCHIVE"
-        chmod +x ./terrain
+        chmod +x ./${{ matrix.binary }}
 
-        echo "Running ./terrain version --json:"
-        OUTPUT=$(./terrain version --json)
+        echo "Running ./${{ matrix.binary }} version --json:"
+        OUTPUT=$(./${{ matrix.binary }} version --json)
         echo "$OUTPUT"
 
-        # Parse the version field and assert it matches the tag.
         REPORTED=$(echo "$OUTPUT" | grep -oE '"version"\s*:\s*"[^"]+"' | head -1 | sed -E 's/.*"version"\s*:\s*"([^"]+)".*/\1/')
         if [ "$REPORTED" != "$VERSION" ]; then
           echo "❌ Version mismatch: archive reports '$REPORTED', expected '$VERSION'" >&2
           exit 1
         fi
-        echo "✅ Smoke test passed: published archive reports version $VERSION."
+        echo "✅ Smoke test passed (${{ matrix.name }}): published archive reports version $VERSION."
+
+    - name: Download and verify ${{ matrix.name }} archive (Windows)
+      if: matrix.archive_ext == 'zip'
+      shell: pwsh
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        $ErrorActionPreference = 'Stop'
+        $TAG = $env:GITHUB_REF_NAME
+        $VERSION = $TAG.TrimStart('v')
+        $ARCHIVE = "terrain_${VERSION}_${{ matrix.name }}.${{ matrix.archive_ext }}"
+
+        Write-Host "Downloading $ARCHIVE from release $TAG..."
+        gh release download $TAG --pattern $ARCHIVE --clobber
+
+        Write-Host "Extracting..."
+        Expand-Archive -Path $ARCHIVE -DestinationPath . -Force
+
+        Write-Host "Running .\${{ matrix.binary }} version --json:"
+        $OUTPUT = & ".\${{ matrix.binary }}" version --json
+        Write-Host $OUTPUT
+
+        $match = $OUTPUT | Select-String -Pattern '"version"\s*:\s*"([^"]+)"' | Select-Object -First 1
+        if (-not $match) {
+            Write-Error "❌ No version field found in output"
+            exit 1
+        }
+        $REPORTED = $match.Matches[0].Groups[1].Value
+        if ($REPORTED -ne $VERSION) {
+            Write-Error "❌ Version mismatch: archive reports '$REPORTED', expected '$VERSION'"
+            exit 1
+        }
+        Write-Host "✅ Smoke test passed (${{ matrix.name }}): published archive reports version $VERSION."
 
   # Homebrew tap update is handled by the separate homebrew-update.yml
   # workflow, which fires on `release: published` (and on workflow_dispatch
