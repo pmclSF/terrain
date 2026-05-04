@@ -113,9 +113,21 @@ func runInit(root string, jsonOutput bool) error {
 		fmt.Println()
 	}
 	if result.PolicyPath != "" {
-		fmt.Printf("  %d. Edit .terrain/policy.yaml to enable governance rules\n", step)
+		fmt.Printf("  %d. Edit .terrain/policy.yaml — three starter policies live\n", step)
+		fmt.Println("     under docs/policy/examples/{minimal,balanced,strict}.yaml")
+		step++
 		fmt.Println()
 	}
+
+	// CI integration pointer — Track 8.4. Always shown so adopters
+	// see the whole ladder from `terrain init` onwards. The trust-
+	// ladder doc explains the four-rung adoption path; the example
+	// workflow is the one canonical CI config.
+	fmt.Printf("  %d. Wire Terrain into CI (warn-only by default):\n", step)
+	fmt.Println("     Copy docs/examples/gate/github-action.yml to .github/workflows/")
+	fmt.Println("     The trust ladder (docs/product/trust-ladder.md) explains")
+	fmt.Println("     when to flip on blocking gates.")
+	fmt.Println()
 
 	return nil
 }
