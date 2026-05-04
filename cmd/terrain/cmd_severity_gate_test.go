@@ -162,6 +162,56 @@ func TestRunAnalyze_JSONStdoutPurity(t *testing.T) {
 	}
 }
 
+// TestPRSeverityBreakdown verifies the helper that converts a PR's
+// findings + AI blocking signals into a SignalBreakdown for the gate.
+// Track 3.1 — the gate decision must apply uniformly across analyze
+// + pr, sharing one helper.
+func TestPRSeverityBreakdown(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name       string
+		severities []string
+		want       analyze.SignalBreakdown
+	}{
+		{
+			name:       "empty",
+			severities: nil,
+			want:       analyze.SignalBreakdown{},
+		},
+		{
+			name:       "mixed bag",
+			severities: []string{"critical", "high", "high", "medium", "low"},
+			want: analyze.SignalBreakdown{
+				Total: 5, Critical: 1, High: 2, Medium: 1, Low: 1,
+			},
+		},
+		{
+			name:       "case insensitive + whitespace",
+			severities: []string{"  HIGH  ", "Critical"},
+			want:       analyze.SignalBreakdown{Total: 2, Critical: 1, High: 1},
+		},
+		{
+			name:       "unknown severities dropped silently",
+			severities: []string{"high", "weird-tier", "info", ""},
+			want:       analyze.SignalBreakdown{Total: 1, High: 1},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := prSeverityBreakdown(tc.severities)
+			if got.Total != tc.want.Total ||
+				got.Critical != tc.want.Critical ||
+				got.High != tc.want.High ||
+				got.Medium != tc.want.Medium ||
+				got.Low != tc.want.Low {
+				t.Errorf("prSeverityBreakdown(%v) = %+v, want %+v",
+					tc.severities, got, tc.want)
+			}
+		})
+	}
+}
+
 // TestRunAnalyze_GatePassesWhenSeverityAbsent verifies the inverse:
 // `--fail-on critical` against a fixture whose worst severity is
 // medium returns nil (no gate block).

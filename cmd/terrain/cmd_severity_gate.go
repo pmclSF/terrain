@@ -8,11 +8,43 @@ import (
 	"github.com/pmclSF/terrain/internal/analyze"
 )
 
-// errSeverityGateBlocked is the sentinel returned by runAnalyze when
-// `--fail-on` matches at least one finding. main.go uses errors.Is to
-// distinguish this from analysis errors and exit with
+// errSeverityGateBlocked is the sentinel returned by runAnalyze and
+// runPR when `--fail-on` matches at least one finding. main.go uses
+// errors.Is to distinguish this from analysis errors and exit with
 // `exitSeverityGateBlock` (6) rather than the generic 1.
 var errSeverityGateBlocked = errors.New("severity gate blocked")
+
+// prSeverityBreakdown converts a PR's change-scoped findings + AI
+// blocking signals into the same SignalBreakdown shape that
+// `analyze.SignalSummary` uses, so `severityGateBlocked` works
+// uniformly across `terrain analyze --fail-on` and
+// `terrain report pr --fail-on`. Track 3.1 — defends the pitch's
+// "gate changes based on that system as a whole" claim by sharing
+// the gate decision logic, not duplicating it.
+//
+// Counted by case-insensitive severity match. Unknown severities
+// are dropped — the renderer is the source of truth for severity
+// vocabulary.
+func prSeverityBreakdown(severities []string) analyze.SignalBreakdown {
+	var b analyze.SignalBreakdown
+	for _, sev := range severities {
+		switch strings.ToLower(strings.TrimSpace(sev)) {
+		case "critical":
+			b.Critical++
+			b.Total++
+		case "high":
+			b.High++
+			b.Total++
+		case "medium":
+			b.Medium++
+			b.Total++
+		case "low":
+			b.Low++
+			b.Total++
+		}
+	}
+	return b
+}
 
 // severityGate represents the threshold for `--fail-on`. Findings at
 // or above this severity cause the analyze command to exit with

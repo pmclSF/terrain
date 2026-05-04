@@ -10,6 +10,7 @@ import (
 	"github.com/pmclSF/terrain/internal/changescope"
 	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/engine"
+	"github.com/pmclSF/terrain/internal/explain"
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/metrics"
 	"github.com/pmclSF/terrain/internal/reporting"
@@ -40,7 +41,7 @@ func runImpactPipeline(root, baseRef string, opts engine.PipelineOptions) (*impa
 	return impactResult, result, nil
 }
 
-func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string) error {
+func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string, explainSelection bool) error {
 	impactResult, _, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return err
@@ -49,6 +50,27 @@ func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string) 
 	// Apply owner filter if specified.
 	if ownerFilter != "" {
 		impactResult = impact.FilterByOwner(impactResult, ownerFilter)
+	}
+
+	// `--explain-selection` defends the pitch claim
+	// "see which tests matter for a PR — and why" (Track 3.2). Surfaces
+	// the structured reason chains that internal/explain produces and
+	// renders them via the existing RenderSelectionExplanation. Passes
+	// `verbose=true` so per-test evidence (selection reasons, code unit
+	// matches, confidence) is included; that's the whole point of the
+	// flag.
+	if explainSelection {
+		sel, err := explain.ExplainSelection(impactResult)
+		if err != nil {
+			return fmt.Errorf("could not build selection explanation: %w", err)
+		}
+		if jsonOutput {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			return enc.Encode(sel)
+		}
+		reporting.RenderSelectionExplanation(os.Stdout, sel, true)
+		return nil
 	}
 
 	if jsonOutput {
@@ -129,7 +151,7 @@ func applyImpactPolicy(impactResult *impact.ImpactResult, result *engine.Pipelin
 	}
 }
 
-func runPR(root, baseRef string, jsonOutput bool, format string) error {
+func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGate) error {
 	impactResult, result, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return err
@@ -137,10 +159,36 @@ func runPR(root, baseRef string, jsonOutput bool, format string) error {
 
 	pr := changescope.AnalyzePRFromImpact(impactResult, result.Snapshot)
 
+	// Compute the gate decision BEFORE rendering so the report renders
+	// for every output format (json, markdown, comment, annotation,
+	// default text), AND the gate error returns through the same code
+	// path. Mirrors the pattern used by `runAnalyze` after the JSON-
+	// stdout-purity bug fix in PR #134 — the renderer always completes
+	// before the exit decision is made.
+	severities := make([]string, 0, len(pr.NewFindings))
+	for _, f := range pr.NewFindings {
+		severities = append(severities, f.Severity)
+	}
+	if pr.AI != nil {
+		for _, s := range pr.AI.BlockingSignals {
+			severities = append(severities, s.Severity)
+		}
+	}
+	gateBlocked, gateSummary := severityGateBlocked(gate, prSeverityBreakdown(severities))
+	gateErr := func() error {
+		if gateBlocked {
+			return fmt.Errorf("%w: --fail-on=%s matched %s", errSeverityGateBlocked, gate, gateSummary)
+		}
+		return nil
+	}
+
 	if jsonOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
-		return enc.Encode(pr)
+		if err := enc.Encode(pr); err != nil {
+			return err
+		}
+		return gateErr()
 	}
 
 	switch format {
@@ -153,5 +201,5 @@ func runPR(root, baseRef string, jsonOutput bool, format string) error {
 	default:
 		changescope.RenderChangeScopedReport(os.Stdout, pr)
 	}
-	return nil
+	return gateErr()
 }
