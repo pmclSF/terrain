@@ -1,10 +1,13 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -257,4 +260,94 @@ func TestSecurityMiddleware_BlocksHostileOrigin(t *testing.T) {
 	if strings.Contains(w.Body.String(), "inner") {
 		t.Errorf("hostile-origin should not reach the inner handler")
 	}
+}
+
+// TestGetResult_CacheHit verifies that a fresh cache short-circuits
+// before the singleflight call (no analysis runs, regardless of
+// context state).
+func TestGetResult_CacheHit(t *testing.T) {
+	t.Parallel()
+
+	s := newServerWithCachedReport()
+	want := s.cachedReport
+
+	got, _, err := s.getResultReports(context.Background())
+	if err != nil {
+		t.Fatalf("getResult on warm cache: %v", err)
+	}
+	if got != want {
+		t.Errorf("warm cache returned a different report pointer; expected the cached one")
+	}
+}
+
+// TestGetResult_RespectsCanceledContext verifies that a request whose
+// context is already canceled returns ctx.Err() promptly rather than
+// blocking on analysis. Pre-fix, getResult held s.mu for the analysis
+// duration and ignored the request context entirely.
+func TestGetResult_RespectsCanceledContext(t *testing.T) {
+	t.Parallel()
+
+	s := New(t.TempDir(), 0)
+	// Pre-cancel the context so the singleflight select returns via
+	// ctx.Done() without waiting on the analysis.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	done := make(chan error, 1)
+	go func() {
+		_, _, err := s.getResultReports(ctx)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.Canceled) {
+			t.Errorf("getResult on canceled context: got %v, want context.Canceled", err)
+		}
+	case <-time.After(2 * time.Second):
+		t.Fatal("getResult did not return within 2s on canceled context")
+	}
+}
+
+// TestGetResult_ConcurrentCallsShareCache verifies that N concurrent
+// callers that hit the cache observe the same report pointer and don't
+// trigger N analyses. The slow-path dedup is exercised by
+// TestGetResult_RespectsCanceledContext (which cancels before the
+// analysis completes); this test exercises the fast path.
+func TestGetResult_ConcurrentCallsShareCache(t *testing.T) {
+	t.Parallel()
+
+	s := newServerWithCachedReport()
+	want := s.cachedReport
+
+	const N = 50
+	var wg sync.WaitGroup
+	results := make([]*analyze.Report, N)
+	errs := make([]error, N)
+	for i := 0; i < N; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, r, err := s.getResultReports(context.Background())
+			results[i] = r
+			errs[i] = err
+		}(i)
+	}
+	wg.Wait()
+
+	for i := 0; i < N; i++ {
+		if errs[i] != nil {
+			t.Errorf("call %d: unexpected error: %v", i, errs[i])
+		}
+		if results[i] != want {
+			t.Errorf("call %d: returned different report pointer", i)
+		}
+	}
+}
+
+// getResultReports is a test helper that swaps the (result, report,
+// error) tuple ordering for tests that only care about the report.
+func (s *Server) getResultReports(ctx context.Context) (*analyze.Report, *analyze.Report, error) {
+	_, report, err := s.getResult(ctx)
+	return report, report, err
 }

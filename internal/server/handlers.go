@@ -16,8 +16,13 @@ func (s *Server) handleRoot(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	_, report, err := s.getResult()
+	_, report, err := s.getResult(r.Context())
 	if err != nil {
+		// If the client disconnected, http.Error writes are best-effort
+		// — drop them rather than logging a confusing 500.
+		if r.Context().Err() != nil {
+			return
+		}
 		http.Error(w, "Analysis failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -45,9 +50,12 @@ func (s *Server) handleHealth(w http.ResponseWriter, _ *http.Request) {
 }
 
 // handleAnalyze returns the analysis report as JSON.
-func (s *Server) handleAnalyze(w http.ResponseWriter, _ *http.Request) {
-	_, report, err := s.getResult()
+func (s *Server) handleAnalyze(w http.ResponseWriter, r *http.Request) {
+	_, report, err := s.getResult(r.Context())
 	if err != nil {
+		if r.Context().Err() != nil {
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": err.Error()})
