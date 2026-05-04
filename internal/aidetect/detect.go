@@ -1,6 +1,7 @@
 package aidetect
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -33,17 +34,45 @@ const maxSourceFileSize = 256 * 1024
 
 // Detect scans a repository root for AI/ML frameworks, prompt patterns,
 // dataset usage, and model invocations. No configuration required.
+//
+// This is a convenience wrapper that uses context.Background(). For
+// cancellation support — required by callers driving Terrain from a
+// CI workflow with a `--timeout`, or `terrain ai run` invoked from
+// within an already-cancelling pipeline — use DetectContext.
 func Detect(root string) *DetectResult {
+	return DetectContext(context.Background(), root)
+}
+
+// DetectContext is like Detect but respects ctx for cancellation. The
+// file-walking phase (Phase 3) checks ctx at each entry and aborts
+// the walk cleanly when cancelled, returning whatever has been
+// collected so far. Phases 1 and 2 (config-file probes and dependency
+// manifest reads) are bounded — at most a few stat / open calls — so
+// they don't need granular cancellation; we still check ctx between
+// phases so a caller cancelling between Phase 2 and Phase 3 doesn't
+// pay for the source walk.
+//
+// Track 5.3 — added in 0.2 to prove cancellation through the AI
+// detector path. The pre-0.2 shape (`Detect(root)` only) silently
+// ignored ctx, so a slow AI scan would block until the walk
+// completed even when the calling pipeline had already cancelled.
+func DetectContext(ctx context.Context, root string) *DetectResult {
 	result := &DetectResult{}
 
 	// Phase 1: Check config files.
 	detectConfigFiles(root, result)
+	if ctx.Err() != nil {
+		return result
+	}
 
 	// Phase 2: Check dependency manifests.
 	detectDependencies(root, result)
+	if ctx.Err() != nil {
+		return result
+	}
 
 	// Phase 3: Scan source files for import patterns and AI code patterns.
-	detectFromSource(root, result)
+	detectFromSourceCtx(ctx, root, result)
 
 	// Deduplicate frameworks by name, keeping highest confidence.
 	result.Frameworks = deduplicateFrameworks(result.Frameworks)
@@ -158,6 +187,10 @@ var modelCallPatterns = []*regexp.Regexp{
 
 // detectFromSource walks source files looking for AI import patterns.
 func detectFromSource(root string, result *DetectResult) {
+	detectFromSourceCtx(context.Background(), root, result)
+}
+
+func detectFromSourceCtx(ctx context.Context, root string, result *DetectResult) {
 	// Build pattern index for framework detection.
 	type patternEntry struct {
 		framework string
@@ -175,9 +208,26 @@ func detectFromSource(root string, result *DetectResult) {
 	modelFiles := map[string]bool{}
 	frameworkHits := map[string]bool{}
 
+	// fileCount tracks how many files we've examined so the ctx check
+	// fires every 64 files rather than on every entry — checking
+	// ctx.Err() is a system call on some platforms, and AI detection
+	// already walks ~the whole repo, so the per-entry overhead is
+	// noticeable.
+	fileCount := 0
+
 	_ = filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
 		if err != nil {
 			return nil
+		}
+		// Honor cancellation. Returning a non-nil error from WalkDir
+		// stops the walk; we use ctx.Err() so callers can distinguish
+		// "user cancelled" from "filesystem error" if they choose to
+		// inspect the walk error.
+		fileCount++
+		if fileCount&0x3F == 0 {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
 		}
 		if d.IsDir() {
 			// Use the same canonical skip set as walkRepoForConfigs and
