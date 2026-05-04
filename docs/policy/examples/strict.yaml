@@ -1,0 +1,50 @@
+# Terrain policy — Strict
+#
+# Intended for mature repos that have already cleared the parity
+# gate locally and now want hard-mode CI. Blocks on every
+# high-or-above finding, every regression, and every coverage drift.
+#
+# Pair with: `terrain analyze --fail-on high
+# --new-findings-only --baseline .terrain/snapshots/latest.json`
+# in CI. The combination of strict policy + new-findings-only
+# baseline is the right shape for an enforced-quality release
+# branch — established debt is grandfathered in, but every
+# new finding from this point forward must clear the bar.
+#
+# Adoption ramp:
+#   - Reach this only after several iterations on `balanced.yaml`.
+#   - Expect occasional false positives; pair with the
+#     suppression workflow (`terrain suppress <finding-id>
+#     --reason "..." --expires YYYY-MM-DD`) so waivers don't
+#     accumulate silently.
+#
+# What this blocks:
+#   - Any skipped test in CI
+#   - Any high-or-above AI risk signal on safety-critical surfaces
+#   - Any AI accuracy regression (zero tolerance vs baseline)
+#   - Coverage below 80% repo-wide
+#   - Mock-heavy / weak-assertion density above any baseline
+#
+# What this still warns on (never blocks):
+#   - Cost regressions (model-spend visibility, not gating)
+#   - Migration-readiness signals (informational)
+
+rules:
+  # Test hygiene — strict thresholds across the board.
+  disallow_skipped_tests: true
+  disallow_frameworks:
+    - jasmine          # adjust to your repo's deprecated list
+    - mocha-legacy
+  max_test_runtime_ms: 3000
+  minimum_coverage_percent: 80
+  max_weak_assertions: 0
+  max_mock_heavy_tests: 0
+
+  # AI governance — block on every safety, accuracy, and uncovered-
+  # surface signal.
+  ai:
+    block_on_safety_failure: true
+    block_on_accuracy_regression: 0    # zero tolerance
+    block_on_uncovered_context: true
+    warn_on_latency_regression: true
+    warn_on_cost_regression: true

@@ -1,0 +1,34 @@
+# Terrain policy — Minimal
+#
+# Safe defaults for first-time adopters. Every rule warns; nothing
+# blocks the build. Use this as your starting point on a repo with
+# inherited test debt — it lets you see what Terrain flags without
+# pressure to fix everything at once.
+#
+# Adoption ramp:
+#   1. Drop this file into `.terrain/policy.yaml`.
+#   2. Run `terrain policy check` locally + in CI; review what fires.
+#   3. Once the warning list looks calibrated, copy `balanced.yaml`
+#      to start blocking on the worst offenders.
+#
+# What this catches:
+#   - Skipped tests that ship with the suite
+#   - Frameworks marked deprecated by your team
+#   - AI surfaces that lack any eval coverage
+#
+# What this doesn't catch:
+#   - Critical-severity gating (use balanced.yaml)
+#   - Regression deltas (use balanced.yaml)
+#   - Coverage floors (use balanced.yaml or strict.yaml)
+
+rules:
+  # Test hygiene — warn on skips and deprecated frameworks.
+  disallow_skipped_tests: false   # warn-only in minimal
+  # disallow_frameworks:
+  #   - jasmine
+
+  # AI governance — surface coverage gaps without blocking.
+  ai:
+    block_on_uncovered_context: false   # warn-only in minimal
+    warn_on_cost_regression: true
+    warn_on_latency_regression: true

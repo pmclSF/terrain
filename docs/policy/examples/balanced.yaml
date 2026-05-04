@@ -1,0 +1,45 @@
+# Terrain policy — Balanced
+#
+# The recommended starting point for most teams adopting Terrain in
+# CI. Blocks on the worst-offending findings (critical AI regressions,
+# safety gaps, hard coverage floor breaches) while leaving room for
+# catch-up on lower-severity debt.
+#
+# Pair with: `terrain analyze --fail-on critical
+# --new-findings-only --baseline .terrain/snapshots/latest.json`
+# in CI so existing repo debt doesn't brick day-one adoption — the
+# gate fires only on net-new findings introduced after baseline.
+#
+# Adoption ramp:
+#   - Start here for repos with a few weeks of test-system polish
+#     already invested.
+#   - Pair with the recommended GitHub Action template.
+#   - Watch the first week; tune thresholds; promote to strict.yaml
+#     once the build is consistently green.
+#
+# What this blocks:
+#   - Skipped tests in CI (the .skip() shipped to main pattern)
+#   - AI safety eval gaps on safety-critical surfaces
+#   - >5%-point AI accuracy regression vs baseline
+#
+# What this warns on:
+#   - Mock-heavy / weak-assertion density above thresholds
+#   - Cost / latency regressions
+#   - Coverage drift toward the floor
+
+rules:
+  # Test hygiene — block on shipped skips; warn on density issues.
+  disallow_skipped_tests: true
+  max_test_runtime_ms: 5000
+  minimum_coverage_percent: 70
+  max_weak_assertions: 10
+  max_mock_heavy_tests: 5
+
+  # AI governance — block on safety + accuracy regressions; warn on
+  # cost / latency.
+  ai:
+    block_on_safety_failure: true
+    block_on_accuracy_regression: 5    # %-points
+    block_on_uncovered_context: true
+    warn_on_latency_regression: true
+    warn_on_cost_regression: true

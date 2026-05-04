@@ -1,4 +1,4 @@
-# TER-AI-108 — Hallucination Rate Above Threshold
+# TER-AI-108 — Eval-Flagged Hallucination Share
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -9,11 +9,11 @@
 
 ## Summary
 
-An eval reports fabricated outputs at a rate above the project-configured threshold (default 5%).
+The eval framework's own hallucination metadata reports a share of cases above the project-configured threshold (default 5%). Terrain reads this from the framework output (Promptfoo / DeepEval / Ragas) — Terrain does not judge hallucinations directly.
 
 ## Remediation
 
-Investigate failing scenarios; tighten retrieval or grounding before merging.
+Investigate the underlying eval-flagged cases; tighten retrieval or grounding before merging. If you disagree with the eval framework's classification, fix the eval scenario or raise the threshold (with a documented justification).
 
 ## Evidence sources
 

@@ -143,26 +143,37 @@ func RunInit(root string) (*InitResult, error) {
 
 func generatePolicyYAML(path string) error {
 	content := `# Terrain policy configuration
-# Uncomment rules to enforce them in CI via: terrain policy check
 #
-# See: docs/examples/policy-check.md
+# Edit this file to enforce policy rules in CI via:
+#   terrain policy check
+#
+# Three starter policies live under docs/policy/examples/:
+#
+#   minimal.yaml    safe defaults — warn on common debt, block nothing
+#   balanced.yaml   gate on critical findings, leave room for catch-up
+#   strict.yaml     block on any high-or-above finding (mature repos)
+#
+# Copy one of those over this file to get going fast, or uncomment
+# the rules below one at a time.
 
 rules:
-  # disallow_skipped_tests: true
-  # disallow_frameworks:
-  #   - jest
-  # max_test_runtime_ms: 5000
-  # minimum_coverage_percent: 80
-  # max_weak_assertions: 5
-  # max_mock_heavy_tests: 3
+  # ── Core test-system rules ───────────────────────────────────
+  # disallow_skipped_tests: true       # block tests that .skip() in CI
+  # disallow_frameworks:               # framework drift control
+  #   - jest                           #   list a deprecated framework here
+  # max_test_runtime_ms: 5000          # per-test runtime budget
+  # minimum_coverage_percent: 80       # repository-level coverage floor
+  # max_weak_assertions: 5             # density of weak-assertion findings
+  # max_mock_heavy_tests: 3            # density of mock-heavy tests
 
-  # AI governance rules (for repos with AI/eval scenarios):
+  # ── AI governance rules ──────────────────────────────────────
+  # Applies to repos with AI surfaces / eval scenarios.
   # ai:
-  #   block_on_safety_failure: true
-  #   block_on_accuracy_regression: 5
-  #   block_on_uncovered_context: true
+  #   block_on_safety_failure: true            # gate on aiSafetyEvalMissing
+  #   block_on_accuracy_regression: 5          # %-points drop allowed
+  #   block_on_uncovered_context: true         # gate on uncoveredAISurface
   #   warn_on_latency_regression: true
-  #   warn_on_cost_regression: true
+  #   warn_on_cost_regression: true            # paired-case avg cost rising
 `
 	return os.WriteFile(path, []byte(content), 0o644)
 }
