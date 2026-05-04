@@ -8,7 +8,7 @@
 - **The current engine** is signal-led: a test intelligence platform that surfaces risk, quality, migration readiness, and governance from static and runtime analysis.
 - **Migration remains the acquisition wedge** — the pain of framework migration is what brings teams to Terrain. The current engine turns that pain into broader test intelligence.
 
-The legacy converter docs are kept as historical records from the retired JavaScript runtime. The supported product runtime is now Go-native; see [legacy/](legacy/) only for background and migration history.
+The legacy converter docs are kept as historical records from the retired JavaScript runtime. The supported product runtime is now Go-native; see the [Legacy Notes](legacy/legacy-notes.md) only for background and migration history.
 
 ## Start Here
 

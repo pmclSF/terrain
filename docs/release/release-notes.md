@@ -13,5 +13,6 @@ For release-specific design docs, see:
 - **Feature status (current release)** — [`docs/release/feature-status.md`](feature-status.md)
 
 The historical 0.1.0 ground-up-rewrite framing that lived in this file
-has been retired; the architectural narrative is consolidated under
-[`docs/architecture/`](../architecture/).
+has been retired; the architectural narrative is consolidated in
+[`docs/architecture/00-overview.md`](../architecture/00-overview.md)
+and the per-topic chapters alongside it.

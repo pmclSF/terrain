@@ -9,6 +9,13 @@ This directory contains JSON Schema definitions for Terrain's machine-readable o
 | `analysis.schema.json` | `terrain analyze --json` | Framework detection and project scan results |
 | `conversion.schema.json` | `terrain convert --report-json <file>` | Structured conversion run report |
 
+## Field stability tiers
+
+Every field falls in one of three tiers — Stable, Beta, or Internal —
+indicating whether adopters can build long-lived tooling against it.
+See [`FIELD_TIERS.md`](FIELD_TIERS.md) for the full contract per
+tier and examples of each.
+
 ## Versioning
 
 Each schema includes a `schemaVersion` field (e.g., `"1.0.0"`).
