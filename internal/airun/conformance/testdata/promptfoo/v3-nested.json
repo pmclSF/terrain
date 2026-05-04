@@ -1,0 +1,40 @@
+{
+  "evalId": "eval-2026-01-15-abc123",
+  "createdAt": 1737000000000,
+  "results": {
+    "results": [
+      {
+        "id": "case-001",
+        "description": "refund eligibility — happy path",
+        "provider": { "id": "openai:gpt-4o-mini", "label": "openai:gpt-4o-mini" },
+        "success": true,
+        "score": 1.0,
+        "tokenUsage": { "prompt": 120, "completion": 45, "total": 165, "cost": 0.0008 }
+      },
+      {
+        "id": "case-002",
+        "description": "refund eligibility — edge case",
+        "provider": { "id": "openai:gpt-4o-mini", "label": "openai:gpt-4o-mini" },
+        "success": false,
+        "score": 0.0,
+        "error": null,
+        "tokenUsage": { "prompt": 130, "completion": 50, "total": 180, "cost": 0.0009 }
+      },
+      {
+        "id": "case-003",
+        "description": "refund eligibility — provider error",
+        "provider": { "id": "openai:gpt-4o-mini", "label": "openai:gpt-4o-mini" },
+        "success": false,
+        "score": 0.0,
+        "error": "rate_limit_exceeded",
+        "tokenUsage": { "prompt": 0, "completion": 0, "total": 0, "cost": 0 }
+      }
+    ],
+    "stats": {
+      "successes": 1,
+      "failures": 1,
+      "errors": 1,
+      "tokenUsage": { "prompt": 250, "completion": 95, "total": 345, "cost": 0.0017 }
+    }
+  }
+}

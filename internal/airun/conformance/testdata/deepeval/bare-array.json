@@ -1,0 +1,9 @@
+[
+  {
+    "name": "test_a",
+    "input": "x",
+    "actualOutput": "y",
+    "score": 0.5,
+    "success": false
+  }
+]
