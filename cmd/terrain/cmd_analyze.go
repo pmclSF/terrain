@@ -126,7 +126,46 @@ func relativeToRoot(path, root string) string {
 	return path
 }
 
-func runAnalyze(root string, jsonOutput bool, format string, verbose bool, writeSnap bool, coveragePath, coverageRunLabel string, runtimePaths string, gauntletPaths string, promptfooPaths string, deepevalPaths string, ragasPaths string, baselinePath string, slowThreshold float64, redactPaths bool) error {
+// analyzeRunOpts collects every input runAnalyze takes. Replaces a
+// fifteen-positional-argument signature with one struct so future
+// flag additions stop expanding the call site.
+type analyzeRunOpts struct {
+	Root             string
+	JSONOutput       bool
+	Format           string
+	Verbose          bool
+	WriteSnapshot    bool
+	CoveragePath     string
+	CoverageRunLabel string
+	RuntimePaths     string
+	GauntletPaths    string
+	PromptfooPaths   string
+	DeepEvalPaths    string
+	RagasPaths       string
+	BaselinePath     string
+	SlowThreshold    float64
+	RedactPaths      bool
+	SuppressionsPath string
+	NewFindingsOnly  bool
+}
+
+func runAnalyze(o analyzeRunOpts) error {
+	root := o.Root
+	jsonOutput := o.JSONOutput
+	format := o.Format
+	verbose := o.Verbose
+	writeSnap := o.WriteSnapshot
+	coveragePath := o.CoveragePath
+	coverageRunLabel := o.CoverageRunLabel
+	runtimePaths := o.RuntimePaths
+	gauntletPaths := o.GauntletPaths
+	promptfooPaths := o.PromptfooPaths
+	deepevalPaths := o.DeepEvalPaths
+	ragasPaths := o.RagasPaths
+	baselinePath := o.BaselinePath
+	slowThreshold := o.SlowThreshold
+	redactPaths := o.RedactPaths
+
 	parsedRuntime := parseRuntimePaths(runtimePaths)
 	parsedGauntlet := parseRuntimePaths(gauntletPaths)        // same comma-split logic
 	parsedPromptfoo := parseRuntimePaths(promptfooPaths)      // same comma-split logic
@@ -146,6 +185,11 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	}
 	if baselinePath != "" {
 		if err := validateExistingPaths("--baseline", []string{baselinePath}); err != nil {
+			return err
+		}
+	}
+	if o.SuppressionsPath != "" {
+		if err := validateExistingPaths("--suppressions", []string{o.SuppressionsPath}); err != nil {
 			return err
 		}
 	}
@@ -174,6 +218,8 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	opt.DeepEvalPaths = parsedDeepEval
 	opt.RagasPaths = parsedRagas
 	opt.BaselineSnapshotPath = baselinePath
+	opt.SuppressionsPath = o.SuppressionsPath
+	opt.NewFindingsOnly = o.NewFindingsOnly
 	opt.OnProgress = newProgressFunc(jsonOutput)
 	// Honour Ctrl-C: pre-0.2.x analyze exited abruptly on SIGINT with no
 	// cleanup. runPipelineWithSignals wraps RunPipelineContext with a
