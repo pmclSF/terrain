@@ -1,0 +1,2 @@
+Nothing to flag — your test system looks healthy.
+  → Run `terrain compare` over time to track posture; this clean state is the bar to hold.

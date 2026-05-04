@@ -1,0 +1,2 @@
+First time here? Welcome.
+  → Try `terrain analyze` to map your test terrain — typical service repos finish in 5–15 seconds.
