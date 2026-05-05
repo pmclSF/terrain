@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	conv "github.com/pmclSF/terrain/internal/convert"
+	"github.com/pmclSF/terrain/internal/progress"
 )
 
 type convertCommandOptions struct {
@@ -185,6 +186,21 @@ func runConvert(source string, opts convertCommandOptions) error {
 	validationMode, err := resolveConvertValidationMode(opts)
 	if err != nil {
 		return cliUsageError{message: err.Error()}
+	}
+
+	// Track 10.5 — surface a TTY-aware spinner while the conversion
+	// runs. No-op when stdout/stderr is piped, when --json suppresses
+	// progress, or when running in a Plan/DryRun mode (those are fast
+	// enough that progress would flash and disappear).
+	var sp *progress.Spinner
+	if !opts.JSON && !opts.Plan && !opts.DryRun {
+		label := "Converting"
+		if opts.From != "" && opts.To != "" {
+			label = fmt.Sprintf("Converting %s → %s", opts.From, opts.To)
+		}
+		sp = progress.NewSpinner(label, false)
+		sp.Start()
+		defer sp.Stop()
 	}
 
 	result, err := conv.RunTestMigration(source, conv.TestMigrationOptions{
