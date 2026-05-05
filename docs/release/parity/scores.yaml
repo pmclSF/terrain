@@ -89,7 +89,7 @@ scores:
     E2: { score: 2, evidence: "No corpus of labeled PR diffs to measure impact-selection precision against." }
     E3: { score: 3, evidence: "Track 3.2 explain-selection reason chains (#157). Track 9.4 per-detector budget timing visibility (#154). Confidence histogram still missing — would lift to 4." }
     E4: { score: 4, evidence: "docs/schema/pr-analysis.md publishes the canonical PRAnalysis / ChangeScopedFinding / TestSelection / PostureDelta / AIValidationSummary contract with field-level Stability tiers, jq integration examples, and pillar-marker compatibility note. PRAnalysisSchemaVersion in internal/changescope/model.go remains the in-code anchor." }
-    E5: { score: 3, evidence: "Bounded by area 1." }
+    E5: { score: 4, evidence: "PR-render benchmarks in changescope/render_bench_test.go: small/medium/large fixtures (5/50/200 findings) measure 19µs/51µs/155µs/op respectively on Intel i7-8850H. Linear scaling — no quadratic regressions in dedup / classify / render. Reference numbers committed in the file's package comment." }
     E6: { score: 4, evidence: "PR markdown render is timestamp-independent under SOURCE_DATE_EPOCH variation. Test: TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch (changescope/dedup_test.go) sets SOURCE_DATE_EPOCH to two distinct values and asserts byte-identical output. Existing TestRenderPRSummaryMarkdown_Deterministic locks same-input determinism." }
     E7: { score: 3, evidence: "Inherits." }
     V1: { score: 3, evidence: "Track 10.1 uitokens shipped (#136). PR-comment migration to tokens is Track 10.3 (0.2.x)." }
@@ -142,7 +142,7 @@ scores:
     P5: { score: 3, evidence: "Reasonable; baseline missing → graceful no-op." }
     P6: { score: 4, evidence: "Track 7.4 end-to-end Promptfoo+Terrain CI walkthrough (#147)." }
     P7: { score: 3, evidence: "Right framing: gating on AI evals before merge." }
-    E1: { score: 3, evidence: "Unit tests on the decision logic; integration tests on the parsers." }
+    E1: { score: 4, evidence: "Decision logic test coverage extended in cmd_ai_test.go: TestEvaluateAIRunDecision_{GovernanceBlock, GovernanceWarn_NotBlock, BlockingSignalTypes, CriticalAndPolicyTogether, GovernanceMetadataMissing, GovernanceMetadataNonStringRule, OnlyHighSeverity_DoesNotBlock} cover the block_on_*/warn_on_* precedence rule, the blocking_signal_types special case, combined critical+policy reasoning, and the type-safety edge cases. Integration tests on parsers retained." }
     E2: { score: 2, evidence: "No labeled-PR corpus for the gating decision specifically." }
     E3: { score: 4, evidence: "Per-input ingestion diagnostics surfaced in `terrain ai run` output (cmd_ai.go:605) — adopters see exactly which adapter fields fell back, in 'Ingestion diagnostics' block. Pairs with ai_eval_ingestion.E3." }
     E4: { score: 3, evidence: "Decision shape is small and versioned." }
@@ -196,7 +196,7 @@ scores:
     P2: { score: 4, evidence: "Policy results are deterministic boolean checks against the snapshot." }
     P3: { score: 4, evidence: "docs/user-guides/writing-a-policy.md — full policy authoring guide: TL;DR (init → pick template → check), full schema annotated, three opinionated starting points (minimal / balanced / strict), gate decision logic, CI adoption pattern, tuning workflow, suppression pairing, anti-goals. internal/policy/config.go remains the canonical Go-side reference." }
     P4: { score: 4, evidence: "Track 8.4 init policy template (#142). Track 7.6/7.7 example policies (#141)." }
-    P5: { score: 3, evidence: "Standard." }
+    P5: { score: 4, evidence: "Designed remediation in cmd/terrain/cmd_analyze.go runPolicyCheck: malformed policy.yaml now surfaces a structured 'Policy file failed to load' message naming the three common causes (indentation / misspelled key / type mismatch) and pointing at `cp docs/policy/examples/balanced.yaml .terrain/policy.yaml` for a known-good template." }
     P6: { score: 4, evidence: "Three example policies ship (#141): minimal / balanced / strict." }
     P7: { score: 4, evidence: "Policy enforcement is a real adopter need." }
     E1: { score: 4, evidence: "internal/policy/ tested." }
