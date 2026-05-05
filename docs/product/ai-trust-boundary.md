@@ -125,5 +125,5 @@ nothing in this trust-boundary doc reads as a guarantee:
   per-capability tier (which AI surfaces are publicly claimable)
 - [`docs/release/0.2-known-gaps.md`](../release/0.2-known-gaps.md) —
   honest carryovers, including AI-specific ones
-- [`docs/integrations/{promptfoo,deepeval,ragas}.md`](../integrations/) —
+- [`docs/integrations/promptfoo.md`](../integrations/promptfoo.md), [`deepeval.md`](../integrations/deepeval.md), [`ragas.md`](../integrations/ragas.md) —
   per-framework integration notes
