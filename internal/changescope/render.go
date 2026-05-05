@@ -150,6 +150,22 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 		renderAISection(line, pr)
 	}
 
+	// --- Empty-PR celebration callout ---
+	// When the PR introduces no new findings AND has no AI risk
+	// section AND no recommended tests (because the change has no
+	// measurable impact), the markdown above is just header +
+	// metrics. Add a small designed "all clear" callout so the
+	// reader sees that this is the *deliberate* shape of a clean
+	// PR, not a malfunction. Audit-named gap (pr_change_scoped.V3
+	// fun-to-use polish).
+	if isEmptyPR(pr) {
+		hr()
+		line("> ✓ **All clear.** No new findings introduced; no protection gaps identified in changed code.")
+		line(">")
+		line("> *Run `terrain compare` over time to track posture; this clean state is the bar to hold.*")
+		line("")
+	}
+
 	// --- Footer (owners + limitations + branding) ---
 	// Combined into a single small-text footer so individual elements
 	// don't compete for attention with the main content.
@@ -734,6 +750,26 @@ func extractUnitNames(unitIDs []string) []string {
 		}
 	}
 	return names
+}
+
+// isEmptyPR reports whether a PR has nothing substantive to flag —
+// no new findings, no AI risk section, no protection gaps. Used by
+// the markdown renderer to emit a designed "all clear" callout
+// instead of an awkwardly-thin comment that reads as broken.
+func isEmptyPR(pr *PRAnalysis) bool {
+	if pr == nil {
+		return false
+	}
+	if len(pr.NewFindings) > 0 {
+		return false
+	}
+	if pr.ProtectionGapCount > 0 {
+		return false
+	}
+	if pr.AI != nil && (len(pr.AI.BlockingSignals) > 0 || len(pr.AI.UncoveredContexts) > 0) {
+		return false
+	}
+	return true
 }
 
 // buildConfidenceHistogram renders a one-line summary of how the
