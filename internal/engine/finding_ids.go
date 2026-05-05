@@ -8,9 +8,9 @@ import (
 // assignFindingIDs walks every signal in the snapshot (both top-level
 // `snapshot.Signals` and per-test-file `TestFile.Signals`) and populates
 // the stable `FindingID` field for any signal that doesn't already have
-// one. Detectors that need a non-default ID (e.g. signals attached to
-// virtual locations like a manifest entry) can pre-set FindingID and
-// this pass leaves them alone.
+// one, plus the `Pillar` derived from Category. Detectors that need a
+// non-default ID (e.g. signals attached to virtual locations like a
+// manifest entry) can pre-set FindingID and this pass leaves them alone.
 //
 // Idempotent — calling twice produces the same result.
 //
@@ -24,25 +24,26 @@ func assignFindingIDs(snapshot *models.TestSuiteSnapshot) {
 		return
 	}
 	for i := range snapshot.Signals {
-		assignSignalID(&snapshot.Signals[i])
+		finalizeSignal(&snapshot.Signals[i])
 	}
 	for fi := range snapshot.TestFiles {
 		tf := &snapshot.TestFiles[fi]
 		for si := range tf.Signals {
-			assignSignalID(&tf.Signals[si])
+			finalizeSignal(&tf.Signals[si])
 		}
 	}
 }
 
-func assignSignalID(s *models.Signal) {
-	if s.FindingID != "" {
-		// Detector pre-set the ID — preserve it.
-		return
+func finalizeSignal(s *models.Signal) {
+	if s.FindingID == "" {
+		s.FindingID = identity.BuildFindingID(
+			string(s.Type),
+			s.Location.File,
+			s.Location.Symbol,
+			s.Location.Line,
+		)
 	}
-	s.FindingID = identity.BuildFindingID(
-		string(s.Type),
-		s.Location.File,
-		s.Location.Symbol,
-		s.Location.Line,
-	)
+	if s.Pillar == "" {
+		s.Pillar = models.PillarFor(s.Category)
+	}
 }

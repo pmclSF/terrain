@@ -17,6 +17,42 @@ const (
 	CategoryAI         SignalCategory = "ai"
 )
 
+// Pillar names the product pillar a signal belongs to. Mirrors
+// internal/cli.Pillar but lives here so the snapshot model stays
+// self-contained (no import cycle with internal/cli).
+//
+// The category → pillar mapping is fixed in PillarFor below and is
+// the single source of truth for pillar tagging in JSON output,
+// SARIF tags, doctor maturity, and the parity dashboard.
+const (
+	PillarUnderstand = "understand"
+	PillarAlign      = "align"
+	PillarGate       = "gate"
+)
+
+// PillarFor returns the product pillar that owns a given signal
+// category. Mapping rationale (see plan kind-mapping-turing.md):
+//   - structure / health / quality / ai → Understand: these are
+//     "what's there, what's broken, what's overlapping" — the
+//     observation surface.
+//   - migration → Align: drift reduction across frameworks/repos.
+//   - governance → Gate: policy / ownership / suppression checks
+//     that drive a CI verdict.
+//
+// Empty result is intentional for unrecognized categories; callers
+// should treat it as omitted (the JSON tag is `omitempty`).
+func PillarFor(c SignalCategory) string {
+	switch c {
+	case CategoryStructure, CategoryHealth, CategoryQuality, CategoryAI:
+		return PillarUnderstand
+	case CategoryMigration:
+		return PillarAlign
+	case CategoryGovernance:
+		return PillarGate
+	}
+	return ""
+}
+
 // SignalSeverity expresses how urgent or important a signal is.
 type SignalSeverity string
 
@@ -182,6 +218,14 @@ type Signal struct {
 	Type     SignalType     `json:"type"`
 	Category SignalCategory `json:"category"`
 	Severity SignalSeverity `json:"severity"`
+
+	// Pillar is the product pillar this signal belongs to
+	// ("understand" / "align" / "gate"). Derived from Category via
+	// PillarFor at emission. Surfaced in JSON output, SARIF tags,
+	// and `terrain doctor` per-pillar maturity. Empty when the
+	// category is not yet mapped — consumers should treat that as
+	// "untagged" and fall back to category-based grouping.
+	Pillar string `json:"pillar,omitempty"`
 
 	// Confidence indicates how certain Terrain is about the signal.
 	// Expected range is 0.0 to 1.0. Retained for v1 consumers; v2
