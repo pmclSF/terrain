@@ -23,24 +23,24 @@ scores:
   core_analyze:
     P1: { score: 4, evidence: "Snapshot covers test files / frameworks / signals / code units / coverage / runtime / ownership / AI surfaces / eval scenarios. Edge case gaps: dynamic test generation heuristic; no first-class monorepo workspace support." }
     P2: { score: 3, evidence: "27-fixture calibration corpus pins recall at 1.00 across 33 detectors (internal/engine/calibration_integration_test.go). Precision floor against labeled real repos deferred to 0.3." }
-    P3: { score: 4, evidence: "docs/rules/ has per-detector pages auto-regenerated from manifest. Gap: no per-detector 'known false positives' section yet." }
+    P3: { score: 4, evidence: "Track 9.12 schema field tier doc (#151), Track 7.3 trust-boundary doc (#144), Track 6.5 alignment-first migration framing (#148), Track 9.7 truth-verify gate (#156)." }
     P4: { score: 4, evidence: "terrain init + terrain analyze work on any directory. Gap: no terrain init --emit-ci-workflow." }
     P5: { score: 3, evidence: "validateCommandInputs catches obvious arg issues. Gap: mid-pipeline parse failure surfaces as 'analysis failed: <wrapped>' without remediation." }
-    P6: { score: 3, evidence: "README has illustrative report; docs/examples/ has end-to-end fixtures. Gap: no per-platform reproducible smoke." }
+    P6: { score: 4, evidence: "Track 1.6 docs/examples/{understand,align,gate}/ shipped via #137 + Track 7.4 Promptfoo+Terrain CI walkthrough (#147) + Track 6.4 multi-repo example (#152)." }
     P7: { score: 4, evidence: "Maps directly to alignment use case (where do tests cover code? where don't they?)." }
-    E1: { score: 4, evidence: "internal/engine/, internal/analysis/, internal/signals/ all have unit + integration tests. Gap: no fuzz tests on parser entry points." }
+    E1: { score: 5, evidence: "Track 9.9 adversarial filesystem suite (#150) with 8 hostile inputs (binary files, BOM, NUL bytes, nested .git, deep nesting). Track 9.11 schema migration fixture (#150). Existing unit + integration + golden coverage retained." }
     E2: { score: 3, evidence: "Recall gate locked in (calibration_integration_test.go:166). Synthetic-corpus precision is 1.00 but only labeled signals participate." }
-    E3: { score: 3, evidence: "result.DiscoveryMessages, OnProgress callback, --log-level=debug. Gap: no per-detector timing in normal output; no completeness score surfaced." }
+    E3: { score: 4, evidence: "Track 9.1 capability metadata + Track 9.3 missing-input diags (#155) surface per-detector requirements; Track 9.4 detector budgets (#154) emit budget markers when exceeded; Track 5.6 per-component timing in --verbose." }
     E4: { score: 4, evidence: "models.SnapshotSchemaVersion = '1.1.0'; SignalV2 fields are omitempty. Gap: no published 'stable / beta / internal' tier markers per JSON field." }
     E5: { score: 3, evidence: "Self-scan ~99s on the Terrain repo (per feature-status.md); make bench-gate infrastructure exists but no benchmarks/baseline.txt yet. Tree-sitter parser pool added in 0.2." }
     E6: { score: 4, evidence: "make test-determinism enforces SOURCE_DATE_EPOCH byte-identical output. sortSignals uses sort.SliceStable with Symbol tiebreaker." }
-    E7: { score: 3, evidence: "RunPipelineContext exists; top-level callsites use runPipelineWithSignals. Gap: untested whether file-reading detectors check ctx.Err() in inner loops; deliberately-slow detector cancel test does not exist." }
-    V1: { score: 2, evidence: "Mostly ad-hoc styling. Some shared helpers in internal/reporting (e.g. plural.go) but no token package. Track 10.1 lifts to 3+." }
+    E7: { score: 4, evidence: "Track 5.3 ctx audit on AI detectors (#146) — DetectContext respects ctx in inner loops with deliberately-slow-detector test. Track 9.4 budget enforcement (#154) provides safety net for unaware detectors." }
+    V1: { score: 3, evidence: "Track 10.1 — internal/uitokens/ design tokens shipped (#136). Renderers haven't migrated yet (Track 10.2 is 0.2.x); foundation exists." }
     V2: { score: 3, evidence: "PR #130 polish closed several rhythm issues (pluralization, dimension labels, measurement totals). Sections scan reasonably; some commands still emit wall-of-text." }
-    V3: { score: 2, evidence: "Errors are mostly bare wrapping; some commands have empty states but inconsistently; first-run has no greeting. Track 10.6 + 10.7 lift this." }
+    V3: { score: 3, evidence: "Track 10.6 — internal/reporting/empty_states.go shipped (#149) with 7 designed empty-state kinds + voice/tone tests. Not yet wired into every callsite; foundation exists." }
 
   insights_impact_explain:
-    P1: { score: 3, evidence: "All three render reports against the snapshot. impact does git-diff-based selection. Gap: explain doesn't accept a finding ID as a target; needs Phase 3.1 stable IDs." }
+    P1: { score: 4, evidence: "Track 4.6 terrain explain finding <id> (#140). Track 3.2 --explain-selection (#157)." }
     P2: { score: 3, evidence: "Output derives from the snapshot; trust inherits from area 1." }
     P3: { score: 3, evidence: "docs/examples/{insights,impact,explain}-report.md exist. Gap: per-command 'how confidence is computed' pages don't exist." }
     P4: { score: 3, evidence: "Quickstart shows the four canonical commands with one-liner descriptions." }
@@ -49,14 +49,14 @@ scores:
     P7: { score: 4, evidence: "PR-risk-report use case maps directly to impact + pr." }
     E1: { score: 4, evidence: "internal/insights/, internal/impact/, internal/explain/ have unit + integration tests. cmd_explain.go integration-tested via cmd/terrain/cmd_explain_test.go." }
     E2: { score: 3, evidence: "Inherits area 1's calibration. Impact selection is heuristic; no precision benchmark on labeled real-repo PRs." }
-    E3: { score: 2, evidence: "--show <view> switches drill-downs but no per-stage timing. No 'why these tests, why not others' view despite the data being in the snapshot." }
+    E3: { score: 3, evidence: "Track 3.2 --explain-selection per-test reason chains (#157) gives the 'why these tests, why not others' view. Track 9.4 detector budgets surface timing breakdowns." }
     E4: { score: 3, evidence: "JSON output schemas exist. Gap: no documented field tiers." }
     E5: { score: 3, evidence: "All three are read-side over the snapshot — fast." }
     E6: { score: 4, evidence: "Inherits the snapshot determinism gate." }
     E7: { score: 3, evidence: "All callsites use runPipelineWithSignals." }
-    V1: { score: 2, evidence: "Inherits area 1 styling state. No token consumption yet." }
+    V1: { score: 3, evidence: "Track 10.1 uitokens shipped (#136). Inherits foundation." }
     V2: { score: 3, evidence: "Reports scan reasonably; impact view is dense and could use more rhythm." }
-    V3: { score: 2, evidence: "explain target-not-found error is bare; no empty states for impact when nothing is selected." }
+    V3: { score: 3, evidence: "Track 10.6 empty-state helpers (#149) including EmptyNoImpact / EmptyNoTestSelection / EmptyZeroFindings." }
 
   summary_posture_metrics_focus:
     P1: { score: 4, evidence: "summary aggregates posture/risk/trends/recommendations; posture shows per-dimension evidence; metrics is a one-page scorecard; focus ranks next actions. PR #130 polished the visual surface." }
@@ -73,36 +73,36 @@ scores:
     E5: { score: 4, evidence: "All read-side; fast." }
     E6: { score: 4, evidence: "Inherits." }
     E7: { score: 3, evidence: "Inherits." }
-    V1: { score: 3, evidence: "PR #130 introduced consistent dimension labels and polarity-aware band rendering. No token package yet but the rhythm is uniform." }
+    V1: { score: 3, evidence: "Inherits Track 10.1 uitokens (#136)." }
     V2: { score: 4, evidence: "summary output reads as a designed document; concrete measurements alongside band labels (PR #130)." }
-    V3: { score: 3, evidence: "Empty states exist for some scenarios; first-time analysis shows a baseline-establishing message." }
+    V3: { score: 3, evidence: "Track 10.6 empty-state helpers (#149)." }
 
   pr_change_scoped:
-    P1: { score: 3, evidence: "terrain pr builds change-scoped report with PR-comment markdown. Gap: no --fail-on on pr (PR #134 only added it to analyze); no --new-findings-only." }
+    P1: { score: 4, evidence: "Track 3.1 report pr --fail-on (#157). Track 4.8 --new-findings-only --baseline (#140). Track 3.2 --explain-selection (#157). Track 4.5 suppressions (#158) honored across pr." }
     P2: { score: 3, evidence: "Inherits area 1. Gap: PR comments may show signals against unchanged files when fan-out detection fires." }
-    P3: { score: 3, evidence: "docs/examples/pr-report.md exists. Gap: no documented suppression workflow (suppressions don't ship until 0.3 in earlier plan; pulled forward to 0.2.0 here)." }
-    P4: { score: 3, evidence: ".github/workflows/terrain-pr.yml template exists. Gap: no zero-config 'drop this snippet in your CI' path with --new-findings-only baked in." }
+    P3: { score: 4, evidence: "Track 4.5 suppressions docs (#158). Track 3.5 unified-pr-comment.md visual contract (#145). Track 6.6 alignment-first migration framing (#148)." }
+    P4: { score: 4, evidence: "Track 8.5 single recommended GitHub Action template w/ safe defaults (#142). Track 8.6 trust ladder (#142). Track 7.4 end-to-end Promptfoo+Terrain CI walkthrough (#147)." }
     P5: { score: 3, evidence: "Standard error wrapping." }
-    P6: { score: 3, evidence: "Per-command examples. Gap: no recorded video / animated GIF of a real PR-comment cycle." }
+    P6: { score: 4, evidence: "Track 1.6 examples/, Track 7.4 ai-eval-ci/ walkthrough (#147), Track 6.4 multi-repo example (#152). Visual regression goldens (#149)." }
     P7: { score: 4, evidence: "PR risk report without running tests is the right framing. Gap: no 'established repos with debt' mode." }
     E1: { score: 4, evidence: "internal/changescope/ thoroughly tested; PR #131 updated tests for the AI-Risk-Review rename." }
     E2: { score: 2, evidence: "No corpus of labeled PR diffs to measure impact-selection precision against." }
-    E3: { score: 2, evidence: "No 'why these tests, why not others' view; no confidence histogram." }
+    E3: { score: 3, evidence: "Track 3.2 explain-selection reason chains (#157). Track 9.4 per-detector budget timing visibility (#154). Confidence histogram still missing — would lift to 4." }
     E4: { score: 3, evidence: "JSON shape exists." }
     E5: { score: 3, evidence: "Bounded by area 1." }
     E6: { score: 3, evidence: "Inherits." }
     E7: { score: 3, evidence: "Inherits." }
-    V1: { score: 2, evidence: "PR comment uses ad-hoc markdown. Tokens not consumed yet." }
+    V1: { score: 3, evidence: "Track 10.1 uitokens shipped (#136). PR-comment migration to tokens is Track 10.3 (0.2.x)." }
     V2: { score: 3, evidence: "PR comment is reasonably scannable but no hero verdict block; severity badges inconsistent." }
-    V3: { score: 2, evidence: "Empty PR (no findings) renders blandly; no recommendation for next step." }
+    V3: { score: 3, evidence: "Track 10.6 empty states designed (#149). PR-empty-no-findings template documented in Track 3.5 unified-pr-comment.md (#145)." }
 
   ai_risk_inventory:
     P1: { score: 3, evidence: "12 detectors registered. RAG structured parser + AI surface detection." }
     P2: { score: 2, evidence: "Recall-anchored on 27 fixtures; no labeled-real-repo precision floor. Multiple known-gap items per detector." }
-    P3: { score: 3, evidence: "Each detector has docs/rules/ai/ page with summary + remediation + promotion plan + known limitations." }
+    P3: { score: 4, evidence: "Track 5.1 ai-risk-tiers.md (#146) documents the inventory/hygiene/regression subdivision. Track 7.3 trust-boundary (#144). Per-detector docs/rules/ai/ pages." }
     P4: { score: 3, evidence: "AI surfaces appear in normal analyze output without special flags. terrain ai list/run/doctor available." }
     P5: { score: 3, evidence: "Detectors needing missing data emit informative no-op signals." }
-    P6: { score: 2, evidence: "Calibration fixtures exist as test data, but no public end-to-end demonstration." }
+    P6: { score: 3, evidence: "Track 1.6 examples include AI surfaces. Track 7.4 ai-eval-ci/ walkthrough (#147)." }
     P7: { score: 3, evidence: "AI inventory IS distinctive. AI risk findings read like security scanning but trust model is much weaker than that framing implies." }
     E1: { score: 4, evidence: "internal/aidetect/ extensively tested; calibration corpus integration." }
     E2: { score: 2, evidence: "Synthetic-fixture recall only. Per 0.2-known-gaps.md: substring matches in aiToolWithoutSandbox, naive 40-char in aiFewShotContamination, closed-class English keywords in aiHallucinationRate." }
@@ -110,37 +110,37 @@ scores:
     E4: { score: 3, evidence: "Manifest-versioned. Gap: aiHallucinationRate name implies model judgment; rename in Track 5.2." }
     E5: { score: 3, evidence: "File-scan based; bounded." }
     E6: { score: 4, evidence: "Inherits." }
-    E7: { score: 2, evidence: "File-reading detectors haven't been audited for ctx.Err() checks in inner loops." }
-    V1: { score: 2, evidence: "AI Risk Review section in PR comments was renamed in PR #131 but visual treatment is uniform across all detectors regardless of trust tier." }
-    V2: { score: 2, evidence: "Inventory / hygiene / regression all rendered together with no visual distinction; user can't tell which findings are reliable vs heuristic." }
+    E7: { score: 4, evidence: "Track 5.3 ctx audit on AI detectors (#146): DetectContext respects ctx with deliberately-slow-detector test. Track 9.4 budget enforcement (#154)." }
+    V1: { score: 3, evidence: "Track 5.1 AISubdomainOf / AISubdomainTrustBadge helpers (#146). Renderers consume from one source. uitokens migration is 0.2.x." }
+    V2: { score: 3, evidence: "Track 5.1 inventory/hygiene/regression sub-stanzas in PR comment (#146 + #145 unified shape)." }
     V3: { score: 2, evidence: "AI risk findings emit but provide no remediation pointers tailored to the LLM context (e.g. 'check if your prompt template uses {{ variable }} substitution')." }
 
   ai_eval_ingestion:
     P1: { score: 3, evidence: "Three adapters parse v3 + v4 (Promptfoo), 1.x shape (DeepEval), modern + legacy (Ragas). Baseline-snapshot regression mechanism exists." }
     P2: { score: 3, evidence: "Strong-evidence results when adapters parse correctly. Edge cases (provider-crash rows, missing cost fields) handled in PR #128's polish." }
-    P3: { score: 4, evidence: "docs/integrations/{promptfoo,deepeval,ragas}.md per-framework guides; 0.2-known-gaps.md lists open issues." }
+    P3: { score: 4, evidence: "Track 7.3 trust-boundary (#144). Track 7.4 ai-eval-ci/ walkthrough (#147). Track 5.1 ai-risk-tiers (#146)." }
     P4: { score: 3, evidence: "--promptfoo-results <path> documented. Gap: no 'here's a five-line CI snippet' example." }
     P5: { score: 3, evidence: "0.2-known-gaps.md calls out: 'empty results: [] raises misleading error'. 0.2.x fix planned." }
-    P6: { score: 2, evidence: "Calibration fixtures exist as test data; no public adapter conformance smoke." }
+    P6: { score: 4, evidence: "Track 7.1 conformance fixtures per (framework × version) (#147) — 8 fixtures across Promptfoo v3/v4, DeepEval 1.x, Ragas modern/legacy." }
     P7: { score: 4, evidence: "Eval-artifact ingestion is a real differentiator vs. tools that only do static analysis." }
-    E1: { score: 4, evidence: "internal/airun/*_test.go covers shape variants." }
-    E2: { score: 2, evidence: "No 'adapter conformance fixtures' that lock in each adapter's parse semantics. Adapter version detection deferred." }
+    E1: { score: 4, evidence: "Track 7.1 conformance test suite (#147) covering canonical + drift shapes per framework." }
+    E2: { score: 3, evidence: "Track 7.2 ShapeInfo + warn-on-drift (#147) surfaces unfamiliar shapes. Real-PR precision corpus (Track 7.5) deferred — labeled data needed." }
     E3: { score: 2, evidence: "Aggregates emit, but no 'which fields fell back to defaults' warnings." }
     E4: { score: 3, evidence: "Aggregates schema versioned via models.EvalAggregates. Gap: each adapter consumes its upstream's shape; we won't notice when upstream changes." }
     E5: { score: 4, evidence: "JSON parsing; fast." }
     E6: { score: 4, evidence: "Inherits." }
     E7: { score: 3, evidence: "Top-level honored; reads are bounded so inner-loop checks aren't critical." }
-    V1: { score: 2, evidence: "No specific token consumption for eval rendering." }
+    V1: { score: 3, evidence: "Inherits Track 10.1 uitokens (#136). Adapter outputs flow through unified PR comment (#145)." }
     V2: { score: 3, evidence: "Aggregate output is structured; per-adapter rendering is consistent." }
-    V3: { score: 2, evidence: "Errors when adapter fails (missing field, wrong shape) are technical, not conversational." }
+    V3: { score: 3, evidence: "Track 10.6 empty states (#149) — no-eval-results path documented." }
 
   ai_execution_gating:
     P1: { score: 2, evidence: "terrain ai run ingests eval artifacts and emits a baseline-aware decision. Gap: docs unclear about which frameworks Terrain executes vs only parses; sandboxing 0.3; ai gate standalone doesn't ship." }
     P2: { score: 3, evidence: "Decisions match what the artifact data supports; we're not making model claims." }
-    P3: { score: 2, evidence: "The trust boundary 'Terrain parses; the eval framework executes' is not stated clearly." }
+    P3: { score: 4, evidence: "Track 7.3 trust-boundary doc (#144) — what executes vs parses, per-command surface, sandboxing roadmap." }
     P4: { score: 2, evidence: "Users new to AI evals don't know whether to run Promptfoo first or just point Terrain at it." }
     P5: { score: 3, evidence: "Reasonable; baseline missing → graceful no-op." }
-    P6: { score: 2, evidence: "No end-to-end 'configure Promptfoo + Terrain in CI' example doc." }
+    P6: { score: 4, evidence: "Track 7.4 end-to-end Promptfoo+Terrain CI walkthrough (#147)." }
     P7: { score: 3, evidence: "Right framing: gating on AI evals before merge." }
     E1: { score: 3, evidence: "Unit tests on the decision logic; integration tests on the parsers." }
     E2: { score: 2, evidence: "No labeled-PR corpus for the gating decision specifically." }
@@ -149,15 +149,15 @@ scores:
     E5: { score: 4, evidence: "Trivial." }
     E6: { score: 4, evidence: "Inherits." }
     E7: { score: 3, evidence: "Inherits." }
-    V1: { score: 2, evidence: "Decision output uses ad-hoc styling." }
+    V1: { score: 3, evidence: "Inherits uitokens (#136)." }
     V2: { score: 2, evidence: "No hero verdict block; reason string buried." }
     V3: { score: 2, evidence: "No empty states for 'no AI surfaces detected'; no remediation for gate-blocked decisions." }
 
   migration_conversion:
     P1: { score: 4, evidence: "migrate run/config/list/detect/shorthands/estimate/status/checklist/readiness/blockers/preview namespace; per-file converters; preview LCS-diff." }
     P2: { score: 3, evidence: "Conversion confidence per file. Gap: A-grade ratings for top-3 fixture corpora deferred to 0.3." }
-    P3: { score: 4, evidence: "Per-direction docs exist. docs/migration/* covers framework pairs." }
-    P4: { score: 3, evidence: "terrain migrate readiness is a useful entry point. Gap: no 'alignment-first' framing in user-facing docs." }
+    P3: { score: 4, evidence: "Track 6.5 alignment-first migration framing doc (#148). Track 6.6 tier badges in migrate list (#148)." }
+    P4: { score: 4, evidence: "Track 6.6 Stable / Experimental / Preview tier vocabulary surfaced in `migrate list` output (#148)." }
     P5: { score: 4, evidence: "Per-file confidence + preview-before-apply is a strong UX." }
     P6: { score: 4, evidence: "Multiple per-direction example fixtures." }
     P7: { score: 3, evidence: "Capability is solid; framing is misaligned with the actual job. Today's docs lead with 'convert this file' rather than 'your repo has framework drift'." }
@@ -168,26 +168,26 @@ scores:
     E5: { score: 4, evidence: "LCS diff is bounded; per-file." }
     E6: { score: 4, evidence: "Inherits." }
     E7: { score: 3, evidence: "Inherits." }
-    V1: { score: 3, evidence: "Migration output has consistent rhythm; preview rendering is structured." }
+    V1: { score: 3, evidence: "Inherits uitokens (#136)." }
     V2: { score: 4, evidence: "Per-file confidence + preview reads cleanly." }
     V3: { score: 3, evidence: "Estimate/readiness has reasonable empty-state ('no conversions detected')." }
 
   portfolio:
-    P1: { score: 2, evidence: "Top-level command works on a single repo. Multi-repo aggregation is asserted in marketing but no shipping rollup workflow." }
+    P1: { score: 3, evidence: "Track 6.1 multi-repo manifest format ships (#148): RepoManifest schema v1, loader, validator, path resolution. Aggregator (6.2/6.3) is 0.2.x." }
     P2: { score: 2, evidence: "Single-repo numbers are correct. Multi-repo is not actually implemented as advertised." }
-    P3: { score: 3, evidence: "docs/personas/sdet.md mentions portfolio." }
-    P4: { score: 2, evidence: "Discoverable via help; no 'here's the multi-repo flow' doc." }
+    P3: { score: 3, evidence: "Track 6.4 docs/examples/align/multirepo/ with full convergence story (#152). Manifest schema doc." }
+    P4: { score: 3, evidence: "Manifest format adopters can write today; 0.2.x aggregator consumes unchanged." }
     P5: { score: 3, evidence: "Standard." }
-    P6: { score: 2, evidence: "No multi-repo example." }
+    P6: { score: 3, evidence: "Track 6.4 multi-repo example fixture (#152) shows expected output shape." }
     P7: { score: 3, evidence: "Cross-repo alignment is a real job. Capability gap is acute." }
-    E1: { score: 3, evidence: "Unit tests on the per-repo aggregator." }
+    E1: { score: 3, evidence: "12 manifest validation tests (#148) cover canonical + every error path + path resolution variants." }
     E2: { score: 2, evidence: "No multi-repo corpus." }
     E3: { score: 3, evidence: "Inherits." }
     E4: { score: 2, evidence: "Schema for portfolio output not documented." }
     E5: { score: 3, evidence: "Per-repo." }
     E6: { score: 3, evidence: "Inherits." }
     E7: { score: 3, evidence: "Inherits." }
-    V1: { score: 2, evidence: "Single-repo portfolio rendering uses ad-hoc styling." }
+    V1: { score: 3, evidence: "Inherits uitokens (#136)." }
     V2: { score: 2, evidence: "Output is dense; no per-pillar drift visualization." }
     V3: { score: 2, evidence: "No designed multi-repo empty state." }
 
@@ -195,9 +195,9 @@ scores:
     P1: { score: 3, evidence: "Policy file format exists; rule evaluation works. Gap: no rule-authoring UI; rules written by hand." }
     P2: { score: 4, evidence: "Policy results are deterministic boolean checks against the snapshot." }
     P3: { score: 3, evidence: "internal/policy/config.go documents the schema in code; docs/release/0.2.md mentions policy. Gap: no top-level 'writing a policy' doc." }
-    P4: { score: 2, evidence: "No terrain init --emit-policy-template flow." }
+    P4: { score: 4, evidence: "Track 8.4 init policy template (#142). Track 7.6/7.7 example policies (#141)." }
     P5: { score: 3, evidence: "Standard." }
-    P6: { score: 2, evidence: "One policy example in test fixtures." }
+    P6: { score: 4, evidence: "Three example policies ship (#141): minimal / balanced / strict." }
     P7: { score: 4, evidence: "Policy enforcement is a real adopter need." }
     E1: { score: 4, evidence: "internal/policy/ tested." }
     E2: { score: 4, evidence: "Boolean checks; no calibration concept." }
@@ -206,7 +206,7 @@ scores:
     E5: { score: 4, evidence: "Trivial." }
     E6: { score: 4, evidence: "Inherits." }
     E7: { score: 4, evidence: "Trivial." }
-    V1: { score: 2, evidence: "Policy check output uses ad-hoc styling." }
+    V1: { score: 3, evidence: "Inherits uitokens (#136)." }
     V2: { score: 3, evidence: "Reasonable rhythm; one finding per line." }
     V3: { score: 2, evidence: "No 'no policy file' guided next-step ('terrain init will create one')." }
 
@@ -215,35 +215,35 @@ scores:
     P2: { score: 3, evidence: "Output trust inherits area 1." }
     P3: { score: 3, evidence: "cmd/terrain/cmd_serve.go flag docstring; internal/server/server.go security-posture comment block. PR #131 brought these up to date." }
     P4: { score: 3, evidence: "One-line invocation; opens locally." }
-    P5: { score: 3, evidence: "Standard 5xx; PR #132 adds context-cancel-friendly handler returns." }
+    P5: { score: 3, evidence: "Server-context cancellation + dedup (#132)." }
     P6: { score: 2, evidence: "No 'use this for local dev' example doc." }
     P7: { score: 3, evidence: "Honest scope: local dev preview, not a team dashboard. Should never be marketed otherwise." }
     E1: { score: 4, evidence: "internal/server/server_test.go covers handlers, security middleware, origin checks, cache + cancellation (PR #132)." }
     E2: { score: 4, evidence: "N/A." }
-    E3: { score: 3, evidence: "Stderr startup banner; per-request logging is minimal." }
+    E3: { score: 3, evidence: "Track 9.1 capability metadata observability (#155). Per-component timing extends to server endpoints." }
     E4: { score: 3, evidence: "API endpoints documented in code; no public schema." }
-    E5: { score: 3, evidence: "Singleflight + RWMutex (PR #132) fix the original mutex-blocking bug." }
-    E6: { score: 4, evidence: "Inherits." }
+    E5: { score: 3, evidence: "Server uses singleflight per #132 to avoid duplicate concurrent analyses." }
+    E6: { score: 3, evidence: "Inherits snapshot determinism." }
     E7: { score: 2, evidence: "Pre-#132: handlers ignore r.Context(). With #132 merged: 4 (per-caller cancel via select)." }
-    V1: { score: 2, evidence: "HTML report uses ad-hoc CSS; needs design system pass (Track 10.4)." }
-    V2: { score: 2, evidence: "HTML report is dense; no card-based layout, no sticky navigation." }
-    V3: { score: 2, evidence: "No empty states; localhost warning could be more guided." }
+    V1: { score: 3, evidence: "Inherits uitokens (#136)." }
+    V2: { score: 3, evidence: "Inherits PR #130 visual polish." }
+    V3: { score: 3, evidence: "Track 10.6 empty states (#149) include 'no AI surfaces' and 'no policy file'." }
 
   distribution_install:
     P1: { score: 4, evidence: "All three install paths work; cosign signing + npm provenance + SLSA attestations on release archives." }
     P2: { score: 4, evidence: "Mandatory cosign verify (with documented opt-out env vars)." }
-    P3: { score: 3, evidence: "PR #131 adds Prerequisites section + opt-out env vars to getting-started. With #131: 4." }
-    P4: { score: 2, evidence: "Node ≥22 requirement is hidden friction; many CI images are Node 20 LTS. Cosign install step adds friction for casual users." }
+    P3: { score: 4, evidence: "Track 8.1 Node 22 prominence in README + getting-started (#144). Track 9.12 schema field tiers (#151)." }
+    P4: { score: 3, evidence: "Track 8.5 GitHub Action template + safe-default mode (#142). Track 8.1 brew/go install fallback documented for Node-20 CI (#144)." }
     P5: { score: 2, evidence: "Pre-#133: postinstall swallows failure silently. With #133: 4 (marker file + framed banner)." }
     P6: { score: 3, evidence: "Install snippets in README + getting-started." }
     P7: { score: 4, evidence: "Three install paths cover the audience." }
     E1: { score: 3, evidence: "scripts/verify-pack.js smoke. PR #133 adds node --test unit tests for the marker round-trip. With #133: 4." }
     E2: { score: 4, evidence: "N/A." }
-    E3: { score: 3, evidence: "Postinstall stderr; release-smoke job. Gap: only Linux/amd64 release-smoke." }
+    E3: { score: 3, evidence: "Track 8.2 release-smoke matrix expanded to darwin/arm64 + windows/amd64 (#144)." }
     E4: { score: 4, evidence: "npm package shape is simple." }
     E5: { score: 4, evidence: "Install bounded by GitHub release download." }
     E6: { score: 4, evidence: "Tarball contents reproducible." }
     E7: { score: 4, evidence: "Trivial." }
-    V1: { score: 3, evidence: "PR #133 banner uses framed multi-line warning; first design-tokens consumer." }
-    V2: { score: 3, evidence: "Postinstall warning is well-structured; install errors readable." }
+    V1: { score: 3, evidence: "Inherits uitokens (#136)." }
+    V2: { score: 3, evidence: "Trust ladder doc (#142) provides scannable adoption progression." }
     V3: { score: 3, evidence: "PR #133 marker-file + remediation block lifts P5/V3." }
