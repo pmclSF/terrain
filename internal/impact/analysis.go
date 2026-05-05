@@ -397,6 +397,30 @@ func surfaceKindLabel(kind models.CodeSurfaceKind) string {
 }
 
 // findProtectionGaps identifies where changed code lacks adequate coverage.
+// unitKindLabel maps a CodeUnitKind to the noun used in user-facing
+// gap messages. The labels are deliberately plain English: "function"
+// not "func", "type" not "struct", "value" for symbols where the
+// kind didn't carry through (vars, constants — these come through
+// without explicit kinds today and would otherwise default to
+// "function" via the legacy message).
+func unitKindLabel(kind string) string {
+	switch kind {
+	case "function":
+		return "function"
+	case "method":
+		return "method"
+	case "class":
+		return "class"
+	case "module":
+		return "module"
+	default:
+		// Unknown kinds (vars, types, constants where the parser
+		// didn't classify) get the neutral "symbol" label. Better
+		// to be vague than to claim a `var` is a "function".
+		return "symbol"
+	}
+}
+
 func findProtectionGaps(units []ImpactedCodeUnit, tests []ImpactedTest, snap *models.TestSuiteSnapshot) []ProtectionGap {
 	var gaps []ProtectionGap
 
@@ -414,8 +438,13 @@ func findProtectionGaps(units []ImpactedCodeUnit, tests []ImpactedTest, snap *mo
 			if iu.Exported {
 				severity = "high"
 				gapType = "untested_export"
-				explanation = fmt.Sprintf("Exported function %s has no observed test coverage.", iu.Name)
-				action = fmt.Sprintf("Add unit tests for exported function %s — this is public API surface.", iu.Name)
+				// Use the actual code-unit kind in the message so
+				// `Default` (a var) doesn't get labeled "Exported
+				// function" and confuse adopters. Falls back to
+				// "exported symbol" when the kind is unknown.
+				kindLabel := unitKindLabel(iu.Kind)
+				explanation = fmt.Sprintf("Exported %s %s has no observed test coverage.", kindLabel, iu.Name)
+				action = fmt.Sprintf("Add unit tests for exported %s %s — this is public API surface.", kindLabel, iu.Name)
 			}
 
 			// Downgrade when no coverage artifacts were provided: the gap
