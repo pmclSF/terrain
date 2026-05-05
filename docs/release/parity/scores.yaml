@@ -88,9 +88,9 @@ scores:
     E1: { score: 4, evidence: "internal/changescope/ thoroughly tested; PR #131 updated tests for the AI-Risk-Review rename." }
     E2: { score: 2, evidence: "No corpus of labeled PR diffs to measure impact-selection precision against." }
     E3: { score: 3, evidence: "Track 3.2 explain-selection reason chains (#157). Track 9.4 per-detector budget timing visibility (#154). Confidence histogram still missing — would lift to 4." }
-    E4: { score: 3, evidence: "JSON shape exists." }
+    E4: { score: 4, evidence: "docs/schema/pr-analysis.md publishes the canonical PRAnalysis / ChangeScopedFinding / TestSelection / PostureDelta / AIValidationSummary contract with field-level Stability tiers, jq integration examples, and pillar-marker compatibility note. PRAnalysisSchemaVersion in internal/changescope/model.go remains the in-code anchor." }
     E5: { score: 3, evidence: "Bounded by area 1." }
-    E6: { score: 3, evidence: "Inherits." }
+    E6: { score: 4, evidence: "PR markdown render is timestamp-independent under SOURCE_DATE_EPOCH variation. Test: TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch (changescope/dedup_test.go) sets SOURCE_DATE_EPOCH to two distinct values and asserts byte-identical output. Existing TestRenderPRSummaryMarkdown_Deterministic locks same-input determinism." }
     E7: { score: 3, evidence: "Inherits." }
     V1: { score: 3, evidence: "Track 10.1 uitokens shipped (#136). PR-comment migration to tokens is Track 10.3 (0.2.x)." }
     V2: { score: 3, evidence: "PR comment is reasonably scannable but no hero verdict block; severity badges inconsistent." }
@@ -194,15 +194,15 @@ scores:
   policy_governance:
     P1: { score: 3, evidence: "Policy file format exists; rule evaluation works. Gap: no rule-authoring UI; rules written by hand." }
     P2: { score: 4, evidence: "Policy results are deterministic boolean checks against the snapshot." }
-    P3: { score: 3, evidence: "internal/policy/config.go documents the schema in code; docs/release/0.2.md mentions policy. Gap: no top-level 'writing a policy' doc." }
+    P3: { score: 4, evidence: "docs/user-guides/writing-a-policy.md — full policy authoring guide: TL;DR (init → pick template → check), full schema annotated, three opinionated starting points (minimal / balanced / strict), gate decision logic, CI adoption pattern, tuning workflow, suppression pairing, anti-goals. internal/policy/config.go remains the canonical Go-side reference." }
     P4: { score: 4, evidence: "Track 8.4 init policy template (#142). Track 7.6/7.7 example policies (#141)." }
     P5: { score: 3, evidence: "Standard." }
     P6: { score: 4, evidence: "Three example policies ship (#141): minimal / balanced / strict." }
     P7: { score: 4, evidence: "Policy enforcement is a real adopter need." }
     E1: { score: 4, evidence: "internal/policy/ tested." }
     E2: { score: 4, evidence: "Boolean checks; no calibration concept." }
-    E3: { score: 3, evidence: "Standard." }
-    E4: { score: 3, evidence: "YAML schema versioned." }
+    E3: { score: 4, evidence: "Per-rule diagnostics (governance.RuleDiagnostic) record every active rule's status (pass / violated / skipped / warn) with one-sentence detail. Surfaced in `terrain policy check` 'Rule diagnostics' section with PASS/BLOCK/SKIP badges. Test: TestEvaluate_Diagnostics_PerRuleStatus. Closes the audit's 'observability' gap on which rules ran." }
+    E4: { score: 4, evidence: "docs/schema/eval-adapters.md (companion) and the in-code schema (internal/policy/config.go) jointly publish the YAML contract with field-level documentation. Schema versioned; new optional fields go in minor releases; major bumps for breaking changes." }
     E5: { score: 4, evidence: "Trivial." }
     E6: { score: 4, evidence: "Inherits." }
     E7: { score: 4, evidence: "Trivial." }
