@@ -65,8 +65,9 @@ own repo.
 - `contextOverflowRisk` — prompt assembly likely exceeds token budget
 
 False-positive guidance per detector lives in
-[`docs/rules/ai/`](../rules/ai/). Read it before opting any hygiene
-signal into your blocking-gate config.
+[`docs/rules/ai/accuracy-regression.md`](../rules/ai/accuracy-regression.md)
+and the sibling pages. Read the relevant one before opting any
+hygiene signal into your blocking-gate config.
 
 ### Tier 2 — Regression
 
