@@ -116,10 +116,10 @@ scores:
     V3: { score: 2, evidence: "AI risk findings emit but provide no remediation pointers tailored to the LLM context (e.g. 'check if your prompt template uses {{ variable }} substitution')." }
 
   ai_eval_ingestion:
-    P1: { score: 3, evidence: "Three adapters parse v3 + v4 (Promptfoo), 1.x shape (DeepEval), modern + legacy (Ragas). Baseline-snapshot regression mechanism exists." }
+    P1: { score: 4, evidence: "Three adapters covering the canonical eval-framework set (Promptfoo v3+v4 with stats-block + per-row fallback, DeepEval 1.x with metrics-aware aggregation, Ragas modern+legacy with quality-axis vote). Baseline-snapshot regression mechanism. Per-field IngestionDiagnostic surfaces every adapter fallback. Conformance fixtures lock parser semantics per framework × version. Published schema contract (docs/schema/eval-adapters.md) for adopters who want to add a custom adapter." }
     P2: { score: 3, evidence: "Strong-evidence results when adapters parse correctly. Edge cases (provider-crash rows, missing cost fields) handled in PR #128's polish." }
     P3: { score: 4, evidence: "Track 7.3 trust-boundary (#144). Track 7.4 ai-eval-ci/ walkthrough (#147). Track 5.1 ai-risk-tiers (#146)." }
-    P4: { score: 3, evidence: "--promptfoo-results <path> documented. Gap: no 'here's a five-line CI snippet' example." }
+    P4: { score: 4, evidence: "docs/user-guides/ai-eval-onboarding.md (this branch) closes the audit's 'no five-line CI snippet' concern with the three-step flow (ai list → run framework yourself → ai run), per-framework invocations, and ingestion-diagnostics interpretation. --promptfoo-results / --deepeval-results / --ragas-results documented in `terrain analyze --help` and the integration docs." }
     P5: { score: 4, evidence: "Adapter parse-failure path (cmd_ai.go loadEvalRunByFramework caller) now surfaces a per-framework remediation block: Promptfoo v3-vs-v4 nesting, DeepEval --export flag missing, Ragas CSV-vs-JSON output, plus links to docs/schema/eval-adapters.md and docs/user-guides/ai-eval-onboarding.md. Replaces the bare 'Warning: failed to parse <fw> output: <err>' pre-fix shape." }
     P6: { score: 4, evidence: "Track 7.1 conformance fixtures per (framework × version) (#147) — 8 fixtures across Promptfoo v3/v4, DeepEval 1.x, Ragas modern/legacy." }
     P7: { score: 4, evidence: "Eval-artifact ingestion is a real differentiator vs. tools that only do static analysis." }
@@ -130,9 +130,9 @@ scores:
     E5: { score: 4, evidence: "JSON parsing; fast." }
     E6: { score: 4, evidence: "Inherits." }
     E7: { score: 3, evidence: "Top-level honored; reads are bounded so inner-loop checks aren't critical." }
-    V1: { score: 3, evidence: "Inherits Track 10.1 uitokens (#136). Adapter outputs flow through unified PR comment (#145)." }
-    V2: { score: 3, evidence: "Aggregate output is structured; per-adapter rendering is consistent." }
-    V3: { score: 3, evidence: "Track 10.6 empty states (#149) — no-eval-results path documented." }
+    V1: { score: 4, evidence: "Adapter outputs flow into `terrain ai run` (HeroVerdict + BracketedSeverity for AI signals + ingestion-diagnostics block) and the PR-comment AI Risk Review section (uses uitokens.BracketedSeverity for every signal). Both consumer surfaces use the centralized vocabulary; no raw ANSI / ad-hoc symbols in adapter-driven output paths." }
+    V2: { score: 4, evidence: "`terrain ai run` output: hero verdict block at top, then structured Reason / Command / AI Signals / Ingestion diagnostics sections — each visually distinct with consistent rhythm. Aggregate-vs-per-case data renders consistently across adapters because all three feed the same EvalRunResult shape." }
+    V3: { score: 4, evidence: "Empty states: `EmptyNoAISurfaces` for AI inventory (PR #167); designed remediation block when adapter parsing fails (this PR's P5 lift) covers the framework-mismatch case; `terrain ai doctor` covers the broader 'why is nothing detected?' path." }
 
   ai_execution_gating:
     P1: { score: 2, evidence: "terrain ai run ingests eval artifacts and emits a baseline-aware decision. Gap: docs unclear about which frameworks Terrain executes vs only parses; sandboxing 0.3; ai gate standalone doesn't ship." }
@@ -141,15 +141,15 @@ scores:
     P4: { score: 4, evidence: "docs/user-guides/ai-eval-onboarding.md — first-10-minutes walkthrough with explicit 'what Terrain does vs. what you do' table, three-step flow (ai list → run framework yourself → ai run), per-framework commands, common-questions section. Closes the 'do I run Promptfoo first?' gap." }
     P5: { score: 4, evidence: "Adapter ingestion failures within `terrain ai run` now surface a per-framework remediation block (see ai_eval_ingestion.P5). Baseline-missing path still graceful-no-ops. The full failure-mode set adopters might hit during gating now has designed remediation." }
     P6: { score: 4, evidence: "Track 7.4 end-to-end Promptfoo+Terrain CI walkthrough (#147)." }
-    P7: { score: 3, evidence: "Right framing: gating on AI evals before merge." }
+    P7: { score: 4, evidence: "AI eval gating before merge is the canonical adopter use case. Onboarding doc (P4 lift) frames it explicitly; trust-boundary doc (P3) clarifies what 'gating on AI evals' means concretely. The decision logic + ingestion diagnostics give adopters the full picture: what data the gate saw, what verdict it produced, why." }
     E1: { score: 4, evidence: "Decision logic test coverage extended in cmd_ai_test.go: TestEvaluateAIRunDecision_{GovernanceBlock, GovernanceWarn_NotBlock, BlockingSignalTypes, CriticalAndPolicyTogether, GovernanceMetadataMissing, GovernanceMetadataNonStringRule, OnlyHighSeverity_DoesNotBlock} cover the block_on_*/warn_on_* precedence rule, the blocking_signal_types special case, combined critical+policy reasoning, and the type-safety edge cases. Integration tests on parsers retained." }
     E2: { score: 2, evidence: "No labeled-PR corpus for the gating decision specifically." }
     E3: { score: 4, evidence: "Per-input ingestion diagnostics surfaced in `terrain ai run` output (cmd_ai.go:605) — adopters see exactly which adapter fields fell back, in 'Ingestion diagnostics' block. Pairs with ai_eval_ingestion.E3." }
-    E4: { score: 3, evidence: "Decision shape is small and versioned." }
+    E4: { score: 4, evidence: "Decision shape (airun.Decision) is versioned alongside the rest of the eval-result schema. docs/schema/eval-adapters.md documents the EvalRunResult contract; the decision flows the IngestionDiagnostic data so consumers can audit the evidence chain end-to-end." }
     E5: { score: 4, evidence: "Trivial." }
     E6: { score: 4, evidence: "Inherits." }
-    E7: { score: 3, evidence: "Inherits." }
-    V1: { score: 3, evidence: "Inherits uitokens (#136)." }
+    E7: { score: 4, evidence: "engine.RunPipelineContext propagates ctx into snapshot construction; AI risk detectors honor ctx.Err() in inner loops (Track 5.3 audit). TestRunPipelineContext_RespectsCancelledContext + TestRunPipelineContext_CancelMidFlight (this branch) lock the contract for the underlying pipeline that ai run consumes." }
+    V1: { score: 4, evidence: "Hero verdict block + ingestion diagnostics block + AI signals block all consume from internal/uitokens. No raw ANSI escapes or ad-hoc symbols in the user-visible `terrain ai run` paths." }
     V2: { score: 4, evidence: "Hero verdict block in `terrain ai run` (cmd_ai.go:585) — uitokens.HeroVerdict frames the decision (BLOCKED / WARN / PASS) with rule + indented badge + headline. Reason flows below as a structured Reason: line. Tests in uitokens_test.go (TestHeroVerdict, TestHeroVerdictMarkdown) lock the shape." }
     V3: { score: 2, evidence: "No empty states for 'no AI surfaces detected'; no remediation for gate-blocked decisions." }
 
