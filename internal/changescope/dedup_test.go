@@ -104,6 +104,40 @@ func TestMergeRecommendation(t *testing.T) {
 	}
 }
 
+// TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch
+// locks the pr_change_scoped.E6 audit lift: byte-identical output
+// when SOURCE_DATE_EPOCH varies. The PR comment shouldn't carry any
+// timestamp that drifts between runs of the same snapshot — every
+// finding has its own timing data inside the snapshot, but the
+// comment surface itself is timestamp-free.
+func TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch(t *testing.T) {
+	pr := &PRAnalysis{
+		PostureBand:        "well_protected",
+		ChangedFileCount:   2,
+		ChangedSourceCount: 1,
+		ChangedTestCount:   1,
+		ImpactedUnitCount:  3,
+		TotalTestCount:     50,
+		NewFindings: []ChangeScopedFinding{
+			{Type: "weakAssertion", Scope: "direct", Path: "src/auth.go", Severity: "medium", Explanation: "self-comparison"},
+		},
+		RecommendedTests: []string{"src/auth_test.go"},
+	}
+
+	t.Setenv("SOURCE_DATE_EPOCH", "1700000000")
+	var buf1 bytes.Buffer
+	RenderPRSummaryMarkdown(&buf1, pr)
+
+	t.Setenv("SOURCE_DATE_EPOCH", "1900000000")
+	var buf2 bytes.Buffer
+	RenderPRSummaryMarkdown(&buf2, pr)
+
+	if buf1.String() != buf2.String() {
+		t.Errorf("PR markdown should be timestamp-independent.\nepoch=1700000000:\n%s\n\nepoch=1900000000:\n%s",
+			buf1.String(), buf2.String())
+	}
+}
+
 func TestRenderPRSummaryMarkdown_Deterministic(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
