@@ -9,7 +9,7 @@ GO_OWNED_PKGS := ./cmd/... ./internal/...
 .PHONY: build test lint clean demo benchmark-fetch benchmark-smoke benchmark-full benchmark-stress benchmark-summary benchmark-convert install docs-linkcheck \
        test-golden test-determinism test-schema test-adversarial test-e2e test-cli test-bench golden-update pr-gate release-gate \
        sbom sbom-cyclonedx sbom-spdx release-dry-run go-release-verify js-release-verify extension-verify release-verify \
-       docs-gen docs-verify calibrate bench-baseline bench-gate memory-bench truth-verify
+       docs-gen docs-verify calibrate bench-baseline bench-gate memory-bench truth-verify voice-lint
 
 # Build the CLI binary
 build:
@@ -180,6 +180,15 @@ docs-linkcheck:
 # Track 9.7 deliverable for the 0.2.0 parity plan.
 truth-verify:
 	@go run ./cmd/terrain-truth-verify
+
+# `voice-lint` enforces the voice-and-tone rules from the parity
+# plan's Track 10.7: no exclamation-mark prose (jarring), no British
+# spellings (mixed-spelling reads as under-edited). Scans Go source
+# in the user-visible code paths (signals manifest, command package,
+# reporting, changescope). Test files are skipped — tests can use any
+# prose without tripping the lint.
+voice-lint:
+	@go run ./cmd/terrain-voice-lint
 
 # ── Calibration corpus ──────────────────────────────────────
 # Runs the engine pipeline against every fixture under tests/calibration/
