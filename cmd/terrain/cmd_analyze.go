@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -196,6 +198,13 @@ func runAnalyze(root string, jsonOutput bool, format string, verbose bool, write
 	// detectors check ctx.Err and unwind cooperatively.
 	result, err := runPipelineWithSignalsAndTimeout(root, opt, timeout)
 	if err != nil {
+		// Audit-named gap (core_analyze.P5): designed remediation
+		// when analysis fails. Distinguishes context cancellation
+		// (timeout / Ctrl-C) from other failure modes so adopters
+		// see the right next step.
+		if !jsonOutput {
+			analyzeFailureRemediation(err, root, timeout)
+		}
 		return fmt.Errorf("analysis failed: %w", err)
 	}
 
@@ -474,4 +483,34 @@ func policyStatusMessage(pass bool) string {
 		return "Policy checks passed."
 	}
 	return "Policy violations detected."
+}
+
+// analyzeFailureRemediation prints a designed remediation block to
+// stderr when the analyze pipeline fails. Distinguishes the three
+// most common failure modes so adopters see a relevant next step:
+//
+//   - context cancelled (--timeout fired or Ctrl-C)
+//   - filesystem / parse error
+//   - everything else (generic remediation)
+//
+// Audit-named gap (core_analyze.P5).
+func analyzeFailureRemediation(err error, root string, timeout time.Duration) {
+	fmt.Fprintln(os.Stderr)
+	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {
+		if timeout > 0 && errors.Is(err, context.DeadlineExceeded) {
+			fmt.Fprintf(os.Stderr, "Analysis exceeded the --timeout=%s budget. Common next steps:\n", timeout)
+			fmt.Fprintln(os.Stderr, "  - Increase --timeout (large monorepos may need 5–10 minutes)")
+			fmt.Fprintln(os.Stderr, "  - Run on a subdirectory: `terrain analyze <path>` to scope down")
+			fmt.Fprintln(os.Stderr, "  - Use `--verbose` to see per-stage timing and identify the slow detector")
+		} else {
+			fmt.Fprintln(os.Stderr, "Analysis was cancelled. Re-run when ready.")
+		}
+		return
+	}
+	fmt.Fprintln(os.Stderr, "Common causes of analysis failure:")
+	fmt.Fprintln(os.Stderr, "  - --root path is not a git repository (some detectors need git history)")
+	fmt.Fprintf(os.Stderr, "  - Permission errors walking %s — check file permissions\n", root)
+	fmt.Fprintln(os.Stderr, "  - Malformed coverage / runtime artifact at the path passed via --coverage / --runtime")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Run with `--verbose` for per-stage timing or `--json` for a machine-readable error report.")
 }
