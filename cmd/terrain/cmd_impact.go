@@ -154,6 +154,22 @@ func applyImpactPolicy(impactResult *impact.ImpactResult, result *engine.Pipelin
 func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGate) error {
 	impactResult, result, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
+		// Audit-named gap (pr_change_scoped.P5): the impact
+		// pipeline can fail for half a dozen different reasons —
+		// missing git history, no base ref, unparseable diff,
+		// analysis crash. Wrap with a hint about the most
+		// adopter-actionable cause.
+		if !jsonOutput {
+			fmt.Fprintf(os.Stderr, "error: report pr failed: %v\n", err)
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "Common causes:")
+			fmt.Fprintln(os.Stderr, "  - --base ref doesn't exist (default: HEAD~1; try --base main if working off a feature branch)")
+			fmt.Fprintln(os.Stderr, "  - shallow clone in CI: `git fetch --unshallow` or fetch the base ref explicitly")
+			fmt.Fprintln(os.Stderr, "  - diff is empty (no changed files; report pr is a no-op then)")
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "If the underlying analysis failed, run `terrain analyze` directly to see the root cause.")
+			// Return original error so the caller's exit code is unchanged.
+		}
 		return err
 	}
 
