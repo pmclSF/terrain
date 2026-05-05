@@ -118,6 +118,13 @@ type KeyFinding struct {
 	// Category is optimization, reliability, architecture_debt, or coverage_debt.
 	Category string `json:"category"`
 
+	// Pillar is the product pillar this finding belongs to. Always
+	// "understand" for analyze KeyFindings — analyze is the
+	// Understand pillar's primary command. Carried in the JSON
+	// envelope so multi-command aggregators (extension, web UI) can
+	// group consistently with signals from `report pr` (gate) etc.
+	Pillar string `json:"pillar,omitempty"`
+
 	// Metric is the key number (e.g., "340 duplicates", "12 flaky tests").
 	Metric string `json:"metric,omitempty"`
 }
@@ -876,6 +883,11 @@ func deriveKeyFindings(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph
 	findings := make([]KeyFinding, len(top))
 	for i, c := range top {
 		findings[i] = c.finding
+		// Every analyze-derived KeyFinding belongs to the
+		// Understand pillar — analyze is its primary command.
+		// Tagged here so multi-command aggregators can group by
+		// pillar consistently with signals from `report pr`.
+		findings[i].Pillar = string(models.PillarUnderstand)
 	}
 	return findings, total
 }
