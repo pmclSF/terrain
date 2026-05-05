@@ -43,6 +43,9 @@ Thumbs.db
 /terrain
 /terrain-bench
 /terrain-truthcheck
+/terrain-voice-lint
+/terrain-parity-gate
+/terrain-docs-gen
 
 # === SBOM artifacts (generated locally via `make sbom`) ===
 *.cdx.json

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	conv "github.com/pmclSF/terrain/internal/convert"
+	"github.com/pmclSF/terrain/internal/reporting"
 )
 
 type migrateCommandOptions struct {
@@ -329,11 +330,21 @@ func runDoctor(root string, jsonOutput, verbose bool) (conv.MigrationDoctorResul
 	if err != nil {
 		return conv.MigrationDoctorResult{}, err
 	}
+	pillars := assessPillars(root)
 	if jsonOutput {
-		return result, writeJSON(result)
+		// Preserve the legacy doctor envelope (checks / summary /
+		// hasFail) and add a `pillars` field alongside so existing
+		// consumers keep working unchanged.
+		return result, writeJSON(map[string]any{
+			"checks":  result.Checks,
+			"summary": result.Summary,
+			"hasFail": result.HasFail,
+			"pillars": pillars,
+		})
 	}
 	fmt.Println("Terrain Doctor")
 	fmt.Println()
+	renderPillarStatuses(os.Stdout, pillars)
 	for _, check := range result.Checks {
 		fmt.Printf("  [%s] %s: %s\n", check.Status, check.Label, check.Detail)
 		if verbose && strings.TrimSpace(check.Verbose) != "" {
@@ -385,6 +396,10 @@ func printEstimateSummary(root string, estimate conv.MigrationEstimate, dryRun b
 	}
 	fmt.Printf("Estimating migration for %s...\n", root)
 	fmt.Println()
+	if estimate.Summary.TotalFiles == 0 {
+		reporting.RenderEmptyState(os.Stdout, reporting.EmptyNoMigrationCandidates)
+		return
+	}
 	fmt.Println("Estimation summary:")
 	fmt.Printf("  Total files: %d\n", estimate.Summary.TotalFiles)
 	fmt.Printf("  Test files: %d\n", estimate.Summary.TestFiles)

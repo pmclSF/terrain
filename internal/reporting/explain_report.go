@@ -64,7 +64,7 @@ func RenderTestExplanation(w io.Writer, te *explain.TestExplanation, verbose ...
 
 	// Covers units.
 	if len(te.CoversUnits) > 0 {
-		line("Covers %d code unit(s):", len(te.CoversUnits))
+		line("Covers %d code %s:", len(te.CoversUnits), Plural(len(te.CoversUnits), "unit"))
 		for _, u := range te.CoversUnits {
 			line("  %s", u)
 		}

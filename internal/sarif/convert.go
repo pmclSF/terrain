@@ -118,10 +118,21 @@ func buildRules(r *analyze.Report) []Rule {
 			ShortDescription: Message{Text: ruleDescription(kf.Category)},
 			DefaultConfig:    RuleConfig{Level: severityToLevel(kf.Severity)},
 			HelpURI:          ruleHelpURI(ruleID),
+			Properties:       pillarProperties(kf.Pillar),
 		})
 	}
 
 	return rules
+}
+
+// pillarProperties returns the SARIF properties bag carrying the
+// "terrain:<pillar>" tag for a given pillar string. Returns nil when
+// the pillar is empty so we don't emit empty properties bags.
+func pillarProperties(pillar string) *Properties {
+	if pillar == "" {
+		return nil
+	}
+	return &Properties{Tags: []string{"terrain:" + pillar}}
 }
 
 // ruleHelpURI maps a legacy category-derived rule ID to its
@@ -160,9 +171,10 @@ func buildResults(r *analyze.Report, opts Options) []Result {
 
 	for _, kf := range r.KeyFindings {
 		result := Result{
-			RuleID:  ruleIDFromCategory(kf.Category),
-			Level:   severityToLevel(kf.Severity),
-			Message: Message{Text: findingMessage(kf)},
+			RuleID:     ruleIDFromCategory(kf.Category),
+			Level:      severityToLevel(kf.Severity),
+			Message:    Message{Text: findingMessage(kf)},
+			Properties: pillarProperties(kf.Pillar),
 		}
 
 		// Attach file locations where we have them.

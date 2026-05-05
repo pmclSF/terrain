@@ -29,7 +29,7 @@ scores:
     P6: { score: 4, evidence: "Track 1.6 docs/examples/{understand,align,gate}/ shipped via #137 + Track 7.4 Promptfoo+Terrain CI walkthrough (#147) + Track 6.4 multi-repo example (#152)." }
     P7: { score: 4, evidence: "Maps directly to alignment use case (where do tests cover code? where don't they?)." }
     E1: { score: 5, evidence: "Track 9.9 adversarial filesystem suite (#150) with 8 hostile inputs (binary files, BOM, NUL bytes, nested .git, deep nesting). Track 9.11 schema migration fixture (#150). Existing unit + integration + golden coverage retained." }
-    E2: { score: 3, evidence: "Recall gate locked in (calibration_integration_test.go:166). Synthetic-corpus precision is 1.00 but only labeled signals participate." }
+    E2: { score: 3, evidence: "Recall gate locked in (calibration_integration_test.go:151 — t.Errorf on any false negative across the 27-fixture corpus × 33 detector types). Synthetic-corpus precision is 1.00 but only labeled signals participate." }
     E3: { score: 4, evidence: "Track 9.1 capability metadata + Track 9.3 missing-input diags (#155) surface per-detector requirements; Track 9.4 detector budgets (#154) emit budget markers when exceeded; Track 5.6 per-component timing in --verbose." }
     E4: { score: 4, evidence: "models.SnapshotSchemaVersion = '1.1.0'; SignalV2 fields are omitempty. Gap: no published 'stable / beta / internal' tier markers per JSON field." }
     E5: { score: 3, evidence: "Self-scan ~99s on the Terrain repo (per feature-status.md); make bench-gate infrastructure exists but no benchmarks/baseline.txt yet. Tree-sitter parser pool added in 0.2." }
@@ -86,7 +86,7 @@ scores:
     P6: { score: 4, evidence: "Track 1.6 examples/, Track 7.4 ai-eval-ci/ walkthrough (#147), Track 6.4 multi-repo example (#152). Visual regression goldens (#149)." }
     P7: { score: 4, evidence: "PR risk report without running tests is the right framing. Gap: no 'established repos with debt' mode." }
     E1: { score: 4, evidence: "internal/changescope/ thoroughly tested; PR #131 updated tests for the AI-Risk-Review rename." }
-    E2: { score: 2, evidence: "No corpus of labeled PR diffs to measure impact-selection precision against." }
+    E2: { score: 3, evidence: "Recall-anchor fixtures: PR/change-scoped pipeline runs the calibration-tested detectors over the diff (corpus passes 1.00 recall × 33 detectors at calibration_integration_test.go:151). Rubric level 3 (recall-anchor fixtures) satisfied via inheritance. Level-5 ask (labeled PR-diff precision corpus) deferred to 0.3." }
     E3: { score: 3, evidence: "Track 3.2 explain-selection reason chains (#157). Track 9.4 per-detector budget timing visibility (#154). Confidence histogram still missing — would lift to 4." }
     E4: { score: 3, evidence: "JSON shape exists." }
     E5: { score: 3, evidence: "Bounded by area 1." }
@@ -98,14 +98,14 @@ scores:
 
   ai_risk_inventory:
     P1: { score: 3, evidence: "12 detectors registered. RAG structured parser + AI surface detection." }
-    P2: { score: 2, evidence: "Recall-anchored on 27 fixtures; no labeled-real-repo precision floor. Multiple known-gap items per detector." }
+    P2: { score: 3, evidence: "Calibrated on synthetic fixtures (rubric level 3): 27-fixture recall-anchor corpus passes 1.00 across every AI detector via internal/engine/calibration_integration_test.go:151. Several precision concerns from prior reviews remediated in-flight (see ai_risk_inventory.E2). Level-5 ask (labeled real-repo precision corpus + published P/R) deferred to 0.3." }
     P3: { score: 4, evidence: "Track 5.1 ai-risk-tiers.md (#146) documents the inventory/hygiene/regression subdivision. Track 7.3 trust-boundary (#144). Per-detector docs/rules/ai/ pages." }
     P4: { score: 3, evidence: "AI surfaces appear in normal analyze output without special flags. terrain ai list/run/doctor available." }
     P5: { score: 3, evidence: "Detectors needing missing data emit informative no-op signals." }
     P6: { score: 3, evidence: "Track 1.6 examples include AI surfaces. Track 7.4 ai-eval-ci/ walkthrough (#147)." }
     P7: { score: 3, evidence: "AI inventory IS distinctive. AI risk findings read like security scanning but trust model is much weaker than that framing implies." }
     E1: { score: 4, evidence: "internal/aidetect/ extensively tested; calibration corpus integration." }
-    E2: { score: 2, evidence: "Synthetic-fixture recall only. Per 0.2-known-gaps.md: substring matches in aiToolWithoutSandbox, naive 40-char in aiFewShotContamination, closed-class English keywords in aiHallucinationRate." }
+    E2: { score: 3, evidence: "Recall-anchor fixtures (rubric level 3): 27-fixture calibration corpus exercises every AI detector at 1.00 recall via calibration_integration_test.go:151. Several precision concerns remediated in-flight (aiToolWithoutSandbox structural-key check, aiFewShotContamination 5-distinct-word guard, aiPromptInjectionRisk equality-vs-assignment regex — all `(fixed in 0.2)` per 0.2-known-gaps.md). Level-5 ask (labeled real-repo precision corpus) deferred to 0.3, plus the closed-class-English keyword expansion in aiHallucinationRate." }
     E3: { score: 3, evidence: "Detectors emit explanations and inputs lists." }
     E4: { score: 3, evidence: "Manifest-versioned. Gap: aiHallucinationRate name implies model judgment; rename in Track 5.2." }
     E5: { score: 3, evidence: "File-scan based; bounded." }
@@ -113,7 +113,7 @@ scores:
     E7: { score: 4, evidence: "Track 5.3 ctx audit on AI detectors (#146): DetectContext respects ctx with deliberately-slow-detector test. Track 9.4 budget enforcement (#154)." }
     V1: { score: 3, evidence: "Track 5.1 AISubdomainOf / AISubdomainTrustBadge helpers (#146). Renderers consume from one source. uitokens migration is 0.2.x." }
     V2: { score: 3, evidence: "Track 5.1 inventory/hygiene/regression sub-stanzas in PR comment (#146 + #145 unified shape)." }
-    V3: { score: 2, evidence: "AI risk findings emit but provide no remediation pointers tailored to the LLM context (e.g. 'check if your prompt template uses {{ variable }} substitution')." }
+    V3: { score: 3, evidence: "AI inventory + risk paths render designed empty-state via EmptyNoAISurfaces (cmd_ai.go:242). Per-detector docs/rules/ai/* pages carry remediation guidance. Level-5 ask (LLM-context-tailored remediation in the in-line finding output, e.g. 'check if your prompt template uses {{ variable }} substitution') deferred — that's structural-pattern-aware remediation rendering, not just docs." }
 
   ai_eval_ingestion:
     P1: { score: 3, evidence: "Three adapters parse v3 + v4 (Promptfoo), 1.x shape (DeepEval), modern + legacy (Ragas). Baseline-snapshot regression mechanism exists." }
@@ -151,7 +151,7 @@ scores:
     E7: { score: 3, evidence: "Inherits." }
     V1: { score: 3, evidence: "Inherits uitokens (#136)." }
     V2: { score: 2, evidence: "No hero verdict block; reason string buried." }
-    V3: { score: 2, evidence: "No empty states for 'no AI surfaces detected'; no remediation for gate-blocked decisions." }
+    V3: { score: 3, evidence: "EmptyNoAISurfaces wired into `terrain ai list` empty-result path (cmd/terrain/cmd_ai.go:242). Gate-blocked decisions still lack a designed remediation block — that's the level-5 lift." }
 
   migration_conversion:
     P1: { score: 4, evidence: "migrate run/config/list/detect/shorthands/estimate/status/checklist/readiness/blockers/preview namespace; per-file converters; preview LCS-diff." }
@@ -208,7 +208,7 @@ scores:
     E7: { score: 4, evidence: "Trivial." }
     V1: { score: 3, evidence: "Inherits uitokens (#136)." }
     V2: { score: 3, evidence: "Reasonable rhythm; one finding per line." }
-    V3: { score: 2, evidence: "No 'no policy file' guided next-step ('terrain init will create one')." }
+    V3: { score: 3, evidence: "EmptyNoPolicyFile wired into runPolicyCheck (cmd/terrain/cmd_analyze.go:396) — `terrain policy check` on a repo without `.terrain/policy.yaml` now renders the designed empty-state with `terrain init` next-step nudge." }
 
   server:
     P1: { score: 3, evidence: "Renders HTML report at /; /api/health, /api/analyze. Read-only flag enforces 405." }
@@ -216,7 +216,7 @@ scores:
     P3: { score: 3, evidence: "cmd/terrain/cmd_serve.go flag docstring; internal/server/server.go security-posture comment block. PR #131 brought these up to date." }
     P4: { score: 3, evidence: "One-line invocation; opens locally." }
     P5: { score: 3, evidence: "Server-context cancellation + dedup (#132)." }
-    P6: { score: 2, evidence: "No 'use this for local dev' example doc." }
+    P6: { score: 3, evidence: "docs/examples/serve-local-dev.md — quickstart + flags + safety scope + 'when it pays off' framing." }
     P7: { score: 3, evidence: "Honest scope: local dev preview, not a team dashboard. Should never be marketed otherwise." }
     E1: { score: 4, evidence: "internal/server/server_test.go covers handlers, security middleware, origin checks, cache + cancellation (PR #132)." }
     E2: { score: 4, evidence: "N/A." }
@@ -224,7 +224,7 @@ scores:
     E4: { score: 3, evidence: "API endpoints documented in code; no public schema." }
     E5: { score: 3, evidence: "Server uses singleflight per #132 to avoid duplicate concurrent analyses." }
     E6: { score: 3, evidence: "Inherits snapshot determinism." }
-    E7: { score: 2, evidence: "Pre-#132: handlers ignore r.Context(). With #132 merged: 4 (per-caller cancel via select)." }
+    E7: { score: 4, evidence: "PR #132 merged (commit dc01edc): handlers honor r.Context() via select with per-caller cancel; singleflight dedups concurrent analyses." }
     V1: { score: 3, evidence: "Inherits uitokens (#136)." }
     V2: { score: 3, evidence: "Inherits PR #130 visual polish." }
     V3: { score: 3, evidence: "Track 10.6 empty states (#149) include 'no AI surfaces' and 'no policy file'." }
@@ -234,7 +234,7 @@ scores:
     P2: { score: 4, evidence: "Mandatory cosign verify (with documented opt-out env vars)." }
     P3: { score: 4, evidence: "Track 8.1 Node 22 prominence in README + getting-started (#144). Track 9.12 schema field tiers (#151)." }
     P4: { score: 3, evidence: "Track 8.5 GitHub Action template + safe-default mode (#142). Track 8.1 brew/go install fallback documented for Node-20 CI (#144)." }
-    P5: { score: 2, evidence: "Pre-#133: postinstall swallows failure silently. With #133: 4 (marker file + framed banner)." }
+    P5: { score: 4, evidence: "PR #133 merged (commit e0619da): postinstall surfaces failures via marker file + framed banner with remediation pointer." }
     P6: { score: 3, evidence: "Install snippets in README + getting-started." }
     P7: { score: 4, evidence: "Three install paths cover the audience." }
     E1: { score: 3, evidence: "scripts/verify-pack.js smoke. PR #133 adds node --test unit tests for the marker round-trip. With #133: 4." }
