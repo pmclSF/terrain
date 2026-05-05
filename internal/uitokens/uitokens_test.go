@@ -139,6 +139,55 @@ func TestVerdictBadge(t *testing.T) {
 	})
 }
 
+// ── Bracketed badges (PR-comment / markdown surface) ───────────────
+
+// TestBracketedSeverity locks the canonical PR-comment severity
+// badge shape. The unified-PR-comment golden tests in
+// internal/changescope/unified_render_test.go assert these exact
+// strings; renaming a label here is a public-facing change.
+func TestBracketedSeverity(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"critical", "[CRIT]"},
+		{"high", "[HIGH]"},
+		{"medium", "[MED]"},
+		{"low", "[LOW]"},
+		{"info", "[INFO]"},
+		{"", "[---]"},
+		{"weird-unknown-value", "[---]"},
+	}
+	for _, tc := range cases {
+		if got := BracketedSeverity(tc.in); got != tc.want {
+			t.Errorf("BracketedSeverity(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
+// TestBracketedVerdict locks the canonical PR-comment posture-band
+// badge shape. Same posture as TestBracketedSeverity — these
+// strings are part of the unified-PR-comment visual contract.
+func TestBracketedVerdict(t *testing.T) {
+	cases := []struct {
+		in   string
+		want string
+	}{
+		{"well_protected", "[PASS]"},
+		{"partially_protected", "[WARN]"},
+		{"weakly_protected", "[RISK]"},
+		{"high_risk", "[FAIL]"},
+		{"evidence_limited", "[INFO]"},
+		{"", "[????]"},
+		{"weird-unknown-band", "[????]"},
+	}
+	for _, tc := range cases {
+		if got := BracketedVerdict(tc.in); got != tc.want {
+			t.Errorf("BracketedVerdict(%q) = %q, want %q", tc.in, got, tc.want)
+		}
+	}
+}
+
 // ── Bar rendering ───────────────────────────────────────────────────
 
 func TestBarPlain_FullEmptyHalf(t *testing.T) {
