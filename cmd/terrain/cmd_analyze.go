@@ -394,6 +394,7 @@ func runPolicyCheck(root string, jsonOutput bool, coveragePath, coverageRunLabel
 	}
 
 	if !policyResult.Found {
+		es := reporting.EmptyStateFor(reporting.EmptyNoPolicyFile)
 		if jsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
@@ -401,7 +402,11 @@ func runPolicyCheck(root string, jsonOutput bool, coveragePath, coverageRunLabel
 				"policyFile": nil,
 				"pass":       true,
 				"violations": []any{},
-				"message":    "No policy file found. Create .terrain/policy.yaml to define policy.",
+				"empty":      true,
+				"emptyKind":  "no-policy-file",
+				"header":     es.Header,
+				"nextMove":   es.NextMove,
+				"message":    es.Header + " " + es.NextMove,
 			}); err != nil {
 				fmt.Fprintf(os.Stderr, "error: failed to render policy output: %v\n", err)
 				return exitError
@@ -409,8 +414,7 @@ func runPolicyCheck(root string, jsonOutput bool, coveragePath, coverageRunLabel
 		} else {
 			fmt.Println("Terrain Policy Check")
 			fmt.Println()
-			fmt.Println("No policy file found.")
-			fmt.Println("Create .terrain/policy.yaml to define policy rules.")
+			reporting.RenderEmptyState(os.Stdout, reporting.EmptyNoPolicyFile)
 		}
 		return exitOK
 	}

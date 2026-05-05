@@ -121,6 +121,20 @@ func main() {
 
 	switch os.Args[1] {
 	case "analyze":
+		// Helpful redirect: --base belongs on `report pr` / `report
+		// impact`. The Go stdlib flag package's default response is
+		// to dump every flag the command supports — overwhelming and
+		// unhelpful when the user just reached for the wrong command.
+		// Detect this case before flag parsing and point at the right
+		// command instead.
+		if argHasFlag(os.Args[2:], "base") {
+			fmt.Fprintln(os.Stderr, "error: --base is not a flag of `terrain analyze`.")
+			fmt.Fprintln(os.Stderr, "       Did you mean one of:")
+			fmt.Fprintln(os.Stderr, "         terrain report pr --base <ref>      gate a PR diff")
+			fmt.Fprintln(os.Stderr, "         terrain report impact --base <ref>  see what a diff impacts")
+			fmt.Fprintln(os.Stderr, "       For analyze, use --baseline <path-to-snapshot.json>.")
+			os.Exit(exitUsageError)
+		}
 		analyzeCmd := flag.NewFlagSet("analyze", flag.ExitOnError)
 		rootFlag := analyzeCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := analyzeCmd.Bool("json", false, "output JSON snapshot")
@@ -921,6 +935,40 @@ var knownCommands = []string{
 //
 // Errors out with exit 2 (usage error) if more than one positional was
 // supplied. Callers must pass the FlagSet's args slice (post-Parse).
+// argHasFlag reports whether args contains exactly the flag --name or
+// -name (with or without an attached =value). Used to detect when a
+// user reaches for a flag that this command doesn't support, so we
+// can emit a helpful redirect before the stdlib flag parser dumps
+// the full flag list.
+//
+// Matches `--name`, `-name`, `--name=foo`, and `-name=foo`. Does NOT
+// match `--namesake` or `-named` — exact match only on the flag name.
+func argHasFlag(args []string, name string) bool {
+	for _, a := range args {
+		if a == "" {
+			continue
+		}
+		// Strip a single leading dash, then optionally another. We
+		// intentionally accept both -base and --base because the
+		// stdlib flag package treats them as equivalent.
+		s := a
+		if len(s) > 0 && s[0] == '-' {
+			s = s[1:]
+		}
+		if len(s) > 0 && s[0] == '-' {
+			s = s[1:]
+		}
+		// Trim a value suffix.
+		if i := strings.IndexByte(s, '='); i >= 0 {
+			s = s[:i]
+		}
+		if s == name {
+			return true
+		}
+	}
+	return false
+}
+
 func mountPositionalAsRoot(commandName string, args []string, root *string) {
 	if len(args) == 0 {
 		return

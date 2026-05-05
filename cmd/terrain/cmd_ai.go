@@ -240,8 +240,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 
 	// Empty state.
 	if len(scenarios) == 0 && totalAI == 0 && len(evalFiles) == 0 {
-		fmt.Println("No AI/eval components detected.")
-		fmt.Println("Run `terrain ai doctor` to diagnose.")
+		reporting.RenderEmptyState(os.Stdout, reporting.EmptyNoAISurfaces)
 		return nil
 	}
 

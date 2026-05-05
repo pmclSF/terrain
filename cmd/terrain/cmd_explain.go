@@ -503,7 +503,23 @@ func showFinding(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) err
 			return nil
 		}
 	}
-	return cliExitError{code: exitNotFound, message: fmt.Sprintf("finding not found: %s", id)}
+	// Distinct from the stable-finding-ID path above (which gives a
+	// detailed "ID parses but didn't resolve" diagnostic). This branch
+	// runs when the user passed a numeric index or a type string and
+	// neither matched. Help them figure out what to try next.
+	return cliExitError{
+		code: exitNotFound,
+		message: fmt.Sprintf(
+			"finding not found: %s\n\n"+
+				"`terrain explain finding <id>` accepts:\n"+
+				"  - a stable finding ID  (e.g. `weakAssertion@src/auth_test.go:TestLogin#a1b2c3d4`)\n"+
+				"  - a portfolio index    (e.g. `0`, `1`, `2` — see `terrain analyze --json`)\n"+
+				"  - a signal type        (e.g. `weakAssertion`)\n\n"+
+				"If you copied this ID from an older run, re-run `terrain analyze` —\n"+
+				"file renames, symbol renames, or line drift can produce a new ID.",
+			id,
+		),
+	}
 }
 
 func isUniqueCodeUnitName(snap *models.TestSuiteSnapshot, name string) bool {

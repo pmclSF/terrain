@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	conv "github.com/pmclSF/terrain/internal/convert"
+	"github.com/pmclSF/terrain/internal/reporting"
 )
 
 type migrateCommandOptions struct {
@@ -395,6 +396,10 @@ func printEstimateSummary(root string, estimate conv.MigrationEstimate, dryRun b
 	}
 	fmt.Printf("Estimating migration for %s...\n", root)
 	fmt.Println()
+	if estimate.Summary.TotalFiles == 0 {
+		reporting.RenderEmptyState(os.Stdout, reporting.EmptyNoMigrationCandidates)
+		return
+	}
 	fmt.Println("Estimation summary:")
 	fmt.Printf("  Total files: %d\n", estimate.Summary.TotalFiles)
 	fmt.Printf("  Test files: %d\n", estimate.Summary.TestFiles)
