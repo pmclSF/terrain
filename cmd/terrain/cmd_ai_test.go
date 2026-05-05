@@ -300,6 +300,184 @@ func TestIsEvalPath_Negative(t *testing.T) {
 	}
 }
 
+// TestEvaluateAIRunDecision_GovernanceBlock locks the precedence
+// rule: an AI policy violation (governance signal with rule=block_*)
+// triggers BLOCK even when no AI severity is critical. Audit-named
+// gap (ai_execution_gating.E1): more decision-logic test coverage.
+func TestEvaluateAIRunDecision_GovernanceBlock(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			// No critical AI signal — only a governance block.
+			{Category: models.CategoryAI, Severity: models.SeverityMedium},
+			{
+				Category: models.CategoryGovernance,
+				Severity: models.SeverityHigh,
+				Metadata: map[string]any{"rule": "block_on_safety_failure"},
+			},
+		},
+	}
+	result := &engine.PipelineResult{Snapshot: snap}
+
+	d := evaluateAIRunDecision(snap, result)
+	if d.Action != actionBlock {
+		t.Errorf("governance block_on_* should trigger BLOCK; got action=%q", d.Action)
+	}
+	if d.Blocked != 1 {
+		t.Errorf("blocked count = %d, want 1", d.Blocked)
+	}
+	if !contains(d.Reason, "policy violation") {
+		t.Errorf("reason = %q, want it to mention 'policy violation'", d.Reason)
+	}
+}
+
+// TestEvaluateAIRunDecision_GovernanceWarn_NotBlock locks the
+// distinction between block_on_* (BLOCK) and warn_on_* (no escalation).
+// Adopters who set warn_on_cost_regression shouldn't have CI fail.
+func TestEvaluateAIRunDecision_GovernanceWarn_NotBlock(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{
+				Category: models.CategoryGovernance,
+				Severity: models.SeverityMedium,
+				Metadata: map[string]any{"rule": "warn_on_cost_regression"},
+			},
+		},
+	}
+	result := &engine.PipelineResult{Snapshot: snap}
+
+	d := evaluateAIRunDecision(snap, result)
+	if d.Action == actionBlock {
+		t.Errorf("warn_on_* governance signal should NOT trigger BLOCK; got action=%q", d.Action)
+	}
+	if d.Blocked != 0 {
+		t.Errorf("blocked count = %d, want 0", d.Blocked)
+	}
+}
+
+// TestEvaluateAIRunDecision_BlockingSignalTypes locks the special-
+// case rule string "blocking_signal_types" — explicit per-signal
+// allowlist. Treated like block_on_* for the gate decision.
+func TestEvaluateAIRunDecision_BlockingSignalTypes(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{
+				Category: models.CategoryGovernance,
+				Severity: models.SeverityHigh,
+				Metadata: map[string]any{"rule": "blocking_signal_types"},
+			},
+		},
+	}
+	result := &engine.PipelineResult{Snapshot: snap}
+
+	d := evaluateAIRunDecision(snap, result)
+	if d.Action != actionBlock {
+		t.Errorf("blocking_signal_types governance signal should trigger BLOCK; got action=%q", d.Action)
+	}
+}
+
+// TestEvaluateAIRunDecision_CriticalAndPolicyTogether verifies the
+// reason string lists both contributors when they fire together.
+// Adopters need to see both numbers: "3 critical signal(s),
+// 2 policy violation(s)".
+func TestEvaluateAIRunDecision_CriticalAndPolicyTogether(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{Category: models.CategoryAI, Severity: models.SeverityCritical},
+			{Category: models.CategoryAI, Severity: models.SeverityCritical},
+			{Category: models.CategoryAI, Severity: models.SeverityCritical},
+			{
+				Category: models.CategoryGovernance,
+				Severity: models.SeverityHigh,
+				Metadata: map[string]any{"rule": "block_on_safety_failure"},
+			},
+			{
+				Category: models.CategoryGovernance,
+				Severity: models.SeverityHigh,
+				Metadata: map[string]any{"rule": "block_on_accuracy_regression"},
+			},
+		},
+	}
+	result := &engine.PipelineResult{Snapshot: snap}
+
+	d := evaluateAIRunDecision(snap, result)
+	if d.Action != actionBlock {
+		t.Errorf("action = %q, want BLOCK", d.Action)
+	}
+	if !contains(d.Reason, "3 critical") {
+		t.Errorf("reason should name critical count; got %q", d.Reason)
+	}
+	if !contains(d.Reason, "2 policy") {
+		t.Errorf("reason should name policy-violation count; got %q", d.Reason)
+	}
+}
+
+// TestEvaluateAIRunDecision_GovernanceMetadataMissing covers the
+// edge case where a governance signal has no metadata — the
+// decision logic should ignore it (not panic, not block).
+func TestEvaluateAIRunDecision_GovernanceMetadataMissing(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			// No Metadata map at all.
+			{Category: models.CategoryGovernance, Severity: models.SeverityHigh},
+		},
+	}
+	result := &engine.PipelineResult{Snapshot: snap}
+
+	// Should not panic.
+	d := evaluateAIRunDecision(snap, result)
+	if d.Blocked != 0 {
+		t.Errorf("governance signal with no metadata should not contribute to Blocked; got %d", d.Blocked)
+	}
+}
+
+// TestEvaluateAIRunDecision_GovernanceMetadataNonStringRule covers
+// the edge case where Metadata["rule"] is set but isn't a string —
+// the type assertion should fail safely without panic.
+func TestEvaluateAIRunDecision_GovernanceMetadataNonStringRule(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{
+				Category: models.CategoryGovernance,
+				Severity: models.SeverityHigh,
+				Metadata: map[string]any{"rule": 42},
+			},
+		},
+	}
+	result := &engine.PipelineResult{Snapshot: snap}
+
+	d := evaluateAIRunDecision(snap, result)
+	if d.Blocked != 0 {
+		t.Errorf("non-string rule metadata should not contribute to Blocked; got %d", d.Blocked)
+	}
+}
+
+// TestEvaluateAIRunDecision_OnlyHighSeverity_DoesNotBlock locks the
+// boundary: high-severity AI signal warns but does not block. The
+// `--fail-on high` gate is the user-facing way to lift high to
+// blocking; the AI run decision logic itself stays at warn for
+// high-severity.
+func TestEvaluateAIRunDecision_OnlyHighSeverity_DoesNotBlock(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{Category: models.CategoryAI, Severity: models.SeverityHigh},
+			{Category: models.CategoryAI, Severity: models.SeverityHigh},
+		},
+	}
+	result := &engine.PipelineResult{Snapshot: snap}
+
+	d := evaluateAIRunDecision(snap, result)
+	if d.Action != actionWarn {
+		t.Errorf("two high-severity AI signals: action = %q, want WARN", d.Action)
+	}
+}
+
 // ---------------------------------------------------------------------------
 // cliExitError
 // ---------------------------------------------------------------------------
