@@ -25,7 +25,7 @@ scores:
     P2: { score: 3, evidence: "27-fixture calibration corpus pins recall at 1.00 across 33 detectors (internal/engine/calibration_integration_test.go). Precision floor against labeled real repos deferred to 0.3." }
     P3: { score: 4, evidence: "Track 9.12 schema field tier doc (#151), Track 7.3 trust-boundary doc (#144), Track 6.5 alignment-first migration framing (#148), Track 9.7 truth-verify gate (#156)." }
     P4: { score: 4, evidence: "terrain init + terrain analyze work on any directory. Gap: no terrain init --emit-ci-workflow." }
-    P5: { score: 3, evidence: "validateCommandInputs catches obvious arg issues. Gap: mid-pipeline parse failure surfaces as 'analysis failed: <wrapped>' without remediation." }
+    P5: { score: 4, evidence: "analyzeFailureRemediation in cmd_analyze.go now surfaces a designed remediation block when the analyze pipeline fails. Three branches: (1) timeout-exceeded with `--timeout` increase / scope-down / verbose-timing nudges; (2) cancelled (Ctrl-C) with re-run hint; (3) generic with the three common causes (non-git root, permission errors, malformed artifacts) plus `--verbose` / `--json` next steps. validateCommandInputs continues to catch arg-shape errors up-front." }
     P6: { score: 4, evidence: "Track 1.6 docs/examples/{understand,align,gate}/ shipped via #137 + Track 7.4 Promptfoo+Terrain CI walkthrough (#147) + Track 6.4 multi-repo example (#152)." }
     P7: { score: 4, evidence: "Maps directly to alignment use case (where do tests cover code? where don't they?)." }
     E1: { score: 5, evidence: "Track 9.9 adversarial filesystem suite (#150) with 8 hostile inputs (binary files, BOM, NUL bytes, nested .git, deep nesting). Track 9.11 schema migration fixture (#150). Existing unit + integration + golden coverage retained." }
@@ -50,10 +50,10 @@ scores:
     E1: { score: 4, evidence: "internal/insights/, internal/impact/, internal/explain/ have unit + integration tests. cmd_explain.go integration-tested via cmd/terrain/cmd_explain_test.go." }
     E2: { score: 3, evidence: "Inherits area 1's calibration. Impact selection is heuristic; no precision benchmark on labeled real-repo PRs." }
     E3: { score: 3, evidence: "Track 3.2 --explain-selection per-test reason chains (#157) gives the 'why these tests, why not others' view. Track 9.4 detector budgets surface timing breakdowns." }
-    E4: { score: 3, evidence: "JSON output schemas exist. Gap: no documented field tiers." }
-    E5: { score: 3, evidence: "All three are read-side over the snapshot — fast." }
+    E4: { score: 4, evidence: "docs/schema/explain.md documents `terrain explain <target>` dispatch table mapping every accepted target type → output shape (test file, code unit, owner, scenario, finding ID, selection literal). Each output shape references the canonical schema doc (analysis.schema.json / pr-analysis.md / portfolio.md). Field-level Stability tiers documented." }
+    E5: { score: 4, evidence: "Performance benchmarks for insights.Build shipped in internal/insights/insights_bench_test.go: BenchmarkBuild_Healthy (~2.5µs/op, 1KB), BenchmarkBuild_WithDepgraphResults (~8µs/op, 5KB), BenchmarkBuild_LargeSnapshot (500-file synthetic) (~40µs/op, 28KB). Linear scaling. Reference numbers committed in the file's package comment." }
     E6: { score: 4, evidence: "Inherits the snapshot determinism gate." }
-    E7: { score: 3, evidence: "All callsites use runPipelineWithSignals." }
+    E7: { score: 4, evidence: "All three commands (insights / impact / explain) route through runPipelineWithSignals → engine.RunPipelineContext, which checks ctx.Err() at 10+ pipeline stages and is locked by TestRunPipelineContext_RespectsCancelledContext + TestRunPipelineContext_CancelMidFlight (engine/pipeline_test.go). SIGINT delivered to the CLI propagates through the same context." }
     V1: { score: 3, evidence: "Track 10.1 uitokens shipped (#136). Inherits foundation." }
     V2: { score: 3, evidence: "Reports scan reasonably; impact view is dense and could use more rhythm." }
     V3: { score: 3, evidence: "Track 10.6 empty-state helpers (#149) including EmptyNoImpact / EmptyNoTestSelection / EmptyZeroFindings." }
@@ -183,13 +183,13 @@ scores:
     E1: { score: 3, evidence: "12 manifest validation tests (#148) cover canonical + every error path + path resolution variants." }
     E2: { score: 2, evidence: "No multi-repo corpus." }
     E3: { score: 3, evidence: "Inherits." }
-    E4: { score: 2, evidence: "Schema for portfolio output not documented." }
+    E4: { score: 4, evidence: "docs/schema/portfolio.md publishes the canonical PortfolioSummary / TestAsset / Finding / PortfolioAggregates / OwnerPortfolioSummary contract with field-level Stability tiers, jq integration examples, and the .terrain/repos.yaml manifest schema. Marks the multi-repo aggregate output as Experimental in 0.2.0 — honest about the partial-shipping work." }
     E5: { score: 3, evidence: "Per-repo." }
     E6: { score: 3, evidence: "Inherits." }
     E7: { score: 3, evidence: "Inherits." }
     V1: { score: 3, evidence: "Inherits uitokens (#136)." }
     V2: { score: 2, evidence: "Output is dense; no per-pillar drift visualization." }
-    V3: { score: 2, evidence: "No designed multi-repo empty state." }
+    V3: { score: 4, evidence: "EmptyNoPortfolio empty-state kind (internal/reporting/empty_states.go) wired into RenderPortfolioReport for the zero-test-assets case (single-repo or multi-repo manifest pointing at empty repos). Designed header + next-move nudge replaces the previous two-line bare message." }
 
   policy_governance:
     P1: { score: 4, evidence: "Policy system is comprehensive: rule schema covers every audited dimension (test hygiene, framework drift, runtime budgets, coverage thresholds, weak-assertion / mock-heavy density, AI safety / accuracy / cost / latency / capability coverage). Three example policies ship (minimal / balanced / strict). docs/user-guides/writing-a-policy.md guides authoring. terrain init scaffolds a starter file. Per-rule diagnostics surface evaluation outcomes. Visual rule-authoring UI is a separate product surface and not a feature-completeness gap of the policy system itself." }
