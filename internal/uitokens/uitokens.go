@@ -143,6 +143,55 @@ func SeverityBadge(s Severity) string {
 	}
 }
 
+// BracketedSeverity returns the severity token wrapped in square
+// brackets, the canonical shape for PR-comment markdown and any
+// other surface where the bracket makes the badge scan more
+// reliably than color (e.g. GitHub-flavored markdown which strips
+// most ANSI color attempts). Used by internal/changescope and
+// related renderers; locked by the unified-PR-comment golden tests
+// (Track 3.5).
+//
+// Severity strings (lowercase) map to the canonical Severity ladder
+// before rendering; unknown strings produce "[---]" so renderers
+// don't crash on stray data.
+func BracketedSeverity(severity string) string {
+	switch severity {
+	case "critical":
+		return "[CRIT]"
+	case "high":
+		return "[HIGH]"
+	case "medium":
+		return "[MED]"
+	case "low":
+		return "[LOW]"
+	case "info":
+		return "[INFO]"
+	default:
+		return "[---]"
+	}
+}
+
+// BracketedVerdict returns the posture-band verdict in canonical
+// PR-comment shape. Mirrors the changescope renderer's previous
+// inline mapping; centralized here so other renderers can consume
+// the same vocabulary without duplicating the switch.
+func BracketedVerdict(band string) string {
+	switch band {
+	case "well_protected":
+		return "[PASS]"
+	case "partially_protected":
+		return "[WARN]"
+	case "weakly_protected":
+		return "[RISK]"
+	case "high_risk":
+		return "[FAIL]"
+	case "evidence_limited":
+		return "[INFO]"
+	default:
+		return "[????]"
+	}
+}
+
 // VerdictBadge renders one of the canonical CLI verdicts (PASS / WARN
 // / FAIL) consistently. Used by the parity-gate matrix, the AI risk
 // review hero block, and the policy-check summary.
