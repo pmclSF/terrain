@@ -12,6 +12,7 @@ import (
 
 	conv "github.com/pmclSF/terrain/internal/convert"
 	"github.com/pmclSF/terrain/internal/progress"
+	"github.com/pmclSF/terrain/internal/reporting"
 )
 
 type convertCommandOptions struct {
@@ -494,7 +495,7 @@ func runDetect(path string, jsonOutput bool) error {
 			if candidate.Primary {
 				label = " [primary]"
 			}
-			fmt.Printf("  Candidate: %s (%.0f%% confidence across %d file(s), %.0f%% share)%s\n", candidate.Framework, candidate.Confidence*100, candidate.Files, candidate.FileShare*100, label)
+			fmt.Printf("  Candidate: %s (%.0f%% confidence across %d %s, %.0f%% share)%s\n", candidate.Framework, candidate.Confidence*100, candidate.Files, reporting.Plural(candidate.Files, "file"), candidate.FileShare*100, label)
 		}
 	}
 	return nil

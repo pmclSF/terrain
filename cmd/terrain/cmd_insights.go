@@ -185,7 +185,7 @@ func runFocus(root string, jsonOutput, verbose bool) error {
 		for i, area := range es.TopRiskAreas {
 			fmt.Printf("  %d. %s (%s)\n", i+1, area.Name, area.Band)
 			if area.RiskType != "" {
-				fmt.Printf("     risk: %s (%d signal(s))\n", area.RiskType, area.SignalCount)
+				fmt.Printf("     risk: %s (%d %s)\n", area.RiskType, area.SignalCount, reporting.Plural(area.SignalCount, "signal"))
 			}
 		}
 	}

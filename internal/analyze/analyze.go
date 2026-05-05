@@ -851,19 +851,13 @@ func deriveKeyFindings(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph
 		})
 	}
 
-	// Critical signals.
-	if r.SignalSummary.Critical > 0 {
-		candidates = append(candidates, candidate{
-			finding: KeyFinding{
-				Title:    fmt.Sprintf("%d critical %s detected — review recommended", r.SignalSummary.Critical, plural(r.SignalSummary.Critical, "signal")),
-				Severity: "high",
-				Category: "reliability",
-				Metric:   fmt.Sprintf("%d critical", r.SignalSummary.Critical),
-			},
-			severityOrder: 1,
-			categoryOrder: 1,
-		})
-	}
+	// "Critical signals exist" is already the headline when this
+	// branch is taken (deriveHeadline returns the same sentence).
+	// Repeating it as a Key Finding is meta-redundant — adopters
+	// see the headline first, then "Key Findings" begins with the
+	// same text. Pre-fix this slot also had a label/title mismatch
+	// (Severity="high" with Title="N critical signals"). Now we
+	// elide it; the headline carries the load.
 
 	// Sort: severity first (ascending = most severe first), then category.
 	sort.SliceStable(candidates, func(i, j int) bool {
