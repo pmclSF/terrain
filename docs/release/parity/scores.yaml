@@ -177,7 +177,7 @@ scores:
     P2: { score: 2, evidence: "Single-repo numbers are correct. Multi-repo is not actually implemented as advertised." }
     P3: { score: 3, evidence: "Track 6.4 docs/examples/align/multirepo/ with full convergence story (#152). Manifest schema doc." }
     P4: { score: 3, evidence: "Manifest format adopters can write today; 0.2.x aggregator consumes unchanged." }
-    P5: { score: 3, evidence: "Standard." }
+    P5: { score: 4, evidence: "runPortfolio (cmd_insights.go) now surfaces a designed remediation block when portfolio analysis fails — points at `terrain analyze` for root-cause drill-down, names the three common causes (non-git root, permission errors, snapshot construction failure), and links to docs/schema/portfolio.md for multi-repo workflows." }
     P6: { score: 3, evidence: "Track 6.4 multi-repo example fixture (#152) shows expected output shape." }
     P7: { score: 3, evidence: "Cross-repo alignment is a real job. Capability gap is acute." }
     E1: { score: 3, evidence: "12 manifest validation tests (#148) cover canonical + every error path + path resolution variants." }
