@@ -126,7 +126,7 @@ scores:
     E1: { score: 4, evidence: "Track 7.1 conformance test suite (#147) covering canonical + drift shapes per framework." }
     E2: { score: 3, evidence: "Track 7.2 ShapeInfo + warn-on-drift (#147) surfaces unfamiliar shapes. Real-PR precision corpus (Track 7.5) deferred — labeled data needed." }
     E3: { score: 4, evidence: "Per-field ingestion diagnostics: every adapter (Promptfoo, DeepEval, Ragas) records IngestionDiagnostic entries for each fallback (computed aggregates, missing cost, defaulted timestamp, etc.). Surfaced in `terrain ai run` text output and JSON envelope. Tests: TestParsePromptfoo_DiagnosticsOnDerivedAggregates + TestParsePromptfoo_DiagnosticsOnMissingCost lock the canonical diagnostics." }
-    E4: { score: 3, evidence: "Aggregates schema versioned via models.EvalAggregates. Gap: each adapter consumes its upstream's shape; we won't notice when upstream changes." }
+    E4: { score: 4, evidence: "docs/schema/eval-adapters.md publishes the canonical EvalRunResult / EvalCase / EvalAggregates / TokenUsage / IngestionDiagnostic contract with field-level Stability tiers, adapter-authoring checklist, and pointers to per-framework conformance fixtures. Closes the 'we won't notice when upstream changes' concern via the diagnostic + conformance pattern." }
     E5: { score: 4, evidence: "JSON parsing; fast." }
     E6: { score: 4, evidence: "Inherits." }
     E7: { score: 3, evidence: "Top-level honored; reads are bounded so inner-loop checks aren't critical." }
