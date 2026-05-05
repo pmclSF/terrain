@@ -981,7 +981,10 @@ func isHelpArg(arg string) bool {
 }
 
 func printUsage() {
-	fmt.Fprintln(os.Stderr, "Terrain — test system intelligence platform")
+	fmt.Fprintln(os.Stderr, "Terrain — the control plane for your test system.")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Maps how your unit, integration, e2e, and AI tests relate to your code,")
+	fmt.Fprintln(os.Stderr, "and lets you gate changes based on the system as a whole.")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Canonical commands (0.2 — recommended):")
 	fmt.Fprintln(os.Stderr)

@@ -84,8 +84,9 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 	}
 	if len(pr.RecommendedTests) > 0 {
 		if pr.TotalTestCount > 0 {
-			pct := 100 * len(pr.RecommendedTests) / pr.TotalTestCount
-			line("| **Tests selected** | %d of %d (%d%% of suite) |", len(pr.RecommendedTests), pr.TotalTestCount, pct)
+			line("| **Tests selected** | %d of %d (%s of suite) |",
+				len(pr.RecommendedTests), pr.TotalTestCount,
+				formatSuitePercent(len(pr.RecommendedTests), pr.TotalTestCount))
 		} else {
 			line("| **Tests selected** | %d |", len(pr.RecommendedTests))
 		}
@@ -576,6 +577,26 @@ func postureBadge(band string) string {
 // renderFindingCard remain unchanged and the diff stays surgical.
 func severityIcon(severity string) string {
 	return uitokens.BracketedSeverity(severity)
+}
+
+// formatSuitePercent renders selected/total as a percentage with
+// honest precision for small fractions. Pre-fix the integer-division
+// formula floored 7-of-796 to "0% of suite" — adopters seeing
+// "0%" reasonably wonder whether selection ran at all. Now sub-1%
+// fractions render as "<1%", and values ≥1% render as integer
+// percentages.
+func formatSuitePercent(selected, total int) string {
+	if total <= 0 {
+		return "—"
+	}
+	if selected <= 0 {
+		return "0%"
+	}
+	pct := 100 * selected / total
+	if pct == 0 {
+		return "<1%"
+	}
+	return fmt.Sprintf("%d%%", pct)
 }
 
 func formatSeverityCounts(counts map[string]int) []string {
