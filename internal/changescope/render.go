@@ -5,6 +5,8 @@ import (
 	"io"
 	"sort"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderPRSummaryMarkdown writes a PR-ready markdown summary optimized
@@ -559,34 +561,21 @@ func renderAISection(line func(string, ...any), pr *PRAnalysis) {
 	}
 }
 
+// postureBadge delegates to uitokens.BracketedVerdict so the badge
+// vocabulary is owned by the design system. Track 10.2.
 func postureBadge(band string) string {
-	switch band {
-	case "well_protected":
-		return "[PASS]"
-	case "partially_protected":
-		return "[WARN]"
-	case "weakly_protected":
-		return "[RISK]"
-	case "high_risk":
-		return "[FAIL]"
-	case "evidence_limited":
-		return "[INFO]"
-	default:
-		return "[????]"
-	}
+	return uitokens.BracketedVerdict(band)
 }
 
+// severityIcon delegates to uitokens.BracketedSeverity so the badge
+// vocabulary is owned by the design system. Track 10.2 — every
+// renderer that emits user-visible severity should consume from
+// uitokens rather than carrying its own switch. Pre-Track-10.2 this
+// function returned its own bracketed strings; the wrapper is kept
+// (rather than inlining the call) so internal helpers like
+// renderFindingCard remain unchanged and the diff stays surgical.
 func severityIcon(severity string) string {
-	switch severity {
-	case "high":
-		return "[HIGH]"
-	case "medium":
-		return "[MED]"
-	case "low":
-		return "[LOW]"
-	default:
-		return "[---]"
-	}
+	return uitokens.BracketedSeverity(severity)
 }
 
 func formatSeverityCounts(counts map[string]int) []string {
