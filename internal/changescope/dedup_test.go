@@ -104,6 +104,53 @@ func TestMergeRecommendation(t *testing.T) {
 	}
 }
 
+// TestRenderPRSummaryMarkdown_EmptyPRCallout locks the
+// pr_change_scoped.V3 audit lift: a clean PR (no findings, no AI
+// risk, no protection gaps) renders an "All clear" callout
+// before the footer instead of falling through to a thin comment
+// that reads as broken.
+func TestRenderPRSummaryMarkdown_EmptyPRCallout(t *testing.T) {
+	t.Parallel()
+	pr := &PRAnalysis{
+		PostureBand:        "well_protected",
+		ChangedFileCount:   3,
+		ChangedSourceCount: 2,
+		ChangedTestCount:   1,
+		ImpactedUnitCount:  0,
+		ProtectionGapCount: 0,
+		TotalTestCount:     50,
+		// No NewFindings, no AI, no RecommendedTests.
+	}
+	var buf bytes.Buffer
+	RenderPRSummaryMarkdown(&buf, pr)
+	output := buf.String()
+
+	if !strings.Contains(output, "All clear") {
+		t.Errorf("clean PR should render the All clear callout; got:\n%s", output)
+	}
+	if !strings.Contains(output, "terrain compare") {
+		t.Errorf("All clear callout should suggest `terrain compare`; got:\n%s", output)
+	}
+}
+
+// TestRenderPRSummaryMarkdown_AllClearOnlyOnEmpty locks the inverse:
+// a PR with findings should NOT render the All clear callout.
+func TestRenderPRSummaryMarkdown_AllClearOnlyOnEmpty(t *testing.T) {
+	t.Parallel()
+	pr := &PRAnalysis{
+		PostureBand: "weakly_protected",
+		NewFindings: []ChangeScopedFinding{
+			{Type: "weakAssertion", Scope: "direct", Path: "src/x.ts", Severity: "high", Explanation: "self-comparison"},
+		},
+	}
+	var buf bytes.Buffer
+	RenderPRSummaryMarkdown(&buf, pr)
+
+	if strings.Contains(buf.String(), "All clear") {
+		t.Errorf("PR with findings should NOT render the All clear callout; got:\n%s", buf.String())
+	}
+}
+
 // TestBuildConfidenceHistogram_GroupsAndPluralizes locks the
 // pr_change_scoped.E3 audit lift: a one-line summary showing how
 // the recommended test set distributes by confidence. Stable order

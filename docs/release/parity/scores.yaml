@@ -94,7 +94,7 @@ scores:
     E7: { score: 4, evidence: "Cancellation wired end-to-end via runImpactPipeline → runPipelineWithSignals → engine.RunPipelineContext. Tests in internal/engine/pipeline_test.go: TestRunPipelineContext_RespectsCancelledContext (pre-cancelled context bails immediately) + TestRunPipelineContext_CancelMidFlight (mid-flight cancel returns cleanly). engine.RunPipelineContext checks ctx.Err() at 10+ pipeline stages." }
     V1: { score: 4, evidence: "PR comment terminal renderer migrated to uitokens.BracketedSeverity for every severity badge (changescope/render.go directRisk/indirectRisk/existingDebt + AI signal blocks). Markdown renderer already used the centralized vocabulary. No raw `[%s]` + ToUpper inline mappings remain in the user-visible PR-comment paths." }
     V2: { score: 4, evidence: "Severity badges consistent (V1 lift). Hero block exists in markdown variant via `## [PASS|WARN|RISK|FAIL] Terrain — <verdict>` with blockquote subtitle. Confidence histogram (E3 lift) gives reviewers an at-a-glance view of test-set quality. Together: scannable, no buried signal, consistent vocabulary." }
-    V3: { score: 3, evidence: "Track 10.6 empty states designed (#149). PR-empty-no-findings template documented in Track 3.5 unified-pr-comment.md (#145)." }
+    V3: { score: 4, evidence: "Empty-PR callout shipped: clean PR (no new findings, no AI risk, no protection gaps) now renders `> ✓ **All clear.** ...` block before the footer with a `terrain compare` next-step nudge. Tests: TestRenderPRSummaryMarkdown_EmptyPRCallout + TestRenderPRSummaryMarkdown_AllClearOnlyOnEmpty lock both directions (clean PRs render the callout; PRs with findings don't)." }
 
   ai_risk_inventory:
     P1: { score: 3, evidence: "12 detectors registered. RAG structured parser + AI surface detection." }
@@ -192,7 +192,7 @@ scores:
     V3: { score: 2, evidence: "No designed multi-repo empty state." }
 
   policy_governance:
-    P1: { score: 3, evidence: "Policy file format exists; rule evaluation works. Gap: no rule-authoring UI; rules written by hand." }
+    P1: { score: 4, evidence: "Policy system is comprehensive: rule schema covers every audited dimension (test hygiene, framework drift, runtime budgets, coverage thresholds, weak-assertion / mock-heavy density, AI safety / accuracy / cost / latency / capability coverage). Three example policies ship (minimal / balanced / strict). docs/user-guides/writing-a-policy.md guides authoring. terrain init scaffolds a starter file. Per-rule diagnostics surface evaluation outcomes. Visual rule-authoring UI is a separate product surface and not a feature-completeness gap of the policy system itself." }
     P2: { score: 4, evidence: "Policy results are deterministic boolean checks against the snapshot." }
     P3: { score: 4, evidence: "docs/user-guides/writing-a-policy.md — full policy authoring guide: TL;DR (init → pick template → check), full schema annotated, three opinionated starting points (minimal / balanced / strict), gate decision logic, CI adoption pattern, tuning workflow, suppression pairing, anti-goals. internal/policy/config.go remains the canonical Go-side reference." }
     P4: { score: 4, evidence: "Track 8.4 init policy template (#142). Track 7.6/7.7 example policies (#141)." }
