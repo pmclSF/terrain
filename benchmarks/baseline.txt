@@ -1,0 +1,48 @@
+# Terrain performance baseline
+#
+# Reference performance numbers for the analysis pipeline + supporting
+# subsystems. Captured 2026-05 on Intel i7-8850H @ 2.60GHz.
+#
+# These are environment-sensitive. Treat as order-of-magnitude
+# anchors, NOT strict CI gates. The benchmark suite (`make bench-gate`)
+# runs the same benchmarks but compares ratios, not absolute numbers.
+#
+# Re-capture by running the source benchmarks (commented next to each
+# entry) on a clean checkout.
+
+## Engine: full analysis pipeline
+# Source: go test -bench=BenchmarkRunPipeline ./internal/engine/
+
+BenchmarkRunPipeline/small      725ms/op   9.3MB/op   25k allocs/op   (real fixture: internal/analysis/testdata/sample-repo)
+BenchmarkRunPipeline/medium     172ms/op  14.3MB/op   15k allocs/op   (synthetic: 20 source + 20 test files)
+BenchmarkRunPipeline/large      215ms/op  41.5MB/op   40k allocs/op   (synthetic: 60 source + 60 test files)
+
+## Insights: report builder
+# Source: go test -bench=BenchmarkBuild ./internal/insights/
+
+BenchmarkBuild_Healthy                  2.5µs/op    1.1KB/op   10 allocs/op   (HealthyBalancedSnapshot)
+BenchmarkBuild_WithDepgraphResults      8.3µs/op    5.4KB/op   45 allocs/op   (with coverage + duplicates + fanout)
+BenchmarkBuild_LargeSnapshot            40µs/op    28.0KB/op   10 allocs/op   (synthetic: 500 test files + 200 signals)
+
+## Changescope: PR-comment markdown render
+# Source: go test -bench=BenchmarkRenderPRSummaryMarkdown ./internal/changescope/
+
+BenchmarkRenderPRSummaryMarkdown_Small    19µs/op    9.1KB/op   93 allocs/op   (5 findings)
+BenchmarkRenderPRSummaryMarkdown_Medium   51µs/op   44.0KB/op  241 allocs/op   (50 findings)
+BenchmarkRenderPRSummaryMarkdown_Large   155µs/op  164.6KB/op  553 allocs/op   (200 findings)
+
+## Notes
+#
+# - Engine `small` is slower than `medium` because the real fixture
+#   exercises every detector (tree-sitter parser warm-up dominates),
+#   while the synthetic medium/large fixtures don't have AI surfaces
+#   or eval scenarios to detect.
+# - Insights and changescope are read-side over the snapshot —
+#   sub-millisecond per call. Watch for quadratic-allocation drift
+#   on these.
+# - Memory numbers grow roughly linearly with input size. Sub-linear
+#   scaling above this baseline is fine; super-linear is the alarm.
+#
+# CI integration: cmd/terrain-bench-gate compares two runs and
+# fails if any benchmark slows by more than the configured ratio
+# (default 1.5×). See the makefile's `bench-gate` target.
