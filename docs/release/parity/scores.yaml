@@ -125,7 +125,7 @@ scores:
     P7: { score: 4, evidence: "Eval-artifact ingestion is a real differentiator vs. tools that only do static analysis." }
     E1: { score: 4, evidence: "Track 7.1 conformance test suite (#147) covering canonical + drift shapes per framework." }
     E2: { score: 3, evidence: "Track 7.2 ShapeInfo + warn-on-drift (#147) surfaces unfamiliar shapes. Real-PR precision corpus (Track 7.5) deferred — labeled data needed." }
-    E3: { score: 2, evidence: "Aggregates emit, but no 'which fields fell back to defaults' warnings." }
+    E3: { score: 4, evidence: "Per-field ingestion diagnostics: every adapter (Promptfoo, DeepEval, Ragas) records IngestionDiagnostic entries for each fallback (computed aggregates, missing cost, defaulted timestamp, etc.). Surfaced in `terrain ai run` text output and JSON envelope. Tests: TestParsePromptfoo_DiagnosticsOnDerivedAggregates + TestParsePromptfoo_DiagnosticsOnMissingCost lock the canonical diagnostics." }
     E4: { score: 3, evidence: "Aggregates schema versioned via models.EvalAggregates. Gap: each adapter consumes its upstream's shape; we won't notice when upstream changes." }
     E5: { score: 4, evidence: "JSON parsing; fast." }
     E6: { score: 4, evidence: "Inherits." }
@@ -144,13 +144,13 @@ scores:
     P7: { score: 3, evidence: "Right framing: gating on AI evals before merge." }
     E1: { score: 3, evidence: "Unit tests on the decision logic; integration tests on the parsers." }
     E2: { score: 2, evidence: "No labeled-PR corpus for the gating decision specifically." }
-    E3: { score: 2, evidence: "'Reason' string exists; no per-input-artifact diagnostic." }
+    E3: { score: 4, evidence: "Per-input ingestion diagnostics surfaced in `terrain ai run` output (cmd_ai.go:605) — adopters see exactly which adapter fields fell back, in 'Ingestion diagnostics' block. Pairs with ai_eval_ingestion.E3." }
     E4: { score: 3, evidence: "Decision shape is small and versioned." }
     E5: { score: 4, evidence: "Trivial." }
     E6: { score: 4, evidence: "Inherits." }
     E7: { score: 3, evidence: "Inherits." }
     V1: { score: 3, evidence: "Inherits uitokens (#136)." }
-    V2: { score: 2, evidence: "No hero verdict block; reason string buried." }
+    V2: { score: 4, evidence: "Hero verdict block in `terrain ai run` (cmd_ai.go:585) — uitokens.HeroVerdict frames the decision (BLOCKED / WARN / PASS) with rule + indented badge + headline. Reason flows below as a structured Reason: line. Tests in uitokens_test.go (TestHeroVerdict, TestHeroVerdictMarkdown) lock the shape." }
     V3: { score: 2, evidence: "No empty states for 'no AI surfaces detected'; no remediation for gate-blocked decisions." }
 
   migration_conversion:

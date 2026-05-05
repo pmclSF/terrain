@@ -208,6 +208,92 @@ func VerdictBadge(verdict string) string {
 	}
 }
 
+// HeroVerdict renders a designed verdict block at the top of a
+// gating output (terrain ai run, terrain analyze --fail-on,
+// terrain report pr). Three lines, framed by section rules so the
+// verdict carries visual weight beyond the rest of the report.
+//
+// Layout:
+//
+//	────────────────────────────────────────────────────────────
+//	  [BLOCKED]  3 critical AI eval signals — block merge
+//	────────────────────────────────────────────────────────────
+//
+// `verdict` should be one of "BLOCKED", "WARN", or "PASS". The badge
+// is color-and-symbol via the same vocabulary as VerdictBadge so
+// callsites stay consistent. `headline` is one short sentence
+// describing the verdict in plain language.
+//
+// Pre-0.2 these decisions surfaced as a single buried "Decision:
+// BLOCKED — reason" line; the audit (ai_execution_gating.V2 +
+// pr_change_scoped.V2) called for a hero block. This is that block.
+func HeroVerdict(verdict, headline string) string {
+	badge := heroVerdictBadge(verdict)
+	rule := Rule()
+	// Indent the headline by two spaces so the badge + line breathe;
+	// the rule rows give the block its frame.
+	return fmt.Sprintf("%s\n  %s  %s\n%s", rule, badge, headline, rule)
+}
+
+// HeroVerdictMarkdown renders the same hero verdict for a markdown
+// surface (PR comment). Uses a blockquote callout for the badge +
+// headline so GitHub renders it as a tinted box, then a horizontal
+// rule below to reinforce the visual frame. Layout:
+//
+//	> ### [BLOCKED] 3 critical AI eval signals — block merge
+//	>
+//	> Reason text, optional, italic.
+//
+//	---
+//
+// The blockquote tints the entire block on GitHub, giving the same
+// "this is the verdict; everything below explains it" framing as
+// the terminal block.
+func HeroVerdictMarkdown(verdict, headline, reason string) string {
+	bracket := bracketVerdict(verdict)
+	var b strings.Builder
+	fmt.Fprintf(&b, "> ### %s %s\n", bracket, headline)
+	if strings.TrimSpace(reason) != "" {
+		fmt.Fprintln(&b, ">")
+		fmt.Fprintf(&b, "> *%s*\n", strings.TrimSpace(reason))
+	}
+	fmt.Fprintln(&b)
+	fmt.Fprintln(&b, "---")
+	return b.String()
+}
+
+// heroVerdictBadge returns the colorized badge for a hero block.
+// Distinct from VerdictBadge so the hero presentation can use a
+// slightly heavier shape ("[BLOCKED]" instead of "PASS") without
+// changing VerdictBadge's contract.
+func heroVerdictBadge(verdict string) string {
+	switch strings.ToUpper(strings.TrimSpace(verdict)) {
+	case "BLOCKED", "BLOCK", "FAIL":
+		return Alert("[" + SymFail + " BLOCKED]")
+	case "WARN", "WARNING":
+		return Warn("[" + SymWarn + " WARN]")
+	case "PASS", "OK":
+		return Ok("[" + SymOK + " PASS]")
+	default:
+		return "[" + strings.ToUpper(verdict) + "]"
+	}
+}
+
+// bracketVerdict is the markdown variant — no color escapes (GitHub
+// markdown doesn't render ANSI), but keeps the same vocabulary.
+func bracketVerdict(verdict string) string {
+	switch strings.ToUpper(strings.TrimSpace(verdict)) {
+	case "BLOCKED", "BLOCK", "FAIL":
+		return "[BLOCKED]"
+	case "WARN", "WARNING":
+		return "[WARN]"
+	case "PASS", "OK":
+		return "[PASS]"
+	default:
+		return "[" + strings.ToUpper(verdict) + "]"
+	}
+}
+
 // ── Spacing & rules ─────────────────────────────────────────────────
 
 // SectionWidth is the width budget for section rules and table layouts.
