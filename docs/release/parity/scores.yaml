@@ -138,7 +138,7 @@ scores:
     P1: { score: 2, evidence: "terrain ai run ingests eval artifacts and emits a baseline-aware decision. Gap: docs unclear about which frameworks Terrain executes vs only parses; sandboxing 0.3; ai gate standalone doesn't ship." }
     P2: { score: 3, evidence: "Decisions match what the artifact data supports; we're not making model claims." }
     P3: { score: 4, evidence: "Track 7.3 trust-boundary doc (#144) — what executes vs parses, per-command surface, sandboxing roadmap." }
-    P4: { score: 2, evidence: "Users new to AI evals don't know whether to run Promptfoo first or just point Terrain at it." }
+    P4: { score: 4, evidence: "docs/user-guides/ai-eval-onboarding.md — first-10-minutes walkthrough with explicit 'what Terrain does vs. what you do' table, three-step flow (ai list → run framework yourself → ai run), per-framework commands, common-questions section. Closes the 'do I run Promptfoo first?' gap." }
     P5: { score: 3, evidence: "Reasonable; baseline missing → graceful no-op." }
     P6: { score: 4, evidence: "Track 7.4 end-to-end Promptfoo+Terrain CI walkthrough (#147)." }
     P7: { score: 3, evidence: "Right framing: gating on AI evals before merge." }
@@ -207,7 +207,7 @@ scores:
     E6: { score: 4, evidence: "Inherits." }
     E7: { score: 4, evidence: "Trivial." }
     V1: { score: 3, evidence: "Inherits uitokens (#136)." }
-    V2: { score: 3, evidence: "Reasonable rhythm; one finding per line." }
+    V2: { score: 4, evidence: "Policy report redesigned (internal/reporting/policy_report.go): hero verdict block at top via uitokens.HeroVerdict (PASS / BLOCKED / WARN with violation count), violations grouped by severity (critical → low) with BracketedSeverity badges, per-violation category + location lines. Replaces the previous flat `  - <type>: <explanation>` rendering." }
     V3: { score: 2, evidence: "No 'no policy file' guided next-step ('terrain init will create one')." }
 
   server:
