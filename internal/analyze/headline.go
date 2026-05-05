@@ -72,11 +72,18 @@ func deriveHeadline(r *Report) string {
 		)
 	}
 
-	// Healthy default.
+	// Empty repo or repo with no detected tests — say so honestly
+	// rather than calling zero tests "healthy".
+	tfCount := r.TestsDetected.TestFileCount
 	fwCount := len(r.TestsDetected.Frameworks)
+	if tfCount == 0 {
+		return "No test files detected. Add tests with your framework of choice, then re-run `terrain analyze`."
+	}
+
+	// Healthy default.
 	return fmt.Sprintf(
-		"Your test suite looks healthy: %d test files across %d frameworks.",
-		r.TestsDetected.TestFileCount,
-		fwCount,
+		"Your test suite looks healthy: %d test %s across %d %s.",
+		tfCount, plural(tfCount, "file"),
+		fwCount, plural(fwCount, "framework"),
 	)
 }
