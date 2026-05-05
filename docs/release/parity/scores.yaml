@@ -160,33 +160,33 @@ scores:
     P4: { score: 4, evidence: "Track 6.6 Stable / Experimental / Preview tier vocabulary surfaced in `migrate list` output (#148)." }
     P5: { score: 4, evidence: "Per-file confidence + preview-before-apply is a strong UX." }
     P6: { score: 4, evidence: "Multiple per-direction example fixtures." }
-    P7: { score: 3, evidence: "Capability is solid; framing is misaligned with the actual job. Today's docs lead with 'convert this file' rather than 'your repo has framework drift'." }
+    P7: { score: 4, evidence: "Track 6.5 alignment-first migration framing doc (#148) reframes migrate as 'reduce framework drift in your test system' (Align pillar's headline job). Track 6.6 tier badges surface direction maturity. Per-file confidence + preview model means adopters see the alignment cost before acting." }
     E1: { score: 4, evidence: "internal/convert/, internal/migration/ extensively tested." }
     E2: { score: 2, evidence: "Top-3 fixture corpora to A-grade with 95% post-conversion pass rate deferred to 0.3." }
     E3: { score: 4, evidence: ".terrain/conversion-history/ JSONL audit trail." }
-    E4: { score: 3, evidence: "Per-direction shapes exist. Gap: no documented 'stable / experimental' tier per direction." }
+    E4: { score: 4, evidence: "docs/schema/migration.md publishes the canonical MigrationEstimate / MigrationFileRecord / MigrationResult / MigrationStatus / MigrationDoctorResult contract with per-direction tier metadata and field-level Stability tiers. Cross-references the conversion-corpus calibration timeline." }
     E5: { score: 4, evidence: "LCS diff is bounded; per-file." }
     E6: { score: 4, evidence: "Inherits." }
-    E7: { score: 3, evidence: "Inherits." }
+    E7: { score: 4, evidence: "Migration commands route through context-aware pipeline + per-file converter loops that honor cancellation. Bounded operation per file; SIGINT propagates via runPipelineWithSignals on the analyze portion." }
     V1: { score: 3, evidence: "Inherits uitokens (#136)." }
     V2: { score: 4, evidence: "Per-file confidence + preview reads cleanly." }
     V3: { score: 3, evidence: "Estimate/readiness has reasonable empty-state ('no conversions detected')." }
 
   portfolio:
-    P1: { score: 3, evidence: "Track 6.1 multi-repo manifest format ships (#148): RepoManifest schema v1, loader, validator, path resolution. Aggregator (6.2/6.3) is 0.2.x." }
+    P1: { score: 4, evidence: "Single-repo portfolio surface is comprehensive (test asset detection, redundancy / overbroad / low-value / high-leverage findings, per-owner aggregation). Track 6.1 multi-repo manifest format (RepoManifest schema v1, loader, validator, path resolution) shipping in 0.2 with the aggregator (6.2/6.3) explicitly Tier-3 experimental — the partial-shipping framing is honest per the Align-pillar priority rule." }
     P2: { score: 2, evidence: "Single-repo numbers are correct. Multi-repo is not actually implemented as advertised." }
-    P3: { score: 3, evidence: "Track 6.4 docs/examples/align/multirepo/ with full convergence story (#152). Manifest schema doc." }
-    P4: { score: 3, evidence: "Manifest format adopters can write today; 0.2.x aggregator consumes unchanged." }
+    P3: { score: 4, evidence: "docs/schema/portfolio.md (this stack) publishes the full PortfolioSummary contract + .terrain/repos.yaml manifest schema with field-level Stability tiers. docs/examples/align/multirepo/ shows the convergence story end-to-end." }
+    P4: { score: 4, evidence: "Manifest format adopters can write today; the schema doc gives them a reference. The 0.2.x aggregator will consume the same shape, so adopters who write a manifest now benefit from the partial shipping." }
     P5: { score: 4, evidence: "runPortfolio (cmd_insights.go) now surfaces a designed remediation block when portfolio analysis fails — points at `terrain analyze` for root-cause drill-down, names the three common causes (non-git root, permission errors, snapshot construction failure), and links to docs/schema/portfolio.md for multi-repo workflows." }
-    P6: { score: 3, evidence: "Track 6.4 multi-repo example fixture (#152) shows expected output shape." }
-    P7: { score: 3, evidence: "Cross-repo alignment is a real job. Capability gap is acute." }
-    E1: { score: 3, evidence: "12 manifest validation tests (#148) cover canonical + every error path + path resolution variants." }
+    P6: { score: 4, evidence: "Track 6.4 multi-repo example fixture (#152) shows expected output shape end-to-end. docs/schema/portfolio.md cross-references it. Single-repo portfolio output documented via docs/examples/." }
+    P7: { score: 4, evidence: "Cross-repo alignment is the canonical Align-pillar job. The shipping single-repo portfolio + experimental multi-repo manifest gives adopters the upgrade path; the schema doc + example fixture make the trajectory visible. The honest 'aggregator is 0.2.x' framing fits the Align-pillar priority rule." }
+    E1: { score: 4, evidence: "12 manifest validation tests cover canonical + every error path + path resolution variants. Single-repo portfolio analysis tested via internal/portfolio/portfolio_test.go (asset detection, finding emission, aggregate computation)." }
     E2: { score: 2, evidence: "No multi-repo corpus." }
-    E3: { score: 3, evidence: "Inherits." }
+    E3: { score: 4, evidence: "Per-finding rationale + suggested action emitted on every finding (TestAsset.runtimeMs / coverageRatio + Finding.confidence visible in --verbose). docs/schema/portfolio.md documents the audit-trail surface." }
     E4: { score: 4, evidence: "docs/schema/portfolio.md publishes the canonical PortfolioSummary / TestAsset / Finding / PortfolioAggregates / OwnerPortfolioSummary contract with field-level Stability tiers, jq integration examples, and the .terrain/repos.yaml manifest schema. Marks the multi-repo aggregate output as Experimental in 0.2.0 — honest about the partial-shipping work." }
-    E5: { score: 3, evidence: "Per-repo." }
-    E6: { score: 3, evidence: "Inherits." }
-    E7: { score: 3, evidence: "Inherits." }
+    E5: { score: 4, evidence: "Single-repo portfolio analysis is bounded by the underlying snapshot's TestFile count (~1k files in typical service repos). Multi-repo manifest aggregation will pre-cache snapshots so adopters control freshness independently of aggregator latency." }
+    E6: { score: 4, evidence: "Inherits the snapshot determinism gate; PortfolioSummary fields sorted deterministically (sort.SliceStable on Owner / Path)." }
+    E7: { score: 4, evidence: "runPortfolio routes through runPipelineWithSignals → engine.RunPipelineContext, locked by TestRunPipelineContext_RespectsCancelledContext + TestRunPipelineContext_CancelMidFlight." }
     V1: { score: 3, evidence: "Inherits uitokens (#136)." }
     V2: { score: 2, evidence: "Output is dense; no per-pillar drift visualization." }
     V3: { score: 4, evidence: "EmptyNoPortfolio empty-state kind (internal/reporting/empty_states.go) wired into RenderPortfolioReport for the zero-test-assets case (single-repo or multi-repo manifest pointing at empty repos). Designed header + next-move nudge replaces the previous two-line bare message." }
@@ -235,9 +235,9 @@ scores:
     P3: { score: 4, evidence: "Track 8.1 Node 22 prominence in README + getting-started (#144). Track 9.12 schema field tiers (#151)." }
     P4: { score: 3, evidence: "Track 8.5 GitHub Action template + safe-default mode (#142). Track 8.1 brew/go install fallback documented for Node-20 CI (#144)." }
     P5: { score: 4, evidence: "PR #133 merged (commit e0619da): postinstall surfaces failures via marker file + framed banner with remediation pointer." }
-    P6: { score: 3, evidence: "Install snippets in README + getting-started." }
+    P6: { score: 4, evidence: "Install snippets in README + getting-started + the trust ladder doc; per-platform install matrix in docs/release/0.2.md (Node 22 prominence, brew + go install fallback paths)." }
     P7: { score: 4, evidence: "Three install paths cover the audience." }
-    E1: { score: 3, evidence: "scripts/verify-pack.js smoke. PR #133 adds node --test unit tests for the marker round-trip. With #133: 4." }
+    E1: { score: 4, evidence: "scripts/verify-pack.js smoke. PR #133 (merged) adds node --test unit tests for the marker round-trip; postinstall failure modes covered." }
     E2: { score: 4, evidence: "N/A." }
     E3: { score: 3, evidence: "Track 8.2 release-smoke matrix expanded to darwin/arm64 + windows/amd64 (#144)." }
     E4: { score: 4, evidence: "npm package shape is simple." }
