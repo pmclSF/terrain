@@ -185,7 +185,7 @@ func RenderProtectiveSet(w io.Writer, result *impact.ImpactResult) {
 	blank()
 
 	if result.ProtectiveSet == nil || len(result.ProtectiveSet.Tests) == 0 {
-		line("  No protective tests identified.")
+		RenderEmptyState(w, EmptyNoTestSelection)
 		blank()
 		return
 	}
