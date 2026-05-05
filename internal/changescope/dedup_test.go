@@ -104,6 +104,132 @@ func TestMergeRecommendation(t *testing.T) {
 	}
 }
 
+// TestRenderPRSummaryMarkdown_EmptyPRCallout locks the
+// pr_change_scoped.V3 audit lift: a clean PR (no findings, no AI
+// risk, no protection gaps) renders an "All clear" callout
+// before the footer instead of falling through to a thin comment
+// that reads as broken.
+func TestRenderPRSummaryMarkdown_EmptyPRCallout(t *testing.T) {
+	t.Parallel()
+	pr := &PRAnalysis{
+		PostureBand:        "well_protected",
+		ChangedFileCount:   3,
+		ChangedSourceCount: 2,
+		ChangedTestCount:   1,
+		ImpactedUnitCount:  0,
+		ProtectionGapCount: 0,
+		TotalTestCount:     50,
+		// No NewFindings, no AI, no RecommendedTests.
+	}
+	var buf bytes.Buffer
+	RenderPRSummaryMarkdown(&buf, pr)
+	output := buf.String()
+
+	if !strings.Contains(output, "All clear") {
+		t.Errorf("clean PR should render the All clear callout; got:\n%s", output)
+	}
+	if !strings.Contains(output, "terrain compare") {
+		t.Errorf("All clear callout should suggest `terrain compare`; got:\n%s", output)
+	}
+}
+
+// TestRenderPRSummaryMarkdown_AllClearOnlyOnEmpty locks the inverse:
+// a PR with findings should NOT render the All clear callout.
+func TestRenderPRSummaryMarkdown_AllClearOnlyOnEmpty(t *testing.T) {
+	t.Parallel()
+	pr := &PRAnalysis{
+		PostureBand: "weakly_protected",
+		NewFindings: []ChangeScopedFinding{
+			{Type: "weakAssertion", Scope: "direct", Path: "src/x.ts", Severity: "high", Explanation: "self-comparison"},
+		},
+	}
+	var buf bytes.Buffer
+	RenderPRSummaryMarkdown(&buf, pr)
+
+	if strings.Contains(buf.String(), "All clear") {
+		t.Errorf("PR with findings should NOT render the All clear callout; got:\n%s", buf.String())
+	}
+}
+
+// TestBuildConfidenceHistogram_GroupsAndPluralizes locks the
+// pr_change_scoped.E3 audit lift: a one-line summary showing how
+// the recommended test set distributes by confidence. Stable order
+// (first-seen) keeps the output deterministic across runs.
+func TestBuildConfidenceHistogram_GroupsAndPluralizes(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		in   []TestSelection
+		want string
+	}{
+		{
+			name: "single",
+			in:   []TestSelection{{Path: "a", Confidence: "exact"}},
+			want: "**Confidence:** 1 exact (1 test selected)",
+		},
+		{
+			name: "mixed",
+			in: []TestSelection{
+				{Path: "a", Confidence: "exact"},
+				{Path: "b", Confidence: "exact"},
+				{Path: "c", Confidence: "inferred"},
+				{Path: "d", Confidence: "weak"},
+			},
+			want: "**Confidence:** 2 exact · 1 inferred · 1 weak (4 tests selected)",
+		},
+		{
+			name: "empty",
+			in:   nil,
+			want: "",
+		},
+		{
+			name: "missing-confidence",
+			in:   []TestSelection{{Path: "a"}},
+			want: "**Confidence:** 1 unknown (1 test selected)",
+		},
+	}
+	for _, tc := range cases {
+		got := buildConfidenceHistogram(tc.in)
+		if got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
+// TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch
+// locks the pr_change_scoped.E6 audit lift: byte-identical output
+// when SOURCE_DATE_EPOCH varies. The PR comment shouldn't carry any
+// timestamp that drifts between runs of the same snapshot — every
+// finding has its own timing data inside the snapshot, but the
+// comment surface itself is timestamp-free.
+func TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch(t *testing.T) {
+	pr := &PRAnalysis{
+		PostureBand:        "well_protected",
+		ChangedFileCount:   2,
+		ChangedSourceCount: 1,
+		ChangedTestCount:   1,
+		ImpactedUnitCount:  3,
+		TotalTestCount:     50,
+		NewFindings: []ChangeScopedFinding{
+			{Type: "weakAssertion", Scope: "direct", Path: "src/auth.go", Severity: "medium", Explanation: "self-comparison"},
+		},
+		RecommendedTests: []string{"src/auth_test.go"},
+	}
+
+	t.Setenv("SOURCE_DATE_EPOCH", "1700000000")
+	var buf1 bytes.Buffer
+	RenderPRSummaryMarkdown(&buf1, pr)
+
+	t.Setenv("SOURCE_DATE_EPOCH", "1900000000")
+	var buf2 bytes.Buffer
+	RenderPRSummaryMarkdown(&buf2, pr)
+
+	if buf1.String() != buf2.String() {
+		t.Errorf("PR markdown should be timestamp-independent.\nepoch=1700000000:\n%s\n\nepoch=1900000000:\n%s",
+			buf1.String(), buf2.String())
+	}
+}
+
 func TestRenderPRSummaryMarkdown_Deterministic(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{

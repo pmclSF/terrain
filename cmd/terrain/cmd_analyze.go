@@ -336,7 +336,19 @@ func runPolicyCheck(root string, jsonOutput bool, coveragePath, coverageRunLabel
 	// Load policy
 	policyResult, err := policy.Load(root)
 	if err != nil {
+		// Audit-named gap (policy_governance.P5): surface a
+		// designed remediation pointer instead of dumping the bare
+		// yaml error. Adopters seeing "yaml: line 5: did not find
+		// expected key" don't know that's policy.yaml's fault.
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "Policy file failed to load. Common causes:")
+		fmt.Fprintln(os.Stderr, "  - YAML indentation: rules must nest under `rules:` (two-space indent)")
+		fmt.Fprintln(os.Stderr, "  - Misspelled rule key: see docs/user-guides/writing-a-policy.md for the canonical names")
+		fmt.Fprintln(os.Stderr, "  - Type mismatch: thresholds are numbers, booleans are true/false (no quotes)")
+		fmt.Fprintln(os.Stderr)
+		fmt.Fprintln(os.Stderr, "To regenerate from a known-good template:")
+		fmt.Fprintln(os.Stderr, "  cp docs/policy/examples/balanced.yaml .terrain/policy.yaml")
 		return exitError
 	}
 

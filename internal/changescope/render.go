@@ -150,6 +150,22 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 		renderAISection(line, pr)
 	}
 
+	// --- Empty-PR celebration callout ---
+	// When the PR introduces no new findings AND has no AI risk
+	// section AND no recommended tests (because the change has no
+	// measurable impact), the markdown above is just header +
+	// metrics. Add a small designed "all clear" callout so the
+	// reader sees that this is the *deliberate* shape of a clean
+	// PR, not a malfunction. Audit-named gap (pr_change_scoped.V3
+	// fun-to-use polish).
+	if isEmptyPR(pr) {
+		hr()
+		line("> ✓ **All clear.** No new findings introduced; no protection gaps identified in changed code.")
+		line(">")
+		line("> *Run `terrain compare` over time to track posture; this clean state is the bar to hold.*")
+		line("")
+	}
+
 	// --- Footer (owners + limitations + branding) ---
 	// Combined into a single small-text footer so individual elements
 	// don't compete for attention with the main content.
@@ -226,6 +242,16 @@ func renderTestRecommendations(line func(string, ...any), pr *PRAnalysis) {
 		line("")
 		if pr.SelectionExplanation != "" {
 			line("*%s*", pr.SelectionExplanation)
+			line("")
+		}
+
+		// Confidence histogram — audit-named gap
+		// (pr_change_scoped.E3 observability). Surfaces the
+		// distribution of test-selection confidence so reviewers
+		// see at a glance whether the recommended set is mostly
+		// strong matches or mostly inferred coverage.
+		if hist := buildConfidenceHistogram(pr.TestSelections); hist != "" {
+			line("%s", hist)
 			line("")
 		}
 
@@ -351,7 +377,7 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 		line("New Risks (directly changed)")
 		line(strings.Repeat("-", 40))
 		for _, f := range directRisk {
-			line("  [%s] %s — %s", strings.ToUpper(f.Severity), f.Path, f.Explanation)
+			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
 		}
 		blank()
 	}
@@ -360,7 +386,7 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 		line("Indirectly Impacted Gaps (%d)", len(indirectRisk))
 		line(strings.Repeat("-", 40))
 		for _, f := range indirectRisk {
-			line("  [%s] %s — %s", strings.ToUpper(f.Severity), f.Path, f.Explanation)
+			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
 		}
 		blank()
 	}
@@ -369,7 +395,7 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 		line("Pre-Existing Issues")
 		line(strings.Repeat("-", 40))
 		for _, f := range existingDebt {
-			line("  [%s] %s — %s", strings.ToUpper(f.Severity), f.Path, f.Explanation)
+			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
 		}
 		blank()
 	}
@@ -431,7 +457,7 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 				case len(g.Symbols) > 0:
 					loc = fmt.Sprintf("%s (%s)", g.File, strings.Join(g.Symbols, ", "))
 				}
-				line("    [%s] %s — %s", strings.ToUpper(g.Severity), loc, summary)
+				line("    %s %s — %s", uitokens.BracketedSeverity(g.Severity), loc, summary)
 				if action := humanAction[g.Type]; action != "" {
 					line("      → %s", action)
 				}
@@ -724,4 +750,61 @@ func extractUnitNames(unitIDs []string) []string {
 		}
 	}
 	return names
+}
+
+// isEmptyPR reports whether a PR has nothing substantive to flag —
+// no new findings, no AI risk section, no protection gaps. Used by
+// the markdown renderer to emit a designed "all clear" callout
+// instead of an awkwardly-thin comment that reads as broken.
+func isEmptyPR(pr *PRAnalysis) bool {
+	if pr == nil {
+		return false
+	}
+	if len(pr.NewFindings) > 0 {
+		return false
+	}
+	if pr.ProtectionGapCount > 0 {
+		return false
+	}
+	if pr.AI != nil && (len(pr.AI.BlockingSignals) > 0 || len(pr.AI.UncoveredContexts) > 0) {
+		return false
+	}
+	return true
+}
+
+// buildConfidenceHistogram renders a one-line summary of how the
+// recommended test set distributes by confidence. Returns "" when
+// the set is small enough that the table itself shows the same
+// information clearly.
+//
+// Format example:
+//   **Confidence:** 12 exact · 4 inferred · 1 weak (17 tests selected)
+//
+// Audit-named gap (pr_change_scoped.E3): observability into how
+// the test set was assembled, not just which tests were chosen.
+func buildConfidenceHistogram(selections []TestSelection) string {
+	if len(selections) == 0 {
+		return ""
+	}
+	counts := map[string]int{}
+	order := []string{} // first-seen order for stability
+	for _, t := range selections {
+		c := t.Confidence
+		if c == "" {
+			c = "unknown"
+		}
+		if _, exists := counts[c]; !exists {
+			order = append(order, c)
+		}
+		counts[c]++
+	}
+	parts := make([]string, 0, len(order))
+	for _, c := range order {
+		parts = append(parts, fmt.Sprintf("%d %s", counts[c], c))
+	}
+	return fmt.Sprintf("**Confidence:** %s (%d %s selected)",
+		strings.Join(parts, " · "),
+		len(selections),
+		pluralize(len(selections), "test", "tests"),
+	)
 }

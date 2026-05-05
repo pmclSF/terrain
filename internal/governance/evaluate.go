@@ -17,6 +17,33 @@ import (
 type Result struct {
 	Violations []models.Signal
 	Pass       bool
+
+	// Diagnostics records, per active rule, what was checked and
+	// what was found — even when the rule passed. Audit-named gap
+	// (policy_governance.E3): adopters needed visibility into which
+	// rules ran, what they evaluated against, and why they did or
+	// didn't fire. Empty when no policy is configured.
+	Diagnostics []RuleDiagnostic
+}
+
+// RuleDiagnostic records one rule's evaluation outcome.
+type RuleDiagnostic struct {
+	// Rule is the policy rule's canonical name (e.g.
+	// "disallow_skipped_tests"). Stable per release.
+	Rule string
+
+	// Status is "pass", "violated", "skipped" (rule wasn't active
+	// or had no inputs to check), or "warn" (rule fired with
+	// non-blocking severity).
+	Status string
+
+	// Detail is the one-sentence reason. Renders in
+	// `terrain policy check --verbose`.
+	Detail string
+
+	// ViolationCount is the number of violations this rule
+	// produced. Zero for pass / skipped statuses.
+	ViolationCount int
 }
 
 // Evaluate checks the snapshot against the given policy and returns
@@ -26,22 +53,62 @@ type Result struct {
 // explains exactly what policy was violated and what evidence triggered it.
 func Evaluate(snap *models.TestSuiteSnapshot, cfg *policy.Config) *Result {
 	var violations []models.Signal
+	var diagnostics []RuleDiagnostic
 
 	if cfg == nil || cfg.IsEmpty() {
 		return &Result{Pass: true}
 	}
 
-	violations = append(violations, checkDisallowedFrameworks(snap, cfg)...)
-	violations = append(violations, checkSkippedTests(snap, cfg)...)
-	violations = append(violations, checkRuntimeBudget(snap, cfg)...)
-	violations = append(violations, checkCoverageThreshold(snap, cfg)...)
-	violations = append(violations, checkWeakAssertionThreshold(snap, cfg)...)
-	violations = append(violations, checkMockHeavyThreshold(snap, cfg)...)
-	violations = append(violations, checkAIPolicy(snap, cfg)...)
+	checks := []struct {
+		rule string
+		fn   func(*models.TestSuiteSnapshot, *policy.Config) []models.Signal
+		// active reports whether the rule has any input from the
+		// policy file. Non-active rules emit a "skipped" diagnostic
+		// rather than running so the diagnostic surface is honest
+		// about which rules actually evaluated.
+		active func(*policy.Config) bool
+	}{
+		{"disallow_frameworks", checkDisallowedFrameworks, func(c *policy.Config) bool { return len(c.Rules.DisallowFrameworks) > 0 }},
+		{"disallow_skipped_tests", checkSkippedTests, func(c *policy.Config) bool { return c.Rules.DisallowSkippedTests != nil }},
+		{"max_test_runtime_ms", checkRuntimeBudget, func(c *policy.Config) bool { return c.Rules.MaxTestRuntimeMs != nil }},
+		{"minimum_coverage_percent", checkCoverageThreshold, func(c *policy.Config) bool { return c.Rules.MinimumCoveragePercent != nil }},
+		{"max_weak_assertions", checkWeakAssertionThreshold, func(c *policy.Config) bool { return c.Rules.MaxWeakAssertions != nil }},
+		{"max_mock_heavy_tests", checkMockHeavyThreshold, func(c *policy.Config) bool { return c.Rules.MaxMockHeavyTests != nil }},
+		{"ai", checkAIPolicy, func(c *policy.Config) bool { return c.Rules.AI != nil }},
+	}
+
+	for _, ch := range checks {
+		if !ch.active(cfg) {
+			diagnostics = append(diagnostics, RuleDiagnostic{
+				Rule:   ch.rule,
+				Status: "skipped",
+				Detail: "rule not configured in .terrain/policy.yaml",
+			})
+			continue
+		}
+		ruleViolations := ch.fn(snap, cfg)
+		violations = append(violations, ruleViolations...)
+		switch len(ruleViolations) {
+		case 0:
+			diagnostics = append(diagnostics, RuleDiagnostic{
+				Rule:   ch.rule,
+				Status: "pass",
+				Detail: "no violations",
+			})
+		default:
+			diagnostics = append(diagnostics, RuleDiagnostic{
+				Rule:           ch.rule,
+				Status:         "violated",
+				Detail:         fmt.Sprintf("%d violation(s) emitted", len(ruleViolations)),
+				ViolationCount: len(ruleViolations),
+			})
+		}
+	}
 
 	return &Result{
-		Violations: violations,
-		Pass:       len(violations) == 0,
+		Violations:  violations,
+		Pass:        len(violations) == 0,
+		Diagnostics: diagnostics,
 	}
 }
 

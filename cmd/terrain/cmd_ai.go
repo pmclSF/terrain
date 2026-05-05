@@ -18,6 +18,7 @@ import (
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/reporting"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 const (
@@ -459,7 +460,31 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	var evalRun *airun.EvalRunResult
 	if !dryRun && execErr == nil && evalOutputPath != "" {
 		if loaded, err := loadEvalRunByFramework(framework, evalOutputPath); err != nil {
+			// Audit-named gap (ai_execution_gating.P5,
+			// ai_eval_ingestion.P5): designed remediation
+			// instead of a bare "Warning: failed to parse" line.
+			// Adopters seeing the parse error need to know which
+			// adapter expected which shape and where to look.
 			fmt.Fprintf(os.Stderr, "Warning: failed to parse %s output: %v\n", framework, err)
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintf(os.Stderr, "The %s adapter couldn't parse the output at %s.\n", framework, evalOutputPath)
+			fmt.Fprintln(os.Stderr, "Common causes:")
+			switch framework {
+			case "promptfoo":
+				fmt.Fprintln(os.Stderr, "  - Output format changed across Promptfoo majors (v3 vs v4 nest results differently)")
+				fmt.Fprintln(os.Stderr, "  - The CLI didn't write the file (check the exit code of the eval command)")
+			case "deepeval":
+				fmt.Fprintln(os.Stderr, "  - DeepEval was invoked without --export <path>")
+				fmt.Fprintln(os.Stderr, "  - Output JSON has no `testCases` array (empty run?)")
+			case "ragas":
+				fmt.Fprintln(os.Stderr, "  - Ragas write step truncated; expected a `results` / `evaluation_results` / `scores` array")
+				fmt.Fprintln(os.Stderr, "  - DataFrame export wrote CSV instead of JSON (use --output format=json)")
+			default:
+				fmt.Fprintln(os.Stderr, "  - Adapter expected JSON; output may be in a different format")
+			}
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "See docs/schema/eval-adapters.md for the canonical shape each adapter expects,")
+			fmt.Fprintln(os.Stderr, "or docs/user-guides/ai-eval-onboarding.md for the recommended invocation.")
 		} else {
 			evalRun = loaded
 			if env, eerr := loaded.ToEnvelope(evalOutputPath); eerr == nil {
@@ -576,29 +601,43 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 		return nil
 	}
 
+	// Hero verdict block — designed framing at the top so the
+	// gating outcome carries visual weight rather than being a
+	// single buried "Decision: ..." line. Reason flows below.
+	verdict, headline := aiRunHeroLines(decision.Action, decision.Reason, len(signalEntries))
+	fmt.Println(uitokens.HeroVerdict(verdict, headline))
+	fmt.Println()
+
+	if decision.Reason != "" && decision.Action != actionPass {
+		fmt.Printf("Reason: %s\n", decision.Reason)
+		fmt.Println()
+	}
+
 	if len(cmdArgs) > 0 {
 		fmt.Printf("Command: %s\n", strings.Join(cmdArgs, " "))
 		fmt.Println()
 	}
 
-	// Decision.
-	switch decision.Action {
-	case actionBlock:
-		fmt.Printf("Decision: BLOCKED — %s\n", decision.Reason)
-	case actionWarn:
-		fmt.Printf("Decision: WARN — %s\n", decision.Reason)
-	case actionPass:
-		fmt.Println("Decision: PASS")
-	}
-
 	if len(signalEntries) > 0 {
-		fmt.Printf("\nAI Signals (%d):\n", len(signalEntries))
+		fmt.Printf("AI Signals (%d):\n", len(signalEntries))
 		for _, s := range signalEntries {
 			fmt.Printf("  [%s] %s: %s\n", s.Severity, s.Type, s.Explanation)
 		}
+		fmt.Println()
 	}
 
-	fmt.Println()
+	// Per-input ingestion diagnostics — when the gating decision
+	// rests on adapter-defaulted or computed fields, surface them so
+	// the adopter can audit data lineage. Audit (ai_eval_ingestion.E3
+	// + ai_execution_gating.E3) called for this surface.
+	if evalRun != nil && len(evalRun.Diagnostics) > 0 {
+		fmt.Printf("Ingestion diagnostics (%d):\n", len(evalRun.Diagnostics))
+		for _, d := range evalRun.Diagnostics {
+			fmt.Printf("  [%s] %s — %s\n", d.Kind, d.Field, d.Detail)
+		}
+		fmt.Println()
+	}
+
 	fmt.Println("Next steps:")
 	fmt.Println("  terrain ai record    save results as baseline")
 	fmt.Println("  terrain explain <id> explain a scenario")
@@ -607,6 +646,36 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 		return cliExitError{code: exitCode, message: decision.Reason}
 	}
 	return nil
+}
+
+// aiRunHeroLines maps the (action, reason, signalCount) triple to
+// the verdict + headline pair the hero block renders. Centralized so
+// the same wording flows into JSON output, terminal output, and
+// downstream PR-comment surfaces consistently.
+//
+// Headline rules:
+//   - BLOCKED — lead with the count of blocking signals; the
+//     reason string fills in the why below the hero.
+//   - WARN    — lead with a "review required" frame so users don't
+//     mistake it for a hard fail.
+//   - PASS    — confirm the gate cleared and where to go next.
+func aiRunHeroLines(action, reason string, signalCount int) (verdict, headline string) {
+	switch action {
+	case actionBlock:
+		if signalCount > 0 {
+			return "BLOCKED", fmt.Sprintf(
+				"%d AI eval %s — block merge",
+				signalCount, reporting.Plural(signalCount, "signal"),
+			)
+		}
+		return "BLOCKED", "AI eval gate triggered — block merge"
+	case actionWarn:
+		return "WARN", "AI eval gate flagged risks — review recommended"
+	case actionPass:
+		return "PASS", "AI eval gate clear"
+	default:
+		return strings.ToUpper(action), reason
+	}
 }
 
 // newEvalOutputPath returns a temp-file path the eval framework can
