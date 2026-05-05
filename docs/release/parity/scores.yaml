@@ -32,7 +32,7 @@ scores:
     E2: { score: 3, evidence: "Recall gate locked in (calibration_integration_test.go:166). Synthetic-corpus precision is 1.00 but only labeled signals participate." }
     E3: { score: 4, evidence: "Track 9.1 capability metadata + Track 9.3 missing-input diags (#155) surface per-detector requirements; Track 9.4 detector budgets (#154) emit budget markers when exceeded; Track 5.6 per-component timing in --verbose." }
     E4: { score: 4, evidence: "models.SnapshotSchemaVersion = '1.1.0'; SignalV2 fields are omitempty. Gap: no published 'stable / beta / internal' tier markers per JSON field." }
-    E5: { score: 3, evidence: "Self-scan ~99s on the Terrain repo (per feature-status.md); make bench-gate infrastructure exists but no benchmarks/baseline.txt yet. Tree-sitter parser pool added in 0.2." }
+    E5: { score: 4, evidence: "benchmarks/baseline.txt now committed with reference numbers across the engine pipeline (small/medium/large), insights builder, and PR-comment renderer. make bench-gate compares ratios against this baseline. Tree-sitter parser pool added in 0.2. Self-scan ~99s on Terrain repo; per-stage timing visible via `--verbose`." }
     E6: { score: 4, evidence: "make test-determinism enforces SOURCE_DATE_EPOCH byte-identical output. sortSignals uses sort.SliceStable with Symbol tiebreaker." }
     E7: { score: 4, evidence: "Track 5.3 ctx audit on AI detectors (#146) — DetectContext respects ctx in inner loops with deliberately-slow-detector test. Track 9.4 budget enforcement (#154) provides safety net for unaware detectors." }
     V1: { score: 3, evidence: "Track 10.1 — internal/uitokens/ design tokens shipped (#136). Renderers haven't migrated yet (Track 10.2 is 0.2.x); foundation exists." }
@@ -42,8 +42,8 @@ scores:
   insights_impact_explain:
     P1: { score: 4, evidence: "Track 4.6 terrain explain finding <id> (#140). Track 3.2 --explain-selection (#157)." }
     P2: { score: 3, evidence: "Output derives from the snapshot; trust inherits from area 1." }
-    P3: { score: 3, evidence: "docs/examples/{insights,impact,explain}-report.md exist. Gap: per-command 'how confidence is computed' pages don't exist." }
-    P4: { score: 3, evidence: "Quickstart shows the four canonical commands with one-liner descriptions." }
+    P3: { score: 4, evidence: "docs/user-guides/drilling-into-findings.md is the new playbook: four-command ladder (analyze → insights → impact → explain), per-command question they answer, full 'how confidence is computed' section covering detector confidence, ConfidenceDetail intervals, test-selection confidence, and coverage confidence. Plus existing per-command example doc files (insights/impact/explain-report.md)." }
+    P4: { score: 4, evidence: "Quickstart introduces the four canonical commands. docs/user-guides/drilling-into-findings.md (this branch) gives the full drill-down ladder with worked examples per command + the four confidence types (detector / interval / test-selection / coverage). Adopters new to insights/impact/explain have an explicit playbook." }
     P5: { score: 3, evidence: "exitNotFound = 5 distinguishes missing-entity from analysis-failed. Gap: explain 'couldn't find target' messages don't suggest similar known IDs." }
     P6: { score: 3, evidence: "Per-command example doc files." }
     P7: { score: 4, evidence: "PR-risk-report use case maps directly to impact + pr." }
@@ -72,7 +72,7 @@ scores:
     E4: { score: 4, evidence: "MeasurementResult schema is versioned; KeyMeasurement (PR #130) is omitempty." }
     E5: { score: 4, evidence: "All read-side; fast." }
     E6: { score: 4, evidence: "Inherits." }
-    E7: { score: 3, evidence: "Inherits." }
+    E7: { score: 4, evidence: "summary / posture / metrics / focus all route through runPipelineWithSignals → engine.RunPipelineContext, locked by TestRunPipelineContext_RespectsCancelledContext + TestRunPipelineContext_CancelMidFlight." }
     V1: { score: 3, evidence: "Inherits Track 10.1 uitokens (#136)." }
     V2: { score: 4, evidence: "summary output reads as a designed document; concrete measurements alongside band labels (PR #130)." }
     V3: { score: 3, evidence: "Track 10.6 empty-state helpers (#149)." }
