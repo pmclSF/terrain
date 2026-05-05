@@ -132,6 +132,46 @@ func ParseRagasJSON(data []byte) (*EvalRunResult, error) {
 		}
 	}
 
+	// Ragas adapter always computes aggregates from rows (no stats
+	// block in the upstream format). Surface that.
+	out.Diagnostics = append(out.Diagnostics, IngestionDiagnostic{
+		Field:  "aggregates.{successes,failures}",
+		Kind:   "computed",
+		Detail: "Ragas has no stats block; aggregates derived from per-row quality-axis vote",
+	})
+
+	// CreatedAt diagnostic if present-but-unparseable.
+	if out.CreatedAt.IsZero() && raw.CreatedAt != "" {
+		out.Diagnostics = append(out.Diagnostics, IngestionDiagnostic{
+			Field:  "createdAt",
+			Kind:   "default-applied",
+			Detail: "Ragas timestamp present but unparseable; defaulted to zero time",
+		})
+	}
+
+	// Quality-vote opinion: when no quality axes appeared in any
+	// row, the success vote is meaningless and downstream
+	// regression detectors will misfire. Flag it.
+	anyQuality := false
+	for _, c := range out.Cases {
+		for k := range c.NamedScores {
+			if isRagasQualityKey(k) {
+				anyQuality = true
+				break
+			}
+		}
+		if anyQuality {
+			break
+		}
+	}
+	if !anyQuality && len(out.Cases) > 0 {
+		out.Diagnostics = append(out.Diagnostics, IngestionDiagnostic{
+			Field:  "cases[].namedScores",
+			Kind:   "missing",
+			Detail: "no Ragas quality axis (faithfulness / context_recall / answer_relevancy / …) present in any row; success vote based on ancillary metrics only",
+		})
+	}
+
 	return out, nil
 }
 

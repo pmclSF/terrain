@@ -165,6 +165,70 @@ func TestParsePromptfoo_DerivesAggregatesWhenMissing(t *testing.T) {
 	}
 }
 
+// TestParsePromptfoo_DiagnosticsOnDerivedAggregates locks the
+// `aggregates.{successes,failures,errors}` "computed" diagnostic
+// when the stats block is missing. Audit (ai_eval_ingestion.E3)
+// asked for adopters to be told when gating decisions rest on
+// inferred data.
+func TestParsePromptfoo_DiagnosticsOnDerivedAggregates(t *testing.T) {
+	t.Parallel()
+
+	const sample = `{
+  "evalId": "tiny",
+  "results": [
+    {"id": "a", "success": true, "response": {"tokenUsage": {"total": 10, "cost": 0.001}}}
+  ]
+}`
+	got, err := ParsePromptfooJSON([]byte(sample))
+	if err != nil {
+		t.Fatalf("ParsePromptfooJSON: %v", err)
+	}
+
+	if len(got.Diagnostics) == 0 {
+		t.Fatalf("expected at least one diagnostic when stats block is missing; got none")
+	}
+	var sawComputed bool
+	for _, d := range got.Diagnostics {
+		if d.Kind == "computed" && d.Field == "aggregates.{successes,failures,errors}" {
+			sawComputed = true
+			break
+		}
+	}
+	if !sawComputed {
+		t.Errorf("expected a 'computed aggregates' diagnostic; got %+v", got.Diagnostics)
+	}
+}
+
+// TestParsePromptfoo_DiagnosticsOnMissingCost locks the cost-data
+// missing diagnostic — important because aiCostRegression silently
+// no-ops when no cost data flows in. Adopters need to know.
+func TestParsePromptfoo_DiagnosticsOnMissingCost(t *testing.T) {
+	t.Parallel()
+
+	const sample = `{
+  "evalId": "no-cost",
+  "results": [
+    {"id": "a", "success": true, "response": {"tokenUsage": {"total": 10}}}
+  ],
+  "stats": {"successes": 1, "failures": 0, "errors": 0}
+}`
+	got, err := ParsePromptfooJSON([]byte(sample))
+	if err != nil {
+		t.Fatalf("ParsePromptfooJSON: %v", err)
+	}
+
+	var sawMissingCost bool
+	for _, d := range got.Diagnostics {
+		if d.Kind == "missing" && d.Field == "aggregates.tokenUsage.cost" {
+			sawMissingCost = true
+			break
+		}
+	}
+	if !sawMissingCost {
+		t.Errorf("expected a 'missing aggregates.tokenUsage.cost' diagnostic; got %+v", got.Diagnostics)
+	}
+}
+
 func TestParsePromptfoo_RejectsEmpty(t *testing.T) {
 	t.Parallel()
 
