@@ -229,6 +229,16 @@ func renderTestRecommendations(line func(string, ...any), pr *PRAnalysis) {
 			line("")
 		}
 
+		// Confidence histogram — audit-named gap
+		// (pr_change_scoped.E3 observability). Surfaces the
+		// distribution of test-selection confidence so reviewers
+		// see at a glance whether the recommended set is mostly
+		// strong matches or mostly inferred coverage.
+		if hist := buildConfidenceHistogram(pr.TestSelections); hist != "" {
+			line("%s", hist)
+			line("")
+		}
+
 		if len(pr.TestSelections) <= 15 {
 			reasons := formatTestReasons(pr.TestSelections)
 			line("| Test | Confidence | Why |")
@@ -351,7 +361,7 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 		line("New Risks (directly changed)")
 		line(strings.Repeat("-", 40))
 		for _, f := range directRisk {
-			line("  [%s] %s — %s", strings.ToUpper(f.Severity), f.Path, f.Explanation)
+			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
 		}
 		blank()
 	}
@@ -360,7 +370,7 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 		line("Indirectly Impacted Gaps (%d)", len(indirectRisk))
 		line(strings.Repeat("-", 40))
 		for _, f := range indirectRisk {
-			line("  [%s] %s — %s", strings.ToUpper(f.Severity), f.Path, f.Explanation)
+			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
 		}
 		blank()
 	}
@@ -369,7 +379,7 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 		line("Pre-Existing Issues")
 		line(strings.Repeat("-", 40))
 		for _, f := range existingDebt {
-			line("  [%s] %s — %s", strings.ToUpper(f.Severity), f.Path, f.Explanation)
+			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
 		}
 		blank()
 	}
@@ -431,7 +441,7 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 				case len(g.Symbols) > 0:
 					loc = fmt.Sprintf("%s (%s)", g.File, strings.Join(g.Symbols, ", "))
 				}
-				line("    [%s] %s — %s", strings.ToUpper(g.Severity), loc, summary)
+				line("    %s %s — %s", uitokens.BracketedSeverity(g.Severity), loc, summary)
 				if action := humanAction[g.Type]; action != "" {
 					line("      → %s", action)
 				}
@@ -724,4 +734,41 @@ func extractUnitNames(unitIDs []string) []string {
 		}
 	}
 	return names
+}
+
+// buildConfidenceHistogram renders a one-line summary of how the
+// recommended test set distributes by confidence. Returns "" when
+// the set is small enough that the table itself shows the same
+// information clearly.
+//
+// Format example:
+//   **Confidence:** 12 exact · 4 inferred · 1 weak (17 tests selected)
+//
+// Audit-named gap (pr_change_scoped.E3): observability into how
+// the test set was assembled, not just which tests were chosen.
+func buildConfidenceHistogram(selections []TestSelection) string {
+	if len(selections) == 0 {
+		return ""
+	}
+	counts := map[string]int{}
+	order := []string{} // first-seen order for stability
+	for _, t := range selections {
+		c := t.Confidence
+		if c == "" {
+			c = "unknown"
+		}
+		if _, exists := counts[c]; !exists {
+			order = append(order, c)
+		}
+		counts[c]++
+	}
+	parts := make([]string, 0, len(order))
+	for _, c := range order {
+		parts = append(parts, fmt.Sprintf("%d %s", counts[c], c))
+	}
+	return fmt.Sprintf("**Confidence:** %s (%d %s selected)",
+		strings.Join(parts, " · "),
+		len(selections),
+		pluralize(len(selections), "test", "tests"),
+	)
 }

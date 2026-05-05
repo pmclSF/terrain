@@ -82,18 +82,18 @@ scores:
     P2: { score: 3, evidence: "Inherits area 1. Gap: PR comments may show signals against unchanged files when fan-out detection fires." }
     P3: { score: 4, evidence: "Track 4.5 suppressions docs (#158). Track 3.5 unified-pr-comment.md visual contract (#145). Track 6.6 alignment-first migration framing (#148)." }
     P4: { score: 4, evidence: "Track 8.5 single recommended GitHub Action template w/ safe defaults (#142). Track 8.6 trust ladder (#142). Track 7.4 end-to-end Promptfoo+Terrain CI walkthrough (#147)." }
-    P5: { score: 3, evidence: "Standard error wrapping." }
+    P5: { score: 4, evidence: "runPR error path (cmd_impact.go) now surfaces a designed remediation block when the impact pipeline fails: names the three common adopter causes (--base ref doesn't exist, shallow clone, empty diff) and points at `terrain analyze` as the root-cause drill-down command. Replaces the bare-wrapped error pre-fix shape." }
     P6: { score: 4, evidence: "Track 1.6 examples/, Track 7.4 ai-eval-ci/ walkthrough (#147), Track 6.4 multi-repo example (#152). Visual regression goldens (#149)." }
     P7: { score: 4, evidence: "PR risk report without running tests is the right framing. Gap: no 'established repos with debt' mode." }
     E1: { score: 4, evidence: "internal/changescope/ thoroughly tested; PR #131 updated tests for the AI-Risk-Review rename." }
     E2: { score: 2, evidence: "No corpus of labeled PR diffs to measure impact-selection precision against." }
-    E3: { score: 3, evidence: "Track 3.2 explain-selection reason chains (#157). Track 9.4 per-detector budget timing visibility (#154). Confidence histogram still missing — would lift to 4." }
+    E3: { score: 4, evidence: "Confidence histogram now shipped via buildConfidenceHistogram (changescope/render.go): one-line `**Confidence:** N exact · M inferred · K weak (T tests selected)` block above the recommended-tests table. Test: TestBuildConfidenceHistogram_GroupsAndPluralizes locks the contract (single / mixed / empty / missing-confidence cases). Plus existing Track 3.2 explain-selection reason chains (#157) + Track 9.4 per-detector budget timing." }
     E4: { score: 4, evidence: "docs/schema/pr-analysis.md publishes the canonical PRAnalysis / ChangeScopedFinding / TestSelection / PostureDelta / AIValidationSummary contract with field-level Stability tiers, jq integration examples, and pillar-marker compatibility note. PRAnalysisSchemaVersion in internal/changescope/model.go remains the in-code anchor." }
     E5: { score: 4, evidence: "PR-render benchmarks in changescope/render_bench_test.go: small/medium/large fixtures (5/50/200 findings) measure 19µs/51µs/155µs/op respectively on Intel i7-8850H. Linear scaling — no quadratic regressions in dedup / classify / render. Reference numbers committed in the file's package comment." }
     E6: { score: 4, evidence: "PR markdown render is timestamp-independent under SOURCE_DATE_EPOCH variation. Test: TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch (changescope/dedup_test.go) sets SOURCE_DATE_EPOCH to two distinct values and asserts byte-identical output. Existing TestRenderPRSummaryMarkdown_Deterministic locks same-input determinism." }
-    E7: { score: 3, evidence: "Inherits." }
-    V1: { score: 3, evidence: "Track 10.1 uitokens shipped (#136). PR-comment migration to tokens is Track 10.3 (0.2.x)." }
-    V2: { score: 3, evidence: "PR comment is reasonably scannable but no hero verdict block; severity badges inconsistent." }
+    E7: { score: 4, evidence: "Cancellation wired end-to-end via runImpactPipeline → runPipelineWithSignals → engine.RunPipelineContext. Tests in internal/engine/pipeline_test.go: TestRunPipelineContext_RespectsCancelledContext (pre-cancelled context bails immediately) + TestRunPipelineContext_CancelMidFlight (mid-flight cancel returns cleanly). engine.RunPipelineContext checks ctx.Err() at 10+ pipeline stages." }
+    V1: { score: 4, evidence: "PR comment terminal renderer migrated to uitokens.BracketedSeverity for every severity badge (changescope/render.go directRisk/indirectRisk/existingDebt + AI signal blocks). Markdown renderer already used the centralized vocabulary. No raw `[%s]` + ToUpper inline mappings remain in the user-visible PR-comment paths." }
+    V2: { score: 4, evidence: "Severity badges consistent (V1 lift). Hero block exists in markdown variant via `## [PASS|WARN|RISK|FAIL] Terrain — <verdict>` with blockquote subtitle. Confidence histogram (E3 lift) gives reviewers an at-a-glance view of test-set quality. Together: scannable, no buried signal, consistent vocabulary." }
     V3: { score: 3, evidence: "Track 10.6 empty states designed (#149). PR-empty-no-findings template documented in Track 3.5 unified-pr-comment.md (#145)." }
 
   ai_risk_inventory:
@@ -120,7 +120,7 @@ scores:
     P2: { score: 3, evidence: "Strong-evidence results when adapters parse correctly. Edge cases (provider-crash rows, missing cost fields) handled in PR #128's polish." }
     P3: { score: 4, evidence: "Track 7.3 trust-boundary (#144). Track 7.4 ai-eval-ci/ walkthrough (#147). Track 5.1 ai-risk-tiers (#146)." }
     P4: { score: 3, evidence: "--promptfoo-results <path> documented. Gap: no 'here's a five-line CI snippet' example." }
-    P5: { score: 3, evidence: "0.2-known-gaps.md calls out: 'empty results: [] raises misleading error'. 0.2.x fix planned." }
+    P5: { score: 4, evidence: "Adapter parse-failure path (cmd_ai.go loadEvalRunByFramework caller) now surfaces a per-framework remediation block: Promptfoo v3-vs-v4 nesting, DeepEval --export flag missing, Ragas CSV-vs-JSON output, plus links to docs/schema/eval-adapters.md and docs/user-guides/ai-eval-onboarding.md. Replaces the bare 'Warning: failed to parse <fw> output: <err>' pre-fix shape." }
     P6: { score: 4, evidence: "Track 7.1 conformance fixtures per (framework × version) (#147) — 8 fixtures across Promptfoo v3/v4, DeepEval 1.x, Ragas modern/legacy." }
     P7: { score: 4, evidence: "Eval-artifact ingestion is a real differentiator vs. tools that only do static analysis." }
     E1: { score: 4, evidence: "Track 7.1 conformance test suite (#147) covering canonical + drift shapes per framework." }
@@ -139,7 +139,7 @@ scores:
     P2: { score: 3, evidence: "Decisions match what the artifact data supports; we're not making model claims." }
     P3: { score: 4, evidence: "Track 7.3 trust-boundary doc (#144) — what executes vs parses, per-command surface, sandboxing roadmap." }
     P4: { score: 4, evidence: "docs/user-guides/ai-eval-onboarding.md — first-10-minutes walkthrough with explicit 'what Terrain does vs. what you do' table, three-step flow (ai list → run framework yourself → ai run), per-framework commands, common-questions section. Closes the 'do I run Promptfoo first?' gap." }
-    P5: { score: 3, evidence: "Reasonable; baseline missing → graceful no-op." }
+    P5: { score: 4, evidence: "Adapter ingestion failures within `terrain ai run` now surface a per-framework remediation block (see ai_eval_ingestion.P5). Baseline-missing path still graceful-no-ops. The full failure-mode set adopters might hit during gating now has designed remediation." }
     P6: { score: 4, evidence: "Track 7.4 end-to-end Promptfoo+Terrain CI walkthrough (#147)." }
     P7: { score: 3, evidence: "Right framing: gating on AI evals before merge." }
     E1: { score: 4, evidence: "Decision logic test coverage extended in cmd_ai_test.go: TestEvaluateAIRunDecision_{GovernanceBlock, GovernanceWarn_NotBlock, BlockingSignalTypes, CriticalAndPolicyTogether, GovernanceMetadataMissing, GovernanceMetadataNonStringRule, OnlyHighSeverity_DoesNotBlock} cover the block_on_*/warn_on_* precedence rule, the blocking_signal_types special case, combined critical+policy reasoning, and the type-safety edge cases. Integration tests on parsers retained." }
@@ -206,7 +206,7 @@ scores:
     E5: { score: 4, evidence: "Trivial." }
     E6: { score: 4, evidence: "Inherits." }
     E7: { score: 4, evidence: "Trivial." }
-    V1: { score: 3, evidence: "Inherits uitokens (#136)." }
+    V1: { score: 4, evidence: "Policy report (internal/reporting/policy_report.go) consumes from internal/uitokens for every user-visible token: HeroVerdict for the verdict block, BracketedSeverity per violation, Ok/Alert/Warn/Muted color helpers + SymOK/SymFail/SymWarn for the per-rule diagnostic table. No raw ANSI escapes or ad-hoc symbol literals in the user-visible policy paths." }
     V2: { score: 4, evidence: "Policy report redesigned (internal/reporting/policy_report.go): hero verdict block at top via uitokens.HeroVerdict (PASS / BLOCKED / WARN with violation count), violations grouped by severity (critical → low) with BracketedSeverity badges, per-violation category + location lines. Replaces the previous flat `  - <type>: <explanation>` rendering." }
     V3: { score: 2, evidence: "No 'no policy file' guided next-step ('terrain init will create one')." }
 

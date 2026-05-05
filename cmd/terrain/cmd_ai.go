@@ -460,7 +460,31 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	var evalRun *airun.EvalRunResult
 	if !dryRun && execErr == nil && evalOutputPath != "" {
 		if loaded, err := loadEvalRunByFramework(framework, evalOutputPath); err != nil {
+			// Audit-named gap (ai_execution_gating.P5,
+			// ai_eval_ingestion.P5): designed remediation
+			// instead of a bare "Warning: failed to parse" line.
+			// Adopters seeing the parse error need to know which
+			// adapter expected which shape and where to look.
 			fmt.Fprintf(os.Stderr, "Warning: failed to parse %s output: %v\n", framework, err)
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintf(os.Stderr, "The %s adapter couldn't parse the output at %s.\n", framework, evalOutputPath)
+			fmt.Fprintln(os.Stderr, "Common causes:")
+			switch framework {
+			case "promptfoo":
+				fmt.Fprintln(os.Stderr, "  - Output format changed across Promptfoo majors (v3 vs v4 nest results differently)")
+				fmt.Fprintln(os.Stderr, "  - The CLI didn't write the file (check the exit code of the eval command)")
+			case "deepeval":
+				fmt.Fprintln(os.Stderr, "  - DeepEval was invoked without --export <path>")
+				fmt.Fprintln(os.Stderr, "  - Output JSON has no `testCases` array (empty run?)")
+			case "ragas":
+				fmt.Fprintln(os.Stderr, "  - Ragas write step truncated; expected a `results` / `evaluation_results` / `scores` array")
+				fmt.Fprintln(os.Stderr, "  - DataFrame export wrote CSV instead of JSON (use --output format=json)")
+			default:
+				fmt.Fprintln(os.Stderr, "  - Adapter expected JSON; output may be in a different format")
+			}
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "See docs/schema/eval-adapters.md for the canonical shape each adapter expects,")
+			fmt.Fprintln(os.Stderr, "or docs/user-guides/ai-eval-onboarding.md for the recommended invocation.")
 		} else {
 			evalRun = loaded
 			if env, eerr := loaded.ToEnvelope(evalOutputPath); eerr == nil {

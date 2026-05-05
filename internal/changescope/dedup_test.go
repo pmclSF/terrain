@@ -104,6 +104,51 @@ func TestMergeRecommendation(t *testing.T) {
 	}
 }
 
+// TestBuildConfidenceHistogram_GroupsAndPluralizes locks the
+// pr_change_scoped.E3 audit lift: a one-line summary showing how
+// the recommended test set distributes by confidence. Stable order
+// (first-seen) keeps the output deterministic across runs.
+func TestBuildConfidenceHistogram_GroupsAndPluralizes(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		name string
+		in   []TestSelection
+		want string
+	}{
+		{
+			name: "single",
+			in:   []TestSelection{{Path: "a", Confidence: "exact"}},
+			want: "**Confidence:** 1 exact (1 test selected)",
+		},
+		{
+			name: "mixed",
+			in: []TestSelection{
+				{Path: "a", Confidence: "exact"},
+				{Path: "b", Confidence: "exact"},
+				{Path: "c", Confidence: "inferred"},
+				{Path: "d", Confidence: "weak"},
+			},
+			want: "**Confidence:** 2 exact · 1 inferred · 1 weak (4 tests selected)",
+		},
+		{
+			name: "empty",
+			in:   nil,
+			want: "",
+		},
+		{
+			name: "missing-confidence",
+			in:   []TestSelection{{Path: "a"}},
+			want: "**Confidence:** 1 unknown (1 test selected)",
+		},
+	}
+	for _, tc := range cases {
+		got := buildConfidenceHistogram(tc.in)
+		if got != tc.want {
+			t.Errorf("%s: got %q, want %q", tc.name, got, tc.want)
+		}
+	}
+}
+
 // TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch
 // locks the pr_change_scoped.E6 audit lift: byte-identical output
 // when SOURCE_DATE_EPOCH varies. The PR comment shouldn't carry any
