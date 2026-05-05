@@ -288,7 +288,7 @@ func RenderPRCommentConcise(w io.Writer, pr *PRAnalysis) {
 		}
 	}
 	if highCount > 0 {
-		line("  - %d high-severity finding(s) require attention", highCount)
+		line("  - %d high-severity %s require attention", highCount, pluralize(highCount, "finding", "findings"))
 	}
 
 	if len(pr.TestSelections) > 0 {
@@ -297,9 +297,9 @@ func RenderPRCommentConcise(w io.Writer, pr *PRAnalysis) {
 			for i, t := range pr.TestSelections {
 				paths[i] = t.Path
 			}
-			line("  - Run %d test(s): %s", len(paths), strings.Join(paths, ", "))
+			line("  - Run %d %s: %s", len(paths), pluralize(len(paths), "test", "tests"), strings.Join(paths, ", "))
 		} else {
-			line("  - Run %d test(s) (see full comment for details)", len(pr.TestSelections))
+			line("  - Run %d %s (see full comment for details)", len(pr.TestSelections), pluralize(len(pr.TestSelections), "test", "tests"))
 		}
 	}
 }
@@ -393,7 +393,7 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 				paths[i] = t.Path
 			}
 			for _, g := range GroupTestsByPackage(paths) {
-				line("  %s/ — %d test(s)", g.Package, g.Count)
+				line("  %s/ — %d %s", g.Package, g.Count, pluralize(g.Count, "test", "tests"))
 			}
 		}
 		blank()
@@ -414,7 +414,7 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 		}
 		if len(ai.BlockingSignals) > 0 {
 			groups := groupSignalsByFileAndType(ai.BlockingSignals)
-			line("  %d new finding(s) on changed files:", len(groups))
+			line("  %d new %s on changed files:", len(groups), pluralize(len(groups), "finding", "findings"))
 			for _, g := range groups {
 				summary := humanSummary[g.Type]
 				if summary == "" {

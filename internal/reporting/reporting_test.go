@@ -582,10 +582,10 @@ func TestRenderImpactDrilldown_Owners(t *testing.T) {
 	if !strings.Contains(output, "Impacted Owners (2)") {
 		t.Error("owners view missing header")
 	}
-	if !strings.Contains(output, "team-a (2 unit(s))") {
+	if !strings.Contains(output, "team-a (2 units)") {
 		t.Error("owners view missing team-a")
 	}
-	if !strings.Contains(output, "team-b (1 unit(s))") {
+	if !strings.Contains(output, "team-b (1 unit)") {
 		t.Error("owners view missing team-b")
 	}
 }

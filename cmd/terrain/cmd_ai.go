@@ -251,7 +251,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
 		for _, cap := range capabilities {
 			names := capScenarios[cap]
-			fmt.Printf("  %-30s %d scenario(s)\n", cap, len(names))
+			fmt.Printf("  %-30s %d %s\n", cap, len(names), reporting.Plural(len(names), "scenario"))
 		}
 		fmt.Println()
 	}
@@ -277,7 +277,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 			}
 			surfLabel := ""
 			if sc.Surfaces > 0 {
-				surfLabel = fmt.Sprintf(" [%d surface(s)]", sc.Surfaces)
+				surfLabel = fmt.Sprintf(" [%d %s]", sc.Surfaces, reporting.Plural(sc.Surfaces, "surface"))
 			}
 			fmt.Printf("  %-35s %s%s%s\n", sc.Name, sc.Category, capLabel, surfLabel)
 		}
@@ -319,7 +319,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 
 	// Validation gaps.
 	if len(uncoveredSurfaces) > 0 {
-		fmt.Printf("Missing Validation (%d AI surface(s) not covered by any scenario)\n", len(uncoveredSurfaces))
+		fmt.Printf("Missing Validation (%d AI %s not covered by any scenario)\n", len(uncoveredSurfaces), reporting.Plural(len(uncoveredSurfaces), "surface"))
 		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
 		limit := 10
 		if len(uncoveredSurfaces) < limit {
@@ -547,9 +547,9 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	fmt.Println()
 	fmt.Printf("Mode:      %s\n", mode)
 	fmt.Printf("Framework: %s\n", framework)
-	fmt.Printf("Selected:  %d scenario(s)\n", len(selected))
+	fmt.Printf("Selected:  %d %s\n", len(selected), reporting.Plural(len(selected), "scenario"))
 	if len(skipped) > 0 {
-		fmt.Printf("Skipped:   %d scenario(s) (not impacted)\n", len(skipped))
+		fmt.Printf("Skipped:   %d %s (not impacted)\n", len(skipped), reporting.Plural(len(skipped), "scenario"))
 	}
 	fmt.Println()
 
@@ -726,15 +726,16 @@ func evaluateAIRunDecision(snap *models.TestSuiteSnapshot, result *engine.Pipeli
 		decision.Action = actionBlock
 		parts := []string{}
 		if critical > 0 {
-			parts = append(parts, fmt.Sprintf("%d critical signal(s)", critical))
+			parts = append(parts, fmt.Sprintf("%d critical %s", critical, reporting.Plural(critical, "signal")))
 		}
 		if decision.Blocked > 0 {
-			parts = append(parts, fmt.Sprintf("%d policy violation(s)", decision.Blocked))
+			parts = append(parts, fmt.Sprintf("%d policy %s", decision.Blocked, reporting.Plural(decision.Blocked, "violation")))
 		}
 		decision.Reason = strings.Join(parts, ", ")
 	} else if high > 0 || medium > 0 {
 		decision.Action = actionWarn
-		decision.Reason = fmt.Sprintf("%d high + %d medium signal(s)", high, medium)
+		total := high + medium
+		decision.Reason = fmt.Sprintf("%d high + %d medium %s", high, medium, reporting.Plural(total, "signal"))
 	}
 
 	return decision
@@ -996,7 +997,7 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 				marker, d.ScenarioID, d.MetricName, d.FromValue, d.ToValue, d.Delta)
 		}
 		if regressionCount > 0 {
-			fmt.Printf("\n⚠ %d regression(s) detected\n", regressionCount)
+			fmt.Printf("\n⚠ %d %s detected\n", regressionCount, reporting.Plural(regressionCount, "regression"))
 		}
 	} else if len(baselineMetrics) == 0 {
 		fmt.Println("\nNo baseline metrics recorded. Re-run `terrain ai record` with --gauntlet to capture metrics.")
@@ -1031,14 +1032,15 @@ func runAIReplay(root string, jsonOutput bool, artifactPath string) error {
 	fmt.Println()
 	fmt.Printf("Artifact:    %s\n", artifactPath)
 	fmt.Printf("Scenarios:   %d original → %d current\n", replayResult.OriginalScenarios, replayResult.CurrentScenarios)
-	fmt.Printf("Hashes:      %d surface(s) tracked\n", replayResult.CurrentHashes.TotalHashCount())
+	hashCount := replayResult.CurrentHashes.TotalHashCount()
+	fmt.Printf("Hashes:      %d %s tracked\n", hashCount, reporting.Plural(hashCount, "surface"))
 	fmt.Println()
 
 	if replayResult.Match {
 		fmt.Println("Result: MATCH — current repo state matches the original run.")
 		fmt.Println("All content hashes identical. Scenario count unchanged.")
 	} else {
-		fmt.Printf("Result: MISMATCH — %d difference(s) found\n", len(replayResult.Mismatches))
+		fmt.Printf("Result: MISMATCH — %d %s found\n", len(replayResult.Mismatches), reporting.Plural(len(replayResult.Mismatches), "difference"))
 		fmt.Println()
 		fmt.Println("Differences")
 		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
@@ -1081,7 +1083,7 @@ func runAIDoctor(root string, jsonOutput bool) error {
 		checks = append(checks, doctorCheck{
 			Name:    "scenarios",
 			Status:  "pass",
-			Message: fmt.Sprintf("%d scenario(s) detected", len(snap.Scenarios)),
+			Message: fmt.Sprintf("%d %s detected", len(snap.Scenarios), reporting.Plural(len(snap.Scenarios), "scenario")),
 		})
 	} else {
 		checks = append(checks, doctorCheck{
@@ -1109,7 +1111,7 @@ func runAIDoctor(root string, jsonOutput bool) error {
 		checks = append(checks, doctorCheck{
 			Name:    "prompts",
 			Status:  "pass",
-			Message: fmt.Sprintf("%d prompt surface(s) detected", promptCount),
+			Message: fmt.Sprintf("%d prompt %s detected", promptCount, reporting.Plural(promptCount, "surface")),
 		})
 	} else {
 		checks = append(checks, doctorCheck{
@@ -1124,7 +1126,7 @@ func runAIDoctor(root string, jsonOutput bool) error {
 		checks = append(checks, doctorCheck{
 			Name:    "datasets",
 			Status:  "pass",
-			Message: fmt.Sprintf("%d dataset surface(s) detected", datasetCount),
+			Message: fmt.Sprintf("%d dataset %s detected", datasetCount, reporting.Plural(datasetCount, "surface")),
 		})
 	} else {
 		checks = append(checks, doctorCheck{
@@ -1139,7 +1141,7 @@ func runAIDoctor(root string, jsonOutput bool) error {
 		checks = append(checks, doctorCheck{
 			Name:    "contexts",
 			Status:  "pass",
-			Message: fmt.Sprintf("%d context surface(s) detected (system messages, policies, few-shot, etc.)", contextCount),
+			Message: fmt.Sprintf("%d context %s detected (system messages, policies, few-shot, etc.)", contextCount, reporting.Plural(contextCount, "surface")),
 		})
 	}
 	// No warning for missing contexts — they're optional.
@@ -1155,7 +1157,7 @@ func runAIDoctor(root string, jsonOutput bool) error {
 		checks = append(checks, doctorCheck{
 			Name:    "eval_files",
 			Status:  "pass",
-			Message: fmt.Sprintf("%d eval-related test file(s) found", evalFileCount),
+			Message: fmt.Sprintf("%d eval-related test %s found", evalFileCount, reporting.Plural(evalFileCount, "file")),
 		})
 	} else {
 		checks = append(checks, doctorCheck{
@@ -1175,7 +1177,7 @@ func runAIDoctor(root string, jsonOutput bool) error {
 		checks = append(checks, doctorCheck{
 			Name:    "frameworks",
 			Status:  "pass",
-			Message: fmt.Sprintf("%d framework(s) detected: %s", len(aiDet.Frameworks), strings.Join(names, ", ")),
+			Message: fmt.Sprintf("%d %s detected: %s", len(aiDet.Frameworks), reporting.Plural(len(aiDet.Frameworks), "framework"), strings.Join(names, ", ")),
 		})
 	} else {
 		checks = append(checks, doctorCheck{
@@ -1197,13 +1199,13 @@ func runAIDoctor(root string, jsonOutput bool) error {
 			checks = append(checks, doctorCheck{
 				Name:    "graph_wiring",
 				Status:  "pass",
-				Message: fmt.Sprintf("All %d scenario(s) linked to code surfaces", wired),
+				Message: fmt.Sprintf("All %d %s linked to code surfaces", wired, reporting.Plural(wired, "scenario")),
 			})
 		} else {
 			checks = append(checks, doctorCheck{
 				Name:    "graph_wiring",
 				Status:  "warn",
-				Message: fmt.Sprintf("%d of %d scenario(s) have no linked code surfaces", len(snap.Scenarios)-wired, len(snap.Scenarios)),
+				Message: fmt.Sprintf("%d of %d %s have no linked code surfaces", len(snap.Scenarios)-wired, len(snap.Scenarios), reporting.Plural(len(snap.Scenarios), "scenario")),
 			})
 		}
 	}
@@ -1240,7 +1242,7 @@ func runAIDoctor(root string, jsonOutput bool) error {
 	if warnCount == 0 {
 		fmt.Println("All checks passed. AI/eval setup looks good.")
 	} else {
-		fmt.Printf("%d check(s) passed, %d warning(s).\n", passCount, warnCount)
+		fmt.Printf("%d %s passed, %d %s.\n", passCount, reporting.Plural(passCount, "check"), warnCount, reporting.Plural(warnCount, "warning"))
 	}
 
 	return nil

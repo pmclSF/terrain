@@ -359,7 +359,9 @@ func TestAIWorkflow_AIDoctorPassesWithScenarios(t *testing.T) {
 	text := buf.String()
 	// Verify the summary line exists with the expected pattern (pass/warn counts
 	// depend on fixture state, so check the format rather than exact values).
-	if !strings.Contains(text, "check(s) passed") && !strings.Contains(text, "All checks passed") {
+	// Pluralization passes through Plural() now: "1 check passed" /
+	// "N checks passed" / "All checks passed" are all valid summary lines.
+	if !strings.Contains(text, "checks passed") && !strings.Contains(text, "check passed") && !strings.Contains(text, "All checks passed") {
 		t.Fatalf("expected doctor summary line in output, got:\n%s", text)
 	}
 }
