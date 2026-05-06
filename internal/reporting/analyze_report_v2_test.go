@@ -37,19 +37,20 @@ func TestRenderAnalyzeReportV2_KeyFindings(t *testing.T) {
 		t.Error("output should contain 'Key Findings' section")
 	}
 
-	// All 3 findings should be rendered.
-	if !strings.Contains(output, "[CRITICAL]") {
-		t.Error("output should contain [CRITICAL] badge")
+	// All 3 findings should be rendered with canonical
+	// uitokens.BracketedSeverity vocabulary (short forms).
+	if !strings.Contains(output, "[CRIT]") {
+		t.Error("output should contain [CRIT] badge")
 	}
 	if !strings.Contains(output, "[HIGH]") {
 		t.Error("output should contain [HIGH] badge")
 	}
-	if !strings.Contains(output, "[MEDIUM]") {
-		t.Error("output should contain [MEDIUM] badge")
+	if !strings.Contains(output, "[MED]") {
+		t.Error("output should contain [MED] badge")
 	}
 
 	// Numbered list.
-	if !strings.Contains(output, "1. [CRITICAL]") {
+	if !strings.Contains(output, "1. [CRIT]") {
 		t.Error("findings should be numbered starting at 1")
 	}
 

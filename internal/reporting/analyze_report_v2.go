@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/analyze"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderAnalyzeReportV2 writes a human-readable analysis report from the
@@ -37,8 +38,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		line("Key Findings")
 		line(strings.Repeat("-", 60))
 		for i, f := range r.KeyFindings {
-			badge := strings.ToUpper(f.Severity)
-			line("  %d. [%s] %s", i+1, badge, f.Title)
+			line("  %d. %s %s", i+1, uitokens.BracketedSeverity(f.Severity), f.Title)
 		}
 		remaining := r.TotalFindingCount - len(r.KeyFindings)
 		if remaining > 0 {
