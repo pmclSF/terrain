@@ -33,6 +33,43 @@ type EvalRunResult struct {
 	// Aggregates summarizes the run. Populated either from the
 	// framework's own summary fields or computed by the adapter.
 	Aggregates EvalAggregates `json:"aggregates"`
+
+	// Diagnostics records every place the adapter fell back on a
+	// default value or computed a missing field. Empty when the
+	// upstream output supplied every field the adapter expected.
+	//
+	// Surfaced in `terrain ai run --verbose` and in the JSON
+	// envelope so adopters know when the gating decision is
+	// resting on inferred data vs. explicit upstream fields. The
+	// audit (ai_eval_ingestion.E3) called for "which fields fell
+	// back to defaults" warnings; this is that surface.
+	Diagnostics []IngestionDiagnostic `json:"diagnostics,omitempty"`
+}
+
+// IngestionDiagnostic records one field-level fallback during
+// adapter ingestion. Adapters emit one entry per missing or
+// defaulted field so consumers can audit the gating decision's
+// data lineage.
+type IngestionDiagnostic struct {
+	// Field is the dotted JSON path to the affected field within
+	// EvalRunResult (e.g. "aggregates.errors", "cases[12].tokenUsage.cost").
+	Field string `json:"field"`
+
+	// Kind classifies the fallback:
+	//   - "missing"          — upstream output omitted the field;
+	//                          downstream consumers receive zero value.
+	//   - "computed"         — adapter computed the field from other
+	//                          upstream data (e.g. summed per-case cost
+	//                          to fill the aggregate).
+	//   - "default-applied"  — adapter substituted a sensible default
+	//                          when upstream value was malformed.
+	//   - "coerced"          — adapter accepted a near-shape (e.g. int
+	//                          where float64 expected) without erroring.
+	Kind string `json:"kind"`
+
+	// Detail is a one-sentence human-readable explanation. Renders
+	// in `terrain ai run --verbose` as the adopter-facing reason.
+	Detail string `json:"detail,omitempty"`
 }
 
 // EvalCase is one (test, prompt, provider) result row.

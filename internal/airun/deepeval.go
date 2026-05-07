@@ -83,6 +83,7 @@ func ParseDeepEvalJSON(data []byte) (*EvalRunResult, error) {
 	}
 
 	out.Cases = make([]EvalCase, 0, len(raw.TestCases))
+	missingMetricsCount := 0
 	for _, tc := range raw.TestCases {
 		c := EvalCase{
 			CaseID:        firstNonEmpty(tc.ID, tc.Name),
@@ -97,6 +98,9 @@ func ParseDeepEvalJSON(data []byte) (*EvalRunResult, error) {
 			},
 		}
 		c.Success, c.Score, c.NamedScores = aggregateMetricsData(tc.MetricsData)
+		if len(tc.MetricsData) == 0 {
+			missingMetricsCount++
+		}
 		out.Cases = append(out.Cases, c)
 
 		if c.Success {
@@ -108,6 +112,36 @@ func ParseDeepEvalJSON(data []byte) (*EvalRunResult, error) {
 		out.Aggregates.TokenUsage.Prompt += c.TokenUsage.Prompt
 		out.Aggregates.TokenUsage.Completion += c.TokenUsage.Completion
 		out.Aggregates.TokenUsage.Cost += c.TokenUsage.Cost
+	}
+
+	// DeepEval doesn't emit a stats block; aggregates are always
+	// computed from per-case rows. Surface that so adopters know
+	// the aggregate-level counts are derived, not authoritative.
+	out.Diagnostics = append(out.Diagnostics, IngestionDiagnostic{
+		Field:  "aggregates.{successes,failures}",
+		Kind:   "computed",
+		Detail: "DeepEval has no stats block; aggregates summed from per-case rows",
+	})
+
+	// Cases with no metricsData get scored via the aggregate
+	// fallback (success/failure based on overall pass) — flag
+	// when this happened so adopters see when the gating decision
+	// is leaning on the fallback.
+	if missingMetricsCount > 0 {
+		out.Diagnostics = append(out.Diagnostics, IngestionDiagnostic{
+			Field:  "cases[].metricsData",
+			Kind:   "missing",
+			Detail: fmt.Sprintf("%d of %d DeepEval cases had no metrics data; per-case score computed from aggregate pass/fail", missingMetricsCount, len(raw.TestCases)),
+		})
+	}
+
+	// Cost diagnostic: same shape as Promptfoo.
+	if out.Aggregates.TokenUsage.Cost == 0 && len(out.Cases) > 0 {
+		out.Diagnostics = append(out.Diagnostics, IngestionDiagnostic{
+			Field:  "aggregates.tokenUsage.cost",
+			Kind:   "missing",
+			Detail: "DeepEval output has no cost data — aiCostRegression will be a no-op for this run",
+		})
 	}
 
 	return out, nil

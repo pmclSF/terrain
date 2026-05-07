@@ -3,6 +3,7 @@ package portfolio
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -141,6 +142,14 @@ func TestResolveRepoPath_Relative(t *testing.T) {
 
 func TestResolveRepoPath_Absolute(t *testing.T) {
 	t.Parallel()
+	// Windows treats `\foo` as relative (no drive letter); this test
+	// targets POSIX-shaped absolute paths. Skip on Windows where the
+	// rooted-without-drive case isn't actually absolute and the
+	// behavior is exercised by other RepoEntry / RepoManifest tests
+	// using runtime.GOOS-aware fixtures.
+	if runtime.GOOS == "windows" {
+		t.Skip("absolute path semantics differ on Windows (drive letter required)")
+	}
 	abs := filepath.Join(string(filepath.Separator)+"elsewhere", "repo")
 	got := ResolveRepoPath(filepath.Join(string(filepath.Separator)+"work", ".terrain"),
 		RepoEntry{Path: abs})

@@ -99,6 +99,11 @@ func ParsePromptfooJSON(data []byte) (*EvalRunResult, error) {
 	// (which excludes Errors but counts Failures). Now we route
 	// errored rows into Aggregates.Errors via promptfooRowErrored.
 	if out.Aggregates.CaseCount() == 0 && len(out.Cases) > 0 {
+		out.Diagnostics = append(out.Diagnostics, IngestionDiagnostic{
+			Field:  "aggregates.{successes,failures,errors}",
+			Kind:   "computed",
+			Detail: "stats block missing or all-zero; aggregates summed from per-case rows",
+		})
 		for i, c := range out.Cases {
 			switch {
 			case c.Success:
@@ -113,6 +118,39 @@ func ParsePromptfooJSON(data []byte) (*EvalRunResult, error) {
 			out.Aggregates.TokenUsage.Completion += c.TokenUsage.Completion
 			out.Aggregates.TokenUsage.Cost += c.TokenUsage.Cost
 		}
+	}
+
+	// Aggregate cost diagnostic: when per-case cost is zero across
+	// every case but the aggregate cost is non-zero (or vice versa),
+	// downstream cost-regression detectors silently misfire. Surface
+	// the mismatch so adopters know the cost data lineage.
+	if out.Aggregates.TokenUsage.Cost == 0 && len(out.Cases) > 0 {
+		anyPerCaseCost := false
+		for _, c := range out.Cases {
+			if c.TokenUsage.Cost > 0 {
+				anyPerCaseCost = true
+				break
+			}
+		}
+		if !anyPerCaseCost {
+			out.Diagnostics = append(out.Diagnostics, IngestionDiagnostic{
+				Field:  "aggregates.tokenUsage.cost",
+				Kind:   "missing",
+				Detail: "Promptfoo output has no cost data — aiCostRegression will be a no-op for this run",
+			})
+		}
+	}
+
+	// CreatedAt diagnostic: zero value means we couldn't parse a
+	// timestamp from either the integer or ISO field. Some
+	// regression detectors rely on a non-zero timestamp for
+	// staleness checks.
+	if out.CreatedAt.IsZero() && (raw.CreatedAt != 0 || raw.CreatedAtISO != "") {
+		out.Diagnostics = append(out.Diagnostics, IngestionDiagnostic{
+			Field:  "createdAt",
+			Kind:   "default-applied",
+			Detail: "Promptfoo timestamp present but unparseable; defaulted to zero time",
+		})
 	}
 
 	return out, nil

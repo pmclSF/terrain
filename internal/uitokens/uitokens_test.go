@@ -188,6 +188,58 @@ func TestBracketedVerdict(t *testing.T) {
 	}
 }
 
+// TestHeroVerdict locks the shape of the hero block: rule, indented
+// badge + headline, rule. Used by `terrain ai run` and other gating
+// commands; the audit (ai_execution_gating.V2 + pr_change_scoped.V2)
+// called for designed framing here.
+func TestHeroVerdict(t *testing.T) {
+	cases := []struct {
+		verdict, headline string
+		mustContain       []string
+	}{
+		{"BLOCKED", "3 AI eval signals — block merge", []string{"BLOCKED", "3 AI eval signals — block merge"}},
+		{"WARN", "review recommended", []string{"WARN", "review recommended"}},
+		{"PASS", "AI eval gate clear", []string{"PASS", "AI eval gate clear"}},
+		{"unknown", "fallback", []string{"UNKNOWN", "fallback"}},
+	}
+	for _, tc := range cases {
+		got := HeroVerdict(tc.verdict, tc.headline)
+		for _, want := range tc.mustContain {
+			if !strings.Contains(got, want) {
+				t.Errorf("HeroVerdict(%q, %q) missing %q in:\n%s",
+					tc.verdict, tc.headline, want, got)
+			}
+		}
+		// Three-line shape: rule \n badge+headline \n rule.
+		lines := strings.Split(got, "\n")
+		if len(lines) != 3 {
+			t.Errorf("HeroVerdict(%q): expected 3 lines, got %d:\n%s",
+				tc.verdict, len(lines), got)
+		}
+	}
+}
+
+// TestHeroVerdictMarkdown locks the markdown shape: blockquote
+// callout + horizontal rule. Optional reason renders as italic.
+func TestHeroVerdictMarkdown(t *testing.T) {
+	got := HeroVerdictMarkdown("BLOCKED", "3 critical signals", "introduced vs. baseline")
+	want := []string{
+		"> ### [BLOCKED] 3 critical signals",
+		"> *introduced vs. baseline*",
+		"---",
+	}
+	for _, w := range want {
+		if !strings.Contains(got, w) {
+			t.Errorf("HeroVerdictMarkdown missing %q in:\n%s", w, got)
+		}
+	}
+	// No reason → no italic line.
+	noReason := HeroVerdictMarkdown("PASS", "AI eval gate clear", "")
+	if strings.Contains(noReason, "*") {
+		t.Errorf("HeroVerdictMarkdown with empty reason should not emit italic; got:\n%s", noReason)
+	}
+}
+
 // ── Bar rendering ───────────────────────────────────────────────────
 
 func TestBarPlain_FullEmptyHalf(t *testing.T) {
