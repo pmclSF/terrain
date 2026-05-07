@@ -45,6 +45,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	pathpkg "path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -53,6 +54,14 @@ import (
 
 	"github.com/pmclSF/terrain/internal/models"
 )
+
+// pathPkgMatch is `path.Match` with Unix slash semantics — used by
+// pathMatch after normalizing inputs to forward-slashes. Distinct
+// from filepath.Match which is host-OS-aware (and would treat `\`
+// as the separator on Windows, breaking forward-slashed patterns).
+func pathPkgMatch(pattern, name string) (bool, error) {
+	return pathpkg.Match(pattern, name)
+}
 
 // Default location for the suppression file, relative to the repo root.
 const DefaultPath = ".terrain/suppressions.yaml"
@@ -234,16 +243,22 @@ func matches(e Entry, s models.Signal) bool {
 }
 
 // pathMatch is a glob match that supports `**` (recursive) on top of
-// the standard `filepath.Match` semantics. Patterns are matched
-// against the signal's file path verbatim — callers should normalize
-// paths before storing them.
+// the standard `path.Match` semantics. Patterns are matched against
+// the signal's file path verbatim — callers should normalize paths
+// before storing them.
+//
+// We use the `path` package (Unix semantics) rather than `filepath`
+// (host-OS-aware) because Terrain canonicalizes every path to
+// forward-slashes. filepath.Match on Windows treats `\` as the
+// separator, breaking patterns like `*.go` that should not cross
+// path boundaries when input is forward-slashed.
 func pathMatch(pattern, path string) (bool, error) {
 	// Forward-slashes are canonical in Terrain paths.
 	pattern = filepath.ToSlash(pattern)
 	path = filepath.ToSlash(path)
 
 	if !strings.Contains(pattern, "**") {
-		return filepath.Match(pattern, path)
+		return pathPkgMatch(pattern, path)
 	}
 
 	// Translate `**` into a regex-equivalent walk: any sequence of path
@@ -265,7 +280,7 @@ func matchSegments(pat, path []string) bool {
 				pi++
 				continue
 			}
-			ok, err := filepath.Match(pat[pi], path[ti])
+			ok, err := pathPkgMatch(pat[pi], path[ti])
 			if err == nil && ok {
 				pi++
 				ti++
