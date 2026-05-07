@@ -60,6 +60,11 @@ const (
 	// on the framework of record; otherwise a possible
 	// detection bug.
 	EmptyNoMigrationCandidates
+
+	// EmptyNoPortfolio — `terrain portfolio` ran but the snapshot
+	// has zero test assets. Either a fresh repo with no tests yet
+	// or a multi-repo manifest pointing at empty repos.
+	EmptyNoPortfolio
 )
 
 // EmptyState is the rendered shape of an empty-state path: a one-line
@@ -123,6 +128,12 @@ func EmptyStateFor(kind EmptyStateKind) EmptyState {
 			Kind:     kind,
 			Header:   "No migration candidates detected.",
 			NextMove: "Either the repo is already on the framework of record, or none of the supported source frameworks are in use. Run `terrain migrate list` to see what's supported.",
+		}
+	case EmptyNoPortfolio:
+		return EmptyState{
+			Kind:     kind,
+			Header:   "No portfolio data — no test assets detected.",
+			NextMove: "Add tests with your framework of choice and re-run; for multi-repo workflows, check `.terrain/repos.yaml` points at repos that have tests.",
 		}
 	default:
 		// Unknown kind — return empty so the renderer skips. Keeps
