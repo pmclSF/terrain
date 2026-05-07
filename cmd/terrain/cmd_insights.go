@@ -54,6 +54,13 @@ func runPortfolio(root string, jsonOutput, verbose bool) error {
 func runPosture(root string, jsonOutput, verbose bool) error {
 	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
+		// Audit-named gap (summary_posture_metrics_focus.P5):
+		// designed remediation when the underlying analyze
+		// pipeline fails. Reuses analyzeFailureRemediation so
+		// every read-side command emits the same shape.
+		if !jsonOutput {
+			analyzeFailureRemediation(err, root, 0)
+		}
 		return fmt.Errorf("analysis failed: %w", err)
 	}
 
@@ -75,6 +82,9 @@ func runPosture(root string, jsonOutput, verbose bool) error {
 func runMetrics(root string, jsonOutput, verbose bool) error {
 	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
+		if !jsonOutput {
+			analyzeFailureRemediation(err, root, 0)
+		}
 		return fmt.Errorf("analysis failed: %w", err)
 	}
 
@@ -96,6 +106,9 @@ func runMetrics(root string, jsonOutput, verbose bool) error {
 func runSummary(root string, jsonOutput, verbose bool) error {
 	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
+		if !jsonOutput {
+			analyzeFailureRemediation(err, root, 0)
+		}
 		return fmt.Errorf("analysis failed: %w", err)
 	}
 	snapshot := result.Snapshot
@@ -148,6 +161,9 @@ func runSummary(root string, jsonOutput, verbose bool) error {
 func runFocus(root string, jsonOutput, verbose bool) error {
 	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
+		if !jsonOutput {
+			analyzeFailureRemediation(err, root, 0)
+		}
 		return fmt.Errorf("analysis failed: %w", err)
 	}
 	snapshot := result.Snapshot
@@ -239,6 +255,9 @@ func runFocus(root string, jsonOutput, verbose bool) error {
 func runInsights(root string, jsonOutput, verbose bool) error {
 	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
+		if !jsonOutput {
+			analyzeFailureRemediation(err, root, 0)
+		}
 		return fmt.Errorf("analysis failed: %w", err)
 	}
 	snapshot := result.Snapshot

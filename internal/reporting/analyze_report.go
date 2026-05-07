@@ -9,6 +9,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // AnalyzeReportOptions configures analyze report rendering.
@@ -186,7 +187,7 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 			if loc == "" {
 				loc = s.Location.Repository
 			}
-			line("    [%s] %s", s.Severity, s.Explanation)
+			line("    %s %s", uitokens.BracketedSeverity(string(s.Severity)), s.Explanation)
 			if loc != "" {
 				line("           %s", loc)
 			}

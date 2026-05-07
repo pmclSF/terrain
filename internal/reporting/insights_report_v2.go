@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/insights"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderInsightsReport writes a human-readable health report from the
@@ -69,7 +70,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 			if f.Category != cat {
 				continue
 			}
-			line("  [%s] %s", strings.ToUpper(string(f.Severity)), f.Title)
+			line("  %s %s", uitokens.BracketedSeverity(string(f.Severity)), f.Title)
 			if f.Description != "" {
 				// Wrap long descriptions.
 				line("         %s", f.Description)
@@ -201,7 +202,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 		line("Edge Cases")
 		line(strings.Repeat("-", 60))
 		for _, ec := range r.EdgeCases {
-			line("  [%s] %s", ec.Severity, ec.Description)
+			line("  %s %s", uitokens.BracketedSeverity(string(ec.Severity)), ec.Description)
 		}
 		blank()
 	}

@@ -44,6 +44,21 @@ func runImpactPipeline(root, baseRef string, opts engine.PipelineOptions) (*impa
 func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string, explainSelection bool) error {
 	impactResult, _, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
+		// Audit-named gap (insights_impact_explain.P5):
+		// designed remediation for impact-pipeline failures.
+		// Same shape as runPR's remediation since the
+		// underlying failure modes are identical (missing
+		// base ref, shallow clone, empty diff).
+		if !jsonOutput {
+			fmt.Fprintf(os.Stderr, "error: report impact failed: %v\n", err)
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "Common causes:")
+			fmt.Fprintln(os.Stderr, "  - --base ref doesn't exist (default: HEAD~1; try --base main if working off a feature branch)")
+			fmt.Fprintln(os.Stderr, "  - shallow clone in CI: `git fetch --unshallow` or fetch the base ref explicitly")
+			fmt.Fprintln(os.Stderr, "  - diff is empty (no changed files; nothing to impact)")
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "If the underlying analysis failed, run `terrain analyze` directly to see the root cause.")
+		}
 		return err
 	}
 
@@ -104,6 +119,13 @@ func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string, 
 func runSelectTests(root, baseRef string, jsonOutput bool) error {
 	impactResult, _, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
+		if !jsonOutput {
+			fmt.Fprintf(os.Stderr, "error: report select-tests failed: %v\n", err)
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "Common causes (same as report impact):")
+			fmt.Fprintln(os.Stderr, "  - --base ref doesn't exist or shallow clone needs `git fetch --unshallow`")
+			fmt.Fprintln(os.Stderr, "  - underlying analysis failed — run `terrain analyze` for the root cause")
+		}
 		return err
 	}
 
