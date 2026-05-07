@@ -23,6 +23,20 @@ import (
 func runPortfolio(root string, jsonOutput, verbose bool) error {
 	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
+		// Audit-named gap (portfolio.P5): designed remediation
+		// when portfolio analysis fails. Most common cause is the
+		// snapshot itself failing — point at `terrain analyze` for
+		// root-cause drill-down.
+		if !jsonOutput {
+			fmt.Fprintf(os.Stderr, "error: portfolio analysis failed: %v\n", err)
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "Common causes:")
+			fmt.Fprintln(os.Stderr, "  - Snapshot construction failed — run `terrain analyze` to see the underlying error")
+			fmt.Fprintln(os.Stderr, "  - --root path is not a git repository (some detectors need git history)")
+			fmt.Fprintln(os.Stderr, "  - Permission errors walking the repo tree")
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "Multi-repo workflows: see docs/schema/portfolio.md for the .terrain/repos.yaml shape (currently experimental in 0.2.0).")
+		}
 		return fmt.Errorf("analysis failed: %w", err)
 	}
 

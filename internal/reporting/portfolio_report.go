@@ -18,8 +18,9 @@ func RenderPortfolioReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...
 
 	p := snap.Portfolio
 	if p == nil || p.Aggregates.TotalAssets == 0 {
-		line("No portfolio data available.")
-		line("Portfolio intelligence requires test files to analyze.")
+		// Audit-named gap (portfolio.V3): designed empty state
+		// instead of the bare two-line "No portfolio data" message.
+		RenderEmptyState(w, EmptyNoPortfolio)
 		blank()
 		return
 	}
