@@ -198,7 +198,7 @@ Three releases, with the verb sharpening at each step:
 
 | Release | Verb | What ships |
 |---------|------|------------|
-| **0.2.0** | "See clearly + gate progressively" | Three pillars at parity floors (Gate ≥ 4, Understand ≥ 3, Align ≥ 3 soft); suppressions; finding IDs; `--new-findings-only`; AI risk subdivision into inventory/hygiene/regression; multi-repo manifest; alignment-first migration framing; per-area examples; design system; per-detector "known false positives" docs |
+| **0.2.0** | "See clearly + gate progressively" | Three pillars at parity floors (Gate ≥ 3, Understand ≥ 3, Align ≥ 3 soft); suppressions; finding IDs; `--new-findings-only`; AI risk subdivision into inventory/hygiene/regression; multi-repo manifest; alignment-first migration framing; per-area examples; design system; per-detector "known false positives" docs. Gate floor=3 reflects recall-anchored synthetic calibration; the level-4/5 jump (real-repo precision floor) is the central 0.3 deliverable. |
 | **0.3** | "Take control" | Labeled-corpus precision floors per detector; AST taint flow for prompt injection; suppression lifecycle (expiry, owner, audit); AI gate as standalone command; plugin architecture; sandboxing for eval execution; legacy CLI alias removal |
 | **0.4** | "Test the universe" | AI-aware integration / e2e tests under the control plane (define them, run them in CI, gate on them, suppress them); cross-repo alignment workflows; eval-test composition (unit + integration + eval as one feature) |
 

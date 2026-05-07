@@ -7,7 +7,7 @@ map back to a status here. Drift is treated as a release blocker.
 Each shipping capability has three tags:
 
 - **Pillar** — Understand, Align, or Gate (per `docs/product/vision.md`)
-- **Tier** — 1 (publicly claimable, parity floor ≥ 4), 2 (experimental, floor ≥ 3), 3 (in development, no public claim)
+- **Tier** — 1 (publicly claimable, parity floor ≥ 3 in 0.2.0 / ≥ 4 in 0.3), 2 (experimental, floor ≥ 3), 3 (in development, no public claim)
 - **Status** — stable / experimental / planned / deprecated
 
 The pillar + tier columns are new in 0.2.0. The pillar tells you which

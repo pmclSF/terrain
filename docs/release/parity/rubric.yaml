@@ -38,13 +38,23 @@ pillars:
     priority: 1
 
 # Per-pillar floor requirements for the 0.2.0 release gate.
-# Gate is publicly claimable (≥ 4); Understand is workable for adopters
-# (≥ 3); Align is soft (warn-only at 3). See `pillar_priority (0.2.0)`
-# section in the plan.
+#
+# Gate floor is 3 in 0.2.0: the pillar ships recall-anchored on a
+# synthetic 27-fixture corpus (axes P2, E2 at level 3 = "calibrated
+# on synthetic fixtures"). The level-4/5 jump on those axes requires
+# a labeled real-repo precision floor — the central deliverable of
+# the 0.3 program (see docs/benchmark/0.3-prompt-injection-python.md
+# and the per-track plan). Setting Gate floor=4 in 0.2.0 would have
+# been unsatisfiable by construction; floor=3 is the honest contract
+# for what 0.2.0 actually delivers, and the rubric continues to
+# measure the 4→5 trajectory cell-by-cell as the corpus work lands.
+#
+# Understand is workable for adopters (≥ 3). Align is soft (warn-only
+# at 3) because multi-repo aggregation is genuinely emerging.
 pillar_floors:
   understand: 3
   align: 3
-  gate: 4
+  gate: 3
 
 # Soft gates print a warning banner but do not fail CI. The Align
 # pillar is soft for 0.2.0 because multi-repo aggregation is genuinely

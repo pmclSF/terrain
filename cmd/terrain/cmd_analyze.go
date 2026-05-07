@@ -560,7 +560,7 @@ func analyzeFailureRemediation(err error, root string, timeout time.Duration) {
 			fmt.Fprintln(os.Stderr, "  - Run on a subdirectory: `terrain analyze <path>` to scope down")
 			fmt.Fprintln(os.Stderr, "  - Use `--verbose` to see per-stage timing and identify the slow detector")
 		} else {
-			fmt.Fprintln(os.Stderr, "Analysis was cancelled. Re-run when ready.")
+			fmt.Fprintln(os.Stderr, "Analysis was canceled. Re-run when ready.")
 		}
 		return
 	}
