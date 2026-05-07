@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/explain"
+	"github.com/pmclSF/terrain/internal/identity"
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/reporting"
@@ -184,9 +185,121 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 		}
 	}
 
+	// Try as a stable finding ID (e.g.
+	// "weakAssertion@internal/auth/login_test.go:TestLogin#a1b2c3d4").
+	// `terrain explain finding <id>` per Track 4.6 — round-trip a
+	// finding ID back to its evidence + suggest a suppression command.
+	if _, _, _, _, ok := identity.ParseFindingID(target); ok {
+		if sig, found := lookupSignalByFindingID(snap, target); found {
+			if jsonOutput {
+				return jsonOut(sig)
+			}
+			renderFindingExplanation(sig, target)
+			return nil
+		}
+		// Looks like a finding ID but not in this snapshot — distinct
+		// from "garbage input": tell the user it parsed correctly but
+		// didn't resolve. Common cause: stale ID after a refactor.
+		return cliExitError{
+			code: exitNotFound,
+			message: fmt.Sprintf(
+				"finding ID parses but is not in the current snapshot: %s\n\n"+
+					"Common causes:\n"+
+					"  - the underlying signal moved (file rename, symbol rename, line drift without symbol)\n"+
+					"  - the suppression file already drops it — check `.terrain/suppressions.yaml`\n"+
+					"  - the snapshot is from a different run — re-run `terrain analyze`",
+				target,
+			),
+		}
+	}
+
 	return cliExitError{
 		code:    exitNotFound,
-		message: fmt.Sprintf("entity not found: %s\n\nTry: a test file path, test ID, scenario ID, or 'selection'", target),
+		message: fmt.Sprintf("entity not found: %s\n\nTry: a test file path, test ID, scenario ID, finding ID, or 'selection'", target),
+	}
+}
+
+// lookupSignalByFindingID searches the snapshot for a signal with the
+// given FindingID. Returns the signal + ok=true on hit. Walks both
+// top-level Signals and per-test-file Signals so any emission path
+// resolves.
+func lookupSignalByFindingID(snap *models.TestSuiteSnapshot, id string) (models.Signal, bool) {
+	if snap == nil {
+		return models.Signal{}, false
+	}
+	for _, s := range snap.Signals {
+		if s.FindingID == id {
+			return s, true
+		}
+	}
+	for _, tf := range snap.TestFiles {
+		for _, s := range tf.Signals {
+			if s.FindingID == id {
+				return s, true
+			}
+		}
+	}
+	return models.Signal{}, false
+}
+
+// renderFindingExplanation prints a finding's evidence in human-
+// readable form. Mirrors the shape used by other explain renders:
+// section header → finding metadata → next-step pointers (including
+// the canonical `terrain suppress` invocation).
+func renderFindingExplanation(s models.Signal, id string) {
+	rule := strings.Repeat("─", 60)
+	fmt.Println("Terrain — finding explanation")
+	fmt.Println(rule)
+	fmt.Println()
+
+	fmt.Printf("Finding ID:  %s\n", id)
+	fmt.Printf("Detector:    %s\n", s.Type)
+	fmt.Printf("Severity:    %s\n", strings.ToUpper(string(s.Severity)))
+	if s.Category != "" {
+		fmt.Printf("Category:    %s\n", s.Category)
+	}
+	fmt.Println()
+
+	if s.Location.File != "" {
+		loc := s.Location.File
+		if s.Location.Symbol != "" {
+			loc += " :: " + s.Location.Symbol
+		}
+		if s.Location.Line > 0 {
+			loc += fmt.Sprintf(" (line %d)", s.Location.Line)
+		}
+		fmt.Printf("Location:    %s\n", loc)
+	}
+	if s.Owner != "" {
+		fmt.Printf("Owner:       %s\n", s.Owner)
+	}
+	if s.EvidenceStrength != "" {
+		fmt.Printf("Evidence:    %s", s.EvidenceStrength)
+		if s.EvidenceSource != "" {
+			fmt.Printf(" (%s)", s.EvidenceSource)
+		}
+		fmt.Println()
+	}
+	if s.RuleID != "" {
+		fmt.Printf("Rule:        %s\n", s.RuleID)
+	}
+	fmt.Println()
+
+	if s.Explanation != "" {
+		fmt.Println("Why it matters:")
+		fmt.Printf("  %s\n", s.Explanation)
+		fmt.Println()
+	}
+	if s.SuggestedAction != "" {
+		fmt.Println("What to do:")
+		fmt.Printf("  %s\n", s.SuggestedAction)
+		fmt.Println()
+	}
+
+	fmt.Println("Next steps:")
+	fmt.Printf("  terrain suppress %q --reason \"<why>\"   waive this finding (with a reason)\n", id)
+	if s.RuleURI != "" {
+		fmt.Printf("  see %s for the full detector reference\n", s.RuleURI)
 	}
 }
 
@@ -390,7 +503,23 @@ func showFinding(id string, snap *models.TestSuiteSnapshot, jsonOutput bool) err
 			return nil
 		}
 	}
-	return cliExitError{code: exitNotFound, message: fmt.Sprintf("finding not found: %s", id)}
+	// Distinct from the stable-finding-ID path above (which gives a
+	// detailed "ID parses but didn't resolve" diagnostic). This branch
+	// runs when the user passed a numeric index or a type string and
+	// neither matched. Help them figure out what to try next.
+	return cliExitError{
+		code: exitNotFound,
+		message: fmt.Sprintf(
+			"finding not found: %s\n\n"+
+				"`terrain explain finding <id>` accepts:\n"+
+				"  - a stable finding ID  (e.g. `weakAssertion@src/auth_test.go:TestLogin#a1b2c3d4`)\n"+
+				"  - a portfolio index    (e.g. `0`, `1`, `2` — see `terrain analyze --json`)\n"+
+				"  - a signal type        (e.g. `weakAssertion`)\n\n"+
+				"If you copied this ID from an older run, re-run `terrain analyze` —\n"+
+				"file renames, symbol renames, or line drift can produce a new ID.",
+			id,
+		),
+	}
 }
 
 func isUniqueCodeUnitName(snap *models.TestSuiteSnapshot, name string) bool {

@@ -121,6 +121,20 @@ func main() {
 
 	switch os.Args[1] {
 	case "analyze":
+		// Helpful redirect: --base belongs on `report pr` / `report
+		// impact`. The Go stdlib flag package's default response is
+		// to dump every flag the command supports — overwhelming and
+		// unhelpful when the user just reached for the wrong command.
+		// Detect this case before flag parsing and point at the right
+		// command instead.
+		if argHasFlag(os.Args[2:], "base") {
+			fmt.Fprintln(os.Stderr, "error: --base is not a flag of `terrain analyze`.")
+			fmt.Fprintln(os.Stderr, "       Did you mean one of:")
+			fmt.Fprintln(os.Stderr, "         terrain report pr --base <ref>      gate a PR diff")
+			fmt.Fprintln(os.Stderr, "         terrain report impact --base <ref>  see what a diff impacts")
+			fmt.Fprintln(os.Stderr, "       For analyze, use --baseline <path-to-snapshot.json>.")
+			os.Exit(exitUsageError)
+		}
 		analyzeCmd := flag.NewFlagSet("analyze", flag.ExitOnError)
 		rootFlag := analyzeCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := analyzeCmd.Bool("json", false, "output JSON snapshot")
@@ -134,11 +148,13 @@ func main() {
 		promptfooFlag := analyzeCmd.String("promptfoo-results", "", "path to Promptfoo --output result file(s); comma-separated for multiple")
 		deepevalFlag := analyzeCmd.String("deepeval-results", "", "path to DeepEval --export result file(s); comma-separated for multiple")
 		ragasFlag := analyzeCmd.String("ragas-results", "", "path to Ragas eval result file(s); comma-separated for multiple")
-		baselineFlag := analyzeCmd.String("baseline", "", "path to a previous snapshot JSON file; enables regression-aware detectors (aiCostRegression, aiRetrievalRegression)")
+		baselineFlag := analyzeCmd.String("baseline", "", "path to a previous snapshot JSON file; enables regression-aware detectors and --new-findings-only filtering")
 		slowThreshold := analyzeCmd.Float64("slow-threshold", defaultSlowThresholdMs, "slow test threshold in ms")
 		redactPathsFlag := analyzeCmd.Bool("redact-paths", false, "rewrite absolute paths in --format=sarif output to repo-relative form (or basename if outside repo)")
 		failOnFlag := analyzeCmd.String("fail-on", "", "exit "+fmt.Sprintf("%d", exitSeverityGateBlock)+" when at least one finding is at or above this severity (critical|high|medium)")
 		timeoutFlag := analyzeCmd.Duration("timeout", 0, "abort the analysis after this duration (e.g. 5m); 0 means no timeout")
+		suppressionsFlag := analyzeCmd.String("suppressions", "", "path to .terrain/suppressions.yaml (default: $root/.terrain/suppressions.yaml; missing file is fine)")
+		newOnlyFlag := analyzeCmd.Bool("new-findings-only", false, "filter signals to those NOT present in --baseline (lets established repos with debt adopt --fail-on without bricking CI)")
 		_ = analyzeCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("analyze", analyzeCmd.Args(), rootFlag)
 		gate, gateErr := parseSeverityGate(*failOnFlag)
@@ -153,7 +169,32 @@ func main() {
 			fmt.Fprintf(os.Stderr, "error: --timeout must be non-negative (got %s)\n", *timeoutFlag)
 			os.Exit(exitUsageError)
 		}
-		if err := runAnalyze(*rootFlag, *jsonFlag, *formatFlag, *verboseFlag, *writeSnapshot, *coverageFlag, *coverageRunLabelFlag, *runtimeFlag, *gauntletFlag, *promptfooFlag, *deepevalFlag, *ragasFlag, *baselineFlag, *slowThreshold, *redactPathsFlag, gate, *timeoutFlag); err != nil {
+		if *newOnlyFlag && *baselineFlag == "" {
+			fmt.Fprintln(os.Stderr, "error: --new-findings-only requires --baseline <path>")
+			os.Exit(exitUsageError)
+		}
+		analyzeOpts := analyzeRunOpts{
+			Root:             *rootFlag,
+			JSONOutput:       *jsonFlag,
+			Format:           *formatFlag,
+			Verbose:          *verboseFlag,
+			WriteSnapshot:    *writeSnapshot,
+			CoveragePath:     *coverageFlag,
+			CoverageRunLabel: *coverageRunLabelFlag,
+			RuntimePaths:     *runtimeFlag,
+			GauntletPaths:    *gauntletFlag,
+			PromptfooPaths:   *promptfooFlag,
+			DeepEvalPaths:    *deepevalFlag,
+			RagasPaths:       *ragasFlag,
+			BaselinePath:     *baselineFlag,
+			SlowThreshold:    *slowThreshold,
+			RedactPaths:      *redactPathsFlag,
+			Gate:             gate,
+			Timeout:          *timeoutFlag,
+			SuppressionsPath: *suppressionsFlag,
+			NewFindingsOnly:  *newOnlyFlag,
+		}
+		if err := runAnalyze(analyzeOpts); err != nil {
 			if errors.Is(err, errSeverityGateBlocked) {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
 				os.Exit(exitSeverityGateBlock)
@@ -356,6 +397,7 @@ func main() {
 			fmt.Fprintln(os.Stderr, "  terrain explain <code-unit>     explain a code unit (path:name)")
 			fmt.Fprintln(os.Stderr, "  terrain explain <owner>         explain an owner's scope")
 			fmt.Fprintln(os.Stderr, "  terrain explain <scenario-id>   explain an AI/eval scenario")
+			fmt.Fprintln(os.Stderr, "  terrain explain <finding-id>    explain a finding (e.g. weakAssertion@path:Sym#hash)")
 			fmt.Fprintln(os.Stderr, "  terrain explain selection       explain overall test selection")
 			fmt.Fprintln(os.Stderr)
 			fmt.Fprintln(os.Stderr, "Flags:")
@@ -365,6 +407,30 @@ func main() {
 			os.Exit(2)
 		}
 		if err := runExplain(explainArgs[0], *rootFlag, *baseRef, *jsonFlag, *verboseFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "suppress":
+		// `terrain suppress <finding-id> --reason "why" [--expires YYYY-MM-DD] [--owner @who]`
+		// Track 4.7 — appends a suppression entry to .terrain/suppressions.yaml.
+		// No legacy alias: this command is new in 0.2.0 and lives in the
+		// canonical surface as a Gate-pillar primitive.
+		suppressCmd := flag.NewFlagSet("suppress", flag.ExitOnError)
+		rootFlag := suppressCmd.String("root", ".", "repository root")
+		reasonFlag := suppressCmd.String("reason", "", "why this finding is being suppressed (required)")
+		expiresFlag := suppressCmd.String("expires", "", "ISO date YYYY-MM-DD when the suppression should expire (optional but recommended)")
+		ownerFlag := suppressCmd.String("owner", "", "owner pointer for review (optional)")
+		_ = suppressCmd.Parse(os.Args[2:])
+		args := suppressCmd.Args()
+		if len(args) < 1 {
+			fmt.Fprintln(os.Stderr, "Usage: terrain suppress <finding-id> --reason \"why\" [--expires YYYY-MM-DD] [--owner @who]")
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "Find a finding's ID with: terrain explain <finding-id>")
+			os.Exit(exitUsageError)
+		}
+		findingID := args[0]
+		if err := runSuppress(findingID, *reasonFlag, *expiresFlag, *ownerFlag, *rootFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
@@ -869,6 +935,40 @@ var knownCommands = []string{
 //
 // Errors out with exit 2 (usage error) if more than one positional was
 // supplied. Callers must pass the FlagSet's args slice (post-Parse).
+// argHasFlag reports whether args contains exactly the flag --name or
+// -name (with or without an attached =value). Used to detect when a
+// user reaches for a flag that this command doesn't support, so we
+// can emit a helpful redirect before the stdlib flag parser dumps
+// the full flag list.
+//
+// Matches `--name`, `-name`, `--name=foo`, and `-name=foo`. Does NOT
+// match `--namesake` or `-named` — exact match only on the flag name.
+func argHasFlag(args []string, name string) bool {
+	for _, a := range args {
+		if a == "" {
+			continue
+		}
+		// Strip a single leading dash, then optionally another. We
+		// intentionally accept both -base and --base because the
+		// stdlib flag package treats them as equivalent.
+		s := a
+		if len(s) > 0 && s[0] == '-' {
+			s = s[1:]
+		}
+		if len(s) > 0 && s[0] == '-' {
+			s = s[1:]
+		}
+		// Trim a value suffix.
+		if i := strings.IndexByte(s, '='); i >= 0 {
+			s = s[:i]
+		}
+		if s == name {
+			return true
+		}
+	}
+	return false
+}
+
 func mountPositionalAsRoot(commandName string, args []string, root *string) {
 	if len(args) == 0 {
 		return

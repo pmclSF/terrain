@@ -17,6 +17,14 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	line(strings.Repeat("=", 60))
 	blank()
 
+	// Designed empty-state when the change has no measurable test
+	// system impact — beats a wall of zeros that reads as "broken."
+	if isImpactEmpty(result) {
+		RenderEmptyState(w, EmptyNoImpact)
+		blank()
+		return
+	}
+
 	// Summary
 	line("Summary: %s", result.Summary)
 	blank()
@@ -202,4 +210,18 @@ func capitalizeFirst(s string) string {
 		return s
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// isImpactEmpty reports whether an ImpactResult has nothing
+// substantive to render — no changed areas, no impacted tests, no
+// affected behaviors. The change-risk posture is computed even on
+// empty input, so we inspect the substantive fields instead.
+func isImpactEmpty(r *impact.ImpactResult) bool {
+	if r == nil {
+		return true
+	}
+	return len(r.ChangedAreas) == 0 &&
+		len(r.AffectedBehaviors) == 0 &&
+		len(r.ImpactedTests) == 0 &&
+		len(r.SelectedTests) == 0
 }

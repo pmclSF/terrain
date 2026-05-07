@@ -1,6 +1,7 @@
 package insights
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/depgraph"
@@ -18,14 +19,21 @@ func TestBuild_EmptySnapshot(t *testing.T) {
 
 	r := Build(input)
 
-	if r.HealthGrade != "A" {
-		t.Errorf("expected health grade A for empty snapshot, got %s", r.HealthGrade)
+	// An empty snapshot has zero test files / cases — there's
+	// nothing to grade. The headline says so; grade is "—" not "A".
+	// Pre-fix, this returned "A" which read as "your test suite
+	// looks healthy: 0 tests" to first-user adopters.
+	if r.HealthGrade != "—" {
+		t.Errorf("expected health grade '—' for empty snapshot, got %s", r.HealthGrade)
 	}
 	if len(r.Findings) != 0 {
 		t.Errorf("expected 0 findings for empty snapshot, got %d", len(r.Findings))
 	}
 	if r.Headline == "" {
 		t.Error("expected non-empty headline")
+	}
+	if !strings.Contains(r.Headline, "No tests detected") {
+		t.Errorf("expected 'No tests detected' headline for empty snapshot, got: %s", r.Headline)
 	}
 }
 
@@ -204,7 +212,14 @@ func TestBuild_HealthGrade(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			snap := &models.TestSuiteSnapshot{Signals: tt.signals}
+			// Provide a non-empty test inventory so the no-tests
+			// override doesn't trigger — these cases are testing
+			// the real-test-suite grading logic, not the empty-
+			// repo guard.
+			snap := &models.TestSuiteSnapshot{
+				TestFiles: []models.TestFile{{Path: "x.test.js"}},
+				Signals:   tt.signals,
+			}
 			input := &BuildInput{
 				Snapshot: snap,
 				Coverage: tt.coverage,

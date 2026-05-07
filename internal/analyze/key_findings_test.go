@@ -1,6 +1,7 @@
 package analyze
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/depgraph"
@@ -140,7 +141,12 @@ func TestDeriveKeyFindings_CategoryOrder(t *testing.T) {
 	}
 }
 
-func TestDeriveKeyFindings_CriticalSignalsRankFirst(t *testing.T) {
+// TestDeriveKeyFindings_CriticalSignalsSurfaceInHeadline verifies the
+// 0.2.x fix that elided the duplicate "[HIGH] N critical signals"
+// meta-finding. The headline ("N critical signals detected — review
+// recommended") covers it; key findings are reserved for distinct
+// actionable items so the body doesn't repeat the headline.
+func TestDeriveKeyFindings_CriticalSignalsSurfaceInHeadline(t *testing.T) {
 	t.Parallel()
 	r := &Report{
 		SignalSummary:     SignalBreakdown{Critical: 2, Total: 5},
@@ -152,11 +158,12 @@ func TestDeriveKeyFindings_CriticalSignalsRankFirst(t *testing.T) {
 
 	findings, _ := deriveKeyFindings(r, fanout, dupes, cov, nil)
 
-	if len(findings) == 0 {
-		t.Fatal("expected findings")
-	}
-	if findings[0].Severity != "high" {
-		t.Errorf("high-priority signals should rank first, got %s: %s", findings[0].Severity, findings[0].Title)
+	// No key finding should restate the headline. Pre-fix this
+	// produced a "[HIGH] N critical signals detected" entry.
+	for _, f := range findings {
+		if strings.Contains(f.Title, "critical signal") {
+			t.Errorf("key findings should not duplicate the headline; found: %s", f.Title)
+		}
 	}
 }
 

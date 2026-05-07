@@ -16,8 +16,13 @@ func plural(n int, singular string) string {
 // All data is already computed in the Report — no new analysis.
 func deriveHeadline(r *Report) string {
 	if r.SignalSummary.Critical > 0 {
+		// Use "critical" rather than "high-priority" so the
+		// headline severity vocabulary matches the body. Pre-fix
+		// the headline said "N high-priority signals" while the
+		// body listed them as `[HIGH] N critical signals` — same
+		// number, two different labels, confusing.
 		return fmt.Sprintf(
-			"%d high-priority %s detected — review recommended.",
+			"%d critical %s detected — review recommended.",
 			r.SignalSummary.Critical,
 			plural(r.SignalSummary.Critical, "signal"),
 		)

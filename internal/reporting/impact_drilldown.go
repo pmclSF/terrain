@@ -185,7 +185,7 @@ func RenderProtectiveSet(w io.Writer, result *impact.ImpactResult) {
 	blank()
 
 	if result.ProtectiveSet == nil || len(result.ProtectiveSet.Tests) == 0 {
-		line("  No protective tests identified.")
+		RenderEmptyState(w, EmptyNoTestSelection)
 		blank()
 		return
 	}
@@ -193,8 +193,8 @@ func RenderProtectiveSet(w io.Writer, result *impact.ImpactResult) {
 	ps := result.ProtectiveSet
 	line("  Strategy:   %s", ps.SetKind)
 	line("  Tests:      %d", len(ps.Tests))
-	line("  Covered:    %d unit(s)", ps.CoveredUnitCount)
-	line("  Uncovered:  %d unit(s)", ps.UncoveredUnitCount)
+	line("  Covered:    %d %s", ps.CoveredUnitCount, Plural(ps.CoveredUnitCount, "unit"))
+	line("  Uncovered:  %d %s", ps.UncoveredUnitCount, Plural(ps.UncoveredUnitCount, "unit"))
 	blank()
 
 	line("  %s", ps.Explanation)
@@ -219,7 +219,7 @@ func RenderProtectiveSet(w io.Writer, result *impact.ImpactResult) {
 	blank()
 
 	if ps.UncoveredUnitCount > 0 {
-		line("Warning: %d impacted unit(s) have no covering tests in the selected set.", ps.UncoveredUnitCount)
+		line("Warning: %d impacted %s no covering tests in the selected set.", ps.UncoveredUnitCount, Plural(ps.UncoveredUnitCount, "unit has", "units have"))
 		line("Consider adding tests or running the full suite.")
 		blank()
 	}
@@ -252,7 +252,7 @@ func RenderImpactOwners(w io.Writer, result *impact.ImpactResult) {
 
 	for _, owner := range result.ImpactedOwners {
 		units := byOwner[owner]
-		line("  %s (%d unit(s))", owner, len(units))
+		line("  %s (%d %s)", owner, len(units), Plural(len(units), "unit"))
 		line("  " + strings.Repeat("-", 40))
 		for _, iu := range units {
 			line("    %-30s %s  %s", iu.Name, iu.ProtectionStatus, iu.ChangeKind)
