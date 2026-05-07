@@ -118,6 +118,13 @@ type KeyFinding struct {
 	// Category is optimization, reliability, architecture_debt, or coverage_debt.
 	Category string `json:"category"`
 
+	// Pillar is the product pillar this finding belongs to. Always
+	// "understand" for analyze KeyFindings — analyze is the
+	// Understand pillar's primary command. Carried in the JSON
+	// envelope so multi-command aggregators (extension, web UI) can
+	// group consistently with signals from `report pr` (gate) etc.
+	Pillar string `json:"pillar,omitempty"`
+
 	// Metric is the key number (e.g., "340 duplicates", "12 flaky tests").
 	Metric string `json:"metric,omitempty"`
 }
@@ -851,19 +858,13 @@ func deriveKeyFindings(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph
 		})
 	}
 
-	// Critical signals.
-	if r.SignalSummary.Critical > 0 {
-		candidates = append(candidates, candidate{
-			finding: KeyFinding{
-				Title:    fmt.Sprintf("%d critical %s detected — review recommended", r.SignalSummary.Critical, plural(r.SignalSummary.Critical, "signal")),
-				Severity: "high",
-				Category: "reliability",
-				Metric:   fmt.Sprintf("%d critical", r.SignalSummary.Critical),
-			},
-			severityOrder: 1,
-			categoryOrder: 1,
-		})
-	}
+	// "Critical signals exist" is already the headline when this
+	// branch is taken (deriveHeadline returns the same sentence).
+	// Repeating it as a Key Finding is meta-redundant — adopters
+	// see the headline first, then "Key Findings" begins with the
+	// same text. Pre-fix this slot also had a label/title mismatch
+	// (Severity="high" with Title="N critical signals"). Now we
+	// elide it; the headline carries the load.
 
 	// Sort: severity first (ascending = most severe first), then category.
 	sort.SliceStable(candidates, func(i, j int) bool {
@@ -882,6 +883,11 @@ func deriveKeyFindings(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph
 	findings := make([]KeyFinding, len(top))
 	for i, c := range top {
 		findings[i] = c.finding
+		// Every analyze-derived KeyFinding belongs to the
+		// Understand pillar — analyze is its primary command.
+		// Tagged here so multi-command aggregators can group by
+		// pillar consistently with signals from `report pr`.
+		findings[i].Pillar = string(models.PillarUnderstand)
 	}
 	return findings, total
 }

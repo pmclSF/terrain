@@ -122,6 +122,19 @@ type PipelineOptions struct {
 	//
 	// See `internal/suppression` for the schema and matching semantics.
 	SuppressionsPath string
+
+	// NewFindingsOnly, when true, filters the snapshot to keep only
+	// signals whose FindingID is NOT present in the baseline snapshot
+	// (loaded via BaselineSnapshotPath). Used by
+	// `terrain analyze --fail-on critical --new-findings-only --baseline old.json`
+	// so established repos with existing debt don't brick CI on first
+	// adoption — the gate fires only on findings introduced AFTER the
+	// baseline was captured.
+	//
+	// No-op when BaselineSnapshotPath is empty (no baseline → nothing
+	// to subtract; pipeline emits a warning so the user notices their
+	// flag is inert).
+	NewFindingsOnly bool
 }
 
 // RunPipeline executes the full analysis pipeline:
@@ -740,6 +753,16 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	// accumulate. Missing file is fine — most users won't have one
 	// in 0.2.0.
 	applySuppressions(snapshot, root, opt.SuppressionsPath, time.Now())
+
+	// Step 10d: optional --new-findings-only filter. When the user
+	// supplied both --baseline and --new-findings-only, drop every
+	// signal whose FindingID already existed in the baseline so the
+	// gate fires only on net-new findings. Established repos with
+	// existing debt rely on this to adopt --fail-on without bricking
+	// CI on day one.
+	if opt.NewFindingsOnly {
+		applyNewFindingsOnly(snapshot)
+	}
 
 	if err := models.ValidateSnapshot(snapshot); err != nil {
 		return nil, fmt.Errorf("invalid snapshot produced by pipeline: %w", err)

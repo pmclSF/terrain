@@ -218,16 +218,16 @@ func buildPostureDelta(result *impact.ImpactResult) *PostureDelta {
 
 func buildPRSummary(pr *PRAnalysis) string {
 	parts := []string{
-		fmt.Sprintf("%d file(s) changed", pr.ChangedFileCount),
+		fmt.Sprintf("%d %s changed", pr.ChangedFileCount, pluralize(pr.ChangedFileCount, "file", "files")),
 	}
 	if pr.ImpactedUnitCount > 0 {
-		parts = append(parts, fmt.Sprintf("%d unit(s) impacted", pr.ImpactedUnitCount))
+		parts = append(parts, fmt.Sprintf("%d %s impacted", pr.ImpactedUnitCount, pluralize(pr.ImpactedUnitCount, "unit", "units")))
 	}
 	if pr.ProtectionGapCount > 0 {
-		parts = append(parts, fmt.Sprintf("%d gap(s)", pr.ProtectionGapCount))
+		parts = append(parts, fmt.Sprintf("%d %s", pr.ProtectionGapCount, pluralize(pr.ProtectionGapCount, "gap", "gaps")))
 	}
 	if len(pr.RecommendedTests) > 0 {
-		parts = append(parts, fmt.Sprintf("%d test(s) recommended", len(pr.RecommendedTests)))
+		parts = append(parts, fmt.Sprintf("%d %s recommended", len(pr.RecommendedTests), pluralize(len(pr.RecommendedTests), "test", "tests")))
 	}
 
 	return strings.Join(parts, ", ") + ". Posture: " + pr.PostureBand + "."

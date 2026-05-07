@@ -33,15 +33,25 @@ type ToolComponent struct {
 
 // Rule defines a finding category.
 type Rule struct {
-	ID               string     `json:"id"`
-	ShortDescription Message    `json:"shortDescription"`
-	DefaultConfig    RuleConfig `json:"defaultConfiguration,omitempty"`
+	ID               string      `json:"id"`
+	ShortDescription Message     `json:"shortDescription"`
+	DefaultConfig    RuleConfig  `json:"defaultConfiguration,omitempty"`
 	// HelpURI links to the rule's documentation. SARIF consumers
 	// (GitHub Code Scanning, IDE integrations) render this as a
 	// clickthrough so a finding pivots to its docs/rules/<rule>.md
 	// page. Pre-0.2.x this field was missing entirely; rule pages were
 	// dead-end strings.
-	HelpURI string `json:"helpUri,omitempty"`
+	HelpURI    string      `json:"helpUri,omitempty"`
+	Properties *Properties `json:"properties,omitempty"`
+}
+
+// Properties carries the SARIF "properties" bag. We use it for
+// tags — the standard SARIF mechanism for cross-cutting labels.
+// Terrain emits one of "terrain:understand", "terrain:align",
+// "terrain:gate" so downstream consumers (GitHub Code Scanning,
+// dashboards) can group findings by product pillar.
+type Properties struct {
+	Tags []string `json:"tags,omitempty"`
 }
 
 // RuleConfig specifies the default severity level.
@@ -51,10 +61,11 @@ type RuleConfig struct {
 
 // Result is a single finding.
 type Result struct {
-	RuleID    string     `json:"ruleId"`
-	Level     string     `json:"level"`
-	Message   Message    `json:"message"`
-	Locations []Location `json:"locations,omitempty"`
+	RuleID     string      `json:"ruleId"`
+	Level      string      `json:"level"`
+	Message    Message     `json:"message"`
+	Locations  []Location  `json:"locations,omitempty"`
+	Properties *Properties `json:"properties,omitempty"`
 }
 
 // Message wraps a text string.

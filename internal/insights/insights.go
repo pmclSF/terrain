@@ -177,10 +177,15 @@ type BuildInput struct {
 
 // plural returns the singular form when n == 1, otherwise singular +
 // "s". Local helper used in finding titles to avoid `n thing(s)`
-// notation in user-visible text.
-func plural(n int, singular string) string {
+// notation in user-visible text. The variadic `pluralForm` lets
+// callers pass an irregular plural for cases where suffix-"s" is
+// wrong (e.g. "scenario has" / "scenarios have", "child" / "children").
+func plural(n int, singular string, pluralForm ...string) string {
 	if n == 1 {
 		return singular
+	}
+	if len(pluralForm) > 0 {
+		return pluralForm[0]
 	}
 	return singular + "s"
 }
@@ -301,6 +306,21 @@ func Build(input *BuildInput) *Report {
 	// Derive headline and health grade.
 	r.Headline = deriveHeadline(r)
 	r.HealthGrade = deriveHealthGrade(r)
+
+	// No-tests-detected guard: a snapshot with zero tests AND zero
+	// findings is the genuine first-user empty-repo case. The
+	// previous behavior returned grade "A" with the headline "Your
+	// test suite looks healthy" — dishonest for a repo with no
+	// tests. The audit caught this on first-user fresh-repo
+	// experience.
+	//
+	// Conservative trigger: BOTH zero tests AND zero findings.
+	// If there are findings (e.g. AI-side signals on a tests-free
+	// repo), grading is still meaningful and we leave it alone.
+	if len(input.Snapshot.TestFiles) == 0 && len(input.Snapshot.TestCases) == 0 && len(findings) == 0 {
+		r.HealthGrade = "—"
+		r.Headline = "No tests detected — Terrain has nothing to grade. Add tests with your framework of choice, then re-run."
+	}
 
 	// Limitations.
 	r.Limitations = buildLimitations(input)
@@ -762,7 +782,7 @@ func aiCoverageFindings(input *BuildInput) []Finding {
 		}
 		if wiredCount < len(snap.Scenarios) {
 			findings = append(findings, Finding{
-				Title: fmt.Sprintf("%d scenario(s) have no linked code surfaces", len(snap.Scenarios)-wiredCount),
+				Title: fmt.Sprintf("%d %s no linked code surfaces", len(snap.Scenarios)-wiredCount, plural(len(snap.Scenarios)-wiredCount, "scenario has", "scenarios have")),
 				Description: "Scenarios without linked surfaces cannot be selected by impact analysis. " +
 					"Wire them via terrain.yaml or ensure eval test files import the surfaces they validate.",
 				Category: CategoryArchitectureDebt,
@@ -840,7 +860,7 @@ func scenarioDuplicationFindings(input *BuildInput) []Finding {
 	}
 
 	findings = append(findings, Finding{
-		Title: fmt.Sprintf("%d AI scenario pair(s) share >50%% of covered surfaces", highOverlapPairs),
+		Title: fmt.Sprintf("%d AI scenario %s >50%% of covered surfaces", highOverlapPairs, plural(highOverlapPairs, "pair shares", "pairs share")),
 		Description: "Overlapping eval scenarios may duplicate validation effort. " +
 			"Review whether scenarios can be consolidated or differentiated by coverage target.",
 		Category: CategoryOptimization,
@@ -1107,7 +1127,7 @@ func capabilityGapFindings(input *BuildInput) []Finding {
 			}
 			sort.Strings(cats)
 			gappedCaps = append(gappedCaps, fmt.Sprintf(
-				"%s (%d scenario(s): %s)", cap, ci.total, strings.Join(cats, ", ")))
+				"%s (%d %s: %s)", cap, ci.total, plural(ci.total, "scenario"), strings.Join(cats, ", ")))
 		}
 	}
 

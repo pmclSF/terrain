@@ -100,12 +100,11 @@ func TestRunAnalyze_GateBlocksOnFixture(t *testing.T) {
 	root := fixtureRoot(t)
 
 	stdout, err := captureRun(func() error {
-		return runAnalyze(
-			root, false, "", false, false,
-			"", "", "", "", "", "", "", "",
-			defaultSlowThresholdMs, false,
-			severityGateMedium, 0,
-		)
+		return runAnalyze(analyzeRunOpts{
+			Root:          root,
+			SlowThreshold: defaultSlowThresholdMs,
+			Gate:          severityGateMedium,
+		})
 	})
 
 	// The fixture has medium+ findings — gate should fire.
@@ -141,12 +140,12 @@ func TestRunAnalyze_JSONStdoutPurity(t *testing.T) {
 	root := fixtureRoot(t)
 
 	stdout, err := captureRun(func() error {
-		return runAnalyze(
-			root, true, "", false, false,
-			"", "", "", "", "", "", "", "",
-			defaultSlowThresholdMs, false,
-			severityGateMedium, 0,
-		)
+		return runAnalyze(analyzeRunOpts{
+			Root:          root,
+			JSONOutput:    true,
+			SlowThreshold: defaultSlowThresholdMs,
+			Gate:          severityGateMedium,
+		})
 	})
 
 	// Gate fired (expected for the fixture).
@@ -219,12 +218,11 @@ func TestRunAnalyze_GatePassesWhenSeverityAbsent(t *testing.T) {
 	root := fixtureRoot(t)
 
 	_, err := captureRun(func() error {
-		return runAnalyze(
-			root, false, "", false, false,
-			"", "", "", "", "", "", "", "",
-			defaultSlowThresholdMs, false,
-			severityGateCritical, 0,
-		)
+		return runAnalyze(analyzeRunOpts{
+			Root:          root,
+			SlowThreshold: defaultSlowThresholdMs,
+			Gate:          severityGateCritical,
+		})
 	})
 
 	// The fixture's worst severity is below critical — gate should NOT
