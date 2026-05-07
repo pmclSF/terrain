@@ -33,6 +33,61 @@ func TestEvaluate_EmptyPolicy(t *testing.T) {
 	}
 }
 
+// TestEvaluate_Diagnostics_PerRuleStatus locks the policy_governance.E3
+// audit fix: every active rule appears in result.Diagnostics with
+// status pass / violated / skipped, plus a one-sentence detail. This
+// is the surface adopters consult to see "which rules ran, what they
+// checked, why they did or didn't fire."
+func TestEvaluate_Diagnostics_PerRuleStatus(t *testing.T) {
+	t.Parallel()
+
+	snap := &models.TestSuiteSnapshot{
+		Repository: models.RepositoryMetadata{Name: "test-repo"},
+		Frameworks: []models.Framework{
+			{Name: "jest", FileCount: 10},
+		},
+	}
+	cfg := &policy.Config{
+		Rules: policy.Rules{
+			DisallowFrameworks:   []string{"jest"},   // will violate
+			DisallowSkippedTests: boolPtr(true),      // no skips → pass
+			// Other rules left nil → "skipped" status
+		},
+	}
+	result := Evaluate(snap, cfg)
+
+	if len(result.Diagnostics) == 0 {
+		t.Fatalf("expected per-rule diagnostics, got none")
+	}
+
+	statusByRule := map[string]string{}
+	for _, d := range result.Diagnostics {
+		statusByRule[d.Rule] = d.Status
+	}
+
+	if statusByRule["disallow_frameworks"] != "violated" {
+		t.Errorf("disallow_frameworks: status = %q, want violated", statusByRule["disallow_frameworks"])
+	}
+	if statusByRule["disallow_skipped_tests"] != "pass" {
+		t.Errorf("disallow_skipped_tests: status = %q, want pass", statusByRule["disallow_skipped_tests"])
+	}
+	if statusByRule["minimum_coverage_percent"] != "skipped" {
+		t.Errorf("minimum_coverage_percent (not configured): status = %q, want skipped", statusByRule["minimum_coverage_percent"])
+	}
+
+	// Every active rule should produce exactly one diagnostic
+	// entry (idempotent, deterministic).
+	seen := map[string]int{}
+	for _, d := range result.Diagnostics {
+		seen[d.Rule]++
+	}
+	for rule, count := range seen {
+		if count != 1 {
+			t.Errorf("rule %s produced %d diagnostics, want 1", rule, count)
+		}
+	}
+}
+
 func TestEvaluate_DisallowedFramework(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{

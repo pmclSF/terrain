@@ -49,7 +49,10 @@ func RenderPolicyReport(w io.Writer, policyPath string, result *governance.Resul
 	blank()
 
 	if len(result.Violations) == 0 {
-		// Hero block already says PASS; nothing more to render.
+		// Hero block already says PASS; render the per-rule
+		// diagnostic table so adopters see which rules actually
+		// ran (the audit's policy_governance.E3 finding).
+		renderPolicyDiagnostics(line, blank, result.Diagnostics)
 		return
 	}
 
@@ -80,6 +83,42 @@ func RenderPolicyReport(w io.Writer, policyPath string, result *governance.Resul
 		}
 	}
 	blank()
+
+	renderPolicyDiagnostics(line, blank, result.Diagnostics)
+}
+
+// renderPolicyDiagnostics writes the per-rule diagnostic table —
+// the audit-named policy_governance.E3 surface. Shows which rules
+// were configured, which ran, and which fired. Empty diagnostics
+// renders nothing.
+func renderPolicyDiagnostics(line func(string, ...any), blank func(), diagnostics []governance.RuleDiagnostic) {
+	if len(diagnostics) == 0 {
+		return
+	}
+	line("Rule diagnostics")
+	line(strings.Repeat("─", 40))
+	for _, d := range diagnostics {
+		statusBadge := policyStatusBadge(d.Status)
+		line("  %s %-30s %s", statusBadge, d.Rule, d.Detail)
+	}
+	blank()
+}
+
+// policyStatusBadge renders a per-rule status with the same badge
+// vocabulary as the rest of the design system.
+func policyStatusBadge(status string) string {
+	switch status {
+	case "pass":
+		return uitokens.Ok("[" + uitokens.SymOK + " PASS  ]")
+	case "violated":
+		return uitokens.Alert("[" + uitokens.SymFail + " BLOCK ]")
+	case "warn":
+		return uitokens.Warn("[" + uitokens.SymWarn + " WARN  ]")
+	case "skipped":
+		return uitokens.Muted("[  ·  SKIP  ]")
+	default:
+		return "[" + status + "]"
+	}
 }
 
 // severityRenderOrder is the canonical critical-first ordering used
