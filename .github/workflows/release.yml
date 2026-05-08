@@ -256,7 +256,7 @@ jobs:
     # without provenance metadata) — both are useful, neither replaces the
     # other.
     - name: Generate SLSA L2 build provenance
-      uses: actions/attest-build-provenance@v3
+      uses: actions/attest-build-provenance@v4
       with:
         subject-path: |
           dist/*.tar.gz
