@@ -17,9 +17,11 @@ Post-0.2 work tracked separately.
 > same review pipeline as the rest of your tests.
 
 0.2.0 is the first release shipped under the [parity gate]
-(docs/release/0.2.x-maturity-audit.md): every functional area must
-clear its pillar floor (Gate ≥ 4, Understand ≥ 3, Align ≥ 3 soft) before
-the tag cuts. Source of truth for the full vision is
+(docs/release/parity/rubric.yaml): every functional area must
+clear its pillar floor (Gate ≥ 3, Understand ≥ 3, Align ≥ 3 soft) before
+the tag cuts. Gate floor=3 reflects recall-anchored synthetic calibration
+in 0.2.0; the level-4/5 jump (real-repo precision floor) is the central
+0.3 deliverable. Source of truth for the full vision is
 [`docs/product/vision.md`](docs/product/vision.md); per-capability
 status with pillar + tier is [`docs/release/feature-status.md`]
 (docs/release/feature-status.md).

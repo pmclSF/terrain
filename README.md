@@ -284,7 +284,7 @@ Capabilities are tiered:
 - Eval artifact ingestion — Promptfoo / DeepEval / Ragas adapters
 - AI risk: **inventory** (Tier 1, reliable)
 - AI risk: **hygiene** + **regression** (Tier 2, visible but not gating-critical)
-- `terrain ai run --baseline` (Tier 2) — regression-aware AI gate
+- `terrain ai run` + `terrain ai record` + `terrain ai baseline compare` (Tier 2) — regression-aware AI gate (record a baseline, then compare subsequent runs)
 
 ### Anti-goals (0.2.x)
 
@@ -479,12 +479,11 @@ jobs:
           curl -L https://github.com/pmclSF/terrain/releases/latest/download/terrain_linux_amd64.tar.gz \
             | tar -xz
 
-      - run: ./terrain analyze --root . --json > terrain.json
-
-      # Fail the job if any Critical or High severity signals are
-      # present in the analysis. Distinct exit codes per docs/cli-spec.md.
-      - run: |
-          jq -e '.signals | map(select(.severity == "critical" or .severity == "high")) | length == 0' terrain.json
+      # Fail the job (exit 6) if any Critical or High severity signals
+      # are present. `--fail-on` is the supported severity gate; distinct
+      # exit codes per docs/cli-spec.md. Use `--new-findings-only --baseline`
+      # if you're onboarding an established repo with pre-existing debt.
+      - run: ./terrain analyze --root . --fail-on=high
 ```
 
 ### AI-aware — gate on AI-domain Criticals only
@@ -512,10 +511,10 @@ jobs:
       - run: npm install -g mapterrain
       - run: terrain ai list --root . --json > ai-inventory.json
 
-      # Fail only on aiHardcodedAPIKey or any AI-domain Critical.
-      - run: |
-          terrain analyze --root . --json |
-            jq -e '[.signals[] | select(.category == "ai" and .severity == "critical")] | length == 0'
+      # Gate on Critical findings repo-wide (exit 6). For AI-only gating
+      # against an eval baseline, use `terrain ai run` — see the
+      # walkthrough at docs/examples/gate/ai-eval-ci/.
+      - run: terrain analyze --root . --fail-on=critical
 
       - uses: actions/upload-artifact@v4
         with:

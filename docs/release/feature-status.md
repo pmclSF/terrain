@@ -47,10 +47,10 @@ If a feature is **planned**, no detector emits its signals today.
 | `terrain ai list` | Gate (inventory) | 1 | stable | AI surface inventory. |
 | `terrain ai doctor` | cross-cutting | 2 | stable | Diagnostic check on AI scenario configuration. |
 | `terrain ai run` | Gate | 2 | stable | Captures eval framework output. AI-gate exit code 4 on `actionBlock`. Trust-boundary doc (Track 7.3) clarifies parses-vs-executes. |
-| `terrain ai run --baseline` | Gate | 2 | stable | Regression-aware AI gate. |
+| `terrain ai run` + `terrain ai record` / `terrain ai baseline compare` | Gate | 2 | stable | Regression-aware AI gate: `ai record` snapshots a known-good run; `ai baseline compare` flags regressions. |
 | `terrain ai record / baseline / replay` | Gate | 2 | stable | Baseline lifecycle. |
 | `terrain ai compare` | Gate | 3 | planned | Prompt-pair regression detection. 0.3. |
-| `terrain ai gate` | Gate | 3 | planned | Standalone CI gate command. Today, gating goes through `terrain ai run` + `--baseline`. 0.3. |
+| `terrain ai gate` | Gate | 3 | planned | Standalone CI gate command. Today, gating goes through `terrain ai run` + `terrain ai baseline compare`. 0.3. |
 | `terrain portfolio <verb>` | Align | 2 | experimental | Multi-repo workspace. Multi-repo manifest format + per-repo aggregation lands in 0.2 (Track 6.1–6.3); full closure in 0.2.x. |
 | `terrain explain finding <id>` | Gate | 1 | stable (0.2) | Resolve a stable finding ID back to its evidence. Track 4.6. |
 | `terrain suppress <id>` | Gate | 1 | stable (0.2) | Write a suppression entry. Track 4.7. |

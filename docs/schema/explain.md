@@ -19,7 +19,7 @@ based on what `<target>` resolves to:
 | Test ID (`path::name`) | `models.TestCase` | [analysis.schema.json](analysis.schema.json) |
 | Code unit ID (`path:Name` or `path:Type.Method`) | `models.CodeUnit` | [analysis.schema.json](analysis.schema.json) |
 | Owner string | `OwnerExplanation` (this doc) | below |
-| Scenario ID | `aidetect.Scenario` | [internal/aidetect](../../internal/aidetect/) Go types |
+| Scenario ID | `models.Scenario` | [models/validation_target.go](../../internal/models/validation_target.go) Go types |
 | `selection` (literal) | `impact.ImpactResult` | [pr-analysis.md](pr-analysis.md) |
 | Stable finding ID | `models.Signal` | [analysis.schema.json](analysis.schema.json) |
 | Portfolio finding index | `models.Finding` | [portfolio.md](portfolio.md) |

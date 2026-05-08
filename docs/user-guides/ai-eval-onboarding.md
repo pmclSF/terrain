@@ -57,9 +57,10 @@ Frameworks
 
 **If output says "No AI surfaces detected":** Terrain hasn't found
 any prompt / agent / tool / retrieval code. Check that your AI code
-uses the patterns Terrain recognizes (see
-[docs/rules/ai/](../rules/ai/) for the per-detector docs). If you
-expected detection, run `terrain ai doctor` for diagnostic output.
+uses the patterns Terrain recognizes — for example
+[prompt-injection-risk.md](../rules/ai/prompt-injection-risk.md)
+documents the canonical AI surface shapes the detectors look for.
+If you expected detection, run `terrain ai doctor` for diagnostic output.
 
 ## Step 2 — Run your eval framework yourself
 

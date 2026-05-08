@@ -112,7 +112,8 @@ JSON contract. The PR comment template is one template. The CI
 workflow is one workflow.
 
 Capabilities: `terrain report pr`, `terrain report impact`, `terrain
-ai run --baseline`, `terrain policy check`, `--fail-on` /
+ai run` + `terrain ai record` / `terrain ai baseline compare` for
+regression-aware AI gating, `terrain policy check`, `--fail-on` /
 `--timeout` / `--new-findings-only` flags, suppressions, stable
 finding IDs, per-finding remediation pointers.
 
@@ -229,7 +230,7 @@ Tier-3 is in development, opt-in, no public claim.
 | AI surface inventory | Understand | Tier 1 (reliable) |
 | AI risk: hygiene + regression | Gate | Tier 2 (visible, not gating-critical) |
 | Eval artifact ingestion | Gate | Tier 1 |
-| `terrain ai run --baseline` | Gate (regression-aware) | Tier 2 |
+| `terrain ai run` + `terrain ai baseline compare` | Gate (regression-aware) | Tier 2 |
 | `terrain init` | onboarding (cross-pillar) | Tier 1 |
 
 Nothing orphan, nothing hidden. The breadth stays; tiering is honest
