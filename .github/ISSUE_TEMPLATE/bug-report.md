@@ -38,7 +38,9 @@ Minimal steps to reproduce (or a public repo + commit SHA we can clone):
 ## Logs
 
 If the bug surfaces an error, paste the full stderr + the output of
-re-running with `--log-level=debug`:
+re-running with `--log-level=debug`. **Please redact absolute filesystem
+paths, hostnames, internal repo names, and any tokens/secrets before
+pasting** — this issue is public.
 
 <details>
 <summary>Debug output</summary>

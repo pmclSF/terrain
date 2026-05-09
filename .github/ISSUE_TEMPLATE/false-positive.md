@@ -18,7 +18,9 @@ Type the exact signal type as it appears in `terrain analyze --json`
 ## Code that triggered the finding
 
 The minimal source / config snippet that caused the detector to fire,
-with surrounding context preserved:
+with surrounding context preserved. **Please redact internal repo
+names, customer identifiers, and any secrets/tokens before pasting** —
+this issue is public.
 
 ```yaml
 # or .py / .ts / .go etc.

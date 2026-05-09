@@ -74,6 +74,10 @@ benchmarks/output/truthcheck/
 
 # === Benchmark artifacts (large, generated) ===
 artifacts/
+# Local terrain analysis cache (matched by `artifacts/` above; explicit
+# entry documents intent and survives any future change to the broader
+# glob).
+.terrain/artifacts/
 
 # === Test output (generated during test runs) ===
 test/output/
