@@ -12,9 +12,9 @@
 # moves PR-by-PR. This file changes only when we redefine the rubric
 # itself, which should be rare.
 #
-# See `docs/release/0.2.x-maturity-audit.md` for the human-readable
-# companion that explains the rubric in prose and shows the current
-# state.
+# `scores.yaml` carries per-cell evidence pointers; the per-pillar
+# verdict + matrix is rendered by `make pillar-parity` (or
+# `make pillar-parity-json` for tooling).
 
 schema_version: "1"
 
@@ -104,7 +104,7 @@ areas:
     name: "AI eval ingestion"
     pillar: gate
     tier: 1
-    surface: "Promptfoo / DeepEval / Ragas adapters; terrain ai run --baseline"
+    surface: "Promptfoo / DeepEval / Ragas adapters; terrain ai run + terrain ai record + terrain ai baseline compare"
     description: "Different code path from runtime ingestion; integration-testing target."
 
   - id: ai_execution_gating

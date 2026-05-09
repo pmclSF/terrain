@@ -57,7 +57,7 @@ The canonical release contract is `make release-verify`, which runs:
 
 ```bash
 make go-release-verify
-make js-release-verify
+make npm-release-verify
 make extension-verify
 ```
 

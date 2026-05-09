@@ -58,31 +58,32 @@ jobs:
           terrain version
 
       # ── Step 1 of the primary workflow: understand the test system ──
-      - name: terrain analyze
+      #
+      # `analyze` is the gate. `--new-findings-only --baseline <path>`
+      # filters to signals introduced AFTER the baseline snapshot, so
+      # established repos with pre-existing debt don't get blocked on
+      # day one. To gate, uncomment `--fail-on critical` (exit 6 on
+      # any Critical finding). The default below is warn-only — it
+      # produces output but does not fail the job.
+      - name: terrain analyze (warn-only by default)
         run: |
           terrain analyze \
             --write-snapshot \
+            --new-findings-only \
+            --baseline terrain-snapshot.json \
             --json > terrain-snapshot.json
+            # --fail-on critical    # uncomment to gate the build (exit 6)
 
-      # ── Step 2: gate the PR ────────────────────────────────────────
-      # Default: warn-only. The job stays green; the PR comment shows
-      # what Terrain found. Established repos with debt won't brick CI
-      # on day one.
-      #
-      # To enable blocking gates, uncomment the `--fail-on critical`
-      # line below. Combined with `--new-findings-only --baseline ...`,
-      # the gate fires only on findings introduced AFTER the snapshot
-      # in the baseline file (see `terrain analyze --write-snapshot`
-      # for how to persist the baseline).
-      - name: terrain report pr (warn-only by default)
+      # ── Step 2: render the PR comment ──────────────────────────────
+      # `report pr` summarizes the gated state. The exit status of
+      # this step is independent of the gating decision (which is
+      # already determined by step 1's `--fail-on`).
+      - name: terrain report pr
         run: |
           terrain report pr \
             --base ${{ github.event.pull_request.base.sha }} \
             --format markdown \
-            --new-findings-only \
-            --baseline terrain-snapshot.json \
             > terrain-pr-comment.md
-            # --fail-on critical    # uncomment to gate the build
 
       - name: Post or update the PR comment
         uses: peter-evans/create-or-update-comment@v5

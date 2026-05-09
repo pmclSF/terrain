@@ -17,9 +17,21 @@ exists" — published here as a stable contract.
   // Diff scope analyzed. Mirrors impact.ChangeScope.
   // Stability: Stable.
   "scope": {
-    "baseRef": "main",
-    "headRef": "HEAD",
-    "changedFiles": [ "src/auth.go", "src/auth_test.go" ]
+    // Git ref or snapshot used as the baseline (e.g. "main",
+    // "HEAD~1", or a path to a saved snapshot). Stability: Stable.
+    "baselineRef": "main",
+    // Git ref or snapshot representing the current state.
+    // Stability: Stable.
+    "currentRef": "HEAD",
+    // How the scope was determined. One of: "git-diff" | "explicit"
+    // | "ci-changed-files" | "snapshot-compare". Stability: Stable.
+    "source": "git-diff",
+    // Each changed file is an object with path + change kind +
+    // is-test-file flag (and oldPath for renames). Stability: Stable.
+    "changedFiles": [
+      { "path": "src/auth.go", "changeKind": "modified", "isTestFile": false },
+      { "path": "src/auth_test.go", "changeKind": "added", "isTestFile": true }
+    ]
   },
 
   // One-sentence summary. Same wording as the headline of the

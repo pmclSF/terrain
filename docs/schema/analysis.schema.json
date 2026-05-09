@@ -2,133 +2,137 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://terrain.dev/schemas/analysis/v1",
   "title": "Terrain Analysis Report",
-  "description": "Output of `terrain analyze`. Describes detected frameworks, file types, and supported conversion directions for a project.",
+  "description": "Output of `terrain analyze --json`. The canonical source of truth for the report shape is the Go type `analyze.Report` defined in `internal/analyze/analyze.go`; this schema is a permissive stub that pins only the schemaVersion contract. Adopters who want strict per-field validation should generate from the Go types directly. Field-level stability tiers are documented in `docs/schema/FIELD_TIERS.md`.",
   "type": "object",
-  "required": ["schemaVersion", "meta", "summary", "files"],
-  "additionalProperties": false,
+  "required": ["schemaVersion"],
+  "additionalProperties": true,
   "properties": {
     "schemaVersion": {
       "type": "string",
-      "description": "Semantic version of this schema.",
-      "const": "1.0.0"
+      "description": "Semantic version of the analyze report schema. Currently the string \"1\". Bumps follow `models.SnapshotSchemaVersion` in `internal/models/`.",
+      "const": "1"
     },
-    "meta": {
+    "repository": {
       "type": "object",
-      "required": ["terrainVersion", "nodeVersion", "generatedAt", "root"],
-      "additionalProperties": false,
-      "properties": {
-        "terrainVersion": {
-          "type": "string",
-          "description": "Terrain CLI version that produced this report."
-        },
-        "nodeVersion": {
-          "type": "string",
-          "description": "Node.js version used."
-        },
-        "generatedAt": {
-          "type": "string",
-          "format": "date-time",
-          "description": "ISO-8601 timestamp when the report was generated."
-        },
-        "root": {
-          "type": "string",
-          "description": "Absolute path to the scanned directory."
-        }
-      }
+      "description": "Repository identification (name, branch, commit SHA, languages, frameworks, CI systems detected). See `analyze.RepositoryInfo` in `internal/analyze/analyze.go` for the full field list.",
+      "additionalProperties": true
     },
-    "summary": {
-      "type": "object",
-      "required": [
-        "fileCount",
-        "testFileCount",
-        "frameworksDetected",
-        "directionsSupported",
-        "confidenceAvg"
-      ],
-      "additionalProperties": false,
-      "properties": {
-        "fileCount": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Total files scanned."
-        },
-        "testFileCount": {
-          "type": "integer",
-          "minimum": 0,
-          "description": "Number of files classified as tests."
-        },
-        "frameworksDetected": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Unique frameworks found, sorted alphabetically."
-        },
-        "directionsSupported": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "required": ["from", "to", "pipelineBacked"],
-            "additionalProperties": false,
-            "properties": {
-              "from": { "type": "string" },
-              "to": { "type": "string" },
-              "pipelineBacked": { "type": "boolean" }
-            }
-          },
-          "description": "Conversion directions available based on detected frameworks."
-        },
-        "confidenceAvg": {
-          "type": "number",
-          "minimum": 0,
-          "maximum": 100,
-          "description": "Average confidence across files with non-zero confidence."
-        }
-      }
-    },
-    "files": {
+    "dataCompleteness": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "required": ["path", "type", "framework", "candidates", "confidence", "warnings"],
-        "additionalProperties": false,
-        "properties": {
-          "path": {
-            "type": "string",
-            "description": "Relative path from scanned root."
-          },
-          "type": {
-            "type": "string",
-            "description": "Classified file type (test, helper, config, fixture, etc.)."
-          },
-          "framework": {
-            "type": ["string", "null"],
-            "description": "Detected framework, or null if unknown."
-          },
-          "candidates": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "required": ["framework", "score"],
-              "additionalProperties": false,
-              "properties": {
-                "framework": { "type": "string" },
-                "score": { "type": "number", "minimum": 0 }
-              }
-            },
-            "description": "All frameworks considered with their detection scores."
-          },
-          "confidence": {
-            "type": "number",
-            "minimum": 0,
-            "maximum": 100,
-            "description": "Classification confidence (0-100)."
-          },
-          "warnings": {
-            "type": "array",
-            "items": { "type": "string" },
-            "description": "Non-fatal issues encountered during analysis."
-          }
-        }
-      }
+      "description": "Inventory of which input data sources were available for this run (snapshot, coverage, runtime, baseline, etc.). Each entry is `{ name, available }`.",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "testsDetected": {
+      "type": "object",
+      "description": "Validation-asset summary: test file count, test case count, code unit count, scenario count, code surface count, framework breakdown.",
+      "additionalProperties": true
+    },
+    "repoProfile": {
+      "type": "object",
+      "description": "Repository profile classification (test volume, CI pressure, coverage confidence, redundancy, fanout, skip burden, flake burden, manual coverage, graph density).",
+      "additionalProperties": true
+    },
+    "coverageConfidence": {
+      "type": "object",
+      "description": "Structural coverage confidence summary (high/medium/low file counts).",
+      "additionalProperties": true
+    },
+    "duplicateClusters": {
+      "type": "object",
+      "description": "Test redundancy clustering summary.",
+      "additionalProperties": true
+    },
+    "highFanout": {
+      "type": "object",
+      "description": "High-fanout fixture/helper summary.",
+      "additionalProperties": true
+    },
+    "skippedTestBurden": {
+      "type": "object",
+      "description": "Skipped-test-burden summary.",
+      "additionalProperties": true
+    },
+    "weakCoverageAreas": {
+      "type": "array",
+      "description": "Source paths with poor structural coverage.",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "ciOptimization": {
+      "type": "object",
+      "description": "Estimated CI savings (duplicate-tests-removable, skipped-tests-reviewable, high-fanout-nodes, recommendation text).",
+      "additionalProperties": true
+    },
+    "topInsight": {
+      "type": "string",
+      "description": "Single-sentence top opportunity. Superseded by keyFindings; retained for backward compat."
+    },
+    "keyFindings": {
+      "type": "array",
+      "description": "Top-3 prioritized findings shown inline in `analyze` output. Each entry: `{ title, severity, category, pillar?, metric? }`.",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "totalFindingCount": {
+      "type": "integer",
+      "description": "Total findings count (including those not shown in keyFindings)."
+    },
+    "riskPosture": {
+      "type": "array",
+      "description": "Risk-posture-by-dimension summary (matches `terrain posture --json`).",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "signalSummary": {
+      "type": "object",
+      "description": "Severity + category breakdowns of detected signals: `{ total, critical, high, medium, low, byCategory: {ai, health, migration, quality, structure, ...} }`. The supported severity-gate flag (`--fail-on=high|critical|medium`) is the canonical mechanism for gating CI on these counts.",
+      "additionalProperties": true
+    },
+    "behaviorRedundancy": {
+      "type": "object",
+      "description": "Behavior-aware test redundancy clusters.",
+      "additionalProperties": true
+    },
+    "stabilityClusters": {
+      "type": "object",
+      "description": "Unstable-test clustering by shared root cause.",
+      "additionalProperties": true
+    },
+    "matrixCoverage": {
+      "type": "object",
+      "description": "Device/environment matrix analysis.",
+      "additionalProperties": true
+    },
+    "manualCoverage": {
+      "type": "object",
+      "description": "Manual-validation overlay summary.",
+      "additionalProperties": true
+    },
+    "edgeCases": {
+      "type": "array",
+      "description": "Structural anomalies that affect analysis confidence.",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "policy": {
+      "type": "object",
+      "description": "Derived policy from edge-case analysis.",
+      "additionalProperties": true
+    },
+    "limitations": {
+      "type": "array",
+      "description": "Free-text notes about incompleteness in this run.",
+      "items": { "type": "string" }
+    },
+    "discoveredArtifacts": {
+      "type": "array",
+      "description": "Auto-detected coverage and runtime artifacts.",
+      "items": { "type": "object", "additionalProperties": true }
+    },
+    "headline": {
+      "type": "string",
+      "description": "Single-sentence opinionated summary of the test system state."
+    },
+    "nextActions": {
+      "type": "array",
+      "description": "Up to 3 prioritized next-step recommendations with runnable commands.",
+      "items": { "type": "object", "additionalProperties": true }
     }
   }
 }

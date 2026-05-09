@@ -19,7 +19,7 @@ terrain impact [flags]
 | Flag | Default | Description |
 |------|---------|-------------|
 | `--root` | `.` | Repository root directory |
-| `--base` | `main` | Base branch or commit to diff against |
+| `--base` | `HEAD~1` | Base branch or commit to diff against |
 | `--json` | `false` | Output structured JSON instead of human-readable text |
 | `--show` | `summary` | Drill-down view (see below) |
 | `--owner` | (none) | Filter results to a specific code owner |

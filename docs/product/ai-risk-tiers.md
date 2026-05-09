@@ -98,7 +98,9 @@ artifacts in CI.
 - `schemaParseFailure`, `wrongSourceSelected` — pipeline metadata
 
 These fire only when the corresponding eval artifact is present
-(via `terrain ai run` or `--ingest-only`). On a repo without eval
+(via `terrain ai run`, or via `terrain analyze` with
+`--promptfoo-results` / `--deepeval-results` / `--ragas-results`
+pointing at pre-existing eval output). On a repo without eval
 output, Terrain silently emits zero of these — that's the contract.
 
 ## How this surfaces in output

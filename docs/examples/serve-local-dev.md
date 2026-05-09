@@ -18,11 +18,11 @@ time.
 ```bash
 # In your repo:
 terrain serve
-# → Listening on http://127.0.0.1:7344
+# → Listening on http://127.0.0.1:8421
 # → Press Ctrl-C to stop.
 ```
 
-Open `http://127.0.0.1:7344` in your browser. The page renders the
+Open `http://127.0.0.1:8421` in your browser. The page renders the
 same data shapes as `terrain analyze`, with sticky pillar
 navigation, signal cards, and tasteful typography.
 
@@ -32,12 +32,15 @@ navigation, signal cards, and tasteful typography.
 # Custom port
 terrain serve --port 8000
 
+# Bind to a different host (default is 127.0.0.1)
+terrain serve --host 127.0.0.1 --port 8421
+
 # Allow request to mutate state (the default is read-only — most
 # adopters want this off for local dev too):
 terrain serve --read-only=false
 
-# Use a saved snapshot instead of re-analyzing:
-terrain serve --snapshot .terrain/snapshots/latest.json
+# Run from a different repository root:
+terrain serve --root /path/to/other/repo
 ```
 
 ## What's safe

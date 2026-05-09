@@ -29,7 +29,7 @@ status with pillar + tier is [`docs/release/feature-status.md`]
 The release groups deliverables by the three pillars:
 
 - **Understand** (Tier 1): full snapshot pipeline; `report
-  summary/posture/metrics/focus/insights/explain`; AI surface
+  summary/posture/metrics/insights/explain`; AI surface
   inventory; cross-repo views.
 - **Align** (Tier 1): framework migration with per-file confidence;
   alignment-first docs; multi-repo manifest format.

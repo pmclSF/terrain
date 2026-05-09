@@ -19,9 +19,12 @@ in `TestSuiteSnapshot`.
 ### Level 1 -- Posture Dimension
 
 The entry point is the set of `DimensionPostureResult` entries from
-`Measurements.Posture`. Each dimension (reliability, speed, coverage, governance,
-migration) is rendered as a card showing its `Band`, `Explanation`, and the count
-of signals and risk surfaces that fall under it.
+`Measurements.Posture`. Each of the five dimensions (`health`,
+`coverage_depth`, `coverage_diversity`, `structural_risk`,
+`operational_risk`) is rendered as a card showing its `Band`,
+`Explanation`, and the count of signals and risk surfaces that
+fall under it. See `docs/product/posture-model.md` for the
+canonical dimension definitions.
 
 Clicking a dimension opens Level 2.
 

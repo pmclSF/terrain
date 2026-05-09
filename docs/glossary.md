@@ -40,10 +40,18 @@ the snapshot and emits zero or more signals. See
 ## Posture
 
 The five-dimension health summary Terrain produces:
-**reliability**, **change-readiness**, **speed**, **governance**,
-and **AI**. Each dimension is backed by a band (A/B/C/D) plus
-contributing measurements. See
-[`docs/scoring-rubric.md`](scoring-rubric.md).
+**health**, **coverage_depth**, **coverage_diversity**,
+**structural_risk**, **operational_risk**. Each dimension is
+backed by a band (`strong` / `moderate` / `weak` for health-style
+dimensions; `low` / `moderate` / `elevated` / `critical` for
+risk-style dimensions, where lower = better). The companion view
+in `terrain insights` is the **Health Grade** (A / B / C / D), a
+distinct construct documented in
+[`docs/health-grade-rubric.md`](health-grade-rubric.md). See
+[`docs/product/posture-model.md`](product/posture-model.md) for
+the full dimension descriptions and
+[`docs/scoring-rubric.md`](scoring-rubric.md) for the underlying
+scoring constants.
 
 ## Severity clause
 

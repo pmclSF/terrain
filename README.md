@@ -253,7 +253,7 @@ this is the summary view.
 
 Capabilities are tiered:
 
-- **Tier 1** — covered by tests, documented behavior, claimed publicly. Floor ≥ 4 on the parity rubric.
+- **Tier 1** — covered by tests, documented behavior, claimed publicly. Floor ≥ 3 on the parity rubric in 0.2.0; Gate floor lifts to ≥ 4 in 0.3 once the labeled real-repo precision corpus lands.
 - **Tier 2** — shipping but explicitly experimental; useful but not yet hardened. Floor ≥ 3.
 - **Tier 3** — in development, opt-in, no public claim. Wait for promotion.
 
@@ -262,7 +262,7 @@ Capabilities are tiered:
 **Understand** (Tier 1 unless noted):
 
 - `terrain analyze` — snapshot + signals + posture
-- `terrain report summary / posture / metrics / focus / insights / explain` — read-side queries
+- `terrain report summary / posture / metrics / insights / explain` — read-side queries
 - `terrain compare` — snapshots over time
 - AI surface inventory — what AI surfaces exist, where they are, what evals cover them
 - `terrain serve` (Tier 2) — local HTTP report; localhost-only, no auth
@@ -616,7 +616,7 @@ Repository scan  →  Signal detection  →  Risk modeling  →  Reporting
 cmd/terrain/     CLI — canonical surface (analyze, report, migrate,
                  convert, posture, doctor, ai, serve, version, help)
                  plus legacy aliases retained through 0.2.x
-internal/        47 Go packages covering analysis, signals, risk,
+internal/        53 Go packages covering analysis, signals, risk,
                  impact, depgraph, measurement, reporting, and more
 ```
 

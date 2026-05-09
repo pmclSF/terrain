@@ -13,22 +13,28 @@ It must be:
 
 ## Surface — canonical 11 + legacy aliases
 
-0.2.0 introduces three new namespace dispatchers
-(`terrain report`, `terrain migrate`, `terrain config`) plus
-`terrain debug`. The canonical surface is 10 top-level verbs:
+0.2.0 introduces namespace dispatchers (`terrain report`,
+`terrain migrate`, `terrain config`, `terrain debug`,
+`terrain ai`). The canonical surface is **11 top-level commands**:
 
 | Canonical | What it does |
 |---|---|
 | `terrain analyze` | Full snapshot pipeline; the headline command |
-| `terrain report <verb>` | Read-side views: summary, insights, explain, posture, portfolio, metrics, focus, show, impact, pr, select-tests |
-| `terrain migrate <verb>` | Conversion + migration: run, config, list, detect, shorthands, estimate, status, checklist, readiness, blockers, preview |
-| `terrain convert <file>` | Per-file conversion (legacy fall-through preserved) |
-| `terrain config <verb>` | feedback, telemetry, reset |
-| `terrain doctor` | Migration-readiness diagnostic |
-| `terrain ai <verb>` | AI surface inventory + eval orchestration |
-| `terrain serve` | Local HTTP server with HTML report + JSON API |
+| `terrain init [path]` | First-run scaffolder — runs analyze + emits a starter `.terrain/` layout |
+| `terrain report <verb>` | Read-side views: `summary`, `insights`, `metrics`, `explain`, `show`, `impact`, `pr`, `posture`, `select-tests` |
+| `terrain migrate <verb>` | Framework migration: `run`, `config`, `list`, `detect`, `shorthands`, `estimate`, `status`, `checklist`, `readiness`, `blockers`, `preview` |
+| `terrain ai <verb>` | AI inventory + eval orchestration: `list`, `run`, `replay`, `record`, `baseline`, `doctor` |
+| `terrain debug <verb>` | Dependency-graph drill-downs: `graph`, `coverage`, `fanout`, `duplicates`, `depgraph` |
+| `terrain config <verb>` | Workspace prefs: `feedback`, `telemetry` |
+| `terrain doctor [path]` | Diagnostics for current setup |
+| `terrain portfolio` | Single-repo (stable) and multi-repo manifest (experimental) portfolio analysis |
+| `terrain serve` | Local HTTP server with HTML report + JSON API (default port 8421, 127.0.0.1 only) |
 | `terrain version` | Version, commit, build date, snapshot schema version |
-| `terrain help` | Top-level help surface |
+
+Legacy aliases (`terrain summary`, `terrain insights`,
+`terrain compare`, `terrain convert <file>`, `terrain focus`,
+etc.) continue to route to the same handlers through 0.2.x.
+Removal targets 0.3.
 
 The legacy top-level commands documented in this file
 (`terrain summary`, `terrain insights`, etc.) continue to work

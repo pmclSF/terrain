@@ -72,34 +72,61 @@ sandbox tool calls. Terrain is one layer above.
   shell command), the framework decides what's allowed. Terrain
   does not add a sandbox layer in 0.2.
 
-### `terrain ai run --baseline <path>` / `--ingest-only`
+### Ingesting pre-existing eval results without invoking the framework
 
-`--ingest-only` skips the framework invocation and only reads
-existing eval-output JSON files (via `--promptfoo-results`,
-`--deepeval-results`, `--ragas-results`). In this mode Terrain is
-fully passive — no child processes, no LLM calls.
+If you want Terrain to read eval-output JSON files without
+invoking any framework — useful when you run the eval framework
+yourself in your own sandbox — use `terrain analyze` with the
+adapter flags:
+
+```
+terrain analyze --root . \
+  --promptfoo-results path/to/promptfoo-output.json \
+  --deepeval-results path/to/deepeval-output.json \
+  --ragas-results    path/to/ragas-output.json
+```
+
+In this mode Terrain is fully passive: it parses the artifact
+files, surfaces ingestion diagnostics (per-field fallbacks), and
+flows the results through the same signals + posture pipeline as a
+fresh `analyze`. No child processes, no LLM calls.
+
+For baseline-aware regression gating (compare a current run to a
+known-good snapshot), use:
+
+```
+terrain ai record   ./baselines/known-good.json   # snapshot a good run
+terrain ai baseline compare --against ./baselines/known-good.json
+```
 
 ## Sandboxing roadmap
 
 | Capability | 0.2 | 0.3 |
 |------------|-----|-----|
 | Read-only filesystem access in `terrain analyze` | yes | yes |
+| Pre-computed-artifact ingestion via `terrain analyze --*-results` | yes | yes |
 | Sandbox `terrain ai run` child processes | no | yes |
 | Tool-call allowlist for AI tool invocations | no (framework's job) | terrain-side allowlist |
 | Network egress controls during eval execution | no (framework's job) | optional terrain-side network policy |
 
-If you need 0.3-grade sandboxing in 0.2, run `terrain ai run` with
-`--ingest-only` and execute the eval framework yourself in your
-preferred sandbox (Docker, gVisor, Firecracker, etc.). Terrain
-will read the framework's output without invoking it.
+If you need 0.3-grade sandboxing in 0.2, run the eval framework
+yourself in your preferred sandbox (Docker, gVisor, Firecracker,
+etc.) and use `terrain analyze --promptfoo-results` /
+`--deepeval-results` / `--ragas-results` to ingest the resulting
+JSON. Skip `terrain ai run` entirely — it's the only path that
+spawns a child process.
 
 ## Detector boundary (pure-static side)
 
-The 12 AI risk detectors that ship in 0.2 (`aiPromptInjectionRisk`,
-`aiHardcodedAPIKey`, `aiToolWithoutSandbox`, etc.) are all **pure
-static analysis** — they read source code on disk, never invoke an
-LLM. False positives are heuristic; AST-grade taint analysis lands
-in 0.3.
+The AI risk detectors that ship in 0.2 (`aiPromptInjectionRisk`,
+`aiHardcodedAPIKey`, `aiToolWithoutSandbox`,
+`aiModelDeprecationRisk`, `aiFewShotContamination`,
+`aiNonDeterministicEval`, `aiPromptVersioning`,
+`aiSafetyEvalMissing`, `aiToolWithoutSandbox`,
+`aiEmbeddingModelChange`, plus the inventory-tier signals) are all
+**pure static analysis** — they read source code on disk, never
+invoke an LLM. False positives are heuristic; AST-grade taint
+analysis lands in 0.3.
 
 ## What Terrain doesn't promise about AI risk in 0.2
 

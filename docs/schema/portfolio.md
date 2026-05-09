@@ -44,29 +44,68 @@ multi-repo `--from <manifest>` shape may evolve before 0.3.
   // Detected framework name. Stability: Stable.
   "framework": "go-test",
 
+  // Inferred test type (unit | integration | e2e). Stability: Stable.
+  "testType": "unit",
+
   // Owner from CODEOWNERS / .terrain/ownership.yaml.
   // Empty when no ownership data exists.
   // Stability: Stable.
   "owner": "@platform-team",
 
-  // Number of test cases detected in this file.
-  // Stability: Stable.
-  "testCaseCount": 12,
+  // Number of test cases detected in this file. Stability: Stable.
+  "testCount": 12,
 
-  // Wall-clock runtime in milliseconds, when runtime artifacts
-  // are ingested. Zero when no runtime data flows in.
+  // --- Cost metrics ---
+
+  // Observed average runtime in milliseconds (0 if unknown).
   // Stability: Stable.
   "runtimeMs": 4520,
 
-  // Structural coverage attributed to this test file in
-  // [0.0, 1.0], when coverage artifacts are ingested.
-  // Stability: Stable.
-  "coverageRatio": 0.85,
+  // Observed retry rate in [0.0, 1.0]. Stability: Stable.
+  "retryRate": 0.0,
 
-  // Tags carried over from the .terrain/repos.yaml manifest
-  // (e.g. ["tier-1", "customer-facing"]).
+  // Observed pass rate in [0.0, 1.0] (0 if unknown). Stability: Stable.
+  "passRate": 0.998,
+
+  // Inferred cost classification (one of the CostClass enum values).
   // Stability: Stable.
-  "tags": [ "tier-1" ]
+  "costClass": "moderate",
+
+  // Count of health signals on this file (flaky, slow, etc.).
+  // Stability: Stable.
+  "instabilitySignals": 0,
+
+  // --- Protection metrics ---
+
+  // Number of code units this test covers. Stability: Stable.
+  "coveredUnitCount": 8,
+
+  // Set of directories/modules touched. Stability: Stable.
+  "coveredModules": [ "internal/auth" ],
+
+  // Number of exported code units covered. Stability: Stable.
+  "exportedUnitsCovered": 5,
+
+  // Set of distinct owners whose code is covered. Stability: Stable.
+  "ownersCovered": [ "@platform-team" ],
+
+  // Inferred breadth classification (one of the BreadthClass enum values).
+  // Stability: Stable.
+  "breadthClass": "focused",
+
+  // Source files this test imports (from import graph). Used for
+  // precise redundancy detection. Stability: Stable.
+  "importedSources": [ "internal/auth/login.go" ],
+
+  // --- Evidence ---
+
+  // True if runtime data was available for cost estimation.
+  // Stability: Stable.
+  "hasRuntimeData": true,
+
+  // True if coverage linkage was available for reach estimation.
+  // Stability: Stable.
+  "hasCoverageData": true
 }
 ```
 
@@ -84,22 +123,28 @@ multi-repo `--from <manifest>` shape may evolve before 0.3.
   // Stability: Stable.
   "type": "redundancy_candidate",
 
-  // Affected test file paths. Stability: Stable.
-  "paths": [ "tests/auth/login_v1_test.go", "tests/auth/login_v2_test.go" ],
+  // Primary test file path for this finding. Stability: Stable.
+  "path": "tests/auth/login_v1_test.go",
 
-  // Confidence in the finding ([0.0, 1.0]).
+  // Other test file paths involved (e.g. for redundancy pairs).
   // Stability: Stable.
-  "confidence": 0.78,
+  "relatedPaths": [ "tests/auth/login_v2_test.go" ],
 
-  // Severity classification. One of: critical | high | medium | low.
+  // Resolved owner of the primary path. Stability: Stable.
+  "owner": "@platform-team",
+
+  // Confidence in the finding. String enum: "high" | "moderate" | "low".
   // Stability: Stable.
-  "severity": "medium",
+  "confidence": "high",
 
   // Plain-language explanation. Stability: Stable.
   "explanation": "Both files exercise the same behavior surface (POST /login) with overlapping assertion sets.",
 
   // Recommended remediation. Stability: Stable.
-  "suggestedAction": "Consolidate to a single test file or split coverage by precondition."
+  "suggestedAction": "Consolidate to a single test file or split coverage by precondition.",
+
+  // Type-specific detail. Stability: Stable.
+  "metadata": { }
 }
 ```
 

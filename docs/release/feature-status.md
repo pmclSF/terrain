@@ -37,7 +37,7 @@ If a feature is **planned**, no detector emits its signals today.
 | `terrain report pr` | Gate | 1 | stable | PR-scoped report + comment template. `--fail-on / --new-findings-only` parity with `analyze` (Track 3.1). |
 | `terrain report select-tests` | Align | 2 | experimental | Recommended protective test set. |
 | `terrain report show <kind> <id>` | Understand | 1 | stable | Drill into test, unit, owner, or finding. |
-| `terrain compare` | Understand | 1 | stable | Snapshots over time. |
+| `terrain compare` | Understand | 1 | experimental | Snapshots over time. Output format may shift across 0.2.x as adopters report friction; the JSON envelope remains forward-compatible. |
 | `terrain migrate <verb>` | Align | 1 | stable | Per-direction tier badges added in 0.2 (Track 6.6). `terrain convert` retains per-file fall-through. |
 | `terrain policy check` | Gate | 1 | stable | Local policy enforcement. `terrain init` emits a starter policy template (Track 7.6). |
 | `terrain config <verb>` | cross-cutting | 1 | stable | feedback, telemetry. |
@@ -93,6 +93,8 @@ the 0.2 changes; the manifest is authoritative.
 | `phantomEvalScenario` | `internal/structural/phantom_eval_scenario.go` | |
 | `capabilityValidationGap` | `internal/structural/capability_validation_gap.go` | |
 | `untestedPromptFlow` | `internal/structural/untested_prompt_flow.go` | |
+
+_…plus the long-standing structural / quality / migration / governance signals (`assertionFreeTest`, `blastRadiusHotspot`, `coverageBlindSpot`, `customMatcherRisk`, `deprecatedTestPattern`, `dynamicTestGeneration`, `fixtureFragilityHotspot`, `legacyFrameworkUsage`, `migrationBlocker`, `orphanedTestFile`, `runtimeBudgetExceeded`, `skippedTestsInCI`, `snapshotHeavyTest`, `testsOnlyMocks`, `unsupportedSetup`) carried over from 0.1.x — see `docs/signals/manifest.json` for the full inventory and per-detector docs at `docs/rules/`._
 
 ### Experimental in 0.2
 

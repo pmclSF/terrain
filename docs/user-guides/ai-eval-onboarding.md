@@ -40,20 +40,31 @@ Detail: see [docs/product/ai-trust-boundary.md](../product/ai-trust-boundary.md)
 terrain ai list
 ```
 
-Expected output:
+Expected output (your numbers will differ):
 
 ```
-AI Inventory
-============
-Components found
-  AI Surfaces        12
-  Eval Scenarios      5
-  Eval Files          3
-  Frameworks          1
+Terrain AI Inventory
+============================================================
 
-Frameworks
-  promptfoo            via promptfooconfig.yaml (95%)
+| Component          | Count |
+|--------------------|-------|
+| Scenarios          |    17 |
+| Capabilities       |    17 |
+| Prompts            |     3 |
+| Contexts           |     6 |
+| Tool Definitions   |     1 |
+| Retrieval / RAG    |     4 |
+| Eval Files         |    64 |
+| Frameworks         |     2 |
+| Missing coverage   |    14 |
+
+Capabilities
+------------------------------------------------------------
+  <list of detected capabilities, one per line>
 ```
+
+For the JSON shape and a per-capability breakdown, run
+`terrain ai list --json`.
 
 **If output says "No AI surfaces detected":** Terrain hasn't found
 any prompt / agent / tool / retrieval code. Check that your AI code

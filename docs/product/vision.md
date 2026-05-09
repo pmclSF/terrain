@@ -79,7 +79,7 @@ risk, AI surfaces relative to eval coverage. Diff the model over time
 to see what changed.
 
 Capabilities: `terrain analyze`, `terrain report
-summary/posture/metrics/focus/insights/explain`, `terrain compare`,
+summary/posture/metrics/insights/explain`, `terrain compare`,
 AI surface inventory, `terrain serve` (local view), `terrain debug *`
 (diagnostics), `terrain portfolio` (cross-repo view).
 
@@ -126,7 +126,7 @@ primitives**:
 |-----------|---------|
 | Exit-code conventions (0/1/2/4/5/6) | every command |
 | `--fail-on <severity>` | analyze, pr, impact, ai run |
-| `--new-findings-only --baseline <path>` | analyze, pr |
+| `--new-findings-only --baseline <path>` | analyze (the gate flow uses `terrain analyze --fail-on=...` for severity gating; the `pr` summary then reports on the gated state) |
 | `.terrain/suppressions.yaml` | every detector |
 | Stable finding IDs | every signal |
 | `--format json/sarif/annotation` | every read-side command |

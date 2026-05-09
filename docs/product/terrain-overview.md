@@ -10,7 +10,7 @@ Terrain reads your repository — test code, source structure, coverage data, ru
 
 **Explainability-first.** Every finding carries an evidence chain. `terrain explain` traces any decision back to the signals, dependency paths, and scoring rules that produced it. No black boxes, no magic numbers.
 
-**Signal-first.** The core abstraction is the signal — a typed, located, severity-scored, confidence-weighted finding with an explanation and suggested action. All 22 signal types flow through the same registry, making the system extensible and auditable.
+**Signal-first.** The core abstraction is the signal — a typed, located, severity-scored, confidence-weighted finding with an explanation and suggested action. Every signal type flows through the same registry, making the system extensible and auditable. The full inventory (70+ signal types in 0.2 spanning structure, health, quality, migration, governance, and AI domains) is auto-generated to `docs/signals/manifest.json`.
 
 **Evidence-graded.** Terrain explicitly states the strength of its evidence (strong, partial, weak, none) and adjusts confidence accordingly. It tells you what it knows, what it inferred, and what it cannot see.
 
@@ -124,23 +124,21 @@ Terrain now ships the framework conversion and migration surface directly in the
 ## Current State
 
 **Analysis Engine:**
-- **22 signal types** across 4 categories (health, quality, migration, governance)
-- **17 test frameworks** detected across 4 languages (JS/TS, Go, Python, Java)
-- **7 code surface kinds** — function, method, handler, route, class, prompt, dataset
-- **5 posture dimensions** with 18 measurements and evidence grading
-- **6 policy rule types** with size-aware thresholds
-- **14 edge case detectors** with adaptive confidence adjustment
+- **70+ signal types** spanning structure, health, quality, migration, governance, and AI domains — full inventory in `docs/signals/manifest.json`
+- **Multiple test frameworks** detected across JS/TS, Go, Python, and Java — see `internal/analysis/` for the discovery sources
+- **Code surface kinds** include function, method, handler, route, class, prompt, agent, tool definition, retrieval component, dataset
+- **5 posture dimensions** (health, coverage_depth, coverage_diversity, structural_risk, operational_risk) with measurement evidence grading
+- **Policy rule types** with size-aware thresholds — see `docs/user-guides/writing-a-policy.md`
+- **Edge case detectors** with adaptive confidence adjustment
 
 **Graph & Reasoning:**
-- **20 node types** across 6 families (system, validation, behavior, environment, execution, governance)
-- **15 edge types** with confidence scoring and evidence types
+- Node families (system, validation, behavior, environment, execution, governance) and edge types with confidence scoring
 - **5 reasoning pipelines** — impact, coverage, redundancy, stability, environment
 
-**CLI:**
-- **4 canonical commands** — analyze, impact, insights, explain
-- **13 supporting commands** — init, summary, focus, posture, portfolio, metrics, compare, migration, policy, select-tests, pr, show, export benchmark
-- **6 AI commands** — ai list, ai doctor, ai run, ai replay, ai record, ai baseline
-- **5 debug commands** — debug graph, coverage, fanout, duplicates, depgraph
+**CLI (canonical surface — 11 top-level commands):**
+- `terrain analyze`, `terrain init`, `terrain doctor`, `terrain version`, `terrain serve`, `terrain portfolio`
+- Namespace dispatchers: `terrain report <verb>`, `terrain migrate <verb>`, `terrain ai <verb>`, `terrain debug <verb>`, `terrain config <verb>`
+- See `docs/cli-spec.md` for the full per-verb reference.
 
 **AI Risk Review:**
 - **Scenario model** — first-class validation targets alongside tests

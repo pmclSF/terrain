@@ -13,9 +13,9 @@ go test ./cmd/... ./internal/...
 ## Project Structure
 
 ```
-cmd/terrain/          CLI entry point (10 canonical commands + legacy aliases)
+cmd/terrain/          CLI entry point (11 canonical commands + legacy aliases)
 cmd/terrain-bench/    Benchmark harness
-internal/             49 Go packages
+internal/             53 Go packages
 ├── analysis/        Repository scanning and code surface inference
 ├── convert/         Go-native test conversion (25 directions)
 ├── depgraph/        Dependency graph with 5 reasoning engines
@@ -60,7 +60,7 @@ make release-verify
 - JSON output uses `json.NewEncoder(os.Stdout)` with `SetIndent("", "  ")`
 - Nil slices should be converted to empty slices before JSON encoding (serialize as `[]` not `null`)
 - Error messages go to stderr: `fmt.Fprintf(os.Stderr, "error: %v\n", err)`
-- Exit codes: 0 = success, 1 = error, 2 = usage error / policy violation
+- Exit codes: 0 = success, 1 = error, 2 = usage error / policy violation, 4 = AI gate block, 5 = entity not found, 6 = severity-gate block (`--fail-on`). See `docs/cli-spec.md` for the full table.
 - Commands with positional args use `reorderCLIArgs()` to support flags in any position
 
 ## Adding a New Conversion Direction
@@ -115,9 +115,15 @@ apply:
 
 | Pillar | Floor | Block release? |
 |--------|-------|----------------|
-| Gate | every cell ≥ 4 | yes |
+| Gate | every cell ≥ 3 in 0.2.0 (≥ 4 in 0.3) | yes |
 | Understand | every cell ≥ 3 | yes |
 | Align | every cell ≥ 3 | soft (warn-only) |
+
+The Gate floor is 3 in 0.2.0 because P2 / E2 axes at level 4/5 require a
+labeled real-repo precision floor — the central deliverable of the 0.3
+program. Gate floor=3 reflects recall-anchored synthetic calibration in
+0.2.0; the level-4/5 jump lands cell-by-cell as the 0.3 corpus work
+materializes.
 
 ### How to lift a cell in your PR
 
@@ -125,9 +131,7 @@ apply:
 2. Update the score (1–5) and replace the evidence line with a
    one-line pointer to the change you're making (file:line, test
    name, or short rationale).
-3. If your change touches the audit doc's narrative,
-   `docs/release/0.2.x-maturity-audit.md` updates in the same PR.
-4. Run `make pillar-parity` locally — your change should move at
+3. Run `make pillar-parity` locally — your change should move at
    least one cell; CI will compare the diff.
 
 ### Source-of-truth split
@@ -138,9 +142,8 @@ apply:
   means lives here.
 - **Per-cell scores**: `docs/release/parity/scores.yaml`. Changes
   every parity-lift PR. The shape is `area_id → axis_id → {score,
-  evidence}`.
-- **Human-readable companion**: `docs/release/0.2.x-maturity-audit.md`.
-  Same data, prose form. Update both together.
+  evidence}`. Each cell carries a one-line evidence pointer
+  (file:line, test name, PR number) so the lift is auditable.
 
 ### Local commands
 

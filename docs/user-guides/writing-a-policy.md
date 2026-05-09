@@ -10,17 +10,15 @@ to author one. Everything you need is in `.terrain/policy.yaml`.
 ## TL;DR
 
 ```bash
-# 1. Scaffold a starter policy:
-terrain init    # writes .terrain/policy.yaml when missing
-
-# 2. Pick a starting template by stance:
+# 1. Pick a starting template by stance and copy it into place:
+mkdir -p .terrain
 cp docs/policy/examples/balanced.yaml .terrain/policy.yaml
 
-# 3. Run policy check:
+# 2. Run policy check:
 terrain policy check
 ```
 
-`terrain init` writes a template; the three example files in
+The three example files in
 `docs/policy/examples/` (`minimal`, `balanced`, `strict`) are
 opinionated starting points. Edit one to taste.
 

@@ -19,7 +19,7 @@ For a release tagged `v0.2.0`, the Go release job produces:
 | `checksums.txt.pem` | X.509 | Signing certificate (Sigstore OIDC) |
 | `*.cdx.json` | CycloneDX JSON | SBOM per archive (dependency inventory) |
 | `*.spdx.json` | SPDX JSON | SBOM per archive (ISO/IEC 5962:2021) |
-| `Formula/mapterrain.rb` | Homebrew formula | Generated and pushed to `pmclSF/homebrew-terrain` |
+| `Formula/mapterrain.rb` | Homebrew formula | Source-build formula in `pmclSF/homebrew-terrain`, updated by `.github/workflows/homebrew-update.yml` after each release tag (sed-based version bump pointing at the auto-generated `refs/tags/<tag>.tar.gz` source tarball). |
 
 The npm release job additionally publishes `mapterrain` to npm with
 `--provenance` (Sigstore OIDC attestation via npm's built-in support). The npm

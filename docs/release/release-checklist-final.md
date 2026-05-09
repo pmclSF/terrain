@@ -20,7 +20,7 @@ command's design promises them:
 - [ ] `terrain analyze`
 - [ ] `terrain analyze --json` (valid JSON, stable shape)
 - [ ] `terrain analyze --write-snapshot` (writes `.terrain/snapshots/latest.json` + timestamped archive)
-- [ ] `terrain report summary`, `terrain report insights`, `terrain report explain <target>`, `terrain report posture`, `terrain report portfolio`, `terrain report metrics`, `terrain report focus`, `terrain report show <kind> <id>`, `terrain report pr`
+- [ ] `terrain report summary`, `terrain report insights`, `terrain report explain <target>`, `terrain report posture`, `terrain report metrics`, `terrain report show <kind> <id>`, `terrain report impact`, `terrain report pr`, `terrain report select-tests`
 - [ ] `terrain migrate run <pair>`, `terrain migrate config <pair>`, `terrain migrate readiness`, `terrain migrate list`
 - [ ] `terrain convert <file> --from <fw> --to <fw>`
 - [ ] `terrain posture`
