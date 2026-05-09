@@ -31,7 +31,7 @@ const (
 )
 
 // PillarFor returns the product pillar that owns a given signal
-// category. Mapping rationale (see plan kind-mapping-turing.md):
+// category. Mapping rationale:
 //   - structure / health / quality / ai → Understand: these are
 //     "what's there, what's broken, what's overlapping" — the
 //     observation surface.
