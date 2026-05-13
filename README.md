@@ -29,7 +29,7 @@ No config, no annotations, no test execution required. Coverage and runtime arti
 
 ## What Terrain catches
 
-The strategic moat is gap detection at the boundary between code and tests, prompts and evals, training and tracking:
+What's unique to Terrain is gap detection at the boundary between code and tests, prompts and evals, training and tracking:
 
 - **`promptFileMissingEval`** — a prompt ships in source but no eval covers it
 - **`uncoveredAISurface`** — an agent / tool / RAG step has no test path
