@@ -43,6 +43,9 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	"staticSkippedTest":      {Source: SignalSourceStatic},
 	"assertionFreeTest":      {Source: SignalSourceStatic},
 	"orphanedTestFile":       {Source: SignalSourceStatic},
+	"depsDriftRisk":          {Source: SignalSourceStatic},
+	"configSchemaDrift":      {Source: SignalSourceStatic},
+	"promptFileMissingEval":     {Source: SignalSourceGraph},
 
 	// Runtime health signals (Tier 2) — require runtime artifacts.
 	"slowTest":      {Source: SignalSourceRuntime},
@@ -129,6 +132,52 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	// `expires` date. The user-facing finding it covered fires again,
 	// AND this signal surfaces so silent rot doesn't accumulate.
 	"suppressionExpired": {Source: SignalSourceStatic},
+
+	// §9 stable-rule signals — sourced from static analysis of
+	// manifests, AI surfaces, code units, and graph state. Detectors
+	// land in subsequent commits.
+	"versionFloating":       {Source: SignalSourceStatic},
+	"secretsInPrompt":       {Source: SignalSourceStatic},
+	"noTestsForCodeUnit":    {Source: SignalSourceGraph},
+	"noEvalForAISurface":    {Source: SignalSourceGraph},
+	"modelFixtureUnpinned":  {Source: SignalSourceStatic},
+	"evalNoAssertion":       {Source: SignalSourceStatic},
+	"noSeed":                {Source: SignalSourceStatic},
+	"missingEnvPinning":     {Source: SignalSourceStatic},
+	"piiInEval":             {Source: SignalSourceStatic},
+	"insecureDeserialization": {Source: SignalSourceStatic},
+	"missingPerfTest":       {Source: SignalSourceGraph},
+	"dataLeakageSuspected":  {Source: SignalSourceStatic},
+	"missingTrainTestSplit": {Source: SignalSourceStatic},
+
+	// Regression family signals — produced by eval-adapter ingestion.
+	"baselineNotSet":        {Source: SignalSourceGauntlet},
+	"passRateDrop":          {Source: SignalSourceGauntlet},
+	"snapshotMismatch":      {Source: SignalSourceGauntlet},
+	"testFailed":            {Source: SignalSourceRuntime},
+	"performanceRegression": {Source: SignalSourceGauntlet},
+
+	// Coverage family signals.
+	"missingBaseline":   {Source: SignalSourceStatic},
+	"noIntegrationTest": {Source: SignalSourceGraph},
+	"noDataValidation":  {Source: SignalSourceStatic},
+
+	// §9 preview rules.
+	"promptBloat":              {Source: SignalSourceStatic},
+	"promptWithoutTemperature": {Source: SignalSourceStatic},
+	"missingPromptValidator":   {Source: SignalSourceStatic},
+	"promptVersionSkew":        {Source: SignalSourceGraph},
+	"retrievalWithoutRerank":   {Source: SignalSourceStatic},
+	"coldVectorStore":          {Source: SignalSourceStatic},
+	"agentLoopRisk":            {Source: SignalSourceStatic},
+	"toolWithoutBudget":        {Source: SignalSourceStatic},
+	"targetLeakage":            {Source: SignalSourceStatic},
+	"duplicateEvalRows":        {Source: SignalSourceStatic},
+	"schemaDrift":              {Source: SignalSourceStatic},
+	"missingEvalCategories":    {Source: SignalSourceStatic},
+	"orphanedEval":             {Source: SignalSourceGraph},
+	"coldStartTime":            {Source: SignalSourceRuntime},
+	"tokenCostBudget":          {Source: SignalSourceRuntime},
 }
 
 // KnownSignalTypes is the canonical signal vocabulary accepted by snapshot

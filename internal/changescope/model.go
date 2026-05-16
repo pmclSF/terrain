@@ -84,7 +84,7 @@ type AIValidationSummary struct {
 	TotalScenarios int `json:"totalScenarios"`
 
 	// Scenarios lists impacted scenarios with reasons.
-	Scenarios []AIScenarioSummary `json:"scenarios,omitempty"`
+	Scenarios []EvalSummary `json:"scenarios,omitempty"`
 
 	// BlockingSignals lists AI signals that block the merge.
 	BlockingSignals []AISignalSummary `json:"blockingSignals,omitempty"`
@@ -96,8 +96,8 @@ type AIValidationSummary struct {
 	UncoveredContexts []string `json:"uncoveredContexts,omitempty"`
 }
 
-// AIScenarioSummary is a compact scenario entry for PR display.
-type AIScenarioSummary struct {
+// EvalSummary is a compact scenario entry for PR display.
+type EvalSummary struct {
 	Name       string `json:"name"`
 	Capability string `json:"capability,omitempty"`
 	Reason     string `json:"reason"`

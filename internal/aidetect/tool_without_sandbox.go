@@ -35,11 +35,34 @@ type ToolWithoutSandboxDetector struct {
 // match `delete_user`. Allowing `_` as a boundary catches the common
 // `verb_object` snake-case form that almost every real-world tool
 // definition uses.
+// 2026-05-11 corpus-driven refinement: 25-sample hand-label on clean
+// AI harvest found 25/25 FPs. Two failure modes:
+//   (a) Bare "execute" / "exec" matches `execute_event_loop_cycle`
+//       (autogen agent main loop) and `execute_tool $X` where the
+//       wrapped tool $X is benign (calculate, get_weather). The
+//       framework boilerplate verb doesn't make the tool destructive.
+//   (b) Bare "transfer" matches `transfer_to_spanish_agent` (agent
+//       handoff in deepeval/strands fixtures), not financial transfer.
+//
+// Tightened regex:
+//   - exec / execute now require explicit destructive context:
+//     exec_shell, run_shell, run_command, spawn_process, etc.
+//   - eval matches as before (Python's eval() is genuinely dangerous)
+//   - transfer requires payment/money context (was matching agent
+//     handoff verbs)
 var destructiveVerbs = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)\b(delete|destroy|remove|drop|truncate|purge)(?:_|\b)`),
-	regexp.MustCompile(`(?i)\b(exec|execute|run_shell|run_command|spawn|eval)(?:_|\b)`),
+	regexp.MustCompile(`(?i)\b(delete|destroy|drop_(?:table|database|index)|truncate|purge)(?:_|\b)`),
+	// exec/execute/run/spawn require an explicit destructive object —
+	// command, shell, code, script, sql, query, subprocess, arbitrary —
+	// to avoid matching agent-framework boilerplate like
+	// `execute_event_loop_cycle` or `execute_tool $benign_tool`.
+	regexp.MustCompile(`(?i)\b(exec|execute|run|spawn)_(?:command|shell|code|script|sql|query|subprocess|process|arbitrary|raw|untrusted)(?:_|\b)`),
+	// eval is destructive in any object form (eval(user_input), eval_code, etc.)
+	regexp.MustCompile(`(?i)\beval(?:_|\b)`),
 	regexp.MustCompile(`(?i)\b(write|overwrite|replace|patch)_(?:file|disk|prod)(?:_|\b)`),
-	regexp.MustCompile(`(?i)\b(send_email|send_payment|charge|refund|transfer)(?:_|\b)`),
+	regexp.MustCompile(`(?i)\b(send_email|send_payment|charge_card|charge|refund_payment|transfer_funds|transfer_money|wire_transfer)(?:_|\b)`),
+	// "remove" only when paired with destructive nouns (file/account/database/etc.)
+	regexp.MustCompile(`(?i)\b(remove_(?:file|account|user|database|repo|repository|cluster|namespace|pod))(?:_|\b)`),
 }
 
 // approvalMarkers are substrings/keys that, when present in the tool
@@ -67,6 +90,27 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 
 	var out []models.Signal
 	for _, relPath := range paths {
+		// Skip test fixtures and mock-recording files. Verified on
+		// the 70-repo ML-specialized corpus: cloud-custodian produced
+		// many firings on `tools/c7n_azure/tests_azure/cassettes/
+		// *.json` — vcrpy-recorded Azure Activity Log responses that
+		// happen to contain strings like "Activity Log Alert for
+		// Delete Network Security Group". Those aren't tool
+		// definitions; they're recorded API responses where the
+		// destructive verb appears in a log-entry display name.
+		// Same pattern as the aiHardcodedAPIKey FP shape (cf. 84dcaf7).
+		if isAPIKeyFixturePath(relPath) {
+			continue
+		}
+		// 2026-05-11 corpus addition: deepeval/strands test-integration
+		// schema fixtures dominated the FP set (24 of 25 hand-labeled
+		// firings). These paths are explicitly fixtures for integration
+		// tests against agent frameworks, not real tool definitions.
+		lp := strings.ToLower(filepath.ToSlash(relPath))
+		if strings.Contains(lp, "test_integrations/") ||
+			strings.Contains(lp, "/schemas/") && strings.Contains(lp, "tests/") {
+			continue
+		}
 		abs := filepath.Join(d.Root, relPath)
 		findings := analyseToolConfig(abs)
 		for _, f := range findings {
@@ -74,7 +118,11 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 				Type:        signals.SignalAIToolWithoutSandbox,
 				Category:    models.CategoryAI,
 				Severity:    models.SeverityHigh,
-				Confidence:  0.78,
+				// 2026-05-11 corpus-driven recalibration: declared 0.78,
+				// clean ML harvest precision LB 0.26 (43% point). Demoted
+				// to 0.50 pending hand-validation (task #42). When the AI
+				// clean harvest completes, reassess.
+				Confidence:  0.50,
 				Location:    models.SignalLocation{File: relPath, Symbol: f.ToolName},
 				Explanation: f.Explanation,
 				SuggestedAction: "Wrap the tool in an approval gate, or restrict its capability surface to a sandbox / dry-run mode.",
@@ -83,7 +131,7 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 				Actionability:   models.ActionabilityImmediate,
 				LifecycleStages: []models.LifecycleStage{models.StageDesign},
 				AIRelevance:     models.AIRelevanceHigh,
-				RuleID:          "TER-AI-104",
+				RuleID:          "terrain/ai/tool-without-sandbox",
 				RuleURI:         "docs/rules/ai/tool-without-sandbox.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{

@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/pmclSF/terrain/internal/explain"
 	"github.com/pmclSF/terrain/internal/identity"
@@ -140,7 +141,7 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 
 	// Try scenario — first with rich explain (impact + snapshot), then fallback.
 	if impactErr == nil {
-		se, seErr := explain.ExplainScenarioRich(target, impactResult, snap)
+		se, seErr := explain.ExplainEvalRich(target, impactResult, snap)
 		if seErr == nil {
 			if jsonOutput {
 				return jsonOut(se)
@@ -151,13 +152,13 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 	}
 
 	// Fallback: show scenario metadata from snapshot even without impact data.
-	for _, sc := range snap.Scenarios {
-		if sc.ScenarioID == target || sc.Name == target {
+	for _, sc := range snap.Evals {
+		if sc.EvalID == target || sc.Name == target {
 			if jsonOutput {
 				return jsonOut(sc)
 			}
 			fmt.Printf("Scenario: %s\n", sc.Name)
-			fmt.Printf("ID: %s\n", sc.ScenarioID)
+			fmt.Printf("ID: %s\n", sc.EvalID)
 			if sc.Capability != "" {
 				fmt.Printf("Capability: %s\n", sc.Capability)
 			}
@@ -194,7 +195,7 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 			if jsonOutput {
 				return jsonOut(sig)
 			}
-			renderFindingExplanation(sig, target)
+			renderFindingExplanation(sig, target, snap)
 			return nil
 		}
 		// Looks like a finding ID but not in this snapshot — distinct
@@ -246,7 +247,7 @@ func lookupSignalByFindingID(snap *models.TestSuiteSnapshot, id string) (models.
 // readable form. Mirrors the shape used by other explain renders:
 // section header → finding metadata → next-step pointers (including
 // the canonical `terrain suppress` invocation).
-func renderFindingExplanation(s models.Signal, id string) {
+func renderFindingExplanation(s models.Signal, id string, snap *models.TestSuiteSnapshot) {
 	rule := strings.Repeat("─", 60)
 	fmt.Println("Terrain — finding explanation")
 	fmt.Println(rule)
@@ -296,11 +297,138 @@ func renderFindingExplanation(s models.Signal, id string) {
 		fmt.Println()
 	}
 
+	if ev := explain.DetectorEvidenceFor(string(s.Type)); ev != nil {
+		var lines []string
+		if line := ev.FormatTrustLine(); line != "" {
+			lines = append(lines, line)
+		}
+		// Surface corpus-lift inline even when trust-line picked hand-
+		// validated precision — precision alone doesn't tell users
+		// whether the firing predicts regression risk. Tier 5.4.
+		if line := ev.FormatLiftLine(); line != "" {
+			lines = append(lines, line)
+		}
+		if len(lines) > 0 {
+			fmt.Println("Detector evidence:")
+			for _, line := range lines {
+				fmt.Printf("  %s\n", line)
+			}
+			fmt.Println()
+		}
+	}
+
+	if stacked := relatedFindings(s, snap); len(stacked) > 0 {
+		fmt.Println("Cross-detector evidence (same file or symbol):")
+		for _, r := range stacked {
+			loc := r.Location.File
+			if r.Location.Line > 0 {
+				loc += fmt.Sprintf(":%d", r.Location.Line)
+			}
+			if r.Location.Symbol != "" && r.Location.Symbol != s.Location.Symbol {
+				loc += " :: " + r.Location.Symbol
+			}
+			fmt.Printf("  • %s (%s) — %s\n", r.Type, strings.ToUpper(string(r.Severity)), loc)
+		}
+		fmt.Println()
+	}
+
+	if lineage, _ := explain.LookupLineage(".", s.Location.File, s.Location.Line); lineage != nil {
+		age := lineage.FormatAge(time.Now())
+		who := lineage.Author
+		if who == "" {
+			who = "?"
+		}
+		fmt.Println("Lineage:")
+		if age != "" {
+			fmt.Printf("  introduced %s by %s (commit %s)\n", age, who, lineage.ShortSHA)
+		} else {
+			fmt.Printf("  introduced by %s (commit %s)\n", who, lineage.ShortSHA)
+		}
+		if lineage.CommitsSince > 0 {
+			fmt.Printf("  %d commits to this file since then\n", lineage.CommitsSince)
+		}
+		fmt.Println()
+	}
+
+	if exs := explain.CorpusExamplesFor(string(s.Type), 3); len(exs) > 0 {
+		fmt.Println("Real-world examples from public OSS (326-repo corpus):")
+		for _, e := range exs {
+			loc := e.File
+			if e.Line > 0 {
+				loc += fmt.Sprintf(":%d", e.Line)
+			}
+			if e.Symbol != "" {
+				loc += " :: " + e.Symbol
+			}
+			fmt.Printf("  • %s — %s\n", e.Repo, loc)
+		}
+		fmt.Println()
+	}
+
 	fmt.Println("Next steps:")
 	fmt.Printf("  terrain suppress %q --reason \"<why>\"   waive this finding (with a reason)\n", id)
 	if s.RuleURI != "" {
 		fmt.Printf("  see %s for the full detector reference\n", s.RuleURI)
 	}
+}
+
+// relatedFindings returns up to 5 other signals from snap that touch
+// the same file or symbol as s, excluding s itself. Cross-detector
+// evidence stacking: when multiple unrelated rules flag the same
+// surface, the underlying issue is much more likely to be real (and
+// usually deeper than any single rule conveys). Reviewing the cluster
+// is faster than triaging each rule in isolation.
+//
+// Heuristic: match on (a) exact symbol or (b) same file. Same-line
+// matches are a stronger hit than same-file matches; we surface
+// stronger hits first.
+func relatedFindings(s models.Signal, snap *models.TestSuiteSnapshot) []models.Signal {
+	if snap == nil || s.Location.File == "" {
+		return nil
+	}
+	type scored struct {
+		sig   models.Signal
+		score int
+	}
+	var hits []scored
+	for _, other := range snap.Signals {
+		if other.FindingID == s.FindingID && s.FindingID != "" {
+			continue
+		}
+		if other.Type == s.Type && other.Location.File == s.Location.File && other.Location.Line == s.Location.Line {
+			continue // exact duplicate
+		}
+		score := 0
+		if other.Location.Symbol != "" && other.Location.Symbol == s.Location.Symbol {
+			score += 10
+		}
+		if other.Location.File == s.Location.File {
+			score += 5
+			if other.Location.Line > 0 && s.Location.Line > 0 &&
+				abs(other.Location.Line-s.Location.Line) <= 10 {
+				score += 5
+			}
+		}
+		if score >= 5 && other.Type != s.Type {
+			hits = append(hits, scored{other, score})
+		}
+	}
+	sort.Slice(hits, func(i, j int) bool { return hits[i].score > hits[j].score })
+	if len(hits) > 5 {
+		hits = hits[:5]
+	}
+	out := make([]models.Signal, 0, len(hits))
+	for _, h := range hits {
+		out = append(out, h.sig)
+	}
+	return out
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 // computeImpactForExplain runs impact analysis using git diff to detect changes.

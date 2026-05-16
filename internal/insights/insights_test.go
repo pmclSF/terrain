@@ -320,19 +320,19 @@ func TestBuild_CategorySummary(t *testing.T) {
 func TestBuild_ScenarioDuplication(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:safety",
+				EvalID:        "scenario:safety",
 				Name:              "safety-check",
 				CoveredSurfaceIDs: []string{"surface:prompts.ts:system", "surface:prompts.ts:user"},
 			},
 			{
-				ScenarioID:        "scenario:accuracy",
+				EvalID:        "scenario:accuracy",
 				Name:              "accuracy-check",
 				CoveredSurfaceIDs: []string{"surface:prompts.ts:system", "surface:prompts.ts:user"},
 			},
 			{
-				ScenarioID:        "scenario:latency",
+				EvalID:        "scenario:latency",
 				Name:              "latency-check",
 				CoveredSurfaceIDs: []string{"surface:api.ts:predict"},
 			},
@@ -366,9 +366,9 @@ func TestBuild_ScenarioDuplication(t *testing.T) {
 func TestBuild_ScenarioDuplication_NoOverlap(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "scenario:a", CoveredSurfaceIDs: []string{"s1"}},
-			{ScenarioID: "scenario:b", CoveredSurfaceIDs: []string{"s2"}},
+		Evals: []models.Eval{
+			{EvalID: "scenario:a", CoveredSurfaceIDs: []string{"s1"}},
+			{EvalID: "scenario:b", CoveredSurfaceIDs: []string{"s2"}},
 		},
 	}
 	input := &BuildInput{
@@ -388,8 +388,8 @@ func TestBuild_ScenarioDuplication_NoOverlap(t *testing.T) {
 func TestBuild_ScenarioDuplication_SingleScenario(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "scenario:only", CoveredSurfaceIDs: []string{"s1", "s2"}},
+		Evals: []models.Eval{
+			{EvalID: "scenario:only", CoveredSurfaceIDs: []string{"s1", "s2"}},
 		},
 	}
 	input := &BuildInput{
@@ -751,9 +751,9 @@ func TestBuild_Recommendations_ScenarioDupGetsScenarioRec(t *testing.T) {
 	t.Parallel()
 	input := &BuildInput{
 		Snapshot: &models.TestSuiteSnapshot{
-			Scenarios: []models.Scenario{
-				{ScenarioID: "s1", CoveredSurfaceIDs: []string{"a", "b"}},
-				{ScenarioID: "s2", CoveredSurfaceIDs: []string{"a", "b"}},
+			Evals: []models.Eval{
+				{EvalID: "s1", CoveredSurfaceIDs: []string{"a", "b"}},
+				{EvalID: "s2", CoveredSurfaceIDs: []string{"a", "b"}},
 			},
 		},
 		Coverage: depgraph.CoverageResult{BandCounts: map[depgraph.CoverageBand]int{}},

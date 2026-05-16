@@ -81,9 +81,9 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// --- Scenarios with capability ---
 	var scenarios []aiScenarioEntry
 	capScenarios := map[string][]string{} // capability → scenario names
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		scenarios = append(scenarios, aiScenarioEntry{
-			ID:         sc.ScenarioID,
+			ID:         sc.EvalID,
 			Name:       sc.Name,
 			Category:   sc.Category,
 			Path:       sc.Path,
@@ -122,7 +122,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// --- Validation gap analysis ---
 	// AI surfaces not covered by any scenario.
 	coveredIDs := map[string]bool{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		for _, sid := range sc.CoveredSurfaceIDs {
 			coveredIDs[sid] = true
 		}
@@ -345,7 +345,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 // runAIRun detects eval frameworks and executes scenarios.
 
 // Type aliases to avoid duplicating struct definitions from airun package.
-type aiRunScenario = airun.ScenarioEntry
+type aiRunScenario = airun.EvalEntry
 type aiRunSignalEntry = airun.SignalEntry
 type aiRunDecision = airun.Decision
 
@@ -357,7 +357,7 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	}
 	snap := result.Snapshot
 
-	if len(snap.Scenarios) == 0 {
+	if len(snap.Evals) == 0 {
 		return fmt.Errorf("no eval scenarios detected.\n\nTerrain auto-derives scenarios from eval test files and AI framework imports.\nRun `terrain ai doctor` to diagnose.")
 	}
 
@@ -373,9 +373,9 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	mode := "full"
 
 	if full {
-		for _, sc := range snap.Scenarios {
+		for _, sc := range snap.Evals {
 			selected = append(selected, aiRunScenario{
-				ID: sc.ScenarioID, Name: sc.Name, Capability: sc.Capability,
+				ID: sc.EvalID, Name: sc.Name, Capability: sc.Capability,
 				Category: sc.Category, Reason: "full run (--full)", Path: sc.Path,
 				Surfaces: sc.CoveredSurfaceIDs,
 			})
@@ -398,9 +398,9 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 			}
 		}
 
-		if impactResult != nil && len(impactResult.ImpactedScenarios) > 0 {
+		if impactResult != nil && len(impactResult.ImpactedEvals) > 0 {
 			impactedIDs := map[string]bool{}
-			for _, is := range impactResult.ImpactedScenarios {
+			for _, is := range impactResult.ImpactedEvals {
 				impactedIDs[is.ScenarioID] = true
 				selected = append(selected, aiRunScenario{
 					ID: is.ScenarioID, Name: is.Name, Capability: is.Capability,
@@ -408,10 +408,10 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 					Surfaces: is.CoversSurfaces,
 				})
 			}
-			for _, sc := range snap.Scenarios {
-				if !impactedIDs[sc.ScenarioID] {
+			for _, sc := range snap.Evals {
+				if !impactedIDs[sc.EvalID] {
 					skipped = append(skipped, aiRunScenario{
-						ID: sc.ScenarioID, Name: sc.Name, Capability: sc.Capability,
+						ID: sc.EvalID, Name: sc.Name, Capability: sc.Capability,
 						Category: sc.Category, Reason: "not impacted by change",
 					})
 				}
@@ -419,9 +419,9 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 		} else {
 			// No impact data or no impacted scenarios — run all.
 			mode = "full"
-			for _, sc := range snap.Scenarios {
+			for _, sc := range snap.Evals {
 				selected = append(selected, aiRunScenario{
-					ID: sc.ScenarioID, Name: sc.Name, Capability: sc.Capability,
+					ID: sc.EvalID, Name: sc.Name, Capability: sc.Capability,
 					Category: sc.Category, Reason: "no impact data; running all",
 					Path: sc.Path, Surfaces: sc.CoveredSurfaceIDs,
 				})
@@ -817,7 +817,7 @@ func runAIRecord(root string, jsonOutput bool) error {
 	}
 	snap := result.Snapshot
 
-	if len(snap.Scenarios) == 0 {
+	if len(snap.Evals) == 0 {
 		return fmt.Errorf("no scenarios to record. Run `terrain ai list` to check detected scenarios.")
 	}
 
@@ -829,7 +829,7 @@ func runAIRecord(root string, jsonOutput bool) error {
 
 	type baseline struct {
 		RecordedAt string            `json:"recordedAt"`
-		Scenarios  []models.Scenario `json:"scenarios"`
+		Scenarios  []models.Eval `json:"scenarios"`
 		Surfaces   struct {
 			Prompts  int `json:"prompts"`
 			Datasets int `json:"datasets"`
@@ -837,7 +837,7 @@ func runAIRecord(root string, jsonOutput bool) error {
 	}
 
 	bl := baseline{RecordedAt: time.Now().UTC().Format(time.RFC3339)}
-	bl.Scenarios = snap.Scenarios
+	bl.Scenarios = snap.Evals
 	for _, cs := range snap.CodeSurfaces {
 		switch cs.Kind {
 		case models.SurfacePrompt:
@@ -991,8 +991,8 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 		baselineIDs[s.ScenarioID] = s.Name
 	}
 	currentIDs := make(map[string]string)
-	for _, s := range result.Snapshot.Scenarios {
-		currentIDs[s.ScenarioID] = s.Name
+	for _, s := range result.Snapshot.Evals {
+		currentIDs[s.EvalID] = s.Name
 	}
 
 	var added, removed []string
@@ -1014,7 +1014,7 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 		out := map[string]any{
 			"baselineRecordedAt": baseline.RecordedAt,
 			"baselineScenarios":  len(baseline.Scenarios),
-			"currentScenarios":   len(result.Snapshot.Scenarios),
+			"currentScenarios":   len(result.Snapshot.Evals),
 			"addedScenarios":     added,
 			"removedScenarios":   removed,
 			"metricDeltas":       deltas,
@@ -1028,8 +1028,8 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 	fmt.Println("Terrain AI Baseline Comparison")
 	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
 	fmt.Printf("Baseline recorded: %s\n", baseline.RecordedAt)
-	fmt.Printf("Scenarios: %d → %d", len(baseline.Scenarios), len(result.Snapshot.Scenarios))
-	if diff := len(result.Snapshot.Scenarios) - len(baseline.Scenarios); diff > 0 {
+	fmt.Printf("Scenarios: %d → %d", len(baseline.Scenarios), len(result.Snapshot.Evals))
+	if diff := len(result.Snapshot.Evals) - len(baseline.Scenarios); diff > 0 {
 		fmt.Printf(" (+%d)\n", diff)
 	} else if diff < 0 {
 		fmt.Printf(" (%d)\n", diff)
@@ -1084,7 +1084,7 @@ func runAIReplay(root string, jsonOutput bool, artifactPath string) error {
 	}
 	snap := result.Snapshot
 
-	replayResult, err := airun.Replay(artifactPath, root, snap.CodeSurfaces, len(snap.Scenarios))
+	replayResult, err := airun.Replay(artifactPath, root, snap.CodeSurfaces, len(snap.Evals))
 	if err != nil {
 		return err
 	}
@@ -1147,11 +1147,11 @@ func runAIDoctor(root string, jsonOutput bool) error {
 	var checks []doctorCheck
 
 	// Check 1: Are there any scenarios?
-	if len(snap.Scenarios) > 0 {
+	if len(snap.Evals) > 0 {
 		checks = append(checks, doctorCheck{
 			Name:    "scenarios",
 			Status:  "pass",
-			Message: fmt.Sprintf("%d %s detected", len(snap.Scenarios), reporting.Plural(len(snap.Scenarios), "scenario")),
+			Message: fmt.Sprintf("%d %s detected", len(snap.Evals), reporting.Plural(len(snap.Evals), "scenario")),
 		})
 	} else {
 		checks = append(checks, doctorCheck{
@@ -1256,14 +1256,14 @@ func runAIDoctor(root string, jsonOutput bool) error {
 	}
 
 	// Check 6: Graph wiring — do scenarios connect to surfaces?
-	if len(snap.Scenarios) > 0 {
+	if len(snap.Evals) > 0 {
 		wired := 0
-		for _, sc := range snap.Scenarios {
+		for _, sc := range snap.Evals {
 			if len(sc.CoveredSurfaceIDs) > 0 {
 				wired++
 			}
 		}
-		if wired == len(snap.Scenarios) {
+		if wired == len(snap.Evals) {
 			checks = append(checks, doctorCheck{
 				Name:    "graph_wiring",
 				Status:  "pass",
@@ -1273,7 +1273,7 @@ func runAIDoctor(root string, jsonOutput bool) error {
 			checks = append(checks, doctorCheck{
 				Name:    "graph_wiring",
 				Status:  "warn",
-				Message: fmt.Sprintf("%d of %d %s have no linked code surfaces", len(snap.Scenarios)-wired, len(snap.Scenarios), reporting.Plural(len(snap.Scenarios), "scenario")),
+				Message: fmt.Sprintf("%d of %d %s have no linked code surfaces", len(snap.Evals)-wired, len(snap.Evals), reporting.Plural(len(snap.Evals), "scenario")),
 			})
 		}
 	}

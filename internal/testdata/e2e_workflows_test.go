@@ -10,7 +10,7 @@ import (
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/measurement"
 	"github.com/pmclSF/terrain/internal/metrics"
-	"github.com/pmclSF/terrain/internal/migration"
+	"github.com/pmclSF/terrain/internal/framework_migration"
 	"github.com/pmclSF/terrain/internal/portfolio"
 	"github.com/pmclSF/terrain/internal/reporting"
 	"github.com/pmclSF/terrain/internal/scoring"
@@ -209,7 +209,7 @@ func TestE2E_MigrationReadinessFlow(t *testing.T) {
 	snap := MigrationRiskSnapshot()
 	snap.Risk = scoring.ComputeRisk(snap)
 
-	readiness := migration.ComputeReadiness(snap)
+	readiness := framework_migration.ComputeReadiness(snap)
 	if readiness == nil {
 		t.Fatal("expected non-nil readiness")
 	}

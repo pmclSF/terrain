@@ -73,6 +73,8 @@ func BuildImportGraph(root string, testFiles []models.TestFile) *ImportGraph {
 			imports = extractPythonImports(root, tf.Path)
 		case ext == ".go":
 			imports = extractGoImports(root, tf.Path)
+		case ext == ".java":
+			imports = extractJavaImports(root, tf.Path)
 		}
 
 		if len(imports) > 0 {
@@ -731,6 +733,136 @@ var (
 	pyImportLinePattern         = regexp.MustCompile(`^\s*import\s+(.+)$`)
 	pyImportAliasStripPattern   = regexp.MustCompile(`\s+as\s+\w+$`)
 )
+
+// Java import patterns. Matches `import foo.bar.Baz;`, `import foo.bar.*;`,
+// and `import static foo.bar.Baz.method;`. Captures the dotted module path
+// before the optional `.*` or `.member` suffix.
+var (
+	javaImportPattern       = regexp.MustCompile(`^\s*import\s+(?:static\s+)?([A-Za-z_][\w.]*?)(\.\*)?\s*;`)
+	javaStaticImportPattern = regexp.MustCompile(`^\s*import\s+static\s+([A-Za-z_][\w.]*)\.\w+\s*;`)
+)
+
+// extractJavaImports extracts imports from a Java test file, resolving each
+// to repo-relative .java file paths under common Maven / Gradle source roots.
+//
+// Java import semantics: `import foo.bar.Baz;` imports a single class;
+// `import foo.bar.*;` imports a whole package; `import static foo.bar.Baz.x;`
+// imports a static member. Wildcard imports are resolved to the package
+// directory rather than enumerated to all files (which would require
+// filesystem scan per import); per-class imports are resolved to the
+// specific .java file.
+//
+// Resolution tries Maven (`src/main/java/`, `src/test/java/`) and Gradle
+// layouts (`src/`, plus the bare module path as a fallback for non-standard
+// repos). Mirrors the multi-base pattern from extractPythonImports.
+func extractJavaImports(root, relPath string) map[string]bool {
+	absPath := filepath.Join(root, relPath)
+	content, err := os.ReadFile(absPath)
+	if err != nil {
+		return nil
+	}
+
+	imports := map[string]bool{}
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		// Skip the line-comment and block-comment prefixes the cheapest way:
+		// trim and require the line begin with "import".
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "import") {
+			continue
+		}
+
+		// Try static import first (more specific pattern).
+		if m := javaStaticImportPattern.FindStringSubmatch(line); m != nil {
+			for _, p := range resolveJavaModule(root, m[1], false) {
+				imports[p] = true
+			}
+			continue
+		}
+
+		// Then standard import (possibly wildcard).
+		if m := javaImportPattern.FindStringSubmatch(line); m != nil {
+			isWildcard := m[2] == ".*"
+			for _, p := range resolveJavaModule(root, m[1], isWildcard) {
+				imports[p] = true
+			}
+		}
+	}
+
+	return imports
+}
+
+// resolveJavaModule maps a dotted Java module path (e.g., "com.foo.Bar") to
+// repo-relative source-file paths. For wildcard imports, returns the package
+// directory (callers treat this as a coarser linkage signal).
+//
+// Tries Maven (src/main/java, src/test/java), Gradle, and bare layouts.
+// Java's stdlib (java.*, javax.*) and well-known third-party packages
+// (org.junit.*, org.springframework.*) are skipped — they don't resolve to
+// repo files and would just slow down resolution.
+func resolveJavaModule(root, module string, isWildcard bool) []string {
+	if module == "" {
+		return nil
+	}
+	if isJavaStdlibOrCommonExternal(module) {
+		return nil
+	}
+
+	parts := strings.Split(module, ".")
+	if len(parts) == 0 {
+		return nil
+	}
+
+	bases := []string{"src/main/java", "src/test/java", "src", "."}
+
+	var resolved []string
+	for _, base := range bases {
+		if isWildcard {
+			// For wildcard, the target is the package directory.
+			candidate := filepath.ToSlash(filepath.Join(base, filepath.Join(parts...)))
+			if dirExists(filepath.Join(root, candidate)) {
+				resolved = append(resolved, candidate)
+			}
+			continue
+		}
+		// For specific class import, resolve to <base>/<parts...>.java
+		candidate := filepath.ToSlash(filepath.Join(base, filepath.Join(parts...))) + ".java"
+		if fileExists(filepath.Join(root, candidate)) {
+			resolved = append(resolved, candidate)
+		}
+	}
+	return dedupeStrings(resolved)
+}
+
+// isJavaStdlibOrCommonExternal returns true for module paths that won't
+// resolve to repo source files — Java stdlib + well-known third-party libs.
+// Skipping these is a performance optimization, not a correctness requirement.
+func isJavaStdlibOrCommonExternal(module string) bool {
+	stdlibPrefixes := []string{
+		"java.", "javax.", "jakarta.",
+		"org.junit.", "org.junit",
+		"org.mockito.", "org.mockito",
+		"org.testng.", "org.testng",
+		"org.springframework.", "org.springframework",
+		"org.apache.", "com.google.common.",
+		"lombok.",
+	}
+	for _, p := range stdlibPrefixes {
+		if module == strings.TrimSuffix(p, ".") || strings.HasPrefix(module, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// dirExists reports whether path is an existing directory.
+func dirExists(path string) bool {
+	info, err := os.Stat(path)
+	if err != nil {
+		return false
+	}
+	return info.IsDir()
+}
 
 // extractPythonImports extracts relative imports from a Python test file.
 func extractPythonImports(root, relPath string) map[string]bool {

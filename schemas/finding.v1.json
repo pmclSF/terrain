@@ -1,0 +1,167 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://terrain.dev/schemas/finding.v1.json",
+  "title": "Terrain Finding",
+  "description": "A single result from one Terrain rule. Stable from v0.2.0 per docs/PRODUCT.md §8 and §18.",
+  "type": "object",
+  "required": ["version", "rule_id", "severity", "primary_loc", "short_message", "docs_url"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version. Stable from v0.2.0; one-cycle deprecation on changes."
+    },
+    "rule_id": {
+      "type": "string",
+      "pattern": "^terrain/[a-z]+/[a-z0-9-]+$",
+      "description": "Stable rule identifier. Format: terrain/<category>/<rule-name>, lowercase, hyphenated."
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["error", "warning", "notice"],
+      "description": "error: gate-blocking, emitted as JUnit failure. warning: advisory, Step Summary + annotations only (not in JUnit). notice: informational."
+    },
+    "tier": {
+      "type": "string",
+      "enum": ["stable", "preview"],
+      "description": "Rule tier at the time of emission. Preview rules ship default-off."
+    },
+    "primary_loc": {
+      "$ref": "#/$defs/location",
+      "description": "Where the assertion / detection fired."
+    },
+    "cause_loc": {
+      "$ref": "#/$defs/location",
+      "description": "Where the change that caused this finding lives. Often equals primary_loc."
+    },
+    "cause_path": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/location" },
+      "description": "Ordered chain of graph nodes from primary_loc back to cause_loc, traversing the unified dependency graph. Empty for findings without cross-stack causation."
+    },
+    "short_message": {
+      "type": "string",
+      "maxLength": 280,
+      "description": "Single-line summary; used in JUnit failure message, GH annotation title, terminal first line."
+    },
+    "long_message": {
+      "type": "string",
+      "description": "Multi-line context; used in Step Summary and JUnit failure body."
+    },
+    "evidence": {
+      "$ref": "#/$defs/evidence",
+      "description": "Optional concrete evidence: I/O examples, before/after, metric deltas."
+    },
+    "suggestions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/suggestion" },
+      "description": "Ordered list of candidate fix actions."
+    },
+    "docs_url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Canonical rule page URL. Always terrain.dev/rules/<category>/<rule-name> for shipped rules."
+    },
+    "reproduction": {
+      "type": "string",
+      "description": "Exact CLI command to reproduce this finding locally. Required for LB-4 (local reproduction parity)."
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Rule-specific structured metadata. Schema is per-rule; consumers should not depend on specific keys without coordinating with the rule's doc page."
+    }
+  },
+  "$defs": {
+    "location": {
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "Repo-relative file path."
+        },
+        "line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "end_line": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "end_column": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "node_kind": {
+          "type": "string",
+          "description": "Optional: the graph-node kind at this location (surface, eval, test, code_unit, etc.)."
+        },
+        "node_id": {
+          "type": "string",
+          "description": "Optional: the graph-node ID for cause-path traversal references."
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "io_examples": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["input", "expected"],
+            "properties": {
+              "input": { "type": "string" },
+              "expected": { "type": "string" },
+              "actual": { "type": "string" }
+            }
+          },
+          "description": "For regression / snapshot rules: concrete I/O examples showing before/after behavior."
+        },
+        "metric_delta": {
+          "type": "object",
+          "required": ["name", "before", "after"],
+          "properties": {
+            "name": { "type": "string" },
+            "before": { "type": "number" },
+            "after": { "type": "number" },
+            "threshold": { "type": "number" },
+            "confidence_alpha": { "type": "number" }
+          },
+          "description": "For metric-based rules: the measurement that triggered."
+        },
+        "code_excerpt": {
+          "type": "string",
+          "description": "Source code excerpt at the location. Subject to redaction per `redact_source: true` in terrain.yaml."
+        }
+      }
+    },
+    "suggestion": {
+      "type": "object",
+      "required": ["text"],
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "Human-readable suggestion."
+        },
+        "applies_to": {
+          "$ref": "#/$defs/location",
+          "description": "Where this suggestion applies, if more specific than the finding's primary_loc."
+        },
+        "command": {
+          "type": "string",
+          "description": "If the suggestion can be applied by running a command, the command. Optional."
+        }
+      }
+    }
+  }
+}

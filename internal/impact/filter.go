@@ -12,7 +12,7 @@ func FilterByOwner(result *ImpactResult, owner string) *ImpactResult {
 		Scope:              result.Scope,
 		ChangedAreas:       result.ChangedAreas,
 		AffectedBehaviors:  result.AffectedBehaviors,
-		ImpactedScenarios:  result.ImpactedScenarios,
+		ImpactedEvals:  result.ImpactedEvals,
 		Graph:              result.Graph,
 		Posture:            result.Posture,
 		CoverageConfidence: result.CoverageConfidence,

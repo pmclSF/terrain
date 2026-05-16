@@ -122,7 +122,10 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 			continue
 		}
 		emitted[comp.Path] = true
-		out = append(out, buildEmbeddingChangeSignal(comp.Path, comp.Line, comp.Config.ModelName, 1, models.EvidenceStrong, 0.85))
+		// 2026-05-11 confidence recalibration: structured-config path
+		// dropped from 0.85 to 0.55 — clean ML harvest LB 0.25 on
+		// 7-firing sample. Re-evaluate after AI clean harvest lands.
+		out = append(out, buildEmbeddingChangeSignal(comp.Path, comp.Line, comp.Config.ModelName, 1, models.EvidenceStrong, 0.55))
 	}
 
 	candidatePaths := d.gatherSourcePaths(snap)
@@ -135,7 +138,8 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 			continue
 		}
 		emitted[rel] = true
-		out = append(out, buildEmbeddingChangeSignal(rel, hits[0].Line, hits[0].Identifier, len(hits), models.EvidenceModerate, 0.8))
+		// Same recalibration; pattern-scan path declared 0.8 → 0.50.
+		out = append(out, buildEmbeddingChangeSignal(rel, hits[0].Line, hits[0].Identifier, len(hits), models.EvidenceModerate, 0.50))
 	}
 	return out
 }
@@ -167,7 +171,7 @@ func buildEmbeddingChangeSignal(path string, line int, identifier string, matche
 		Actionability:   models.ActionabilityScheduled,
 		LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 		AIRelevance:     models.AIRelevanceHigh,
-		RuleID:          "TER-AI-110",
+		RuleID:          "terrain/ai/embedding-model-change",
 		RuleURI:         "docs/rules/ai/embedding-model-change.md",
 		DetectorVersion: "0.2.0",
 		ConfidenceDetail: &models.ConfidenceDetail{
@@ -208,7 +212,7 @@ func (d *EmbeddingModelChangeDetector) gatherSourcePaths(snap *models.TestSuiteS
 	for _, tf := range snap.TestFiles {
 		add(tf.Path)
 	}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		add(sc.Path)
 	}
 	for _, surface := range snap.CodeSurfaces {
@@ -228,7 +232,7 @@ func hasRetrievalCoverage(snap *models.TestSuiteSnapshot) bool {
 			retrievalSurfaces[surface.SurfaceID] = true
 		}
 	}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		hay := strings.ToLower(sc.Category + " " + sc.Name + " " + sc.Description)
 		for _, marker := range retrievalCategoryMarkers {
 			if strings.Contains(hay, marker) {

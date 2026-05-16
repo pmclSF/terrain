@@ -387,7 +387,7 @@ func deriveMigrationPosture(snap *models.TestSuiteSnapshot) migrationPosture {
 		}
 	}
 
-	// Readiness band (same thresholds as migration.deriveReadiness).
+	// Readiness band (same thresholds as framework_migration.deriveReadiness).
 	var band string
 	if totalFiles == 0 {
 		band = "unknown"

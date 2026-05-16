@@ -54,7 +54,7 @@ func (d *SafetyEvalMissingDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 	//   1. Explicit: scenario.CoveredSurfaceIDs lists surface IDs.
 	//   2. Implicit: scenario sits in an eval directory with empty
 	//      CoveredSurfaceIDs (the common shape produced by
-	//      DeriveScenarios). Pre-0.2.x this case caused the detector
+	//      DeriveEvals). Pre-0.2.x this case caused the detector
 	//      to flood false positives on every safety-critical surface
 	//      in repos using auto-derived scenarios — the default path.
 	//      We now treat such scenarios as covering all
@@ -62,7 +62,7 @@ func (d *SafetyEvalMissingDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 	//      directory as the scenario.
 	safelyCoveredSurfaces := map[string]bool{}
 	safelyCoveredDirs := map[string]bool{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		if !scenarioLooksSafety(sc) {
 			continue
 		}
@@ -108,7 +108,7 @@ func (d *SafetyEvalMissingDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 			Actionability:   models.ActionabilityScheduled,
 			LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageTestAuthoring},
 			AIRelevance:     models.AIRelevanceHigh,
-			RuleID:          "TER-AI-100",
+			RuleID:          "terrain/ai/safety-eval-missing",
 			RuleURI:         "docs/rules/ai/safety-eval-missing.md",
 			DetectorVersion: "0.2.0",
 			ConfidenceDetail: &models.ConfidenceDetail{
@@ -131,7 +131,7 @@ func (d *SafetyEvalMissingDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 
 // scenarioLooksSafety returns true when the scenario's Category, Name,
 // or Description contains a safety-shaped marker.
-func scenarioLooksSafety(sc models.Scenario) bool {
+func scenarioLooksSafety(sc models.Eval) bool {
 	hay := strings.ToLower(sc.Category + " " + sc.Name + " " + sc.Description)
 	for _, m := range safetyCategoryMarkers {
 		if strings.Contains(hay, m) {

@@ -173,11 +173,11 @@ func TestBracketedVerdict(t *testing.T) {
 		in   string
 		want string
 	}{
-		{"well_protected", "[PASS]"},
-		{"partially_protected", "[WARN]"},
-		{"weakly_protected", "[RISK]"},
-		{"high_risk", "[FAIL]"},
-		{"evidence_limited", "[INFO]"},
+		{"strong", "[PASS]"},
+		{"moderate", "[WARN]"},
+		{"weak", "[RISK]"},
+		{"critical", "[FAIL]"},
+		{"unknown", "[INFO]"},
 		{"", "[????]"},
 		{"weird-unknown-band", "[????]"},
 	}

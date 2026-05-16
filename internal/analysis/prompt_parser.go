@@ -85,13 +85,25 @@ func parseJSPrompts(relPath, src string) []models.CodeSurface {
 	lines := strings.Split(src, "\n")
 
 	// 1. Multi-role message arrays (structural detection).
-	// Count role entries — 2+ distinct roles = message array.
+	// Self-corroborating: {role: "system|user|assistant"} ×2+ is
+	// highly AI-specific. Run unconditional.
 	roleMatches := jsMultiRolePattern.FindAllStringIndex(src, -1)
 	if len(roleMatches) >= 2 {
 		// Find the line of the first match.
 		offset := roleMatches[0][0]
 		line := 1 + strings.Count(src[:offset], "\n")
 		add("message_array", "["+models.DetectorLangChainConstructor+"] structured message array with "+strconv.Itoa(len(roleMatches))+" role entries", line, 0.92, models.TierSemantic)
+	}
+
+	// Passes 2-4 require per-file AI corroboration. The 2-marker
+	// threshold inside passes is not sufficient: technical docs in
+	// non-AI codebases (Angular shadow_css.ts, framework readmes)
+	// embed phrases like "you are" / "do not" / "given the context"
+	// in template literals and trip the aiStringMarkers regex.
+	// Verified 9 false-positive template_prompt firings across
+	// angular HEAD before this gate.
+	if !HasAIContextJS(src) {
+		return surfaces
 	}
 
 	// 2. Template literals with AI content.
@@ -183,12 +195,19 @@ func parsePythonPrompts(relPath, src string) []models.CodeSurface {
 		})
 	}
 
-	// 1. Multi-role message arrays.
+	// 1. Multi-role message arrays. Self-corroborating: run unconditional.
 	roleMatches := pyMultiRolePattern.FindAllStringIndex(src, -1)
 	if len(roleMatches) >= 2 {
 		offset := roleMatches[0][0]
 		line := 1 + strings.Count(src[:offset], "\n")
 		add("message_array", "["+models.DetectorLangChainConstructor+"] structured message array with "+strconv.Itoa(len(roleMatches))+" role entries", line, 0.92, models.TierSemantic)
+	}
+
+	// Passes 2-3 require per-file AI corroboration — same rationale as
+	// the JS pass: aiStringMarkers content matches in non-AI docstrings
+	// trip the 2-marker threshold without genuine AI context.
+	if !HasAIContextPython(src) {
+		return surfaces
 	}
 
 	// 2. Triple-quote strings with AI content.

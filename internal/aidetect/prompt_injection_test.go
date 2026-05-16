@@ -37,6 +37,7 @@ func TestPromptInjection_FlagsConcatAssignment(t *testing.T) {
 
 	root := t.TempDir()
 	rel := writeFile(t, root, "handler.js", `
+const OpenAI = require('openai');
 function handle(req, res) {
   let prompt = "You are an assistant. ";
   prompt += req.body.message;

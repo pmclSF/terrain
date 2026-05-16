@@ -25,14 +25,14 @@ type Artifact struct {
 	Repository string `json:"repository,omitempty"`
 
 	// Scenarios contains per-scenario execution results.
-	Scenarios []ScenarioResult `json:"scenarios"`
+	Scenarios []EvalResult `json:"scenarios"`
 
 	// Summary contains aggregate execution counts.
 	Summary Summary `json:"summary"`
 }
 
-// ScenarioResult holds execution results for a single eval scenario.
-type ScenarioResult struct {
+// EvalResult holds execution results for a single eval scenario.
+type EvalResult struct {
 	// ScenarioID matches Terrain's Scenario.ScenarioID for joining.
 	ScenarioID string `json:"scenarioId"`
 

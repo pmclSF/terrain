@@ -104,17 +104,17 @@ func TestAIWorkflow_PipelineLoadsScenarios(t *testing.T) {
 	}
 	snap := result.Snapshot
 
-	if len(snap.Scenarios) == 0 {
+	if len(snap.Evals) == 0 {
 		t.Fatal("expected scenarios to be loaded from .terrain/terrain.yaml and auto-derived")
 	}
 	// At least 3 from YAML, potentially more from auto-derivation.
-	if len(snap.Scenarios) < 3 {
-		t.Errorf("expected at least 3 scenarios, got %d", len(snap.Scenarios))
+	if len(snap.Evals) < 3 {
+		t.Errorf("expected at least 3 scenarios, got %d", len(snap.Evals))
 	}
 
 	// Verify scenario fields populated.
 	found := false
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		if sc.Name == "classifier-accuracy" {
 			found = true
 			if sc.Category != "accuracy" {
@@ -159,7 +159,7 @@ func TestAIWorkflow_ImpactDetectsScenarios(t *testing.T) {
 
 	// The diff adds classifier.py which contains classify/batch_classify.
 	// The classifier-accuracy scenario covers those surfaces.
-	if len(impactResult.ImpactedScenarios) == 0 {
+	if len(impactResult.ImpactedEvals) == 0 {
 		// Scenario detection depends on surface IDs matching exactly.
 		// Even if surfaces don't match due to naming, the impact should still
 		// produce changed areas with the classifier file.
@@ -205,7 +205,7 @@ func TestAIWorkflow_ExplainScenario(t *testing.T) {
 
 	// Build a minimal ImpactResult with an impacted scenario.
 	impactResult := &impact.ImpactResult{
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{
 				ScenarioID:       "scenario:custom:classifier-accuracy",
 				Name:             "classifier-accuracy",
@@ -222,7 +222,7 @@ func TestAIWorkflow_ExplainScenario(t *testing.T) {
 	}
 
 	// Explain by scenario ID.
-	se, err := explain.ExplainScenario("scenario:custom:classifier-accuracy", impactResult)
+	se, err := explain.ExplainEval("scenario:custom:classifier-accuracy", impactResult)
 	if err != nil {
 		t.Fatalf("explain by ID: %v", err)
 	}
@@ -237,7 +237,7 @@ func TestAIWorkflow_ExplainScenario(t *testing.T) {
 	}
 
 	// Explain by scenario name.
-	se2, err := explain.ExplainScenario("classifier-accuracy", impactResult)
+	se2, err := explain.ExplainEval("classifier-accuracy", impactResult)
 	if err != nil {
 		t.Fatalf("explain by name: %v", err)
 	}
@@ -246,7 +246,7 @@ func TestAIWorkflow_ExplainScenario(t *testing.T) {
 	}
 
 	// Explain unknown scenario.
-	_, err = explain.ExplainScenario("nonexistent", impactResult)
+	_, err = explain.ExplainEval("nonexistent", impactResult)
 	if err == nil {
 		t.Error("expected error for unknown scenario")
 	}
@@ -255,7 +255,7 @@ func TestAIWorkflow_ExplainScenario(t *testing.T) {
 // TestAIWorkflow_ExplainScenario_NilResult ensures explain handles nil gracefully.
 func TestAIWorkflow_ExplainScenario_NilResult(t *testing.T) {
 	t.Parallel()
-	_, err := explain.ExplainScenario("anything", nil)
+	_, err := explain.ExplainEval("anything", nil)
 	if err == nil {
 		t.Error("expected error for nil impact result")
 	}
@@ -386,13 +386,13 @@ func TestAIWorkflow_FullChain_Deterministic(t *testing.T) {
 	snap1 := run()
 	snap2 := run()
 
-	if len(snap1.Scenarios) != len(snap2.Scenarios) {
-		t.Fatalf("non-deterministic scenario count: %d vs %d", len(snap1.Scenarios), len(snap2.Scenarios))
+	if len(snap1.Evals) != len(snap2.Evals) {
+		t.Fatalf("non-deterministic scenario count: %d vs %d", len(snap1.Evals), len(snap2.Evals))
 	}
-	for i := range snap1.Scenarios {
-		if snap1.Scenarios[i].ScenarioID != snap2.Scenarios[i].ScenarioID {
-			t.Errorf("non-deterministic scenario ID at %d: %s vs %s",
-				i, snap1.Scenarios[i].ScenarioID, snap2.Scenarios[i].ScenarioID)
+	for i := range snap1.Evals {
+		if snap1.Evals[i].EvalID != snap2.Evals[i].EvalID {
+			t.Errorf("non-deterministic eval ID at %d: %s vs %s",
+				i, snap1.Evals[i].EvalID, snap2.Evals[i].EvalID)
 		}
 	}
 	if len(snap1.CodeSurfaces) != len(snap2.CodeSurfaces) {

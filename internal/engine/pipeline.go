@@ -102,6 +102,10 @@ type PipelineOptions struct {
 	// SlowTestThresholdMs overrides the default slow test threshold.
 	SlowTestThresholdMs float64
 
+	// EnablePreviewRules turns on the §9 preview-tier detectors.
+	// Default off; surface via `terrain analyze --preview`.
+	EnablePreviewRules bool
+
 	// CollectDiagnostics enables pipeline timing and count diagnostics.
 	CollectDiagnostics bool
 
@@ -425,7 +429,7 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		}
 		scenarios := terrainCfg.ToScenarios()
 		if len(scenarios) > 0 {
-			snapshot.Scenarios = append(snapshot.Scenarios, scenarios...)
+			snapshot.Evals = append(snapshot.Evals, scenarios...)
 		}
 	}
 
@@ -436,30 +440,30 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	// inner loop — pre-Track 5.3 a slow AI scan would block until the
 	// walk completed even when ctx had been cancelled.
 	aiDetection := aidetect.DetectContext(ctx, root)
-	derivedScenarios := aidetect.DeriveScenarios(root, aiDetection, snapshot.CodeSurfaces, snapshot.TestFiles)
+	derivedScenarios := aidetect.DeriveEvals(root, aiDetection, snapshot.CodeSurfaces, snapshot.TestFiles)
 	if len(derivedScenarios) > 0 {
 		// Merge with manual scenarios, avoiding duplicates by ID or by
 		// name+path (manual YAML and auto-derived may have different IDs
 		// but represent the same logical scenario).
 		existingIDs := map[string]bool{}
 		existingKeys := map[string]bool{}
-		for _, s := range snapshot.Scenarios {
-			existingIDs[s.ScenarioID] = true
+		for _, s := range snapshot.Evals {
+			existingIDs[s.EvalID] = true
 			existingKeys[s.Name+"|"+s.Path] = true
 		}
 		for _, ds := range derivedScenarios {
-			if existingIDs[ds.ScenarioID] || existingKeys[ds.Name+"|"+ds.Path] {
+			if existingIDs[ds.EvalID] || existingKeys[ds.Name+"|"+ds.Path] {
 				continue
 			}
-			snapshot.Scenarios = append(snapshot.Scenarios, ds)
+			snapshot.Evals = append(snapshot.Evals, ds)
 		}
 	}
 
 	// Step 2d: Infer capabilities on scenarios from naming, paths, and surfaces.
-	analysis.InferCapabilities(snapshot.Scenarios, snapshot.CodeSurfaces)
+	analysis.InferCapabilities(snapshot.Evals, snapshot.CodeSurfaces)
 
 	// Step 2e: Infer AI capabilities from surface kinds (framework-agnostic).
-	snapshot.InferredCapabilities = analysis.InferAICapabilities(snapshot.CodeSurfaces, snapshot.Scenarios)
+	snapshot.InferredCapabilities = analysis.InferAICapabilities(snapshot.CodeSurfaces, snapshot.Evals)
 
 	// Step 3: Runtime ingestion and health detection (optional).
 	if len(opt.RuntimePaths) > 0 {
@@ -645,6 +649,7 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		PolicyConfig:        policyCfg,
 		RuntimeResults:      runtimeResultsPtr,
 		SlowTestThresholdMs: opt.SlowTestThresholdMs,
+		EnablePreviewRules:  opt.EnablePreviewRules,
 	})
 	if regErr != nil {
 		return nil, fmt.Errorf("initialize detector registry: %w", regErr)
@@ -688,6 +693,13 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	}
 
 	normalizeSignalMetadata(snapshot)
+
+	// Apply severity-from-lift (Tier 5.3): each signal's severity is
+	// re-evaluated against corpus evidence. Detectors with weak lift get
+	// demoted; detectors with no evidence get fail-closed-capped.
+	// Evidence-attached metadata also lands on the Signal for downstream
+	// consumers (terrain explain, etc.) to render trustfully.
+	applyEvidenceBasedSeverity(snapshot)
 
 	// Attach file-scoped signals to their corresponding test files.
 	attachSignalsToTestFiles(snapshot)

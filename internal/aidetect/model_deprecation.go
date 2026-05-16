@@ -88,6 +88,45 @@ var modelScanExts = map[string]bool{
 	".go": true, ".java": true, ".rb": true, ".rs": true,
 }
 
+// isDeprecationFixturePath returns true when the path is a place
+// where deprecated model names appear by reference, not by use:
+// test code (pins specific versions for behavior testing), docs
+// (historical references), GitHub issue templates (ask users which
+// model they hit a bug with), changelogs. The detector skips these
+// paths because they don't represent runtime calls that would break.
+func isDeprecationFixturePath(relPath string) bool {
+	lower := strings.ToLower(filepath.ToSlash(relPath))
+	// Leading-prefix matches.
+	if strings.HasPrefix(lower, "test/") ||
+		strings.HasPrefix(lower, "tests/") ||
+		strings.HasPrefix(lower, "docs/") ||
+		strings.HasPrefix(lower, "doc/") ||
+		strings.HasPrefix(lower, ".github/") ||
+		strings.HasPrefix(lower, ".gitlab/") ||
+		strings.HasPrefix(lower, "examples/") ||
+		strings.HasPrefix(lower, "changelog") {
+		return true
+	}
+	// Substring matches (monorepo / nested).
+	subs := []string{
+		"/test/", "/tests/", "/docs/", "/doc/",
+		"/.github/", "/examples/",
+		"/changelog", "/CHANGELOG",
+	}
+	for _, s := range subs {
+		if strings.Contains(lower, s) {
+			return true
+		}
+	}
+	// Specific file-name patterns.
+	base := strings.ToLower(filepath.Base(relPath))
+	if base == "changelog.md" || base == "history.md" ||
+		base == "release_notes.md" || base == "release-notes.md" {
+		return true
+	}
+	return false
+}
+
 // ModelDeprecationDetector flags references to deprecated or floating
 // model tags in repository config and source files. Lives in the AI
 // domain because the consequence is "your eval / agent silently drifts
@@ -109,6 +148,19 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 
 	var out []models.Signal
 	for _, relPath := range paths {
+		// Skip non-actionable paths: test code, docs, GitHub issue
+		// templates, changelogs, etc. Verified on the 70-repo
+		// ML-specialized corpus: 22 of 64 aiModelDeprecationRisk
+		// firings on FLAML were in `test/autogen/`, `.github/
+		// ISSUE_TEMPLATE/`, `docs/content/` — places where deprecated
+		// model names appear by reference (tests pin specific
+		// versions for behavior testing; issue templates ask users
+		// which model they used; docs reference models historically).
+		// None of those are "your production code uses a deprecated
+		// model and the next API call will break."
+		if isDeprecationFixturePath(relPath) {
+			continue
+		}
 		abs := filepath.Join(d.Root, relPath)
 		hits := scanFileForModelTags(abs)
 		for _, h := range hits {
@@ -136,7 +188,7 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 				Actionability:   models.ActionabilityScheduled,
 				LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 				AIRelevance:     models.AIRelevanceHigh,
-				RuleID:          "TER-AI-106",
+				RuleID:          "terrain/ai/model-deprecation-risk",
 				RuleURI:         "docs/rules/ai/model-deprecation-risk.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{

@@ -12,7 +12,7 @@ import (
 	"github.com/pmclSF/terrain/internal/comparison"
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/metrics"
-	"github.com/pmclSF/terrain/internal/migration"
+	"github.com/pmclSF/terrain/internal/framework_migration"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/reporting"
 )
@@ -30,7 +30,7 @@ func runMigration(subCmd, root string, jsonOutput bool, file, scope string) erro
 
 	switch subCmd {
 	case "readiness":
-		readiness := migration.ComputeReadiness(result.Snapshot)
+		readiness := framework_migration.ComputeReadiness(result.Snapshot)
 		if jsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
@@ -40,7 +40,7 @@ func runMigration(subCmd, root string, jsonOutput bool, file, scope string) erro
 		return nil
 
 	case "blockers":
-		readiness := migration.ComputeReadiness(result.Snapshot)
+		readiness := framework_migration.ComputeReadiness(result.Snapshot)
 		if jsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")
@@ -56,7 +56,7 @@ func runMigration(subCmd, root string, jsonOutput bool, file, scope string) erro
 
 	case "preview":
 		if file != "" {
-			preview := migration.PreviewFile(result.Snapshot, file, absRoot)
+			preview := framework_migration.PreviewFile(result.Snapshot, file, absRoot)
 			if jsonOutput {
 				enc := json.NewEncoder(os.Stdout)
 				enc.SetIndent("", "  ")
@@ -66,7 +66,7 @@ func runMigration(subCmd, root string, jsonOutput bool, file, scope string) erro
 			return nil
 		}
 		// Scope-based preview
-		previews := migration.PreviewScope(result.Snapshot, scope, absRoot)
+		previews := framework_migration.PreviewScope(result.Snapshot, scope, absRoot)
 		if jsonOutput {
 			enc := json.NewEncoder(os.Stdout)
 			enc.SetIndent("", "  ")

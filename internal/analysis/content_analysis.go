@@ -27,35 +27,88 @@ func analyzeTestFileContentCached(tf *models.TestFile, root string) string {
 	return src
 }
 
-// JS/TS patterns
+// Assertion-counting patterns. Expanded 2026-05-11 based on a
+// 25-sample hand-label of weakAssertion firings that found 18/25 FPs
+// due to missed assertion vocabulary (test-helper delegation,
+// framework-specific assertion families like chex/chispa/torch.testing,
+// JUnit @Test(expected=) form, Mockito verify() as quasi-assertion).
 var (
-	jsTestPattern     = regexp.MustCompile(`\b(it|test)\s*\(`)
-	jsExpectPattern   = regexp.MustCompile(`\bexpect\s*\(`)
-	jsAssertPattern   = regexp.MustCompile(`\bassert\s*[\.(]`)
+	// JS/TS patterns
+	jsTestPattern   = regexp.MustCompile(`\b(it|test)\s*\(`)
+	jsExpectPattern = regexp.MustCompile(`\bexpect\s*\(`)
+	// Expanded from \bassert\s*[\.(]: add chai's should(), Sinon's
+	// sinon.assert.*, cypress shorthand cy.should(), nodejs assert
+	// module's strict/equal/deepEqual.
+	jsAssertPattern = regexp.MustCompile(
+		`\bassert\s*[\.(]|` +
+			`\bshould\s*[\.(]|` +
+			`\bsinon\.assert\.|` +
+			`\bcy\.(?:should|expect)\s*\(|` +
+			`\bassert(?:Strict)?Equal\b|\bdeepEqual\b`)
 	jsMockPattern     = regexp.MustCompile(`\b(jest\.mock|jest\.fn|jest\.spyOn|vi\.mock|vi\.fn|vi\.spyOn|sinon\.stub|sinon\.mock|sinon\.spy|\.mockImplementation|\.mockReturnValue|\.mockResolvedValue)\b`)
 	jsSnapshotPattern = regexp.MustCompile(`\b(toMatchSnapshot|toMatchInlineSnapshot|matchSnapshot)\b`)
 
 	// JS/TS skip patterns: it.skip, test.skip, describe.skip, xit, xdescribe, xtest
 	jsSkipPattern = regexp.MustCompile(`\b(it\.skip|test\.skip|describe\.skip|xit|xdescribe|xtest)\s*\(`)
 
-	// Go patterns
-	goTestPattern   = regexp.MustCompile(`func\s+Test\w+\s*\(`)
-	goAssertPattern = regexp.MustCompile(`\b(t\.Error|t\.Errorf|t\.Fatal|t\.Fatalf|assert\.|require\.)\b`)
-	goSkipPattern   = regexp.MustCompile(`\bt\.Skip\w*\s*\(`)
+	// Go patterns. Helper-delegation (e.g. cryptotest.TestBlockMode in
+	// stdlib crypto tests) is impossible to detect by regex alone, so
+	// we widen to common helper-method namespaces: *.TestX, suite.Equal,
+	// gomega.Expect, ginkgo.By. False positives here are acceptable —
+	// our concern is missed assertions becoming false-negative weak-
+	// assertion flags.
+	goTestPattern = regexp.MustCompile(`func\s+Test\w+\s*\(`)
+	goAssertPattern = regexp.MustCompile(
+		`\b(?:t\.Error|t\.Errorf|t\.Fatal|t\.Fatalf|` +
+			`assert\.|require\.|` +
+			`suite\.(?:Equal|NotEqual|Nil|NotNil|True|False|Error|NoError)|` +
+			`gomega\.Expect\s*\(|\.Should\s*\(|` +
+			`ginkgo\.(?:By|Expect)\s*\(|` +
+			`testify/suite|` +
+			// Helper-method patterns: <pkg>.Test*, common test-helper namespaces.
+			`cryptotest\.|fstest\.|httptest\.)\b`)
+	goSkipPattern = regexp.MustCompile(`\bt\.Skip\w*\s*\(`)
 
-	// Python patterns
-	pyTestPattern   = regexp.MustCompile(`\bdef\s+test_\w+`)
-	pyAssertPattern = regexp.MustCompile(`\b(assert\s|self\.assert|pytest\.raises)\b`)
-	pyMockPattern   = regexp.MustCompile(`\b(mock\.patch|Mock\(|MagicMock\(|@patch)\b`)
-	pySkipPattern   = regexp.MustCompile(`(@pytest\.mark\.skip|@unittest\.skip|@skip\b|pytest\.skip\s*\()`)
+	// Python patterns. Expanded for ML/scientific Python:
+	// numpy/torch/jax testing modules, pandas tm.assert_*,
+	// pyspark chispa, pytest plugins.
+	pyTestPattern = regexp.MustCompile(`\bdef\s+test_\w+`)
+	pyAssertPattern = regexp.MustCompile(
+		`\b(?:` +
+			`assert\s|self\.assert|pytest\.raises|` +
+			`np\.testing\.assert_|numpy\.testing\.assert_|` +
+			`torch\.testing\.assert_|pt\.testing\.assert_|` +
+			`tf\.test\.|tensorflow\.test\.|` +
+			`chex\.assert_|jax\.test_util\.|` +
+			`tm\.assert_|pd\.testing\.assert_|pandas\.testing\.assert_|` +
+			`chispa\.|assert_df_equality|` +
+			`assertEqual|assertAlmostEqual|assertIn|assertTrue|assertFalse|` +
+			`assertRaises|assertIsInstance|assertIsNone|assertIsNotNone|` +
+			`raises\s*\(|raises_exception\s*\(` +
+			`)`)
+	pyMockPattern = regexp.MustCompile(`\b(mock\.patch|Mock\(|MagicMock\(|@patch)\b`)
+	pySkipPattern = regexp.MustCompile(`(@pytest\.mark\.skip|@unittest\.skip|@skip\b|pytest\.skip\s*\()`)
 
 	// Java skip patterns
 	javaSkipPattern = regexp.MustCompile(`(@Disabled|@Ignore)\b`)
 
-	// Java patterns
-	javaTestPattern   = regexp.MustCompile(`@Test\b`)
-	javaAssertPattern = regexp.MustCompile(`\b(assert\w+\s*\(|assertThat\s*\()`)
-	javaMockPattern   = regexp.MustCompile(`\b(mock\(|when\(|verify\(|@Mock|Mockito\.)`)
+	// Java patterns. Expanded for:
+	//   - @Test(expected=…)            JUnit 4 exception-expectation form
+	//   - assertThrows / assertDoesNotThrow JUnit 5
+	//   - Mockito verify() — semantically an assertion on call shape
+	//   - Hamcrest fluent matchers (assertThat is already caught)
+	//   - RxJava TestObserver.assert*
+	javaTestPattern = regexp.MustCompile(`@Test\b`)
+	javaAssertPattern = regexp.MustCompile(
+		`\b(?:` +
+			`assert\w+\s*\(|assertThat\s*\(|` +
+			`@Test\s*\(\s*expected\s*=|` +
+			`@Test\s*\(\s*[^)]*expected\s*=|` +
+			`assertThrows\s*\(|assertDoesNotThrow\s*\(|` +
+			`verify\s*\(|verifyNoInteractions\s*\(|verifyZeroInteractions\s*\(|` +
+			`TestObserver\s*\(\s*\)|\.assertValue|\.assertResult|\.assertComplete|\.assertError|\.assertNoErrors` +
+			`)`)
+	javaMockPattern = regexp.MustCompile(`\b(mock\(|when\(|verify\(|@Mock|Mockito\.)`)
 )
 
 func countTests(src, framework string) int {

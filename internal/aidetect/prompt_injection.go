@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
 )
@@ -108,7 +109,11 @@ func (d *PromptInjectionDetector) Detect(snap *models.TestSuiteSnapshot) []model
 				Type:        signals.SignalAIPromptInjectionRisk,
 				Category:    models.CategoryAI,
 				Severity:    models.SeverityHigh,
-				Confidence:  0.7,
+				// 2026-05-11 corpus-driven recalibration: declared 0.7,
+				// clean-data LB 0.36 (7 firings cross-corpus). Demoted to
+				// 0.40 pending more data + hand-validation. Low firing
+				// volume makes the floor unstable.
+				Confidence:  0.40,
 				Location:    models.SignalLocation{File: relPath, Line: h.Line},
 				Explanation: h.Explanation,
 				SuggestedAction: "Use a prompt template with explicit user-content boundaries, or run user input through a sanitizer before concatenation.",
@@ -117,7 +122,7 @@ func (d *PromptInjectionDetector) Detect(snap *models.TestSuiteSnapshot) []model
 				Actionability:   models.ActionabilityScheduled,
 				LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageTestAuthoring},
 				AIRelevance:     models.AIRelevanceHigh,
-				RuleID:          "TER-AI-102",
+				RuleID:          "terrain/ai/prompt-injection-risk",
 				RuleURI:         "docs/rules/ai/prompt-injection-risk.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{
@@ -161,7 +166,26 @@ func scanFileForPromptInjection(path string) []injectionHit {
 	if err != nil {
 		return nil
 	}
-	lines := strings.Split(string(data), "\n")
+	// Gate on per-file AI context — same shape as the
+	// uncoveredAISurface fix. Without this, the prompt-injection
+	// patterns fire on plain string-template interpolation in
+	// non-AI code (Angular tutorial code with "${user.name}"
+	// templates, GitHub Actions deploy scripts with shell-like
+	// interpolation, etc.). Verified 117 firings on the non-AI
+	// 30-repo corpus pre-gate, all attributable to this issue.
+	src := string(data)
+	lower := strings.ToLower(path)
+	isPython := strings.HasSuffix(lower, ".py")
+	if isPython {
+		if !analysis.HasAIContextPython(src) {
+			return nil
+		}
+	} else {
+		if !analysis.HasAIContextJS(src) {
+			return nil
+		}
+	}
+	lines := strings.Split(src, "\n")
 	if len(lines) == 0 {
 		return nil
 	}

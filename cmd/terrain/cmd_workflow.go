@@ -367,7 +367,7 @@ func runReset(root string, yes, jsonOutput bool) error {
 				"message": "Use --yes to confirm removing conversion migration state.",
 			})
 		}
-		fmt.Println("This will remove Terrain conversion migration state under .terrain/migration.")
+		fmt.Println("This will remove Terrain conversion migration state under .terrain/framework_migration.")
 		fmt.Println("Use --yes to confirm.")
 		return nil
 	}

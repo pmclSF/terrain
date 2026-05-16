@@ -231,9 +231,9 @@ func TestEdgeCase_AIHeavyValidation(t *testing.T) {
 			{SurfaceID: "s3", Name: "load_dataset", Kind: models.SurfaceDataset, Path: "src/data/loader.py"},
 			{SurfaceID: "s4", Name: "predict", Kind: models.SurfaceFunction, Path: "src/model.py"},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc1", Name: "safety-check", Category: "safety", CoveredSurfaceIDs: []string{"s1", "s2"}},
-			{ScenarioID: "sc2", Name: "accuracy", Category: "accuracy", CoveredSurfaceIDs: []string{"s4"}},
+		Evals: []models.Eval{
+			{EvalID: "sc1", Name: "safety-check", Category: "safety", CoveredSurfaceIDs: []string{"s1", "s2"}},
+			{EvalID: "sc2", Name: "accuracy", Category: "accuracy", CoveredSurfaceIDs: []string{"s4"}},
 		},
 	}
 

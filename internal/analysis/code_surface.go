@@ -186,7 +186,12 @@ var (
 	// Context pattern: matches AI behavioral contracts. Patterns are specific
 	// to avoid false positives (e.g., "persona" requires AI prefix, "instruction"
 	// requires "dynamic" or "system" prefix, "contextTemplate" requires AI prefix).
-	jsContextPattern = regexp.MustCompile(`export\s+(?:const|let|var|async\s+function|function)\s+(\w*(?:[Ss]ystem[Mm]essage|[Ss]ystem[Pp]rompt|[Uu]ser[Mm]essage|[Ff]ew[Ss]hot|[Ss]afety[Oo]verlay|[Pp]olicy[Tt]ext|[Pp]olicy[Bb]lock|[Aa]i[Pp]ersona|[Ss]ystem[Pp]ersona|[Cc]hat[Pp]ersona|[Cc]ontext[Bb]uilder|[Aa]i[Cc]ontext|[Pp]rompt[Cc]ontext|[Cc]ustomer[Cc]ontext|[Aa]ccount[Cc]ontext|[Dd]ynamic[Ii]nstruction|[Ss]ystem[Ii]nstruction)\w*)`)
+	// FewShot match is tightened to require an AI-prompt-related
+	// suffix (Example / Prompt / Template / Message / Context /
+	// Demo / Exemplar) — same calibration as pyContextPattern.
+	// Pre-tighten, `FewShotMask` and similar DL/ML tensor variables
+	// matched and produced FPs in deep-learning libraries.
+	jsContextPattern = regexp.MustCompile(`export\s+(?:const|let|var|async\s+function|function)\s+(\w*(?:[Ss]ystem[Mm]essage|[Ss]ystem[Pp]rompt|[Uu]ser[Mm]essage|[Ff]ew[Ss]hot(?:[Ee]xample|[Pp]rompt|[Tt]emplate|[Mm]essage|[Cc]ontext|[Dd]emo|[Ee]xemplar)s?|[Ss]afety[Oo]verlay|[Pp]olicy[Tt]ext|[Pp]olicy[Bb]lock|[Aa]i[Pp]ersona|[Ss]ystem[Pp]ersona|[Cc]hat[Pp]ersona|[Cc]ontext[Bb]uilder|[Aa]i[Cc]ontext|[Pp]rompt[Cc]ontext|[Cc]ustomer[Cc]ontext|[Aa]ccount[Cc]ontext|[Dd]ynamic[Ii]nstruction|[Ss]ystem[Ii]nstruction)\w*)`)
 	jsDatasetPattern = regexp.MustCompile(`export\s+(?:const|let|var|async\s+function|function)\s+(\w*(?:[Dd]ataset|[Dd]ataloader|[Tt]raining[Dd]ata|[Ee]val[Dd]ata|[Ff]ixtures?Data)\w*)`)
 
 	// AI tool/function-calling patterns: schemas, descriptions, routing, parsing,
@@ -268,141 +273,156 @@ func (e *jsSurfaceExtractor) ExtractSurfaces(root, relPath string) []models.Code
 		}
 	}
 
-	// Pass 3a: Detect context surfaces (system messages, policy, few-shot, safety).
-	// Checked before prompts so context-specific names like systemPrompt are
-	// classified as context, not generic prompt.
-	for i, line := range lines {
-		if m := jsContextPattern.FindStringSubmatch(line); m != nil {
-			name := m[1]
-			sid := models.BuildSurfaceID(relPath, name, "")
-			if seen[sid] {
-				continue
+	// Passes 3a–8: AI-surface classifications (context, prompt, dataset,
+	// tool, retrieval, agent, eval). Gated on hasAIContextJS to suppress
+	// substring-match false positives on non-AI code — verified against
+	// the 80-repo non-AI OSS corpus where these patterns fired on
+	// Angular's HTTP `streaming_handler`, benchpress's
+	// `few_shot__DEFAULT_PROVIDERS`, deploy-script `eval_metric`, etc.
+	// without any LLM SDK import to corroborate.
+	//
+	// Files that match here but have no AI marker fall through to
+	// pass 9 and get classified as SurfaceFunction (correct for
+	// non-AI code; the same handler-shape passes 1 and 2 still
+	// classify HTTP routes/handlers above so we don't lose those).
+	if HasAIContextJS(src) {
+		// Pass 3a: Detect context surfaces (system messages, policy, few-shot, safety).
+		// Checked before prompts so context-specific names like systemPrompt are
+		// classified as context, not generic prompt.
+		for i, line := range lines {
+			if m := jsContextPattern.FindStringSubmatch(line); m != nil {
+				name := m[1]
+				sid := models.BuildSurfaceID(relPath, name, "")
+				if seen[sid] {
+					continue
+				}
+				add(models.CodeSurface{
+					SurfaceID:      sid,
+					Name:           name,
+					Path:           relPath,
+					Kind:           models.SurfaceContext,
+					Language:       "js",
+					Package:        pkg,
+					Line:           i + 1,
+					Exported:       true,
+					LinkedCodeUnit: buildUnitID(relPath, name, ""),
+				})
 			}
-			add(models.CodeSurface{
-				SurfaceID:      sid,
-				Name:           name,
-				Path:           relPath,
-				Kind:           models.SurfaceContext,
-				Language:       "js",
-				Package:        pkg,
-				Line:           i + 1,
-				Exported:       true,
-				LinkedCodeUnit: buildUnitID(relPath, name, ""),
-			})
 		}
-	}
 
-	// Pass 3b: Detect prompt definitions (templates, builders).
-	for i, line := range lines {
-		if m := jsPromptPattern.FindStringSubmatch(line); m != nil {
-			name := m[1]
-			sid := models.BuildSurfaceID(relPath, name, "")
-			if seen[sid] {
-				continue
+		// Pass 3b: Detect prompt definitions (templates, builders).
+		for i, line := range lines {
+			if m := jsPromptPattern.FindStringSubmatch(line); m != nil {
+				name := m[1]
+				sid := models.BuildSurfaceID(relPath, name, "")
+				if seen[sid] {
+					continue
+				}
+				add(models.CodeSurface{
+					SurfaceID:      sid,
+					Name:           name,
+					Path:           relPath,
+					Kind:           models.SurfacePrompt,
+					Language:       "js",
+					Package:        pkg,
+					Line:           i + 1,
+					Exported:       true,
+					LinkedCodeUnit: buildUnitID(relPath, name, ""),
+				})
 			}
-			add(models.CodeSurface{
-				SurfaceID:      sid,
-				Name:           name,
-				Path:           relPath,
-				Kind:           models.SurfacePrompt,
-				Language:       "js",
-				Package:        pkg,
-				Line:           i + 1,
-				Exported:       true,
-				LinkedCodeUnit: buildUnitID(relPath, name, ""),
-			})
 		}
-	}
 
-	// Pass 4: Detect dataset definitions.
-	for i, line := range lines {
-		if m := jsDatasetPattern.FindStringSubmatch(line); m != nil {
-			name := m[1]
-			sid := models.BuildSurfaceID(relPath, name, "")
-			if seen[sid] {
-				continue
+		// Pass 4: Detect dataset definitions.
+		for i, line := range lines {
+			if m := jsDatasetPattern.FindStringSubmatch(line); m != nil {
+				name := m[1]
+				sid := models.BuildSurfaceID(relPath, name, "")
+				if seen[sid] {
+					continue
+				}
+				add(models.CodeSurface{
+					SurfaceID:      sid,
+					Name:           name,
+					Path:           relPath,
+					Kind:           models.SurfaceDataset,
+					Language:       "js",
+					Package:        pkg,
+					Line:           i + 1,
+					Exported:       true,
+					LinkedCodeUnit: buildUnitID(relPath, name, ""),
+				})
 			}
-			add(models.CodeSurface{
-				SurfaceID:      sid,
-				Name:           name,
-				Path:           relPath,
-				Kind:           models.SurfaceDataset,
-				Language:       "js",
-				Package:        pkg,
-				Line:           i + 1,
-				Exported:       true,
-				LinkedCodeUnit: buildUnitID(relPath, name, ""),
-			})
 		}
-	}
 
-	// Pass 5: Tool definitions.
-	for i, line := range lines {
-		if m := jsToolDefPattern.FindStringSubmatch(line); m != nil {
-			name := m[1]
-			sid := models.BuildSurfaceID(relPath, name, "")
-			if seen[sid] {
-				continue
+		// Pass 5: Tool definitions.
+		for i, line := range lines {
+			if m := jsToolDefPattern.FindStringSubmatch(line); m != nil {
+				name := m[1]
+				sid := models.BuildSurfaceID(relPath, name, "")
+				if seen[sid] {
+					continue
+				}
+				add(models.CodeSurface{
+					SurfaceID: sid, Name: name, Path: relPath,
+					Kind: models.SurfaceToolDef, Language: "js",
+					Package: pkg, Line: i + 1, Exported: true,
+					LinkedCodeUnit: buildUnitID(relPath, name, ""),
+				})
 			}
-			add(models.CodeSurface{
-				SurfaceID: sid, Name: name, Path: relPath,
-				Kind: models.SurfaceToolDef, Language: "js",
-				Package: pkg, Line: i + 1, Exported: true,
-				LinkedCodeUnit: buildUnitID(relPath, name, ""),
-			})
 		}
-	}
 
-	// Pass 6: Retrieval/RAG surfaces.
-	for i, line := range lines {
-		if m := jsRetrievalPattern.FindStringSubmatch(line); m != nil {
-			name := m[1]
-			sid := models.BuildSurfaceID(relPath, name, "")
-			if seen[sid] {
-				continue
+		// Pass 6: Retrieval/RAG surfaces.
+		for i, line := range lines {
+			if m := jsRetrievalPattern.FindStringSubmatch(line); m != nil {
+				name := m[1]
+				sid := models.BuildSurfaceID(relPath, name, "")
+				if seen[sid] {
+					continue
+				}
+				add(models.CodeSurface{
+					SurfaceID: sid, Name: name, Path: relPath,
+					Kind: models.SurfaceRetrieval, Language: "js",
+					Package: pkg, Line: i + 1, Exported: true,
+					LinkedCodeUnit: buildUnitID(relPath, name, ""),
+				})
 			}
-			add(models.CodeSurface{
-				SurfaceID: sid, Name: name, Path: relPath,
-				Kind: models.SurfaceRetrieval, Language: "js",
-				Package: pkg, Line: i + 1, Exported: true,
-				LinkedCodeUnit: buildUnitID(relPath, name, ""),
-			})
 		}
-	}
 
-	// Pass 7: Agent/orchestration surfaces.
-	for i, line := range lines {
-		if m := jsAgentPattern.FindStringSubmatch(line); m != nil {
-			name := m[1]
-			sid := models.BuildSurfaceID(relPath, name, "")
-			if seen[sid] {
-				continue
+		// Pass 7: Agent/orchestration surfaces.
+		for i, line := range lines {
+			if m := jsAgentPattern.FindStringSubmatch(line); m != nil {
+				name := m[1]
+				sid := models.BuildSurfaceID(relPath, name, "")
+				if seen[sid] {
+					continue
+				}
+				add(models.CodeSurface{
+					SurfaceID: sid, Name: name, Path: relPath,
+					Kind: models.SurfaceAgent, Language: "js",
+					Package: pkg, Line: i + 1, Exported: true,
+					LinkedCodeUnit: buildUnitID(relPath, name, ""),
+				})
 			}
-			add(models.CodeSurface{
-				SurfaceID: sid, Name: name, Path: relPath,
-				Kind: models.SurfaceAgent, Language: "js",
-				Package: pkg, Line: i + 1, Exported: true,
-				LinkedCodeUnit: buildUnitID(relPath, name, ""),
-			})
 		}
-	}
 
-	// Pass 8: Eval definitions.
-	for i, line := range lines {
-		if m := jsEvalDefPattern.FindStringSubmatch(line); m != nil {
-			name := m[1]
-			sid := models.BuildSurfaceID(relPath, name, "")
-			if seen[sid] {
-				continue
+		// Pass 8: Eval definitions.
+		for i, line := range lines {
+			if m := jsEvalDefPattern.FindStringSubmatch(line); m != nil {
+				name := m[1]
+				sid := models.BuildSurfaceID(relPath, name, "")
+				if seen[sid] {
+					continue
+				}
+				add(models.CodeSurface{
+					SurfaceID: sid, Name: name, Path: relPath,
+					Kind: models.SurfaceEvalDef, Language: "js",
+					Package: pkg, Line: i + 1, Exported: true,
+					LinkedCodeUnit: buildUnitID(relPath, name, ""),
+				})
 			}
-			add(models.CodeSurface{
-				SurfaceID: sid, Name: name, Path: relPath,
-				Kind: models.SurfaceEvalDef, Language: "js",
-				Package: pkg, Line: i + 1, Exported: true,
-				LinkedCodeUnit: buildUnitID(relPath, name, ""),
-			})
 		}
-	}
+
+	} // end hasAIContextJS gate
 
 	// Pass 9: Exported functions and classes (same patterns as code unit extraction).
 	for i, line := range lines {
@@ -633,7 +653,15 @@ var (
 	// Python prompt: template requires AI prefix (prompt_template, chat_template, etc.).
 	pyPromptPattern = regexp.MustCompile(`^(?:def\s+(\w*(?:prompt|PROMPT|(?:prompt|chat|system|user|completion|llm|ai|model)_template)\w*)|(\w*(?:prompt|PROMPT|(?:prompt|chat|system|user|completion|llm|ai|model)_template)\w*)\s*=)`)
 	// Python context: persona requires ai_ prefix, instruction requires dynamic_/system_.
-	pyContextPattern   = regexp.MustCompile(`^(?:def\s+(\w*(?:system_message|system_prompt|user_message|few_shot|safety_overlay|policy_text|policy_block|ai_persona|system_persona|chat_persona|context_builder|ai_context|prompt_context|customer_context|account_context|dynamic_instruction|system_instruction)\w*)|(\w*(?:system_message|system_prompt|few_shot|safety_overlay|policy_text|policy_block|ai_persona|system_persona|context_builder|ai_context|prompt_context)\w*)\s*=)`)
+	// pyContextPattern matches AI context surfaces. `few_shot` was the
+	// main FP source pre-tightening: `few_shot_mask`, `few_shot_p`,
+	// `few_shot_user_feature_columns` in DeepCTR/DeepMatch tensor code
+	// matched the unconstrained `\w*few_shot\w*` form. The tightened
+	// pattern requires `few_shot` to be followed by an AI-prompt-related
+	// suffix (example, prompt, template, message, context, demo,
+	// exemplar) — `few_shot_mask` no longer matches; `few_shot_examples`
+	// still does.
+	pyContextPattern = regexp.MustCompile(`^(?:def\s+(\w*(?:system_message|system_prompt|user_message|few_shot_(?:example|prompt|template|message|context|demo|exemplar)s?|safety_overlay|policy_text|policy_block|ai_persona|system_persona|chat_persona|context_builder|ai_context|prompt_context|customer_context|account_context|dynamic_instruction|system_instruction)\w*)|(\w*(?:system_message|system_prompt|few_shot_(?:example|prompt|template|message|context|demo|exemplar)s?|safety_overlay|policy_text|policy_block|ai_persona|system_persona|context_builder|ai_context|prompt_context)\w*)\s*=)`)
 	pyDatasetPattern   = regexp.MustCompile(`^(?:def\s+(\w*(?:dataset|dataloader|training_data|eval_data|load_data)\w*)|(\w*(?:dataset|dataloader|training_data|eval_data)\w*)\s*=)`)
 	pyToolDefPattern   = regexp.MustCompile(`^(?:def\s+(\w*(?:tool_schema|tool_def|function_schema|function_def|tool_description|output_schema|structured_output|tool_routing|parser_schema|validator_schema|tool_guardrail|tool_availability|tool_budget|tool_retry|tool_fallback|tool_filter|tool_permission|allowed_tool)\w*)|(\w*(?:tool_schema|tool_def|function_schema|output_schema|structured_output|tool_guardrail|allowed_tool)\w*)\s*=)`)
 	pyRetrievalPattern = regexp.MustCompile(`^(?:def\s+(\w*(?:retriever|retrieval|vector_store|embedding_config|embedding_model|chunking|chunk_size|chunk_config|chunk_overlap|doc_split|document_split|reranker|rerank_config|document_loader|context_assembl|context_window|rag_config|rag_pipeline|search_query|query_rewrit|query_build|index_builder|citation|top_k|recall_setting|retrieval_filter|source_select)\w*)|(\w*(?:retriever|vector_store|embedding_config|chunk_config|chunk_size|rerank_config|rag_config|top_k|retrieval_filter)\w*)\s*=)`)
@@ -661,6 +689,13 @@ func (e *pythonSurfaceExtractor) ExtractSurfaces(root, relPath string) []models.
 		seen[s.SurfaceID] = true
 		surfaces = append(surfaces, s)
 	}
+
+	// Compute once: does this file have an AI marker? Used to gate
+	// the AI-kind classifications below so identifiers containing
+	// substrings like "few_shot" or "eval_metric" don't get classified
+	// as AI surfaces on non-AI Python code. Verified against the
+	// non-AI OSS corpus.
+	aiContext := HasAIContextPython(src)
 
 	// Pass 1: Route decorators (@app.route('/path')).
 	for i, line := range lines {
@@ -703,19 +738,19 @@ func (e *pythonSurfaceExtractor) ExtractSurfaces(root, relPath string) []models.
 			kind := models.SurfaceFunction
 			if pyHandlerPattern.MatchString(line) {
 				kind = models.SurfaceHandler
-			} else if pyToolDefPattern.MatchString(line) {
+			} else if aiContext && pyToolDefPattern.MatchString(line) {
 				kind = models.SurfaceToolDef
-			} else if pyRetrievalPattern.MatchString(line) {
+			} else if aiContext && pyRetrievalPattern.MatchString(line) {
 				kind = models.SurfaceRetrieval
-			} else if pyAgentPattern.MatchString(line) {
+			} else if aiContext && pyAgentPattern.MatchString(line) {
 				kind = models.SurfaceAgent
-			} else if pyEvalDefPattern.MatchString(line) {
+			} else if aiContext && pyEvalDefPattern.MatchString(line) {
 				kind = models.SurfaceEvalDef
-			} else if pyContextPattern.MatchString(line) {
+			} else if aiContext && pyContextPattern.MatchString(line) {
 				kind = models.SurfaceContext
-			} else if pyPromptPattern.MatchString(line) {
+			} else if aiContext && pyPromptPattern.MatchString(line) {
 				kind = models.SurfacePrompt
-			} else if pyDatasetPattern.MatchString(line) {
+			} else if aiContext && pyDatasetPattern.MatchString(line) {
 				kind = models.SurfaceDataset
 			}
 

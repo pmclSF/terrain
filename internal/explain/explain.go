@@ -547,9 +547,9 @@ func buildSelectionSummary(sel *SelectionExplanation, result *impact.ImpactResul
 	return strings.Join(parts, ", ") + "."
 }
 
-// ScenarioExplanation is the structured explanation for why a scenario
+// EvalExplanation is the structured explanation for why a scenario
 // is impacted by a change.
-type ScenarioExplanation struct {
+type EvalExplanation struct {
 	// ScenarioID is the scenario identifier.
 	ScenarioID string `json:"scenarioId"`
 
@@ -581,10 +581,17 @@ type ScenarioExplanation struct {
 	RelatedSurfaces *RelatedSurfaces `json:"relatedSurfaces,omitempty"`
 
 	// Signals lists AI signals related to this scenario.
-	Signals []ScenarioSignal `json:"signals,omitempty"`
+	Signals []EvalSignal `json:"signals,omitempty"`
 
-	// PolicyDecision describes the CI policy outcome for this scenario.
+	// PolicyDecision is the CI policy outcome for this scenario.
+	// Canonical actions: "pass" | "warn" | "block" (matches airun.Decision.Action
+	// per PRODUCT.md §16 vocabulary discipline). When PolicyDecision is "block"
+	// or "warn", PolicyReason carries the human-readable explanation.
 	PolicyDecision string `json:"policyDecision,omitempty"`
+
+	// PolicyReason carries the explanation when PolicyDecision is "block" or
+	// "warn". Empty when PolicyDecision is "pass" or unset.
+	PolicyReason string `json:"policyReason,omitempty"`
 }
 
 // RelatedSurfaces groups scenario-covered surfaces by kind.
@@ -611,25 +618,25 @@ type SurfaceRef struct {
 	Reason        string  `json:"reason,omitempty"`
 }
 
-// ScenarioSignal is an AI signal related to a scenario.
-type ScenarioSignal struct {
+// EvalSignal is an AI signal related to a scenario.
+type EvalSignal struct {
 	Type        string `json:"type"`
 	Severity    string `json:"severity"`
 	Explanation string `json:"explanation"`
 }
 
-// ExplainScenario produces a structured explanation for why a specific
+// ExplainEval produces a structured explanation for why a specific
 // scenario is impacted by the change described by the ImpactResult.
 //
 // The target can be a scenario ID or name.
-func ExplainScenario(target string, result *impact.ImpactResult) (*ScenarioExplanation, error) {
+func ExplainEval(target string, result *impact.ImpactResult) (*EvalExplanation, error) {
 	if result == nil {
 		return nil, fmt.Errorf("no impact result available")
 	}
 
 	target = strings.TrimSpace(target)
 
-	for _, sc := range result.ImpactedScenarios {
+	for _, sc := range result.ImpactedEvals {
 		if sc.ScenarioID == target || sc.Name == target {
 			verdict := fmt.Sprintf(
 				"Scenario %q is impacted because %d of its covered code surfaces changed.",
@@ -640,7 +647,7 @@ func ExplainScenario(target string, result *impact.ImpactResult) (*ScenarioExpla
 					sc.Name, sc.CoversSurfaces[0])
 			}
 
-			return &ScenarioExplanation{
+			return &EvalExplanation{
 				ScenarioID:      sc.ScenarioID,
 				Name:            sc.Name,
 				Category:        sc.Category,
@@ -657,19 +664,19 @@ func ExplainScenario(target string, result *impact.ImpactResult) (*ScenarioExpla
 	return nil, fmt.Errorf("scenario not found in impact analysis: %s", target)
 }
 
-// ExplainScenarioRich produces an enriched explanation with surface-kind
+// ExplainEvalRich produces an enriched explanation with surface-kind
 // breakdowns, signals, and policy decisions.
-func ExplainScenarioRich(target string, result *impact.ImpactResult, snap *models.TestSuiteSnapshot) (*ScenarioExplanation, error) {
-	base, err := ExplainScenario(target, result)
+func ExplainEvalRich(target string, result *impact.ImpactResult, snap *models.TestSuiteSnapshot) (*EvalExplanation, error) {
+	base, err := ExplainEval(target, result)
 	if err != nil {
 		return nil, err
 	}
 
 	// Find the source scenario for covered surface IDs.
-	var sourceScenario *models.Scenario
-	for i, sc := range snap.Scenarios {
-		if sc.ScenarioID == base.ScenarioID || sc.Name == base.Name {
-			sourceScenario = &snap.Scenarios[i]
+	var sourceScenario *models.Eval
+	for i, sc := range snap.Evals {
+		if sc.EvalID == base.ScenarioID || sc.Name == base.Name {
+			sourceScenario = &snap.Evals[i]
 			break
 		}
 	}
@@ -729,7 +736,7 @@ func ExplainScenarioRich(target string, result *impact.ImpactResult, snap *model
 	// Collect signals for this scenario.
 	for _, sig := range snap.Signals {
 		if sig.Category == models.CategoryAI && sig.Location.ScenarioID == base.ScenarioID {
-			base.Signals = append(base.Signals, ScenarioSignal{
+			base.Signals = append(base.Signals, EvalSignal{
 				Type: string(sig.Type), Severity: string(sig.Severity),
 				Explanation: sig.Explanation,
 			})
@@ -749,7 +756,8 @@ func ExplainScenarioRich(target string, result *impact.ImpactResult, snap *model
 		if md, ok := sig.Metadata["rule"]; ok {
 			rule, isStr := md.(string)
 			if isStr && (strings.HasPrefix(rule, "block_on_") || rule == "blocking_signal_types") {
-				base.PolicyDecision = "blocked: " + sig.Explanation
+				base.PolicyDecision = "block"
+				base.PolicyReason = sig.Explanation
 				break
 			}
 		}

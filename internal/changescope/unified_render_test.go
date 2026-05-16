@@ -34,7 +34,7 @@ func TestRenderPRSummaryMarkdown_UnifiedShape(t *testing.T) {
 	t.Parallel()
 
 	pr := &PRAnalysis{
-		PostureBand:        "partially_protected",
+		PostureBand:        "moderate",
 		ChangedFileCount:   4,
 		ChangedSourceCount: 3,
 		ChangedTestCount:   1,
@@ -92,7 +92,7 @@ func TestRenderPRSummaryMarkdown_UnifiedShape(t *testing.T) {
 			ImpactedCapabilities: []string{"refund-explanation"},
 			SelectedScenarios:    2,
 			TotalScenarios:       12,
-			Scenarios: []AIScenarioSummary{
+			Scenarios: []EvalSummary{
 				{Name: "refund-accuracy", Capability: "refund-explanation", Reason: "context template changed"},
 				{Name: "safety-guardrail", Capability: "refund-explanation", Reason: "prompt changed"},
 			},
@@ -195,7 +195,7 @@ func TestRenderPRSummaryMarkdown_ConsistentSectionOrder(t *testing.T) {
 	t.Parallel()
 
 	pr := &PRAnalysis{
-		PostureBand: "partially_protected",
+		PostureBand: "moderate",
 		NewFindings: []ChangeScopedFinding{
 			{Type: "protection_gap", Scope: "direct", Path: "src/a.ts",
 				Severity: "high", Explanation: "no test"},

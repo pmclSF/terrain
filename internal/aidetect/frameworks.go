@@ -86,9 +86,37 @@ var KnownFrameworks = []FrameworkSignature{
 		ImportPatterns: []string{"from llama_index", "from llamaindex", "import llamaindex"},
 	},
 	{
+		// HuggingFace umbrella: transformers + datasets + hub clients.
+		// Matches both LLM and non-LLM uses (BERT-style classifiers,
+		// vision models, embeddings). Use huggingface-llm below for the
+		// generative subset.
 		Name:           "huggingface",
-		DependencyKeys: []string{"transformers", "datasets", "@huggingface/inference"},
-		ImportPatterns: []string{"from transformers", "from datasets", "import transformers", "@huggingface/"},
+		DependencyKeys: []string{"transformers", "datasets", "@huggingface/inference", "huggingface_hub"},
+		ImportPatterns: []string{"from transformers", "from datasets", "import transformers", "@huggingface/", "from huggingface_hub"},
+	},
+	{
+		// HuggingFace LLM subset — fires only when the file uses one of
+		// the generative-specific entry points. Coexists with the
+		// broader "huggingface" entry; consumers wanting "is this repo
+		// generative-LLM" check for this name. Consumers wanting "any
+		// ML / NLP transformers" check for "huggingface".
+		Name:           "huggingface-llm",
+		DependencyKeys: nil,
+		ImportPatterns: []string{
+			"AutoModelForCausalLM",
+			"AutoModelForSeq2SeqLM",
+			"LlamaForCausalLM",
+			"MistralForCausalLM",
+			"GPTNeoXForCausalLM",
+			"pipeline(\"text-generation\")",
+			"pipeline('text-generation')",
+			"pipeline(\"conversational\")",
+			"pipeline('conversational')",
+			"pipeline(\"text2text-generation\")",
+			"pipeline('text2text-generation')",
+			"AutoModelForVisualQuestionAnswering",
+			"AutoModelForImageTextRetrieval",
+		},
 	},
 	{
 		Name:           "vertexai",
@@ -139,5 +167,99 @@ var KnownFrameworks = []FrameworkSignature{
 		Name:           "guardrails",
 		DependencyKeys: []string{"guardrails-ai", "nemoguardrails"},
 		ImportPatterns: []string{"from guardrails", "import guardrails", "from nemoguardrails", "import nemoguardrails"},
+	},
+
+	// --- Classical ML frameworks (non-LLM) ---
+	// These detect repos that ship machine-learning models — typically
+	// sklearn / xgboost / lightgbm-trained classifiers or regressors,
+	// or deep-learning models built on PyTorch / TensorFlow / JAX.
+	// Their detection feeds the lifecycle/* and regression/performance-*
+	// rules just as the LLM-frameworks above feed regression/eval-*.
+
+	{
+		Name:           "sklearn",
+		DependencyKeys: []string{"scikit-learn", "sklearn"},
+		ImportPatterns: []string{"from sklearn", "import sklearn", "from sklearn.", "sklearn.metrics"},
+	},
+	{
+		Name:           "xgboost",
+		DependencyKeys: []string{"xgboost"},
+		ImportPatterns: []string{"import xgboost", "from xgboost", "xgb.XGBClassifier", "xgb.XGBRegressor"},
+	},
+	{
+		Name:           "lightgbm",
+		DependencyKeys: []string{"lightgbm"},
+		ImportPatterns: []string{"import lightgbm", "from lightgbm", "lgb.LGBMClassifier", "lgb.LGBMRegressor"},
+	},
+	{
+		Name:           "statsmodels",
+		DependencyKeys: []string{"statsmodels"},
+		ImportPatterns: []string{"import statsmodels", "from statsmodels", "sm.OLS", "sm.Logit"},
+	},
+	{
+		Name:           "pytorch",
+		DependencyKeys: []string{"torch", "pytorch-lightning", "pytorch_lightning"},
+		ImportPatterns: []string{"import torch", "from torch", "torch.nn", "import pytorch_lightning"},
+	},
+	{
+		Name:           "tensorflow",
+		DependencyKeys: []string{"tensorflow", "tf-nightly", "tensorflow-gpu"},
+		ImportPatterns: []string{"import tensorflow", "from tensorflow", "import tf", "tf.keras"},
+	},
+	{
+		Name:           "jax",
+		DependencyKeys: []string{"jax", "jaxlib", "flax"},
+		ImportPatterns: []string{"import jax", "from jax", "jax.numpy", "import flax"},
+	},
+	{
+		Name:           "sagemaker",
+		DependencyKeys: []string{"sagemaker", "boto3"},
+		ImportPatterns: []string{"import sagemaker", "from sagemaker", "sagemaker.estimator", "sagemaker.predictor"},
+	},
+
+	// --- Data validation (broad use, not just LLM outputs) ---
+	// pydantic appears in roughly every modern Python repo that does
+	// structured I/O — FastAPI request models, settings, eval input
+	// contracts, output schemas, you name it. Detection is broad on
+	// purpose: presence of pydantic flags a repo as having declared
+	// data contracts at all, which lifecycle / hygiene rules use to
+	// reason about contract changes. The PydanticOutputParser-only
+	// detection in ai_schema_parser.go remains valid as a narrower
+	// LLM-specific signal.
+	{
+		Name:           "pydantic",
+		DependencyKeys: []string{"pydantic", "pydantic-settings", "pydantic-core"},
+		ImportPatterns: []string{"from pydantic", "import pydantic", "pydantic.BaseModel", "pydantic.Field"},
+	},
+
+	// Native Go LLM SDK (community fork of the official Python SDK).
+	{
+		Name:           "openai-go",
+		DependencyKeys: []string{"github.com/sashabaranov/go-openai", "github.com/openai/openai-go"},
+		ImportPatterns: []string{"sashabaranov/go-openai", "openai/openai-go", "openai.NewClient"},
+	},
+
+	// Java OpenAI clients (official + community).
+	{
+		Name:           "openai-java",
+		DependencyKeys: []string{"com.theokanning.openai-gpt3-java", "com.openai:openai-java"},
+		ImportPatterns: []string{"com.theokanning.openai", "import com.openai", "OpenAiService"},
+	},
+
+	// --- Pipeline orchestration ---
+	// Workflow / DAG frameworks. Detection surfaces them as
+	// "pipeline files" — the dbt manifest equivalent for Python
+	// orchestration. Rules like lifecycle/orphaned-pipeline and
+	// hygiene/no-tasks fire on these. See internal/pipelinedag/ for
+	// per-file DAG / flow parsing.
+	{
+		Name:           "airflow",
+		DependencyKeys: []string{"apache-airflow", "airflow"},
+		ImportPatterns: []string{"from airflow", "import airflow", "@dag", "from airflow.decorators"},
+	},
+	{
+		Name:           "prefect",
+		DependencyKeys: []string{"prefect"},
+		ImportPatterns: []string{"from prefect", "import prefect", "@flow", "@task"},
 	},
 }

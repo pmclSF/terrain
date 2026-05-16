@@ -89,6 +89,71 @@ const (
 	SignalDetectorBudgetExceeded models.SignalType = "detectorBudgetExceeded"
 	SignalDetectorMissingInput   models.SignalType = "detectorMissingInput"
 	SignalSuppressionExpired     models.SignalType = "suppressionExpired"
+
+	// 0.2 §9 stable-rule signal types — detectors land in subsequent
+	// commits; the constants and manifest entries reserve the names.
+	SignalVersionFloating       models.SignalType = "versionFloating"
+	SignalSecretsInPrompt       models.SignalType = "secretsInPrompt"
+	SignalNoTestsForCodeUnit    models.SignalType = "noTestsForCodeUnit"
+	SignalNoEvalForAISurface    models.SignalType = "noEvalForAISurface"
+	SignalModelFixtureUnpinned  models.SignalType = "modelFixtureUnpinned"
+	SignalEvalNoAssertion       models.SignalType = "evalNoAssertion"
+	SignalNoSeed                models.SignalType = "noSeed"
+	SignalMissingEnvPinning     models.SignalType = "missingEnvPinning"
+	SignalPIIInEval             models.SignalType = "piiInEval"
+	SignalInsecureDeserialize   models.SignalType = "insecureDeserialization"
+	SignalMissingPerfTest       models.SignalType = "missingPerfTest"
+	SignalDataLeakageSuspected  models.SignalType = "dataLeakageSuspected"
+	SignalMissingTrainTestSplit models.SignalType = "missingTrainTestSplit"
+
+	// Tier 5.1 — dep-drift detector. Closes 35.2% of measured 0.2.0
+	// recall gap (bot-authored deps-bump PRs that regress at 5x
+	// baseline). Detects manifest files with a high share of moving-
+	// target version specs.
+	SignalDepsDriftRisk models.SignalType = "depsDriftRisk"
+
+	// Tier 5.2 — config-schema-drift detector. Closes 5.7% of measured
+	// 0.2.0 recall gap (config-only PRs that ship regressions: untagged
+	// images, mutable action refs, deprecated apiVersions).
+	SignalConfigSchemaDrift models.SignalType = "configSchemaDrift"
+
+	// Boundary class — AI/ML surface with no eval coverage. The
+	// headline detector of the AI-first + boundary-detection strategy
+	// (see memory/terrain_strategy.md). Empirically grounded: 18,761
+	// uncovered surfaces vs 138 covered ones across 2000 OSS AI/ML
+	// repos (tier-4/corpus-2000-summary.md, 2026-05-12).
+	SignalPromptFileMissingEval models.SignalType = "promptFileMissingEval"
+
+	// Regression family — uses Tier 1 eval-adapter foundation.
+	SignalBaselineNotSet        models.SignalType = "baselineNotSet"
+	SignalPassRateDrop          models.SignalType = "passRateDrop"
+	SignalSnapshotMismatch      models.SignalType = "snapshotMismatch"
+	SignalTestFailed            models.SignalType = "testFailed"
+	SignalPerformanceRegression models.SignalType = "performanceRegression"
+
+	// Coverage family — graph + filesystem checks.
+	SignalMissingBaseline    models.SignalType = "missingBaseline"
+	SignalNoIntegrationTest  models.SignalType = "noIntegrationTest"
+	SignalNoDataValidation   models.SignalType = "noDataValidation"
+
+	// §9 preview rules — detection logic ships but rules are default-
+	// off pending LB-5 / LB-6 calibration on dogfood corpus before
+	// promotion to Stable.
+	SignalPromptBloat              models.SignalType = "promptBloat"
+	SignalPromptWithoutTemperature models.SignalType = "promptWithoutTemperature"
+	SignalMissingPromptValidator   models.SignalType = "missingPromptValidator"
+	SignalPromptVersionSkew        models.SignalType = "promptVersionSkew"
+	SignalRetrievalWithoutRerank   models.SignalType = "retrievalWithoutRerank"
+	SignalColdVectorStore          models.SignalType = "coldVectorStore"
+	SignalAgentLoopRisk            models.SignalType = "agentLoopRisk"
+	SignalToolWithoutBudget        models.SignalType = "toolWithoutBudget"
+	SignalTargetLeakage            models.SignalType = "targetLeakage"
+	SignalDuplicateEvalRows        models.SignalType = "duplicateEvalRows"
+	SignalSchemaDrift              models.SignalType = "schemaDrift"
+	SignalMissingEvalCategories    models.SignalType = "missingEvalCategories"
+	SignalOrphanedEval             models.SignalType = "orphanedEval"
+	SignalColdStartTime            models.SignalType = "coldStartTime"
+	SignalTokenCostBudget          models.SignalType = "tokenCostBudget"
 )
 
 // Canonical signal type sets. Import these rather than duplicating
@@ -196,7 +261,7 @@ var typeInfoBySignal = map[models.SignalType]TypeInfo{
 		Remediation: "Prioritize stabilization in the highest-instability areas.",
 	},
 	SignalMigrationBlocker: {
-		Description: "Detected patterns will complicate framework migration.",
+		Description: "Detected patterns will complicate framework framework_migration.",
 		Remediation: "Address blockers incrementally before broad migration changes.",
 	},
 	SignalDeprecatedTestPattern: {

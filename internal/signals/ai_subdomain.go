@@ -67,6 +67,7 @@ var aiSubdomainBySignal = map[models.SignalType]AISubdomain{
 	SignalAIPolicyViolation:       AISubdomainInventory,
 	SignalAIPromptVersioning:      AISubdomainInventory,
 	SignalAISafetyEvalMissing:     AISubdomainInventory,
+	SignalPromptFileMissingEval:      AISubdomainInventory,
 	SignalUncoveredAISurface:      AISubdomainInventory,
 	SignalUntestedPromptFlow:      AISubdomainInventory,
 	SignalCapabilityValidationGap: AISubdomainInventory,
@@ -119,6 +120,42 @@ var aiSubdomainBySignal = map[models.SignalType]AISubdomain{
 	SignalToolRoutingError:       AISubdomainRegression,
 	SignalToolSelectionError:     AISubdomainRegression,
 	SignalTopKRegression:         AISubdomainRegression,
+
+	// §9 stable-rule AI signals (Planned at this commit, detectors
+	// land in followups).
+	SignalSecretsInPrompt:       AISubdomainHygiene,
+	SignalNoEvalForAISurface:    AISubdomainInventory,
+	SignalModelFixtureUnpinned:  AISubdomainHygiene,
+	SignalEvalNoAssertion:       AISubdomainHygiene,
+	SignalNoSeed:                AISubdomainHygiene,
+	SignalPIIInEval:             AISubdomainHygiene,
+	SignalInsecureDeserialize:   AISubdomainHygiene,
+	SignalDataLeakageSuspected:  AISubdomainHygiene,
+	SignalMissingTrainTestSplit: AISubdomainHygiene,
+
+	// Regression family — eval-output-driven.
+	SignalBaselineNotSet:        AISubdomainRegression,
+	SignalPassRateDrop:          AISubdomainRegression,
+	SignalSnapshotMismatch:      AISubdomainRegression,
+	SignalPerformanceRegression: AISubdomainRegression,
+	SignalMissingBaseline:       AISubdomainInventory,
+
+	// §9 preview rules — most are hygiene-class structural patterns.
+	SignalPromptBloat:              AISubdomainHygiene,
+	SignalPromptWithoutTemperature: AISubdomainHygiene,
+	SignalMissingPromptValidator:   AISubdomainHygiene,
+	SignalPromptVersionSkew:        AISubdomainInventory,
+	SignalRetrievalWithoutRerank:   AISubdomainHygiene,
+	SignalColdVectorStore:          AISubdomainHygiene,
+	SignalAgentLoopRisk:            AISubdomainHygiene,
+	SignalToolWithoutBudget:        AISubdomainHygiene,
+	SignalTargetLeakage:            AISubdomainHygiene,
+	SignalDuplicateEvalRows:        AISubdomainHygiene,
+	SignalSchemaDrift:              AISubdomainRegression,
+	SignalMissingEvalCategories:    AISubdomainInventory,
+	SignalOrphanedEval:             AISubdomainInventory,
+	SignalColdStartTime:            AISubdomainRegression,
+	SignalTokenCostBudget:          AISubdomainRegression,
 }
 
 // AISubdomainOf returns the AI subdomain classification for a signal

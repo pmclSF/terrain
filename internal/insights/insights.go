@@ -726,7 +726,7 @@ func aiCoverageFindings(input *BuildInput) []Finding {
 
 	// Count uncovered AI surfaces (not linked to any scenario).
 	coveredIDs := map[string]bool{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		for _, sid := range sc.CoveredSurfaceIDs {
 			coveredIDs[sid] = true
 		}
@@ -773,21 +773,21 @@ func aiCoverageFindings(input *BuildInput) []Finding {
 	findings = append(findings, f)
 
 	// If there are scenarios but none cover all surfaces, recommend wiring.
-	if len(snap.Scenarios) > 0 && uncovered > 0 {
+	if len(snap.Evals) > 0 && uncovered > 0 {
 		wiredCount := 0
-		for _, sc := range snap.Scenarios {
+		for _, sc := range snap.Evals {
 			if len(sc.CoveredSurfaceIDs) > 0 {
 				wiredCount++
 			}
 		}
-		if wiredCount < len(snap.Scenarios) {
+		if wiredCount < len(snap.Evals) {
 			findings = append(findings, Finding{
-				Title: fmt.Sprintf("%d %s no linked code surfaces", len(snap.Scenarios)-wiredCount, plural(len(snap.Scenarios)-wiredCount, "scenario has", "scenarios have")),
+				Title: fmt.Sprintf("%d %s no linked code surfaces", len(snap.Evals)-wiredCount, plural(len(snap.Evals)-wiredCount, "scenario has", "scenarios have")),
 				Description: "Scenarios without linked surfaces cannot be selected by impact analysis. " +
 					"Wire them via terrain.yaml or ensure eval test files import the surfaces they validate.",
 				Category: CategoryArchitectureDebt,
 				Severity: SeverityMedium,
-				Metric:   fmt.Sprintf("%d/%d unwired", len(snap.Scenarios)-wiredCount, len(snap.Scenarios)),
+				Metric:   fmt.Sprintf("%d/%d unwired", len(snap.Evals)-wiredCount, len(snap.Evals)),
 			})
 		}
 	}
@@ -798,15 +798,15 @@ func aiCoverageFindings(input *BuildInput) []Finding {
 func scenarioDuplicationFindings(input *BuildInput) []Finding {
 	var findings []Finding
 	snap := input.Snapshot
-	if snap == nil || len(snap.Scenarios) < 2 {
+	if snap == nil || len(snap.Evals) < 2 {
 		return findings
 	}
 
 	// Build surface→scenarios index to detect overlap.
 	surfaceToScenarios := map[string][]string{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		for _, sid := range sc.CoveredSurfaceIDs {
-			surfaceToScenarios[sid] = append(surfaceToScenarios[sid], sc.ScenarioID)
+			surfaceToScenarios[sid] = append(surfaceToScenarios[sid], sc.EvalID)
 		}
 	}
 
@@ -834,8 +834,8 @@ func scenarioDuplicationFindings(input *BuildInput) []Finding {
 
 	// Build scenario surface counts for overlap ratio.
 	scenarioSurfaceCount := map[string]int{}
-	for _, sc := range snap.Scenarios {
-		scenarioSurfaceCount[sc.ScenarioID] = len(sc.CoveredSurfaceIDs)
+	for _, sc := range snap.Evals {
+		scenarioSurfaceCount[sc.EvalID] = len(sc.CoveredSurfaceIDs)
 	}
 
 	// Find high-overlap pairs.
@@ -865,7 +865,7 @@ func scenarioDuplicationFindings(input *BuildInput) []Finding {
 			"Review whether scenarios can be consolidated or differentiated by coverage target.",
 		Category: CategoryOptimization,
 		Severity: sev,
-		Metric:   fmt.Sprintf("%d overlapping pairs across %d scenarios", highOverlapPairs, len(snap.Scenarios)),
+		Metric:   fmt.Sprintf("%d overlapping pairs across %d scenarios", highOverlapPairs, len(snap.Evals)),
 	})
 
 	return findings
@@ -977,13 +977,13 @@ func testNextFindings(input *BuildInput) []Finding {
 func aiBehaviorChainFindings(input *BuildInput) []Finding {
 	var findings []Finding
 	snap := input.Snapshot
-	if snap == nil || len(snap.CodeSurfaces) == 0 || len(snap.Scenarios) == 0 {
+	if snap == nil || len(snap.CodeSurfaces) == 0 || len(snap.Evals) == 0 {
 		return findings
 	}
 
 	// Build coverage map: surface ID → covered by at least one scenario.
 	coveredIDs := map[string]bool{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		for _, sid := range sc.CoveredSurfaceIDs {
 			coveredIDs[sid] = true
 		}
@@ -1072,7 +1072,7 @@ func aiBehaviorChainFindings(input *BuildInput) []Finding {
 func capabilityGapFindings(input *BuildInput) []Finding {
 	var findings []Finding
 	snap := input.Snapshot
-	if snap == nil || len(snap.Scenarios) == 0 {
+	if snap == nil || len(snap.Evals) == 0 {
 		return findings
 	}
 
@@ -1082,7 +1082,7 @@ func capabilityGapFindings(input *BuildInput) []Finding {
 		categories map[string]int
 	}
 	caps := map[string]*capInfo{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		if sc.Capability == "" {
 			continue
 		}

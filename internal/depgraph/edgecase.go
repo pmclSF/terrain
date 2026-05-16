@@ -13,8 +13,6 @@ const (
 	EdgeCaseHighFlakeBurden      EdgeCaseType = "HIGH_FLAKE_BURDEN"
 	EdgeCaseHighFanoutFixture    EdgeCaseType = "HIGH_FANOUT_FIXTURE"
 	EdgeCaseLowGraphVisibility   EdgeCaseType = "LOW_GRAPH_VISIBILITY"
-	EdgeCaseExternalServiceHeavy EdgeCaseType = "EXTERNAL_SERVICE_HEAVY"
-	EdgeCaseGeneratedArtifacts   EdgeCaseType = "GENERATED_ARTIFACT_CHANGES"
 	EdgeCaseMigrationOverlap     EdgeCaseType = "MIGRATION_OVERLAP"
 	EdgeCaseSnapshotHeavy        EdgeCaseType = "SNAPSHOT_HEAVY_SUITE"
 	EdgeCaseLegacyZone           EdgeCaseType = "LEGACY_ZONE"
@@ -175,29 +173,14 @@ func DetectEdgeCases(profile RepoProfile, g *Graph, insights ProfileInsights) []
 	// --- New edge cases using SnapshotProfileData ---
 	spd := insights.Snapshot
 
-	// External-service-heavy tests.
-	extSvcCount := spd.ExternalServiceNodeCount
-	if extSvcCount > 5 {
-		cases = append(cases, EdgeCase{
-			Type:     EdgeCaseExternalServiceHeavy,
-			Severity: "caution",
-			Description: fmt.Sprintf(
-				"%d external service dependencies detected — test reliability depends on service availability.",
-				extSvcCount),
-		})
-	}
-
-	// Generated artifact changes.
-	genCount := spd.GeneratedArtifactNodeCount
-	if genCount > 0 {
-		cases = append(cases, EdgeCase{
-			Type:     EdgeCaseGeneratedArtifacts,
-			Severity: "warning",
-			Description: fmt.Sprintf(
-				"%d generated artifact(s) in the graph — changes to generated files may produce noise in impact analysis.",
-				genCount),
-		})
-	}
+	// External-service-heavy and generated-artifact edge cases were removed
+	// at 0.2.0 cleanup — their input fields (ExternalServiceNodeCount,
+	// GeneratedArtifactNodeCount) were declared on SnapshotProfileData but
+	// never populated by BuildSnapshotProfileData. The detectors fired only
+	// on synthetic test data, never on real snapshots. When/if a proper
+	// detection mechanism for these classes lands, the detectors return via
+	// the standard signal-detector pipeline rather than special-cased
+	// SnapshotProfileData fields.
 
 	// Migration overlap.
 	if spd.MigrationSignalCount > 10 {
@@ -332,18 +315,6 @@ func ApplyEdgeCasePolicy(cases []EdgeCase, profile RepoProfile) Policy {
 			policy.RiskElevated = true
 			policy.Recommendations = append(policy.Recommendations,
 				"Low graph visibility limits confidence in impact analysis. Recommendations may be incomplete.")
-
-		case EdgeCaseExternalServiceHeavy:
-			if policy.FallbackLevel < FallbackFixtureExpand {
-				policy.FallbackLevel = FallbackFixtureExpand
-			}
-			policy.ConfidenceAdjustment *= 0.85
-			policy.Recommendations = append(policy.Recommendations,
-				"External service dependencies may cause flaky results. Consider service virtualization or contract tests.")
-
-		case EdgeCaseGeneratedArtifacts:
-			policy.Recommendations = append(policy.Recommendations,
-				"Generated artifacts detected. Exclude generated files from impact scope to reduce noise.")
 
 		case EdgeCaseMigrationOverlap:
 			if policy.FallbackLevel < FallbackPackageTests {

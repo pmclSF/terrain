@@ -106,7 +106,7 @@ func (d *RetrievalRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []m
 				Actionability:   models.ActionabilityImmediate,
 				LifecycleStages: []models.LifecycleStage{models.StageMaintenance, models.StageCIRun},
 				AIRelevance:     models.AIRelevanceHigh,
-				RuleID:          "TER-AI-111",
+				RuleID:          "terrain/ai/retrieval-regression",
 				RuleURI:         "docs/rules/ai/retrieval-regression.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{

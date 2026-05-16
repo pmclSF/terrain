@@ -10,7 +10,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/analyze"
+	"github.com/pmclSF/terrain/internal/budget"
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/governance"
 	"github.com/pmclSF/terrain/internal/logging"
@@ -18,6 +20,7 @@ import (
 	"github.com/pmclSF/terrain/internal/policy"
 	"github.com/pmclSF/terrain/internal/reporting"
 	"github.com/pmclSF/terrain/internal/sarif"
+	"github.com/pmclSF/terrain/internal/terrainconfig"
 )
 
 func runInit(root string, jsonOutput bool) error {
@@ -167,6 +170,8 @@ type analyzeRunOpts struct {
 	Timeout          time.Duration
 	SuppressionsPath string
 	NewFindingsOnly  bool
+	EnablePreview    bool
+	Diag             bool
 }
 
 func runAnalyze(o analyzeRunOpts) error {
@@ -187,6 +192,15 @@ func runAnalyze(o analyzeRunOpts) error {
 	redactPaths := o.RedactPaths
 	gate := o.Gate
 	timeout := o.Timeout
+
+	// Load terrain.yaml (optional) and register adopter-supplied
+	// custom AI markers with the analysis package. Patterns extend
+	// the AI-context gate so private LLM SDKs corroborate detection.
+	// Missing or invalid config is non-fatal — gate falls back to
+	// the canonical marker list.
+	if cfg, err := terrainconfig.Load(filepath.Join(root, "terrain.yaml")); err == nil && cfg != nil && cfg.AI != nil && len(cfg.AI.AIMarkers) > 0 {
+		analysis.SetCustomAIMarkers(cfg.AI.AIMarkers)
+	}
 
 	parsedRuntime := parseRuntimePaths(runtimePaths)
 	parsedGauntlet := parseRuntimePaths(gauntletPaths)        // same comma-split logic
@@ -242,6 +256,8 @@ func runAnalyze(o analyzeRunOpts) error {
 	opt.BaselineSnapshotPath = baselinePath
 	opt.SuppressionsPath = o.SuppressionsPath
 	opt.NewFindingsOnly = o.NewFindingsOnly
+	opt.EnablePreviewRules = o.EnablePreview
+	opt.CollectDiagnostics = o.Diag
 	opt.OnProgress = newProgressFunc(jsonOutput)
 	// Honour Ctrl-C and the optional --timeout: pre-0.2.x analyze
 	// exited abruptly on SIGINT with no cleanup, and unbounded
@@ -251,6 +267,12 @@ func runAnalyze(o analyzeRunOpts) error {
 	// detectors check ctx.Err and unwind cooperatively.
 	result, err := runPipelineWithSignalsAndTimeout(root, opt, timeout)
 	if err != nil {
+		// Render partial diagnostics if collected — useful for
+		// debugging timeouts (shows which steps completed before
+		// the deadline). Must happen before the early-return.
+		if o.Diag && result != nil && result.Diagnostics != nil {
+			result.Diagnostics.Render(os.Stderr)
+		}
 		// Audit-named gap (core_analyze.P5): designed remediation
 		// when analysis fails. Distinguishes context cancellation
 		// (timeout / Ctrl-C) from other failure modes so adopters
@@ -265,6 +287,20 @@ func runAnalyze(o analyzeRunOpts) error {
 	for _, msg := range result.DiscoveryMessages {
 		logging.L().Info(msg)
 	}
+
+	// Pipeline diagnostics — print to stderr so they don't pollute
+	// JSON / SARIF stdout but are visible during interactive runs.
+	if o.Diag && result.Diagnostics != nil {
+		result.Diagnostics.Render(os.Stderr)
+	}
+
+	// Per-rule findings budget. terrain.yaml `rules.<key>.max_findings`
+	// caps how many findings a single rule may emit, keeping the
+	// highest-priority subset. Heuristic-precision detectors that
+	// otherwise fire hundreds of times per run (untestedExport on Java
+	// monorepos, weakAssertion on data-science codebases) are noise
+	// past a small cap.
+	applyFindingsBudget(result.Snapshot, root, jsonOutput)
 
 	// Build discovered artifacts list for the report.
 	var discovered []analyze.DiscoveredArtifact
@@ -380,6 +416,39 @@ func runAnalyze(o analyzeRunOpts) error {
 	// gateErr() the other branches use, so the gate decision applies
 	// uniformly across every output format.
 	return gateErr()
+}
+
+// applyFindingsBudget caps each rule's findings at terrain.yaml's
+// `max_findings`. Missing terrain.yaml is fine (most adopters don't
+// have one). Pruned counts surface as a one-line stderr notice when
+// rendering to humans; JSON/SARIF stay quiet so machine consumers
+// see the same shape as before.
+func applyFindingsBudget(snap *models.TestSuiteSnapshot, root string, jsonOutput bool) {
+	cfg, err := terrainconfig.Load(filepath.Join(root, "terrain.yaml"))
+	if err != nil || cfg == nil || len(cfg.Rules) == 0 {
+		return
+	}
+	budgets := map[string]int{}
+	for key, spec := range cfg.Rules {
+		if spec.Block == nil || spec.Block.MaxFindings <= 0 {
+			continue
+		}
+		// terrain.yaml uses `category/name`; engine RuleIDs are
+		// `terrain/category/name`. Normalize to the engine form.
+		budgets["terrain/"+key] = spec.Block.MaxFindings
+	}
+	if len(budgets) == 0 {
+		return
+	}
+	pruned := budget.Apply(snap, budgets)
+	if jsonOutput || len(pruned) == 0 {
+		return
+	}
+	for rule, n := range pruned {
+		fmt.Fprintf(os.Stderr,
+			"budget: %s exceeded max_findings — %d additional finding(s) suppressed\n",
+			rule, n)
+	}
 }
 
 // runPolicyCheck evaluates the repository against its local policy.

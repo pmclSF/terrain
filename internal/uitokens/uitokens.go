@@ -177,15 +177,15 @@ func BracketedSeverity(severity string) string {
 // the same vocabulary without duplicating the switch.
 func BracketedVerdict(band string) string {
 	switch band {
-	case "well_protected":
+	case "strong":
 		return "[PASS]"
-	case "partially_protected":
+	case "moderate":
 		return "[WARN]"
-	case "weakly_protected":
+	case "weak":
 		return "[RISK]"
-	case "high_risk":
+	case "critical":
 		return "[FAIL]"
-	case "evidence_limited":
+	case "unknown":
 		return "[INFO]"
 	default:
 		return "[????]"

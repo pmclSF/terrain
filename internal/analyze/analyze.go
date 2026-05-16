@@ -459,7 +459,7 @@ func buildTestSummary(snap *models.TestSuiteSnapshot) TestSummary {
 		TestFileCount:    len(snap.TestFiles),
 		TestCaseCount:    len(snap.TestCases),
 		CodeUnitCount:    len(snap.CodeUnits),
-		ScenarioCount:    len(snap.Scenarios),
+		ScenarioCount:    len(snap.Evals),
 		CodeSurfaceCount: len(snap.CodeSurfaces),
 	}
 	for _, cs := range snap.CodeSurfaces {

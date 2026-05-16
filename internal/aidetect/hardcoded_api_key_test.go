@@ -55,7 +55,7 @@ func TestHardcodedAPIKey_DetectsRealKeys(t *testing.T) {
 	if len(sig.SeverityClauses) != 1 || sig.SeverityClauses[0] != "sev-critical-001" {
 		t.Errorf("severityClauses = %v, want [sev-critical-001]", sig.SeverityClauses)
 	}
-	if sig.RuleID != "TER-AI-103" {
+	if sig.RuleID != "terrain/ai/hardcoded-api-key" {
 		t.Errorf("ruleId = %q, want TER-AI-103", sig.RuleID)
 	}
 	if sig.ConfidenceDetail == nil || sig.ConfidenceDetail.Quality != "heuristic" {
@@ -141,5 +141,39 @@ func TestHardcodedAPIKey_DetectsAcrossProviders(t *testing.T) {
 				t.Errorf("%s: got %d signals, want %d", tc.name, len(got), tc.want)
 			}
 		})
+	}
+}
+
+func TestIsAPIKeyFixturePath(t *testing.T) {
+	t.Parallel()
+	cases := []struct {
+		path string
+		want bool
+	}{
+		// Test-data / fixture dirs (excluded).
+		{"tests/data/placebo/test_iam_user_access_key/iam.ListAccessKeys.json", true},
+		{"tests/fixtures/aws-response.json", true},
+		{"test/data/api_response.json", true},
+		{"test/fixtures/oauth_token.yaml", true},
+		{"testdata/credentials.json", true},
+		{"__fixtures__/keys.json", true},
+		// Monorepo: fixture dirs anywhere in path (excluded).
+		{"packages/foo/tests/data/cred.json", true},
+		{"libs/bar/tests/fixtures/key.yaml", true},
+		// Recording libraries (excluded).
+		{"tests/cassettes/oauth_flow.yaml", true},
+		{"tests/placebo/list_users.json", true},
+		{"tests/recordings/aws_describe.json", true},
+		// Production paths (kept).
+		{"config/secrets.yaml", false},
+		{"src/clients/openai.py", false},
+		{"deploy/prod.env", false},
+		{"src/config/api_keys.yaml", false},
+	}
+	for _, c := range cases {
+		got := isAPIKeyFixturePath(c.path)
+		if got != c.want {
+			t.Errorf("isAPIKeyFixturePath(%q) = %v, want %v", c.path, got, c.want)
+		}
 	}
 }

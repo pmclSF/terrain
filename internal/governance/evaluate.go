@@ -408,7 +408,7 @@ func checkAIPolicy(snap *models.TestSuiteSnapshot, cfg *policy.Config) []models.
 	// Rule: block on uncovered AI context surfaces.
 	if ai.BlockOnUncoveredContext != nil && *ai.BlockOnUncoveredContext {
 		coveredIDs := map[string]bool{}
-		for _, sc := range snap.Scenarios {
+		for _, sc := range snap.Evals {
 			for _, sid := range sc.CoveredSurfaceIDs {
 				coveredIDs[sid] = true
 			}

@@ -52,26 +52,29 @@ func (d *MockHeavyDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sign
 		}
 
 		// Mock-heavy: mocks outnumber assertions, suggesting over-isolation.
+		//
+		// 2026-05-11 corpus-driven demotion: severity dropped to Low,
+		// confidence dropped to 0.35. PR-lift on 4 clean corpora shows
+		// 0.00–0.02x — mock-heavy files are NOT regression-prone. The
+		// hypothesis is empirically refuted. The signal remains in
+		// experimental status pending rebuild or removal in 0.3; in the
+		// meantime severity Low + low confidence means it surfaces in
+		// extended reports without dominating the gate.
 		if tf.MockCount > tf.AssertionCount {
-			sev := models.SeverityMedium
-			conf := 0.7
-			if tf.MockCount > 2*tf.AssertionCount {
-				sev = models.SeverityHigh
-				conf = 0.75
-			}
-
+			sev := models.SeverityLow
+			conf := 0.35
 			signals = append(signals, models.Signal{
 				Type:             "mockHeavyTest",
 				Category:         models.CategoryQuality,
 				Severity:         sev,
 				Confidence:       conf,
-				EvidenceStrength: models.EvidenceModerate,
+				EvidenceStrength: models.EvidenceWeak,
 				EvidenceSource:   models.SourceStructuralPattern,
 				Location:         models.SignalLocation{File: tf.Path},
 				Explanation: "High mock usage detected: " + itoa(tf.MockCount) +
 					" mock(s) vs " + itoa(tf.AssertionCount) +
-					" assertion(s). Test behavior may be heavily isolated behind mocks.",
-				SuggestedAction: "Consider adding assertions on real outputs or supplementing with integration coverage.",
+					" assertion(s). [Note: corpus PR-lift shows mock-heavy files are NOT regression-prone; treat as informational only until detector is rebuilt.]",
+				SuggestedAction: "Consider adding assertions on real outputs or supplementing with integration coverage. (Detector flagged as experimental — see CHANGELOG.)",
 			})
 		}
 	}

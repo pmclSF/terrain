@@ -114,7 +114,7 @@ func (d *CostRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []models
 			Actionability:   models.ActionabilityScheduled,
 			LifecycleStages: []models.LifecycleStage{models.StageMaintenance, models.StageCIRun},
 			AIRelevance:     models.AIRelevanceHigh,
-			RuleID:          "TER-AI-107",
+			RuleID:          "terrain/ai/cost-regression",
 			RuleURI:         "docs/rules/ai/cost-regression.md",
 			DetectorVersion: "0.2.0",
 			ConfidenceDetail: &models.ConfidenceDetail{

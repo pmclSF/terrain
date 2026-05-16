@@ -1,0 +1,30 @@
+[
+  {
+    "detector": "aiSafetyEvalMissing",
+    "count": 5
+  },
+  {
+    "detector": "blastRadiusHotspot",
+    "count": 5
+  },
+  {
+    "detector": "capabilityValidationGap",
+    "count": 3
+  },
+  {
+    "detector": "promptFileMissingEval",
+    "count": 5
+  },
+  {
+    "detector": "staticSkippedTest",
+    "count": 2
+  },
+  {
+    "detector": "uncoveredAISurface",
+    "count": 8
+  },
+  {
+    "detector": "untestedExport",
+    "count": 5
+  }
+]

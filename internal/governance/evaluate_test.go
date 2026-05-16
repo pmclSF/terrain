@@ -658,7 +658,7 @@ func TestAIPolicy_BlockOnUncoveredContext(t *testing.T) {
 			{SurfaceID: "s1", Kind: models.SurfaceContext},
 			{SurfaceID: "s2", Kind: models.SurfaceContext},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{CoveredSurfaceIDs: []string{"s1"}}, // s2 uncovered
 		},
 	}

@@ -88,11 +88,11 @@ func TestMergeRecommendation(t *testing.T) {
 		findings []ChangeScopedFinding
 		wantRec  string
 	}{
-		{"well_protected", nil, "Safe to merge"},
-		{"evidence_limited", nil, "Informational only"},
-		{"partially_protected", []ChangeScopedFinding{{Severity: "high"}}, "Merge with caution"},
-		{"high_risk", []ChangeScopedFinding{{Severity: "medium"}}, "Merge blocked"},
-		{"partially_protected", []ChangeScopedFinding{{Severity: "medium"}}, "Merge with caution"},
+		{"strong", nil, "Safe to merge"},
+		{"unknown", nil, "Informational only"},
+		{"moderate", []ChangeScopedFinding{{Severity: "high"}}, "Merge with caution"},
+		{"critical", []ChangeScopedFinding{{Severity: "medium"}}, "Merge blocked"},
+		{"moderate", []ChangeScopedFinding{{Severity: "medium"}}, "Merge with caution"},
 	}
 
 	for _, tt := range tests {
@@ -112,7 +112,7 @@ func TestMergeRecommendation(t *testing.T) {
 func TestRenderPRSummaryMarkdown_EmptyPRCallout(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand:        "well_protected",
+		PostureBand:        "strong",
 		ChangedFileCount:   3,
 		ChangedSourceCount: 2,
 		ChangedTestCount:   1,
@@ -138,7 +138,7 @@ func TestRenderPRSummaryMarkdown_EmptyPRCallout(t *testing.T) {
 func TestRenderPRSummaryMarkdown_AllClearOnlyOnEmpty(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand: "weakly_protected",
+		PostureBand: "weak",
 		NewFindings: []ChangeScopedFinding{
 			{Type: "weakAssertion", Scope: "direct", Path: "src/x.ts", Severity: "high", Explanation: "self-comparison"},
 		},
@@ -204,7 +204,7 @@ func TestBuildConfidenceHistogram_GroupsAndPluralizes(t *testing.T) {
 // comment surface itself is timestamp-free.
 func TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch(t *testing.T) {
 	pr := &PRAnalysis{
-		PostureBand:        "well_protected",
+		PostureBand:        "strong",
 		ChangedFileCount:   2,
 		ChangedSourceCount: 1,
 		ChangedTestCount:   1,
@@ -233,7 +233,7 @@ func TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch(t *testing.T)
 func TestRenderPRSummaryMarkdown_Deterministic(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand:        "partially_protected",
+		PostureBand:        "moderate",
 		ChangedFileCount:   5,
 		ChangedSourceCount: 3,
 		ChangedTestCount:   2,
@@ -296,7 +296,7 @@ func TestRenderPRSummaryMarkdown_LargeTestSet_GroupsByPackage(t *testing.T) {
 	}
 
 	pr := &PRAnalysis{
-		PostureBand:      "partially_protected",
+		PostureBand:      "moderate",
 		TestSelections:   selections,
 		RecommendedTests: recommended,
 	}
@@ -328,7 +328,7 @@ func TestRenderPRSummaryMarkdown_FindingTruncation(t *testing.T) {
 	}
 
 	pr := &PRAnalysis{
-		PostureBand: "weakly_protected",
+		PostureBand: "weak",
 		NewFindings: findings,
 	}
 
@@ -367,7 +367,7 @@ func TestClassifyFindingsDetailed_ThreeWay(t *testing.T) {
 func TestRenderPRSummaryMarkdown_SuiteSizeContext(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand:      "well_protected",
+		PostureBand:      "strong",
 		TotalTestCount:   200,
 		RecommendedTests: []string{"a.test.ts", "b.test.ts"},
 		TestSelections: []TestSelection{
@@ -398,7 +398,7 @@ func TestRenderPRSummaryMarkdown_SuiteSizeContext(t *testing.T) {
 func TestRenderPRSummaryMarkdown_DirectVsIndirectSections(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand: "weakly_protected",
+		PostureBand: "weak",
 		NewFindings: []ChangeScopedFinding{
 			{Type: "protection_gap", Scope: "direct", Path: "src/a.ts", Severity: "high", Explanation: "Direct gap"},
 			{Type: "protection_gap", Scope: "indirect", Path: "src/b.ts", Severity: "medium", Explanation: "Indirect gap"},
@@ -428,7 +428,7 @@ func TestRenderPRSummaryMarkdown_DirectVsIndirectSections(t *testing.T) {
 func TestRenderChangeScopedReport_ShowsTestReduction(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand:      "well_protected",
+		PostureBand:      "strong",
 		TotalTestCount:   50,
 		RecommendedTests: []string{"a.test.ts"},
 		TestSelections:   []TestSelection{{Path: "a.test.ts", Confidence: "exact"}},
@@ -472,12 +472,12 @@ func TestSummarizeFindingsBySeverity(t *testing.T) {
 func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand: "partially_protected",
+		PostureBand: "moderate",
 		AI: &AIValidationSummary{
 			ImpactedCapabilities: []string{"refund-explanation", "enterprise-search"},
 			SelectedScenarios:    3,
 			TotalScenarios:       8,
-			Scenarios: []AIScenarioSummary{
+			Scenarios: []EvalSummary{
 				{Name: "refund-accuracy", Capability: "refund-explanation", Reason: "context template changed (policyBlock)"},
 				{Name: "search-citations", Capability: "enterprise-search", Reason: "retrieval config changed (chunkConfig)"},
 				{Name: "safety-guardrail", Capability: "refund-explanation", Reason: "prompt changed (safetyOverlay)"},
@@ -553,7 +553,7 @@ func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 func TestRenderPRSummaryMarkdown_NoAISection(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand: "well_protected",
+		PostureBand: "strong",
 		// No AI field — traditional-only PR.
 	}
 
@@ -569,7 +569,7 @@ func TestRenderPRSummaryMarkdown_NoAISection(t *testing.T) {
 func TestRenderPRSummaryMarkdown_MixedTraditionalAndAI(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand:        "partially_protected",
+		PostureBand:        "moderate",
 		ChangedFileCount:   5,
 		ChangedSourceCount: 3,
 		ChangedTestCount:   2,
@@ -585,7 +585,7 @@ func TestRenderPRSummaryMarkdown_MixedTraditionalAndAI(t *testing.T) {
 			ImpactedCapabilities: []string{"search"},
 			SelectedScenarios:    1,
 			TotalScenarios:       3,
-			Scenarios: []AIScenarioSummary{
+			Scenarios: []EvalSummary{
 				{Name: "search-quality", Capability: "search", Reason: "retrieval config changed"},
 			},
 		},
@@ -614,12 +614,12 @@ func TestRenderPRSummaryMarkdown_MixedTraditionalAndAI(t *testing.T) {
 func TestRenderPRSummaryMarkdown_AISection_Deterministic(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand: "well_protected",
+		PostureBand: "strong",
 		AI: &AIValidationSummary{
 			ImpactedCapabilities: []string{"billing", "auth"},
 			SelectedScenarios:    2,
 			TotalScenarios:       5,
-			Scenarios: []AIScenarioSummary{
+			Scenarios: []EvalSummary{
 				{Name: "billing-accuracy", Capability: "billing", Reason: "prompt changed"},
 				{Name: "auth-safety", Capability: "auth", Reason: "context changed"},
 			},

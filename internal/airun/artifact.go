@@ -34,10 +34,10 @@ type Artifact struct {
 	Command string `json:"command,omitempty"`
 
 	// Selected scenarios with selection reasoning.
-	Selected []ScenarioEntry `json:"selected"`
+	Selected []EvalEntry `json:"selected"`
 
 	// Skipped scenarios with skip reasoning.
-	Skipped []ScenarioEntry `json:"skipped,omitempty"`
+	Skipped []EvalEntry `json:"skipped,omitempty"`
 
 	// Hashes captures content hashes for reproducibility verification.
 	Hashes ContentHashes `json:"hashes"`
@@ -60,8 +60,8 @@ type Artifact struct {
 	EvalRun *EvalRunResult `json:"evalRun,omitempty"`
 }
 
-// ScenarioEntry represents a scenario in the run artifact.
-type ScenarioEntry struct {
+// EvalEntry represents a scenario in the run artifact.
+type EvalEntry struct {
 	ID         string   `json:"id"`
 	Name       string   `json:"name"`
 	Capability string   `json:"capability,omitempty"`

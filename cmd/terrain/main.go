@@ -119,6 +119,23 @@ func main() {
 		os.Exit(2)
 	}
 
+	// Global --print-network flag prints the unified network of
+	// detected surfaces / evals / tests / code units and exits.
+	// Per PRODUCT.md §16. Must run before subcommand dispatch.
+	if os.Args[1] == "--print-network" {
+		root := "."
+		for i := 2; i < len(os.Args)-1; i++ {
+			if os.Args[i] == "--root" {
+				root = os.Args[i+1]
+			}
+		}
+		if err := runPrintNetwork(root); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
 	switch os.Args[1] {
 	case "analyze":
 		// Helpful redirect: --base belongs on `report pr` / `report
@@ -155,6 +172,8 @@ func main() {
 		timeoutFlag := analyzeCmd.Duration("timeout", 0, "abort the analysis after this duration (e.g. 5m); 0 means no timeout")
 		suppressionsFlag := analyzeCmd.String("suppressions", "", "path to .terrain/suppressions.yaml (default: $root/.terrain/suppressions.yaml; missing file is fine)")
 		newOnlyFlag := analyzeCmd.Bool("new-findings-only", false, "filter signals to those NOT present in --baseline (lets established repos with debt adopt --fail-on without bricking CI)")
+		previewFlag := analyzeCmd.Bool("preview", false, "enable the §9 preview-tier AI/ML detectors (default off; pending LB-5/LB-6 calibration)")
+		diagFlag := analyzeCmd.Bool("diag", false, "print per-step pipeline timing diagnostics to stderr (for performance investigation)")
 		_ = analyzeCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("analyze", analyzeCmd.Args(), rootFlag)
 		gate, gateErr := parseSeverityGate(*failOnFlag)
@@ -193,6 +212,8 @@ func main() {
 			Timeout:          *timeoutFlag,
 			SuppressionsPath: *suppressionsFlag,
 			NewFindingsOnly:  *newOnlyFlag,
+			EnablePreview:    *previewFlag,
+			Diag:             *diagFlag,
 		}
 		if err := runAnalyze(analyzeOpts); err != nil {
 			if errors.Is(err, errSeverityGateBlocked) {
@@ -873,6 +894,39 @@ func main() {
 		readOnlyFlag := serveCmd.Bool("read-only", false, "reject any non-GET/HEAD/OPTIONS request with 405 (every handler in 0.2 is read-only; this flag enforces the contract for any future state-changing endpoint)")
 		_ = serveCmd.Parse(os.Args[2:])
 		if err := runServe(*rootFlag, *portFlag, *hostFlag, *readOnlyFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "test":
+		testCmd := flag.NewFlagSet("test", flag.ExitOnError)
+		rootFlag := testCmd.String("root", ".", "repository root to analyze")
+		selectorFlag := testCmd.String("selector", "", "rule selector (e.g., 'regression/test-failed' or 'coverage/*')")
+		jsonFlag := testCmd.Bool("json", false, "emit findings.json instead of human-readable output")
+		junitFlag := testCmd.String("junit", "", "write JUnit XML to the given path")
+		summaryFlag := testCmd.String("summary", "", "write Step Summary markdown to the given path")
+		_ = testCmd.Parse(os.Args[2:])
+		if err := runTestCommand(*rootFlag, *selectorFlag, *jsonFlag, *junitFlag, *summaryFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "describe":
+		descCmd := flag.NewFlagSet("describe", flag.ExitOnError)
+		rootFlag := descCmd.String("root", ".", "repository root to analyze")
+		writeFlag := descCmd.Bool("write", false, "write detected surfaces into terrain.yaml (prompts for overwrite)")
+		_ = descCmd.Parse(os.Args[2:])
+		if err := runDescribeCommand(*rootFlag, *writeFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "accept-snapshot":
+		acceptCmd := flag.NewFlagSet("accept-snapshot", flag.ExitOnError)
+		rootFlag := acceptCmd.String("root", ".", "repository root")
+		yesFlag := acceptCmd.Bool("yes", false, "skip the interactive confirmation prompt")
+		_ = acceptCmd.Parse(os.Args[2:])
+		if err := runAcceptSnapshotCommand(*rootFlag, *yesFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}

@@ -27,10 +27,10 @@ func TestTestCase_ImplementsValidationTarget(t *testing.T) {
 	}
 }
 
-func TestScenario_ImplementsValidationTarget(t *testing.T) {
+func TestEval_ImplementsValidationTarget(t *testing.T) {
 	t.Parallel()
-	var vt ValidationTarget = Scenario{
-		ScenarioID: "scenario:auth:login-flow",
+	var vt ValidationTarget = Eval{
+		EvalID:     "scenario:auth:login-flow",
 		Name:       "Login flow",
 		Path:       "evals/auth.yaml",
 		Owner:      "ml-team",
@@ -40,25 +40,25 @@ func TestScenario_ImplementsValidationTarget(t *testing.T) {
 	if vt.ValidationID() != "scenario:auth:login-flow" {
 		t.Errorf("expected ID, got %q", vt.ValidationID())
 	}
-	if vt.ValidationKindOf() != ValidationKindScenario {
-		t.Errorf("expected kind scenario, got %q", vt.ValidationKindOf())
+	if vt.ValidationKindOf() != ValidationKindEval {
+		t.Errorf("expected kind eval, got %q", vt.ValidationKindOf())
 	}
 	if vt.ValidationOwner() != "ml-team" {
 		t.Errorf("expected owner ml-team, got %q", vt.ValidationOwner())
 	}
 	if !vt.IsExecutable() {
-		t.Error("executable scenario should be executable")
+		t.Error("executable eval should be executable")
 	}
 }
 
-func TestScenario_NonExecutable(t *testing.T) {
+func TestEval_NonExecutable(t *testing.T) {
 	t.Parallel()
-	var vt ValidationTarget = Scenario{
-		ScenarioID: "scenario:derived:checkout",
+	var vt ValidationTarget = Eval{
+		EvalID:     "scenario:derived:checkout",
 		Executable: false,
 	}
 	if vt.IsExecutable() {
-		t.Error("non-executable scenario should not be executable")
+		t.Error("non-executable eval should not be executable")
 	}
 }
 
@@ -92,8 +92,8 @@ func TestCollectValidationTargets(t *testing.T) {
 			{TestID: "t1", TestName: "test one"},
 			{TestID: "t2", TestName: "test two"},
 		},
-		Scenarios: []Scenario{
-			{ScenarioID: "s1", Name: "scenario one", Executable: true},
+		Evals: []Eval{
+			{EvalID: "s1", Name: "eval one", Executable: true},
 		},
 		ManualCoverage: []ManualCoverageArtifact{
 			{ArtifactID: "m1", Name: "manual one"},
@@ -106,12 +106,12 @@ func TestCollectValidationTargets(t *testing.T) {
 		t.Fatalf("expected 4 targets, got %d", len(targets))
 	}
 
-	// Verify order: tests, then scenarios, then manual.
+	// Verify order: tests, then evals, then manual.
 	if targets[0].ValidationKindOf() != ValidationKindTest {
 		t.Error("first targets should be tests")
 	}
-	if targets[2].ValidationKindOf() != ValidationKindScenario {
-		t.Error("third target should be scenario")
+	if targets[2].ValidationKindOf() != ValidationKindEval {
+		t.Error("third target should be eval")
 	}
 	if targets[3].ValidationKindOf() != ValidationKindManual {
 		t.Error("fourth target should be manual")

@@ -5,11 +5,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/pmclSF/terrain/internal/migration"
+	"github.com/pmclSF/terrain/internal/framework_migration"
 )
 
 // RenderMigrationReport writes a migration readiness report to w.
-func RenderMigrationReport(w io.Writer, readiness *migration.ReadinessSummary) {
+func RenderMigrationReport(w io.Writer, readiness *framework_migration.ReadinessSummary) {
 	line, blank := reportHelpers(w)
 
 	line("Terrain Migration Readiness")
@@ -98,7 +98,7 @@ func RenderMigrationReport(w io.Writer, readiness *migration.ReadinessSummary) {
 
 // RenderMigrationBlockers writes a focused migration blockers report to w.
 // This is the output for `terrain migration blockers`.
-func RenderMigrationBlockers(w io.Writer, readiness *migration.ReadinessSummary) {
+func RenderMigrationBlockers(w io.Writer, readiness *framework_migration.ReadinessSummary) {
 	line, blank := reportHelpers(w)
 
 	line("Terrain Migration Blockers")
@@ -137,7 +137,7 @@ func RenderMigrationBlockers(w io.Writer, readiness *migration.ReadinessSummary)
 	}
 
 	// Area assessments — only risky and caution
-	var risky []migration.AreaAssessment
+	var risky []framework_migration.AreaAssessment
 	for _, area := range readiness.AreaAssessments {
 		if area.Classification != "safe" {
 			risky = append(risky, area)
@@ -161,7 +161,7 @@ func RenderMigrationBlockers(w io.Writer, readiness *migration.ReadinessSummary)
 }
 
 // RenderMigrationPreview writes a migration preview report for a single file.
-func RenderMigrationPreview(w io.Writer, preview *migration.PreviewResult) {
+func RenderMigrationPreview(w io.Writer, preview *framework_migration.PreviewResult) {
 	line, blank := reportHelpers(w)
 
 	line("Terrain Migration Preview")
@@ -232,7 +232,7 @@ func RenderMigrationPreview(w io.Writer, preview *migration.PreviewResult) {
 }
 
 // RenderMigrationPreviewScope writes a scope-level migration preview summary.
-func RenderMigrationPreviewScope(w io.Writer, previews []*migration.PreviewResult) {
+func RenderMigrationPreviewScope(w io.Writer, previews []*framework_migration.PreviewResult) {
 	line, blank := reportHelpers(w)
 
 	line("Terrain Migration Preview (scope)")

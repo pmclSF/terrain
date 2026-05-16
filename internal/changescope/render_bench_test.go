@@ -95,7 +95,7 @@ func newBenchPR(findingCount, selectionCount, ownerCount int) *PRAnalysis {
 	}
 
 	return &PRAnalysis{
-		PostureBand:        "partially_protected",
+		PostureBand:        "moderate",
 		ChangedFileCount:   findingCount / 2,
 		ChangedSourceCount: findingCount / 3,
 		ChangedTestCount:   findingCount / 6,

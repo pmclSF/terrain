@@ -11,7 +11,7 @@ import (
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/measurement"
 	"github.com/pmclSF/terrain/internal/metrics"
-	"github.com/pmclSF/terrain/internal/migration"
+	"github.com/pmclSF/terrain/internal/framework_migration"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/scoring"
 	"github.com/pmclSF/terrain/internal/testdata"
@@ -466,7 +466,7 @@ func TestRenderImpactReport_WithGaps(t *testing.T) {
 			{Path: "test/api.test.js", ImpactConfidence: impact.ConfidenceInferred, Relevance: "in same directory"},
 		},
 		ImpactedOwners: []string{"team-api"},
-		Posture:        impact.ChangeRiskPosture{Band: "high_risk", Explanation: "Significant risk."},
+		Posture:        impact.ChangeRiskPosture{Band: "critical", Explanation: "Significant risk."},
 		Summary:        "1 file(s) changed, 1 code unit(s) impacted.",
 		Limitations:    []string{"No coverage lineage available."},
 	}
@@ -477,7 +477,7 @@ func TestRenderImpactReport_WithGaps(t *testing.T) {
 
 	checks := []string{
 		"Terrain Impact Analysis",
-		"Change-Risk Posture: HIGH_RISK",
+		"Change-Risk Posture: CRITICAL",
 		"Coverage confidence:",
 		"PR risk:",
 		"Protection Gaps",
@@ -623,7 +623,7 @@ func TestRenderImpactDrilldown_EmptyResults(t *testing.T) {
 func TestRenderMigrationReport(t *testing.T) {
 	t.Parallel()
 	snap := testdata.MigrationRiskSnapshot()
-	readiness := migration.ComputeReadiness(snap)
+	readiness := framework_migration.ComputeReadiness(snap)
 
 	var buf bytes.Buffer
 	RenderMigrationReport(&buf, readiness)

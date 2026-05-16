@@ -123,11 +123,11 @@ func snapshotPaths(snap *models.TestSuiteSnapshot) []string {
 	if snap == nil {
 		return nil
 	}
-	out := make([]string, 0, len(snap.TestFiles)+len(snap.Scenarios))
+	out := make([]string, 0, len(snap.TestFiles)+len(snap.Evals))
 	for _, tf := range snap.TestFiles {
 		out = append(out, tf.Path)
 	}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		if sc.Path != "" {
 			out = append(out, sc.Path)
 		}

@@ -224,12 +224,11 @@ func TestPostureBadge(t *testing.T) {
 		band string
 		want string
 	}{
-		{"well_protected", "[PASS]"},
-		{"partially_protected", "[WARN]"},
-		{"weakly_protected", "[RISK]"},
-		{"high_risk", "[FAIL]"},
-		{"evidence_limited", "[INFO]"},
-		{"unknown", "[????]"},
+		{"strong", "[PASS]"},
+		{"moderate", "[WARN]"},
+		{"weak", "[RISK]"},
+		{"critical", "[FAIL]"},
+		{"unknown", "[INFO]"},
 	}
 	for _, tt := range tests {
 		got := postureBadge(tt.band)
@@ -492,16 +491,16 @@ func TestBuildAIValidationSummary_NoAI(t *testing.T) {
 func TestBuildAIValidationSummary_WithScenarios(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{Name: "safety-check", Capability: "safety", Relevance: "prompt changed"},
 			{Name: "accuracy-test", Capability: "accuracy", Relevance: "model updated"},
 		},
 	}
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:1", Name: "safety-check"},
-			{ScenarioID: "sc:2", Name: "accuracy-test"},
-			{ScenarioID: "sc:3", Name: "latency-test"},
+		Evals: []models.Eval{
+			{EvalID: "sc:1", Name: "safety-check"},
+			{EvalID: "sc:2", Name: "accuracy-test"},
+			{EvalID: "sc:3", Name: "latency-test"},
 		},
 	}
 
@@ -545,13 +544,13 @@ func TestBuildAIValidationSummary_WithSignals(t *testing.T) {
 				{Path: "src/prompt.ts"},
 			},
 		},
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{Name: "test", Capability: "search"},
 		},
 	}
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:1", Name: "test"},
+		Evals: []models.Eval{
+			{EvalID: "sc:1", Name: "test"},
 		},
 		Signals: []models.Signal{
 			{Type: "safetyFailure", Category: models.CategoryAI, Severity: models.SeverityCritical,
@@ -625,13 +624,13 @@ func TestBuildAIValidationSummary_UncoveredContexts(t *testing.T) {
 				{Path: "src/prompt.ts"},
 			},
 		},
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{Name: "test"},
 		},
 	}
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:1", Name: "test"},
+		Evals: []models.Eval{
+			{EvalID: "sc:1", Name: "test"},
 		},
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "surface:src/prompt.ts:sysPrompt", Name: "sysPrompt", Path: "src/prompt.ts", Kind: models.SurfaceContext},
@@ -715,7 +714,7 @@ func TestBuildChangeScopedFindings_SkipsDuplicateUntestedExport(t *testing.T) {
 func TestBuildPostureDelta_WellProtected(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{
-		Posture: impact.ChangeRiskPosture{Band: "well_protected"},
+		Posture: impact.ChangeRiskPosture{Band: "strong"},
 	}
 	delta := buildPostureDelta(result)
 	if delta.OverallDirection != "unchanged" {
@@ -729,7 +728,7 @@ func TestBuildPostureDelta_WellProtected(t *testing.T) {
 func TestBuildPostureDelta_HighRisk(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{
-		Posture:        impact.ChangeRiskPosture{Band: "high_risk"},
+		Posture:        impact.ChangeRiskPosture{Band: "critical"},
 		ProtectionGaps: []impact.ProtectionGap{{Path: "a"}, {Path: "b"}},
 	}
 	delta := buildPostureDelta(result)

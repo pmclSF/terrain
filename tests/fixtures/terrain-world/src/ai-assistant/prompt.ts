@@ -1,3 +1,7 @@
+import OpenAI from 'openai';
+
+const _client = new OpenAI();
+
 export const systemPrompt = "You are a helpful shopping assistant.";
 
 export function buildUserPrompt(query: string, context: any) {

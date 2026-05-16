@@ -25,15 +25,15 @@ type TerrainConfig struct {
 
 	// Scenarios declares AI/eval scenarios that validate code surfaces.
 	// Scenarios are first-class validation targets alongside tests.
-	Scenarios []ScenarioEntry `yaml:"scenarios"`
+	Scenarios []EvalEntry `yaml:"scenarios"`
 
 	// CIDurationSeconds is the known CI duration in seconds.
 	// Used by edge-case detection (FAST_CI_ALREADY).
 	CIDurationSeconds *int `yaml:"ci_duration_seconds"`
 }
 
-// ScenarioEntry is a single scenario declaration in terrain.yaml.
-type ScenarioEntry struct {
+// EvalEntry is a single scenario declaration in terrain.yaml.
+type EvalEntry struct {
 	// Name is a human-readable label (required).
 	Name string `yaml:"name"`
 
@@ -169,12 +169,12 @@ func manualArtifactID(source, name string) string {
 
 // ToScenarios converts scenario entries into model Scenarios suitable
 // for inclusion in the snapshot.
-func (c *TerrainConfig) ToScenarios() []models.Scenario {
+func (c *TerrainConfig) ToScenarios() []models.Eval {
 	if c == nil || len(c.Scenarios) == 0 {
 		return nil
 	}
 
-	scenarios := make([]models.Scenario, 0, len(c.Scenarios))
+	scenarios := make([]models.Eval, 0, len(c.Scenarios))
 	for _, entry := range c.Scenarios {
 		if entry.Name == "" {
 			continue
@@ -187,8 +187,8 @@ func (c *TerrainConfig) ToScenarios() []models.Scenario {
 
 		scenarioID := fmt.Sprintf("scenario:%s:%s", framework, strings.ToLower(strings.ReplaceAll(entry.Name, " ", "-")))
 
-		scenarios = append(scenarios, models.Scenario{
-			ScenarioID:        scenarioID,
+		scenarios = append(scenarios, models.Eval{
+			EvalID:            scenarioID,
 			Name:              entry.Name,
 			Category:          entry.Category,
 			Description:       entry.Description,

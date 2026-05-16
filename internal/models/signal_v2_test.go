@@ -30,8 +30,8 @@ func TestSignalV2_RoundTrip(t *testing.T) {
 		Actionability:   ActionabilityScheduled,
 		LifecycleStages: []LifecycleStage{StageTestAuthoring, StageMaintenance},
 		AIRelevance:     AIRelevanceNone,
-		RuleID:          "TER-QUALITY-005",
-		RuleURI:         "docs/rules/quality/weak-assertion.md",
+		RuleID:          "terrain/hygiene/weak-assertion",
+		RuleURI:         "docs/rules/hygiene/weak-assertion.md",
 		DetectorVersion: "v0.2.0",
 		RelatedSignals: []SignalReference{
 			{Type: "untestedExport", Relationship: "corroborates"},
@@ -69,7 +69,7 @@ func TestSignalV2_RoundTrip(t *testing.T) {
 	if decoded.AIRelevance != AIRelevanceNone {
 		t.Errorf("aiRelevance: got %q", decoded.AIRelevance)
 	}
-	if decoded.RuleID != "TER-QUALITY-005" {
+	if decoded.RuleID != "terrain/hygiene/weak-assertion" {
 		t.Errorf("ruleId: got %q", decoded.RuleID)
 	}
 	if decoded.DetectorVersion != "v0.2.0" {
@@ -141,7 +141,7 @@ func TestSignalV2_ForwardCompat_V1ReaderReadsV2(t *testing.T) {
 		ConfidenceDetail: &ConfidenceDetail{
 			Value: 0.84, IntervalLow: 0.78, IntervalHigh: 0.89,
 		},
-		RuleID: "TER-QUALITY-005",
+		RuleID: "terrain/hygiene/weak-assertion",
 	}
 	payload, err := json.Marshal(v2)
 	if err != nil {

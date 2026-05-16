@@ -48,7 +48,7 @@ def embed(text: str):
 	if got[0].Type != signals.SignalAIEmbeddingModelChange {
 		t.Errorf("type = %q", got[0].Type)
 	}
-	if got[0].RuleID != "TER-AI-110" {
+	if got[0].RuleID != "terrain/ai/embedding-model-change" {
 		t.Errorf("ruleID = %q, want TER-AI-110", got[0].RuleID)
 	}
 	if got[0].Metadata["embeddingModel"] != "text-embedding-3-large" {
@@ -92,9 +92,9 @@ client.embeddings.create(model="text-embedding-3-small", input=text)
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: rel, Name: "embed", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID: "scenario:1",
+				EvalID: "scenario:1",
 				Name:       "rag baseline",
 				Category:   "retrieval",
 			},
@@ -116,9 +116,9 @@ client.embeddings.create(model="text-embedding-ada-002", input=text)
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: rel, Name: "embed", Kind: models.SurfaceRetrieval},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:1",
+				EvalID:        "scenario:1",
 				Name:              "happy path",
 				Category:          "smoke",
 				CoveredSurfaceIDs: []string{"s1"},
@@ -200,8 +200,8 @@ embeddings = OpenAIEmbeddings(model="text-embedding-3-large")
 	if got[0].EvidenceStrength != models.EvidenceStrong {
 		t.Errorf("structured RAG path should yield EvidenceStrong, got %v", got[0].EvidenceStrength)
 	}
-	if got[0].Confidence != 0.85 {
-		t.Errorf("structured path confidence = %v, want 0.85", got[0].Confidence)
+	if got[0].Confidence != 0.55 {
+		t.Errorf("structured path confidence = %v, want 0.55", got[0].Confidence)
 	}
 	if got[0].Metadata["embeddingModel"] != "text-embedding-3-large" {
 		t.Errorf("metadata embeddingModel = %v", got[0].Metadata["embeddingModel"])

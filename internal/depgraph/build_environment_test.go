@@ -462,9 +462,9 @@ func TestBuildEnvironmentEdges_TestFileToDevice(t *testing.T) {
 func TestBuildEnvironmentEdges_ScenarioToEnvironment(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:     "scenario:auth:login-flow",
+				EvalID:     "scenario:auth:login-flow",
 				Name:           "Login Flow",
 				Framework:      "deepeval",
 				EnvironmentIDs: []string{"env:staging"},

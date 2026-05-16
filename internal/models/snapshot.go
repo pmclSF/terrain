@@ -142,9 +142,11 @@ type TestSuiteSnapshot struct {
 	// retrieval pipelines: chunking strategy, top-k values, embedding models.
 	RAGPipelineSurfaces []RAGPipelineSurface `json:"ragPipelineSurfaces,omitempty"`
 
-	// Scenarios contains behavioral scenarios — AI evaluation cases,
-	// multi-step workflows, or derived behavior specifications.
-	Scenarios []Scenario `json:"scenarios,omitempty"`
+	// Evals contains AI evaluation cases — structured input/output pairs,
+	// rubric-scored generations, or behavioral assertions against AI surfaces.
+	// May be hand-authored or framework-generated (promptfoo, deepeval, ragas,
+	// Great Expectations, gauntlet via JSON ingest).
+	Evals []Eval `json:"evals,omitempty"`
 
 	// InferredCapabilities lists AI capabilities detected in the codebase,
 	// derived from code surface kinds rather than scenario naming.

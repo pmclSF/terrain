@@ -119,7 +119,12 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			Type:        signals.SignalAIPromptVersioning,
 			Category:    models.CategoryAI,
 			Severity:    models.SeverityMedium,
-			Confidence:  0.85,
+			// 2026-05-11 corpus-driven recalibration: declared 0.85,
+			// hand-validated 8% precision (LB 1%) on 25-sample review.
+			// The aiInstructionMarkers fix (d900098) addresses the worst
+			// FPs but a re-harvest hand-label is needed before raising
+			// this back. See tier-4/handlabel/aiPromptVersioning.labels.tsv
+			Confidence:  0.50,
 			Location:    models.SignalLocation{File: surface.Path, Symbol: surface.Name},
 			Explanation: "Prompt file `" + surface.Path + "` has no recognisable version marker. Future content changes will silently drift; consumers can't detect the change.",
 			SuggestedAction: "Add a `version:` field, a `_v<N>` suffix to the filename, or a `# version: ...` comment so downstream consumers can detect content drift.",
@@ -128,7 +133,7 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			Actionability:   models.ActionabilityScheduled,
 			LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 			AIRelevance:     models.AIRelevanceHigh,
-			RuleID:          "TER-AI-101",
+			RuleID:          "terrain/ai/prompt-versioning",
 			RuleURI:         "docs/rules/ai/prompt-versioning.md",
 			DetectorVersion: "0.2.0",
 			ConfidenceDetail: &models.ConfidenceDetail{

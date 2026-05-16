@@ -9,19 +9,32 @@ import (
 )
 
 // Fixture fragility thresholds.
+//
+// Calibrated against the 80-repo OSS corpus + AutoGPT (29K previously-
+// reported firings). The pre-calibration thresholds fired on fixtures
+// used by ≥5 tests in a single file — which is normal DRY test design,
+// not fragility. The current shape requires fan-out *across files*
+// before flagging.
 const (
-	// minFixtureDependents is the minimum direct-test count before a fixture
-	// is considered fragile.
-	minFixtureDependents = 5
+	// minFixtureDependents is the minimum direct-test count before a
+	// fixture is even considered. Raised from 5 to 10 — fewer than 10
+	// tests sharing a fixture is normal DRY design, not a cascade risk.
+	minFixtureDependents = 10
+
+	// minFixtureTestFiles is the minimum *file* span — a fixture used
+	// by 20 tests in a single file is local DRY; it becomes fragile
+	// only when many independent test groups depend on it. Drops
+	// the bulk of single-file fixture FPs the corpus surfaced.
+	minFixtureTestFiles = 2
 
 	// fixtureHighTestThreshold flags SeverityHigh when direct tests exceed this.
-	fixtureHighTestThreshold = 20
+	fixtureHighTestThreshold = 25
 
 	// fixtureMediumTestThreshold flags SeverityMedium when direct tests exceed this.
-	fixtureMediumTestThreshold = 10
+	fixtureMediumTestThreshold = 15
 
 	// fixtureHighFileThreshold flags SeverityHigh when distinct test files exceed this.
-	fixtureHighFileThreshold = 5
+	fixtureHighFileThreshold = 6
 
 	// fixtureMediumFileThreshold flags SeverityMedium when distinct test files exceed this.
 	fixtureMediumFileThreshold = 3
@@ -57,6 +70,11 @@ func (d *FixtureFragilityHotspotDetector) DetectWithGraph(snap *models.TestSuite
 		}
 
 		if directTests < minFixtureDependents {
+			continue
+		}
+		if len(testFiles) < minFixtureTestFiles {
+			// File-local fixture — many tests in one file sharing
+			// setup is normal DRY, not a cascade risk. Skip.
 			continue
 		}
 

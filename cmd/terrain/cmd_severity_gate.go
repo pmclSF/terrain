@@ -56,6 +56,7 @@ const (
 	severityGateCritical severityGate = "critical"
 	severityGateHigh     severityGate = "high"
 	severityGateMedium   severityGate = "medium"
+	severityGateLow      severityGate = "low"
 )
 
 // parseSeverityGate accepts the user-supplied flag value and returns a
@@ -73,9 +74,11 @@ func parseSeverityGate(s string) (severityGate, error) {
 		return severityGateHigh, nil
 	case "medium":
 		return severityGateMedium, nil
+	case "low":
+		return severityGateLow, nil
 	default:
 		return severityGateNone, fmt.Errorf(
-			"invalid --fail-on %q: valid values are 'critical', 'high', 'medium' (or unset to disable)",
+			"invalid --fail-on %q: valid values are 'critical', 'high', 'medium', 'low' (or unset to disable)",
 			s,
 		)
 	}
@@ -108,6 +111,14 @@ func severityGateBlocked(gate severityGate, summary analyze.SignalBreakdown) (bo
 			return true, fmt.Sprintf(
 				"%d critical + %d high + %d medium (%d %s total)",
 				summary.Critical, summary.High, summary.Medium, total, plural(total, "finding"),
+			)
+		}
+	case severityGateLow:
+		total := summary.Critical + summary.High + summary.Medium + summary.Low
+		if total > 0 {
+			return true, fmt.Sprintf(
+				"%d critical + %d high + %d medium + %d low (%d %s total)",
+				summary.Critical, summary.High, summary.Medium, summary.Low, total, plural(total, "finding"),
 			)
 		}
 	}

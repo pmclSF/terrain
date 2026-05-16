@@ -246,8 +246,8 @@ func TestInferAICapabilities_ScenarioCoverage(t *testing.T) {
 	surfaces := []models.CodeSurface{
 		{SurfaceID: "s:ret", Kind: models.SurfaceRetrieval, Name: "retriever", Confidence: 0.92},
 	}
-	scenarios := []models.Scenario{
-		{ScenarioID: "sc:1", Capability: "retrieval-quality"},
+	scenarios := []models.Eval{
+		{EvalID: "sc:1", Capability: "retrieval-quality"},
 	}
 
 	caps := InferAICapabilities(surfaces, scenarios)

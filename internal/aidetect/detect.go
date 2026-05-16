@@ -26,6 +26,14 @@ type DetectResult struct {
 
 	// ModelFiles are source files with model invocation patterns.
 	ModelFiles []string `json:"modelFiles,omitempty"`
+
+	// CallSites are AST-resolved AI SDK invocations. Each carries the
+	// SDK identity, method shape, model arg (when static), and
+	// confidence. Populated alongside ModelFiles during the source
+	// scan; the regex-based ModelFiles entry remains as a safety net
+	// until the AST detector reaches recall parity on the dogfood
+	// corpus (per PRODUCT.md §17 LB-6).
+	CallSites []AICallSite `json:"callSites,omitempty"`
 }
 
 // maxSourceFileSize is the maximum file size (256 KB) to scan for AI patterns.
@@ -174,6 +182,67 @@ func detectDependencies(root string, result *DetectResult) {
 			}
 		}
 	}
+
+	// Check go.mod (Go module declarations).
+	goModPath := filepath.Join(root, "go.mod")
+	if data, err := os.ReadFile(goModPath); err == nil {
+		content := string(data)
+		for _, sig := range KnownFrameworks {
+			for _, key := range sig.DependencyKeys {
+				// go.mod entries are module paths like
+				// github.com/sashabaranov/go-openai — substring match
+				// against the DependencyKeys configured for the framework.
+				if strings.Contains(content, key) {
+					result.Frameworks = append(result.Frameworks, Framework{
+						Name:       sig.Name,
+						Source:     "dependency",
+						ConfigFile: "go.mod",
+						Confidence: 0.9,
+					})
+				}
+			}
+		}
+	}
+
+	// Check Maven pom.xml.
+	pomPath := filepath.Join(root, "pom.xml")
+	if data, err := os.ReadFile(pomPath); err == nil {
+		content := string(data)
+		for _, sig := range KnownFrameworks {
+			for _, key := range sig.DependencyKeys {
+				if strings.Contains(content, key) {
+					result.Frameworks = append(result.Frameworks, Framework{
+						Name:       sig.Name,
+						Source:     "dependency",
+						ConfigFile: "pom.xml",
+						Confidence: 0.9,
+					})
+				}
+			}
+		}
+	}
+
+	// Check Gradle build.gradle / build.gradle.kts.
+	for _, name := range []string{"build.gradle", "build.gradle.kts"} {
+		gradlePath := filepath.Join(root, name)
+		data, err := os.ReadFile(gradlePath)
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		for _, sig := range KnownFrameworks {
+			for _, key := range sig.DependencyKeys {
+				if strings.Contains(content, key) {
+					result.Frameworks = append(result.Frameworks, Framework{
+						Name:       sig.Name,
+						Source:     "dependency",
+						ConfigFile: name,
+						Confidence: 0.9,
+					})
+				}
+			}
+		}
+	}
 }
 
 // Model invocation patterns in source code.
@@ -242,7 +311,10 @@ func detectFromSourceCtx(ctx context.Context, root string, result *DetectResult)
 		}
 
 		ext := strings.ToLower(filepath.Ext(path))
-		if ext != ".ts" && ext != ".js" && ext != ".py" && ext != ".tsx" && ext != ".jsx" && ext != ".mjs" {
+		isGo := ext == ".go"
+		isJava := ext == ".java"
+		if ext != ".ts" && ext != ".js" && ext != ".py" &&
+			ext != ".tsx" && ext != ".jsx" && ext != ".mjs" && !isGo && !isJava {
 			return nil
 		}
 
@@ -252,6 +324,20 @@ func detectFromSourceCtx(ctx context.Context, root string, result *DetectResult)
 		}
 		content := string(data)
 		rel, _ := filepath.Rel(root, path)
+
+		// Go and Java take only the AST detection path. Substring
+		// matching on those languages' source produces false positives
+		// (Terrain's own test files include Python import strings as
+		// fixtures, for instance); the AST detectors are strict about
+		// actual import bindings.
+		if isGo {
+			result.CallSites = append(result.CallSites, DetectGoAISurfaces(data, rel)...)
+			return nil
+		}
+		if isJava {
+			result.CallSites = append(result.CallSites, DetectJavaAISurfaces(data, rel)...)
+			return nil
+		}
 
 		// Check framework import patterns.
 		for _, pe := range patterns {
@@ -276,12 +362,24 @@ func detectFromSourceCtx(ctx context.Context, root string, result *DetectResult)
 			datasetFiles[rel] = true
 		}
 
-		// Check for model invocation patterns.
+		// Check for model invocation patterns (regex fallback path).
 		for _, pat := range modelCallPatterns {
 			if pat.MatchString(content) {
 				modelFiles[rel] = true
 				break
 			}
+		}
+
+		// AST-based call-site extraction. The AST path adds structural
+		// detail (SDK identity, method shape, static model arg) that the
+		// regex modelCallPatterns can't surface. Both run for now;
+		// removing the regex path is gated on LB-6 recall parity on the
+		// dogfood corpus per PRODUCT.md §17.
+		switch ext {
+		case ".py":
+			result.CallSites = append(result.CallSites, DetectPythonAISurfaces(data, rel)...)
+		case ".ts", ".tsx", ".js", ".jsx", ".mjs":
+			result.CallSites = append(result.CallSites, DetectJSAISurfaces(data, rel)...)
 		}
 
 		return nil

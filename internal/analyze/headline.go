@@ -15,17 +15,38 @@ func plural(n int, singular string) string {
 // It evaluates conditions in priority order and returns the first match.
 // All data is already computed in the Report — no new analysis.
 func deriveHeadline(r *Report) string {
-	if r.SignalSummary.Critical > 0 {
-		// Use "critical" rather than "high-priority" so the
-		// headline severity vocabulary matches the body. Pre-fix
-		// the headline said "N high-priority signals" while the
-		// body listed them as `[HIGH] N critical signals` — same
-		// number, two different labels, confusing.
-		return fmt.Sprintf(
-			"%d critical %s detected — review recommended.",
-			r.SignalSummary.Critical,
-			plural(r.SignalSummary.Critical, "signal"),
-		)
+	// Gate-relevant headline: reports Critical + High together against total.
+	// Earlier versions said "N critical signals — review recommended" while
+	// the body of the same report rendered "N total signals, M high" — two
+	// different numbers, one soft tone. Devs reconciled by trusting the
+	// larger number and writing off the headline. New rule: the headline
+	// matches what the gate would block on.
+	gateRelevant := r.SignalSummary.Critical + r.SignalSummary.High
+	if gateRelevant > 0 {
+		switch {
+		case r.SignalSummary.Critical > 0 && r.SignalSummary.High > 0:
+			return fmt.Sprintf(
+				"%d critical and %d high-severity %s across %d findings — run `terrain insights` to triage.",
+				r.SignalSummary.Critical,
+				r.SignalSummary.High,
+				plural(gateRelevant, "signal"),
+				r.SignalSummary.Total,
+			)
+		case r.SignalSummary.Critical > 0:
+			return fmt.Sprintf(
+				"%d critical %s across %d findings — run `terrain insights` to triage.",
+				r.SignalSummary.Critical,
+				plural(r.SignalSummary.Critical, "signal"),
+				r.SignalSummary.Total,
+			)
+		default:
+			return fmt.Sprintf(
+				"%d high-severity %s across %d findings — run `terrain insights` to triage.",
+				r.SignalSummary.High,
+				plural(r.SignalSummary.High, "signal"),
+				r.SignalSummary.Total,
+			)
+		}
 	}
 
 	// Duplicate clusters — even small counts are surprising and actionable.

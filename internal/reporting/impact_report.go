@@ -115,10 +115,10 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	}
 
 	// Impacted scenarios (AI/eval)
-	if len(result.ImpactedScenarios) > 0 {
+	if len(result.ImpactedEvals) > 0 {
 		// Collect unique capabilities.
 		capSet := map[string]bool{}
-		for _, sc := range result.ImpactedScenarios {
+		for _, sc := range result.ImpactedEvals {
 			if sc.Capability != "" {
 				capSet[sc.Capability] = true
 			}
@@ -133,9 +133,9 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 			blank()
 		}
 
-		line("Impacted Scenarios (%d)", len(result.ImpactedScenarios))
+		line("Impacted Scenarios (%d)", len(result.ImpactedEvals))
 		line(strings.Repeat("-", 60))
-		for _, sc := range result.ImpactedScenarios {
+		for _, sc := range result.ImpactedEvals {
 			conf := ""
 			if sc.ImpactConfidence != "" {
 				conf = fmt.Sprintf(" [%s]", sc.ImpactConfidence)

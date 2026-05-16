@@ -8,7 +8,7 @@ import (
 	"github.com/pmclSF/terrain/internal/models"
 )
 
-func renderScenarioExplanation(se *explain.ScenarioExplanation, verboseOpt ...bool) {
+func renderScenarioExplanation(se *explain.EvalExplanation, verboseOpt ...bool) {
 	isVerbose := len(verboseOpt) > 0 && verboseOpt[0]
 	fmt.Println("Terrain Explain — Scenario")
 	fmt.Println(strings.Repeat("=", 60))
@@ -83,7 +83,11 @@ func renderScenarioExplanation(se *explain.ScenarioExplanation, verboseOpt ...bo
 
 	// Policy decision.
 	if se.PolicyDecision != "" && se.PolicyDecision != "pass" {
-		fmt.Printf("Policy: %s\n", se.PolicyDecision)
+		if se.PolicyReason != "" {
+			fmt.Printf("Policy: %s — %s\n", se.PolicyDecision, se.PolicyReason)
+		} else {
+			fmt.Printf("Policy: %s\n", se.PolicyDecision)
+		}
 		fmt.Println()
 	}
 

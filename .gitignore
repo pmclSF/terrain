@@ -15,6 +15,7 @@ npm-debug.log*
 coverage/
 !internal/coverage/
 !tests/calibration/**/coverage/
+!docs/rules/coverage/
 *.lcov
 
 # === Build output ===
@@ -105,27 +106,3 @@ terrain-parity-gate
 terrain-docs-linkcheck
 terrain-truth-verify
 /terrain-corpus
-/terrain-precision
-
-# === Corpus research data — NEVER publish ===
-# tier-4/ contains the harvested graph: PR walks, boundary edges,
-# labels, per-repo signal data. This is research scratch, kept local.
-# Allowlist the small artifacts that ARE legitimate documentation
-# (markdown reports, hand-labeled TSVs, repo URL lists).
-tier-4/*.jsonl
-tier-4/*.jsonl.gz
-tier-4/*.json
-tier-4/*.json.gz
-tier-4/streams/
-tier-4/expand-streams/
-tier-4/expand2-streams/
-tier-4/bnd-rescan-streams/
-tier-4/track2-ablation/
-tier-4/logs/
-!tier-4/**/*.tsv
-!tier-4/**/*.md
-!tier-4/ai-repos-to-reclone.txt
-
-# === Local snapshot scratch ===
-.terrain/snapshots/
-.terrain/cache/

@@ -21,7 +21,7 @@ func TestParseSeverityGate(t *testing.T) {
 		{"CRITICAL", severityGateCritical, ""},
 		{"  high  ", severityGateHigh, ""},
 		{"medium", severityGateMedium, ""},
-		{"low", "", "invalid --fail-on"},
+		{"low", "low", ""},
 		{"info", "", "invalid --fail-on"},
 		{"garbage", "", "invalid --fail-on"},
 	}
@@ -103,7 +103,7 @@ func TestRunAnalyze_GateBlocksOnFixture(t *testing.T) {
 		return runAnalyze(analyzeRunOpts{
 			Root:          root,
 			SlowThreshold: defaultSlowThresholdMs,
-			Gate:          severityGateMedium,
+			Gate:          severityGateLow,
 		})
 	})
 
@@ -113,7 +113,7 @@ func TestRunAnalyze_GateBlocksOnFixture(t *testing.T) {
 	}
 
 	// Error message should be informative (severity counts + label).
-	if !strings.Contains(err.Error(), "--fail-on=medium") {
+	if !strings.Contains(err.Error(), "--fail-on=low") {
 		t.Errorf("error message missing --fail-on label: %v", err)
 	}
 
@@ -144,7 +144,7 @@ func TestRunAnalyze_JSONStdoutPurity(t *testing.T) {
 			Root:          root,
 			JSONOutput:    true,
 			SlowThreshold: defaultSlowThresholdMs,
-			Gate:          severityGateMedium,
+			Gate:          severityGateLow,
 		})
 	})
 

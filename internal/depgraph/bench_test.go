@@ -206,15 +206,15 @@ func buildLargeSnapshot(testFiles, sourcesPerTest, testsPerFile, scenarios int) 
 	}
 
 	for i := 0; i < scenarios; i++ {
-		sc := models.Scenario{
-			ScenarioID: fmt.Sprintf("scenario:%d", i), Name: fmt.Sprintf("scenario_%d", i),
+		sc := models.Eval{
+			EvalID:   fmt.Sprintf("scenario:%d", i), Name: fmt.Sprintf("scenario_%d", i),
 			Category: "accuracy", Capability: fmt.Sprintf("cap_%d", i%10),
 		}
 		for j := 0; j < 3; j++ {
 			idx := (i*3 + j) % len(snap.CodeSurfaces)
 			sc.CoveredSurfaceIDs = append(sc.CoveredSurfaceIDs, snap.CodeSurfaces[idx].SurfaceID)
 		}
-		snap.Scenarios = append(snap.Scenarios, sc)
+		snap.Evals = append(snap.Evals, sc)
 	}
 
 	snap.Frameworks = []models.Framework{{Name: "jest", FileCount: testFiles}}

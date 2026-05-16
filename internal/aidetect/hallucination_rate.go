@@ -121,7 +121,7 @@ func (d *HallucinationRateDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 			Actionability:   models.ActionabilityImmediate,
 			LifecycleStages: []models.LifecycleStage{models.StageCIRun},
 			AIRelevance:     models.AIRelevanceHigh,
-			RuleID:          "TER-AI-108",
+			RuleID:          "terrain/ai/hallucination-rate",
 			RuleURI:         "docs/rules/ai/hallucination-rate.md",
 			DetectorVersion: "0.2.0",
 			ConfidenceDetail: &models.ConfidenceDetail{

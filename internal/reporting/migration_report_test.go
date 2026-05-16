@@ -5,20 +5,20 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/pmclSF/terrain/internal/migration"
+	"github.com/pmclSF/terrain/internal/framework_migration"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
 func TestRenderMigrationPreview_WithBlockers(t *testing.T) {
 	t.Parallel()
-	preview := &migration.PreviewResult{
+	preview := &framework_migration.PreviewResult{
 		File:             "test/auth/login.test.js",
 		SourceFramework:  "jest",
 		SuggestedTarget:  "vitest",
 		Difficulty:       "medium",
 		PreviewAvailable: true,
 		Explanation:      "Source framework: jest. Suggested target: vitest. 2 blocker(s).",
-		Blockers: []migration.PreviewBlocker{
+		Blockers: []framework_migration.PreviewBlocker{
 			{
 				Type:        "deprecated-pattern",
 				Pattern:     "done-callback",
@@ -65,7 +65,7 @@ func TestRenderMigrationPreview_WithBlockers(t *testing.T) {
 
 func TestRenderMigrationPreview_NotAvailable(t *testing.T) {
 	t.Parallel()
-	preview := &migration.PreviewResult{
+	preview := &framework_migration.PreviewResult{
 		File:             "test_main.go",
 		SourceFramework:  "go-testing",
 		Difficulty:       "unknown",
@@ -90,9 +90,9 @@ func TestRenderMigrationPreview_NotAvailable(t *testing.T) {
 
 func TestRenderMigrationPreviewScope(t *testing.T) {
 	t.Parallel()
-	previews := []*migration.PreviewResult{
-		{File: "test/hard.test.js", SourceFramework: "jest", Difficulty: "high", Blockers: make([]migration.PreviewBlocker, 3)},
-		{File: "test/med.test.js", SourceFramework: "jest", Difficulty: "medium", Blockers: make([]migration.PreviewBlocker, 1)},
+	previews := []*framework_migration.PreviewResult{
+		{File: "test/hard.test.js", SourceFramework: "jest", Difficulty: "high", Blockers: make([]framework_migration.PreviewBlocker, 3)},
+		{File: "test/med.test.js", SourceFramework: "jest", Difficulty: "medium", Blockers: make([]framework_migration.PreviewBlocker, 1)},
 		{File: "test/easy.test.js", SourceFramework: "jest", Difficulty: "low"},
 	}
 
@@ -117,24 +117,24 @@ func TestRenderMigrationPreviewScope(t *testing.T) {
 
 func TestRenderMigrationReport_WithAllSections(t *testing.T) {
 	t.Parallel()
-	readiness := &migration.ReadinessSummary{
+	readiness := &framework_migration.ReadinessSummary{
 		Frameworks: []models.Framework{
 			{Name: "jest", Type: models.FrameworkTypeUnit, FileCount: 42},
 		},
 		TotalBlockers:  3,
 		BlockersByType: map[string]int{"deprecated-pattern": 2, "custom-matcher": 1},
-		RepresentativeBlockers: []migration.BlockerExample{
+		RepresentativeBlockers: []framework_migration.BlockerExample{
 			{Type: "deprecatedTestPattern", File: "test/a.js", Explanation: "Done callback used"},
 		},
 		ReadinessLevel: "medium",
 		Explanation:    "Some blockers found.",
-		QualityFactors: []migration.QualityFactor{
+		QualityFactors: []framework_migration.QualityFactor{
 			{SignalType: "weakAssertion", AffectedFiles: 2, Explanation: "2 files have weak assertions."},
 		},
-		AreaAssessments: []migration.AreaAssessment{
+		AreaAssessments: []framework_migration.AreaAssessment{
 			{Directory: "test/auth", Classification: "risky", Explanation: "Blockers + quality issues."},
 		},
-		CoverageGuidance: []migration.CoverageGuidanceItem{
+		CoverageGuidance: []framework_migration.CoverageGuidanceItem{
 			{Directory: "test/auth", Reason: "migration blockers", Priority: "high"},
 		},
 	}
@@ -162,7 +162,7 @@ func TestRenderMigrationReport_WithAllSections(t *testing.T) {
 
 func TestRenderMigrationBlockers_ZeroBlockers(t *testing.T) {
 	t.Parallel()
-	readiness := &migration.ReadinessSummary{
+	readiness := &framework_migration.ReadinessSummary{
 		TotalBlockers:  0,
 		BlockersByType: map[string]int{},
 		ReadinessLevel: "high",

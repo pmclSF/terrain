@@ -199,13 +199,13 @@ func buildPostureDelta(result *impact.ImpactResult) *PostureDelta {
 	}
 
 	switch result.Posture.Band {
-	case "well_protected":
+	case "strong":
 		delta.OverallDirection = "unchanged"
 		delta.Explanation = "Change is well protected by existing tests."
-	case "partially_protected":
+	case "moderate":
 		delta.OverallDirection = "unchanged"
 		delta.Explanation = fmt.Sprintf("Change has partial protection. %d gap(s) found.", len(result.ProtectionGaps))
-	case "weakly_protected", "high_risk":
+	case "weak", "critical":
 		delta.OverallDirection = "worsened"
 		delta.Explanation = fmt.Sprintf("Change introduces risk. %d protection gap(s) found.", len(result.ProtectionGaps))
 	default:
@@ -236,19 +236,19 @@ func buildPRSummary(pr *PRAnalysis) string {
 // buildAIValidationSummary extracts AI-specific validation data from the
 // impact result and snapshot. Returns nil if no AI content is relevant.
 func buildAIValidationSummary(result *impact.ImpactResult, snap *models.TestSuiteSnapshot) *AIValidationSummary {
-	if len(snap.Scenarios) == 0 && len(result.ImpactedScenarios) == 0 {
+	if len(snap.Evals) == 0 && len(result.ImpactedEvals) == 0 {
 		return nil
 	}
 
 	ai := &AIValidationSummary{
-		TotalScenarios:    len(snap.Scenarios),
-		SelectedScenarios: len(result.ImpactedScenarios),
+		TotalScenarios:    len(snap.Evals),
+		SelectedScenarios: len(result.ImpactedEvals),
 	}
 
 	// Collect impacted capabilities and scenario summaries.
 	capSet := map[string]bool{}
-	for _, is := range result.ImpactedScenarios {
-		ai.Scenarios = append(ai.Scenarios, AIScenarioSummary{
+	for _, is := range result.ImpactedEvals {
+		ai.Scenarios = append(ai.Scenarios, EvalSummary{
 			Name:       is.Name,
 			Capability: is.Capability,
 			Reason:     is.Relevance,
@@ -308,7 +308,7 @@ func buildAIValidationSummary(result *impact.ImpactResult, snap *models.TestSuit
 
 	// Find changed context surfaces that lack scenario coverage.
 	coveredIDs := map[string]bool{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		for _, sid := range sc.CoveredSurfaceIDs {
 			coveredIDs[sid] = true
 		}

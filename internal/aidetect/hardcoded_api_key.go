@@ -99,6 +99,39 @@ var configFileExts = map[string]bool{
 	".dockerfile": true, // explicit dockerfile extension
 }
 
+// isAPIKeyFixturePath returns true when the path looks like a
+// test-mock / recorded-response fixture rather than real config.
+// Used to suppress aiHardcodedAPIKey FPs on fixture libraries
+// (placebo, vcrpy, cassettes, etc.) that contain mocked SDK
+// responses with fake credentials by design.
+func isAPIKeyFixturePath(relPath string) bool {
+	lower := strings.ToLower(filepath.ToSlash(relPath))
+	// Test-path prefixes (handled the same way as
+	// quality.isToolingPath).
+	testishMarkers := []string{
+		"/tests/data/", "/tests/fixtures/",
+		"/test/data/", "/test/fixtures/",
+		"/testdata/", "/__fixtures__/",
+		"/placebo/",    // botocore/placebo mock recordings
+		"/cassettes/",  // vcrpy/betamax recorded HTTP
+		"/recordings/", // various test recorders
+	}
+	if strings.HasPrefix(lower, "tests/data/") ||
+		strings.HasPrefix(lower, "tests/fixtures/") ||
+		strings.HasPrefix(lower, "test/data/") ||
+		strings.HasPrefix(lower, "test/fixtures/") ||
+		strings.HasPrefix(lower, "testdata/") ||
+		strings.HasPrefix(lower, "__fixtures__/") {
+		return true
+	}
+	for _, m := range testishMarkers {
+		if strings.Contains(lower, m) {
+			return true
+		}
+	}
+	return false
+}
+
 // HardcodedAPIKeyDetector identifies API keys embedded in AI configuration
 // files (eval configs, agent definitions, prompt YAMLs).
 //
@@ -126,6 +159,17 @@ func (d *HardcodedAPIKeyDetector) Detect(snap *models.TestSuiteSnapshot) []model
 	candidatePaths := d.gatherConfigPaths(snap)
 	var out []models.Signal
 	for _, relPath := range candidatePaths {
+		// Skip test-fixture paths. Verified on the 70-repo ML-specialized
+		// corpus: cloud-custodian produced 52 firings on
+		// `tests/data/placebo/test_iam_*/iam.ListAccessKeys_1.json`,
+		// which are placebo-library mock AWS API responses containing
+		// fake access keys (`AKIA...EXAMPLE`-style) for test purposes.
+		// Same shape exists in other AWS-SDK-testing repos. A real
+		// committed-key incident in test fixtures is rare relative to
+		// the per-repo FP load these mocks generate.
+		if isAPIKeyFixturePath(relPath) {
+			continue
+		}
 		abs := filepath.Join(d.Root, relPath)
 		hits := scanFileForAPIKeys(abs)
 		for _, h := range hits {
@@ -152,7 +196,7 @@ func (d *HardcodedAPIKeyDetector) Detect(snap *models.TestSuiteSnapshot) []model
 					Actionability:   models.ActionabilityScheduled,
 					LifecycleStages: []models.LifecycleStage{models.StageMaintenance},
 					AIRelevance:     models.AIRelevanceMedium,
-					RuleID:          "TER-AI-103",
+					RuleID:          "terrain/ai/hardcoded-api-key",
 					RuleURI:         "docs/rules/ai/hardcoded-api-key.md",
 					DetectorVersion: "0.2.0",
 					EvidenceSource:   models.SourceStructuralPattern,
@@ -175,7 +219,7 @@ func (d *HardcodedAPIKeyDetector) Detect(snap *models.TestSuiteSnapshot) []model
 				Actionability:   models.ActionabilityImmediate,
 				LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 				AIRelevance:     models.AIRelevanceHigh,
-				RuleID:          "TER-AI-103",
+				RuleID:          "terrain/ai/hardcoded-api-key",
 				RuleURI:         "docs/rules/ai/hardcoded-api-key.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{

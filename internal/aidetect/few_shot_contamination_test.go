@@ -41,9 +41,9 @@ content: |
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: rel, Name: "classifier", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:1",
+				EvalID:        "scenario:1",
 				Name:              "device overheats",
 				Description:       "The customer reports the device overheats during gameplay sessions",
 				CoveredSurfaceIDs: []string{"s1"},
@@ -73,9 +73,9 @@ content: |
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: rel, Name: "classifier", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:1",
+				EvalID:        "scenario:1",
 				Name:              "happy path",
 				Description:       "happy path",
 				CoveredSurfaceIDs: []string{"s1"},
@@ -103,9 +103,9 @@ content: |
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: rel, Name: "classifier", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:1",
+				EvalID:        "scenario:1",
 				Name:              "kilo lima",
 				Description:       "kilo lima mike november oscar papa quebec romeo sierra tango",
 				CoveredSurfaceIDs: []string{"s1"},
@@ -138,9 +138,9 @@ content: |
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: rel, Name: "classifier", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:  "scenario:1",
+				EvalID:  "scenario:1",
 				Name:        "device overheats",
 				Description: "The customer reports the device overheats during gameplay sessions",
 				// CoveredSurfaceIDs intentionally empty (auto-derived shape).
@@ -177,9 +177,9 @@ content: |
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: relB, Name: "classifier", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:  "scenario:1",
+				EvalID:  "scenario:1",
 				Name:        "device overheats",
 				Description: "The customer reports the device overheats during gameplay sessions",
 				Path:        "service-a/scenarios/overheat.yaml",

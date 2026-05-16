@@ -541,8 +541,8 @@ func renderAISection(line func(string, ...any), pr *PRAnalysis) {
 	// Impacted scenarios grouped by capability.
 	if len(ai.Scenarios) > 0 {
 		// Group by capability.
-		byCap := map[string][]AIScenarioSummary{}
-		var noCap []AIScenarioSummary
+		byCap := map[string][]EvalSummary{}
+		var noCap []EvalSummary
 		for _, sc := range ai.Scenarios {
 			if sc.Capability != "" {
 				byCap[sc.Capability] = append(byCap[sc.Capability], sc)

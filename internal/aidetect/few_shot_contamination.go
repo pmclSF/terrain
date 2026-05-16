@@ -86,7 +86,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 	// Steps are the natural candidates for "this is the test input".
 	var out []models.Signal
 	emitted := map[string]bool{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		// Build candidate input strings from the scenario.
 		var candidates []string
 		if s := strings.TrimSpace(sc.Description); s != "" {
@@ -129,7 +129,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 			if !match {
 				continue
 			}
-			emitKey := sc.ScenarioID + "/" + surfaceID
+			emitKey := sc.EvalID + "/" + surfaceID
 			if emitted[emitKey] {
 				continue
 			}
@@ -140,7 +140,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 				Category:    models.CategoryAI,
 				Severity:    models.SeverityMedium,
 				Confidence:  0.7,
-				Location:    models.SignalLocation{File: promptPath[surfaceID], ScenarioID: sc.ScenarioID, Symbol: sc.Name},
+				Location:    models.SignalLocation{File: promptPath[surfaceID], ScenarioID: sc.EvalID, Symbol: sc.Name},
 				Explanation: "Scenario `" + sc.Name + "` contains text that appears verbatim in prompt `" + promptPath[surfaceID] + "`. Few-shot examples that overlap with the eval test set inflate scores.",
 				SuggestedAction: "Hold the matching examples out of the prompt's few-shot block, or rewrite the eval input so it isn't a copy of an example. Re-run the eval after de-duplication.",
 
@@ -148,7 +148,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 				Actionability:   models.ActionabilityScheduled,
 				LifecycleStages: []models.LifecycleStage{models.StageTestAuthoring, models.StageMaintenance},
 				AIRelevance:     models.AIRelevanceHigh,
-				RuleID:          "TER-AI-109",
+				RuleID:          "terrain/ai/few-shot-contamination",
 				RuleURI:         "docs/rules/ai/few-shot-contamination.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{
@@ -162,7 +162,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 				EvidenceStrength: models.EvidenceModerate,
 				Metadata: map[string]any{
 					"surfaceId":         surfaceID,
-					"scenarioId":        sc.ScenarioID,
+					"scenarioId":        sc.EvalID,
 					"matchedExcerpt":    truncateExcerpt(matchedCandidate, 80),
 					"thresholdChars":    threshold,
 				},

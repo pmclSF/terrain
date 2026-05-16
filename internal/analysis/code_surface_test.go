@@ -3,6 +3,7 @@ package analysis
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/models"
@@ -309,7 +310,12 @@ func TestJSSurfaceExtractor_Prompts(t *testing.T) {
 	srcDir := filepath.Join(root, "src", "ai")
 	os.MkdirAll(srcDir, 0o755)
 
+	// AI import added to corroborate AI context — name-based AI-kind
+	// classification (SurfacePrompt, SurfaceContext, etc.) is gated on
+	// per-file AI evidence (see hasAIContextJS) to suppress
+	// substring-match false positives on non-AI code.
 	os.WriteFile(filepath.Join(srcDir, "prompts.ts"), []byte(`
+import OpenAI from 'openai';
 export const systemPrompt = "You are a helpful assistant.";
 export function buildUserPrompt(input) { return input; }
 export async function chatTemplate(messages) { return messages; }
@@ -339,6 +345,7 @@ func TestJSSurfaceExtractor_Datasets(t *testing.T) {
 	os.MkdirAll(srcDir, 0o755)
 
 	os.WriteFile(filepath.Join(srcDir, "loaders.ts"), []byte(`
+import { ChatOpenAI } from '@langchain/openai';
 export const trainingDataset = [1, 2, 3];
 export function loadEvalData() { return []; }
 export async function dataloader() { return {}; }
@@ -365,6 +372,8 @@ func TestPythonSurfaceExtractor_Prompts(t *testing.T) {
 	os.MkdirAll(srcDir, 0o755)
 
 	os.WriteFile(filepath.Join(srcDir, "prompts.py"), []byte(`
+import openai
+
 def build_prompt(context):
     return f"Given: {context}"
 
@@ -391,6 +400,8 @@ func TestPythonSurfaceExtractor_Datasets(t *testing.T) {
 	os.MkdirAll(srcDir, 0o755)
 
 	os.WriteFile(filepath.Join(srcDir, "data.py"), []byte(`
+from transformers import AutoTokenizer
+
 def load_dataset(path):
     return open(path).readlines()
 
@@ -423,6 +434,7 @@ func TestInferCodeSurfaces_PromptAndDatasetFromTempDir(t *testing.T) {
 	os.MkdirAll(srcDir, 0o755)
 
 	os.WriteFile(filepath.Join(srcDir, "prompts.ts"), []byte(`
+import OpenAI from 'openai';
 export function buildPrompt(input) { return input; }
 export const evalDataset = [1, 2, 3];
 export async function loginHandler(req, res) {}
@@ -524,7 +536,7 @@ func assertSurfaceExists(t *testing.T, byID map[string]models.CodeSurface, id st
 func TestJSSurfaceExtractor_ToolDef(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "src/tools.ts", `
+	writeAITestFile(t, root, "src/tools.ts", `
 export const toolSchema = { name: "search", description: "Search the web" };
 export function functionDef(name, params) { return { name, params }; }
 export const toolOutputSchema = { type: "object", properties: {} };
@@ -540,7 +552,7 @@ export const toolOutputSchema = { type: "object", properties: {} };
 func TestJSSurfaceExtractor_Retrieval(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "src/rag.ts", `
+	writeAITestFile(t, root, "src/rag.ts", `
 export function retriever(query) { return []; }
 export const vectorStore = new PineconeStore();
 export function documentLoader(path) { return []; }
@@ -557,7 +569,7 @@ export const embeddingConfig = { model: "text-embedding-3-small" };
 func TestJSSurfaceExtractor_Agent(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "src/agent.ts", `
+	writeAITestFile(t, root, "src/agent.ts", `
 export function agentRouter(input) { return selectAgent(input); }
 export const agentConfig = { maxRecursion: 10, model: "gpt-4" };
 export function toolChoice(tools, context) { return tools[0]; }
@@ -574,7 +586,7 @@ export const fallbackModel = "gpt-3.5-turbo";
 func TestJSSurfaceExtractor_EvalDef(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "src/evals.ts", `
+	writeAITestFile(t, root, "src/evals.ts", `
 export const rubric = { criteria: ["accuracy", "relevance"] };
 export function evalMetric(output, expected) { return score(output, expected); }
 export const evalConfig = { temperature: 0, maxTokens: 100 };
@@ -590,7 +602,7 @@ export const evalConfig = { temperature: 0, maxTokens: 100 };
 func TestJSSurfaceExtractor_ContextSurfaces(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "src/context.ts", `
+	writeAITestFile(t, root, "src/context.ts", `
 export const systemMessage = "You are a helpful assistant.";
 export function contextBuilder(docs) { return docs.join("\n"); }
 export const fewShotExamples = [{ input: "hi", output: "hello" }];
@@ -611,7 +623,7 @@ export const customerContext = buildCustomerProfile();
 func TestJSSurfaceExtractor_PromptVsContext(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "src/ai.ts", `
+	writeAITestFile(t, root, "src/ai.ts", `
 export function buildPrompt(input) { return "Process: " + input; }
 export const systemPrompt = "You are a helpful assistant.";
 export const promptTemplate = "Given: {input}, respond with: {output}";
@@ -633,7 +645,7 @@ export const promptTemplate = "Given: {input}, respond with: {output}";
 func TestPythonSurfaceExtractor_ContextSurfaces(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "context.py", `
+	writeAITestFile(t, root, "context.py", `
 def system_message():
     return "You are a helpful assistant."
 
@@ -657,7 +669,7 @@ def context_builder(docs):
 func TestPythonSurfaceExtractor_ToolDef(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "tools.py", `
+	writeAITestFile(t, root, "tools.py", `
 def tool_schema(name, description):
     return {"name": name, "description": description}
 
@@ -675,7 +687,7 @@ def output_schema():
 func TestPythonSurfaceExtractor_Retrieval(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "rag.py", `
+	writeAITestFile(t, root, "rag.py", `
 def retriever(query):
     return vector_store.search(query)
 
@@ -696,7 +708,7 @@ def context_assembly(docs, query):
 func TestPythonSurfaceExtractor_Agent(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "orchestrator.py", `
+	writeAITestFile(t, root, "orchestrator.py", `
 def agent_router(input_text):
     return select_agent(input_text)
 
@@ -717,7 +729,7 @@ def agent_config():
 func TestPythonSurfaceExtractor_EvalDef(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "eval_config.py", `
+	writeAITestFile(t, root, "eval_config.py", `
 def rubric():
     return {"criteria": ["accuracy", "relevance"]}
 
@@ -922,7 +934,7 @@ export function responseSchema() { return { status: 200 }; }
 func TestJSSurfaceExtractor_AITemplateStillDetected(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "src/ai.ts", `
+	writeAITestFile(t, root, "src/ai.ts", `
 export const promptTemplate = "You are a helpful assistant. Answer: {query}";
 export const chatTemplate = "Given context: {context}\nRespond to: {query}";
 export const systemTemplate = "You are an AI that helps with {task}.";
@@ -938,7 +950,7 @@ export const systemTemplate = "You are an AI that helps with {task}.";
 func TestJSSurfaceExtractor_AIToolOutputSchemaDetected(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
-	writeTempFile(t, root, "src/tools.ts", `
+	writeAITestFile(t, root, "src/tools.ts", `
 export const toolOutputSchema = { type: "object" };
 export const functionOutputSchema = { type: "object" };
 export const aiOutputSchema = { type: "object" };
@@ -960,6 +972,27 @@ func writeTempFile(t *testing.T, root, relPath, content string) {
 	if err := os.WriteFile(absPath, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// writeAITestFile writes a test source file with an AI SDK import
+// prepended so name-based AI-surface classification is gated through
+// (see hasAIContextJS / hasAIContextPython). Use this for tests that
+// assert AI-kind classification — without the corroborating import,
+// the gate now suppresses substring-match classification to prevent
+// false positives on non-AI code.
+func writeAITestFile(t *testing.T, root, relPath, content string) {
+	t.Helper()
+	var header string
+	lower := strings.ToLower(relPath)
+	switch {
+	case strings.HasSuffix(lower, ".py"):
+		header = "import openai\n"
+	case strings.HasSuffix(lower, ".ts"), strings.HasSuffix(lower, ".tsx"),
+		strings.HasSuffix(lower, ".js"), strings.HasSuffix(lower, ".jsx"),
+		strings.HasSuffix(lower, ".mts"), strings.HasSuffix(lower, ".mjs"):
+		header = "import OpenAI from 'openai';\n"
+	}
+	writeTempFile(t, root, relPath, header+content)
 }
 
 func keys(m map[string]models.CodeSurface) []string {
