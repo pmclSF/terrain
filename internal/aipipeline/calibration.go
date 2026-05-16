@@ -45,6 +45,10 @@ type Calibration struct {
 //   - Weights are in log-odds (natural log). +2.0 ≈ 7.4× odds boost.
 func DefaultCalibration() *Calibration {
 	c := &Calibration{
+		// Per-rule overrides for production-context atoms — defined
+		// before BaseRates so the literal stays grouped with the
+		// related comment. See AtomWeights[*]["ai.train.missing_tracker"]
+		// below for how training rule scopes these.
 		BaseRates: map[string]map[string]float64{
 			"unknown": {
 				"ai.surface.missing_eval":       -3.5,
@@ -173,6 +177,29 @@ func DefaultCalibration() *Calibration {
 					"path.exact_name_utility":        -1.2,
 					"path.llms_subdir_base":          -2.0,
 					"path.factory_filename":          -1.5,
+
+					// Production-context atoms — neutral by default
+					// (per-rule overrides below give them weight for
+					// ai.train.missing_tracker). The fastscan emits
+					// these whenever it sees production-ML signals;
+					// the surface rule shouldn't be influenced by
+					// them, so the universal entry is 0.0.
+					"regex.production_ml_sdk":        0.0,
+					"regex.scheduling_decorator":     0.0,
+					"regex.model_registry_register":  0.0,
+				},
+				// Per-rule override for ai.train.missing_tracker. The
+				// training detector at face value has 2% precision on
+				// the labeled corpus — most training-anchored files
+				// are tutorials/kaggle exports/research scripts that
+				// don't *need* tracking. Production-context atoms are
+				// the signal that distinguishes "real production
+				// training that should track" from "early-dev that's
+				// expected to skip tracking."
+				"ai.train.missing_tracker": {
+					"regex.production_ml_sdk":       +1.8,
+					"regex.scheduling_decorator":    +1.5,
+					"regex.model_registry_register": +1.2,
 				},
 			},
 		},

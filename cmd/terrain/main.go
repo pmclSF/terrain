@@ -750,6 +750,19 @@ func main() {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}
+		case "findings":
+			aiCmd := flag.NewFlagSet("ai findings", flag.ExitOnError)
+			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
+			jsonFlag := aiCmd.Bool("json", false, "output JSON")
+			postureFlag := aiCmd.String("posture", "observability",
+				"emission posture: observability (0.40) | gate (0.80)")
+			ruleFlag := aiCmd.String("rule", "",
+				"rule to evaluate (default: ai.surface.missing_eval)")
+			_ = aiCmd.Parse(os.Args[3:])
+			if err := runAIFindings(*rootFlag, *jsonFlag, *postureFlag, *ruleFlag); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
 		case "run":
 			aiCmd := flag.NewFlagSet("ai run", flag.ExitOnError)
 			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
@@ -1243,10 +1256,11 @@ func printDebugUsage() {
 }
 
 func printAIUsage() {
-	fmt.Fprintln(os.Stderr, "Usage: terrain ai <list|run|replay|record|baseline|doctor> [flags]")
+	fmt.Fprintln(os.Stderr, "Usage: terrain ai <list|findings|run|replay|record|baseline|doctor> [flags]")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Commands:")
 	fmt.Fprintln(os.Stderr, "  list       list detected AI/eval scenarios and surfaces")
+	fmt.Fprintln(os.Stderr, "  findings   emit calibrated AI eval-gap findings (verdict pipeline)")
 	fmt.Fprintln(os.Stderr, "  run        execute eval scenarios and collect results")
 	fmt.Fprintln(os.Stderr, "  replay     replay and verify a previous run artifact")
 	fmt.Fprintln(os.Stderr, "  record     record eval run results as a baseline snapshot")

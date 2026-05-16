@@ -218,6 +218,60 @@ func TestChangeScope_PRRemediationAtom(t *testing.T) {
 	}
 }
 
+func TestRegexFastscan_ProductionMLSDKEmits(t *testing.T) {
+	t.Parallel()
+	src := []byte(`import sagemaker
+from sklearn.ensemble import RandomForestClassifier
+clf = RandomForestClassifier()
+clf.fit(X_train, y_train)
+`)
+	c := &aipipeline.Candidate{Path: "pipelines/train.py", Lang: "python", Src: src}
+	r := NewRegexFastscan()
+	r.Run(context.Background(), c)
+	if !hasAtom(c, "regex.production_ml_sdk") {
+		t.Errorf("expected regex.production_ml_sdk on sagemaker import")
+	}
+	if !hasAtom(c, "regex.sklearn_train.call") {
+		t.Errorf("training atom should still fire alongside production-context atom")
+	}
+}
+
+func TestRegexFastscan_NoProductionContextOnPureSklearn(t *testing.T) {
+	t.Parallel()
+	// Tutorial-shaped: only sklearn, no production-context signals.
+	src := []byte(`from sklearn.ensemble import RandomForestClassifier
+clf = RandomForestClassifier()
+clf.fit(X_train, y_train)
+`)
+	c := &aipipeline.Candidate{Path: "notebook_export.py", Lang: "python", Src: src}
+	r := NewRegexFastscan()
+	r.Run(context.Background(), c)
+	if hasAtom(c, "regex.production_ml_sdk") {
+		t.Errorf("must not fire production_ml_sdk without an actual production import")
+	}
+	if hasAtom(c, "regex.scheduling_decorator") {
+		t.Errorf("must not fire scheduling_decorator without an actual decorator")
+	}
+}
+
+func TestRegexFastscan_AirflowDecoratorEmits(t *testing.T) {
+	t.Parallel()
+	src := []byte(`from airflow.decorators import task
+from sklearn.ensemble import RandomForestClassifier
+
+@task
+def train():
+    clf = RandomForestClassifier()
+    clf.fit(X_train, y_train)
+`)
+	c := &aipipeline.Candidate{Path: "dags/train_model.py", Lang: "python", Src: src}
+	r := NewRegexFastscan()
+	r.Run(context.Background(), c)
+	if !hasAtom(c, "regex.scheduling_decorator") {
+		t.Errorf("expected regex.scheduling_decorator on @task")
+	}
+}
+
 func TestCrossFileScope_NilResolverNoAtoms(t *testing.T) {
 	t.Parallel()
 	s := NewCrossFileScope(nil)

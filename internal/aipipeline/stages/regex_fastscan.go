@@ -172,7 +172,105 @@ func (s *RegexFastscan) Run(_ context.Context, c *aipipeline.Candidate) aipipeli
 		})
 	}
 
+	// Production-context atoms — fire when the file shows signals
+	// that distinguish production training/serving from research or
+	// tutorial code. These atoms carry meaningful weight only for
+	// training rules (calibrated separately); the surface rule treats
+	// them as neutral.
+	if productionMLSDKRE.Match(c.Src) {
+		c.AddAtom(aipipeline.EvidenceAtom{
+			Kind:   aipipeline.EvidenceLexical,
+			RuleID: "regex.production_ml_sdk",
+			Source: "regex-fastscan",
+			Weight: +1.5,
+			Span:   aipipeline.Span{Snippet: "production ML SDK import"},
+		})
+	}
+	if hasSchedulingDecorator(c.Src) {
+		c.AddAtom(aipipeline.EvidenceAtom{
+			Kind:   aipipeline.EvidenceLexical,
+			RuleID: "regex.scheduling_decorator",
+			Source: "regex-fastscan",
+			Weight: +1.5,
+			Span:   aipipeline.Span{Snippet: "@airflow / @prefect / @dagster / @ray decorator"},
+		})
+	}
+	if modelRegistryRE.Match(c.Src) {
+		c.AddAtom(aipipeline.EvidenceAtom{
+			Kind:   aipipeline.EvidenceLexical,
+			RuleID: "regex.model_registry_register",
+			Source: "regex-fastscan",
+			Weight: +1.2,
+			Span:   aipipeline.Span{Snippet: "model registry / artifact-store call"},
+		})
+	}
+
 	return aipipeline.StageResult{Continue: true}
+}
+
+// Production-context regexes — anchored on production ML/serving
+// signals. A training-anchored file with one of these is plausibly
+// production code; without them, it's far more likely research,
+// tutorial, or kaggle export and the missing-tracker finding isn't
+// actionable.
+var (
+	// productionMLSDKRE matches imports of frameworks whose presence
+	// is hard to explain outside of a deployment context. Ray and
+	// pure-research frameworks (metaflow, kedro) are intentionally
+	// excluded — they show up in research code too.
+	productionMLSDKRE = regexp.MustCompile(
+		`(?m)^\s*(?:from|import)\s+(?:` +
+			`sagemaker|azureml|google\.cloud\.aiplatform|vertexai|` +
+			`mlflow\.deployments|mlflow\.sagemaker|` +
+			`bentoml|kfserving|seldon|kserve|` +
+			`torchserve|triton` +
+			`)\b`)
+	// schedulingDecoratorPrefixedRE matches namespaced decorator calls
+	// where the framework is on the left: @airflow.task, @prefect.flow.
+	// These are unambiguous.
+	schedulingDecoratorPrefixedRE = regexp.MustCompile(
+		`(?m)^\s*@(?:airflow|prefect|dagster|dlt|ray|metaflow|kedro)\b`)
+	// schedulingFrameworkImportRE matches an import of a scheduling
+	// framework so we can promote bare decorators (@task, @flow, etc.)
+	// in the same file with confidence.
+	schedulingFrameworkImportRE = regexp.MustCompile(
+		`(?m)^\s*(?:from|import)\s+(?:airflow|prefect|dagster|dlt|ray|metaflow|kedro)\b`)
+	// bareSchedulingDecoratorRE matches the decorator names that are
+	// idiomatic for scheduling frameworks. We require the corresponding
+	// framework import to be present in the same file.
+	bareSchedulingDecoratorRE = regexp.MustCompile(
+		`(?m)^\s*@(?:task|flow|asset|dag|pipeline|step)\b`)
+	// modelRegistryRE matches model-registry calls anchored on the
+	// hosting framework (mlflow / bentoml / wandb). Bare names like
+	// register_model() or .save_model() are excluded — those false-
+	// fire on framework source code (xgboost / RayDP / shorttext)
+	// that defines methods with the same names.
+	modelRegistryRE = regexp.MustCompile(
+		`mlflow\.register_model\s*\(` +
+			`|mlflow\.log_model\s*\(` +
+			`|wandb\.Artifact\s*\(\s*['"][^'"]+['"]\s*,\s*type\s*=\s*['"]model['"]` +
+			`|bentoml\.save_model\s*\(` +
+			`|bentoml\.models\.create\s*\(`)
+)
+
+// hasSchedulingDecorator reports whether the source carries a
+// scheduling-framework decorator. Two ways it fires:
+//
+//	1. Namespaced decorator (@airflow.task, @prefect.flow, ...) — always
+//	   confirms scheduling intent.
+//	2. Bare decorator (@task, @flow, @asset, ...) accompanied by an
+//	   import of the relevant framework. The bare form is idiomatic
+//	   for airflow's `from airflow.decorators import task` pattern and
+//	   prefect's `from prefect import flow`; we require the framework
+//	   import so @task on an unrelated class method doesn't false-fire.
+func hasSchedulingDecorator(src []byte) bool {
+	if schedulingDecoratorPrefixedRE.Match(src) {
+		return true
+	}
+	if bareSchedulingDecoratorRE.Match(src) && schedulingFrameworkImportRE.Match(src) {
+		return true
+	}
+	return false
 }
 
 // mlTrainingFrameworkCount returns the number of distinct ML-training

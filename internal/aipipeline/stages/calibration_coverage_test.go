@@ -68,6 +68,9 @@ func TestCalibrationCoversPathAtoms(t *testing.T) {
 		"wrapper.class.match",
 		"regex.multi_framework",
 		"regex.import_without_call",
+		"regex.production_ml_sdk",
+		"regex.scheduling_decorator",
+		"regex.model_registry_register",
 	}
 	for _, id := range required {
 		if _, ok := cal.AtomWeight("*", "*", id); !ok {

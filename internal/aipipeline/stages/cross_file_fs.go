@@ -19,9 +19,14 @@ import (
 type FSResolver struct {
 	root string
 
-	mu          sync.Mutex
-	dirCache    map[string]bool // absoluteDir → sibling-has-eval
-	pkgCache    map[string]bool // packageRoot → package-has-eval
+	mu sync.Mutex
+	// dirCache stores the SET of basenames in a directory that contain
+	// eval markers. Cache key is the absolute directory. Caller checks
+	// whether the set is non-empty after subtracting its own basename
+	// — this lets us cache the directory scan once and still get
+	// correct per-candidate "is there a sibling with eval" answers.
+	dirCache    map[string]map[string]struct{}
+	pkgCache    map[string]bool
 	maxFileSize int64
 }
 
@@ -31,7 +36,7 @@ type FSResolver struct {
 func NewFSResolver(repoRoot string) *FSResolver {
 	return &FSResolver{
 		root:        repoRoot,
-		dirCache:    map[string]bool{},
+		dirCache:    map[string]map[string]struct{}{},
 		pkgCache:    map[string]bool{},
 		maxFileSize: 512 * 1024,
 	}
@@ -39,20 +44,54 @@ func NewFSResolver(repoRoot string) *FSResolver {
 
 // SiblingHasEvalMarker scans the candidate's directory for files with
 // recognized eval framework imports, excluding the candidate itself.
+//
+// Cache invariant: dirCache holds the full set of marker-bearing files
+// per directory. Two candidates from the same directory hit one scan,
+// and each gets a correct answer because we subtract the candidate's
+// own basename at check time. Caching just `bool` is unsafe — the
+// first candidate's self-exclusion would poison every subsequent
+// candidate's lookup (this exact bug was found 2026-05-15).
 func (r *FSResolver) SiblingHasEvalMarker(repoRelativePath string) bool {
 	dir := filepath.Dir(filepath.Join(r.root, repoRelativePath))
+	self := filepath.Base(repoRelativePath)
+	markers := r.markersInDir(dir)
+	for name := range markers {
+		if name != self {
+			return true
+		}
+	}
+	return false
+}
+
+// markersInDir returns the set of file basenames in `dir` that import
+// eval frameworks. Results are cached per directory.
+func (r *FSResolver) markersInDir(dir string) map[string]struct{} {
 	r.mu.Lock()
 	if cached, ok := r.dirCache[dir]; ok {
 		r.mu.Unlock()
 		return cached
 	}
 	r.mu.Unlock()
-	self := filepath.Base(repoRelativePath)
-	found := r.scanDirForMarkers(dir, self)
+	out := map[string]struct{}{}
+	entries, err := os.ReadDir(dir)
+	if err == nil {
+		for _, e := range entries {
+			if e.IsDir() {
+				continue
+			}
+			name := e.Name()
+			if !looksLikeSourceFile(name) {
+				continue
+			}
+			if r.fileImportsEvalMarker(filepath.Join(dir, name)) {
+				out[name] = struct{}{}
+			}
+		}
+	}
 	r.mu.Lock()
-	r.dirCache[dir] = found
+	r.dirCache[dir] = out
 	r.mu.Unlock()
-	return found
+	return out
 }
 
 // PackageHasEvalMarker walks the candidate's package looking for eval
@@ -73,30 +112,6 @@ func (r *FSResolver) PackageHasEvalMarker(repoRelativePath string) bool {
 	r.pkgCache[pkgDir] = found
 	r.mu.Unlock()
 	return found
-}
-
-func (r *FSResolver) scanDirForMarkers(dir, selfBase string) bool {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		return false
-	}
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
-		}
-		name := e.Name()
-		if name == selfBase {
-			continue
-		}
-		if !looksLikeSourceFile(name) {
-			continue
-		}
-		full := filepath.Join(dir, name)
-		if r.fileImportsEvalMarker(full) {
-			return true
-		}
-	}
-	return false
 }
 
 func (r *FSResolver) scanPackageForMarkers(pkgDir, selfBase string) bool {
@@ -125,23 +140,66 @@ func (r *FSResolver) scanPackageForMarkers(pkgDir, selfBase string) bool {
 	return found
 }
 
+// findPackageRoot walks upward from absPath looking for a package-root
+// marker (package.json for JS/TS, __init__.py-terminated chain for
+// Python). The walk is bounded by:
+//
+//   1. The repo root r.root — escaping it would scan unrelated
+//      filesystem regions (this caused a hard hang on synthetic
+//      single-file repos where the walk reached `/` and then scanned
+//      the entire filesystem).
+//   2. A fixed depth of 6 levels — repos with deeper packages get the
+//      6th ancestor, still bounded by r.root.
+//
+// Returns the candidate's own directory when no marker is found and
+// the bound is reached — the safe default scans only the immediate
+// directory and is consistent with SiblingHasEvalMarker behavior.
 func (r *FSResolver) findPackageRoot(absPath string) string {
+	absRoot, _ := filepath.Abs(r.root)
 	dir := filepath.Dir(absPath)
+	candidateDir := dir
 	for i := 0; i < 6; i++ {
 		if _, err := os.Stat(filepath.Join(dir, "package.json")); err == nil {
 			return dir
 		}
 		// In Python a missing __init__.py terminates the package.
-		if _, err := os.Stat(filepath.Join(dir, "__init__.py")); err != nil && !os.IsNotExist(err) {
-			return dir
+		// (The original logic here was inverted — it returned on an
+		// error other than ENOENT, which never fires in practice.)
+		if i > 0 {
+			if _, err := os.Stat(filepath.Join(dir, "__init__.py")); os.IsNotExist(err) {
+				// Reached a directory without __init__.py: the
+				// previous level was the package root.
+				return candidateDir
+			}
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return dir
+			return candidateDir
 		}
+		// Guard against escaping the repo root. Without this the walk
+		// reaches `/` on minimal synthetic repos (no package.json, no
+		// __init__.py chain) and scanPackageForMarkers then walks the
+		// entire filesystem.
+		if absRoot != "" && !pathInside(parent, absRoot) {
+			return candidateDir
+		}
+		candidateDir = dir
 		dir = parent
 	}
-	return dir
+	return candidateDir
+}
+
+// pathInside reports whether `child` is at or below `parent` in the
+// filesystem hierarchy. Both paths are assumed absolute.
+func pathInside(child, parent string) bool {
+	if child == parent {
+		return true
+	}
+	rel, err := filepath.Rel(parent, child)
+	if err != nil {
+		return false
+	}
+	return !strings.HasPrefix(rel, "..")
 }
 
 func (r *FSResolver) fileImportsEvalMarker(path string) bool {
