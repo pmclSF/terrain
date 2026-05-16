@@ -64,7 +64,8 @@ func (r *FSResolver) SiblingHasEvalMarker(repoRelativePath string) bool {
 }
 
 // markersInDir returns the set of file basenames in `dir` that import
-// eval frameworks. Results are cached per directory.
+// eval frameworks OR are eval-framework config files (promptfooconfig
+// .yaml, deepeval.config.json, etc.). Results are cached per directory.
 func (r *FSResolver) markersInDir(dir string) map[string]struct{} {
 	r.mu.Lock()
 	if cached, ok := r.dirCache[dir]; ok {
@@ -80,6 +81,11 @@ func (r *FSResolver) markersInDir(dir string) map[string]struct{} {
 				continue
 			}
 			name := e.Name()
+			// Config files are a direct signal — no need to grep.
+			if looksLikeEvalConfigFile(name) {
+				out[name] = struct{}{}
+				continue
+			}
 			if !looksLikeSourceFile(name) {
 				continue
 			}
@@ -224,6 +230,44 @@ func looksLikeSourceFile(name string) bool {
 		}
 	}
 	return false
+}
+
+// looksLikeEvalConfigFile recognizes eval-framework configuration
+// files by name. These count as cross-file eval markers in the
+// surface_missing_eval suppression chain — a sibling promptfooconfig.
+// yaml means "this directory already runs evals."
+//
+// Identified in the 2026-05-16 real-repo dogfood: anthropic/courses
+// emits a finding on prompt_evaluations/.../custom_llm_eval.py even
+// though promptfooconfig.yaml sits beside it. Treating eval CONFIG
+// files (not just imports) as markers closes that FP class.
+func looksLikeEvalConfigFile(name string) bool {
+	lower := strings.ToLower(name)
+	for _, marker := range evalConfigFilenames {
+		if strings.HasPrefix(lower, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+var evalConfigFilenames = []string{
+	"promptfooconfig.",         // promptfoo
+	"promptfoo.config.",        // promptfoo alt
+	"deepeval.config.",         // deepeval
+	"deepeval.yaml",
+	"deepeval.json",
+	"ragas.config.",            // ragas
+	"langsmith.config.",        // langsmith
+	"trulens.config.",          // trulens
+	"evals.yaml",
+	"evals.yml",
+	"eval.config.",
+	"mlflow.yaml",              // mlflow
+	"mlflow.yml",
+	"wandb.yaml",               // wandb
+	"wandb.yml",
+	".env.test",                // generic test env file present
 }
 
 func shouldSkipDir(name string) bool {

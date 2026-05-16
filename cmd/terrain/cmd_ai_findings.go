@@ -55,13 +55,14 @@ func runAIFindings(root string, jsonOutput bool, posture string, rule string) er
 }
 
 type findingJSON struct {
-	Path        string  `json:"path"`
-	Rule        string  `json:"rule"`
-	Cohort      string  `json:"cohort,omitempty"`
-	Confidence  float64 `json:"confidence"`
-	Severity    string  `json:"severity"`
+	Path        string     `json:"path"`
+	Rule        string     `json:"rule"`
+	Cohort      string     `json:"cohort,omitempty"`
+	Confidence  float64    `json:"confidence"`
+	Severity    string     `json:"severity"`
+	Preview     bool       `json:"preview,omitempty"`
 	Evidence    []atomJSON `json:"evidence"`
-	FixScaffold string  `json:"fixScaffold,omitempty"`
+	FixScaffold string     `json:"fixScaffold,omitempty"`
 }
 
 type atomJSON struct {
@@ -74,6 +75,7 @@ type atomJSON struct {
 }
 
 func renderFindingsJSON(findings []aipipeline.Finding) error {
+	cal := aipipeline.DefaultCalibration()
 	out := make([]findingJSON, 0, len(findings))
 	for _, f := range findings {
 		fj := findingJSON{
@@ -82,6 +84,7 @@ func renderFindingsJSON(findings []aipipeline.Finding) error {
 			Cohort:      f.Cohort,
 			Confidence:  f.Confidence,
 			Severity:    string(f.Severity),
+			Preview:     cal.IsPreview(f.RuleID),
 			FixScaffold: f.FixScaffold,
 		}
 		for _, a := range f.Atoms {
@@ -106,15 +109,23 @@ func renderFindingsText(findings []aipipeline.Finding, posture aipipeline.Postur
 		fmt.Printf("No findings at %s posture.\n", posture)
 		return nil
 	}
+	cal := aipipeline.DefaultCalibration()
 	fmt.Printf("%d %s at %s posture:\n\n",
 		len(findings), pluralizeFindings(len(findings)), posture)
 	for _, f := range findings {
-		fmt.Printf("  %s\n", f.Path)
+		previewTag := ""
+		if cal.IsPreview(f.RuleID) {
+			previewTag = " [preview]"
+		}
+		fmt.Printf("  %s%s\n", f.Path, previewTag)
 		fmt.Printf("    rule:       %s\n", f.RuleID)
 		fmt.Printf("    severity:   %s\n", f.Severity)
 		fmt.Printf("    confidence: %.2f\n", f.Confidence)
 		if f.Cohort != "" {
 			fmt.Printf("    cohort:     %s\n", f.Cohort)
+		}
+		if previewTag != "" {
+			fmt.Printf("    NOTE:       this rule is in preview — confidence number is not yet corpus-validated\n")
 		}
 		if len(f.Atoms) > 0 {
 			fmt.Printf("    evidence:\n")

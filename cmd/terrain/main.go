@@ -755,9 +755,13 @@ func main() {
 			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
 			jsonFlag := aiCmd.Bool("json", false, "output JSON")
 			postureFlag := aiCmd.String("posture", "observability",
-				"emission posture: observability (0.40) | gate (0.80)")
+				"emission posture: observability (≥0.40) | gate (≥0.80)")
 			ruleFlag := aiCmd.String("rule", "",
-				"rule to evaluate (default: ai.surface.missing_eval)")
+				"rule to evaluate. default: ai.surface.missing_eval (calibrated, "+
+					"~16.83% precision on app-shape cohort). "+
+					"ai.train.missing_tracker is PREVIEW — production-context "+
+					"gating ships but is empirically unvalidated (1 TP in corpus); "+
+					"empirical floor lands in 0.2.1")
 			_ = aiCmd.Parse(os.Args[3:])
 			if err := runAIFindings(*rootFlag, *jsonFlag, *postureFlag, *ruleFlag); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -1258,14 +1262,20 @@ func printDebugUsage() {
 func printAIUsage() {
 	fmt.Fprintln(os.Stderr, "Usage: terrain ai <list|findings|run|replay|record|baseline|doctor> [flags]")
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Commands:")
+	fmt.Fprintln(os.Stderr, "Inventory + execution:")
 	fmt.Fprintln(os.Stderr, "  list       list detected AI/eval scenarios and surfaces")
-	fmt.Fprintln(os.Stderr, "  findings   emit calibrated AI eval-gap findings (verdict pipeline)")
 	fmt.Fprintln(os.Stderr, "  run        execute eval scenarios and collect results")
 	fmt.Fprintln(os.Stderr, "  replay     replay and verify a previous run artifact")
 	fmt.Fprintln(os.Stderr, "  record     record eval run results as a baseline snapshot")
 	fmt.Fprintln(os.Stderr, "  baseline   manage eval baselines (show, compare, promote)")
 	fmt.Fprintln(os.Stderr, "  doctor     validate AI/eval setup and surface configuration issues")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Calibrated verdicts (0.2+):")
+	fmt.Fprintln(os.Stderr, "  findings   emit calibrated AI eval-gap findings (verdict pipeline)")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Categorical AI quality checks (12 detectors) ship via 'terrain analyze'")
+	fmt.Fprintln(os.Stderr, "and 'terrain report pr'. See docs/ai-detection-shapes.md for which")
+	fmt.Fprintln(os.Stderr, "shape to reach for when.")
 }
 
 func defaultPipelineOptions() engine.PipelineOptions {

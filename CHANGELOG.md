@@ -325,8 +325,17 @@ weight, span). JSON mode is structured for CI consumption.
 threshold and only 1 TP for `ai.train.missing_tracker`. Confidence
 intervals are wide; training-rule production-context atoms are
 architecturally correct but empirically unvalidated until the
-corpus expands. Target expansion: ~10k labeled rows for the 0.3
-release cycle.
+corpus expands. `ai.train.missing_tracker` ships as **preview** —
+calibration is wired and reachable via `terrain ai findings --rule
+ai.train.missing_tracker`, output carries a `[preview]` tag, and
+the rule is not in the default rule set. Targeted corpus expansion
+in 0.2.1 will establish its empirical floor.
+
+**See also.** [docs/ai-detection-shapes.md](docs/ai-detection-shapes.md)
+covers when to reach for `terrain ai list` (inventory) vs `terrain
+ai findings` (verdict engine) vs the 12 catalog detectors (via
+`terrain analyze` / `terrain report pr`). They emit different
+shapes and answer different questions — run all three in CI.
 
 ### CLI restructure — phase A (canonical 11 + 33 legacy aliases)
 

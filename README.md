@@ -338,7 +338,7 @@ terrain ai findings --posture=gate       # gate posture (≥0.80)
 terrain ai findings --json               # CI-consumable output
 ```
 
-See the [CHANGELOG entry](CHANGELOG.md) for the full pipeline architecture, cohort calibration, and the production-context gating that distinguishes "real production training that should track metrics" from research / kaggle / tutorial code.
+See the [CHANGELOG entry](CHANGELOG.md) for the full pipeline architecture, cohort calibration, and the production-context gating that distinguishes "real production training that should track metrics" from research / kaggle / tutorial code. For when to reach for `ai list` vs `ai findings` vs the 12 catalog detectors, see [docs/ai-detection-shapes.md](docs/ai-detection-shapes.md).
 
 ## How CI Optimization Emerges
 

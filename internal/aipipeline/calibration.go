@@ -28,6 +28,16 @@ type Calibration struct {
 	// Severities maps rule → declared severity.
 	Severities map[string]Severity
 
+	// Preview marks rules whose calibration ships in 0.2 but hasn't
+	// cleared the empirical bar for "stable" — typically because the
+	// labeled corpus doesn't yet contain enough TPs of that rule's
+	// shape to give a meaningful precision floor. Preview rules are
+	// not in the default rule set; users must opt in via --rule.
+	// The findings renderer surfaces a [preview] tag so the calling
+	// engineer knows the confidence number is not yet
+	// corpus-validated.
+	Preview map[string]bool
+
 	// Thresholds maps (posture, rule) → confidence threshold.
 	Thresholds map[Posture]map[string]float64
 }
@@ -211,6 +221,21 @@ func DefaultCalibration() *Calibration {
 			"ai.uncovered_surface":        SeverityMedium,
 		},
 
+		// Preview rules — calibration ships, behavior is wired, but
+		// the labeled corpus doesn't yet contain enough TPs to give a
+		// meaningful precision floor. Targeted corpus expansion in
+		// 0.2.1 will land empirical validation. Until then the rule
+		// is opt-in only (not in the default rule set) and findings
+		// carry a [preview] tag so the calling engineer knows the
+		// confidence number is not corpus-validated.
+		Preview: map[string]bool{
+			// 1 TP in the 2,651-row v3 corpus → CI on training-rule
+			// precision is essentially unbounded. Production-context
+			// gating (regex.production_ml_sdk etc.) is architecturally
+			// right per the design discussion but unvalidated.
+			"ai.train.missing_tracker": true,
+		},
+
 		Thresholds: map[Posture]map[string]float64{
 			PostureObservability: {
 				// Emit at confidence ≥ 0.40 — the Observability floor.
@@ -294,6 +319,17 @@ func (c *Calibration) AtomWeight(cohort, rule, atomRuleID string) (float64, bool
 		}
 	}
 	return 0, false
+}
+
+// IsPreview reports whether a rule is marked preview — its calibration
+// ships but the empirical floor isn't established yet. Callers should
+// render a [preview] tag on findings and exclude preview rules from
+// any "default rule set" used in posture=gate CI gates.
+func (c *Calibration) IsPreview(rule string) bool {
+	if c == nil {
+		return false
+	}
+	return c.Preview[rule]
 }
 
 // SeverityFor returns the declared severity for a rule when present.
