@@ -40,12 +40,18 @@ The release groups deliverables by the three pillars:
   template.
 
 Twelve new AI detectors ship with calibration anchors at **100% recall
-on a 27-fixture corpus** (the gate is a recall regression gate;
-per-detector *precision* floors against a labeled-repo corpus are
-deferred to 0.3 — see `docs/release/0.2-known-gaps.md`). The CLI
-surface compresses 35→11 canonical commands while keeping every legacy
-alias working. The calibration runner becomes a load-bearing regression
-gate.
+on a 27-fixture corpus** (a recall regression gate; this prevents
+silent recall loss when detectors change shape). On top of that, the
+**verdict engine** lands — a typed-evidence pipeline with cross-file
+context, per-cohort calibration, production-context training gating,
+and a labeled-corpus precision floor: **16.83% precision on the
+app-shape cohort** (4–6× the path-only baseline; Wilson 95% CI lower
+bound 11%). Reach it from `terrain ai findings`. See "Verdict engine"
+below for the full architecture.
+
+The CLI surface compresses 35→11 canonical commands while keeping every
+legacy alias working. The calibration runner becomes a load-bearing
+regression gate.
 
 ### What's stable in 0.2
 
@@ -78,14 +84,24 @@ changes:
 
 **Planned (0.3)**:
 
-- per-detector precision benchmarking against a labeled-repo corpus
+- corpus expansion to ~10k labeled rows — tighten the precision CI
+  (currently [9.21%, 18.05%] on 52 TPs) and unlock empirical
+  validation of the `ai.train.missing_tracker` production-context
+  gating
 - AST-grade taint analysis for prompt injection
 - suppression model (`.terrain/suppressions.yaml`) and the false-
   positive workflow it enables
-- `terrain ai gate` standalone command
+- `terrain ai gate` standalone command (today: `terrain ai findings
+  --posture=gate`)
 - plugin architecture for community adapters
 - sandboxing for eval execution
 - removal of the legacy CLI aliases (with a 0.2.x deprecation runway)
+
+**Pulled into 0.2** (originally planned for 0.3):
+
+- per-detector precision benchmarking against a labeled-repo corpus
+  — shipped as the verdict engine; see "Verdict engine — calibrated
+  AI-surface findings with cross-file evidence" below.
 
 ### AI detector batch (12/12 from the round-4 plan)
 
@@ -196,6 +212,121 @@ risk repository secret-scanner alerts — see
 - **`terrain.yaml` `scenarios.description` field.** Propagates onto
   `models.Scenario.Description` for detectors that compare scenario
   inputs to prompt content.
+
+### Verdict engine — calibrated AI-surface findings with cross-file evidence
+
+The headline 0.2 addition. The 27-fixture calibration gate is a *recall*
+gate; precision-anchored findings against a real labeled corpus were
+the deferred 0.3 deliverable. Both shipped: a typed-evidence pipeline
+(`internal/aipipeline`) replaces the regex-only AI surface detector and
+emits calibrated `Finding` records with a confidence score, severity,
+and a full evidence chain.
+
+**Numbers on the 2,651-row labeled corpus (GPT-4 rated, 2026-05-15):**
+
+- **16.83% precision** on the app-shape cohort (ai-feature-in-app,
+  RAG-app, agent-app — the dominant cohort for AI/LLM developers).
+- **13.00% overall precision** at observability threshold (Wilson 95%
+  CI 9.21% – 18.05%, n=29 TPs at threshold).
+- **17.39% best-F1 precision** at threshold 0.711; **55.77% recall**.
+- Compare to prior baselines: path-only filter 2.72%, AST-only safe
+  4.74%, AST-only aggressive 7.82%, regex-v2 simulator 10.29%.
+- k-fold logistic-regression refit reaches **16.67%** (Wilson 95% CI
+  11.17% – 24.14%) — fitted CV and hand-tuned CV intervals overlap,
+  meaning the hand-tuned calibration is at the corpus ceiling.
+
+**The pipeline shape.** Each candidate file flows through five stages
+that accumulate typed `EvidenceAtom`s:
+
+1. **path-prefilter** — hard-drop examples/tests/cookbooks, soft-
+   negative for providers/wrappers/factories/snake-suffix files.
+2. **regex-fastscan** — multi-language SDK anchors (Python, JS/TS,
+   Go, Java/Kotlin, Rust, Ruby, .NET) for OpenAI, Anthropic,
+   LangChain, LlamaIndex, LangGraph, HuggingFace, Google GenAI,
+   OpenAI-compat (Replicate/Cohere/Mistral/Groq/Together/Fireworks),
+   and ML-training framework families.
+3. **ast-confirm** — tree-sitter-derived call-site confirmation
+   (Python/JS/TS/Go/Java). Emits `ast.bound_call` when the SDK
+   anchor resolves to a real call; emits `ast.no_call_despite_regex`
+   when the regex matched but no call site exists (strong negative
+   gate).
+4. **cross-file-scope** — the production `FSResolver` scans the
+   candidate's directory and package for eval-framework imports
+   (pytest, vitest, deepeval, ragas, promptfoo, mlflow, wandb,
+   tensorboard, langsmith, ...). When a sibling file already runs
+   evals, the verdict gets a strong negative atom — the dominant
+   precision lever for the FP-eval-elsewhere class (≈70% of
+   pre-cross-file FPs on the corpus).
+5. **change-scope** — per-PR diff intersection. Atoms for diff-
+   touched files and lines, plus `scope.diff_added_pr_evidence`
+   when the PR itself closes the gap the finding flags.
+
+A weighted-log-odds **composer** turns atoms into a sigmoid
+confidence, applies posture thresholds (observability ≥0.40,
+gate ≥0.80), and attaches a per-rule fix scaffold (Promptfoo eval
+YAML, DeepEval pytest, mlflow/wandb trackers).
+
+**Cohort-aware calibration.** Per-cohort base rates (RAG-app,
+agent-app, ml-pipeline, ai-feature-in-app, library-sdk, notebook-
+heavy) and per-rule × per-atom weight overrides. The original
+hand-tuned base rates for `library-sdk` over-suppressed by 5×; the
+labeled corpus revealed nearly-identical natural TP rates across
+cohorts and the calibration was corrected.
+
+**Production-context training detector.** `ai.train.missing_tracker`
+at face value flags every `sklearn.fit(X, y)` — and the labeled
+corpus says that's noise (2% precision: tutorials, kaggle exports,
+research code that doesn't need tracking). The detector is now
+*gated* on production-context atoms:
+
+- `regex.production_ml_sdk` — imports of `sagemaker`, `azureml`,
+  `google.cloud.aiplatform`, `vertexai`, `mlflow.deployments`,
+  `bentoml`, `kserve`, `torchserve`, `triton`.
+- `regex.scheduling_decorator` — `@airflow.task`, `@prefect.flow`,
+  `@dagster.asset`, `@ray.remote`, and the bare-decorator forms
+  (`@task`, `@flow`) when the corresponding framework is imported.
+- `regex.model_registry_register` — `mlflow.register_model`,
+  `mlflow.log_model`, `bentoml.save_model`, `wandb.Artifact(...,
+  type='model')`.
+
+Without one of these signals, sklearn-shaped training code stays
+below the emission threshold. Tutorials are correctly left alone.
+
+**User-facing command.** The pipeline is reachable via the new
+`terrain ai findings` subcommand:
+
+```
+terrain ai findings [--root <dir>] [--json]
+                    [--posture observability|gate]
+                    [--rule <rule-id>]
+```
+
+Output renders one block per finding: path, rule, severity,
+confidence, cohort, and the full evidence chain (atom rule ID,
+weight, span). JSON mode is structured for CI consumption.
+
+**Diagnostic tools** (under `cmd/terrain-pipeline`):
+
+- **validate** — replay the corpus, report precision/recall/F1 and
+  per-cohort + per-rule breakdowns.
+- **debug** — per-row inspection with `--filter missed-tps |
+  emitted-fps | all`.
+- **tune** — threshold sweep with `--by-cohort` rendering of
+  precision/recall at each cut.
+- **atoms** — per-atom marginal TP rate, lift over base, and
+  calibration weight alignment ("POS confirmed", "NEG MISALIGNED",
+  etc.).
+- **cv** — k-fold cross-validation against the current calibration
+  with Wilson 95% CI on aggregate precision.
+- **fit** — k-fold logistic-regression refit via batch gradient
+  descent. Honest out-of-sample precision check.
+
+**Known limits.** The labeled corpus has 52 TPs at observability
+threshold and only 1 TP for `ai.train.missing_tracker`. Confidence
+intervals are wide; training-rule production-context atoms are
+architecturally correct but empirically unvalidated until the
+corpus expands. Target expansion: ~10k labeled rows for the 0.3
+release cycle.
 
 ### CLI restructure — phase A (canonical 11 + 33 legacy aliases)
 

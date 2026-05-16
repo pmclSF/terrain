@@ -324,12 +324,21 @@ The structural model is the same. The signals and recommendations adapt to the f
 Terrain gives AI components the same CI safety net as regular tests:
 
 - **Surface discovery** — automatically detects prompts, contexts, datasets, tool definitions, RAG pipelines, and eval scenarios in your code
+- **Calibrated findings** — `terrain ai findings` runs the verdict-engine pipeline (path-prefilter → regex-fastscan → ast-confirm → cross-file-scope → change-scope → composer) and emits findings with a confidence, severity, cohort, and full evidence chain. **16.83% precision on the app-shape cohort** on a 2,651-row labeled corpus (Wilson 95% CI lower bound 11%; 4–6× the path-only baseline)
 - **Impact-scoped selection** — `terrain ai run --base main` runs only the eval scenarios affected by your change
 - **Protection gaps** — `terrain pr` flags changed AI surfaces that have no eval scenario covering them
 - **Policy enforcement** — block PRs that modify uncovered AI surfaces, regress accuracy, or trigger safety failures
 - **GitHub Action** — drop-in `terrain-ai.yml` workflow template for AI CI gates
 
 The same structural graph that powers test selection for regular code also traces AI surface dependencies, so a change to a prompt template triggers the right eval scenarios automatically.
+
+```bash
+terrain ai findings                      # observability posture (≥0.40)
+terrain ai findings --posture=gate       # gate posture (≥0.80)
+terrain ai findings --json               # CI-consumable output
+```
+
+See the [CHANGELOG entry](CHANGELOG.md) for the full pipeline architecture, cohort calibration, and the production-context gating that distinguishes "real production training that should track metrics" from research / kaggle / tutorial code.
 
 ## How CI Optimization Emerges
 
