@@ -1,4 +1,4 @@
-# TER-MIG-006 — Unsupported Setup
+# terrain/migration/unsupported-setup — Unsupported Setup
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -21,6 +21,6 @@ Refactor setup boundaries toward framework-agnostic patterns.
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.40, 0.70] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.40, 0.70] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

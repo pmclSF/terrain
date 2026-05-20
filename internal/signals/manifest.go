@@ -101,9 +101,9 @@ type ManifestEntry struct {
 	DefaultSeverity models.SignalSeverity
 
 	// ConfidenceMin / ConfidenceMax bracket the typical confidence range
-	// the detector emits. 0.1.2 values are descriptive (sourced from
-	// detector code review), not calibrated. Calibration arrives in 0.3
-	// alongside the corpus work.
+	// the detector emits. Today's values are descriptive (sourced from
+	// detector code review), not calibrated. Calibration arrives in a
+	// future release alongside the corpus work.
 	ConfidenceMin float64
 	ConfidenceMax float64
 
@@ -202,7 +202,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/health/flaky-test",
 		RuleURI:         "docs/rules/health/flaky-test.md",
 		PromotionPlan: "Today's detector is retry-based, not statistical failure-rate. " +
-			"Statistical detection lands in 0.3 with the calibration corpus.",
+			"Statistical detection lands in a future release with the calibration corpus.",
 	},
 	{
 		Type: SignalSkippedTest, ConstName: "SignalSkippedTest",
@@ -271,7 +271,7 @@ var allSignalManifest = []ManifestEntry{
 		// that doesn't have stable extension. Gate-tier ship would mean
 		// ~55% user-suppression rate. Capability preserved at observability.
 		Tier: TierObservability,
-		PromotionPlan: "Detector is regex/density-based; AST-based semantic scoring lands in 0.3 " +
+		PromotionPlan: "Detector is regex/density-based; AST-based semantic scoring lands in a future release " +
 			"alongside the calibration corpus. Gate-tier promotion requires explicit policy " +
 			"threshold (e.g., user-declared strict-vs-pragmatic mode) AND framing-test flip <15%.",
 	},
@@ -289,7 +289,7 @@ var allSignalManifest = []ManifestEntry{
 		// is refuted at scale. Either the rule needs a fundamentally
 		// different signal (e.g. mock-target diversity), or it should
 		// be removed entirely. Kept in experimental status pending
-		// either rebuild or final deletion in 0.3.
+		// rebuild or final deletion.
 		ConfidenceMin: 0.3, ConfidenceMax: 0.5,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/mock-heavy",
@@ -301,8 +301,8 @@ var allSignalManifest = []ManifestEntry{
 		// module-boundary mocks (vi.mock) from callback-spy stubs (vi.fn()).
 		Tier: TierObservability,
 		PromotionPlan: "Underlying hypothesis empirically refuted (corpus lift 0.02x). " +
-			"B.3-ext confirmed framing-instability. Rebuild requires mock-classifier " +
-			"distinguishing module vs callback mocks. Defer to 0.3 or remove.",
+			"Framing-instability confirmed. Rebuild requires a mock-classifier " +
+			"distinguishing module vs callback mocks. Defer or remove.",
 	},
 	{
 		Type: SignalTestsOnlyMocks, ConstName: "SignalTestsOnlyMocks",
@@ -370,7 +370,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"coverage"},
 		RuleID:          "terrain/quality/coverage-threshold",
 		RuleURI:         "docs/rules/quality/coverage-threshold.md",
-		PromotionPlan: "Severity flips at hard 100%-gap boundary; smooth gradient lands in 0.3 " +
+		PromotionPlan: "Severity flips at hard 100%-gap boundary; a smooth gradient lands in a future release " +
 			"per docs/scoring-rubric.md.",
 	},
 	{
@@ -428,7 +428,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/deps/drift-risk",
 		RuleURI:         "docs/rules/deps/drift-risk.md",
-		PromotionPlan:   "Promotes to stable in 0.3 after the 326-repo corpus confirms regression-PR lift ≥ 1.5x on deps-bump PRs.",
+		PromotionPlan:   "Promotes to stable once the calibration corpus confirms regression-PR lift ≥ 1.5x on deps-bump PRs.",
 	},
 	{
 		Type: SignalConfigSchemaDrift, ConstName: "SignalConfigSchemaDrift",
@@ -441,7 +441,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/config/schema-drift",
 		RuleURI:         "docs/rules/config/schema-drift.md",
-		PromotionPlan:   "Promotes to stable in 0.3 after the 326-repo corpus confirms regression-PR lift ≥ 1.5x on config-only PRs.",
+		PromotionPlan:   "Promotes to stable once the calibration corpus confirms regression-PR lift ≥ 1.5x on config-only PRs.",
 	},
 	{
 		Type: SignalPromptFileMissingEval, ConstName: "SignalPromptFileMissingEval",
@@ -727,13 +727,13 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/eval-failure",
 		RuleURI:         "docs/rules/ai/eval-failure.md",
-		// 0.2 shipped the airun eval-framework adapters (Promptfoo,
-		// DeepEval, Ragas) which emit per-case failure data into the
-		// snapshot's EvalRuns, but the standalone evalFailure detector
-		// did not ship — the failures surface today via the more
-		// specific aiHallucinationRate / aiCostRegression /
-		// aiRetrievalRegression detectors. Reframe for 0.3.
-		PromotionPlan: "0.3 — generic per-case failure surfacing on top of the 0.2 airun eval ingestion. Today's per-case failures route through the specific aiHallucinationRate / aiCostRegression / aiRetrievalRegression detectors.",
+		// The airun eval-framework adapters (Promptfoo, DeepEval, Ragas)
+		// emit per-case failure data into the snapshot's EvalRuns, but
+		// the standalone evalFailure detector did not ship — failures
+		// surface today via the more specific aiHallucinationRate /
+		// aiCostRegression / aiRetrievalRegression detectors. A reframe
+		// is planned.
+		PromotionPlan: "Planned — generic per-case failure surfacing on top of airun eval ingestion. Today's per-case failures route through the specific aiHallucinationRate / aiCostRegression / aiRetrievalRegression detectors.",
 	},
 	{
 		Type: SignalEvalRegression, ConstName: "SignalEvalRegression",
@@ -757,7 +757,7 @@ var allSignalManifest = []ManifestEntry{
 		// Did not ship in 0.2; deferred. The airun adapters surface
 		// per-case score data into the snapshot, so the detector
 		// itself is plumbing-only when it lands.
-		PromotionPlan: "0.3 — accuracy axis regression detector. Per-case score data lands in EvalRuns via the 0.2 airun adapters; detector wiring is the remaining work.",
+		PromotionPlan: "Planned — accuracy axis regression detector. Per-case score data lands in EvalRuns via the airun adapters; detector wiring is the remaining work.",
 	},
 	{
 		Type: SignalCitationMissing, ConstName: "SignalCitationMissing",
@@ -766,7 +766,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/citation-missing", RuleURI: "docs/rules/ai/citation-missing.md",
-		PromotionPlan: "0.3 — RAG-specific detectors.",
+		PromotionPlan: "Planned — RAG-specific detectors.",
 	},
 	{
 		Type: SignalRetrievalMiss, ConstName: "SignalRetrievalMiss",
@@ -775,7 +775,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/retrieval-miss", RuleURI: "docs/rules/ai/retrieval-miss.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalAnswerGroundingFailure, ConstName: "SignalAnswerGroundingFailure",
@@ -784,7 +784,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/grounding-failure", RuleURI: "docs/rules/ai/grounding-failure.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalToolSelectionError, ConstName: "SignalToolSelectionError",
@@ -793,7 +793,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/tool-selection-error", RuleURI: "docs/rules/ai/tool-selection-error.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalSchemaParseFailure, ConstName: "SignalSchemaParseFailure",
@@ -802,13 +802,13 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/schema-parse-failure", RuleURI: "docs/rules/ai/schema-parse-failure.md",
-		// 0.2 closed the structural side (aiToolWithoutSandbox now
+		// The structural side shipped earlier (aiToolWithoutSandbox now
 		// reads typed fields, prompt-versioning rejects empty values,
 		// embedding-change detector sees env-var-loaded models). The
 		// runtime side — schema parse failures from eval frameworks —
-		// did not ship; deferred to 0.3 once the airun adapters expose
-		// `errors` buckets distinct from `failures`.
-		PromotionPlan: "0.3 — depends on airun adapters surfacing parse-error buckets distinct from assertion-failure buckets (currently lumped into Failures).",
+		// is deferred until the airun adapters expose `errors` buckets
+		// distinct from `failures`.
+		PromotionPlan: "Planned — depends on airun adapters surfacing parse-error buckets distinct from assertion-failure buckets (currently lumped into Failures).",
 	},
 	{
 		Type: SignalSafetyFailure, ConstName: "SignalSafetyFailure",
@@ -817,13 +817,13 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.9, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"runtime", "policy"},
 		RuleID:          "terrain/ai/safety-failure", RuleURI: "docs/rules/ai/safety-failure.md",
-		// 0.2 shipped the structural counterpart aiSafetyEvalMissing,
-		// which warns when no safety-shaped scenario covers the AI
-		// surfaces. Runtime first-class safety failures (where the
+		// The structural counterpart aiSafetyEvalMissing shipped
+		// earlier; it warns when no safety-shaped scenario covers the
+		// AI surfaces. Runtime first-class safety failures (where the
 		// eval framework explicitly grades a case as a safety
 		// violation) wait on a uniform `safetyVerdict` field across
-		// adapters — slated for 0.3.
-		PromotionPlan: "0.3 — depends on a uniform safety-verdict field across Promptfoo / DeepEval / Ragas adapters. The structural counterpart (aiSafetyEvalMissing) shipped in 0.2.",
+		// adapters.
+		PromotionPlan: "Planned — depends on a uniform safety-verdict field across Promptfoo / DeepEval / Ragas adapters. The structural counterpart (aiSafetyEvalMissing) shipped earlier.",
 	},
 	{
 		Type: SignalAIPolicyViolation, ConstName: "SignalAIPolicyViolation",
@@ -841,7 +841,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/hallucination", RuleURI: "docs/rules/ai/hallucination.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalLatencyRegression, ConstName: "SignalLatencyRegression",
@@ -850,7 +850,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/latency-regression", RuleURI: "docs/rules/ai/latency-regression.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalCostRegression, ConstName: "SignalCostRegression",
@@ -859,7 +859,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/cost-regression-umbrella", RuleURI: "docs/rules/ai/cost-regression-umbrella.md",
-		PromotionPlan: "0.3 — generic cost-regression umbrella that absorbs the prompt-specific terrain/ai/cost-regression detector.",
+		PromotionPlan: "Planned — generic cost-regression umbrella that absorbs the prompt-specific terrain/ai/cost-regression detector.",
 	},
 	{
 		Type: SignalContextOverflowRisk, ConstName: "SignalContextOverflowRisk",
@@ -868,7 +868,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"structural-pattern", "runtime"},
 		RuleID:          "terrain/ai/context-overflow", RuleURI: "docs/rules/ai/context-overflow.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalWrongSourceSelected, ConstName: "SignalWrongSourceSelected",
@@ -877,7 +877,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/wrong-source", RuleURI: "docs/rules/ai/wrong-source.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalCitationMismatch, ConstName: "SignalCitationMismatch",
@@ -886,7 +886,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/citation-mismatch", RuleURI: "docs/rules/ai/citation-mismatch.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalStaleSourceRisk, ConstName: "SignalStaleSourceRisk",
@@ -895,7 +895,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.5, ConfidenceMax: 0.8,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/stale-source", RuleURI: "docs/rules/ai/stale-source.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalChunkingRegression, ConstName: "SignalChunkingRegression",
@@ -904,7 +904,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/chunking-regression", RuleURI: "docs/rules/ai/chunking-regression.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalRerankerRegression, ConstName: "SignalRerankerRegression",
@@ -913,7 +913,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/reranker-regression", RuleURI: "docs/rules/ai/reranker-regression.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalTopKRegression, ConstName: "SignalTopKRegression",
@@ -922,7 +922,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/topk-regression", RuleURI: "docs/rules/ai/topk-regression.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalToolRoutingError, ConstName: "SignalToolRoutingError",
@@ -931,7 +931,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/tool-routing-error", RuleURI: "docs/rules/ai/tool-routing-error.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalToolGuardrailViolation, ConstName: "SignalToolGuardrailViolation",
@@ -949,7 +949,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime", "policy"},
 		RuleID:          "terrain/ai/tool-budget", RuleURI: "docs/rules/ai/tool-budget.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 	{
 		Type: SignalAgentFallbackTriggered, ConstName: "SignalAgentFallbackTriggered",
@@ -958,7 +958,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/agent-fallback", RuleURI: "docs/rules/ai/agent-fallback.md",
-		PromotionPlan: "0.3",
+		PromotionPlan: "Planned",
 	},
 
 	// ── 0.2 AI signals (planned in 0.2, detectors land before 0.2 close) ──
@@ -996,7 +996,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/prompt-injection-risk", RuleURI: "docs/rules/ai/prompt-injection-risk.md",
-		PromotionPlan:   "0.2 ships heuristic regex detection. Promotes to stable in 0.3 when AST-precise taint-flow analysis lands.",
+		PromotionPlan:   "Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands.",
 	},
 	{
 		Type: SignalAIHardcodedAPIKey, ConstName: "SignalAIHardcodedAPIKey",
@@ -1061,13 +1061,13 @@ var allSignalManifest = []ManifestEntry{
 		// failure metadata that the eval framework (Promptfoo / DeepEval
 		// / Ragas) already produced and computes the rate. The original
 		// "Hallucination Rate Above Threshold" name implies Terrain is
-		// judging model truthfulness; that's the mis-claim flagged in
-		// the launch-readiness review. The detector's job is to surface
-		// what the eval framework reported. Renaming the signal type
-		// itself to `aiEvalFlaggedHallucinationShare` is 0.3 work
-		// (deprecation alias, then removal); for 0.2.0 we keep the
-		// type name for back-compat and tighten the description /
-		// remediation so the trust framing is correct.
+		// judging model truthfulness; that's a mis-claim flagged in
+		// review. The detector's job is to surface what the eval
+		// framework reported. Renaming the signal type itself to
+		// `aiEvalFlaggedHallucinationShare` is a follow-up task
+		// (deprecation alias, then removal); the current name is kept
+		// for back-compat while the description / remediation carry
+		// the correct trust framing.
 		Title:       "Eval-Flagged Hallucination Share",
 		Description: "The eval framework's own hallucination metadata reports a share of cases above the project-configured threshold (default 5%). Terrain reads this from the framework output (Promptfoo / DeepEval / Ragas) — Terrain does not judge hallucinations directly.",
 		Remediation: "Investigate the underlying eval-flagged cases; tighten retrieval or grounding before merging. If you disagree with the eval framework's classification, fix the eval scenario or raise the threshold (with a documented justification).",
@@ -1086,7 +1086,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.55, ConfidenceMax: 0.83,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/few-shot-contamination", RuleURI: "docs/rules/ai/few-shot-contamination.md",
-		PromotionPlan:   "Substring-overlap detector ships in 0.2; promotes to stable in 0.3 once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes.",
+		PromotionPlan:   "Substring-overlap detector ships today; promotes to stable once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes.",
 	},
 	{
 		Type: SignalAIEmbeddingModelChange, ConstName: "SignalAIEmbeddingModelChange",
@@ -1098,7 +1098,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.7, ConfidenceMax: 0.88,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/embedding-model-change", RuleURI: "docs/rules/ai/embedding-model-change.md",
-		PromotionPlan:   "0.2 ships the static precondition (embedding referenced + no retrieval coverage). Cross-snapshot content-hash diff variant lands in 0.3 once snapshot fingerprints are recorded.",
+		PromotionPlan:   "Ships the static precondition (embedding referenced + no retrieval coverage) today. The cross-snapshot content-hash diff variant lands once snapshot fingerprints are recorded.",
 		Tier:            TierObservability,
 	},
 	{

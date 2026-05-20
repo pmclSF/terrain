@@ -185,7 +185,7 @@ func renderRuleStub(e signals.ManifestEntry) string {
 		b.WriteString("\n")
 	}
 	fmt.Fprintf(&b, "## Confidence range\n\n")
-	fmt.Fprintf(&b, "Detector confidence is bracketed at [%.2f, %.2f] (heuristic in 0.2; calibration in 0.3).\n", e.ConfidenceMin, e.ConfidenceMax)
+	fmt.Fprintf(&b, "Detector confidence is bracketed at [%.2f, %.2f] (heuristic today; calibrated against a labeled corpus over time).\n", e.ConfidenceMin, e.ConfidenceMax)
 
 	return b.String()
 }

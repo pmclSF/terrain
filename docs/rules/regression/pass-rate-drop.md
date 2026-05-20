@@ -1,4 +1,27 @@
-# `terrain/regression/pass-rate-drop`
+# terrain/regression/pass-rate-drop — Eval Pass Rate Dropped
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `passRateDrop`  
+**Domain:** ai  
+**Default severity:** high  
+**Status:** stable
+
+## Summary
+
+The success / total ratio across eval cases dropped past the configured threshold from baseline to current. Distinct from eval-regression (continuous score deltas) — fires on discrete pass/fail count deltas.
+
+## Remediation
+
+Inspect per-case eval-regression findings for cases that flipped from pass to fail. If intentional, update the baseline.
+
+## Evidence sources
+
+- `eval-execution`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.90, 0.99] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

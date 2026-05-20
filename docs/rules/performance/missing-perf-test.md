@@ -1,4 +1,27 @@
-# `terrain/performance/missing-perf-test`
+# terrain/performance/missing-perf-test — Missing Performance Test
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `missingPerfTest`  
+**Domain:** quality  
+**Default severity:** low  
+**Status:** stable
+
+## Summary
+
+A latency-critical AI surface (prompt / retrieval / agent / model / handler / route) has no benchmark or load test exercising it. Latency or throughput regressions ship silently.
+
+## Remediation
+
+Add a benchmark under benchmarks/ or perf/ that records P50 / P95 latency for the surface.
+
+## Evidence sources
+
+- `graph-traversal`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.70, 0.85] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

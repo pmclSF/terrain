@@ -29,7 +29,8 @@ import (
 //   - Same (detector, path, symbol, line) → same ID across runs.
 //   - Whitespace changes inside the file do NOT change the ID, *as long as*
 //     the symbol name and line number are preserved by the detector. (Line
-//     drift is a known limitation; AST-anchored 0.3 work removes it.)
+//     drift is a known limitation; an AST-anchored upgrade is planned to
+//     remove it.)
 //   - File rename or symbol rename produces a new ID. That's the right
 //     thing — the underlying finding has moved.
 //

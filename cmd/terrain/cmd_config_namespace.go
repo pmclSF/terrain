@@ -13,8 +13,9 @@ import (
 //   terrain config feedback                       (was: feedback)
 //   terrain config telemetry [--on|--off|--status]   (was: telemetry)
 //
-// Legacy top-level `feedback` and `telemetry` keep working unchanged
-// through 0.2; deprecation note in 0.2.x; removal in 0.3.
+// Legacy top-level `feedback` and `telemetry` keep working unchanged;
+// they will emit a deprecation note in a later release and be removed
+// in a future release per the CHANGELOG.
 
 var configVerbs = map[string]bool{
 	"feedback":  true,

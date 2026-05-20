@@ -1,4 +1,28 @@
-# `terrain/reproducibility/version-floating`
+# terrain/reproducibility/version-floating — Floating Dependency Version
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `versionFloating`  
+**Domain:** quality  
+**Default severity:** medium  
+**Status:** stable
+
+## Summary
+
+A dependency is declared without a version pin (unpinned, range-only, or moving git/url reference). Subsequent installs may resolve to different versions, introducing non-determinism in test and eval runs.
+
+## Remediation
+
+Pin the dependency to an exact version, commit a lockfile that records the resolved set, or use a content-addressed git SHA reference.
+
+## Evidence sources
+
+- `structural-pattern`
+- `manifest`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.85, 0.99] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

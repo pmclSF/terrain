@@ -1,4 +1,27 @@
-# `terrain/regression/baseline-not-set`
+# terrain/regression/baseline-not-set — Baseline Not Set
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `baselineNotSet`  
+**Domain:** ai  
+**Default severity:** medium  
+**Status:** stable
+
+## Summary
+
+An EvalRun exists for the current PR but no baseline is recorded. Eval-regression detection is disabled until a baseline exists.
+
+## Remediation
+
+Run `terrain ai record` on the current main-branch state to lock the baseline. Subsequent PRs will be compared against it.
+
+## Evidence sources
+
+- `eval-execution`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.99, 0.99] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

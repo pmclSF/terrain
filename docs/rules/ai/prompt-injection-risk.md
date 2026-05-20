@@ -1,4 +1,4 @@
-# TER-AI-102 — Prompt-Injection-Shaped Concatenation
+# terrain/ai/prompt-injection-risk — Prompt-Injection-Shaped Concatenation
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -17,7 +17,7 @@ Use a prompt template with explicit user-content boundaries, or run user input t
 
 ## Promotion plan
 
-0.2 ships heuristic regex detection. Promotes to stable in 0.3 when AST-precise taint-flow analysis lands.
+Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands.
 
 ## Evidence sources
 
@@ -25,7 +25,7 @@ Use a prompt template with explicit user-content boundaries, or run user input t
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.60, 0.85] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.60, 0.85] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 
@@ -35,7 +35,7 @@ Detector confidence is bracketed at [0.60, 0.85] (heuristic in 0.2; calibration 
 **Domain:** AI
 **Default severity:** High
 **Severity clauses:** [`sev-high-003`](../../severity-rubric.md)
-**Status:** experimental (0.2). Promotes to stable in 0.3 with AST-precise taint-flow.
+**Status:** experimental. Promotes to stable when AST-precise taint-flow analysis lands.
 
 ## What it detects
 
@@ -118,10 +118,10 @@ prompt = (
   actually a prompt (e.g. a CLI prompt string). Rename or add a
   fixture.
 
-## Known limitations (0.2)
+## Known limitations
 
 - Regex-based; cannot follow data flow across function boundaries.
-  AST-precise taint analysis lands in 0.3.
+  An AST-precise taint-flow upgrade is planned.
 - Skips comment-only lines. A genuinely vulnerable line that ends
   with a trailing `# explanatory comment` is still flagged.
 - Doesn't recognize framework-specific sanitizers — your

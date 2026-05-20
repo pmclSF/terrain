@@ -1,4 +1,27 @@
-# `terrain/reproducibility/missing-env-pinning`
+# terrain/reproducibility/missing-env-pinning — Missing Env Pinning
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `missingEnvPinning`  
+**Domain:** quality  
+**Default severity:** medium  
+**Status:** stable
+
+## Summary
+
+An environment-variable read in eval / inference code lacks a default value. The same code produces different behavior depending on which environment runs it.
+
+## Remediation
+
+Supply a default — os.environ.get(KEY, "<pinned-value>") — or fail fast with a clear error message when the variable is absent.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.70, 0.90] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

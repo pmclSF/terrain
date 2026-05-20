@@ -1,4 +1,27 @@
-# `terrain/regression/eval-regression`
+# terrain/regression/eval-regression — Eval Regression
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `evalRegression`  
+**Domain:** ai  
+**Default severity:** high  
+**Status:** stable
+
+## Summary
+
+An eval case's primary Score dropped from baseline to current past the configured threshold, OR the run's PrimaryMetric dropped across all matched cases. Identifies regressions before merge.
+
+## Remediation
+
+Inspect the diff for prompt / model / retrieval changes that affect the regressing case(s). If intentional, update the baseline with `terrain ai record`.
+
+## Evidence sources
+
+- `eval-execution`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.85, 0.99] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

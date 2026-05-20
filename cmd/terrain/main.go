@@ -75,7 +75,7 @@ const defaultSlowThresholdMs = 5000.0
 //	4 — AI gate block. Returned by `terrain ai run --baseline` when the
 //	     `actionBlock` decision fires (e.g., a high-severity AI signal
 //	     introduced vs. baseline). Reserved by `exitAIGateBlock` so a
-//	     standalone `terrain ai gate` command in 0.3 can use the same
+//	     standalone `terrain ai gate` command later can use the same
 //	     code without breaking CI scripts that already branch on it.
 //	5 — Not-found. Returned by `terrain show <kind> <id>` and
 //	     `terrain explain <target>` when the entity doesn't exist.
@@ -88,13 +88,13 @@ const defaultSlowThresholdMs = 5000.0
 //	     blocked us" without parsing stderr.
 //
 // Splitting code 2 cleanly into "usage" vs "policy" is a behavior-
-// breaking change that needs a migration window. The split is
-// documented as a 0.2.x → 0.3 milestone in docs/release/0.2.md.
+// breaking change that needs a migration window — deferred until that
+// runway is in place.
 const (
 	exitOK              = 0
 	exitError           = 1
 	exitUsageError      = 2
-	exitPolicyViolation = 2 // overloaded with exitUsageError until 0.2; see comment above
+	exitPolicyViolation = 2 // overloaded with exitUsageError; split deferred behind a migration window
 	exitAIGateBlock     = 4
 	// exitNotFound distinguishes "the entity you asked about does not
 	// exist in this repo" from "analysis itself failed." Used by
@@ -1205,7 +1205,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  --baseline PATH           baseline snapshot for regression detectors")
 	fmt.Fprintln(os.Stderr, "  --log-level LEVEL         diagnostic verbosity: quiet, debug (default: info)")
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Legacy aliases (still work in 0.2; removal in 0.3 per docs/release/0.2.md):")
+	fmt.Fprintln(os.Stderr, "Legacy aliases (still work; scheduled for future removal — see CHANGELOG):")
 	fmt.Fprintln(os.Stderr, "  init [flags]             detect data paths and print recommended analyze command")
 	fmt.Fprintln(os.Stderr, "  convert <source> [flags] inspect or execute Go-native conversion directions")
 	fmt.Fprintln(os.Stderr, "  convert-config [flags]   convert framework config files with the Go-native runtime")

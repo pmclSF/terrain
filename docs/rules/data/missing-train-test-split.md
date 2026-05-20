@@ -1,4 +1,27 @@
-# `terrain/data/missing-train-test-split`
+# terrain/data/missing-train-test-split — Missing Train/Test Split
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `missingTrainTestSplit`  
+**Domain:** ai  
+**Default severity:** high  
+**Status:** stable
+
+## Summary
+
+A training call (.fit() / .train() / .partial_fit()) appears in a training file without any preceding split helper (train_test_split, KFold, TimeSeriesSplit, cross_val_score, etc.). The model is fit on the full dataset; evaluation against the same data measures memorization, not generalization.
+
+## Remediation
+
+Split the dataset before training (sklearn.model_selection.train_test_split, KFold for general use, TimeSeriesSplit for temporal data).
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.75, 0.90] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

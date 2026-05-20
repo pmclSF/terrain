@@ -80,8 +80,8 @@ see `cmd/terrain/cmd_explain.go showFinding`.
 
 Every shape this document references is Stable per the source
 schema's tier annotations. The dispatch table above is itself
-Stable — adding new target types (e.g. fixture targets in 0.3) is
-an additive change.
+Stable — adding new target types (e.g. fixture targets in a future
+release) is an additive change.
 
 ## Consuming the JSON
 

@@ -1,4 +1,23 @@
-# `terrain/data-quality/schema-drift` *(preview)*
+# terrain/data-quality/schema-drift — Schema Drift
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `schemaDrift`  
+**Domain:** ai  
+**Default severity:** high  
+**Status:** experimental
+
+## Promotion plan
+
+0.2 — fires when pipeline output schema changed between baseline and current run.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.85, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

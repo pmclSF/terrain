@@ -1,4 +1,23 @@
-# `terrain/coverage/missing-eval-categories` *(preview)*
+# terrain/coverage/missing-eval-categories — Missing Eval Categories
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `missingEvalCategories`  
+**Domain:** ai  
+**Default severity:** low  
+**Status:** experimental
+
+## Promotion plan
+
+0.2 — fires when eval suite has happy_path coverage but no adversarial / edge_case categories.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.65, 0.80] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

@@ -1,4 +1,23 @@
-# `terrain/prompt-quality/missing-validator` *(preview)*
+# terrain/prompt-quality/missing-validator — Missing Prompt Validator
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `missingPromptValidator`  
+**Domain:** ai  
+**Default severity:** medium  
+**Status:** experimental
+
+## Promotion plan
+
+0.2 — fires when prompt template has no instructor / guardrails / pydantic output schema.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.70, 0.85] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

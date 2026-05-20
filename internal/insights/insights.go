@@ -1316,12 +1316,11 @@ func deriveHeadline(r *Report) string {
 }
 
 // Health grade rubric. Each constant names the threshold at which a grade
-// flips. Values are uncalibrated heuristics carried forward from 0.1.0;
-// docs/health-grade-rubric.md covers what they mean today and what changes
-// when the corpus calibration in 0.3 lands. They are extracted as named
-// constants so:
-//   - the rubric document has stable references to point at
-//   - 0.3's recalibration touches a single declaration
+// flips. Values are uncalibrated heuristics today; corpus-driven
+// recalibration is a separate workstream and updates these in place. They
+// are extracted as named constants so:
+//   - internal rubric docs have stable references to point at
+//   - recalibration touches a single declaration
 //   - tests that exercise grade boundaries don't repeat magic numbers
 const (
 	healthGradeDHighFindingThreshold   = 3 // > N high findings → D

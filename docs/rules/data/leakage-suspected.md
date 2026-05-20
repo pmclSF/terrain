@@ -1,4 +1,27 @@
-# `terrain/data/leakage-suspected`
+# terrain/data/leakage-suspected — Data Leakage Suspected
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `dataLeakageSuspected`  
+**Domain:** ai  
+**Default severity:** high  
+**Status:** stable
+
+## Summary
+
+Source-level patterns associated with train/test contamination: preprocessing (scaler/encoder fit) applied before the split, or random train/test split applied to time-series data.
+
+## Remediation
+
+Move scaler/encoder fits to AFTER the split. For time-series, use TimeSeriesSplit or a manual time-based cutoff.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.70, 0.90] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

@@ -1,4 +1,23 @@
-# `terrain/prompt-quality/version-skew` *(preview)*
+# terrain/prompt-quality/version-skew — Prompt Version Skew
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `promptVersionSkew`  
+**Domain:** ai  
+**Default severity:** medium  
+**Status:** experimental
+
+## Promotion plan
+
+0.2 — detects when same prompt template referenced by multiple eval scenarios under different version names.
+
+## Evidence sources
+
+- `graph-traversal`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.75, 0.90] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

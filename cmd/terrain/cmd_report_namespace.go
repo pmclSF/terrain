@@ -27,8 +27,9 @@ import (
 // use the legacy top-level commands (`terrain focus`, `terrain
 // export`).
 //
-// The 9 read-side legacy top-level commands keep working unchanged
-// through 0.2; they get a deprecation note in 0.2.x and removal in 0.3.
+// The 9 read-side legacy top-level commands keep working unchanged;
+// they will get a deprecation note in a later release and be removed
+// in a future release per the CHANGELOG.
 
 // reportVerbs is the canonical-verb allowlist. Used by the dispatcher
 // and by the help text on bare `terrain report`.

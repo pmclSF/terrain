@@ -1,4 +1,27 @@
-# `terrain/security/pii-in-eval`
+# terrain/security/pii-in-eval — PII in Eval Dataset
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `piiInEval`  
+**Domain:** ai  
+**Default severity:** critical  
+**Status:** stable
+
+## Summary
+
+An eval-directory file contains PII-shaped values (emails, phone numbers, SSNs, credit card numbers, IPv4 addresses). Eval datasets that retain production PII expose customer data to anyone with repo access.
+
+## Remediation
+
+Replace PII in the eval dataset with synthetic equivalents (Faker, Mimesis, mockaroo) or apply a redaction pass before committing.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.75, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

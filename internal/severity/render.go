@@ -68,10 +68,10 @@ func RenderMarkdown() string {
 	b.WriteString("`internal/severity.ValidateClauseIDs` returns the set of unknown IDs from a list,\n")
 	b.WriteString("which detectors and tests use to fail loudly on typos.\n\n")
 	b.WriteString("## Calibration ladder\n\n")
-	b.WriteString("Clauses are heuristic in 0.2 — author-set based on the rule's structure and the\n")
-	b.WriteString("examples above. The 0.2 calibration corpus (50 labeled repos) measures per-clause\n")
-	b.WriteString("precision/recall and re-anchors borderline severities. Calibrated clauses gain a\n")
-	b.WriteString("`Quality: \"calibrated\"` field on the corresponding `ConfidenceDetail`.\n")
+	b.WriteString("Clauses start as heuristic — author-set based on the rule's structure and the\n")
+	b.WriteString("examples above. A calibration corpus of labeled repos measures per-clause\n")
+	b.WriteString("precision/recall over time and re-anchors borderline severities. Calibrated\n")
+	b.WriteString("clauses gain a `Quality: \"calibrated\"` field on the corresponding `ConfidenceDetail`.\n")
 
 	return b.String()
 }

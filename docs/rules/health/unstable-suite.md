@@ -1,4 +1,4 @@
-# TER-HEALTH-005 — Unstable Suite
+# terrain/health/unstable-suite — Unstable Suite
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -21,6 +21,6 @@ Prioritize stabilization in the highest-instability areas.
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.70, 0.85] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.70, 0.85] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

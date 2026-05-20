@@ -1,4 +1,28 @@
-# `terrain/regression/test-failed`
+# terrain/regression/test-failed — Impacted Test Failed
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `testFailed`  
+**Domain:** health  
+**Default severity:** high  
+**Status:** stable
+
+## Summary
+
+A test selected by impact analysis as relevant to the current change failed. The change broke something the test suite already protects.
+
+## Remediation
+
+Reproduce locally with `terrain test --selector regression/test-failed`. Fix the failure or, if the test is stale, update it deliberately.
+
+## Evidence sources
+
+- `runtime`
+- `graph-traversal`
+
+## Confidence range
+
+Detector confidence is bracketed at [1.00, 1.00] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

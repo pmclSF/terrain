@@ -1,4 +1,4 @@
-# TER-HEALTH-001 — Slow Test
+# terrain/health/slow-test — Slow Test
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -21,6 +21,6 @@ Profile slow paths and split or optimize expensive tests.
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.85, 0.95] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.85, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

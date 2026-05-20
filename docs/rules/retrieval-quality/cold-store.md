@@ -1,4 +1,23 @@
-# `terrain/retrieval-quality/cold-store` *(preview)*
+# terrain/retrieval-quality/cold-store — Cold Vector Store
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `coldVectorStore`  
+**Domain:** ai  
+**Default severity:** low  
+**Status:** experimental
+
+## Promotion plan
+
+0.2 — fires when vector store is initialized but no index population call exists in the same module.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.70, 0.85] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

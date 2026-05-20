@@ -1,4 +1,27 @@
-# `terrain/hygiene/model-fixture-unpinned`
+# terrain/hygiene/model-fixture-unpinned — Model Fixture Unpinned
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `modelFixtureUnpinned`  
+**Domain:** ai  
+**Default severity:** high  
+**Status:** stable
+
+## Summary
+
+A model-loading call (from_pretrained / torch.load / joblib.load / load_model / snapshot_download) uses a path or revision that isn't content-addressed. The underlying weights may change without a code edit, regressing eval scores silently.
+
+## Remediation
+
+Pin the load to a commit SHA (revision="<sha>" for HuggingFace), a version-suffixed filename (model_v3.0.pt), or a .safetensors-with-checksum format.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.85, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

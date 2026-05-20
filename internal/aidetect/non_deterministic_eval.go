@@ -71,10 +71,10 @@ func (d *NonDeterministicEvalDetector) Detect(snap *models.TestSuiteSnapshot) []
 				Type:        signals.SignalAINonDeterministicEval,
 				Category:    models.CategoryAI,
 				Severity:    models.SeverityMedium,
-				// 2026-05-11 corpus-driven recalibration: declared 0.93,
-				// hand-validated 67% point estimate (LB 47%) on 25-sample
-				// corpus review. Demoted to 0.50 to match observed precision.
-				// See tier-4/handlabel/aiNonDeterministicEval.labels.tsv
+				// Corpus-driven recalibration: declared 0.93, hand-
+				// validated point estimate ~67% (lower bound ~47%) on a
+				// small-sample corpus review. Demoted to 0.50 to match
+				// observed precision.
 				Confidence:  0.50,
 				Location:    models.SignalLocation{File: relPath},
 				Explanation: f.Explanation,

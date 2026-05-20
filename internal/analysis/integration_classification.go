@@ -11,8 +11,7 @@ import (
 // merges any content-based integration signal (supertest, httptest,
 // MockMvc, etc.) with the existing path/suite/framework-based
 // classification produced by testtype.InferAll. See
-// internal/testtype/integration_imports.go for the pattern allowlist
-// and Track 3.3 in the 0.2.0 release plan for context.
+// internal/testtype/integration_imports.go for the pattern allowlist.
 //
 // Per-file content is cached to avoid re-classifying the same file
 // for every test case it contains. Cancellation via ctx is honored

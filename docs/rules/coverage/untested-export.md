@@ -1,4 +1,4 @@
-# TER-QUAL-001 — Untested Export
+# terrain/coverage/untested-export — Untested Export
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -22,6 +22,6 @@ Add direct tests for public exports to protect API behavior.
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.50, 0.70] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.50, 0.70] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

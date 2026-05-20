@@ -1,13 +1,11 @@
 // Package deps implements Terrain detectors for dependency-manifest
-// drift risk. Tier 5.1 of the 0.2.0 corpus-driven quality work — see
-// docs/PRODUCT.md §16 and tier-4/recall-gap.md for the corpus
-// evidence motivating the rule.
+// drift risk. See docs/PRODUCT.md §16 for product context.
 //
-// The headline empirical finding: bot-authored PRs (renovate /
-// dependabot / etc.) regress at 38.8% (5x corpus baseline), and
-// 35.2% of all unflagged regression-introducing PRs in our 326-repo
-// corpus are bot or deps-bump shaped. No detector in the existing
-// roster targets this PR class.
+// Empirical motivation: bot-authored PRs (renovate / dependabot / etc.)
+// regress at multiples of the corpus baseline, and a meaningful share
+// of all unflagged regression-introducing PRs in our internal
+// calibration corpus are bot or deps-bump shaped — a class no other
+// detector in the roster targets.
 //
 // v1 design — analyze-time, not PR-diff-time:
 //

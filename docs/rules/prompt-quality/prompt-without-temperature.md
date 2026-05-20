@@ -1,4 +1,23 @@
-# `terrain/prompt-quality/prompt-without-temperature` *(preview)*
+# terrain/prompt-quality/prompt-without-temperature — Prompt Without Temperature
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `promptWithoutTemperature`  
+**Domain:** ai  
+**Default severity:** low  
+**Status:** experimental
+
+## Promotion plan
+
+0.2 — fires when LLM SDK call has no temperature= kwarg. Defaults differ across SDKs; explicit value is reproducibility-critical.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.85, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

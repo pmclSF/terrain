@@ -1,4 +1,27 @@
-# `terrain/coverage/no-integration-test`
+# terrain/coverage/no-integration-test — No Integration Test
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `noIntegrationTest`  
+**Domain:** quality  
+**Default severity:** medium  
+**Status:** stable
+
+## Summary
+
+A code unit reachable from a production entry point (handler / route) has no integration test exercising it through that entry point.
+
+## Remediation
+
+Add an integration test that exercises the handler / route end-to-end. The unit test stays as a fast inner-loop check; the integration test ensures the cross-stack contract holds.
+
+## Evidence sources
+
+- `graph-traversal`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.80, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

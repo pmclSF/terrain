@@ -1,4 +1,23 @@
-# `terrain/coverage/orphaned-eval` *(preview)*
+# terrain/coverage/orphaned-eval — Orphaned Eval
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `orphanedEval`  
+**Domain:** ai  
+**Default severity:** low  
+**Status:** experimental
+
+## Promotion plan
+
+0.2 — fires when an Eval has no CoveredSurfaceIDs (references no surface).
+
+## Evidence sources
+
+- `graph-traversal`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.80, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

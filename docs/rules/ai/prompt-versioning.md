@@ -1,4 +1,4 @@
-# TER-AI-101 — Prompt Versioning
+# terrain/ai/prompt-versioning — Prompt Versioning
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -21,6 +21,6 @@ Add a `version:` field, a `_v<N>` filename suffix, or a `# version: ...` comment
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.75, 0.92] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.75, 0.92] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

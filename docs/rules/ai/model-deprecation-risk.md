@@ -1,4 +1,4 @@
-# TER-AI-106 — Model Pinned to Deprecated or Floating Tag
+# terrain/ai/model-deprecation-risk — Model Pinned to Deprecated or Floating Tag
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -21,7 +21,7 @@ Pin to a dated model variant or upgrade to a supported tier.
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.80, 0.95] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.80, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

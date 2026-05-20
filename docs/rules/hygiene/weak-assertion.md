@@ -1,4 +1,4 @@
-# TER-QUAL-002 — Weak Assertion
+# terrain/hygiene/weak-assertion — Weak Assertion
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -17,7 +17,7 @@ Add behavior-focused assertions on outputs, state transitions, and side effects.
 
 ## Promotion plan
 
-Detector is regex/density-based; AST-based semantic scoring lands in 0.3 alongside the calibration corpus.
+Detector is regex/density-based; AST-based semantic scoring lands in a future release alongside the calibration corpus. Gate-tier promotion requires explicit policy threshold (e.g., user-declared strict-vs-pragmatic mode) AND framing-test flip <15%.
 
 ## Evidence sources
 
@@ -25,6 +25,6 @@ Detector is regex/density-based; AST-based semantic scoring lands in 0.3 alongsi
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.40, 0.80] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.40, 0.80] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

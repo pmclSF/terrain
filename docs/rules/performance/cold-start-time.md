@@ -1,4 +1,23 @@
-# `terrain/performance/cold-start-time` *(preview)*
+# terrain/performance/cold-start-time — Cold Start Time
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `coldStartTime`  
+**Domain:** ai  
+**Default severity:** low  
+**Status:** experimental
+
+## Promotion plan
+
+0.2 — fires when first-request latency exceeds configured threshold (e.g., 2× P50).
+
+## Evidence sources
+
+- `runtime`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.80, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

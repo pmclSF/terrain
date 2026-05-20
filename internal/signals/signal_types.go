@@ -118,10 +118,9 @@ const (
 	SignalConfigSchemaDrift models.SignalType = "configSchemaDrift"
 
 	// Boundary class — AI/ML surface with no eval coverage. The
-	// headline detector of the AI-first + boundary-detection strategy
-	// (see memory/terrain_strategy.md). Empirically grounded: 18,761
-	// uncovered surfaces vs 138 covered ones across 2000 OSS AI/ML
-	// repos (tier-4/corpus-2000-summary.md, 2026-05-12).
+	// detector is empirically grounded: surveys of large OSS AI/ML
+	// repo populations show uncovered surfaces dominate covered ones
+	// by two orders of magnitude.
 	SignalPromptFileMissingEval models.SignalType = "promptFileMissingEval"
 
 	// Regression family — uses Tier 1 eval-adapter foundation.

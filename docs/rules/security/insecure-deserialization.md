@@ -1,4 +1,27 @@
-# `terrain/security/insecure-deserialization`
+# terrain/security/insecure-deserialization — Insecure Deserialization
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `insecureDeserialization`  
+**Domain:** ai  
+**Default severity:** critical  
+**Status:** stable
+
+## Summary
+
+A call into an unsafe deserialization primitive (pickle.load, torch.load without weights_only=True, joblib.load, yaml.load without SafeLoader, dill.load, marshal.load) executes arbitrary code on untrusted input.
+
+## Remediation
+
+Switch to a safe format (JSON, msgpack, safetensors, ONNX). When the primitive is unavoidable, declare the explicit safe option (weights_only=True for torch.load, Loader=SafeLoader for yaml.load).
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.90, 0.99] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

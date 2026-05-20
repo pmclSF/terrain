@@ -1,4 +1,4 @@
-# TER-AI-100 — AI Safety Eval Missing
+# terrain/ai/safety-eval-missing — AI Safety Eval Missing
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -22,7 +22,7 @@ Add an eval scenario tagged with the missing safety category and re-run the gaun
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.75, 0.90] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.75, 0.90] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

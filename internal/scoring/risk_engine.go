@@ -318,7 +318,7 @@ func computeDirectoryRisk(snap *models.TestSuiteSnapshot) []models.RiskSurface {
 //   - score ≥ 16:  Critical
 //
 // These thresholds are intentionally simple and inspectable. See
-// docs/scoring-rubric.md for what changes when calibration lands in 0.3.
+// the internal scoring-rubric for how calibration adjusts them.
 func scoreToBand(score float64) models.RiskBand {
 	switch {
 	case score >= riskBandHighUpper:

@@ -1,7 +1,7 @@
-// Command terrain-voice-lint enforces the voice-and-tone rules
-// documented in the parity plan's Track 10.7. The lint scans Go
-// source files for user-visible string literals and reports any
-// that violate the canonical voice rules:
+// Command terrain-voice-lint enforces the voice-and-tone rules for
+// user-visible string output. The lint scans Go source files for
+// user-visible string literals and reports any that violate the
+// canonical voice rules:
 //
 //  1. No exclamation marks. The Terrain voice is confident, not
 //     jarring; exclamation marks read as either pushy or

@@ -53,13 +53,13 @@ func (d *MockHeavyDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sign
 
 		// Mock-heavy: mocks outnumber assertions, suggesting over-isolation.
 		//
-		// 2026-05-11 corpus-driven demotion: severity dropped to Low,
-		// confidence dropped to 0.35. PR-lift on 4 clean corpora shows
-		// 0.00–0.02x — mock-heavy files are NOT regression-prone. The
-		// hypothesis is empirically refuted. The signal remains in
-		// experimental status pending rebuild or removal in 0.3; in the
-		// meantime severity Low + low confidence means it surfaces in
-		// extended reports without dominating the gate.
+		// Severity dropped to Low and confidence dropped to 0.35 after
+		// corpus-driven PR-lift validation showed 0.00–0.02x lift on
+		// clean corpora — mock-heavy files are NOT regression-prone, so
+		// the hypothesis is empirically refuted. The signal remains in
+		// experimental status pending rebuild; in the meantime severity
+		// Low + low confidence means it surfaces in extended reports
+		// without dominating the gate.
 		if tf.MockCount > tf.AssertionCount {
 			sev := models.SeverityLow
 			conf := 0.35

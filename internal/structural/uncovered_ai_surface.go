@@ -14,15 +14,15 @@ import (
 // with zero test or scenario coverage.
 type UncoveredAISurfaceDetector struct{}
 
-// 2026-05-18 moat work — Phase A.4 + R2 findings on uncoveredAISurface
-// at merged n=250 corpus precision 21.5%, sub-lane breakdown:
-//   - aiPrompt: 41% precision — strongest lane, keep gate-eligible
-//   - aiModel:   5% precision — dominated by name-shape FPs (Zod schemas,
-//                synthesized line-suffix stems, decorator-injected stems)
-//   - aiDataset: 33% precision — moderate
+// Sub-lane precision tuning. Corpus validation at n=250 showed the
+// AI-surface lanes have meaningfully different precision profiles:
+//   - aiPrompt: strongest lane, kept gate-eligible
+//   - aiModel: weakest lane, dominated by name-shape FPs (Zod schemas,
+//              synthesized line-suffix stems, decorator-injected stems)
+//   - aiDataset: moderate
 //
-// Below filters target the dominant FP classes in the aiModel lane
-// per the saved feedback memory (must clear ≥5 FPs as a class):
+// The filters below target the dominant FP classes in the aiModel lane.
+// Each filter clears ≥5 FPs as a class per the no-single-file-rules rule:
 //
 // modelSyntheticStemRe: names like `token_management_L47`, `*_L\d+`
 //   are line-number-suffix synthesized identifiers from the AI surface
@@ -115,10 +115,10 @@ func (d *UncoveredAISurfaceDetector) DetectWithGraph(snap *models.TestSuiteSnaps
 				name = n.ID
 			}
 
-			// 2026-05-18 moat work — drop aiModel lane FPs whose symbol
-			// shape matches known non-model classes. Filter ONLY applies
-			// to NodeModel — prompt and dataset lanes have different FP
-			// shapes and stay unfiltered here. Class-rule (≥5 FPs each).
+			// Drop aiModel lane FPs whose symbol shape matches known
+			// non-model classes. Filter ONLY applies to NodeModel — prompt
+			// and dataset lanes have different FP shapes and stay
+			// unfiltered here. Class-rule (≥5 FPs each).
 			if nt == depgraph.NodeModel && isStructuralAIModelFP(name) {
 				continue
 			}
@@ -155,15 +155,15 @@ func (d *UncoveredAISurfaceDetector) DetectWithGraph(snap *models.TestSuiteSnaps
 func severityForAISurfaceType(nt depgraph.NodeType) models.SignalSeverity {
 	switch nt {
 	case depgraph.NodePrompt:
-		// 2026-05-18: aiPrompt lane is the strongest (41% precision at
-		// n=250). Highest severity preserved — this is the moat surface.
+		// aiPrompt is the strongest sub-lane by validated precision; the
+		// highest severity is preserved for it.
 		return models.SeverityHigh
 	case depgraph.NodeModel:
-		// 2026-05-18: aiModel lane was 4.9% precision pre-filter; even
-		// after isStructuralAIModelFP filter drops the dominant FP
-		// classes, residual precision is ~20-30% per Phase A.4 replay.
-		// Demoted to medium until LLM-call-site proximity gate (depgraph
-		// adjacency to call sites) lands.
+		// aiModel was the lowest-precision sub-lane pre-filter; even
+		// after isStructuralAIModelFP drops the dominant FP classes,
+		// residual precision is moderate. Demoted to medium until an
+		// LLM-call-site proximity gate (depgraph adjacency to call
+		// sites) lands.
 		return models.SeverityMedium
 	case depgraph.NodeDataset:
 		return models.SeverityMedium

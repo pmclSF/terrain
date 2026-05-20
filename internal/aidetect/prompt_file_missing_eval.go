@@ -13,11 +13,10 @@ import (
 //   - safety_eval_missing requires a *safety-shaped* eval missing
 //   - surface_missing_eval requires *any* eval missing
 //
-// Corpus evidence (tier-4/corpus-2000-summary.md, 2026-05-12):
-// 18,761 `surface_missing_eval` edges across 2000 AI/ML repos vs 138
-// `eval_covers_surface` edges. The 136:1 ratio in the wild OSS AI/ML
-// codebase is the empirical case for this detector as the headline of
-// Terrain's product strategy.
+// Empirical motivation: across a large OSS AI/ML repo survey,
+// `surface_missing_eval` edges outnumber `eval_covers_surface` edges
+// by two orders of magnitude. That ratio is the empirical case for
+// treating this signal as a primary boundary-class detector.
 //
 // Detection logic mirrors safety_eval_missing's structure:
 //   1. Walk every CodeSurface whose Kind is an AI/ML surface kind.

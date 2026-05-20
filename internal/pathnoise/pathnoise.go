@@ -13,7 +13,7 @@
 // prefer `pathnoise.IsToolingPath(p)` over inline path matching.
 //
 // The patterns here are all corpus-validated — each was identified
-// during a hand-labeled FP analysis (see tier-4/handlabel/*.tsv).
+// during an internal hand-labeled FP analysis.
 package pathnoise
 
 import (

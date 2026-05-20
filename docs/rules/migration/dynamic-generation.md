@@ -1,4 +1,4 @@
-# TER-MIG-004 — Dynamic Test Generation
+# terrain/migration/dynamic-generation — Dynamic Test Generation
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -21,6 +21,6 @@ Prefer explicit, static test declarations for critical paths.
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.50, 0.75] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.50, 0.75] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

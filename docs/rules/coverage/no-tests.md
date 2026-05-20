@@ -1,4 +1,27 @@
-# `terrain/coverage/no-tests`
+# terrain/coverage/no-tests — No Tests for Code Unit
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `noTestsForCodeUnit`  
+**Domain:** quality  
+**Default severity:** medium  
+**Status:** stable
+
+## Summary
+
+A code unit (exported function / method / class) exists in the codebase but no test in the snapshot's dependency graph covers it. Untested code reaches production undetected when changed.
+
+## Remediation
+
+Add a test that imports the code unit and exercises its observable behavior. The rule defaults to exported symbols only; configure `include_private: true` to widen coverage.
+
+## Evidence sources
+
+- `graph-traversal`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.85, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

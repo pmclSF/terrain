@@ -624,10 +624,10 @@ func humanizeGoNativeState(state conv.GoNativeState) string {
 }
 
 // tierLabelForState renders a conversion direction's GoNativeState as
-// the Tier-badge vocabulary used elsewhere in 0.2 (Stable /
-// Experimental / Preview / Cataloged). Track 6.6 of the parity plan
-// surfaces this in `terrain migrate list` so adopters see the trust
-// posture per direction at a glance, not just the raw state name.
+// the Tier-badge vocabulary used elsewhere (Stable / Experimental /
+// Preview / Cataloged). The label surfaces in `terrain migrate list`
+// so adopters see the trust posture per direction at a glance, not
+// just the raw state name.
 //
 // The mapping:
 //   - implemented → "Stable"      (top-3 + conversion-corpus calibrated)

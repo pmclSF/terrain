@@ -122,10 +122,10 @@ func shouldSkipDir(name string) bool {
 		return true
 	// Terrain-specific bulk dirs that contain harvested corpus,
 	// snapshots, or local artifacts that shouldn't be evaluated as
-	// real source. The .terrain/ runtime cache is always skipped;
-	// tier-4/ exists only in the Terrain repo itself but is large
-	// enough that a single Terrain-on-Terrain run is multi-minute
-	// without this guard.
+	// real source. The .terrain/ runtime cache is always skipped.
+	// The second entry is a bulk-calibration directory present only
+	// in Terrain's own working tree; skipped here so a self-scan
+	// doesn't walk it.
 	case ".terrain", "tier-4":
 		return true
 	}

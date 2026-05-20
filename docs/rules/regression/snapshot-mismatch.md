@@ -1,4 +1,27 @@
-# `terrain/regression/snapshot-mismatch`
+# terrain/regression/snapshot-mismatch — Snapshot Mismatch
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `snapshotMismatch`  
+**Domain:** ai  
+**Default severity:** medium  
+**Status:** stable
+
+## Summary
+
+An eval case's recorded output snapshot diverged from baseline to current. Catches behavior changes the scalar score may not surface.
+
+## Remediation
+
+Inspect the diff for prompt / model / retrieval changes affecting the case. If the new output is correct, accept it via `terrain ai record`.
+
+## Evidence sources
+
+- `eval-execution`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.85, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

@@ -1,4 +1,4 @@
-# TER-AI-103 — Hard-Coded API Key in AI Configuration
+# terrain/ai/hardcoded-api-key — Hard-Coded API Key in AI Configuration
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -21,7 +21,7 @@ Move the secret to an environment variable or secrets store and reference it thr
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.85, 0.95] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.85, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

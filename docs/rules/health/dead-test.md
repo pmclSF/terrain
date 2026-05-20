@@ -1,4 +1,4 @@
-# TER-HEALTH-004 — Dead Test
+# terrain/health/dead-test — Dead Test
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -21,6 +21,6 @@ Remove obsolete tests or reconnect them to active behavior.
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.60, 0.80] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.60, 0.80] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

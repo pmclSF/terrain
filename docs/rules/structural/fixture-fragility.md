@@ -1,4 +1,4 @@
-# TER-STRUCT-005 — Fixture Fragility Hotspot
+# terrain/structural/fixture-fragility — Fixture Fragility Hotspot
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -21,6 +21,6 @@ Extract smaller, focused fixtures to reduce cascading test failures.
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.70, 0.90] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.70, 0.90] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

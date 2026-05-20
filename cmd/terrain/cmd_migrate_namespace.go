@@ -22,11 +22,11 @@ import (
 //   terrain migrate preview           // dry-run a single file/scope
 //
 // `terrain convert ...` is an alias dispatched through the same entry
-// point so muscle memory keeps working through 0.2. Legacy top-level
-// commands (estimate, status, checklist, list, list-conversions,
-// shorthands, detect, convert-config, migration <verb>) continue to
-// work unchanged in 0.2 and get a deprecation note in 0.2.x. Removal
-// targets 0.3.
+// point so muscle memory keeps working. Legacy top-level commands
+// (estimate, status, checklist, list, list-conversions, shorthands,
+// detect, convert-config, migration <verb>) continue to work unchanged;
+// they will get a deprecation note in a later release and be removed
+// in a future release per the CHANGELOG.
 //
 // When the first arg isn't a known verb, we fall through to the legacy
 // runner — preserves `terrain migrate cypress-playwright` direct

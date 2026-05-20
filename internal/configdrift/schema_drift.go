@@ -1,12 +1,10 @@
 // Package configdrift implements Terrain's detector for brittle infra-
-// config patterns. Tier 5.2 of the 0.2.0 corpus-driven quality work —
-// see docs/PRODUCT.md §16 and tier-4/recall-gap.md for the corpus
-// evidence motivating the rule.
+// config patterns. See docs/PRODUCT.md §16 for product context.
 //
-// The headline empirical finding: 376 unflagged regression-introducing
-// PRs in our 326-repo corpus are "config-only" edits (YAML / TOML /
-// JSON / INI / TF). They land 5.7% of the recall gap with no current
-// detector coverage.
+// Empirical motivation: a meaningful share of unflagged regression-
+// introducing PRs in our internal calibration corpus are "config-only"
+// edits (YAML / TOML / JSON / INI / TF) that no existing detector
+// covers.
 //
 // v1 design — analyse-time, not PR-diff-time. Walks tracked-config
 // files and flags structural patterns that are forward-compat hazards:

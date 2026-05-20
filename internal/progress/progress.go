@@ -1,8 +1,8 @@
 // Package progress provides the unified spinner / stage-progress UI
 // used across `terrain analyze`, `terrain migrate run`, `terrain ai
-// run`, and `terrain report pr`. Track 10.5 of the 0.2.0 release
-// plan calls for one progress vocabulary so adopters see the same
-// shape regardless of which command is running.
+// run`, and `terrain report pr`. One progress vocabulary means
+// adopters see the same shape regardless of which command is
+// running.
 //
 // Design constraints:
 //
@@ -15,8 +15,8 @@
 //     safe to call multiple times; Update is safe to call without
 //     a matching Start.
 //   - Zero dependencies on internal/uitokens at the package level
-//     so Track 10.1's design tokens can themselves use progress
-//     for long-running token-rendering operations without import
+//     so the design-token package can itself use progress for
+//     long-running token-rendering operations without import
 //     cycles. Symbol vocabulary is parallel but locally owned.
 //
 // Goes to stderr by default (not stdout) so JSON / report output

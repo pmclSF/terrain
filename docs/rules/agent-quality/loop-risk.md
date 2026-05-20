@@ -1,4 +1,23 @@
-# `terrain/agent-quality/loop-risk` *(preview)*
+# terrain/agent-quality/loop-risk — Agent Loop Risk
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `agentLoopRisk`  
+**Domain:** ai  
+**Default severity:** high  
+**Status:** stable
+
+## Promotion plan
+
+Promoted to Stable 2026-05-12 via Track 3 hand-validation against public CrewAI agent-loop incidents (crewai #3441, #5102, #5891). Severity raised from Medium → High because the failure mode (unbounded API spend) is high-impact when it fires.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.70, 0.85] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

@@ -7,12 +7,13 @@ import (
 	"testing"
 )
 
-// TestRenderPRSummaryMarkdown_UnifiedShape is the Track 3.5 acceptance
-// test: the PR-comment markdown renders unit, integration, e2e, and AI
-// stanzas with a consistent visual shape so the entire comment reads
-// like one designed document, not four bolted-on subsystems.
+// TestRenderPRSummaryMarkdown_UnifiedShape is the acceptance test for
+// the unified PR-comment shape: the markdown renders unit, integration,
+// e2e, and AI stanzas with a consistent visual shape so the entire
+// comment reads like one designed document, not four bolted-on
+// subsystems.
 //
-// Specifically asserts the four uniformity gates from the parity plan:
+// Specifically asserts four uniformity gates:
 //
 //  1. Severity / posture badges use the same `[LABEL]` square-bracket
 //     shape across coverage-gap cards, AI risk findings, and the

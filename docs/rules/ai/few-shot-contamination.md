@@ -1,4 +1,4 @@
-# TER-AI-109 — Few-Shot Contamination
+# terrain/ai/few-shot-contamination — Few-Shot Contamination
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -17,7 +17,7 @@ Hold out the contaminated examples from the prompt's few-shot block, or rewrite 
 
 ## Promotion plan
 
-Substring-overlap detector ships in 0.2; promotes to stable in 0.3 once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes.
+Substring-overlap detector ships today; promotes to stable once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes.
 
 ## Evidence sources
 
@@ -25,6 +25,6 @@ Substring-overlap detector ships in 0.2; promotes to stable in 0.3 once the cali
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.55, 0.83] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.55, 0.83] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

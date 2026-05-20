@@ -7,10 +7,9 @@ import (
 )
 
 // EmptyStateKind identifies which empty-state path is being rendered.
-// Track 10.6 of the 0.2.0 release plan calls for every list-producing
-// command to have a *designed* empty-state path — a clear next-move
-// nudge instead of silence — so first-run / clean-repo experiences
-// don't read as broken output.
+// Every list-producing command must have a *designed* empty-state
+// path — a clear next-move nudge instead of silence — so first-run
+// or clean-repo experiences don't read as broken output.
 //
 // One enum value per distinct empty case keeps the wiring tight: the
 // renderer asks "which kind?" and the helper produces a stable,

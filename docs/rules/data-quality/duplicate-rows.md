@@ -1,4 +1,23 @@
-# `terrain/data-quality/duplicate-rows` *(preview)*
+# terrain/data-quality/duplicate-rows — Duplicate Eval Rows
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `duplicateEvalRows`  
+**Domain:** ai  
+**Default severity:** medium  
+**Status:** experimental
+
+## Promotion plan
+
+0.2 — fires when eval dataset has >5% duplicate input rows.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.90, 0.99] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

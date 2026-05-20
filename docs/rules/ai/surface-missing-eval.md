@@ -1,0 +1,30 @@
+# terrain/ai/surface-missing-eval — AI/ML Surface Without Eval Coverage
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `promptFileMissingEval`  
+**Domain:** ai  
+**Default severity:** medium  
+**Status:** experimental
+
+## Summary
+
+An AI/ML surface (prompt, agent, tool definition, model context, or model artifact) has no eval scenario covering it. Across 2000 OSS AI/ML repos, 136 of every 137 detected surfaces have this gap — the dominant AI-testing failure mode.
+
+## Remediation
+
+Add an eval scenario (promptfoo / DeepEval / Ragas / framework-specific) that exercises this surface. Use `terrain ai list` to see other uncovered surfaces in the same repo and batch-fix.
+
+## Promotion plan
+
+Promotes to stable once AI-corpus harvest (re-clone in flight, 2026-05-12) confirms regression-PR lift ≥ 1.5× with CI lower bound > 1.0 on the 558-repo AI corpus.
+
+## Evidence sources
+
+- `graph-traversal`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.55, 0.85] (heuristic today; calibrated against a labeled corpus over time).
+
+<!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

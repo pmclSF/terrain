@@ -1,4 +1,23 @@
-# `terrain/prompt-quality/prompt-bloat` *(preview)*
+# terrain/prompt-quality/prompt-bloat — Prompt Bloat
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `promptBloat`  
+**Domain:** ai  
+**Default severity:** low  
+**Status:** experimental
+
+## Promotion plan
+
+0.2 — fires when prompt token count exceeds configured budget. Calibrated against dogfood corpus before promotion.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.70, 0.85] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

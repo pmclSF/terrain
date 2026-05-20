@@ -169,9 +169,8 @@ schema:
 
 - New optional fields may be added in minor releases
 - Removal requires a major version bump and a migration window
-- Confidence-score thresholds (90/70) may shift in 0.3 once the
-  conversion-corpus calibration work lands; the field shape itself
-  stays stable.
+- Confidence-score thresholds (90/70) may shift once conversion-
+  corpus calibration work lands; the field shape itself stays stable.
 
 ## Per-direction status
 

@@ -7,10 +7,10 @@ import (
 )
 
 // TestTierLabelForState locks the GoNativeState → Tier-label mapping
-// that surfaces in `terrain migrate list` output. Track 6.6 of the
-// 0.2.0 release plan defines this as the canonical user-facing
-// vocabulary; renaming a label here is a public-facing change and
-// requires updating docs/product/alignment-first-migration.md too.
+// that surfaces in `terrain migrate list` output. The labels are the
+// canonical user-facing vocabulary; renaming a label here is a
+// public-facing change and requires updating the alignment-first
+// migration docs too.
 func TestTierLabelForState(t *testing.T) {
 	t.Parallel()
 	tests := []struct {

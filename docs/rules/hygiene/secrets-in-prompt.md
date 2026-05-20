@@ -1,4 +1,31 @@
-# `terrain/hygiene/secrets-in-prompt`
+# terrain/hygiene/secrets-in-prompt — Secrets in Prompt
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `secretsInPrompt`  
+**Domain:** ai  
+**Default severity:** critical  
+**Status:** stable
+
+## Summary
+
+A prompt-classified file contains embedded credentials (OpenAI / Anthropic / GitHub / Slack / AWS keys, JWT, bearer tokens). Anyone with read access to the prompt has access to the credential.
+
+## Remediation
+
+Rotate the leaked credential immediately, then move it to an environment variable or secret manager.
+
+## Promotion plan
+
+0.2 — Go-native regex detector ships first; gitleaks library integration is the deeper followup for richer secret vocabulary.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.95, 0.99] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

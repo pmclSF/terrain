@@ -1,4 +1,27 @@
-# `terrain/coverage/no-data-validation`
+# terrain/coverage/no-data-validation — No Data Validation
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `noDataValidation`  
+**Domain:** quality  
+**Default severity:** medium  
+**Status:** stable
+
+## Summary
+
+A data pipeline file (ETL / dbt model / training data loader) has no data-validation library import (Great Expectations, pandera, dbt-expectations, soda).
+
+## Remediation
+
+Add data validation (GE expectations, pandera schemas, dbt-expectations tests) on the pipeline's output. Run the validation in CI on a fixed sample.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.75, 0.90] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

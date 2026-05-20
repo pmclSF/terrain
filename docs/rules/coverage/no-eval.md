@@ -1,4 +1,27 @@
-# `terrain/coverage/no-eval`
+# terrain/coverage/no-eval — No Eval for AI Surface
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `noEvalForAISurface`  
+**Domain:** ai  
+**Default severity:** high  
+**Status:** stable
+
+## Summary
+
+An AI-typed CodeSurface (prompt / context / dataset / tool / retrieval / agent / eval_definition / model) has no Eval that claims to cover it. Model behavior can shift in production without any eval surfacing the regression.
+
+## Remediation
+
+Add an eval scenario that exercises the surface and asserts on its output / metric / shape.
+
+## Evidence sources
+
+- `graph-traversal`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.80, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

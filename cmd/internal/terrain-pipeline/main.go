@@ -368,8 +368,8 @@ func cohortForRow(row labelRow) string {
 }
 
 // assignCohorts annotates each row with a cohort label using the
-// app-shape filter output from tier-4/app-shaped-repos.txt. Repos in
-// that file get cohort=ai-feature-in-app (the dominant app cohort);
+// app-shape filter output from the internal calibration corpus. Repos
+// in that filter get cohort=ai-feature-in-app (the dominant app cohort);
 // others get cohort=library-sdk. This approximates the binary
 // production-vs-framework split that the calibration table cares
 // about.

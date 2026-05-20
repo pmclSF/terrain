@@ -1,4 +1,27 @@
-# `terrain/hygiene/eval-no-assertion`
+# terrain/hygiene/eval-no-assertion — Eval Without Assertion
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `evalNoAssertion`  
+**Domain:** ai  
+**Default severity:** high  
+**Status:** stable
+
+## Summary
+
+An eval test function runs to completion without any assertion / score / metric call. The test cannot detect regressions because it accepts any model output.
+
+## Remediation
+
+Add an assert / score check that fails when the eval output deviates from expectations.
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.80, 0.95] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

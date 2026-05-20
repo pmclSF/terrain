@@ -1,4 +1,4 @@
-# TER-AI-110 — Embedding Model Swap Without Re-Evaluation
+# terrain/ai/embedding-model-change — Embedding Model Swap Without Re-Evaluation
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -17,7 +17,7 @@ Add a retrieval eval scenario (Ragas, Promptfoo, or DeepEval) that exercises thi
 
 ## Promotion plan
 
-0.2 ships the static precondition (embedding referenced + no retrieval coverage). Cross-snapshot content-hash diff variant lands in 0.3 once snapshot fingerprints are recorded.
+Ships the static precondition (embedding referenced + no retrieval coverage) today. The cross-snapshot content-hash diff variant lands once snapshot fingerprints are recorded.
 
 ## Evidence sources
 
@@ -25,6 +25,6 @@ Add a retrieval eval scenario (Ragas, Promptfoo, or DeepEval) that exercises thi
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.70, 0.88] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.70, 0.88] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

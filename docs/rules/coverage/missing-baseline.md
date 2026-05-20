@@ -1,4 +1,27 @@
-# `terrain/coverage/missing-baseline`
+# terrain/coverage/missing-baseline — Missing Coverage Baseline
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `missingBaseline`  
+**Domain:** ai  
+**Default severity:** medium  
+**Status:** stable
+
+## Summary
+
+The repository has eval surfaces but no `.terrain/baselines/` directory exists. Eval regression detection is disabled at the coverage layer.
+
+## Remediation
+
+Run `terrain ai record` to create the baseline directory. Commit `.terrain/baselines/latest.json` so subsequent PRs compare against it.
+
+## Evidence sources
+
+- `static`
+
+## Confidence range
+
+Detector confidence is bracketed at [1.00, 1.00] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

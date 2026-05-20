@@ -1,4 +1,4 @@
-# TER-QUAL-006 — Coverage Blind Spot
+# terrain/coverage/blind-spot — Coverage Blind Spot
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -22,6 +22,6 @@ Add unit/integration tests where only broad or indirect coverage exists.
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.50, 0.80] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.50, 0.80] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

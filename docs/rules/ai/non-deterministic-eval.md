@@ -1,4 +1,4 @@
-# TER-AI-105 — Non-Deterministic Eval Configuration
+# terrain/ai/non-deterministic-eval — Non-Deterministic Eval Configuration
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -21,7 +21,7 @@ Pin temperature: 0 and a seed in the eval config, or document the non-determinis
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.90, 0.98] (heuristic in 0.2; calibration in 0.3).
+Detector confidence is bracketed at [0.90, 0.98] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

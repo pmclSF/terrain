@@ -1,4 +1,27 @@
-# `terrain/reproducibility/no-seed`
+# terrain/reproducibility/no-seed — Missing Random Seed
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `noSeed`  
+**Domain:** ai  
+**Default severity:** medium  
+**Status:** stable
+
+## Summary
+
+Stochastic library call (np.random / torch / random / tf.random) in an eval or training file without a preceding seed call. Run-to-run results vary, masking real regressions.
+
+## Remediation
+
+Add a seed call at module scope or in a pytest fixture (np.random.seed(42), torch.manual_seed(42), or transformers.set_seed(42)).
+
+## Evidence sources
+
+- `structural-pattern`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.75, 0.90] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

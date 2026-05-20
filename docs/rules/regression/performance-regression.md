@@ -1,4 +1,27 @@
-# `terrain/regression/performance-regression`
+# terrain/regression/performance-regression — Performance Regression
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `performanceRegression`  
+**Domain:** ai  
+**Default severity:** high  
+**Status:** stable
+
+## Summary
+
+An ML model's performance metric (accuracy / F1 / AUC / RMSE / etc.) regressed past the configured threshold from baseline to current. Same shape as eval-regression but applied to classical ML metrics rather than LLM rubric scores.
+
+## Remediation
+
+Inspect the diff for training data / hyperparameter / feature changes. If the regression is intentional, update the baseline.
+
+## Evidence sources
+
+- `eval-execution`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.90, 0.99] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

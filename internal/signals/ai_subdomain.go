@@ -3,11 +3,10 @@ package signals
 import "github.com/pmclSF/terrain/internal/models"
 
 // AISubdomain classifies an AI-domain signal into one of three trust
-// tiers. The subdivision is the load-bearing change for Track 5.1 of
-// the 0.2 release plan: the launch-readiness review flagged that
-// presenting AI inventory data alongside heuristic AI hygiene and
-// eval-data-dependent regression signals as a single undifferentiated
-// list overstated the trust we can claim.
+// tiers. The subdivision exists because presenting AI inventory data
+// alongside heuristic AI hygiene and eval-data-dependent regression
+// signals as a single undifferentiated list overstates the trust we
+// can claim.
 //
 // Adopters reading the AI Risk Review section of a PR comment should
 // see — at a glance — which signals are derived from facts (inventory),

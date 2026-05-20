@@ -1,4 +1,23 @@
-# `terrain/performance/token-cost-budget` *(preview)*
+# terrain/performance/token-cost-budget — Token Cost Budget Exceeded
+
+> Auto-generated stub. Edit anything below the marker; the generator preserves it.
+
+**Type:** `tokenCostBudget`  
+**Domain:** ai  
+**Default severity:** medium  
+**Status:** experimental
+
+## Promotion plan
+
+0.2 — fires when per-run token cost exceeds configured ceiling.
+
+## Evidence sources
+
+- `runtime`
+
+## Confidence range
+
+Detector confidence is bracketed at [0.90, 0.99] (heuristic today; calibrated against a labeled corpus over time).
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

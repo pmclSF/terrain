@@ -8,10 +8,9 @@ import (
 
 // ShapeInfo captures the detected shape (framework + version family)
 // of an eval-output payload, plus any drift warnings the adapter
-// produced while parsing. Track 7.1 / 7.2 of the 0.2 release plan
-// adds this so adopters can see when Terrain is parsing a payload
-// shape it doesn't recognize, before that drift produces silent
-// downstream regressions.
+// produced while parsing. The motivation: surface when Terrain is
+// parsing a payload shape it doesn't recognize, before that drift
+// produces silent downstream regressions.
 //
 // Shape detection is best-effort: it reads only the top-level
 // envelope (no full payload parse) and uses whatever signal is
