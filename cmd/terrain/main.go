@@ -114,9 +114,22 @@ func main() {
 	// Accepted values: quiet, debug (default: info-level).
 	initLogging(os.Args[1:])
 
+	// No subcommand → discovery report. Friendly first-touch: scans the
+	// current directory and prints what Terrain sees (frameworks, AI
+	// surfaces, schemas, traces) plus three next-step commands.
+	// `terrain --help` still routes to printUsage() (see flag check below).
 	if len(os.Args) < 2 {
+		if err := runDiscover("."); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Help flags still print full usage.
+	if os.Args[1] == "--help" || os.Args[1] == "-h" || os.Args[1] == "help" {
 		printUsage()
-		os.Exit(2)
+		return
 	}
 
 	// Global --print-network flag prints the unified network of
@@ -1152,10 +1165,13 @@ func isHelpArg(arg string) bool {
 }
 
 func printUsage() {
-	fmt.Fprintln(os.Stderr, "Terrain — the control plane for your test system.")
+	fmt.Fprintln(os.Stderr, "Terrain — pre-flight checks for AI/ML systems and the tests around them.")
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Maps how your unit, integration, e2e, and AI tests relate to your code,")
-	fmt.Fprintln(os.Stderr, "and lets you gate changes based on the system as a whole.")
+	fmt.Fprintln(os.Stderr, "Treats unit tests, integration tests, e2e tests, and AI/ML evals as one")
+	fmt.Fprintln(os.Stderr, "dependency graph; gates pull requests on AI-specific risks plus")
+	fmt.Fprintln(os.Stderr, "test-system regressions. Locally, no API key required.")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Run `terrain` with no arguments for a discovery report.")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Canonical commands (0.2 — recommended):")
 	fmt.Fprintln(os.Stderr)
