@@ -41,3 +41,16 @@ aliases:
       Split into strict-pin (bare name / unversioned) and caret-policy
       (caret-range usage). Resolves the npm vs Poetry vs Cargo caret-
       semantics inconsistency so each half can carry its own threshold.
+
+  aiHardcodedAPIKey:
+    replaces_with:
+      - aiHardcodedAPIKey-literal-shape
+      - secretScannerCoverageDegraded
+    deprecated_in: "0.3"
+    removal_target: "future"
+    why: |
+      Structurally-motivated split. Literal-shape retains the regex-
+      derived "API-key-shaped string in config" capability at
+      observability tier; coverage-degraded flags the CI-integration
+      gap. Per feedback_no_retire_default, the original capability is
+      preserved across the split, not retired.

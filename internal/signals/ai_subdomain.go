@@ -76,9 +76,11 @@ var aiSubdomainBySignal = map[models.SignalType]AISubdomain{
 	// Heuristic structural patterns: detector reads source code
 	// and flags shapes. Medium trust; false-positive guidance per
 	// detector lives in docs/rules/ai/.
-	SignalAIPromptInjectionRisk:  AISubdomainHygiene,
-	SignalAIHardcodedAPIKey:      AISubdomainHygiene,
-	SignalAIToolWithoutSandbox:   AISubdomainHygiene,
+	SignalAIPromptInjectionRisk:           AISubdomainHygiene,
+	SignalAIHardcodedAPIKey:               AISubdomainHygiene,
+	SignalAIHardcodedAPIKeyLiteralShape:   AISubdomainHygiene,
+	SignalSecretScannerCoverageDegraded:   AISubdomainHygiene,
+	SignalAIToolWithoutSandbox:            AISubdomainHygiene,
 	SignalAIModelDeprecationRisk: AISubdomainHygiene,
 	SignalAIFewShotContamination: AISubdomainHygiene,
 	SignalContextOverflowRisk:    AISubdomainHygiene,

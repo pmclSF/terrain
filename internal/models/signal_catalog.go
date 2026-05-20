@@ -48,6 +48,8 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	"depsDriftRisk":                            {Source: SignalSourceStatic},
 	"depsDriftRisk-strict-pin":                 {Source: SignalSourceStatic},
 	"depsDriftRisk-caret-policy":               {Source: SignalSourceStatic},
+	"aiHardcodedAPIKey-literal-shape":          {Source: SignalSourceStatic},
+	"secretScannerCoverageDegraded":            {Source: SignalSourceStatic},
 	"configSchemaDrift":      {Source: SignalSourceStatic},
 	"promptFileMissingEval":     {Source: SignalSourceGraph},
 

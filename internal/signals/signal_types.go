@@ -82,6 +82,14 @@ const (
 	SignalAIPromptVersioning       models.SignalType = "aiPromptVersioning"
 	SignalAIPromptInjectionRisk    models.SignalType = "aiPromptInjectionRisk"
 	SignalAIHardcodedAPIKey        models.SignalType = "aiHardcodedAPIKey"
+	// P2.12 structural split — the literal-shape half retains the
+	// regex-derived "API-key-shaped string in config" capability at
+	// observability tier. The coverage-degraded half flags the
+	// secret-scanner gap (CI integration absent). Per
+	// feedback_no_retire_default, this is redesign-via-split that
+	// stays regardless of v2 evidence.
+	SignalAIHardcodedAPIKeyLiteralShape       models.SignalType = "aiHardcodedAPIKey-literal-shape"
+	SignalSecretScannerCoverageDegraded       models.SignalType = "secretScannerCoverageDegraded"
 	SignalAIToolWithoutSandbox     models.SignalType = "aiToolWithoutSandbox"
 	SignalAINonDeterministicEval   models.SignalType = "aiNonDeterministicEval"
 	SignalAIModelDeprecationRisk   models.SignalType = "aiModelDeprecationRisk"
