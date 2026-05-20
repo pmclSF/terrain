@@ -9,8 +9,8 @@
 //
 // Inputs (defaults; override with --rubric / --scores):
 //
-//	docs/release/parity/rubric.yaml — pillars / areas / axes / floors / uniformity gates
-//	docs/release/parity/scores.yaml — current per-cell scores with evidence
+//	internal/docs/release/parity/rubric.yaml — pillars / areas / axes / floors / uniformity gates
+//	internal/docs/release/parity/scores.yaml — current per-cell scores with evidence
 //
 // Output modes:
 //
@@ -130,8 +130,8 @@ type report struct {
 // ── Entry point ──────────────────────────────────────────────────────
 
 func main() {
-	rubricPath := flag.String("rubric", "docs/release/parity/rubric.yaml", "path to rubric.yaml")
-	scoresPath := flag.String("scores", "docs/release/parity/scores.yaml", "path to scores.yaml")
+	rubricPath := flag.String("rubric", "internal/docs/release/parity/rubric.yaml", "path to rubric.yaml")
+	scoresPath := flag.String("scores", "internal/docs/release/parity/scores.yaml", "path to scores.yaml")
 	jsonOut := flag.Bool("json", false, "emit JSON instead of human-readable matrix")
 	floorMap := flag.Bool("floor-map", false, "emit only the floor map (per-area + per-pillar)")
 	flag.Parse()

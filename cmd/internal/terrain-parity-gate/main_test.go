@@ -261,11 +261,11 @@ func TestAxisOrderKey(t *testing.T) {
 // catches structural drift between the YAML and the Go types.
 func TestRealRubricLoads(t *testing.T) {
 	t.Parallel()
-	r, err := loadRubric("../../docs/release/parity/rubric.yaml")
+	r, err := loadRubric("../../../internal/docs/release/parity/rubric.yaml")
 	if err != nil {
 		t.Fatalf("load rubric: %v", err)
 	}
-	s, err := loadScores("../../docs/release/parity/scores.yaml")
+	s, err := loadScores("../../../internal/docs/release/parity/scores.yaml")
 	if err != nil {
 		t.Fatalf("load scores: %v", err)
 	}
