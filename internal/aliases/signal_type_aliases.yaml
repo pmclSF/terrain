@@ -1,0 +1,27 @@
+# Signal-type alias registry — the deprecation runway for rule splits / renames.
+#
+# When a rule is split or renamed in a later release, the old rule_id is
+# registered here. User policies, suppressions, and CLI flags that reference
+# the old ID continue to work — they expand to all the new IDs the alias
+# replaces. Terrain emits a one-time `[NOTE]` on stderr when an alias is hit,
+# pointing at the new IDs so the user can update.
+#
+# Schema:
+#   version:       1
+#   aliases:
+#     <old_id>:
+#       replaces_with:    list of new rule_ids the old ID maps to
+#       deprecated_in:    semver when the old ID entered deprecation
+#       removal_target:   semver when the alias will stop expanding
+#       why:              short prose explaining the split / rename
+#
+# Adding an alias is part of the same PR that ships the rule split. Removing
+# an alias requires bumping `removal_target` past the current release.
+#
+# 0.2.0 baseline: empty. The machinery is in place so cycle-2 rule splits
+# (staticSkippedTest → unconditional + conditional-gate; depsDriftRisk →
+# strict-pin + caret-policy; aiHardcodedAPIKey → literal-shape +
+# secretScannerCoverageDegraded) can land without silent suppression breakage.
+
+version: 1
+aliases: {}

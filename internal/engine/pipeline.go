@@ -17,6 +17,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/aidetect"
 	"github.com/pmclSF/terrain/internal/airun"
+	"github.com/pmclSF/terrain/internal/aliases"
 	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/coverage"
 	"github.com/pmclSF/terrain/internal/depgraph"
@@ -658,14 +659,28 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	registry.RunWithGraph(snapshot, dg)
 	signalsProduced := len(snapshot.Signals) - signalsBefore
 
-	// 2026-05-18 cycle-1 safety: apply user-configured disabled_detectors
-	// kill switch. Drops any signals whose Type is listed in the repo's
-	// policy. Logged at debug level so adopters can audit suppressions.
+	// 2026-05-18 cycle-1 safety + P1b.1 alias expansion: apply user-configured
+	// disabled_detectors kill switch, expanding old/deprecated rule_ids
+	// through the alias registry so a policy on a pre-split ID continues to
+	// suppress every new ID it maps to. Logged at debug level for audit.
 	if disabled := policyCfg.DisabledDetectorSet(); len(disabled) > 0 {
+		aliasReg, _ := aliases.Load()
+		expanded := make(map[string]bool, len(disabled))
+		aliasesHit := map[string]bool{}
+		for old := range disabled {
+			for _, expandedID := range aliasReg.ExpandOldID(old) {
+				expanded[expandedID] = true
+				if expandedID != old {
+					aliasesHit[old] = true
+				}
+			}
+		}
+		emitAliasNotes(aliasReg, aliasesHit)
+
 		kept := snapshot.Signals[:0]
 		suppressed := 0
 		for _, sig := range snapshot.Signals {
-			if disabled[string(sig.Type)] {
+			if expanded[string(sig.Type)] {
 				suppressed++
 				continue
 			}
