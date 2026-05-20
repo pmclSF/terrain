@@ -102,6 +102,55 @@ func TestRecognize_ProviderShapes(t *testing.T) {
 	}
 }
 
+func TestRecognize_MultiDocYAML(t *testing.T) {
+	body := []byte(`prompts:
+  - prompts/dev.txt
+---
+prompts:
+  - prompts/prod.txt
+model: gpt-4o
+`)
+	r, err := RecognizeBytes(body, "promptfooconfig.yaml")
+	if err != nil {
+		t.Fatalf("RecognizeBytes: %v", err)
+	}
+	if !surfaceContains(r.SurfacesCovered, SurfacePrompt, "prompts/dev.txt") {
+		t.Errorf("multi-doc YAML doc 1 prompt missing")
+	}
+	if !surfaceContains(r.SurfacesCovered, SurfacePrompt, "prompts/prod.txt") {
+		t.Errorf("multi-doc YAML doc 2 prompt missing")
+	}
+	if !surfaceContains(r.SurfacesCovered, SurfaceModel, "gpt-4o") {
+		t.Errorf("multi-doc YAML doc 2 model missing")
+	}
+}
+
+func TestRecognize_DeepEvalNestedTestCases(t *testing.T) {
+	body := []byte(`test_cases:
+  - prompt: prompts/customer.txt
+    model: gpt-4o
+    input: hello
+  - prompt: prompts/billing.txt
+    model: claude-3-haiku
+`)
+	r, err := RecognizeBytes(body, "deepeval.yaml")
+	if err != nil {
+		t.Fatalf("RecognizeBytes: %v", err)
+	}
+	if !surfaceContains(r.SurfacesCovered, SurfacePrompt, "prompts/customer.txt") {
+		t.Errorf("deepeval test_case prompt missing; got %+v", r.SurfacesCovered)
+	}
+	if !surfaceContains(r.SurfacesCovered, SurfacePrompt, "prompts/billing.txt") {
+		t.Errorf("deepeval second test_case prompt missing")
+	}
+	if !surfaceContains(r.SurfacesCovered, SurfaceModel, "gpt-4o") {
+		t.Errorf("deepeval test_case model missing")
+	}
+	if !surfaceContains(r.SurfacesCovered, SurfaceModel, "claude-3-haiku") {
+		t.Errorf("deepeval second test_case model missing")
+	}
+}
+
 func TestRecognize_DedupsSurfaces(t *testing.T) {
 	body := []byte(`prompts: [foo.txt, foo.txt, foo.txt]`)
 	r, _ := RecognizeBytes(body, "x.yaml")

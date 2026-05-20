@@ -96,20 +96,47 @@ func RecognizeBytes(data []byte, path string) (*Report, error) {
 	return report, nil
 }
 
-// parseSurfaces extracts surface entries from the YAML body. Uses a
-// generic top-level walk so the parser tolerates per-framework
-// variations within the shapes we care about.
+// parseSurfaces extracts surface entries from the YAML body. Handles
+// multi-doc YAML (each `---`-separated document is parsed); each doc's
+// top-level keys are scanned for surface-shaped data.
 func parseSurfaces(data []byte, format string) []Surface {
-	var doc map[string]any
-	if err := yaml.Unmarshal(data, &doc); err != nil {
-		return nil
-	}
+	docs := splitYAMLDocs(data)
 	var out []Surface
-	out = append(out, parsePrompts(doc)...)
-	out = append(out, parseModels(doc)...)
-	out = append(out, parseDatasets(doc)...)
-	out = append(out, parseTestCases(doc)...)
+	for _, raw := range docs {
+		var doc map[string]any
+		if err := yaml.Unmarshal(raw, &doc); err != nil || doc == nil {
+			continue
+		}
+		out = append(out, parsePrompts(doc)...)
+		out = append(out, parseModels(doc)...)
+		out = append(out, parseDatasets(doc)...)
+		out = append(out, parseTestCases(doc)...)
+		out = append(out, parseDeepEvalTestCases(doc)...)
+	}
 	return dedupSurfaces(out)
+}
+
+// splitYAMLDocs splits a multi-doc YAML stream on the `---` separator.
+// Single-doc inputs return a single-element slice. yaml.v3's
+// yaml.NewDecoder is the canonical approach but using strings.Split
+// here keeps the parser tolerant of mildly malformed multi-doc
+// boundaries (extra whitespace, trailing separators).
+func splitYAMLDocs(data []byte) [][]byte {
+	s := string(data)
+	parts := strings.Split(s, "\n---")
+	if len(parts) == 1 {
+		return [][]byte{data}
+	}
+	out := make([][]byte, 0, len(parts))
+	for _, p := range parts {
+		// Strip a leading "---" if the separator was at start-of-stream.
+		p = strings.TrimPrefix(p, "---")
+		if strings.TrimSpace(p) == "" {
+			continue
+		}
+		out = append(out, []byte(p))
+	}
+	return out
 }
 
 // parsePrompts handles `prompts: <string>` or `prompts: [<string>, ...]`.
@@ -153,6 +180,39 @@ func parseDatasets(doc map[string]any) []Surface {
 	for _, key := range []string{"dataset", "datasets", "testset"} {
 		if v, ok := doc[key]; ok {
 			out = append(out, collectStringsAs(v, SurfaceDataset)...)
+		}
+	}
+	return out
+}
+
+// parseDeepEvalTestCases handles DeepEval's `test_cases:` shape, where
+// each entry carries inline `prompt` and `model` fields:
+//
+//	test_cases:
+//	  - prompt: "Summarize: {{document}}"
+//	    model: gpt-4o
+//	    input: ...
+//
+// Both single-entry and multi-entry forms are supported.
+func parseDeepEvalTestCases(doc map[string]any) []Surface {
+	cases, ok := doc["test_cases"].([]any)
+	if !ok {
+		return nil
+	}
+	var out []Surface
+	for _, c := range cases {
+		entry, ok := c.(map[string]any)
+		if !ok {
+			continue
+		}
+		if v, ok := entry["prompt"].(string); ok {
+			out = append(out, Surface{Kind: SurfacePrompt, Value: v})
+		}
+		if v, ok := entry["model"].(string); ok {
+			out = append(out, Surface{Kind: SurfaceModel, Value: v})
+		}
+		if v, ok := entry["dataset"].(string); ok {
+			out = append(out, Surface{Kind: SurfaceDataset, Value: v})
 		}
 	}
 	return out
