@@ -242,6 +242,14 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	// When every mechanism is off, the sink is a no-op (no file is
 	// created).
 	if mechanismsAnyNonOff(mechReg) {
+		// Ensure .terrain/.gitignore exists before the sink writes
+		// shadow-report.jsonl into the user's repo. The init-time write
+		// in WriteInitConfig only fires when the user explicitly ran
+		// `terrain init`; users who skip init and run `terrain analyze`
+		// directly would otherwise have shadow-report.jsonl leak into
+		// their git commits. Idempotent — no-op if the file exists.
+		_ = ensureTerrainGitignore(root)
+
 		shadowPath := filepath.Join(root, ".terrain", "shadow-report.jsonl")
 		fs, ferr := shadow.NewFileSink(shadowPath)
 		if ferr != nil {
@@ -915,6 +923,24 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		ArtifactDiscovery: discovery,
 		DiscoveryMessages: discoveryMessages,
 	}, nil
+}
+
+// ensureTerrainGitignore creates .terrain/ and writes a default
+// .gitignore there if neither exists. Mirrors WriteInitConfig's
+// behavior so a user who runs `terrain analyze` without first running
+// `terrain init` still gets the gitignore that excludes runtime
+// artifacts. Returns nil on success or when the file already exists;
+// returns the error only if the parent directory create fails.
+func ensureTerrainGitignore(root string) error {
+	terrainDir := filepath.Join(root, ".terrain")
+	if err := os.MkdirAll(terrainDir, 0o755); err != nil {
+		return fmt.Errorf("create .terrain/ directory: %w", err)
+	}
+	gitignorePath := filepath.Join(terrainDir, ".gitignore")
+	if _, err := os.Stat(gitignorePath); err == nil {
+		return nil // already present; leave user customizations alone
+	}
+	return os.WriteFile(gitignorePath, []byte(defaultTerrainGitignore), 0o644)
 }
 
 // mechanismsAnyNonOff reports whether any mechanism in the registry is
