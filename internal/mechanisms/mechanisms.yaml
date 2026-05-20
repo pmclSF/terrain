@@ -1,0 +1,119 @@
+schema_version: 1
+# Phase 2 mechanisms registry. Every cycle-2 detector behavior change is
+# gated by an entry here. New mechanisms start at state: shadow per the
+# binding rule "every P2 module ships first in shadow mode."
+#
+# Live activation requires:
+#   1. Zero TP regressions >10 per the symmetric ≥10% rule
+#      (enforced by internal/regressionsuite).
+#   2. Per-mechanism recall report (internal/recallharness) computed
+#      against shadow data.
+#   3. Explicit flip in this file from `shadow` to `on`.
+#
+# Per-process overrides via --mechanisms.<name>=on|off|shadow.
+
+mechanisms:
+  - name: surface_literal_presence_gate
+    state: shadow
+    description: |
+      Before any AI-moat detector fires, require that the surface name
+      in evidence.surface literally appears as an identifier token in
+      the flagged file (P2.1).
+    consumers:
+      - aiModelDeprecationRisk
+      - aiNonDeterministicEval
+      - aiPromptVersioning
+      - aiEmbeddingModelChange
+      - aiSafetyEvalMissing
+      - aiToolWithoutSandbox
+
+  - name: deprecated_test_pattern_trigger_gate
+    state: shadow
+    description: |
+      Trigger-gate fix for deprecatedTestPattern: require structural
+      framework-import (enzyme, jest setTimeout scope) before the rule
+      fires (P2.2).
+    consumers:
+      - deprecatedTestPattern
+
+  - name: a1_def_following
+    state: shadow
+    description: |
+      Intra-repo def-following for the assertion-counter family. When
+      call(x,y) appears in a test body and call's definition is
+      resolvable in-repo, recurse into the body and count transitive
+      assertions (P2.3).
+    consumers:
+      - assertionFreeImport
+      - assertionFreeTest
+      - weakAssertion
+
+  - name: deps_drift_risk_split
+    state: shadow
+    description: |
+      Split depsDriftRisk into depsDriftRisk-strict-pin (bare-name /
+      unversioned) and depsDriftRisk-caret-policy (caret ranges)
+      (P2.4).
+    consumers:
+      - depsDriftRisk
+
+  - name: static_skipped_test_split
+    state: shadow
+    description: |
+      Split staticSkippedTest into staticSkippedTest-unconditional and
+      staticSkippedTest-conditional-gate. Preserves the conditional-
+      skip TPs (P2.5).
+    consumers:
+      - staticSkippedTest
+
+  - name: a7_barrel_resolver
+    state: shadow
+    description: |
+      A7 import-graph barrel/re-export hardening. Handles relative
+      sibling, @/ path alias, absolute-package import, from x import y
+      namespace, dist-path indirection (P2.6).
+    consumers:
+      - untestedExport
+      - orphanedTestFile
+      - assertionFreeImport
+      - assertionFreeTest
+
+  - name: a3_loop_predicate
+    state: shadow
+    description: |
+      AST loop predicate for dynamicTestGeneration: gate on
+      IsTestBuilderInLoop (for/forEach/it.each) (P2.7).
+    consumers:
+      - dynamicTestGeneration
+
+  - name: ehr_surfaces_covered
+    state: shadow
+    description: |
+      EHR emits surfaces_covered: [...] not just eval-config: bool.
+      Prevents over-suppression when a token-counting eval covers a
+      different surface (P2.9).
+    consumers:
+      - aiNonDeterministicEval
+      - aiSafetyEvalMissing
+      - promptFileMissingEval
+
+  - name: runtime_config_recognizer
+    state: shadow
+    description: |
+      Structural primitive: any YAML/properties file with import-graph-
+      reachable consumer that injects values into an SDK client
+      constructor. Ships at observability tier (P2.10).
+    consumers:
+      - aiNonDeterministicEval
+
+  - name: ascg_live_vs_catalog
+    state: shadow
+    description: |
+      ASCG live-config-value vs catalog/example-string role pinning.
+      Demotes findings on catalog/example occurrences before they reach
+      the user-visible finding stream (P2.11).
+    consumers:
+      - aiModelDeprecationRisk
+      - configSchemaDrift
+      - aiNonDeterministicEval
+      - aiEmbeddingModelChange
