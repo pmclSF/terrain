@@ -7,6 +7,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/signals"
 )
 
 // AnalyzePR performs a PR/change-scoped analysis.
@@ -181,11 +182,15 @@ func buildChangeScopedFindings(result *impact.ImpactResult, snap *models.TestSui
 		if sig.Type == "untestedExport" && gapPaths[sig.Location.File] {
 			continue
 		}
+		// Observability-tier findings stay in the report (rendered with
+		// the existing_signal type) but never gate CI; their severity
+		// stays as declared so the user sees the original framing.
 		findings = append(findings, ChangeScopedFinding{
 			Type:        "existing_signal",
 			Scope:       "direct",
 			Path:        sig.Location.File,
 			Severity:    string(sig.Severity),
+			SignalType:  string(sig.Type),
 			Explanation: fmt.Sprintf("[%s] %s", sig.Type, sig.Explanation),
 		})
 	}
@@ -299,7 +304,13 @@ func buildAIValidationSummary(result *impact.ImpactResult, snap *models.TestSuit
 			Line:        sig.Location.Line,
 			Symbol:      sig.Location.Symbol,
 		}
-		if sig.Severity == models.SeverityCritical || sig.Severity == models.SeverityHigh {
+		// Observability-tier AI findings never block CI; route them to
+		// warnings regardless of declared severity.
+		blocks := sig.Severity == models.SeverityCritical || sig.Severity == models.SeverityHigh
+		if blocks && !signals.IsGateRelevant(sig.Type) {
+			blocks = false
+		}
+		if blocks {
 			ai.BlockingSignals = append(ai.BlockingSignals, entry)
 		} else {
 			ai.WarningSignals = append(ai.WarningSignals, entry)

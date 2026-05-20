@@ -340,7 +340,10 @@ func runAnalyze(o analyzeRunOpts) error {
 	// stays a valid JSON document) AND the gate decision returns via
 	// the error channel (so main.go writes the gate message to stderr,
 	// not stdout).
-	gateBlocked, gateSummary := severityGateBlocked(gate, report.SignalSummary)
+	// Gate decisions use the observability-tier-excluding summary so
+	// findings from detectors that explicitly ship at observability tier
+	// stay informational and don't block CI.
+	gateBlocked, gateSummary := severityGateBlocked(gate, report.GateRelevantSummary)
 	gateErr := func() error {
 		if gateBlocked {
 			return fmt.Errorf("%w: --fail-on=%s matched %s", errSeverityGateBlocked, gate, gateSummary)

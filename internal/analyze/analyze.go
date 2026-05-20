@@ -12,6 +12,7 @@ import (
 	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/matrix"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/signals"
 	"github.com/pmclSF/terrain/internal/skipstats"
 	"github.com/pmclSF/terrain/internal/stability"
 )
@@ -71,8 +72,18 @@ type Report struct {
 	// RiskPosture summarizes risk by dimension.
 	RiskPosture []RiskDimension `json:"riskPosture,omitempty"`
 
-	// SignalSummary breaks down detected signals.
+	// SignalSummary breaks down all detected signals by severity. This
+	// is the user-visible report count; for CI gate decisions use
+	// GateRelevantSummary instead so observability-tier findings don't
+	// block builds.
 	SignalSummary SignalBreakdown `json:"signalSummary"`
+
+	// GateRelevantSummary mirrors SignalSummary but excludes signals
+	// whose detector ships at observability tier (Tier ==
+	// TierObservability). `--fail-on=<severity>` decisions consult this
+	// field; observability-tier findings stay in SignalSummary for
+	// reporting visibility but never block CI.
+	GateRelevantSummary SignalBreakdown `json:"gateRelevantSummary"`
 
 	// BehaviorRedundancy detects behavior-aware test redundancy.
 	BehaviorRedundancy *depgraph.RedundancyResult `json:"behaviorRedundancy,omitempty"`
@@ -388,8 +399,10 @@ func Build(input *BuildInput) *Report {
 	// Risk posture.
 	r.RiskPosture = buildRiskPosture(snap)
 
-	// Signal summary.
+	// Signal summary — full breakdown for reporting + gate-relevant
+	// breakdown that excludes observability-tier findings.
 	r.SignalSummary = buildSignalSummary(snap)
+	r.GateRelevantSummary = BuildGateRelevantSummary(snap)
 
 	// Top insight (backward compat).
 	r.TopInsight = deriveTopInsight(r, &dgFanout, &dgDupes, &dgCov)
@@ -638,6 +651,35 @@ func buildSignalSummary(snap *models.TestSuiteSnapshot) SignalBreakdown {
 		ByCategory: map[string]int{},
 	}
 	for _, s := range snap.Signals {
+		switch s.Severity {
+		case models.SeverityCritical:
+			sb.Critical++
+		case models.SeverityHigh:
+			sb.High++
+		case models.SeverityMedium:
+			sb.Medium++
+		case models.SeverityLow:
+			sb.Low++
+		}
+		sb.ByCategory[string(s.Category)]++
+	}
+	return sb
+}
+
+// BuildGateRelevantSummary returns a SignalBreakdown that counts only
+// signals whose detector ships at gate tier (Tier != TierObservability).
+// Observability-tier signals continue to appear in the full report's
+// SignalSummary for visibility, but they do NOT count toward the
+// `--fail-on=<severity>` decision — they're informational.
+//
+// Use this instead of SignalSummary when computing whether to fail CI.
+func BuildGateRelevantSummary(snap *models.TestSuiteSnapshot) SignalBreakdown {
+	sb := SignalBreakdown{ByCategory: map[string]int{}}
+	for _, s := range snap.Signals {
+		if !signals.IsGateRelevant(s.Type) {
+			continue
+		}
+		sb.Total++
 		switch s.Severity {
 		case models.SeverityCritical:
 			sb.Critical++

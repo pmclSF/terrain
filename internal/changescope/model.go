@@ -144,6 +144,11 @@ type ChangeScopedFinding struct {
 	Path string `json:"path"`
 	// Severity is "high", "medium", or "low".
 	Severity string `json:"severity"`
+	// SignalType is the underlying signal type when the finding was
+	// produced by an existing_signal; empty for protection_gap. Used
+	// by the gate to filter observability-tier findings out of the
+	// blocking severity counts.
+	SignalType string `json:"signalType,omitempty"`
 	// Explanation describes the finding.
 	Explanation string `json:"explanation"`
 	// SuggestedAction recommends a fix.

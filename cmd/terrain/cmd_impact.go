@@ -13,7 +13,9 @@ import (
 	"github.com/pmclSF/terrain/internal/explain"
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/metrics"
+	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/reporting"
+	"github.com/pmclSF/terrain/internal/signals"
 )
 
 // runImpactPipeline runs the analysis pipeline, computes a git diff changeset,
@@ -203,11 +205,21 @@ func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGa
 	// path. Mirrors the pattern used by `runAnalyze` after the JSON-
 	// stdout-purity bug fix in PR #134 — the renderer always completes
 	// before the exit decision is made.
+	// Collect severities for the gate decision, filtering out
+	// observability-tier findings so they don't block CI.
 	severities := make([]string, 0, len(pr.NewFindings))
 	for _, f := range pr.NewFindings {
+		// SignalType is empty for protection_gap entries (always gate-
+		// relevant). For existing_signal entries, skip when the
+		// underlying detector is observability tier.
+		if f.SignalType != "" && !signals.IsGateRelevant(models.SignalType(f.SignalType)) {
+			continue
+		}
 		severities = append(severities, f.Severity)
 	}
 	if pr.AI != nil {
+		// BlockingSignals already exclude observability-tier per
+		// changescope.AnalyzePR, so append verbatim.
 		for _, s := range pr.AI.BlockingSignals {
 			severities = append(severities, s.Severity)
 		}
