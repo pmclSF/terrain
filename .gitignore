@@ -21,6 +21,26 @@ scripts/run-ai-corpus-analysis.sh
 scripts/stream-ai-corpus.sh
 scripts/stream-harvest-ai.sh
 scripts/stream-rescan-boundaries.sh
+# Internal release/parity tracking — enumerates planning artifacts and
+# PR numbers; not part of the public distribution.
+scripts/parity-lift.py
+# Corpus-validation pipeline (Claude/OpenAI labeling, phase replay, regression
+# precision) — operates on tier-4/ inputs and outputs. Same calibration-
+# infrastructure carveout as the harvest tooling above.
+scripts/aggregate_validation.py
+scripts/discover-gitlab-ai.sh
+scripts/phase_b1_self_consistency.py
+scripts/phase_b2_truncation.py
+scripts/phase_b3_ext_framing.py
+scripts/phase_b3_stylistic_bias.py
+scripts/phase_b5_cluster_bootstrap.py
+scripts/regression_precision.py
+scripts/replay_a5_severity_demote.py
+scripts/replay_phase_a.py
+scripts/validate_corpus_claude.py
+scripts/validate_corpus_openai_check.py
+scripts/validate_detectors_claude.py
+scripts/validate_recall_claude.py
 tier-4/
 .terrain/
 
