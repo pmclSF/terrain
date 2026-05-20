@@ -222,6 +222,25 @@ func TestCheck_IgnoresUndeclaredMechanism(t *testing.T) {
 	}
 }
 
+func TestCheck_EmptyRepoNoCrossRepoWildcard(t *testing.T) {
+	h := &Harness{
+		SchemaVersion: 1,
+		RuleID:        "r",
+		Mechanisms:    []Mechanism{{ID: "m1"}},
+		GoldenTPs: []GoldenTP{
+			{File: "a.py"}, // empty Repo
+		},
+	}
+	// A finding from a different repo should NOT count toward recall.
+	findings := []Finding{
+		{RuleID: "r", Mechanism: "m1", Repo: "github.com/foreign", File: "a.py"},
+	}
+	report := h.Check(findings)
+	if report.UnionCaught != 0 {
+		t.Errorf("foreign-repo finding should not count toward recall for empty-Repo golden TP; got %d", report.UnionCaught)
+	}
+}
+
 func TestLoadAll_SkipsReadme(t *testing.T) {
 	harnesses, err := LoadAll("../../harness/recall-harnesses")
 	if err != nil {

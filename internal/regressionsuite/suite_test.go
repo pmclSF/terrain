@@ -168,6 +168,50 @@ func TestCheck_LineMatch(t *testing.T) {
 	}
 }
 
+func TestCheck_EmptyRepoNoCrossRepoWildcard(t *testing.T) {
+	// Empty Repo on the frozen TP must NOT match a finding with a
+	// non-empty Repo (the previous wildcard behavior masked
+	// regressions across repos).
+	s := &Suite{
+		SchemaVersion: 1,
+		Module:        "test",
+		MaxTPLoss:     0,
+		FrozenTPs: []FrozenTP{
+			{RuleID: "r1", File: "a.py"},
+		},
+	}
+	findings := []Finding{
+		{RuleID: "r1", Repo: "github.com/other", File: "a.py"},
+	}
+	report := s.Check(findings)
+	if len(report.MissingTPs) != 1 {
+		t.Errorf("empty Repo frozen TP should NOT match cross-repo finding; got %d missing", len(report.MissingTPs))
+	}
+}
+
+func TestValidate_RejectsLineZeroVsLineNDoubleCount(t *testing.T) {
+	// A suite with both a line=0 (file-scope) and a line=42 entry for
+	// the same (rule, repo, file) lets ONE finding satisfy both. The
+	// validator must reject the conflict.
+	yaml := []byte(`
+schema_version: 1
+module: test
+max_tp_loss: 0
+frozen_tps:
+  - rule_id: r1
+    repo: example
+    file: a.py
+  - rule_id: r1
+    repo: example
+    file: a.py
+    line: 42
+`)
+	_, err := ParseSuite(yaml, "dup")
+	if err == nil {
+		t.Errorf("expected validation error for file-scope + line-specific conflict, got nil")
+	}
+}
+
 func TestLoadAll_EmptyDirIsOK(t *testing.T) {
 	tmp := t.TempDir()
 	suites, err := LoadAll(tmp)

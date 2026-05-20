@@ -296,13 +296,18 @@ func (h *Harness) validate(label string) error {
 }
 
 func goldenMatches(tp GoldenTP, f Finding) bool {
-	if tp.Repo != "" && f.Repo != "" && tp.Repo != f.Repo {
+	// Tightened repo match: require exact match on both sides. The
+	// previous "empty-side wildcards" behavior allowed cross-repo
+	// findings to count toward recall, inflating the numerator.
+	if tp.Repo != f.Repo {
 		return false
 	}
 	if tp.File != f.File {
 		return false
 	}
-	if tp.Line != 0 && f.Line != 0 && tp.Line != f.Line {
+	// File-scope match is allowed when the golden TP omits Line. When
+	// the golden TP specifies a line, the finding must match exactly.
+	if tp.Line != 0 && f.Line != tp.Line {
 		return false
 	}
 	return true

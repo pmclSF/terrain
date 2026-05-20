@@ -167,6 +167,13 @@ func (s *Suite) validate(label string) error {
 		return fmt.Errorf("%s: max_tp_loss must be non-negative", label)
 	}
 	seen := map[string]bool{}
+	// fileScope tracks (rule_id|repo|file) entries that exist with
+	// line=0 (file-scope match). A subsequent entry on the same triple
+	// with a specific line would let one finding satisfy two frozen
+	// TPs (the file-scope one matches every line; the line-specific
+	// one matches the same finding); reject the conflict.
+	fileScope := map[string]bool{}
+	hasLine := map[string]bool{}
 	for i, tp := range s.FrozenTPs {
 		if tp.RuleID == "" || tp.File == "" {
 			return fmt.Errorf("%s: frozen_tps[%d] missing rule_id or file", label, i)
@@ -176,6 +183,18 @@ func (s *Suite) validate(label string) error {
 			return fmt.Errorf("%s: frozen_tps[%d] duplicates an earlier entry (%s)", label, i, key)
 		}
 		seen[key] = true
+		triple := fmt.Sprintf("%s|%s|%s", tp.RuleID, tp.Repo, tp.File)
+		if tp.Line == 0 {
+			if hasLine[triple] {
+				return fmt.Errorf("%s: frozen_tps[%d] is file-scope (line=0) but the suite also has a line-specific entry for the same (rule_id, repo, file) — one finding could satisfy both", label, i)
+			}
+			fileScope[triple] = true
+		} else {
+			if fileScope[triple] {
+				return fmt.Errorf("%s: frozen_tps[%d] is line-specific but an earlier file-scope entry (line=0) covers the same (rule_id, repo, file) — one finding could satisfy both", label, i)
+			}
+			hasLine[triple] = true
+		}
 	}
 	// Sort for deterministic Report.MissingTPs ordering.
 	sort.Slice(s.FrozenTPs, func(i, j int) bool {
@@ -189,14 +208,27 @@ func findingsContain(findings []Finding, frozen FrozenTP) bool {
 		if f.RuleID != frozen.RuleID {
 			continue
 		}
-		if f.Repo != "" && frozen.Repo != "" && f.Repo != frozen.Repo {
+		// Repo guard: when BOTH sides specify a repo, require an exact
+		// match. When either side leaves Repo empty, only allow the
+		// match if the other side is also empty — preserves the
+		// "frozen-suite caller forgot to set Repo" case but prevents
+		// cross-repo wildcarding that would mask regressions.
+		if f.Repo != frozen.Repo {
 			continue
 		}
 		if f.File != frozen.File {
 			continue
 		}
-		if frozen.Line != 0 && f.Line != 0 && frozen.Line != f.Line {
-			continue
+		// Line guard: when the frozen entry specifies a line, require
+		// the finding's line to match exactly. A frozen line=0 means
+		// "match any line for this file"; allowing this also requires
+		// the suite validator to forbid having BOTH a line-0 entry and
+		// a line-N entry for the same (rule, repo, file) so one
+		// finding can't double-cover.
+		if frozen.Line != 0 {
+			if f.Line != frozen.Line {
+				continue
+			}
 		}
 		return true
 	}
