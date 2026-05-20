@@ -64,17 +64,21 @@ var AssertionTokens = []*regexp.Regexp{
 // graph. Construct once per scan; reuse across multiple test bodies in
 // the same repo.
 type Counter struct {
-	root        string
-	defCache    map[string]string // identifier -> body
-	defCacheOK  bool
-	visited     map[string]bool
+	root       string
+	// defCache maps identifier → list of bodies. Same-named helpers
+	// across multiple files all get indexed; the follower sums
+	// assertions across every body to avoid silently miscounting when
+	// utility helpers shadow the test helper a caller actually invokes.
+	defCache   map[string][]string
+	defCacheOK bool
+	visited    map[string]bool
 }
 
 // NewCounter constructs a Counter for the given repo root.
 func NewCounter(root string) *Counter {
 	return &Counter{
 		root:     root,
-		defCache: map[string]string{},
+		defCache: map[string][]string{},
 		visited:  map[string]bool{},
 	}
 }
@@ -120,13 +124,20 @@ func (c *Counter) followCallsWithCap(body string, depth, cap int) int {
 		if c.visited[name] {
 			continue
 		}
-		def, ok := c.defCache[name]
-		if !ok {
+		defs, ok := c.defCache[name]
+		if !ok || len(defs) == 0 {
 			continue
 		}
 		c.visited[name] = true
-		total += countAssertions(def)
-		total += c.followCallsWithCap(def, depth+1, cap)
+		// Sum across every body indexed under the same name. When two
+		// files define the same helper, we don't know which one the
+		// caller actually resolves to; counting both is the safest
+		// stance — under-counting assertions over-flags
+		// assertionFreeTest, the worse failure mode.
+		for _, def := range defs {
+			total += countAssertions(def)
+			total += c.followCallsWithCap(def, depth+1, cap)
+		}
 	}
 	return total
 }
@@ -283,13 +294,10 @@ func (c *Counter) indexJS(content string) {
 }
 
 // indexBraceBody captures the function body starting at the `{`
-// closest to the match-end and stores it under `name`. Skips if a
-// body was already indexed for this name (first definition wins —
-// the Counter does not disambiguate same-name across files).
+// closest to the match-end and appends it to defCache[name]. Same-
+// named helpers across multiple files each contribute their body;
+// followCallsWithCap sums assertions across all of them.
 func (c *Counter) indexBraceBody(name, content string, fromIdx int) {
-	if _, ok := c.defCache[name]; ok {
-		return
-	}
 	// Find the opening brace at or after fromIdx.
 	open := -1
 	for i := fromIdx; i < len(content); i++ {
@@ -309,7 +317,7 @@ func (c *Counter) indexBraceBody(name, content string, fromIdx int) {
 		case '}':
 			depth--
 			if depth == 0 {
-				c.defCache[name] = content[open+1 : i]
+				c.defCache[name] = append(c.defCache[name], content[open+1:i])
 				return
 			}
 		}
@@ -324,9 +332,6 @@ func (c *Counter) indexPython(content string) {
 	for i, m := range matches {
 		indent := content[m[2]:m[3]]
 		name := content[m[4]:m[5]]
-		if _, ok := c.defCache[name]; ok {
-			continue
-		}
 		// Body starts after the closing ): on the def line.
 		bodyStart := strings.Index(content[m[1]:], ":")
 		if bodyStart < 0 {
@@ -343,7 +348,7 @@ func (c *Counter) indexPython(content string) {
 				break
 			}
 		}
-		c.defCache[name] = content[bodyStart:bodyEnd]
+		c.defCache[name] = append(c.defCache[name], content[bodyStart:bodyEnd])
 	}
 }
 

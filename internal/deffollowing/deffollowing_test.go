@@ -249,6 +249,22 @@ func TestGateLift_ShadowNoEmitWhenImmediateHasCount(t *testing.T) {
 	}
 }
 
+func TestCounter_SameNameAcrossFiles_SumsAssertions(t *testing.T) {
+	// Two files define `verify`: one with no assertions, one with one
+	// expect(). The counter should reflect that AT LEAST one assertion
+	// is reachable — the previous first-definition-wins behavior would
+	// have returned 0 when the no-asserts file was indexed first.
+	root := t.TempDir()
+	writeFile(t, root, "src/utils.ts", `function verify() { /* no asserts */ }`)
+	writeFile(t, root, "tests/helpers.ts", `function verify() { expect(1).toEqual(1); }`)
+
+	c := NewCounter(root)
+	got := c.CountTransitive(`verify();`, MaxDepth)
+	if got < 1 {
+		t.Errorf("expected ≥1 transitive assertion across multi-file defs, got %d", got)
+	}
+}
+
 func TestCounter_NoDoubleCount(t *testing.T) {
 	// Ensure the visited-set prevents counting the same helper twice
 	// when it's called from two places in the same body.
