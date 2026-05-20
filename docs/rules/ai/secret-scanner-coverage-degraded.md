@@ -1,4 +1,4 @@
-# terrain/ai/secret-scanner-coverage-degraded — Secret-Scanner Coverage Degraded
+# terrain/ai/secret-scanner-coverage-degraded — No Secret Scanner in CI
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -9,7 +9,7 @@
 
 ## Summary
 
-The repository configures or references AI surfaces that should be guarded by a secret scanner, but no secret-scanner CI integration (GitGuardian, GitHub secret scanning, gitleaks, trufflehog) is enabled or configured. CI-coverage counterpart to aiHardcodedAPIKey-literal-shape.
+The repository configures or references AI surfaces that should be guarded by a secret scanner, but no secret-scanner CI integration (GitGuardian, GitHub secret scanning, gitleaks, trufflehog) is enabled. CI-coverage counterpart to aiHardcodedAPIKey-literal-shape.
 
 ## Remediation
 

@@ -1,4 +1,4 @@
-# terrain/hygiene/static-skip-conditional-gate — Static Skipped Test — Conditional Gate
+# terrain/hygiene/static-skip-conditional-gate — Conditionally-Skipped Test (informational)
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -9,11 +9,11 @@
 
 ## Summary
 
-A test is statically marked as skipped, but the skip is wrapped by an environment, feature-flag, or platform predicate. The skip is intentional and gated.
+A test is statically marked as skipped, but the skip is wrapped by an environment, feature-flag, or platform predicate. The skip is intentional and gated by code. This finding is informational — no action is required unless the gate condition itself is wrong.
 
 ## Remediation
 
-No remediation required when the gate is correct. Audit the gate periodically; CI should run the test on platforms where the gate is false.
+Audit the gate condition periodically. CI should run the test on platforms or branches where the gate evaluates to false.
 
 ## Promotion plan
 

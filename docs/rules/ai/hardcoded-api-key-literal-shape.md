@@ -1,4 +1,4 @@
-# terrain/ai/hardcoded-api-key-literal-shape — Hard-Coded API Key — Literal Shape
+# terrain/ai/hardcoded-api-key-literal-shape — Hard-Coded API Key in Source
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -9,7 +9,7 @@
 
 ## Summary
 
-An API-key-shaped string literal (e.g. AKIA-prefix, sk-prefix, ghp_-prefix) appears in an eval, prompt, or agent definition file. Detects the literal in source; pairs with secretScannerCoverageDegraded which flags the absence of a CI-side secret scanner.
+An API-key-shaped string (e.g. AKIA-prefix, sk-prefix, ghp_-prefix) appears verbatim in an eval, prompt, or agent definition file. Pairs with secretScannerCoverageDegraded, which flags the absence of a CI-side secret scanner.
 
 ## Remediation
 

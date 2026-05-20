@@ -1,4 +1,4 @@
-# terrain/deps/drift-strict-pin — Dependency Drift — Strict-Pin
+# terrain/deps/drift-strict-pin — Unpinned Dependency
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -9,7 +9,7 @@
 
 ## Summary
 
-Dependencies are declared without an explicit version anchor (bare name, `*`, `latest`, or unversioned URL). The resolver picks whatever happens to be available at install time.
+One or more dependencies are declared without an explicit version anchor (bare name, `*`, `latest`, or unversioned URL). The resolver picks whatever happens to be available at install time, so installs are not reproducible across runs.
 
 ## Remediation
 

@@ -1,4 +1,4 @@
-# terrain/deps/drift-caret-policy — Dependency Drift — Caret Policy
+# terrain/deps/drift-caret-policy — Caret-Range Dependency Drift
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
@@ -9,7 +9,7 @@
 
 ## Summary
 
-Dependencies use caret-range specs (`^x.y.z`) under an ecosystem whose caret semantics make minor-version drift opaque (npm vs Poetry vs Cargo treat caret differently).
+Dependencies use caret-range specs (`^x.y.z`) in an ecosystem where caret semantics let minor versions drift silently (npm, Poetry, and Cargo each interpret caret differently). The runtime version can change without a manifest edit.
 
 ## Remediation
 
