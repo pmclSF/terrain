@@ -1299,9 +1299,9 @@ func printAIUsage() {
 	fmt.Fprintln(os.Stderr, "Calibrated verdicts (0.2+):")
 	fmt.Fprintln(os.Stderr, "  findings   emit calibrated AI eval-gap findings (verdict pipeline)")
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Categorical AI quality checks (12 detectors) ship via 'terrain analyze'")
-	fmt.Fprintln(os.Stderr, "and 'terrain report pr'. See docs/ai-detection-shapes.md for which")
-	fmt.Fprintln(os.Stderr, "shape to reach for when.")
+	fmt.Fprintln(os.Stderr, "Categorical AI quality checks ship via 'terrain analyze'")
+	fmt.Fprintln(os.Stderr, "and 'terrain report pr'. Run 'terrain analyze --help' for the full")
+	fmt.Fprintln(os.Stderr, "list, or browse docs/rules/ai/ for per-rule documentation.")
 }
 
 func defaultPipelineOptions() engine.PipelineOptions {

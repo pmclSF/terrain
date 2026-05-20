@@ -130,8 +130,8 @@ func runInit(root string, jsonOutput bool) error {
 	// workflow is the one canonical CI config.
 	fmt.Printf("  %d. Wire Terrain into CI (warn-only by default):\n", step)
 	fmt.Println("     Copy docs/examples/gate/github-action.yml to .github/workflows/")
-	fmt.Println("     The trust ladder (docs/product/trust-ladder.md) explains")
-	fmt.Println("     when to flip on blocking gates.")
+	fmt.Println("     Start in warn-only mode; flip on blocking gates once your")
+	fmt.Println("     team has cleared the existing findings.")
 	fmt.Println()
 
 	return nil

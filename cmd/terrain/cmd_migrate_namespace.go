@@ -159,7 +159,7 @@ func printMigrateNamespaceUsage(name string) {
 		fmt.Fprintln(w, "  terrain migrate <dir> --from <fw> --to <fw>")
 	}
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "See: docs/cli/migrate.md  (or `terrain migrate run --help` for run-specific flags)")
+	fmt.Fprintln(w, "Run `terrain migrate run --help` for run-specific flags.")
 }
 
 // runMigrationLegacySubcommand wraps the historical `terrain migration
