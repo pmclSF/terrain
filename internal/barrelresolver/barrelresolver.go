@@ -40,6 +40,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
@@ -267,13 +268,30 @@ func parseJestJS(data []byte) []moduleNameMapper {
 }
 
 func mappersFromMap(m map[string]string) []moduleNameMapper {
+	// Sort patterns deterministically — Go map iteration is
+	// randomized, and when overlapping patterns exist (`^@/(.*)$` and
+	// `^@/foo/(.*)$`) the first match wins. Without a stable order,
+	// resolution would vary between builds, making shadow-report.jsonl
+	// measurements run-dependent.
+	patterns := make([]string, 0, len(m))
+	for pattern := range m {
+		patterns = append(patterns, pattern)
+	}
+	// More-specific patterns (longer) should sort first so they win
+	// the "first match" race against their shorter siblings.
+	sort.Slice(patterns, func(i, j int) bool {
+		if len(patterns[i]) != len(patterns[j]) {
+			return len(patterns[i]) > len(patterns[j])
+		}
+		return patterns[i] < patterns[j]
+	})
 	out := make([]moduleNameMapper, 0, len(m))
-	for pattern, target := range m {
+	for _, pattern := range patterns {
 		re, err := regexp.Compile(pattern)
 		if err != nil {
 			continue
 		}
-		out = append(out, moduleNameMapper{pattern: re, target: target})
+		out = append(out, moduleNameMapper{pattern: re, target: m[pattern]})
 	}
 	return out
 }

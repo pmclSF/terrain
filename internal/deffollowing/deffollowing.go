@@ -263,10 +263,14 @@ func (c *Counter) indexDefinitions(content, ext string) {
 
 // indexJS matches function declarations, const-arrow, and class method
 // bodies in JS/TS source. Bodies are captured by brace-balanced scan.
+//
+// jsMethodRe accepts an optional `async` prefix and skips over it via
+// a non-capturing group, so `async fn() {}` shorthand methods get
+// indexed under `fn` (not under the stripped `async` keyword).
 var (
-	jsFuncRe   = regexp.MustCompile(`(?m)function\s+([A-Za-z_$][\w$]*)\s*\(`)
+	jsFuncRe   = regexp.MustCompile(`(?m)(?:async\s+)?function\s+([A-Za-z_$][\w$]*)\s*\(`)
 	jsConstRe  = regexp.MustCompile(`(?m)(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*(?:async\s+)?(?:\([^)]*\)|[A-Za-z_$][\w$]*)\s*=>\s*\{`)
-	jsMethodRe = regexp.MustCompile(`(?m)^\s*([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{`)
+	jsMethodRe = regexp.MustCompile(`(?m)^\s*(?:async\s+)?([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*\{`)
 )
 
 func (c *Counter) indexJS(content string) {

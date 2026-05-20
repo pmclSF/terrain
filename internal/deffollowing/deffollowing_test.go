@@ -249,6 +249,36 @@ func TestGateLift_ShadowNoEmitWhenImmediateHasCount(t *testing.T) {
 	}
 }
 
+func TestCounter_AsyncFunctionShorthand(t *testing.T) {
+	// `async fn() {}` shorthand methods previously regex-matched
+	// `async` as the function name (which was then filtered as a
+	// language keyword), so the actual `fn` was never indexed.
+	root := t.TempDir()
+	writeFile(t, root, "src/helper.ts", `async fetchData(id) {
+  expect(id).toBeTruthy();
+  return id;
+}
+`)
+	c := NewCounter(root)
+	got := c.CountTransitive(`fetchData(42);`, MaxDepth)
+	if got < 1 {
+		t.Errorf("async shorthand method should be indexed and contribute its assertion; got %d", got)
+	}
+}
+
+func TestCounter_AsyncFunctionDeclaration(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "src/util.ts", `async function fetchAll() {
+  expect(items).toHaveLength(3);
+}
+`)
+	c := NewCounter(root)
+	got := c.CountTransitive(`fetchAll();`, MaxDepth)
+	if got < 1 {
+		t.Errorf("async function declaration should be indexed; got %d", got)
+	}
+}
+
 func TestCounter_SameNameAcrossFiles_SumsAssertions(t *testing.T) {
 	// Two files define `verify`: one with no assertions, one with one
 	// expect(). The counter should reflect that AT LEAST one assertion
