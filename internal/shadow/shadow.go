@@ -24,6 +24,7 @@
 package shadow
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -121,16 +122,26 @@ func Emit(e Event) {
 }
 
 // FileSink writes events to .terrain/shadow-report.jsonl (or any other
-// path). Append-mode + flush per record for crash safety.
+// path) using a buffered writer. Sync happens at Close (and on demand
+// via Flush); per-record fsync is replaced with periodic durability so
+// a repo-wide scan emitting many events doesn't spend most of its time
+// in fsync.
+//
+// Trade-off: a crash mid-pipeline may lose the last buffered events
+// since the most recent Flush. For shadow-mode telemetry — which the
+// next run will reproduce anyway — that's the right call.
 type FileSink struct {
 	mu   sync.Mutex
 	path string
 	fh   *os.File
+	bw   *bufio.Writer
 	enc  *json.Encoder
 }
 
 // NewFileSink opens (or creates) the JSONL file at `path` in append
-// mode. The parent directory is created if missing.
+// mode. The parent directory is created if missing. Writes go through
+// a 64 KiB buffered writer; callers MUST Close (or Flush) to durably
+// persist the events.
 func NewFileSink(path string) (*FileSink, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("create shadow dir: %w", err)
@@ -139,14 +150,17 @@ func NewFileSink(path string) (*FileSink, error) {
 	if err != nil {
 		return nil, fmt.Errorf("open shadow report: %w", err)
 	}
+	bw := bufio.NewWriterSize(fh, 64*1024)
 	return &FileSink{
 		path: path,
 		fh:   fh,
-		enc:  json.NewEncoder(fh),
+		bw:   bw,
+		enc:  json.NewEncoder(bw),
 	}, nil
 }
 
-// Emit appends one JSON-encoded event line + flush + fsync.
+// Emit appends one JSON-encoded event line to the buffered writer.
+// Use Flush to persist; Close flushes + syncs automatically.
 func (f *FileSink) Emit(e Event) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -156,25 +170,39 @@ func (f *FileSink) Emit(e Event) error {
 	if err := f.enc.Encode(e); err != nil {
 		return fmt.Errorf("encode shadow event: %w", err)
 	}
-	if err := f.fh.Sync(); err != nil {
-		// Sync can fail on some filesystems / pipes. The Encode write
-		// already happened, so the event is buffered; report but don't
-		// mask the higher-level Emit success.
-		return fmt.Errorf("sync shadow report: %w", err)
-	}
 	return nil
 }
 
-// Close flushes and closes the underlying file. Safe to call multiple
-// times.
+// Flush forces buffered events to the underlying OS file (does not
+// fsync). Callers that want a durability point mid-run call this.
+func (f *FileSink) Flush() error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.bw == nil {
+		return nil
+	}
+	return f.bw.Flush()
+}
+
+// Close flushes the buffer, syncs to disk, and closes the underlying
+// file. Safe to call multiple times.
 func (f *FileSink) Close() error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.fh == nil {
 		return nil
 	}
+	var flushErr error
+	if f.bw != nil {
+		flushErr = f.bw.Flush()
+	}
+	_ = f.fh.Sync()
 	err := f.fh.Close()
 	f.fh = nil
+	f.bw = nil
+	if flushErr != nil {
+		return flushErr
+	}
 	return err
 }
 

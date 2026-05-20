@@ -52,22 +52,33 @@ const MechanismName = "a7_barrel_resolver"
 // Resolver is the hardened import resolver. Construct once per repo
 // scan via New; reuse across detector calls.
 type Resolver struct {
-	root          string
-	jestMappers   []moduleNameMapper
-	distMappings  []distMapping
-	pyReexports   map[string][]pyReexport
-	pyReexportsOK bool
+	root           string
+	jestMappers    []moduleNameMapper
+	distMappings   []distMapping
+	distMappingsOK bool
+	pyReexports    map[string][]pyReexport
+	pyReexportsOK  bool
 }
 
-// New constructs a Resolver for the given repo root. The Resolver loads
-// jest.config moduleNameMapper, scans package.json files for
-// main/source dist-path mappings, and lazily builds Python re-export
-// indexes the first time they're queried.
+// New constructs a Resolver for the given repo root. Construction is
+// cheap: jest moduleNameMapper is read from the root's
+// jest.config.{json,js,ts,mjs,cjs} / package.json#jest (~6 small files
+// at most). Heavy repo-wide scans (dist-path mappings, Python
+// re-exports) are deferred until the first call that needs them.
 func New(root string) (*Resolver, error) {
 	r := &Resolver{root: root}
 	r.jestMappers = loadJestModuleNameMappers(root)
-	r.distMappings = loadDistMappings(root)
 	return r, nil
+}
+
+// ensureDistMappings runs the repo-wide package.json walk on first
+// demand. Subsequent calls return immediately.
+func (r *Resolver) ensureDistMappings() {
+	if r.distMappingsOK {
+		return
+	}
+	r.distMappings = loadDistMappings(r.root)
+	r.distMappingsOK = true
 }
 
 // Result is one resolved candidate target with the sub-class that
@@ -364,8 +375,9 @@ func firstNonEmpty(xs ...string) string {
 	return ""
 }
 
-// resolveDistPath maps dist/foo.js → src/foo.ts (and similar). Matches
-// the import in three ways:
+// resolveDistPath builds the dist-mapping index lazily on first call,
+// then maps dist/foo.js → src/foo.ts (and similar). Matches the import
+// in three ways:
 //
 //  1. The import refers to the package by name (`@scope/lib` or `lib`)
 //     and the package.json's `name` matches. This is the dominant
@@ -376,6 +388,7 @@ func firstNonEmpty(xs ...string) string {
 //  3. The import refers to the main file by path (`dist/index.js`).
 //     Substitutes the source path for the dist path.
 func (r *Resolver) resolveDistPath(fromDir, importPath string) []Result {
+	r.ensureDistMappings()
 	var out []Result
 	ip := filepath.ToSlash(filepath.Clean(importPath))
 	for _, dm := range r.distMappings {

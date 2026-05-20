@@ -30,12 +30,42 @@ import (
 	"os"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 )
 
 // MaxFileBytes is the upper bound for files the gate will read. Beyond
 // this size we return Skipped — the gate fails open. Default mirrors
 // the path-noise filter's "small file" intuition; tunable per call.
 const MaxFileBytes = 4 * 1024 * 1024 // 4 MiB
+
+// strippedCache caches comment-stripped file content keyed by absolute
+// path + modtime. AI-moat detectors call Check per finding per file;
+// the cache keeps repeated calls on the same file off the disk and
+// off the regex pass.
+//
+// Bounded by file size: each entry holds a stripped copy of the file
+// content. Eviction is a simple all-clear at ClearCache call sites
+// (per-pipeline-run), keeping the implementation footprint small.
+var (
+	strippedCacheMu sync.RWMutex
+	strippedCache   = map[string]strippedEntry{}
+)
+
+type strippedEntry struct {
+	modTime time.Time
+	size    int64
+	body    []byte
+}
+
+// ClearCache drops the cached stripped-file content. The engine
+// pipeline calls this between runs so a long-lived process doesn't
+// accumulate stale entries.
+func ClearCache() {
+	strippedCacheMu.Lock()
+	strippedCache = map[string]strippedEntry{}
+	strippedCacheMu.Unlock()
+}
 
 // Result describes the gate's verdict for one (name, file) check.
 type Result int
@@ -71,6 +101,10 @@ func (r Result) String() string {
 // Empty `name`, unreadable file, or oversized file all return Skipped.
 // The gate fails open by design — callers treat Skipped the same as
 // Present (the finding survives).
+//
+// The comment-stripped file content is cached per (path, mtime, size)
+// so repeated Check calls against the same file by multiple detectors
+// don't re-read or re-strip.
 func Check(name, path string) (Result, error) {
 	if strings.TrimSpace(name) == "" {
 		return Skipped, nil
@@ -82,11 +116,38 @@ func Check(name, path string) (Result, error) {
 	if info.Size() > MaxFileBytes {
 		return Skipped, nil
 	}
-	data, err := os.ReadFile(path)
+	stripped, err := cachedStripped(path, info)
 	if err != nil {
 		return Skipped, err
 	}
-	return CheckBytes(name, data), nil
+	if containsAsToken(stripped, name) {
+		return Present, nil
+	}
+	return Absent, nil
+}
+
+// cachedStripped returns the comment-stripped body for path, hitting
+// the per-process cache when (path, mtime, size) match the last read.
+func cachedStripped(path string, info os.FileInfo) ([]byte, error) {
+	strippedCacheMu.RLock()
+	entry, ok := strippedCache[path]
+	strippedCacheMu.RUnlock()
+	if ok && entry.modTime.Equal(info.ModTime()) && entry.size == info.Size() {
+		return entry.body, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	body := stripComments(data)
+	strippedCacheMu.Lock()
+	strippedCache[path] = strippedEntry{
+		modTime: info.ModTime(),
+		size:    info.Size(),
+		body:    body,
+	}
+	strippedCacheMu.Unlock()
+	return body, nil
 }
 
 // CheckBytes performs the gate check against in-memory file content.

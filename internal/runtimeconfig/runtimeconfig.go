@@ -27,6 +27,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 
@@ -186,16 +187,27 @@ var loaderPatternRe = regexp.MustCompile(
 // because verifying the actual path argument requires data-flow
 // analysis. False positives are bounded — the consumer detector
 // applies a second test (eval-config presence) before demoting.
+//
+// Result is cached per repoRoot: the first call walks the tree, all
+// subsequent calls return the cached bool. Caller code (engine
+// pipeline) calls ClearLoaderCache between runs.
 func hasLoaderForPath(repoRoot, configPath string) bool {
+	if v, ok := loaderCacheGet(repoRoot); ok {
+		return v
+	}
 	found := false
 	_ = filepath.Walk(repoRoot, func(p string, info os.FileInfo, err error) error {
-		if err != nil || info.IsDir() {
-			if info != nil && info.IsDir() {
-				name := info.Name()
-				if name == "node_modules" || name == ".git" || name == ".venv" || name == "venv" ||
-					name == "dist" || name == "build" || name == "__pycache__" {
-					return filepath.SkipDir
-				}
+		if found {
+			return filepath.SkipAll
+		}
+		if err != nil {
+			return nil
+		}
+		if info.IsDir() {
+			name := info.Name()
+			if name == "node_modules" || name == ".git" || name == ".venv" || name == "venv" ||
+				name == "dist" || name == "build" || name == "__pycache__" {
+				return filepath.SkipDir
 			}
 			return nil
 		}
@@ -205,15 +217,43 @@ func hasLoaderForPath(repoRoot, configPath string) bool {
 			data, _ := os.ReadFile(p)
 			if loaderPatternRe.Match(data) {
 				found = true
-				return filepath.SkipDir // skip rest of this directory
+				return filepath.SkipAll
 			}
-		}
-		if found {
-			return filepath.SkipAll
 		}
 		return nil
 	})
+	loaderCacheSet(repoRoot, found)
 	return found
+}
+
+// Per-repo cache for hasLoaderForPath. RuntimeConfigRecognizer is
+// invoked per YAML / .properties file in the repo; without the cache
+// the same whole-repo walk runs N times for N candidate config files.
+var (
+	loaderCacheMu sync.RWMutex
+	loaderCache   = map[string]bool{}
+)
+
+func loaderCacheGet(repoRoot string) (bool, bool) {
+	loaderCacheMu.RLock()
+	defer loaderCacheMu.RUnlock()
+	v, ok := loaderCache[repoRoot]
+	return v, ok
+}
+
+func loaderCacheSet(repoRoot string, v bool) {
+	loaderCacheMu.Lock()
+	loaderCache[repoRoot] = v
+	loaderCacheMu.Unlock()
+}
+
+// ClearLoaderCache drops the per-repo loader-presence cache. The
+// engine pipeline calls this at the start of each run so a long-lived
+// process picks up filesystem changes.
+func ClearLoaderCache() {
+	loaderCacheMu.Lock()
+	loaderCache = map[string]bool{}
+	loaderCacheMu.Unlock()
 }
 
 // ── Shadow-mode helper ────────────────────────────────────────────

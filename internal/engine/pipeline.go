@@ -30,8 +30,10 @@ import (
 	"github.com/pmclSF/terrain/internal/policy"
 	"github.com/pmclSF/terrain/internal/portfolio"
 	"github.com/pmclSF/terrain/internal/runtime"
+	"github.com/pmclSF/terrain/internal/runtimeconfig"
 	"github.com/pmclSF/terrain/internal/scoring"
 	"github.com/pmclSF/terrain/internal/shadow"
+	"github.com/pmclSF/terrain/internal/surfacelit"
 )
 
 // DefaultEngineVersion is used when PipelineOptions.EngineVersion is not set.
@@ -180,6 +182,14 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	if err := validatePipelineOptions(root, opt); err != nil {
 		return nil, err
 	}
+
+	// Reset per-run caches that detectors share within a single
+	// pipeline run. Long-lived processes (e.g. tests, the MCP server)
+	// invoke RunPipeline multiple times; the caches survive each call
+	// to amortize cost, then get dropped here so a re-run picks up
+	// filesystem changes.
+	surfacelit.ClearCache()
+	runtimeconfig.ClearLoaderCache()
 
 	// Mechanisms registry (loaded once per pipeline run). All Phase 2
 	// detector behavior changes are gated by this registry; an unloaded
