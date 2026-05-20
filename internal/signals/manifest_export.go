@@ -21,6 +21,12 @@ type ManifestExportEntry struct {
 	ConstName       string                `json:"constName"`
 	Domain          models.SignalCategory `json:"domain"`
 	Status          SignalStatus          `json:"status"`
+	// Tier classifies the rule as gate-relevant (the JSON omits the
+	// field when empty, which means "gate" — the default) or
+	// "observability" (informational, never blocks `--fail-on=*`).
+	// External consumers reading this manifest can use Tier to predict
+	// whether a finding will count toward Terrain's gate decision.
+	Tier            SignalTier            `json:"tier,omitempty"`
 	Title           string                `json:"title"`
 	Description     string                `json:"description"`
 	Remediation     string                `json:"remediation,omitempty"`
@@ -42,9 +48,13 @@ type ManifestExport struct {
 }
 
 // CurrentManifestSchemaVersion is the wire-format version of the export.
-// 1.0.0 ships in 0.2.0; bump the major if a field becomes required, the
-// minor if a field is added in an additive way.
-const CurrentManifestSchemaVersion = "1.0.0"
+// Bump the major if a field becomes required, the minor if a field is
+// added in an additive way.
+//
+// 1.1.0 added the additive field "tier" (omitempty); pre-1.1.0 consumers
+// continue to parse without that field, they just don't see whether a
+// rule is observability-tier.
+const CurrentManifestSchemaVersion = "1.1.0"
 
 // BuildManifestExport projects the in-memory manifest into a stable wire
 // format suitable for marshaling to JSON. The result is deterministic:
@@ -61,6 +71,7 @@ func BuildManifestExport() ManifestExport {
 			ConstName:       e.ConstName,
 			Domain:          e.Domain,
 			Status:          e.Status,
+			Tier:            e.Tier,
 			Title:           e.Title,
 			Description:     e.Description,
 			Remediation:     e.Remediation,

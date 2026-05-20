@@ -344,9 +344,11 @@ func TestBuild_SchemaVersionPresent(t *testing.T) {
 
 func TestBuild_SchemaVersionStable(t *testing.T) {
 	t.Parallel()
-	// Version should be "1" — not empty, not "0".
-	if AnalyzeReportSchemaVersion != "1" {
-		t.Errorf("expected schema version '1', got %q", AnalyzeReportSchemaVersion)
+	// Lock the current schema version: bumping is intentional (each
+	// bump is paired with a doc + CHANGELOG entry), so a flag-rename
+	// or accidental edit lands here as a failure to investigate.
+	if AnalyzeReportSchemaVersion != "2" {
+		t.Errorf("expected schema version '2', got %q", AnalyzeReportSchemaVersion)
 	}
 }
 

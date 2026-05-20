@@ -20,7 +20,15 @@ import (
 // Report is the structured output of `terrain analyze`.
 // Every field is concrete and JSON-serializable.
 // AnalyzeReportSchemaVersion is the current schema version for analyze reports.
-const AnalyzeReportSchemaVersion = "1"
+//
+// "2" added the additive field GateRelevantSummary (mirrors SignalSummary
+// but excludes observability-tier signals; used by --fail-on=*). The bump
+// is minor-only in spirit — every "1"-shaped consumer continues to work,
+// they just don't see the new field. We bump the integer because the
+// schema doc previously stated SignalSummary was the canonical gate
+// input, which is no longer true; consumers that gated on it need to
+// know the canonical source moved.
+const AnalyzeReportSchemaVersion = "2"
 
 type Report struct {
 	// SchemaVersion identifies the report JSON schema version.

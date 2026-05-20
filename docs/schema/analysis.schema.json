@@ -9,8 +9,8 @@
   "properties": {
     "schemaVersion": {
       "type": "string",
-      "description": "Semantic version of the analyze report schema. Currently the string \"1\". Bumps follow `models.SnapshotSchemaVersion` in `internal/models/`.",
-      "const": "1"
+      "description": "Schema version of the analyze report. Currently the string \"2\". Version 2 added the additive field `gateRelevantSummary`.",
+      "enum": ["1", "2"]
     },
     "repository": {
       "type": "object",
@@ -82,7 +82,12 @@
     },
     "signalSummary": {
       "type": "object",
-      "description": "Severity + category breakdowns of detected signals: `{ total, critical, high, medium, low, byCategory: {ai, health, migration, quality, structure, ...} }`. The supported severity-gate flag (`--fail-on=high|critical|medium`) is the canonical mechanism for gating CI on these counts.",
+      "description": "Severity + category breakdowns of every detected signal: `{ total, critical, high, medium, low, byCategory: {ai, health, migration, quality, structure, ...} }`. This is the full report count for display. For CI gate decisions (`--fail-on=*`), consult `gateRelevantSummary` instead — observability-tier findings appear here for visibility but never block the gate.",
+      "additionalProperties": true
+    },
+    "gateRelevantSummary": {
+      "type": "object",
+      "description": "(schema v2+) Same shape as `signalSummary` but excludes signals from detectors that ship at observability tier. The `--fail-on=<severity>` gate decision is computed from this object.",
       "additionalProperties": true
     },
     "behaviorRedundancy": {
