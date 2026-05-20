@@ -169,6 +169,19 @@ func RunPipeline(root string, opts ...PipelineOptions) (*PipelineResult, error) 
 	return RunPipelineContext(context.Background(), root, opts...)
 }
 
+// pipelineGlobalsMu serializes concurrent RunPipeline invocations within
+// one process so the shared process globals — shadow.SetSink and
+// mechanisms.SetDefault — have non-overlapping lifetimes per call. The
+// save/restore pattern only behaves correctly under strict LIFO; under
+// arbitrary overlap, A's restore can clobber B's installation. Holding
+// this mutex for the duration of each pipeline matches what users
+// expect (one analyze pass at a time per repo).
+//
+// Concurrent callers block here. Cancellation (via the supplied ctx)
+// is honored before acquiring the lock so a CTRL-C during a long queue
+// returns immediately rather than waiting for its turn.
+var pipelineGlobalsMu sync.Mutex
+
 // RunPipelineContext executes the full analysis pipeline with cancellation
 // support via context.
 func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOptions) (*PipelineResult, error) {
@@ -180,6 +193,17 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		opt = opts[0]
 	}
 	if err := validatePipelineOptions(root, opt); err != nil {
+		return nil, err
+	}
+
+	// Acquire the process-wide pipeline lock. Honor ctx cancellation so
+	// a queued caller can bail out without waiting.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	pipelineGlobalsMu.Lock()
+	defer pipelineGlobalsMu.Unlock()
+	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
 
@@ -204,8 +228,13 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 			return nil, fmt.Errorf("apply --mechanisms overrides: %w", err)
 		}
 	}
-	mechanisms.SetDefault(mechReg)
-	defer mechanisms.SetDefault(nil)
+	// Save + restore the previous default registry. Under
+	// pipelineGlobalsMu the LIFO save/restore is safe; the prev
+	// returned by SetDefault is the value installed before this
+	// pipeline started (typically nil; non-nil only when a host
+	// program pre-installed one).
+	prevDefault := mechanisms.SetDefault(mechReg)
+	defer mechanisms.SetDefault(prevDefault)
 
 	// Shadow sink. When any mechanism is in shadow OR on state, install
 	// a FileSink at .terrain/shadow-report.jsonl so consumer detectors'
