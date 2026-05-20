@@ -165,8 +165,21 @@ func isSetTimeoutAtConfigScopeBytes(data []byte, targetLine int) bool {
 	currentLine := 1
 	depth := 0
 	stack := []scopeFrame{{kind: scopeFile, depth: 0}}
-	inSingle, inDouble, inBacktick := false, false, false
+	inSingle, inDouble := false, false
+	// Template literals nest: each open `` ` `` pushes; each `${...}`
+	// inside a template suspends the string state until the matching
+	// `}`. templateStack holds the brace depth at which each pending
+	// interpolation opened.
+	backtickDepth := 0
+	templateStack := []int{}
 	inLineComment, inBlockComment := false, false
+
+	inBacktickActive := func() bool {
+		// In a backtick string when the depth is positive AND no
+		// interpolation is currently open (because while we're inside
+		// `${...}` we're in code, not string).
+		return backtickDepth > 0 && (len(templateStack) == 0 || templateStack[len(templateStack)-1] < depth)
+	}
 
 	for i := 0; i < len(s); i++ {
 		c := s[i]
@@ -188,7 +201,7 @@ func isSetTimeoutAtConfigScopeBytes(data []byte, targetLine int) bool {
 			}
 			continue
 		}
-		if inSingle || inDouble || inBacktick {
+		if inSingle || inDouble {
 			if c == '\\' && i+1 < len(s) {
 				i++ // skip escaped char
 				continue
@@ -197,8 +210,28 @@ func isSetTimeoutAtConfigScopeBytes(data []byte, targetLine int) bool {
 				inSingle = false
 			} else if c == '"' && inDouble {
 				inDouble = false
-			} else if c == '`' && inBacktick {
-				inBacktick = false
+			}
+			continue
+		}
+		// Backtick template-literal string mode (active only when no
+		// `${...}` interpolation is currently open).
+		if inBacktickActive() {
+			if c == '\\' && i+1 < len(s) {
+				i++
+				continue
+			}
+			if c == '`' {
+				backtickDepth--
+				continue
+			}
+			if c == '$' && i+1 < len(s) && s[i+1] == '{' {
+				// Enter interpolation: increment brace depth, push the
+				// depth marker. Subsequent `{` and `}` are code, not
+				// string content.
+				depth++
+				templateStack = append(templateStack, depth)
+				i++ // consume the '{'
+				continue
 			}
 			continue
 		}
@@ -224,7 +257,7 @@ func isSetTimeoutAtConfigScopeBytes(data []byte, targetLine int) bool {
 			inDouble = true
 			continue
 		case '`':
-			inBacktick = true
+			backtickDepth++
 			continue
 		case '{':
 			depth++
@@ -233,6 +266,12 @@ func isSetTimeoutAtConfigScopeBytes(data []byte, targetLine int) bool {
 				stack = append(stack, scopeFrame{kind: scopeTest, depth: depth})
 			}
 		case '}':
+			// First check whether we're closing a template interpolation.
+			if len(templateStack) > 0 && templateStack[len(templateStack)-1] == depth {
+				templateStack = templateStack[:len(templateStack)-1]
+				depth--
+				continue
+			}
 			top := stack[len(stack)-1]
 			if top.depth == depth && top.kind == scopeTest {
 				stack = stack[:len(stack)-1]

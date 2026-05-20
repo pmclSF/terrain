@@ -50,8 +50,16 @@ func IsTestBuilderInLoopBytes(data []byte, targetLine int) bool {
 		depth  int
 	}
 	stack := []frame{{isLoop: false, depth: 0}}
-	inSingle, inDouble, inBacktick := false, false, false
+	inSingle, inDouble := false, false
+	// Template literals nest: each open `` ` `` pushes; each `${...}`
+	// suspends string state until the matching `}`.
+	backtickDepth := 0
+	templateStack := []int{}
 	inLineComment, inBlockComment := false, false
+
+	inBacktickActive := func() bool {
+		return backtickDepth > 0 && (len(templateStack) == 0 || templateStack[len(templateStack)-1] < depth)
+	}
 
 	for i := 0; i < len(s); i++ {
 		c := s[i]
@@ -73,7 +81,7 @@ func IsTestBuilderInLoopBytes(data []byte, targetLine int) bool {
 			}
 			continue
 		}
-		if inSingle || inDouble || inBacktick {
+		if inSingle || inDouble {
 			if c == '\\' && i+1 < len(s) {
 				i++
 				continue
@@ -82,8 +90,23 @@ func IsTestBuilderInLoopBytes(data []byte, targetLine int) bool {
 				inSingle = false
 			} else if c == '"' && inDouble {
 				inDouble = false
-			} else if c == '`' && inBacktick {
-				inBacktick = false
+			}
+			continue
+		}
+		if inBacktickActive() {
+			if c == '\\' && i+1 < len(s) {
+				i++
+				continue
+			}
+			if c == '`' {
+				backtickDepth--
+				continue
+			}
+			if c == '$' && i+1 < len(s) && s[i+1] == '{' {
+				depth++
+				templateStack = append(templateStack, depth)
+				i++
+				continue
 			}
 			continue
 		}
@@ -106,13 +129,18 @@ func IsTestBuilderInLoopBytes(data []byte, targetLine int) bool {
 			inDouble = true
 			continue
 		case '`':
-			inBacktick = true
+			backtickDepth++
 			continue
 		case '{':
 			depth++
 			loop := loopScopeOpensAt(s, i)
 			stack = append(stack, frame{isLoop: loop, depth: depth})
 		case '}':
+			if len(templateStack) > 0 && templateStack[len(templateStack)-1] == depth {
+				templateStack = templateStack[:len(templateStack)-1]
+				depth--
+				continue
+			}
 			top := stack[len(stack)-1]
 			if top.depth == depth {
 				stack = stack[:len(stack)-1]

@@ -102,6 +102,32 @@ func TestIsSetTimeoutAtConfigScope_InsideTest(t *testing.T) {
 	}
 }
 
+func TestIsSetTimeoutAtConfigScope_TemplateLiteralWithBraces(t *testing.T) {
+	// Template-literal interpolation containing braces should not
+	// throw off the brace-depth walker.
+	body := "const msg = `it(${name}, () => { setup(); })`;\n" +
+		"jest.setTimeout(5000);\n"
+	// Line 2 jest.setTimeout is at config (file) scope despite the
+	// template-literal noise on line 1.
+	if !IsSetTimeoutAtConfigScopeBytes([]byte(body), 2) {
+		t.Errorf("config-scope setTimeout after template-literal noise should be classified as config")
+	}
+}
+
+func TestIsSetTimeoutAtConfigScope_NestedTemplateInterpolation(t *testing.T) {
+	body := "const m = `outer ${`inner ${a}`}`;\n" +
+		"describe('x', () => {\n" +
+		"  it('y', () => {\n" +
+		"    jest.setTimeout(1);\n" +
+		"  });\n" +
+		"});\n"
+	// Line 4: setTimeout inside an it inside a describe — must
+	// classify as test scope, NOT config.
+	if IsSetTimeoutAtConfigScopeBytes([]byte(body), 4) {
+		t.Errorf("setTimeout inside it() after template-literal noise should NOT be config-scope")
+	}
+}
+
 func TestIsSetTimeoutAtConfigScope_InsideDescribeButNotIt(t *testing.T) {
 	body := `describe('x', () => {
   jest.setTimeout(10000);

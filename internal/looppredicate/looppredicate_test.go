@@ -130,6 +130,50 @@ func TestIsTestBuilderInLoop_TargetLinePastEnd(t *testing.T) {
 	}
 }
 
+func TestIsTestBuilderInLoop_TemplateLiteralWithBraces(t *testing.T) {
+	// Template literal containing braces inside `${...}` interpolation
+	// must not throw off brace-depth accounting.
+	body := "const msg = `it(${name}, () => { return v; })`;\n" +
+		"it('clean', () => {});\n"
+	// Line 2 — the plain it() — is NOT in a loop. The template
+	// literal on line 1 should not have shifted brace depth or opened
+	// a phantom scope.
+	if IsTestBuilderInLoopBytes([]byte(body), 2) {
+		t.Errorf("plain it() after template-literal noise should NOT be in loop")
+	}
+}
+
+func TestIsTestBuilderInLoop_TemplateLiteralInsideForEach(t *testing.T) {
+	body := "cases.forEach(c => {\n" +
+		"  const tag = `tag-${c.id}`;\n" +
+		"  it(tag, () => {});\n" +
+		"});\n"
+	// The it() on line 3 is genuinely inside forEach — must be classified as in-loop.
+	if !IsTestBuilderInLoopBytes([]byte(body), 3) {
+		t.Errorf("it() inside forEach with template-literal sibling should be in-loop")
+	}
+}
+
+func TestIsTestBuilderInLoop_NestedTemplateInterpolations(t *testing.T) {
+	// A template literal containing another template inside its
+	// interpolation. Brace state should round-trip correctly.
+	body := "const x = `outer ${`inner ${a} text`} ${b}`;\n" +
+		"it('after', () => {});\n"
+	if IsTestBuilderInLoopBytes([]byte(body), 2) {
+		t.Errorf("plain it() after nested template literals should NOT be in loop")
+	}
+}
+
+func TestIsTestBuilderInLoop_TemplateLiteralAtEndOfLine(t *testing.T) {
+	body := "const m = `hello ${world}`;\n" +
+		"for (const c of cases) {\n" +
+		"  it(c, () => {});\n" +
+		"}\n"
+	if !IsTestBuilderInLoopBytes([]byte(body), 3) {
+		t.Errorf("legitimate for-loop should still be detected after template literal")
+	}
+}
+
 // ── Gate ────────────────────────────────────────────────────────────
 
 func loadReg(t *testing.T, state mechanisms.State) *mechanisms.Registry {
