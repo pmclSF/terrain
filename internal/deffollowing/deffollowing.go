@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/shadow"
@@ -63,15 +64,26 @@ var AssertionTokens = []*regexp.Regexp{
 // Counter tracks transitive assertions across an in-repo function call
 // graph. Construct once per scan; reuse across multiple test bodies in
 // the same repo.
+//
+// Concurrency: Counter is NOT safe for concurrent use across
+// goroutines. Each goroutine that needs def-following should construct
+// its own Counter via NewCounter. The expensive per-repo defCache is
+// the only shared state — share it across detectors that run serially
+// in one pipeline pass, not across parallel goroutines.
+//
+// The ensure-index path is guarded by sync.Once so even an accidental
+// concurrent first-use of a single Counter doesn't race on the index
+// build; the visited map is mutated per-call though, so concurrent
+// Count() invocations on the same Counter still race.
 type Counter struct {
-	root       string
+	root string
 	// defCache maps identifier → list of bodies. Same-named helpers
 	// across multiple files all get indexed; the follower sums
 	// assertions across every body to avoid silently miscounting when
 	// utility helpers shadow the test helper a caller actually invokes.
-	defCache   map[string][]string
-	defCacheOK bool
-	visited    map[string]bool
+	defCache  map[string][]string
+	indexOnce sync.Once
+	visited   map[string]bool
 }
 
 // NewCounter constructs a Counter for the given repo root.
@@ -216,12 +228,14 @@ func countAssertions(body string) int {
 }
 
 // ensureDefIndex builds an identifier → function-body index for the
-// repo on first call. Index is cached on the Counter.
+// repo on first call. Subsequent calls return immediately. sync.Once
+// guarantees the walk runs exactly once even under concurrent first-
+// use; once built the index is read-only and shared safely.
 func (c *Counter) ensureDefIndex() {
-	if c.defCacheOK {
-		return
-	}
-	defer func() { c.defCacheOK = true }()
+	c.indexOnce.Do(c.buildDefIndex)
+}
+
+func (c *Counter) buildDefIndex() {
 	_ = filepath.Walk(c.root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return nil

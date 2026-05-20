@@ -42,6 +42,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/shadow"
@@ -51,14 +52,16 @@ import (
 const MechanismName = "a7_barrel_resolver"
 
 // Resolver is the hardened import resolver. Construct once per repo
-// scan via New; reuse across detector calls.
+// scan via New; reuse across detector calls. The Resolver is safe for
+// concurrent use — lazy walks for dist mappings and Python re-exports
+// are guarded by sync.Once.
 type Resolver struct {
-	root           string
-	jestMappers    []moduleNameMapper
-	distMappings   []distMapping
-	distMappingsOK bool
-	pyReexports    map[string][]pyReexport
-	pyReexportsOK  bool
+	root         string
+	jestMappers  []moduleNameMapper
+	distMappings []distMapping
+	distOnce     sync.Once
+	pyReexports  map[string][]pyReexport
+	pyOnce       sync.Once
 }
 
 // New constructs a Resolver for the given repo root. Construction is
@@ -73,13 +76,12 @@ func New(root string) (*Resolver, error) {
 }
 
 // ensureDistMappings runs the repo-wide package.json walk on first
-// demand. Subsequent calls return immediately.
+// demand. sync.Once guarantees the walk runs exactly once even under
+// concurrent invocation from multiple goroutines.
 func (r *Resolver) ensureDistMappings() {
-	if r.distMappingsOK {
-		return
-	}
-	r.distMappings = loadDistMappings(r.root)
-	r.distMappingsOK = true
+	r.distOnce.Do(func() {
+		r.distMappings = loadDistMappings(r.root)
+	})
 }
 
 // Result is one resolved candidate target with the sub-class that
@@ -455,11 +457,13 @@ type pyReexport struct {
 
 // buildPyReexports walks the repo for *.py files and records
 // `from X import Y` re-exports in __init__.py modules. Lazily built on
-// first call to resolvePythonNamespace.
+// first call to resolvePythonNamespace, guarded by sync.Once so
+// concurrent callers see a fully-built index.
 func (r *Resolver) buildPyReexports() {
-	if r.pyReexportsOK {
-		return
-	}
+	r.pyOnce.Do(r.buildPyReexportsOnce)
+}
+
+func (r *Resolver) buildPyReexportsOnce() {
 	r.pyReexports = map[string][]pyReexport{}
 	_ = filepath.Walk(r.root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -503,7 +507,6 @@ func (r *Resolver) buildPyReexports() {
 		}
 		return nil
 	})
-	r.pyReexportsOK = true
 }
 
 // pyFromImport captures one normalized `from X import Y, Z` statement.
@@ -617,10 +620,12 @@ func EmitShadow(ruleID string, res Result, note string) {
 }
 
 // String describes the resolver's loaded inputs — useful for `terrain
-// doctor` and debugging.
+// doctor` and debugging. pyReexports count is reported as len of the
+// map; zero means either no Python packages found OR the lazy walk
+// hasn't run yet (consistent semantics).
 func (r *Resolver) String() string {
 	return fmt.Sprintf(
-		"barrelresolver{root=%s, jestMappers=%d, distMappings=%d, pyReexports=%v}",
-		r.root, len(r.jestMappers), len(r.distMappings), r.pyReexportsOK,
+		"barrelresolver{root=%s, jestMappers=%d, distMappings=%d, pyReexports=%d}",
+		r.root, len(r.jestMappers), len(r.distMappings), len(r.pyReexports),
 	)
 }
