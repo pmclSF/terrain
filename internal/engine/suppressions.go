@@ -4,11 +4,50 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/pmclSF/terrain/internal/aliases"
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
 	"github.com/pmclSF/terrain/internal/suppression"
 )
+
+// expandSuppressionAliases takes a list of suppression entries and
+// expands any entry whose SignalType is registered as an alias into
+// one entry per replacement rule_id. Entries without an alias hit pass
+// through unchanged. Order is preserved: aliased entries are replaced
+// in-place by their expansions.
+//
+// Without this step, a user with a `.terrain/suppressions.yaml` entry
+// against `aiHardcodedAPIKey` would silently stop suppressing once
+// findings start emitting under the split halves
+// (`aiHardcodedAPIKey-literal-shape`, `secretScannerCoverageDegraded`).
+func expandSuppressionAliases(entries []suppression.Entry, reg *aliases.Registry) []suppression.Entry {
+	if reg == nil || len(entries) == 0 {
+		return entries
+	}
+	out := make([]suppression.Entry, 0, len(entries))
+	for _, e := range entries {
+		if e.SignalType == "" {
+			out = append(out, e)
+			continue
+		}
+		expanded := reg.ExpandOldID(e.SignalType)
+		// ExpandOldID returns the original ID plus replacements when an
+		// alias is hit; just the original when none is registered.
+		// When only the original is returned, no alias was hit — pass
+		// through.
+		if len(expanded) <= 1 {
+			out = append(out, e)
+			continue
+		}
+		for _, id := range expanded {
+			cp := e
+			cp.SignalType = id
+			out = append(out, cp)
+		}
+	}
+	return out
+}
 
 // applySuppressions loads `.terrain/suppressions.yaml` (or the path
 // supplied in PipelineOptions.SuppressionsPath) and removes matching
@@ -50,6 +89,16 @@ func applySuppressions(snap *models.TestSuiteSnapshot, root, override string, no
 	}
 	if len(result.Entries) == 0 {
 		return
+	}
+
+	// Expand aliases so suppressions on pre-split rule_ids continue to
+	// suppress every replacement. Reads the alias registry once per
+	// pipeline; failure to load the registry (rare; embedded YAML)
+	// degrades gracefully to no expansion.
+	if aliasReg, err := aliases.Load(); err == nil {
+		result.Entries = expandSuppressionAliases(result.Entries, aliasReg)
+	} else {
+		logging.L().Debug("alias registry unavailable for suppression expansion", "err", err)
 	}
 
 	matched, expired := suppression.Apply(snap, result.Entries, now)
