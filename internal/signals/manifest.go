@@ -1036,7 +1036,8 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.75, ConfidenceMax: 0.92,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/prompt-versioning", RuleURI: "docs/rules/ai/prompt-versioning.md",
-		Tier: TierObservability,
+		Tier:            TierObservability,
+		PromotionPlan:   "Measurement-phase per P2.13: stays at observability tier until baseline n≥150 stratified sample completes. Any lift mechanism from that sample must be structurally motivated or defer to n≥500.",
 	},
 	{
 		Type: SignalAIPromptInjectionRisk, ConstName: "SignalAIPromptInjectionRisk",
@@ -1048,7 +1049,8 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/prompt-injection-risk", RuleURI: "docs/rules/ai/prompt-injection-risk.md",
-		PromotionPlan:   "Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands.",
+		Tier:            TierObservability,
+		PromotionPlan:   "Measurement-phase per P2.13: stays at observability tier until baseline n≥150 stratified sample completes. Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands (lift mechanism is structurally motivated, so it can proceed pre-n=500).",
 	},
 	{
 		Type: SignalAIHardcodedAPIKey, ConstName: "SignalAIHardcodedAPIKey",
@@ -1060,6 +1062,8 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/hardcoded-api-key", RuleURI: "docs/rules/ai/hardcoded-api-key.md",
+		Tier:            TierObservability,
+		PromotionPlan:   "Measurement-phase per P2.13. Concurrent structural split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded preserves capability; this back-compat rule stays at observability until the split halves graduate.",
 	},
 	{
 		Type: SignalAIHardcodedAPIKeyLiteralShape, ConstName: "SignalAIHardcodedAPIKeyLiteralShape",

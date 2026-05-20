@@ -1140,7 +1140,8 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/ai/prompt-versioning",
-      "ruleUri": "docs/rules/ai/prompt-versioning.md"
+      "ruleUri": "docs/rules/ai/prompt-versioning.md",
+      "promotionPlan": "Measurement-phase per P2.13: stays at observability tier until baseline n≥150 stratified sample completes. Any lift mechanism from that sample must be structurally motivated or defer to n≥500."
     },
     {
       "type": "aiPromptInjectionRisk",
@@ -1158,7 +1159,7 @@
       ],
       "ruleId": "terrain/ai/prompt-injection-risk",
       "ruleUri": "docs/rules/ai/prompt-injection-risk.md",
-      "promotionPlan": "Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands."
+      "promotionPlan": "Measurement-phase per P2.13: stays at observability tier until baseline n≥150 stratified sample completes. Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands (lift mechanism is structurally motivated, so it can proceed pre-n=500)."
     },
     {
       "type": "aiHardcodedAPIKey",
@@ -1175,7 +1176,8 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/ai/hardcoded-api-key",
-      "ruleUri": "docs/rules/ai/hardcoded-api-key.md"
+      "ruleUri": "docs/rules/ai/hardcoded-api-key.md",
+      "promotionPlan": "Measurement-phase per P2.13. Concurrent structural split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded preserves capability; this back-compat rule stays at observability until the split halves graduate."
     },
     {
       "type": "aiHardcodedAPIKey-literal-shape",

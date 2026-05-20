@@ -15,6 +15,10 @@ API-key-shaped string appears in an eval YAML, prompt config, or agent definitio
 
 Move the secret to an environment variable or secrets store and reference it through the runner's secret-resolution path.
 
+## Promotion plan
+
+Measurement-phase per P2.13. Concurrent structural split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded preserves capability; this back-compat rule stays at observability until the split halves graduate.
+
 ## Evidence sources
 
 - `structural-pattern`

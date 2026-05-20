@@ -15,6 +15,10 @@ Prompt-kind surface ships without a recognisable version marker (filename suffix
 
 Add a `version:` field, a `_v<N>` filename suffix, or a `# version: ...` comment so downstream consumers can detect content drift.
 
+## Promotion plan
+
+Measurement-phase per P2.13: stays at observability tier until baseline n≥150 stratified sample completes. Any lift mechanism from that sample must be structurally motivated or defer to n≥500.
+
 ## Evidence sources
 
 - `structural-pattern`
