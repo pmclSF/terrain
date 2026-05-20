@@ -1,6 +1,8 @@
 package engine
 
 import (
+	"os"
+	"strings"
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/aliases"
@@ -98,6 +100,92 @@ func TestExpandSuppressionAliases_PreservesOrderAndContent(t *testing.T) {
 	}
 	if out[0].SignalType != "untestedExport" {
 		t.Errorf("first entry should be untestedExport (order preserved); got %q", out[0].SignalType)
+	}
+}
+
+func TestExpandSuppressionAliases_FindingIDOnAliasedDetectorWarnsOnce(t *testing.T) {
+	// Capture stderr.
+	r, w, _ := os.Pipe()
+	origStderr := os.Stderr
+	os.Stderr = w
+	t.Cleanup(func() {
+		os.Stderr = origStderr
+	})
+
+	ResetSuppressionFindingIDWarningsForTesting()
+	reg, _ := aliases.Load()
+
+	// A FindingID that embeds the deprecated rule_id should trigger a warn.
+	in := []suppression.Entry{
+		{FindingID: "aiHardcodedAPIKey@config/eval.yaml:line=42#deadbeef", Reason: "old"},
+		// Duplicate of the same aliased detector: should NOT re-warn.
+		{FindingID: "aiHardcodedAPIKey@other.yaml:line=1#cafebabe", Reason: "old2"},
+	}
+	out := expandSuppressionAliases(in, reg)
+	if len(out) != 2 {
+		t.Errorf("FindingID entries should pass through unmodified; got %d", len(out))
+	}
+
+	_ = w.Close()
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	stderr := string(buf[:n])
+
+	if !strings.Contains(stderr, "[NOTE]") {
+		t.Errorf("expected stderr NOTE; got %q", stderr)
+	}
+	if !strings.Contains(stderr, "aiHardcodedAPIKey") {
+		t.Errorf("NOTE should mention the deprecated rule_id; got %q", stderr)
+	}
+	// Should fire exactly once for the same aliased detector.
+	noteCount := strings.Count(stderr, "[NOTE]")
+	if noteCount != 1 {
+		t.Errorf("expected 1 NOTE for two same-detector entries (dedup); got %d", noteCount)
+	}
+}
+
+func TestExpandSuppressionAliases_FindingIDOnNonAliasedDetectorSilent(t *testing.T) {
+	r, w, _ := os.Pipe()
+	origStderr := os.Stderr
+	os.Stderr = w
+	t.Cleanup(func() { os.Stderr = origStderr })
+
+	ResetSuppressionFindingIDWarningsForTesting()
+	reg, _ := aliases.Load()
+
+	in := []suppression.Entry{
+		{FindingID: "untestedExport@src/foo.ts:line=1#abc12345", Reason: "fp"},
+	}
+	expandSuppressionAliases(in, reg)
+
+	_ = w.Close()
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	if n > 0 {
+		t.Errorf("non-aliased detector should not emit NOTE; got %q", string(buf[:n]))
+	}
+}
+
+func TestExpandSuppressionAliases_TerrainQuietSilencesFindingIDWarning(t *testing.T) {
+	r, w, _ := os.Pipe()
+	origStderr := os.Stderr
+	os.Stderr = w
+	t.Cleanup(func() { os.Stderr = origStderr })
+
+	t.Setenv("TERRAIN_QUIET", "1")
+	ResetSuppressionFindingIDWarningsForTesting()
+	reg, _ := aliases.Load()
+
+	in := []suppression.Entry{
+		{FindingID: "aiHardcodedAPIKey@x:line=1#abc12345"},
+	}
+	expandSuppressionAliases(in, reg)
+
+	_ = w.Close()
+	buf := make([]byte, 4096)
+	n, _ := r.Read(buf)
+	if n > 0 {
+		t.Errorf("TERRAIN_QUIET should silence NOTE; got %q", string(buf[:n]))
 	}
 }
 

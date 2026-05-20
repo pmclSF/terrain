@@ -1,10 +1,14 @@
 package engine
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/pmclSF/terrain/internal/aliases"
+	"github.com/pmclSF/terrain/internal/identity"
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
@@ -17,6 +21,13 @@ import (
 // through unchanged. Order is preserved: aliased entries are replaced
 // in-place by their expansions.
 //
+// FindingID-only entries: a finding_id embeds the detector rule_id as
+// its prefix. When that prefix is a deprecated alias, the suppression
+// silently breaks after the split because findings emit under
+// different (detector, hash) pairs. We can't auto-rewrite the hash
+// (the symbol+line+content shaping the hash may have changed too), but
+// we emit a one-time NOTE on stderr so the user knows to migrate.
+//
 // Without this step, a user with a `.terrain/suppressions.yaml` entry
 // against `aiHardcodedAPIKey` would silently stop suppressing once
 // findings start emitting under the split halves
@@ -28,6 +39,9 @@ func expandSuppressionAliases(entries []suppression.Entry, reg *aliases.Registry
 	out := make([]suppression.Entry, 0, len(entries))
 	for _, e := range entries {
 		if e.SignalType == "" {
+			// FindingID-only path: check whether the embedded detector
+			// is an alias and warn if so.
+			warnIfFindingIDIsAliased(e, reg)
 			out = append(out, e)
 			continue
 		}
@@ -47,6 +61,57 @@ func expandSuppressionAliases(entries []suppression.Entry, reg *aliases.Registry
 		}
 	}
 	return out
+}
+
+// suppressFindingIDWarnOnce dedupes the warn-once-per-aliased-id stderr
+// emission across the process lifetime. Tests can reset via
+// ResetSuppressionFindingIDWarningsForTesting.
+var suppressFindingIDWarnOnce sync.Map
+
+// ResetSuppressionFindingIDWarningsForTesting clears the warn-once memo.
+// Tests call this to verify the de-duplication path; production code
+// never calls it.
+func ResetSuppressionFindingIDWarningsForTesting() {
+	suppressFindingIDWarnOnce = sync.Map{}
+}
+
+// warnIfFindingIDIsAliased parses the entry's FindingID, extracts the
+// detector prefix, and emits a one-time stderr [NOTE] when the prefix
+// is a deprecated alias. The NOTE tells the user the suppression has
+// likely stopped working after a rule split and points them at the
+// migration path.
+//
+// Quiet when TERRAIN_QUIET=1 or the FindingID is malformed.
+func warnIfFindingIDIsAliased(e suppression.Entry, reg *aliases.Registry) {
+	if e.FindingID == "" || os.Getenv("TERRAIN_QUIET") == "1" {
+		return
+	}
+	detector, _, _, _, ok := identity.ParseFindingID(e.FindingID)
+	if !ok || detector == "" {
+		return
+	}
+	entry, isAlias := reg.Entry(detector)
+	if !isAlias {
+		return
+	}
+	if _, seen := suppressFindingIDWarnOnce.LoadOrStore(detector, true); seen {
+		return
+	}
+	fmt.Fprintf(os.Stderr,
+		"[NOTE] suppressions.yaml entry finding_id=%q references the deprecated rule_id %q.\n",
+		e.FindingID, detector,
+	)
+	fmt.Fprintf(os.Stderr,
+		"       After the split into %v, the original finding_id hash no longer matches\n",
+		entry.ReplacesWith,
+	)
+	fmt.Fprintln(os.Stderr,
+		"       any current finding; this entry has stopped suppressing. To migrate, replace")
+	fmt.Fprintln(os.Stderr,
+		"       the finding_id with a signal_type entry, or re-capture finding_ids from the")
+	fmt.Fprintln(os.Stderr,
+		"       latest analyze run. Set TERRAIN_QUIET=1 to silence this notice.")
+	fmt.Fprintln(os.Stderr)
 }
 
 // applySuppressions loads `.terrain/suppressions.yaml` (or the path
