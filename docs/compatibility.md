@@ -13,7 +13,7 @@ installer) ship for:
 | Linux | amd64, arm64 | Tier 1 (extended CI: race detector, determinism, smoke) |
 | macOS | amd64, arm64 | Tier 1 binary target (CI: unit-test parity) |
 | Windows | amd64 | Tier 1 binary target (CI: unit-test parity) |
-| Windows arm64 | — | Not built (planned 0.3) |
+| Windows arm64 | — | Not built today |
 
 Tier 1 means a pre-built binary ships for that OS/arch and `go test
 ./...` runs in CI on every PR before merge. Extended gates (race
@@ -40,9 +40,7 @@ Source builds work on any platform Go 1.23+ supports.
 
 Terrain's `analyze` command structurally models tests for the
 following frameworks. "Tier" reflects fixture coverage in the
-calibration corpus. (Conversion-direction A-grade ratings, originally
-planned to feed this tier, slipped to 0.3 — see `CHANGELOG.md`
-"Deferred to 0.3".)
+calibration corpus.
 
 | Framework | Language | Tier |
 |-----------|----------|------|
@@ -82,10 +80,7 @@ and feed `aiCostRegression` / `aiHallucinationRate` /
 ### CI providers
 
 Terrain's PR analysis works on any CI that can run a binary and
-read git history. We document GitHub Actions templates in
-[`README.md`](../README.md). Per-provider integration guides for
-GitLab CI, CircleCI, Jenkins, and pre-commit hooks are tracked in
-the 0.3 backlog.
+read git history. GitHub Actions templates are documented in [`README.md`](../README.md). Per-provider integration guides for GitLab CI, CircleCI, Jenkins, and pre-commit hooks are future work.
 
 ## Snapshot schema compatibility
 

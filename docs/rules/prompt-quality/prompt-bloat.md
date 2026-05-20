@@ -11,7 +11,7 @@ A prompt template's token count exceeds the configured budget, inflating per-cal
 - **Tier:** preview
 - **Default severity:** off (opt-in via `terrain.yaml`)
 - **Status:** preview — pending validation
-- **Graduation criteria:** LB-5 ≤ 5% (Wilson 95% lower bound) on dogfood corpus; LB-6 recall ≥ 80%.
+- **Graduation criteria:** false-positive rate ≤ 5% (Wilson 95% lower bound) on dogfood corpus; recall ≥ 80%.
 
 ## 3. What this catches
 
@@ -28,7 +28,7 @@ Token-counts the prompt template's content (BPE estimate or framework-reported c
 ```
 warning[terrain/prompt-quality/prompt-bloat]: prompt "summarize" is 4823 tokens (budget 2000)
   --> prompts/summarize.txt
-   = docs: https://terrain.dev/rules/prompt-quality/prompt-bloat
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/prompt-quality/prompt-bloat
 ```
 
 ## 9. Reproducibility

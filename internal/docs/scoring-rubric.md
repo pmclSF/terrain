@@ -1,0 +1,135 @@
+# Scoring Rubric
+
+This document is the canonical reference for how Terrain converts a snapshot
+of signals into the **risk surfaces** users see in `terrain analyze`,
+`terrain insights`, and `terrain explain`. It is the first half of a pair —
+the second half (`docs/health-grade-rubric.md`) explains the per-report
+A/B/C/D health grade.
+
+The 0.1.2 release locked every magic number that affects scoring behind a
+named constant in `internal/scoring/risk_engine.go`; 0.2.0 carries those constants forward unchanged while the calibration corpus runner provides the regression gate. This document explains what each constant means today and how future calibration work will refine them.
+
+## What the engine produces
+
+For every analyzed repository the risk engine emits a list of
+`RiskSurface` entries. Each surface has:
+
+- a **type** (`reliability`, `change`, `speed`, `governance`)
+- a **scope** (`repository` or `directory`)
+- a **band** (`low` / `medium` / `high` / `critical`)
+- a numeric **score** that explains the band
+- the list of **contributing signals** that fed the score
+- an **explanation** string that quotes those numbers back to the user
+
+Bands are categorical so users can reason about them without doing math.
+Scores are exposed for power users and tooling that wants to compare
+two snapshots quantitatively.
+
+## Severity weights
+
+Each contributing signal is weighted by its severity. The weights are
+fixed for 0.1.x and unchanged in 0.2.x:
+
+| Severity | Weight | Constant in code |
+|---|---|---|
+| Critical | 4.0 | `severityWeightCritical` |
+| High | 3.0 | `severityWeightHigh` |
+| Medium | 2.0 | `severityWeightMedium` |
+| Low | 1.0 | `severityWeightLow` |
+| Info | 0.5 | `severityWeightInfo` |
+
+The relationship is **roughly linear** — one Critical equals two Mediums and
+half a percentage of a High. These ratios were chosen by hand during 0.1.0
+design so that "any Critical" dominates a band assignment regardless of how many lower-severity findings are present. They are not yet corpus-derived; they will shift once a larger ground-truth labeled corpus is available.
+
+## How a score is computed
+
+For each risk dimension the engine sums the severity-weights of every
+signal in scope, producing `totalWeight`. It then computes both:
+
+```
+density  = (totalWeight / totalFiles) × 10
+absolute = log(1 + totalWeight) × 1.2 + log(1 + signalCount) × 0.8
+score    = max(density, absolute)
+```
+
+The `max` is intentional. Without it:
+
+- A small repo with five Medium findings (totalWeight = 10, density = 10)
+  would score "high" while a 1000-file repo with the same five findings
+  (density = 0.1) would score "low" — even though the developer
+  experience in both is equally bad.
+- Conversely, a giant repo with thousands of trivial findings could
+  produce a high density score that didn't reflect any concentration of
+  risk.
+
+Density captures concentration; absolute captures sheer burden; whichever is worse drives the band. Both axes are independently tunable for future calibration.
+
+## Band thresholds
+
+```
+score < 4               → low
+4   ≤ score <  9        → medium
+9   ≤ score < 16        → high
+score ≥ 16              → critical
+```
+
+These four thresholds are uncalibrated. They were chosen during 0.1.0 to produce three roughly evenly-sized bands across an internal sample of ~30 repos. They will be replaced with corpus-percentile-derived values calibrated against a larger labeled repository corpus; see
+`docs/release/feature-status.md` for the status of related work.
+
+## Hysteresis
+
+When `terrain compare` is used and the engine sees a previous band, it
+applies a `±0.5` deadband around each threshold so an analysis that
+hovers right at a boundary doesn't flap between two bands run-to-run.
+The deadband only affects band assignment, not the score itself, and
+only kicks in when a previous band is known. First-run analyses use the
+plain `scoreToBand` mapping above.
+
+## The governance floor
+
+Governance violations are special-cased. If the governance dimension's
+score lands below the Medium boundary AND a hard policy violation or a
+Critical/High signal is present, the score is floored to 4.0. Without
+this, a small repo with a single but real `policyViolation` would
+otherwise emit a Low band — which would be technically correct given the
+math but materially misleading given the meaning. The floor is the only
+case where the band is not a pure function of the score; it is documented
+inline in `risk_engine.go` and tested in `risk_engine_test.go`.
+
+## Why these numbers, today?
+
+Short answer: they were carried forward from 0.1.0 because changing them
+is a behavior-breaking event for every customer that has tuned policy
+gates around current band assignments. 0.1.2 made the existing behavior
+transparent and inspectable; 0.2.0 ships the calibration corpus runner
+that provides the regression gate without changing the model. The model
+itself is replaced in 0.3 once the labeled-corpus calibration lands.
+
+Long answer:
+
+1. The model was designed to be **explainable** end-to-end. Every
+   constant is named, every formula is one line of code, and every band
+   assignment can be traced back to a list of signals.
+2. The values were **internal-corpus heuristics**. We ran them against
+   a representative sample of repositories, eyeballed where the
+   boundaries should land, and locked them.
+3. **Calibration is needed**. The plan since 0.1.0 has been to land it once a labeled corpus large enough to resist over-fitting is available. The 0.2.0 calibration corpus is the load-bearing gate (regression-only); the labeled corpus + tuned constants are future work.
+
+## Future work
+
+When the labeled corpus expands, severity weights become whatever maximises labeled-repo precision/recall; band thresholds become corpus percentiles; the hybrid `max(density, absolute)` formula is re-evaluated against the corpus; every numeric value gets a confidence interval reported in `terrain explain`. Any change ships behind a `--scoring=v2` flag for one release before becoming default. Bands and band names are stable; only the math underneath changes.
+
+## Reading this rubric in code
+
+| Concept | Constant | File |
+|---|---|---|
+| Severity weight | `severityWeight*` | `internal/scoring/risk_engine.go` |
+| Band thresholds | `riskBand*Upper` | same |
+| Hysteresis deadband | `riskBandHysteresis` | same |
+| Density multiplier | `densityScoreScale` | same |
+| Absolute formula scales | `absoluteWeightScale`, `absoluteCountScale` | same |
+| Governance floor | `governanceFloorScore` | same |
+| Health grade thresholds | `healthGrade*Threshold` | `internal/insights/insights.go` |
+
+If you change any of them, document the rationale in this file and update the relevant boundary tests. The named constants exist specifically so unbounded magic-number drift cannot happen unchecked.

@@ -39,7 +39,7 @@ The rule is a pre-merge guard. It doesn't measure leakage at runtime (that's `te
 error[terrain/data/missing-train-test-split]: training call without preceding split helper
   --> training/model.py:5
    = help: Split the dataset before training (sklearn.model_selection.train_test_split, KFold, or TimeSeriesSplit for temporal data).
-   = docs: https://terrain.dev/rules/data/missing-train-test-split
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/data/missing-train-test-split
 ```
 
 **Before:**

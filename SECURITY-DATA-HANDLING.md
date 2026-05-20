@@ -97,8 +97,8 @@ The CI provider's own data handling (retention, indexing, access control) is the
 ## What about labeled corpus data?
 
 The published labeled calibration corpus (under CC-BY 4.0) is sourced from:
-- The project's own bespoke dogfood repos (`fullstack-rag`, `ml-pipeline`, `ai-only`) — built from scratch by the project; safe to publish
-- The forked-OSS dogfood repos (`go-monolith`, `polyglot-monorepo`) — code is already public under permissive license; corpus labels are project-authored
+- Project-owned reference repos built from scratch — safe to publish
+- Forked OSS repos under permissive license — code is already public; corpus labels are project-authored
 - *(Not* sourced from adopter repos, even with permission. Corpus contents are project-owned.)
 
 Adopter usage data is not aggregated, shared, or published. Terrain has no mechanism to collect it (see "no telemetry" above).

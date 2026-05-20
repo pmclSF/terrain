@@ -51,7 +51,7 @@
         },
         "terrain.docsBaseURL": {
           "type": "string",
-          "default": "https://terrain.dev/rules/",
+          "default": "https://github.com/pmclSF/terrain/blob/main/docs/rules/",
           "description": "Base URL prepended to rule slugs for the Open Rule Docs command."
         }
       }

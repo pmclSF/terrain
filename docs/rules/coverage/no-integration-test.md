@@ -34,7 +34,7 @@ Unit tests are fast and catch logic errors; integration tests catch wiring error
 warning[terrain/coverage/no-integration-test]: handler "/api/refund" has no integration test
   --> backend/handlers/refund.go:42
    = help: Add an integration test that POSTs to /api/refund.
-   = docs: https://terrain.dev/rules/coverage/no-integration-test
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/coverage/no-integration-test
 ```
 
 ## 7. Configuration

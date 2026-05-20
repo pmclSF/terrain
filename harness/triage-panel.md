@@ -63,7 +63,7 @@ Bar: ≥2 of 3 panelists answer all four correctly (adjusted from earlier ≥4 o
 
 ## Cadence
 
-- Once per release tag at minimum (0.2.0, 0.3.0, etc.)
+- Once per release tag at minimum
 - Spot checks per patch release only when a stable rule's detection mechanism changes
 - Per `docs/PRODUCT.md` §13: pre-1.0, the project publishes actual panel-run dates and outcomes in each release's readiness cards. Adopters can verify the cadence is being followed.
 - **If volunteer recruitment fails to deliver minimum N** (≥3 per rule for LB-2, ≥3 senior for LB-12): cadence drops with explicit acknowledgment in release notes; the affected LBs are marked "panel-pending" in readiness cards rather than measured to inflated confidence

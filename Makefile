@@ -115,6 +115,18 @@ release-dry-run:
 pr-gate:
 	$(MAKE) check
 	$(MAKE) test
+	$(MAKE) regression-precision
+
+# regression-precision: replay n=250 corpus against current detector logic
+# and fail if any detector's precision dropped >2pp from baseline.
+# Baseline captured 2026-05-18 after Phase A/B validation + Phase C structural
+# fixes. Updated whenever a detector's behavior intentionally changes — the
+# script's BASELINE_PRECISION dict is the source of truth.
+#
+# Data: tier-4/detector-validation.jsonl + tier-4/detector-validation-n200.jsonl
+# Filter helpers mirror production Go code; keep in sync via this target.
+regression-precision:
+	python3 scripts/regression_precision.py
 
 # Release gate: full verification required before release
 release-gate: go-release-verify
@@ -140,7 +152,7 @@ extension-verify:
 # and diffs against the committed copy so CI fails when a manifest
 # change ships without the regenerated docs.
 docs-gen:
-	go run ./cmd/terrain-docs-gen
+	go run ./cmd/internal/terrain-docs-gen
 
 docs-verify:
 	@scripts/docs-verify.sh
@@ -152,15 +164,15 @@ docs-verify:
 # Soft gates (Align in 0.2.0) print a WARN banner but do not fail.
 # Source-of-truth doc is `docs/release/0.2.x-maturity-audit.md`.
 pillar-parity:
-	@go run ./cmd/terrain-parity-gate
+	@go run ./cmd/internal/terrain-parity-gate
 
 # JSON form for CI integration / external tooling.
 pillar-parity-json:
-	@go run ./cmd/terrain-parity-gate --json
+	@go run ./cmd/internal/terrain-parity-gate --json
 
 # Compact form: per-area + per-pillar floor map only.
 pillar-parity-floor:
-	@go run ./cmd/terrain-parity-gate --floor-map
+	@go run ./cmd/internal/terrain-parity-gate --floor-map
 
 # `docs-linkcheck` walks docs/ and verifies that every intra-repo
 # markdown link resolves to a real file. Skips docs/internal/ and
@@ -169,7 +181,7 @@ pillar-parity-floor:
 # also scan them. External links (http/https/mailto) are out of
 # scope. Track 9.8 deliverable for the 0.2.0 parity plan.
 docs-linkcheck:
-	@go run ./cmd/terrain-docs-linkcheck
+	@go run ./cmd/internal/terrain-docs-linkcheck
 
 # `truth-verify` cross-checks docs/release/feature-status.md against
 # the canonical signal manifest. Every signal name documented in the
@@ -179,7 +191,7 @@ docs-linkcheck:
 # advisory warnings — pass --strict-orphans to fail on them too.
 # Track 9.7 deliverable for the 0.2.0 parity plan.
 truth-verify:
-	@go run ./cmd/terrain-truth-verify
+	@go run ./cmd/internal/terrain-truth-verify
 
 # `voice-lint` enforces the voice-and-tone rules from the parity
 # plan's Track 10.7: no exclamation-mark prose (jarring), no British
@@ -188,7 +200,7 @@ truth-verify:
 # reporting, changescope). Test files are skipped — tests can use any
 # prose without tripping the lint.
 voice-lint:
-	@go run ./cmd/terrain-voice-lint
+	@go run ./cmd/internal/terrain-voice-lint
 
 # ── Calibration corpus ──────────────────────────────────────
 # Runs the engine pipeline against every fixture under tests/calibration/
@@ -222,7 +234,7 @@ bench-gate:
 	@tmp=$$(mktemp) ; \
 	go test -run '^$$' -bench 'BenchmarkRunPipeline|BenchmarkSignalDetection|BenchmarkBuildImportGraph|BenchmarkRiskScore|BenchmarkExtractTestCases' \
 		-count=5 ./internal/engine ./internal/analysis ./internal/scoring ./internal/testcase > $$tmp ; \
-	go run ./cmd/terrain-bench-gate --base benchmarks/baseline.txt --head $$tmp --threshold 10 ; \
+	go run ./cmd/internal/terrain-bench-gate --base benchmarks/baseline.txt --head $$tmp --threshold 10 ; \
 	rc=$$? ; \
 	rm -f $$tmp ; \
 	exit $$rc
@@ -259,4 +271,4 @@ benchmark-summary:
 
 # Compare current Go converters against the legacy JS runtime floor.
 benchmark-convert:
-	go run ./cmd/terrain-convert-bench
+	go run ./cmd/internal/terrain-convert-bench

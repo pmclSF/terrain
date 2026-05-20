@@ -27,7 +27,7 @@ Inventory Eval.Category values; fire when configured target categories aren't re
 ```
 info[terrain/coverage/missing-eval-categories]: no adversarial or safety eval categories
   --> evals/
-   = docs: https://terrain.dev/rules/coverage/missing-eval-categories
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/coverage/missing-eval-categories
 ```
 
 ## 9. Reproducibility

@@ -27,7 +27,7 @@ AST walk: find agent constructors paired with tool registrations. Fires when no 
 ```
 warning[terrain/agent-quality/tool-no-budget]: tool-calling agent has no budget configured
   --> agents/researcher.py:28
-   = docs: https://terrain.dev/rules/agent-quality/tool-no-budget
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/agent-quality/tool-no-budget
 ```
 
 ## 9. Reproducibility

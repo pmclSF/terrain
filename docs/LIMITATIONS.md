@@ -15,56 +15,39 @@ These will not be added to Terrain. Adopters needing them should look elsewhere.
 - **General code-review commentary.** Terrain's output is failing test cases with structured diagnostics, not narrative reviews. Adopters wanting code-quality narrative use CodeRabbit / Greptile / similar.
 - **Generic-purpose AI tooling.** Terrain integrates with eval frameworks but is not itself one. It does not author evals, manage prompts, or run experiments.
 
-## Capabilities deferred to a later release
+## Capabilities not in 0.2.0
 
-Capability we plan to add but is not in 0.2.0. Linked to the roadmap section in `docs/PRODUCT.md` §17.
+These capabilities are not in scope for 0.2.0. They may land in future releases as priorities and adopter feedback warrant. The list below is illustrative of common asks, not a roadmap commitment.
 
-### Deferred to 0.3.0
+**IDE and editor integrations**
+- Full LSP-server mode, JetBrains, Neovim, Helix. 0.2.0 ships a VS Code Marketplace alpha that reads artifacts and renders Problems-pane findings.
 
-- **Full IDE integration.** 0.2.0 ships a VS Code Marketplace extension at *alpha* — reads artifacts and renders findings in the Problems pane, but no inline squigglies, no on-save analysis, no refactoring actions, no LSP-server mode. Full LSP + JetBrains + Neovim + Helix in 0.3.0.
-- **Additional language support.** Ruby, Rust, Kotlin. 0.2.0 supports Go, JS/TS, Python, Java.
+**Languages beyond Go, JS/TS, Python, Java**
+- Ruby, Rust, Kotlin, Swift, Scala, C# are not analyzed in 0.2.0.
 
-### Deferred to 0.4.0+
+**Multi-repo / polyrepo analysis**
+- 0.2.0 analyzes a single repo. Adopters with FE/BE in separate repos run Terrain on each independently.
 
-- **Polyrepo support.** 0.2.0 analyzes a single repo. Adopters with FE/BE in separate repos run Terrain on each independently. Cross-repo edges (shared graph spanning multiple repos) are 0.4.0+ work.
-- **GitHub Marketplace Action.** Publication of `pmclSF/terrain-action@v1`. 0.2.0 ships Terrain as a binary that adopters invoke directly from CI; the named Action wrapper lands later.
-- **Claude Skill / OpenAI Apps SDK listings.** Marketplace listings that wrap the MCP server. 0.2.0 ships the MCP server itself; the vendor-marketplace packaging lands later.
-- **Additional eval framework adapters.** Evidently, deepchecks, Fairlearn, NannyML. 0.2.0 ships four named adapters (promptfoo, deepeval, ragas, Great Expectations) plus gauntlet via JSON-format-compatible ingestion.
-- **Deeper dbt integration.** 0.2.0 parses dbt's `manifest.json` (structure). Ingesting `dbt test` runtime results as Terrain findings, plus full lineage edges to dependent code, lands in 0.4.0.
-- **GraphQL ecosystem runtime integration.** 0.2.0 parses GraphQL schemas for cross-language edges. Ingesting Apollo / Hasura / GraphQL-test-suite *results* lands in 0.4.0.
-- **Test-execution platform ingestion.** Cypress Cloud, Playwright Cloud, BrowserStack, Sauce Labs run results. 0.4.0+.
+**Marketplace listings**
+- GitHub Action / Claude Skill / OpenAI Apps SDK listings are not yet published. 0.2.0 ships Terrain as a binary invoked directly from CI; the MCP server is also shipped.
 
-### Deferred to 0.5.0+
+**Additional eval, data, and ML platform adapters**
+- 0.2.0 includes promptfoo, deepeval, ragas, Great Expectations (plus gauntlet via JSON-compatible ingestion). Other eval frameworks (Evidently, deepchecks, Fairlearn, NannyML), data-observability tools, ML registries beyond MLflow/W&B, deeper dbt and GraphQL runtime integration are not in scope at 0.2.0.
 
-- **Observability tool integration.** Honeycomb, Datadog, New Relic, Sentry, Grafana, Prometheus. Production-aware rules (`performance/production-latency-regression`, `regression/production-error-spike`, `coverage/production-call-without-monitor`) require this and are reserved as rule IDs but not implemented at 0.2.0.
-- **Deployment-orchestrator integration.** Argo CD, Spinnaker, Flagger pre-deploy hooks. Terrain as a deploy-gate (not just merge-gate). 0.5.0.
-- **Data-observability integration.** Monte Carlo, Bigeye, Soda, Anomalo, Datafold.
-- **Coverage data ingestion.** Codecov, Coveralls.
-- **Deep ML platform integration.** SageMaker Pipelines / Model Monitor / Clarify / Endpoints; Vertex AI Pipelines / Model Monitoring / Explainable AI / Endpoints; Databricks ML / Unity Catalog; Azure ML Pipelines & Model Registry. 0.2.0 ships only the *registry-awareness* layer (MLflow, W&B detected; SageMaker / Vertex registry awareness added).
-- **LLM-observability integration.** Langfuse, Helicone, Arize Phoenix, OpenLLMetry, OpenInference.
-- **Cost tracking integration.** Vantage, CloudZero, OpenCost.
-- **Issue-tracker integration.** Linear, Jira (for "create issue from Terrain finding" flow).
-- **Intra-procedural data-flow tracing.** Required for `security/insecure-deserialization` to do *content-aware* detection (resolves path to user-controlled input). At 0.2.0 the rule is purely structural (any unguarded pickle.load is flagged); precision refinement lands when data-flow tracing lands.
+**Observability and production-signal ingestion**
+- Honeycomb, Datadog, New Relic, Sentry, Grafana, Prometheus, LLM-observability platforms, cost-tracking platforms. Production-aware rules that depend on these are not implemented at 0.2.0.
 
-### Deferred to 0.6.0+
+**Deeper data-flow analysis**
+- Intra-procedural data-flow tracing is not in 0.2.0. `security/insecure-deserialization` is structural-only as a result (any unguarded `pickle.load` / `joblib.load` / `torch.load` / `yaml.load` is flagged).
 
-- **Additional language coverage.** Swift, Scala, C# per adopter demand.
-- **Additional registry / MLOps integrations.** Comet, Neptune, ClearML, DagsHub, Modal.
-- **Feature-store integration.** Feast, Tecton, Hopsworks, Featureform.
-- **Vector-database integration.** Pinecone, Weaviate, Chroma, Qdrant, Milvus, pgvector.
-- **ML governance integration.** Fiddler, Arthur, WhyLabs, Truera.
-- **Notebook environment integration.** Jupyter, Hex, Deepnote, nbval, testbook.
-- **Additional pipeline orchestrators.** Kubeflow, Metaflow, ZenML, Flyte.
-- **Visual / UI testing integration.** Percy, Chromatic, Applitools.
-- **Contract testing integration.** Pact, Spectral.
-- **Notifications.** Slack, MS Teams, PagerDuty — configurable per-rule, on-error-only. Deliberate non-default: silence-on-green principle holds; notifications are opt-in.
-- **Additional CI platform support.** Bitbucket Pipelines, Jenkins, Azure Pipelines, Buildkite, TeamCity. 0.2.0 supports GitHub Actions and GitLab CI.
+**Other CI platforms beyond GitHub Actions and GitLab CI**
+- Bitbucket Pipelines, Jenkins, Azure Pipelines, Buildkite, TeamCity are not packaged with first-class templates at 0.2.0.
 
 ## Rules in *preview* at 0.2.0 (not default-on)
 
-45 rules ship as preview — fully implemented and documented in short-form, but default-off because LB-2a/b/c and LB-5 (FP rate at Wilson 95% lower bound) have not been measured at the target bar on the dogfood repos at release time. Adopters can opt in via `terrain.yaml`; their feedback feeds graduation to stable.
+A subset of rules ship as preview — fully implemented and documented in short-form, but default-off because triage time and false-positive rate have not been measured at the target bar on the dogfood repos at release time. Adopters can opt in via `terrain.yaml`; their feedback feeds graduation to stable.
 
-See `docs/PRODUCT.md` §9 preview-rule list for the full set. The largest preview categories:
+The largest preview categories:
 
 - **Fairness** (4) — `group-disparity`, `missing-group-eval`, `disparate-impact`, `group-coverage-low`. Stay preview until Fairlearn / Aequitas detection lands.
 - **Drift / data validation** (8) — `drift-detected`, `calibration-degraded`, `schema-mismatch`, `null-rate-high`, `distribution-shift`, `duplicate-rows`, `imbalanced-classes`, `feature-leakage`, `group-leakage`. Stay preview until Evidently / Alibi Detect / NannyML detection lands and Pandera / Great Expectations adapters mature past parse-only.
@@ -77,10 +60,10 @@ These are not "deferred to later" — they are explicit limitations of how 0.2.0
 
 - **Cross-language API edges are inferred at route granularity** for HTTP routes without schema. OpenAPI / tRPC / gRPC / GraphQL get field-level narrowing (the `fields_read` set); raw HTTP routes don't. Adopters with substantial untyped HTTP traffic between languages will see `regression/test-failed` over-select tests on FE changes touching those routes.
 - **`data/leakage-suspected` covers row-overlap and temporal leakage only** at 0.2.0. Feature leakage (column derived from label) and group leakage (same entity in both splits) are preview rules `data/feature-leakage` and `data/group-leakage`.
-- **`security/insecure-deserialization` is structural at 0.2.0** — flags any unguarded `pickle.load` / `joblib.load` / `torch.load` / `yaml.load` regardless of whether the path resolves to user-controlled input. Higher FP rate on legitimate trusted-load patterns; adopters can suppress via path-level ignore. Content-aware refinement lands with intra-procedural data-flow tracing (0.5.0+).
+- **`security/insecure-deserialization` is structural at 0.2.0** — flags any unguarded `pickle.load` / `joblib.load` / `torch.load` / `yaml.load` regardless of whether the path resolves to user-controlled input. Higher FP rate on legitimate trusted-load patterns; adopters can suppress via path-level ignore. Content-aware refinement lands with future intra-procedural data-flow tracing.
 - **MCP spec version is pinned to 2025-11-25.** Newer MCP spec versions adopt via the one-cycle deprecation contract; adopters using newer MCP clients should consult `docs/integrations/mcp.md` for compatibility notes.
-- **VS Code extension is alpha.** Marketplace-published but with limited capability — reads artifacts, renders Problems-pane findings, click-to-navigate. No inline squigglies, no real-time analysis. Full extension lands in 0.3.0.
-- **The validation harness measures against the dogfood corpora.** LB-5 FP rate, LB-2 triage time, LB-6 recall are all measured against the project's curated test substrate plus one third-party adopter repo (under NDA). They are *predictive of* real adopter behavior but are not adopter-specific. Adopters can run the harness against their own repos to get repo-specific measurements.
+- **VS Code extension is alpha.** Marketplace-published but with limited capability — reads artifacts, renders Problems-pane findings, click-to-navigate. No inline squigglies, no real-time analysis. Full extension capability is future work.
+- **The validation harness measures against the dogfood corpora.** False-positive rate, triage time, and recall are all measured against the project's curated test substrate. They are *predictive of* real adopter behavior but are not adopter-specific. Adopters can run the harness against their own repos to get repo-specific measurements.
 - **Telemetry is none-by-default; there is no anonymous usage data.** Adopters who want to share usage stats with the project to inform development priorities can opt in (not yet implemented; future feature behind explicit config). The project cannot tell, by default, how many adopters use Terrain or which rules they've configured.
 
 ## Things the project will *not* do under stability commitments

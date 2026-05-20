@@ -62,7 +62,7 @@ error[terrain/regression/eval-regression]: eval `summarize_refusal` regressed
    = help:    restore the input length cap on CommentInput.tsx:42, or
               add length validation in /api/summarize before model invocation
    = note:    terrain explain regression/eval-regression --eval summarize_refusal
-   = docs:    https://terrain.dev/rules/regression/eval-regression
+   = docs:    https://github.com/pmclSF/terrain/blob/main/docs/rules/regression/eval-regression
 ```
 
 **Before** (the prompt section that changed):
@@ -133,11 +133,11 @@ From CI:
 terrain explain regression/eval-regression --eval summarize_refusal --from-run <run-id>
 ```
 
-The local diagnostic output is byte-equivalent to the CI surface (LB-4).
+The local diagnostic output is byte-equivalent to the CI surface (local-CI parity guarantee).
 
 ## 10. Stability commitment
 
-This rule's ID, default severity, behavior, and tunable-config schema are stable from v0.2.0. Per `docs/PRODUCT.md` §18 versioning:
+This rule's ID, default severity, behavior, and tunable-config schema are stable from v0.2.0. Per `docs/PRODUCT.md` §14 (Versioning):
 
 - **Renames:** one-cycle deprecation. None planned.
 - **Default threshold change** (currently 5%): treated as breaking; deprecation-cycled.

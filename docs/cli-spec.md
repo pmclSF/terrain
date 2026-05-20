@@ -34,13 +34,12 @@ It must be:
 Legacy aliases (`terrain summary`, `terrain insights`,
 `terrain compare`, `terrain convert <file>`, `terrain focus`,
 etc.) continue to route to the same handlers through 0.2.x.
-Removal targets 0.3.
+Removal is future work.
 
 The legacy top-level commands documented in this file
 (`terrain summary`, `terrain insights`, etc.) continue to work
 through 0.2.x as aliases that route to the same runners. Set
-`TERRAIN_LEGACY_HINT=1` to see deprecation hints. Removal targets
-0.3.
+`TERRAIN_LEGACY_HINT=1` to see deprecation hints.
 
 ### `terrain version`
 Purpose:
@@ -483,9 +482,7 @@ Security:
 - Reads (and serves) the snapshot from disk; never writes.
 
 For multi-developer hosts, use an SSH tunnel rather than binding to a
-non-localhost address; first-class authentication is 0.3 work.
-
----
+non-localhost address; first-class authentication is future work.
 
 ---
 
@@ -497,7 +494,7 @@ Two workflow templates are provided in `.github/workflows/`:
 Runs on every PR. Analyzes impact, selects relevant tests, runs them, and posts a PR comment with the results.
 
 ### `terrain-ai.yml` — AI Risk Review Gate
-Runs on every PR. Checks AI surface coverage, runs impact-scoped eval scenario selection, and posts a PR comment summarizing the AI risk review (uncovered surfaces, blocking signals, eval regressions). Blocks the PR if the gate returns "block" (uncovered safety-critical surfaces, accuracy regressions, etc.). The 0.2 detector set is regex/heuristic for the AI surface area; AST-grade taint analysis and labeled-repo precision floors land in 0.3.
+Runs on every PR. Checks AI surface coverage, runs impact-scoped eval scenario selection, and posts a PR comment summarizing the AI risk review (uncovered surfaces, blocking signals, eval regressions). Blocks the PR if the gate returns "block" (uncovered safety-critical surfaces, accuracy regressions, etc.). Deeper detection mechanisms and labeled-repo precision floors are future work.
 
 Both workflows are opt-in — copy them to your repository's `.github/workflows/` directory to enable.
 

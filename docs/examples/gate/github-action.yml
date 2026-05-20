@@ -16,8 +16,8 @@
 # an optional add-on.
 #
 # Reference: https://github.com/pmclSF/terrain
-# Vision:    docs/product/vision.md
-# Trust:     docs/product/trust-ladder.md (which mode to run when)
+# Vision:    the product reference
+# Trust:     the trust posture documented in `SECURITY-DATA-HANDLING.md` (which mode to run when)
 # Policy:    docs/policy/examples/{minimal,balanced,strict}.yaml
 
 name: Terrain

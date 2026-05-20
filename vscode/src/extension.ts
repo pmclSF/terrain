@@ -152,7 +152,7 @@ function findingToDiagnostic(f: Finding): vscode.Diagnostic | undefined {
   diag.source = "terrain";
   diag.code = {
     value: f.rule_id,
-    target: vscode.Uri.parse(f.docs_url ?? "https://terrain.dev/"),
+    target: vscode.Uri.parse(f.docs_url ?? "https://github.com/pmclSF/terrain/blob/main/docs/rules/"),
   };
 
   const tags: vscode.DiagnosticTag[] = [];
@@ -241,6 +241,6 @@ async function openRuleDocs(): Promise<void> {
   if (!picked) {
     return;
   }
-  const url = picked.finding.docs_url ?? "https://terrain.dev/";
+  const url = picked.finding.docs_url ?? "https://github.com/pmclSF/terrain/blob/main/docs/rules/";
   await vscode.env.openExternal(vscode.Uri.parse(url));
 }

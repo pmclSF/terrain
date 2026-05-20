@@ -43,7 +43,7 @@ Prompts ship to the model and may be persisted in logs, traces, telemetry, or me
 critical[terrain/hygiene/secrets-in-prompt]: prompt file contains credential (openai-api-key, aws-access-key)
   --> prompts/admin.txt
    = help: Rotate the leaked credential immediately, then move it to an environment variable or secret manager.
-   = docs: https://terrain.dev/rules/hygiene/secrets-in-prompt
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/hygiene/secrets-in-prompt
 ```
 
 ## 7. Configuration

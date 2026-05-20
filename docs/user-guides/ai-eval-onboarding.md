@@ -32,7 +32,7 @@ run the framework on your behalf.
 | Compute gate decision (BLOCKED / WARN / PASS) | ✓ | |
 | Surface per-input ingestion diagnostics | ✓ | |
 
-Detail: see [docs/product/ai-trust-boundary.md](../product/ai-trust-boundary.md).
+Detail: see [`SECURITY-DATA-HANDLING.md`](../../SECURITY-DATA-HANDLING.md).
 
 ## Step 1 — Confirm Terrain sees your AI surfaces
 
@@ -170,4 +170,4 @@ the JSON envelope are the canonical machine-readable surface.
 - [docs/integrations/promptfoo.md](../integrations/promptfoo.md) — Promptfoo-specific setup
 - [docs/integrations/deepeval.md](../integrations/deepeval.md) — DeepEval-specific setup
 - [docs/integrations/ragas.md](../integrations/ragas.md) — Ragas-specific setup
-- [docs/product/ai-trust-boundary.md](../product/ai-trust-boundary.md) — what Terrain executes vs. parses
+- [`SECURITY-DATA-HANDLING.md`](../../SECURITY-DATA-HANDLING.md) — what Terrain executes vs. parses

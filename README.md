@@ -1,19 +1,22 @@
 # Terrain
 
-> **Terrain is the control plane for your test system.**
+> **Pre-flight checks for AI/ML systems and the tests around them. Locally, no API key required.**
 >
-> It maps how your unit, integration, e2e, and AI tests actually relate
-> to your code — and lets you gate changes based on that system as a whole.
->
-> See what's covered, what's missing, and what's overlapping.
-> See which tests matter for a PR — and why.
-> Bring AI evals into the same review pipeline as the rest of your tests.
+> Terrain is a static analyzer that treats unit tests, integration tests, e2e tests, and AI/ML evals as one dependency graph. It catches prompt-schema drift, train/test leakage, eval coverage gaps, model deprecations, framework-migration blockers, untested exports, and the cross-language cause chains general-purpose tools miss — locally, deterministically, on every PR.
 
-*Map your test terrain.* Two commands an adopter learns first, in order:
+**Five personas, one graph:**
+
+- **Frontend developer** — find out before merge if a UI change breaks a downstream AI contract.
+- **Backend / platform engineer** — see which models are affected by a schema or API change.
+- **Classical ML engineer** — train/test integrity, drift, fairness regressions, performance deltas.
+- **LLM engineer** — scenario-based eval regression across prompts, RAG components, and models.
+- **Senior decision-maker** — public per-rule readiness cards, open calibration corpus, reproducible benchmarks.
+
+Two commands an adopter learns first:
 
 ```bash
-terrain analyze         # Understand your test system
-terrain report pr       # Gate PR changes based on it
+terrain analyze         # What's the state of our AI + test system?
+terrain report pr       # What does this change put at risk?
 ```
 
 Everything else is a deeper view *off* this primary workflow.
@@ -21,58 +24,51 @@ Everything else is a deeper view *off* this primary workflow.
 ## Install
 
 ```bash
-# Homebrew
 brew install pmclSF/terrain/mapterrain
-
-# npm — requires Node 22+ and cosign on PATH for signed-binary verification.
-# (CI on Node 20 LTS? Use the brew or `go install` path above.)
-# brew install cosign  (macOS / Linux)
-# scoop install cosign (Windows)
-# Set TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1 to fall back to checksum-only,
-# or TERRAIN_INSTALLER_SKIP_VERIFY=1 to skip verification entirely.
-npm install -g mapterrain
-
 cd your-repo
 terrain analyze
 ```
 
-No config and no test execution are required for the basic scan. Stronger
-findings (runtime health, eval regression, policy enforcement) are unlocked
-by optional artifacts; degrade gracefully when absent.
+No config and no test execution are required for the basic scan. Stronger findings (runtime health, eval regression, policy enforcement) are unlocked by optional artifacts; degrade gracefully when absent.
+
+Other install paths (npm, `go install`, pre-built binaries, build from source) and the cosign-verification details are in the [Installation](#installation) section below.
+
+## Trust & Data Handling
+
+Terrain runs entirely on your machine. Zero outbound network calls in the default configuration; no API keys, no SaaS, no telemetry. Verifiable with `terrain --print-network`. For enterprise review, see [SECURITY-DATA-HANDLING.md](SECURITY-DATA-HANDLING.md).
 
 > **New here?** Read the [Quickstart Guide](docs/quickstart.md) to understand your first report in 5 minutes.
-> **Going deeper?** [`docs/product/vision.md`](docs/product/vision.md) is the full product narrative.
+> **Going deeper?** See [`docs/PRODUCT.md`](docs/PRODUCT.md) for the product reference and [`docs/OVERVIEW.md`](docs/OVERVIEW.md) for the evaluator-focused summary.
 > **Adopting in CI?** See [What 0.2 is and isn't](#what-02-is-and-isnt) below first.
 
 ---
 
-Terrain operates one layer above the test runners — the same architectural pattern as a Kubernetes control plane, but for the test system. Test runners (Jest / pytest / Go test / Playwright / Promptfoo) continue to execute; Terrain reads what they produce, models the system as one thing, and gates against it.
+Terrain sits one layer above your test runners. Pytest, jest, Go test, Playwright, and Promptfoo continue to execute; Terrain reads what they produce, models the AI surface alongside the test surface, and gates pull requests on AI/ML risks, test-system regressions, and cross-language drift that general-purpose tools don't catch.
 
-When the testing surface drifts from the code surface — exports without tests, frameworks fragmenting across directories, AI surfaces shipping without scenarios, one team's posture diverging from another's — Terrain shows where the drift is and what convergence would take. That's the alignment side of the job. Conversion (migrating frameworks, e.g. Jest → Vitest) is one mode of alignment, not a separate product.
+Common drift it catches: prompts referencing renamed schema fields, train/test leakage, eval coverage gaps, deprecated model IDs lingering in production paths, hardcoded API keys in source, framework-migration blockers, untested exports, and weak assertions.
 
-## What "Test Terrain" Means
+## What Terrain Maps
 
 Most teams know what tests they have. Few teams understand the *terrain* underneath:
 
+- Which AI surfaces (prompts, agents, tools, contexts) have no eval scenario covering them?
+- Which prompt templates reference schema fields that just got renamed in a different language?
 - Which source files have no structural test coverage?
-- Which shared fixtures fan out to thousands of tests, making any change to them a blast-radius problem?
+- Which shared fixtures fan out to thousands of tests, making any change a blast-radius problem?
 - Which test clusters are near-duplicates burning CI time?
-- Which areas have tests but weak assertions that wouldn't catch a real regression?
 - When you change `auth/session.ts`, which 41 of your 18,000 tests actually matter?
 
-Test terrain is the structural topology of your test system — the dependency graph, the coverage landscape, the duplication clusters, the fanout hotspots, the skip debt. Terrain maps it.
+Terrain maps the dependency graph, coverage landscape, duplication clusters, fanout hotspots, skip debt, AI surfaces, and cross-language edges — and turns each into a structured finding.
 
-## Problems Terrain Solves
+**Under the hood:**
 
-**"We don't know the state of our test system."** Teams inherit test suites they didn't write. Terrain gives a baseline in seconds: framework mix, coverage confidence, duplication, risk posture.
-
-**"CI takes too long and we don't know what to cut."** Terrain identifies redundant tests, high-fanout fixtures, and confidence-based test selection — showing where CI time is wasted and what can be safely reduced.
-
-**"We changed auth code — what tests should we worry about?"** Terrain traces your change through the import graph and structural dependencies, returning the impacted tests ranked by confidence, with reason chains explaining each selection.
-
-**"A tool flagged something but won't explain why."** Every Terrain finding carries an evidence chain. `terrain explain` shows exactly what signals, dependency paths, and scoring rules produced each decision.
-
-**"We're migrating frameworks and need to know what's blocking us."** Migration readiness, blockers by type, and preview-scoped difficulty assessment — all derived from static analysis.
+- **Cross-language graph** — TS/JS ↔ Python/Go/Java edges via OpenAPI, tRPC, gRPC, GraphQL, and HTTP-route inference
+- **Schema awareness** — Postgres, MySQL, Pydantic, TypeScript types, sqlc, gorm, prisma, sqlalchemy
+- **Pipeline awareness** — dbt, Airflow, Prefect
+- **ML registry awareness** — MLflow, W&B
+- **Framework migration** — Jest ↔ Vitest, JUnit 4 ↔ 5, Cypress ↔ Playwright, and other test-framework conversions
+- **MCP server** for AI assistants (Claude Code, Cursor)
+- **Three diagnostic surfaces** for the same artifact — CI status check + JUnit + GitHub annotations, CLI, and an MCP read-only server
 
 ## The Four Canonical Workflows
 
@@ -217,7 +213,7 @@ Next steps:
   terrain impact --show tests     see all impacted tests
 ```
 
-See [Canonical User Journeys](docs/product/canonical-user-journeys.md) for the full workflow specification and [example outputs](docs/examples/) for detailed report samples.
+See [example outputs](docs/examples/) for detailed report samples.
 
 ## Product Philosophy
 
@@ -243,7 +239,7 @@ It's worth stating what Terrain *doesn't* try to do, because the test-tooling sp
 - **Not a developer-productivity dashboard.** Terrain measures the test system, not the people writing tests. It deliberately produces no leaderboards, no per-developer metrics, no "engineer productivity" rankings. Ownership data is used for routing, not scoring.
 - **Not a service.** Terrain analysis is local. No SaaS, no analytics, no account required. Reports stay where you produce them. (Note: `npm install -g mapterrain` and `brew install` download signed binaries from GitHub Releases as part of installation; analysis itself does not phone home.)
 
-If you're evaluating Terrain against another tool and the boundary isn't obvious, please open an issue — we'll write the comparison entry under `docs/compare/`.
+If you're evaluating Terrain against another tool and the boundary isn't obvious, please open an issue.
 
 ## What 0.2 Is and Isn't
 
@@ -253,7 +249,7 @@ this is the summary view.
 
 Capabilities are tiered:
 
-- **Tier 1** — covered by tests, documented behavior, claimed publicly. Floor ≥ 3 on the parity rubric in 0.2.0; Gate floor lifts to ≥ 4 in 0.3 once the labeled real-repo precision corpus lands.
+- **Tier 1** — covered by tests, documented behavior, claimed publicly. Floor ≥ 3 on the parity rubric in 0.2.0.
 - **Tier 2** — shipping but explicitly experimental; useful but not yet hardened. Floor ≥ 3.
 - **Tier 3** — in development, opt-in, no public claim. Wait for promotion.
 
@@ -281,7 +277,7 @@ Capabilities are tiered:
 - `terrain report impact` — impact selection with reason chains (`--explain-selection`)
 - `terrain analyze --fail-on / --timeout / --new-findings-only` — CI gating primitives
 - `terrain policy check` — policy enforcement
-- Eval artifact ingestion — Promptfoo / DeepEval / Ragas adapters
+- Eval artifact ingestion — Promptfoo / DeepEval / Ragas / Great Expectations adapters (plus gauntlet via JSON-compatible ingestion)
 - AI risk: **inventory** (Tier 1, reliable)
 - AI risk: **hygiene** + **regression** (Tier 2, visible but not gating-critical)
 - `terrain ai run` + `terrain ai record` + `terrain ai baseline compare` (Tier 2) — regression-aware AI gate (record a baseline, then compare subsequent runs)
@@ -293,38 +289,14 @@ These are explicit non-claims:
 - **Terrain does not guarantee safe test skipping.** It provides explainable selection and gating signals. The "see which tests matter — and why" pitch is a clarity claim, not a safe-skip claim.
 - **Terrain does not run your tests.** Test runners execute; Terrain reads what they produce.
 - **Terrain does not judge model truthfulness.** AI risk detectors surface heuristic structural patterns and ingest eval-framework metadata.
-- **Terrain does not promise public-grade precision floors in 0.2.x.** Recall-anchored calibration only; labeled-corpus precision floors are 0.3 work.
-
-### Planned for 0.3
-
-- Per-detector precision benchmarking against a labeled-repo corpus
-- AST-grade taint analysis for prompt injection
-- Suppression lifecycle (expiry, owner, audit) — basic suppressions ship in 0.2.0
-- `terrain ai gate` standalone command
-- Plugin architecture for community adapters
-- Sandboxing for eval execution
-- Legacy CLI alias removal (with a 0.2.x deprecation runway)
-- AI-aware integration / e2e tests under the control plane (0.4 trajectory)
-
-## Who Uses Terrain
-
-Terrain is framework-agnostic and language-aware. The same analysis model applies across:
-
-- **Frontend teams** — React/Vue component tests, Playwright/Cypress E2E suites, Vitest/Jest unit tests
-- **Backend teams** — Go test suites, pytest collections, JUnit hierarchies, integration test infrastructure
-- **Mobile teams** — cross-platform test suites with standard test frameworks
-- **QA / SDET** — test portfolio management, coverage gap analysis, migration planning across frameworks
-- **SRE / Platform** — CI optimization, test selection for pipelines, policy enforcement
-- **AI / ML evaluation** — evaluation suite structure, benchmark test management, coverage across model behaviors
-
-The structural model is the same. The signals and recommendations adapt to the framework and test patterns detected.
+- **Terrain does not promise public-grade precision floors in 0.2.x.** Recall-anchored calibration only; labeled-corpus precision floors arrive in a future release.
 
 ## AI Testing in CI
 
 Terrain gives AI components the same CI safety net as regular tests:
 
 - **Surface discovery** — automatically detects prompts, contexts, datasets, tool definitions, RAG pipelines, and eval scenarios in your code
-- **Calibrated findings** — `terrain ai findings` runs the verdict-engine pipeline (path-prefilter → regex-fastscan → ast-confirm → cross-file-scope → change-scope → composer) and emits findings with a confidence, severity, cohort, and full evidence chain. **16.83% precision on the app-shape cohort** on a 2,651-row labeled corpus (Wilson 95% CI lower bound 11%; 4–6× the path-only baseline)
+- **Calibrated findings** — `terrain ai findings` emits findings with a confidence score, severity, cohort, and full evidence chain. Per-rule false-positive rate is published per release in the readiness cards
 - **Impact-scoped selection** — `terrain ai run --base main` runs only the eval scenarios affected by your change
 - **Protection gaps** — `terrain pr` flags changed AI surfaces that have no eval scenario covering them
 - **Policy enforcement** — block PRs that modify uncovered AI surfaces, regress accuracy, or trigger safety failures
@@ -338,21 +310,7 @@ terrain ai findings --posture=gate       # gate posture (≥0.80)
 terrain ai findings --json               # CI-consumable output
 ```
 
-See the [CHANGELOG entry](CHANGELOG.md) for the full pipeline architecture, cohort calibration, and the production-context gating that distinguishes "real production training that should track metrics" from research / kaggle / tutorial code. For when to reach for `ai list` vs `ai findings` vs the 12 catalog detectors, see [docs/ai-detection-shapes.md](docs/ai-detection-shapes.md).
-
-## How CI Optimization Emerges
-
-Terrain does not start with CI optimization. It starts with understanding.
-
-When you run `terrain analyze`, Terrain builds a structural model: which tests exist, which source files they cover, how they depend on shared fixtures, where duplication lives. From that model, CI optimization *emerges*:
-
-- **Test selection** — `terrain impact` traces a diff through the dependency graph and returns only the tests that structurally matter, ranked by confidence. This is not a heuristic skip list — it is a graph traversal with evidence.
-- **Redundancy reduction** — `terrain insights` surfaces duplicate test clusters. Removing or consolidating them directly reduces CI time without reducing coverage.
-- **Fanout control** — High-fanout fixtures that trigger thousands of tests on any change are identified and prioritized for splitting.
-- **Confidence-based runs** — Impact analysis assigns confidence scores. CI pipelines can run high-confidence tests immediately and defer low-confidence tests to nightly runs.
-- **What to test next** — `terrain insights` ranks untested source files by dependency count, telling you which test to write first for maximum impact.
-
-The result is faster CI that comes from *understanding the test system*, not from skipping tests and hoping for the best.
+`terrain ai list` (inventory), `terrain ai findings` (calibrated findings via the verdict engine), and the AI catalog detectors (via `terrain analyze`) answer different questions — run all three in CI.
 
 ## Installation
 
@@ -375,11 +333,9 @@ brew install mapterrain
 npm install -g mapterrain
 ```
 
-> **Node 22 required.** The npm postinstall verifies signed binaries
-> with cosign and uses APIs (`fetch`, top-level await, modern stream
-> primitives) that landed in Node 22. CI images on Node 20 LTS
-> should use the Homebrew or `go install` path until 0.3 ships
-> Node-20 compat. Run `node --version` to check.
+> **Node 22 required.** The npm postinstall verifies signed binaries with cosign and uses APIs (`fetch`, top-level await, modern stream primitives) that landed in Node 22. CI images on Node 20 LTS should use the Homebrew or `go install` path. Run `node --version` to check.
+>
+> **Cosign options.** Install cosign first (`brew install cosign` on macOS/Linux, `scoop install cosign` on Windows). To opt out: set `TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1` for checksum-only, or `TERRAIN_INSTALLER_SKIP_VERIFY=1` to skip verification entirely.
 
 ### Go install
 
@@ -412,28 +368,6 @@ go build -o terrain ./cmd/terrain
 
 ```bash
 terrain --version
-```
-
-## Quick Start
-
-```bash
-# Detect coverage/runtime data paths (recommended first step)
-terrain init
-
-# Analyze the current repository
-terrain analyze
-
-# JSON output for any command
-terrain analyze --json
-
-# See what a change affects
-terrain impact --base main
-
-# Get prioritized recommendations
-terrain insights
-
-# Drill into a specific test, code unit, owner, or finding
-terrain explain src/auth/login.test.ts
 ```
 
 ## GitHub Actions templates
@@ -550,7 +484,7 @@ jobs:
 | `terrain summary` | Executive summary with risk, trends, benchmark readiness |
 | `terrain focus` | Prioritized next actions |
 | `terrain posture` | Detailed posture breakdown with measurement evidence |
-| `terrain portfolio` | Portfolio intelligence: cost, breadth, leverage, redundancy. *(Top-level canonical command, but feature-status: experimental — multi-repo rollups solidify in 0.3.)* |
+| `terrain portfolio` | Portfolio intelligence: cost, breadth, leverage, redundancy. *(Top-level canonical command, but feature-status: experimental — multi-repo rollups are future work.)* |
 | `terrain metrics` | Aggregate metrics scorecard |
 | `terrain compare` | Compare two snapshots for trend tracking |
 | `terrain select-tests` | Recommend protective test set for a change |
@@ -600,53 +534,21 @@ jobs:
 
 Repository-scoped commands support `--root PATH`, and machine-readable commands support `--json`. Most analysis commands support `--verbose` for additional detail. Run `terrain <command> --help` for full flag documentation.
 
-## Architecture Overview
+## Architecture
 
-Terrain is built around a signal-first architecture:
+Terrain is built around a signal-first architecture. Signals are the core abstraction; snapshots are the canonical serialized artifact; risk surfaces are derived from signals with explainable scoring; dependency graphs model import relationships, fixture fanout, and structural coverage.
 
-```
-Repository scan  →  Signal detection  →  Risk modeling  →  Reporting
-     │                    │                    │               │
-  test files         framework-specific    explainable     human-readable
-  source files       pattern detectors     risk scoring    + JSON output
-  coverage data      quality signals       with evidence
-  runtime artifacts  health signals        chains
-  ownership files    migration signals
-  policy rules       governance signals
-```
+See [DESIGN.md](DESIGN.md) for the full architecture and package map and [docs/json-schema.md](docs/json-schema.md) for the JSON output structure.
 
-- **Signals** are the core abstraction — every finding is a structured signal with type, severity, confidence, evidence, and location
-- **Snapshots** (`TestSuiteSnapshot`) are the canonical serialized artifact — the complete structural model of a test system at a point in time
-- **Risk surfaces** are derived from signals with explainable scoring across dimensions (quality, reliability, speed, governance)
-- **Dependency graphs** model import relationships, fixture fanout, and structural coverage
-- **Reports** synthesize signals, risk, trends, and benchmark readiness into actionable output
+## Snapshot workflow
 
-```
-cmd/terrain/     CLI — canonical surface (analyze, report, migrate,
-                 convert, posture, doctor, ai, serve, version, help)
-                 plus legacy aliases retained through 0.2.x
-internal/        53 Go packages covering analysis, signals, risk,
-                 impact, depgraph, measurement, reporting, and more
-```
-
-See [DESIGN.md](DESIGN.md) for the full architecture overview and package map, [docs/architecture/](docs/architecture/) for detailed design documents, and [docs/json-schema.md](docs/json-schema.md) for JSON output structure.
-
-## Snapshot Workflow
-
-Terrain supports local snapshot history for trend tracking:
+Save and compare snapshots to track trends:
 
 ```bash
-# Save a snapshot
 terrain analyze --write-snapshot
-
-# Later, save another snapshot
+# ...later...
 terrain analyze --write-snapshot
-
-# Compare the two most recent snapshots
 terrain compare
-
-# Executive summary automatically includes trend highlights
-terrain summary
 ```
 
 Snapshots are stored in `.terrain/snapshots/` as timestamped JSON files.
@@ -676,13 +578,11 @@ Exit code 0 = pass, 2 = violations found, 1 = error.
 - [Quickstart Guide](docs/quickstart.md) — understand your first report in 5 minutes
 - [CLI Specification](docs/cli-spec.md) — full command and flag reference
 - [Example Reports](docs/examples/) — analyze, impact, insights, explain output samples
-- [Canonical User Journeys](docs/product/canonical-user-journeys.md) — primary workflows and expected outcomes
-- [Signal Model](docs/signal-model.md) — the core signal abstraction
+- [Severity](docs/severity-rubric.md) — severity labels and configuration
 - [Glossary](docs/glossary.md) — Terrain-specific vocabulary in one page
-- [Architecture](docs/architecture/) — design documents and technical specifications
 - [Versioning Policy](docs/versioning.md) — what's a breaking change vs behavior change vs bug fix
 - [Compatibility](docs/compatibility.md) — supported OSes, Go versions, frameworks
-- [Integrations](docs/integrations/) — Promptfoo / DeepEval / Ragas wiring guides
+- [Integrations](docs/integrations/) — Promptfoo / DeepEval / Ragas / gauntlet wiring guides
 - [Feature Status](docs/release/feature-status.md) — what's stable, experimental, or planned in the current release
 - [CHANGELOG](CHANGELOG.md) — release history and per-version changes
 - [Security](SECURITY.md) — supported versions and vulnerability disclosure

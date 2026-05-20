@@ -1,81 +1,89 @@
 # Terrain Documentation
 
-**Signal-first test intelligence for engineering teams**
+**Pre-flight checks for AI/ML systems and the tests around them.**
 
-## Product Evolution
+## Get started
 
-- **Legacy** was conversion-led: a multi-framework test converter (JS/Java/Python, 25 directions).
-- **The current engine** is signal-led: a test intelligence platform that surfaces risk, quality, migration readiness, and governance from static and runtime analysis.
-- **Migration remains the acquisition wedge** — the pain of framework migration is what brings teams to Terrain. The current engine turns that pain into broader test intelligence.
+- [Quickstart](quickstart.md) — first report in five minutes
+- [Demo](demo.md) — try Terrain in a few minutes
+- [Product Reference](PRODUCT.md) — mission, principles, scope, stability commitments
+- [Overview](OVERVIEW.md) — evaluator-focused summary
 
-The legacy converter docs are kept as historical records from the retired JavaScript runtime. The supported product runtime is now Go-native; see the [Legacy Notes](legacy/legacy-notes.md) only for background and migration history.
+## Use Terrain
 
-## Start Here
-
-- [Product Overview](product/terrain-overview.md) — what Terrain is, how it works, current state
-- [Demo Walkthrough](demo.md) — try Terrain in a few minutes
-- [Canonical User Journeys](product/canonical-user-journeys.md) — primary workflows and expected outcomes
 - [CLI Specification](cli-spec.md) — full command and flag reference
-- [Architecture](architecture.md) — how Terrain works internally
-
-## Product
-
-- [Product Overview](product/terrain-overview.md) — what Terrain is, how it works, current state
-- [Canonical User Journeys](product/canonical-user-journeys.md) — primary workflows and expected outcomes
-- [First-Run Story](product/first-run-story.md) — what the first 5 minutes look like
-- [AI/Eval User Journey](product/ai-user-journey.md) — AI and eval validation workflow
-- [Posture Model](product/posture-model.md) — the five-dimension posture framework
-- [Impact Analysis Model](product/impact-analysis-model.md) — how impact analysis works
-
-## Technical
-
-- [Signal Model](signal-model.md) — the core signal abstraction
-- [Signal Catalog](signal-catalog.md) — all signal types
-- [JSON Schema](json-schema.md) — JSON output structure
-- [Telemetry](telemetry.md) — opt-in local telemetry
 - [VS Code Extension](vscode-extension.md) — extension architecture and views
 - [Telemetry](telemetry.md) — opt-in local telemetry
 
-## Benchmarks
+## Understand findings
 
-- [CLI Benchmarks](benchmarks/cli-benchmarks.md) — benchmark harness for primary Terrain commands
-- [Truth Validation](benchmarks/truth-validation.md) — ground-truth evaluator and scoring model
-- [Claude Ground-Truth Fixture Prompt](benchmarks/claude-ground-truth-fixture-prompt.md) — reusable prompt for generating and validating complex fixture repos
+- [Severity](severity-rubric.md) — severity labels and how to configure them
+- [Signal Catalog](signal-catalog.md) — signal type reference
 
-## Engineering
+## Reference
 
-- [Detector Architecture](engineering/detector-architecture.md) — registry-based detector plugin system
-- [Deterministic Output](engineering/determinism.md) — deterministic output contract and enforcement
-- [Test Identity](engineering/test-identity.md) — deterministic test identity model
-- [Test Type Inference](engineering/test-type-inference.md) — evidence-based test classification
-- [Code Unit Inventory](engineering/code-unit-inventory.md) — normalized code structure model
-- [Coverage Ingestion](engineering/coverage-ingestion.md) — LCOV/Istanbul ingestion and normalization
-- [Coverage Attribution](engineering/coverage-attribution.md) — structural coverage for code units
-- [Per-Test Coverage](engineering/per-test-coverage.md) — per-test coverage attribution model
-- [Snapshot Test Lineage](engineering/snapshot-test-lineage.md) — longitudinal test tracking
+- [JSON Schema](json-schema.md) — JSON output structure
+- [Glossary](glossary.md) — Terrain-specific vocabulary
+- [Versioning](versioning.md) — semantic-versioning contract
+- [Compatibility](compatibility.md) — platforms, frameworks, languages
+- [Limitations](LIMITATIONS.md) — what 0.2.0 does not do
 
-## User Guides
+## Integrations
 
-- [Coverage by Type](user-guides/coverage-by-type.md) — analyze coverage by unit/integration/e2e
+- [Promptfoo](integrations/promptfoo.md)
+- [DeepEval](integrations/deepeval.md)
+- [Ragas](integrations/ragas.md)
+- [Gauntlet](integrations/gauntlet.md)
+- [MCP server](integrations/mcp.md)
 
-## Contributing
+## Contribute
 
-- [Writing a Detector](contributing/writing-a-detector.md) — how to add a new signal detector
-- [Test Identity & Coverage](contributing/test-identity-and-coverage.md) — extending identity, inference, and coverage
+- [Contributing — overview](CONTRIBUTING.md) — RFC process, governance, rule lifecycle, issue triage
+- [Writing a Detector](contributing/writing-a-detector.md)
+- [Adding a Measurement](contributing/adding-a-measurement.md)
+- [Testing and Quality](contributing/testing-and-quality.md)
+
+## Engineering reference
+
+- [Coverage Ingestion](engineering/coverage-ingestion.md) — LCOV / Istanbul ingestion
+- [Determinism](engineering/determinism.md) — deterministic output contract
+- [Measurement Explainability](engineering/measurement-explainability.md) — how `terrain explain` is computed
+- [Change Risk Posture](engineering/change-risk-posture.md)
+
+## Per-rule documentation
+
+Per-rule docs live under `docs/rules/<category>/<rule-name>.md`. Each shipped rule has its own page covering what it catches, why it matters, the detection mechanism, configuration, false-positive patterns, and stability commitments.
 
 ## Release
 
 - [Release Process](releasing.md) — versioning and release workflow
+- [Feature Status](release/feature-status.md) — per-capability stable / experimental / preview status
+- [Release Notes — 0.2.0](release/RELEASE-NOTES-0.2.0.md) — long-form release notes
+- [Supply-chain provenance](release/supply-chain.md) — release artifacts and signing
 
-## Legacy Converter Engine
+## Schema reference
 
-Historical documentation for the retired JavaScript converter engine:
+- [Schema compatibility](schema/COMPAT.md) — schema versioning contract
+- [Eval-adapter contract](schema/eval-adapters.md)
+- [Explain output](schema/explain.md)
+- [Migration output](schema/migration.md)
+- [Portfolio output](schema/portfolio.md)
+- [PR-analysis output](schema/pr-analysis.md)
 
-- [Converter Architecture (legacy)](legacy/converter-architecture-legacy.md)
+## Security
+
+- [Dependencies](security/dependencies.md)
+
+## Legacy
+
+Historical documentation for retired components:
+
 - [Legacy Notes](legacy/legacy-notes.md)
+- [Converter Architecture (legacy)](legacy/converter-architecture-legacy.md)
 - [Getting Started (legacy)](legacy/getting-started-legacy.md)
 - [Migration Guide (legacy)](legacy/migration-guide-legacy.md)
 - [CLI Reference (legacy)](legacy/cli-reference-legacy.md)
 - [Configuration (legacy)](legacy/configuration-legacy.md)
 - [Conversion Process (legacy)](legacy/conversion-process-legacy.md)
-- [Jest ESM Strategy](adr/004-jest-esm-strategy.md)
+- [Quarantine & Suppression (legacy)](legacy/quarantine-and-suppression-legacy.md)
+- [Jest ESM Strategy ADR](adr/004-jest-esm-strategy.md)

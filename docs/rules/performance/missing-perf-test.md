@@ -37,7 +37,7 @@ Latency / throughput regressions ship silently when no benchmark guards the path
 info[terrain/performance/missing-perf-test]: AI surface "summarize_prompt" has no benchmark
   --> prompts/summarize.txt
    = help: Add a benchmark under benchmarks/ that records P50/P95 latency.
-   = docs: https://terrain.dev/rules/performance/missing-perf-test
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/performance/missing-perf-test
 ```
 
 ## 7. Configuration

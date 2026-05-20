@@ -140,10 +140,13 @@ func TestUncoveredAISurface_SeverityVariesByType(t *testing.T) {
 	}
 
 	expected := map[string]models.SignalSeverity{
-		"a.ts": models.SeverityHigh, // prompt
-		"b.ts": models.SeverityHigh,     // model
-		"c.ts": models.SeverityMedium,   // dataset
-		"d.ts": models.SeverityLow,      // eval metric
+		"a.ts": models.SeverityHigh, // prompt — strongest lane (41% n=250)
+		// 2026-05-18: aiModel lane demoted to medium severity per Phase B
+		// findings (4.9% precision pre-filter; ~20-30% post-filter).
+		// Promotion back to high requires LLM-call-site proximity gate.
+		"b.ts": models.SeverityMedium, // model
+		"c.ts": models.SeverityMedium, // dataset
+		"d.ts": models.SeverityLow,    // eval metric
 	}
 	for _, s := range sigs {
 		want, ok := expected[s.Location.File]

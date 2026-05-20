@@ -11,7 +11,7 @@ An LLM SDK call lacks an explicit `temperature` argument. Default temperatures d
 - **Tier:** preview
 - **Default severity:** off (opt-in via `terrain.yaml`)
 - **Status:** preview — pending validation
-- **Graduation criteria:** LB-5 ≤ 5% Wilson 95% lower bound on dogfood corpus.
+- **Graduation criteria:** false-positive rate ≤ 5% (Wilson 95% lower bound) on dogfood corpus.
 
 ## 3. What this catches
 
@@ -28,7 +28,7 @@ AST-level inspection of LLM SDK call sites (consuming the AICallSite records fro
 ```
 warning[terrain/prompt-quality/prompt-without-temperature]: LLM call has no explicit temperature
   --> api/summarize.py:12
-   = docs: https://terrain.dev/rules/prompt-quality/prompt-without-temperature
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/prompt-quality/prompt-without-temperature
 ```
 
 ## 9. Reproducibility

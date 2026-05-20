@@ -35,7 +35,7 @@ that pins one against another will misread:
 | String | Where | Current value |
 |---|---|---|
 | Snapshot schema | `snapshotMeta.schemaVersion` in `--json` output | `1.1.0` |
-| Manifest export schema | `schemaVersion` at the top of `docs/signals/manifest.json` | `1.0.0` |
+| Manifest export schema | `schemaVersion` at the top of the generated signal manifest | `1.0.0` |
 | SARIF format | `version` in `--format=sarif` output | `2.1.0` |
 
 The manifest export schema is independent because it describes the

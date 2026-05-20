@@ -130,6 +130,39 @@ type ManifestEntry struct {
 	// or observability (silent-failure-mode, never blocks CI). Empty
 	// defaults to TierGate for back-compat. See SignalTier comment.
 	Tier SignalTier
+
+	// Replaces lists prior SignalTypes that this entry supersedes. When
+	// set, downstream consumers (suppression migration, `terrain explain
+	// finding <id>`, snapshot upgrade) treat the listed legacy types as
+	// aliases that resolve to this entry. Provides a migration window so
+	// that existing user suppressions and CI gates don't break when a
+	// signal is split or renamed.
+	//
+	// Added 2026-05-18 as cycle-1 safety machinery — required before the
+	// uncoveredAISurface 3-lane split (aiPrompt / aiModel / aiDataset
+	// sub-rules) can ship without orphaning existing suppressions.
+	//
+	// Example: SignalAIPromptUncovered.Replaces = []models.SignalType{
+	//   SignalUncoveredAISurface,
+	// }
+	Replaces []models.SignalType
+}
+
+// LegacyAliasFor returns the canonical (current) SignalType for a legacy
+// type that has been superseded by a Replaces entry. Returns the input
+// unchanged if no alias is registered. Used by suppression-migration,
+// finding-explain, and snapshot-upgrade paths.
+//
+// O(N) over the manifest; cache the result if calling in a hot loop.
+func LegacyAliasFor(legacy models.SignalType) (models.SignalType, bool) {
+	for _, entry := range allSignalManifest {
+		for _, replaces := range entry.Replaces {
+			if replaces == legacy {
+				return entry.Type, true
+			}
+		}
+	}
+	return legacy, false
 }
 
 // allSignalManifest is the canonical inventory. Order is significant for
@@ -232,8 +265,15 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/weak-assertion",
 		RuleURI:         "docs/rules/hygiene/weak-assertion.md",
+		// 2026-05-18: Phase B.3 framing test showed 55% verdict flip rate
+		// between strict-QA vs pragmatic-engineer Claude framings. The
+		// "is this assertion strong enough?" question is a value judgment
+		// that doesn't have stable extension. Gate-tier ship would mean
+		// ~55% user-suppression rate. Capability preserved at observability.
+		Tier: TierObservability,
 		PromotionPlan: "Detector is regex/density-based; AST-based semantic scoring lands in 0.3 " +
-			"alongside the calibration corpus.",
+			"alongside the calibration corpus. Gate-tier promotion requires explicit policy " +
+			"threshold (e.g., user-declared strict-vs-pragmatic mode) AND framing-test flip <15%.",
 	},
 	{
 		Type: SignalMockHeavyTest, ConstName: "SignalMockHeavyTest",
@@ -254,8 +294,15 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/mock-heavy",
 		RuleURI:         "docs/rules/hygiene/mock-heavy.md",
+		// 2026-05-18: Phase B.3-ext framing test showed 41.7% verdict flip
+		// rate. "Are mocks > assertions a defect or design?" is a stylistic
+		// question. Gate-tier ship would mean ~42% suppression. Capability
+		// preserved at observability; rebuild path requires distinguishing
+		// module-boundary mocks (vi.mock) from callback-spy stubs (vi.fn()).
+		Tier: TierObservability,
 		PromotionPlan: "Underlying hypothesis empirically refuted (corpus lift 0.02x). " +
-			"Either rebuild with a different signal or remove in 0.3.",
+			"B.3-ext confirmed framing-instability. Rebuild requires mock-classifier " +
+			"distinguishing module vs callback mocks. Defer to 0.3 or remove.",
 	},
 	{
 		Type: SignalTestsOnlyMocks, ConstName: "SignalTestsOnlyMocks",
@@ -263,11 +310,20 @@ var allSignalManifest = []ManifestEntry{
 		Title:           "Tests Only Mocks",
 		Description:     "Test files contain mock setup but zero assertions, verifying wiring only.",
 		Remediation:     "Add assertions on outputs, state changes, or side effects to validate real behavior.",
-		DefaultSeverity: models.SeverityHigh,
+		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/quality/tests-only-mocks",
 		RuleURI:         "docs/rules/quality/tests-only-mocks.md",
+		// 2026-05-18: n=137 corpus precision 0.7% (1 TP). Base rate of true
+		// "wiring-only" tests is ~1% in AI corpus. Per-file gate-tier
+		// signal is structurally near-silent. Re-frame as repo-aggregate
+		// metric ("% of tests with zero assertions across all framework
+		// idioms") rather than per-file finding.
+		Tier: TierObservability,
+		PromotionPlan: "Rebuild as repo-aggregate posture metric. Per-file detection blocked by " +
+			"assertion-counter blindness (caught only bare `assert`); A1 multi-dialect oracle " +
+			"would lift to ~55-70% but TP base rate is fundamental ceiling.",
 	},
 	{
 		Type: SignalSnapshotHeavyTest, ConstName: "SignalSnapshotHeavyTest",
@@ -280,6 +336,16 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/snapshot-heavy",
 		RuleURI:         "docs/rules/hygiene/snapshot-heavy.md",
+		// 2026-05-18: Phase B.3-ext framing test showed 33.3% verdict flip
+		// rate. Also: n=48 corpus came from only 7 unique repos (54% from
+		// one). "Is snapshot use heavy enough to flag?" is value-judgment.
+		// Gate-tier promotion requires corpus diversity AND framing-stable
+		// threshold (e.g., the snap≥2 AND ratio≥0.3 conjunction tested in
+		// Phase A but with broader corpus validation).
+		Tier: TierObservability,
+		PromotionPlan: "Gate-tier promotion gated on: (1) n=200+ from ≥40 unique repos; (2) " +
+			"framing flip <15% under threshold-conjunction (snap≥2 AND ratio≥0.3); (3) " +
+			"explicit user-facing policy declaration.",
 	},
 	{
 		Type: SignalCoverageBlindSpot, ConstName: "SignalCoverageBlindSpot",
@@ -325,11 +391,19 @@ var allSignalManifest = []ManifestEntry{
 		Title:           "Assertion-Free Test",
 		Description:     "Test files contain test function signatures but no detectable assertions.",
 		Remediation:     "Add assertions to validate behavior — tests without assertions verify nothing.",
-		DefaultSeverity: models.SeverityHigh,
+		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/no-assertions",
 		RuleURI:         "docs/rules/hygiene/no-assertions.md",
+		// 2026-05-18: n=396 corpus precision 35.6%. Phase A.2 measured that
+		// regex-floor expansion catches 76% of FPs (assertion-counter blind
+		// to self.assertX, np.testing.*, mock.assert_called_*). Even after
+		// regex floor lift, ceiling ~70% before framing stability needed.
+		// Observability tier until A1 multi-dialect oracle + framing test.
+		Tier: TierObservability,
+		PromotionPlan: "Gate-tier requires: (1) regex-floor lift to 70%+ precision, (2) A3 path-role " +
+			"gate to exclude conftest/fixtures/commented-out, (3) framing test flip <15%.",
 	},
 	{
 		Type: SignalOrphanedTestFile, ConstName: "SignalOrphanedTestFile",
@@ -403,11 +477,23 @@ var allSignalManifest = []ManifestEntry{
 		Title:           "Migration Blocker",
 		Description:     "Detected patterns will complicate framework framework_migration.",
 		Remediation:     "Address blockers incrementally before broad migration changes.",
-		DefaultSeverity: models.SeverityHigh,
+		DefaultSeverity: models.SeverityLow,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/migration/migration-blocker",
 		RuleURI:         "docs/rules/migration/migration-blocker.md",
+		// 2026-05-18: n=250 corpus precision 0% (0 TPs in 250 firings; all
+		// 250 fired "enzyme-usage" on Vitest/RTL/Playwright tests with NO
+		// enzyme import). Phase A.1 confirmed an enzyme-import gate would
+		// drop 233 of 250 FPs but 0 TPs exist in AI corpus — enzyme as a
+		// migration target is historical in modern AI repos. Capability
+		// preserved by refreshing trigger set to LIVING dead frameworks
+		// (mocha→jest, jasmine→jest, unittest→pytest) — pending corpus
+		// confirmation that those exist at meaningful base rates.
+		Tier: TierObservability,
+		PromotionPlan: "Refresh trigger set to mocha→jest, jasmine→jest, unittest→pytest after " +
+			"confirming base rate ≥5 per 100 repos. Drop enzyme sub-rule entirely; AI corpus " +
+			"has zero enzyme migrations remaining.",
 	},
 	{
 		Type: SignalDeprecatedTestPattern, ConstName: "SignalDeprecatedTestPattern",
@@ -415,11 +501,21 @@ var allSignalManifest = []ManifestEntry{
 		Title:           "Deprecated Test Pattern",
 		Description:     "Deprecated test patterns increase migration and maintenance risk.",
 		Remediation:     "Replace deprecated APIs with supported alternatives.",
-		DefaultSeverity: models.SeverityMedium,
+		DefaultSeverity: models.SeverityLow,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/migration/deprecated-pattern",
 		RuleURI:         "docs/rules/migration/deprecated-pattern.md",
+		// 2026-05-18: n=372 corpus precision 21.0%. Cluster CI [11.2, 33.6]
+		// (2.7x wider than row CI). Two sub-rules:
+		//   - enzyme-usage: 0/188 TPs — Enzyme is dead in AI corpus, retire
+		//     sub-rule and refresh to living patterns
+		//   - setTimeout-in-test: 38% precision — needs A3 scope/binding
+		//     gate to distinguish jest.setTimeout from bare setTimeout
+		Tier: TierObservability,
+		PromotionPlan: "Drop enzyme sub-rule; refresh trigger set; setTimeout sub-rule needs A3 " +
+			"scope gate (jest.setTimeout config vs bare setTimeout in test body). Path-role " +
+			"gate to exclude fuzzer/fixture/comment-only matches.",
 	},
 	{
 		Type: SignalDynamicTestGeneration, ConstName: "SignalDynamicTestGeneration",
@@ -584,11 +680,20 @@ var allSignalManifest = []ManifestEntry{
 		Title:           "Assertion-Free Import",
 		Description:     "Test files import production code but contain zero assertions — exercising code without verifying behavior.",
 		Remediation:     "Add assertions to validate behavior or remove tests that verify nothing.",
-		DefaultSeverity: models.SeverityHigh,
+		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"graph-traversal", "structural-pattern"},
 		RuleID:          "terrain/structural/assertion-free-import",
 		RuleURI:         "docs/rules/structural/assertion-free-import.md",
+		// 2026-05-18: n=249 corpus precision 17.3%. Cluster CI [10.6, 27.7]
+		// (1.8x wider than row CI). Same assertion-counter blindness as
+		// weakAssertion/assertionFreeTest: misses self.assertX, np.testing,
+		// mock.assert_called_*, fluent helpers. Regex-floor expansion lifts
+		// most FPs (per A.2 analogue). Inherited-base-class assertions
+		// (8.3%) require cross-file resolution to fully fix.
+		Tier: TierObservability,
+		PromotionPlan: "Gate-tier requires: (1) A1 multi-dialect assertion oracle + path-role test " +
+			"gate, (2) cross-file inherited-assertion resolution, (3) framing test flip <15%.",
 	},
 	{
 		Type: SignalCapabilityValidationGap, ConstName: "SignalCapabilityValidationGap",

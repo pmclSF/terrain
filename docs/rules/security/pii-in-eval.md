@@ -46,7 +46,7 @@ The rule fires on a structural fact — PII-shaped values in eval-directory file
 critical[terrain/security/pii-in-eval]: eval-directory file contains PII-shaped values (email, phone-us, ssn)
   --> evals/leak.txt
    = help: Replace PII in the eval dataset with synthetic equivalents (Faker / Mimesis / mockaroo) or apply a redaction pass before committing.
-   = docs: https://terrain.dev/rules/security/pii-in-eval
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/security/pii-in-eval
 ```
 
 **Before:**
@@ -83,7 +83,7 @@ ignore:
 - **Test fixtures intentionally using `example.com` / `noreply@example.com`** — `example.com` is RFC-2606 reserved for examples but the regex matches. Mitigation: same.
 - **Measured FP rate at last validation:** see the per-rule readiness card.
 
-The rule's stable status requires LB-5 ≤ 5% Wilson 95% lower bound on the hand-labeled green corpus per dogfood repo. Adopters report false positives via the GitHub issue tracker with the originating snippet.
+The rule's stable status requires false-positive rate ≤ 5% (Wilson 95% lower bound) on the hand-labeled green corpus per dogfood repo. Adopters report false positives via the GitHub issue tracker with the originating snippet.
 
 ## 9. Reproducibility
 

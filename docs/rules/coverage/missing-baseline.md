@@ -33,7 +33,7 @@ The structural twin of `regression/baseline-not-set`: surfaces that should have 
 warning[terrain/coverage/missing-baseline]: AI surfaces detected but .terrain/baselines/ is empty
   --> .
    = help: Run `terrain ai record` to create the baseline directory. Commit the result.
-   = docs: https://terrain.dev/rules/coverage/missing-baseline
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/coverage/missing-baseline
 ```
 
 ## 7. Configuration

@@ -3,7 +3,7 @@
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 
 
-> *This file is the canonical template for rule documentation. Every rule in the catalog has a page at `docs/rules/<category>/<rule-id>.md` filled from this template. See `docs/PRODUCT.md` §15 for the templating discipline.*
+> *This file is the canonical template for rule documentation. Every rule in the catalog has a page at `docs/rules/<category>/<rule-id>.md` filled from this template. See the per-rule docs convention for the templating discipline.*
 
 Stable rules fill all 11 sections (~800–1500 words). Preview rules fill the **short-form subset** — sections 1, 2, 3, 5, 6, 9 only (~250 words total); the omitted sections carry a "preview — completed at graduation to stable" stub.
 
@@ -62,7 +62,7 @@ error[terrain/<category>/<rule-name>]: <short message>
    = <key>: <value>
    ...
    = help: <suggested action>
-   = docs: https://terrain.dev/rules/<category>/<rule-name>
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/<category>/<rule-name>.md
 \`\`\`
 
 Then show the before/after diff that would make the finding go away:
@@ -112,7 +112,7 @@ Known patterns where the rule trips falsely, and how to handle them.
 - **Pattern B:** [describe]. [same shape]
 - **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag.
 
-The rule's stable status requires LB-5 ≤ 5% Wilson 95% lower bound on the hand-labeled green corpus per dogfood repo. If you encounter a sustained FP pattern outside the documented ones, file a GitHub issue with reproducer.
+The rule's stable status requires false-positive rate ≤ 5% (Wilson 95% lower bound) on the hand-labeled green corpus per dogfood repo. If you encounter a sustained FP pattern outside the documented ones, file a GitHub issue with reproducer.
 
 ## 9. Reproducibility
 
@@ -130,11 +130,11 @@ Or, from a CI run:
 terrain explain <category>/<rule-name> --from-run <run-id>
 \`\`\`
 
-The local diagnostic output is byte-equivalent to the CI surface for this rule (LB-4).
+The local diagnostic output is byte-equivalent to the CI surface for this rule (local-CI parity guarantee).
 
 ## 10. Stability commitment
 
-This rule's ID and behavior are stable from v0.2.0. The one-cycle deprecation contract per `docs/PRODUCT.md` §18 applies:
+This rule's ID and behavior are stable from v0.2.0. The one-cycle deprecation contract per `docs/PRODUCT.md` §14 (Versioning) applies:
 
 - **Renames:** alias the old ID for one minor version; deprecation message written to stderr; document in `CHANGELOG.md`.
 - **Severity default changes:** treated as a breaking change to the default behavior; same deprecation cycle.
@@ -167,7 +167,7 @@ One-line description.
 - **Tier:** preview
 - **Default severity:** off (opt-in via `terrain.yaml`)
 - **Status:** preview — pending validation
-- **Graduation criteria:** LB-2a/b/c, LB-5 (Wilson 95% lower bound), LB-6 (recall) measured at target on the dogfood repos.
+- **Graduation criteria:** triage time, false-positive rate, and recall measured at target on the dogfood repos.
 
 ## 3. What this catches
 

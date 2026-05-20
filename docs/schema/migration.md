@@ -215,7 +215,6 @@ terrain migrate status --json | jq '.processed[] | select(.status=="failed")'
 ## See also
 
 - [`internal/convert/workflow.go`](../../internal/convert/workflow.go) — Go type definitions
-- [`docs/product/alignment-first-migration.md`](../product/alignment-first-migration.md) — alignment-first framing for migration as drift-reduction
 - [`docs/release/feature-status.md`](../release/feature-status.md) — per-direction tier table
 - [`docs/schema/portfolio.md`](portfolio.md) — companion contract for portfolio output
 - [`docs/schema/eval-adapters.md`](eval-adapters.md) — companion contract for AI eval ingestion

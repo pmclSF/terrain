@@ -44,7 +44,7 @@ The rule consumes parsed dependency manifests from `internal/manifest/` and read
   - `PinningExact` → suppressed
 - **Section step-down:** runtime deps fire at the severity listed above; dev / build / optional deps fire one step lower.
 - **Edge cases handled:** `#egg=` URL fragments preserved as locator metadata; PEP-508 environment markers (`; python_version >= '3.10'`) noted on the dependency but don't change classification
-- **Edge cases NOT handled at 0.2.0:** lockfile-aware suppression (when `package-lock.json` / `poetry.lock` is present, range pins are effectively pinned). The 0.3.0 plan adds lockfile parsing and suppresses range-only ranges when a lockfile pins the resolution.
+- **Edge cases NOT handled at 0.2.0:** lockfile-aware suppression (when `package-lock.json` / `poetry.lock` is present, range pins are effectively pinned). Lockfile-aware suppression is future work.
 
 ## 6. Worked example
 
@@ -54,7 +54,7 @@ warning[terrain/reproducibility/version-floating]: dependency "openai" in requir
    = pinning:     range
    = section:     runtime
    = help:        Pin to an exact version (e.g., "openai==<version>" in requirements.txt or a fixed semver in package.json), or commit a lockfile that records the resolved set.
-   = docs:        https://terrain.dev/rules/reproducibility/version-floating
+   = docs:        https://github.com/pmclSF/terrain/blob/main/docs/rules/reproducibility/version-floating
 ```
 
 **Before:**
@@ -102,7 +102,7 @@ rules:
 
 ## 8. False-positive characterization
 
-- **Dependencies with a lockfile** — the most common pattern. A range pin in `package.json` is effectively pinned when `package-lock.json` is committed. 0.2.0 doesn't read lockfiles; 0.3.0 will. Mitigation today: downgrade severity to `low` and rely on the lockfile for actual reproducibility.
+- **Dependencies with a lockfile** — the most common pattern. A range pin in `package.json` is effectively pinned when `package-lock.json` is committed. 0.2.0 doesn't read lockfiles; lockfile-aware suppression is future work. Mitigation today: downgrade severity to `low` and rely on the lockfile for actual reproducibility.
 - **Git-tag pins** — `git+https://github.com/foo/bar.git@v1.0.0` looks like a moving reference but tags are usually immutable in practice. The rule fires; mitigation is to use a commit SHA, or accept the medium severity.
 - **Editable installs of in-repo packages** — `-e ./path/to/local-pkg` flags as PinningPath and fires at low severity. Generally accurate (the local checkout is what changes), but adopters can ignore via path.
 - **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag.
@@ -121,12 +121,12 @@ terrain test --selector reproducibility/version-floating --path requirements.txt
 
 ## 10. Stability commitment
 
-This rule's ID, default severity, pinning ladder, and section step-down behavior are stable from v0.2.0. Per `docs/PRODUCT.md` §18 versioning:
+This rule's ID, default severity, pinning ladder, and section step-down behavior are stable from v0.2.0. Per `docs/PRODUCT.md` §14 (Versioning):
 
 - **Default severity changes** — breaking; one-cycle deprecation.
 - **Pinning-ladder changes** (e.g., promoting PinningPath from low to medium) — breaking; deprecation-cycled.
 - **New ecosystems added** (go.mod, Cargo.toml, Gemfile) — additive; documented in `CHANGELOG.md` but not deprecation-cycled. New ecosystems land as part of `internal/manifest/` expansion.
-- **Lockfile-aware suppression** in 0.3.0 — additive; reduces fire count without changing existing behavior.
+- **Lockfile-aware suppression** (future work) — additive; reduces fire count without changing existing behavior.
 
 ## 11. Related rules
 

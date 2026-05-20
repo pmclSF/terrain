@@ -27,7 +27,7 @@ AST walk for agent-constructor calls (LangChain AgentExecutor, LangGraph StateGr
 ```
 warning[terrain/agent-quality/loop-risk]: agent has no max_iterations bound
   --> agents/router.py:14
-   = docs: https://terrain.dev/rules/agent-quality/loop-risk
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/agent-quality/loop-risk
 ```
 
 ## 9. Reproducibility

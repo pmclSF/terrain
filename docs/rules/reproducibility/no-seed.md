@@ -46,7 +46,7 @@ The rule fires once per file at the first un-seeded call. It's a structural chec
 warning[terrain/reproducibility/no-seed]: stochastic call into "numpy" without preceding seed
   --> evals/quality.py:4
    = help: Add a seed call (np.random.seed(42)) at module scope or in a pytest fixture.
-   = docs: https://terrain.dev/rules/reproducibility/no-seed
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/reproducibility/no-seed
 ```
 
 **Before:**

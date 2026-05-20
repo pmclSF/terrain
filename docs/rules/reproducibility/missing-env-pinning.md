@@ -42,7 +42,7 @@ The rule fires on eval / inference / training paths only — application config 
 warning[terrain/reproducibility/missing-env-pinning]: env "MODEL" read without default
   --> evals/inference.py:4
    = help: Supply a default — os.environ.get("MODEL", "<pinned-value>") — or declare the variable as required at the top of the file and fail fast with a clear error message.
-   = docs: https://terrain.dev/rules/reproducibility/missing-env-pinning
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/reproducibility/missing-env-pinning
 ```
 
 **Before:**

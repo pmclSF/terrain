@@ -37,7 +37,7 @@ error[terrain/regression/test-failed]: impacted test failed: test_summarize_refu
    = cause path: frontend/CommentInput.tsx → POST /api/summarize → handle_summarize
    = failure:    AssertionError: expected refusal in response
    = help:       Restore the input length cap on CommentInput.tsx:42.
-   = docs:       https://terrain.dev/rules/regression/test-failed
+   = docs:       https://github.com/pmclSF/terrain/blob/main/docs/rules/regression/test-failed
 ```
 
 ## 7. Configuration

@@ -7,7 +7,7 @@ The product story lives in [`docs/PRODUCT.md`](docs/PRODUCT.md). This document i
 ## Core principles
 
 - **Signals are the core abstraction.** Every finding is a structured signal with type, severity, evidence, and location. See `internal/signals/manifest.go` for the manifest model.
-- **The snapshot is the integration boundary.** `TestSuiteSnapshot` (`internal/models/snapshot.go`) is the serialized artifact at which detection, graph construction, impact analysis, and reporting compose. Anything that can serialize into the snapshot inherits graph traversal, impact analysis, and the diagnostic-rendering pipeline. (Note: at 0.2.0, the impact-selection code paths consult the typed graph rather than direct-scanning `LinkedCodeUnits` — see Tier 0 work in `docs/PRODUCT.md` §16.)
+- **The snapshot is the integration boundary.** `TestSuiteSnapshot` (`internal/models/snapshot.go`) is the serialized artifact at which detection, graph construction, impact analysis, and reporting compose. Anything that can serialize into the snapshot inherits graph traversal, impact analysis, and the diagnostic-rendering pipeline. (Note: at 0.2.0, the impact-selection code paths consult the typed graph rather than direct-scanning `LinkedCodeUnits` — see Tier 0 work in [`docs/cli-spec.md`](docs/cli-spec.md).)
 - **Risk must be explainable.** Risk surfaces are derived from signals with transparent scoring, not opaque scores.
 - **Local-first.** Terrain runs on a developer machine or CI runner with no accounts, SaaS, or network access required. The default configuration makes zero outbound network calls (verifiable via `terrain --print-network`).
 - **Privacy boundary.** Aggregate metrics and benchmark exports never expose raw file paths or source code. Adopters with stringent code-confidentiality requirements can set `redact_source: true` in `terrain.yaml`.
@@ -30,7 +30,7 @@ The dependency graph is the integration boundary for adding detection capabiliti
 
 ## Three-surface model
 
-Per `docs/PRODUCT.md` §7, Terrain has three consumer surfaces. All three consume the same artifact (JUnit XML + `findings.json` + the source repo state at the failing commit):
+Per `docs/PRODUCT.md` §7 (Architecture — three-surface model), Terrain has three consumer surfaces. All three consume the same artifact (JUnit XML + `findings.json` + the source repo state at the failing commit):
 
 | Surface | Renderers | Interactivity | LLM |
 |---|---|---|---|
@@ -44,9 +44,19 @@ The artifact-as-handoff contract decouples surfaces. The CI surface can ship at 
 
 ```
 cmd/terrain/                  CLI entry point (adopter-facing)
-cmd/terrain-corpus/           Maintainer-only: corpus management (extract, gate at 0.2.0)
-cmd/terrain-precision/        Maintainer-only: detector precision benchmarking (score, compare at 0.2.0)
-cmd/terrain-bench/            Performance benchmarking
+cmd/internal/                 Maintainer-only tooling (not in adopter binary surface):
+  terrain-corpus/             Corpus management (extract, gate at 0.2.0)
+  terrain-precision/          Detector precision benchmarking (score, compare at 0.2.0)
+  terrain-bench/              Performance benchmarking
+  terrain-bench-gate/         Benchmark regression gate (CI)
+  terrain-convert-bench/      Conversion benchmark vs legacy reference
+  terrain-docs-gen/           Doc stub generation from signal manifest
+  terrain-docs-linkcheck/     Intra-repo markdown link check
+  terrain-parity-gate/        Per-pillar parity gate
+  terrain-pipeline/           AI pipeline validation harness
+  terrain-truth-verify/       Manifest vs feature-status consistency check
+  terrain-truthcheck/         Ground-truth fixture verifier
+  terrain-voice-lint/         Voice and tone lint
 internal/                     Core libraries (see internal/README.md for full listing)
   analysis/                   Repository scanning, framework detection, AI surface detection
   aidetect/                   AI/ML library and pattern detection (regex + AST)
@@ -73,7 +83,7 @@ rfcs/                         RFCs for significant changes (governance per docs/
 
 ## CLI surface (0.2.0)
 
-The complete adopter-facing CLI is documented in `docs/PRODUCT.md` §16. Summary:
+The complete adopter-facing CLI is documented in [`docs/cli-spec.md`](docs/cli-spec.md). Summary:
 
 | Command | Purpose |
 |---|---|
@@ -97,15 +107,15 @@ Plus the conversion subsystem's CLI (`convert`, `migrate`, `detect`, etc.) — a
 | [`docs/PRODUCT.md`](docs/PRODUCT.md) | Canonical product plan (mission, goals, rule catalog, validation harness) |
 | [`docs/OVERVIEW.md`](docs/OVERVIEW.md) | 1-pager for senior decision-makers evaluating Terrain for adoption |
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | Honest list of what 0.2.0 does *not* do |
-| [`docs/HARNESS.md`](docs/HARNESS.md) | Validation harness internals (corpora, validators, readiness cards) |
+| [`internal/docs/HARNESS.md`](internal/docs/HARNESS.md) | Validation harness internals (corpora, validators, readiness cards) |
 | [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) | RFC process, governance, rule lifecycle, issue triage |
 | [`docs/rules/_template.md`](docs/rules/_template.md) | Canonical rule-page template |
 | [`docs/integrations/_template.md`](docs/integrations/_template.md) | Canonical integration-doc template |
 | [`SECURITY.md`](SECURITY.md) | Coordinated-disclosure policy |
 | [`SECURITY-DATA-HANDLING.md`](SECURITY-DATA-HANDLING.md) | Data-flow doc for security review |
 | [`rfcs/`](rfcs/) | RFCs for significant changes |
-| [`docs/architecture.md`](docs/architecture.md) | Layered architecture detail |
-| [`docs/signal-model.md`](docs/signal-model.md) | Signal abstraction and schema |
+| [`internal/docs/architecture.md`](internal/docs/architecture.md) | Layered architecture detail |
+| [`internal/docs/signal-model.md`](internal/docs/signal-model.md) | Signal abstraction and schema |
 | [`docs/signal-catalog.md`](docs/signal-catalog.md) | Signal types and categories |
 | [`docs/cli-spec.md`](docs/cli-spec.md) | Full CLI command and flag reference |
 
@@ -114,35 +124,35 @@ Plus the conversion subsystem's CLI (`convert`, `migrate`, `detect`, etc.) — a
 Canonical terms used in this doc and across `docs/PRODUCT.md`:
 
 - **Surface** — point in the codebase where an AI/ML system is exposed (LLM call site, model inference endpoint, feature pipeline, prompt template, training script)
-- **Eval** — oracle that produces a verdict on a surface's behavior. Vocabulary rename from earlier "scenario" usage is a Tier 0 must-ship item (`docs/PRODUCT.md` §16).
+- **Eval** — oracle that produces a verdict on a surface's behavior. Vocabulary rename from earlier "scenario" usage is a Tier 0 must-ship item ([`docs/cli-spec.md`](docs/cli-spec.md)).
 - **Metric** — score produced by an eval (rubric score, accuracy, F1, AUC, drift KL, latency, cost)
 - **Finding** — single result from one rule, rendered to four surfaces
 - **Rule** — configurable detection capability with stable ID (`terrain/<category>/<rule>`), severity default, doc page
 - **Tier** — stable or preview (stable rules ship default-on at LB-measured quality; preview rules ship default-off as scope-under-evaluation)
 - **Cause path** — chain of graph nodes from a finding's primary location back to the change in the PR that caused it
-- **Unified graph** — dependency graph spanning code, tests, surfaces, evals, data, cross-language edges (LB-11 bidirectional)
+- **Unified graph** — dependency graph spanning code, tests, surfaces, evals, data, and cross-language edges (bidirectional cause attribution)
 
 ## What's stable at 0.2.0
 
-Per `docs/PRODUCT.md` §6 *Stable APIs from 0.2.0 release*:
+Per `docs/PRODUCT.md` §11 (Stability commitments):
 
 - Rule IDs (`terrain/<category>/<rule>` namespace)
 - JSON output schema (`version: 1` on `terrain pr --json` and `findings.json`)
 - `terrain.yaml` schema (versioned `v1`; closed-enumeration for surface types)
 - CLI flags
 - Artifact format (JUnit XML structure, SARIF for security rules, `findings.json` shape)
-- Documented LB quality bars (LB-1 through LB-12)
+- Documented load-bearing quality bars
 
-All follow the one-cycle deprecation contract per `docs/PRODUCT.md` §18 versioning.
+All follow the one-cycle deprecation contract per `docs/PRODUCT.md` §14 (Versioning).
 
 ## Migration context
 
-Terrain originated as a multi-framework test converter. That migration surface lives in `internal/convert/` and the conversion-subsystem CLI (`convert`, `migrate`, `detect`, etc.). It ships in the same binary as the AI/ML CI gate at 0.2.0 and is stable from the 0.2.0 release tag, but is positioned as a parallel product capability with its own narrative (per `docs/PRODUCT.md` §7).
+Terrain originated as a multi-framework test converter. That migration surface lives in `internal/convert/` and the conversion-subsystem CLI (`convert`, `migrate`, `detect`, etc.). It ships in the same binary as the AI/ML CI gate at 0.2.0 and is stable from the 0.2.0 release tag, but is positioned as a parallel product capability with its own narrative.
 
 Pre-0.2.0 was unstable by design; 0.2.0 is the first release with stability commitments. Adopters using pre-0.2.0 versions treat 0.2.0 as a fresh install.
 
 ## Extension architecture
 
-The VS Code extension is intentionally thin. It invokes Terrain's CLI, reads the artifact format (JUnit + `findings.json`), and renders views — no domain logic is duplicated in the extension. At 0.2.0 the extension ships as a Marketplace-published alpha with the minimum capability set documented in `docs/PRODUCT.md` §16. Full LSP-based integration lands in 0.3.0.
+The VS Code extension is intentionally thin. It invokes Terrain's CLI, reads the artifact format (JUnit + `findings.json`), and renders views — no domain logic is duplicated in the extension. At 0.2.0 the extension ships as a Marketplace-published alpha with the minimum capability set documented in [`docs/cli-spec.md`](docs/cli-spec.md). Full LSP-based integration is future work.
 
 See [`docs/vscode-extension.md`](docs/vscode-extension.md).

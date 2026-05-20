@@ -170,7 +170,7 @@ docs/examples/align/multirepo/
 
 ## Related reading
 
-- [`docs/product/alignment-first-migration.md`](../../../product/alignment-first-migration.md) —
+- [`docs/PRODUCT.md`](../../../PRODUCT.md) —
   the framing this example demonstrates
 - [`internal/portfolio/manifest.go`](../../../../internal/portfolio/manifest.go) —
   the manifest schema this example exercises

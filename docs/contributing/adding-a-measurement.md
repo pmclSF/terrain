@@ -4,7 +4,7 @@ This guide covers how to add a new measurement to Terrain's measurement framewor
 
 ## Prerequisites
 
-- Understand the five posture dimensions ([Posture Dimensions](../engineering/posture-dimensions.md))
+- Understand the five posture dimensions (health, coverage depth, coverage diversity, structural risk, operational risk — see [glossary](../glossary.md))
 - Know which dimension your measurement feeds
 - Identify the signals or data sources it will consume
 
@@ -121,14 +121,7 @@ go build ./cmd/... ./internal/...
 
 ## Step 5: Document
 
-Add a section to the appropriate measurement doc:
-- `docs/engineering/health-measurements.md`
-- `docs/engineering/coverage-depth-measurements.md`
-- `docs/engineering/coverage-diversity-measurements.md`
-- `docs/engineering/structural-risk-measurements.md`
-- `docs/engineering/operational-risk-measurements.md`
-
-Include: what, how, evidence, thresholds, why it matters, limitations.
+Open a docs PR or issue describing the new measurement: what it measures, how, evidence sources, thresholds, why it matters, limitations. A maintainer will land the internal architecture-doc updates that go with it.
 
 ## Checklist
 

@@ -45,7 +45,7 @@ critical[terrain/security/insecure-deserialization]: pickle.load deserializes ar
   --> src/loader.py:5
    = primitive: pickle.load
    = help:      Replace with a safe format (JSON, msgpack, or safetensors). When pickle is unavoidable, sandbox the deserialization and authenticate the source.
-   = docs:      https://terrain.dev/rules/security/insecure-deserialization
+   = docs:      https://github.com/pmclSF/terrain/blob/main/docs/rules/security/insecure-deserialization
 ```
 
 **Before:**

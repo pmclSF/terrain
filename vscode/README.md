@@ -18,7 +18,7 @@ Surfaces findings from the most recent `terrain analyze` run in the VS Code Prob
 ## Configuration
 
 - `terrain.findingsPath` — Path to findings.json relative to the workspace root (default: `.terrain/findings.json`).
-- `terrain.docsBaseURL` — Base URL prepended to rule slugs for the Open Rule Docs command (default: `https://terrain.dev/rules/`).
+- `terrain.docsBaseURL` — Base URL prepended to rule slugs for the Open Rule Docs command (default: `https://github.com/pmclSF/terrain/blob/main/docs/rules/`).
 
 ## Commands
 

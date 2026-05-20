@@ -27,7 +27,7 @@ Walk every Eval and check `CoveredSurfaceIDs`. Fire when empty.
 ```
 info[terrain/coverage/orphaned-eval]: eval "summarize_v2" references no AI surface
   --> evals/summarize_v2.yaml
-   = docs: https://terrain.dev/rules/coverage/orphaned-eval
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/coverage/orphaned-eval
 ```
 
 ## 9. Reproducibility

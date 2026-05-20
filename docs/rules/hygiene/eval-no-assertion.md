@@ -33,7 +33,7 @@ The rule fires on the structural shape, not on the runtime result. A test that f
 - **Inputs consumed:** source bytes of files in eval-like paths.
 - **Assertion vocabulary recognized:** Python `assert` statements (AST-level), unittest `self.assert*` methods, pytest `pytest.fail` / `pytest.skip`, framework calls `evaluator.score`, `deepeval.assert_*`, `ragas.evaluate`, `expect(...)`, `.score`, `metric.*`, `should.*`, `.toBe` / `.toEqual` for cross-framework JS-style helpers, `promptfoo` markers, `assert_response`.
 - **Edge cases handled:** assertions inside helper functions called from the test count (the text-match path catches them); raw `assert` statements caught at the AST level so string literals containing `assert` don't trip the suppression.
-- **Edge cases NOT handled at 0.2.0:** Python tests outside the eval path conventions; non-Python eval tests (Jest, Vitest under `evals/`) deferred to a 0.3.0 JS/TS detector.
+- **Edge cases NOT handled at 0.2.0:** Python tests outside the eval path conventions; non-Python eval tests (Jest, Vitest under `evals/`) are future work for a JS/TS detector.
 
 ## 6. Worked example
 
@@ -41,7 +41,7 @@ The rule fires on the structural shape, not on the runtime result. A test that f
 error[terrain/hygiene/eval-no-assertion]: eval test "test_summarize_quality" has no assertion
   --> evals/summarize_test.py:1
    = help: Add an assert / score check that fails when the eval output deviates from expectations.
-   = docs: https://terrain.dev/rules/hygiene/eval-no-assertion
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/hygiene/eval-no-assertion
 ```
 
 **Before:**

@@ -27,7 +27,7 @@ AST walk per module: find vector-store constructor calls (Chroma, Pinecone, Weav
 ```
 info[terrain/retrieval-quality/cold-store]: vector store initialized with no population call
   --> rag/store.py:22
-   = docs: https://terrain.dev/rules/retrieval-quality/cold-store
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/retrieval-quality/cold-store
 ```
 
 ## 9. Reproducibility

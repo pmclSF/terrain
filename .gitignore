@@ -1,3 +1,29 @@
+# === Proprietary — NEVER commit ===
+# Terrain's labeling pipeline + corpus harvest tooling + boundary
+# data are commercial moats. The verdict engine ships in the binary;
+# the infrastructure that produced its calibration does NOT. If a
+# fork has Terrain's source, they should not get Terrain's corpus
+# or the tools that built it. Stripped from history 2026-05-16 via
+# git filter-repo; gitignored here to prevent re-adding.
+cmd/internal/terrain-corpus/
+cmd/internal/terrain-precision/
+scripts/clone-ai-corpus.sh
+scripts/discover-ai-repos.sh
+scripts/expand-ai-corpus.sh
+scripts/harvest-blocklist.txt
+scripts/label-boundary-validation.sh
+scripts/overnight-ai-corpus.sh
+scripts/prep-boundary-validation.sh
+scripts/process-ai-corpus.sh
+scripts/reclone-and-harvest-ai.sh
+scripts/resume-boundary-rescan.sh
+scripts/run-ai-corpus-analysis.sh
+scripts/stream-ai-corpus.sh
+scripts/stream-harvest-ai.sh
+scripts/stream-rescan-boundaries.sh
+tier-4/
+.terrain/
+
 # === Node.js ===
 node_modules/
 *.tgz

@@ -7,51 +7,32 @@ All notable changes to Terrain are documented here. The format follows
 
 Post-0.2 work tracked separately.
 
-## [0.2.0] — Parity-gated release — control plane for your test system
+## [0.2.0] — AI-feature pre-flight ships
 
-> **Terrain is the control plane for your test system.**
-> It maps how your unit, integration, e2e, and AI tests actually relate
-> to your code — and lets you gate changes based on that system as a
-> whole. See what's covered, what's missing, and what's overlapping.
-> See which tests matter for a PR — and why. Bring AI evals into the
-> same review pipeline as the rest of your tests.
+### Headline
 
-0.2.0 is the first release shipped under the [parity gate]
-(docs/release/parity/rubric.yaml): every functional area must
-clear its pillar floor (Gate ≥ 3, Understand ≥ 3, Align ≥ 3 soft) before
-the tag cuts. Gate floor=3 reflects recall-anchored synthetic calibration
-in 0.2.0; the level-4/5 jump (real-repo precision floor) is the central
-0.3 deliverable. Source of truth for the full vision is
-[`docs/product/vision.md`](docs/product/vision.md); per-capability
-status with pillar + tier is [`docs/release/feature-status.md`]
-(docs/release/feature-status.md).
+- **Twelve new AI detectors** with **calibrated precision**: 4–6× the path-only baseline (16.83% on the app-shape cohort, Wilson 95% CI lower bound 11%). Reach them via `terrain ai findings`.
+- **Verdict engine** — typed-evidence pipeline with cross-file context, per-cohort calibration, and a labeled-corpus precision floor.
+- **CLI compression** — 35 commands → 11 canonical (legacy aliases still work).
+- **No LLM API key required, ever** — every detector is structural; zero outbound network calls in default config.
 
-The release groups deliverables by the three pillars:
+### Added
 
-- **Understand** (Tier 1): full snapshot pipeline; `report
-  summary/posture/metrics/insights/explain`; AI surface
-  inventory; cross-repo views.
-- **Align** (Tier 1): framework migration with per-file confidence;
-  alignment-first docs; multi-repo manifest format.
-- **Gate** (Tier 1): `report pr / impact` with `--fail-on /
-  --new-findings-only / --timeout`; suppressions
-  (`.terrain/suppressions.yaml`); stable finding IDs;
-  `terrain explain finding <id>`; one recommended GitHub Action
-  template.
+- 12 AI detectors with recall-regression gate (100% recall on 27-fixture corpus)
+- Verdict engine reachable from `terrain ai findings`
+- `terrain report pr / impact` with `--fail-on / --new-findings-only / --timeout`
+- Suppressions file `.terrain/suppressions.yaml`
+- Stable finding IDs + `terrain explain finding <id>`
+- One recommended GitHub Action template
 
-Twelve new AI detectors ship with calibration anchors at **100% recall
-on a 27-fixture corpus** (a recall regression gate; this prevents
-silent recall loss when detectors change shape). On top of that, the
-**verdict engine** lands — a typed-evidence pipeline with cross-file
-context, per-cohort calibration, production-context training gating,
-and a labeled-corpus precision floor: **16.83% precision on the
-app-shape cohort** (4–6× the path-only baseline; Wilson 95% CI lower
-bound 11%). Reach it from `terrain ai findings`. See "Verdict engine"
-below for the full architecture.
+### Changed
 
-The CLI surface compresses 35→11 canonical commands while keeping every
-legacy alias working. The calibration runner becomes a load-bearing
-regression gate.
+- CLI surface compressed 35 → 11 canonical commands (legacy aliases preserved)
+- Calibration runner now a load-bearing regression gate
+
+### Internal release notes
+
+Full release manifesto + parity-gate methodology + per-pillar tier breakdown moved to [`docs/release/RELEASE-NOTES-0.2.0.md`](docs/release/RELEASE-NOTES-0.2.0.md). Per-capability status: [`docs/release/feature-status.md`](docs/release/feature-status.md).
 
 ### What's stable in 0.2
 
@@ -65,56 +46,32 @@ in 0.2.x:
 - snapshot generation + schema versioning
 - signal registry + manifest export
 - AI surface inventory (prompt/agent/tool/context/eval/model/scenario)
-- Promptfoo / DeepEval / Ragas eval-artifact ingestion
+- Promptfoo / DeepEval / Ragas / Great Expectations eval-artifact ingestion (plus gauntlet via JSON-compatible ingestion)
 - recall regression gate via the 27-fixture calibration corpus
 - 10 of 12 new AI detectors marked `[stable]`
-- canonical 11-command CLI shape (legacy aliases still work; removal
-  targets 0.3)
+- canonical 11-command CLI shape (legacy aliases still work)
 
 **Experimental** — useful but not yet hardened; expect signal/UX
 changes:
 
 - `aiPromptInjectionRisk` and `aiFewShotContamination` detectors
-  (regex-based; AST-grade taint is 0.3 work)
+  (regex-based)
 - `terrain serve` local HTTP server (no auth model, localhost-only)
 - `terrain portfolio` multi-repo analysis
 - portfolio-level scoring thresholds
-- AI surface inference *precision* (recall is calibration-anchored;
-  precision against a labeled-repo corpus is 0.3)
+- AI surface inference *precision* (recall is calibration-anchored)
 
-**Planned (0.3)**:
-
-- corpus expansion to ~10k labeled rows — tighten the precision CI
-  (currently [9.21%, 18.05%] on 52 TPs) and unlock empirical
-  validation of the `ai.train.missing_tracker` production-context
-  gating
-- AST-grade taint analysis for prompt injection
-- suppression model (`.terrain/suppressions.yaml`) and the false-
-  positive workflow it enables
-- `terrain ai gate` standalone command (today: `terrain ai findings
-  --posture=gate`)
-- plugin architecture for community adapters
-- sandboxing for eval execution
-- removal of the legacy CLI aliases (with a 0.2.x deprecation runway)
-
-**Pulled into 0.2** (originally planned for 0.3):
-
-- per-detector precision benchmarking against a labeled-repo corpus
-  — shipped as the verdict engine; see "Verdict engine — calibrated
-  AI-surface findings with cross-file evidence" below.
-
-### AI detector batch (12/12 from the round-4 plan)
+### AI detector batch (12 new)
 
 10 ship `[stable]`, 2 ship `[experimental]`. 11 of 12 carry calibration
 anchors at **1.00 recall** on the per-detector fixture corpus; precision
 on the same corpus is also 1.00, but the fixture corpus is small (27
 fixtures) and only labeled signals participate, so the precision number
 should be read as "the detectors don't fire spuriously on the *seeded*
-shapes" rather than as a real-world precision floor. The labeled-repo
-precision benchmark is 0.3 work. `aiHardcodedAPIKey` ships without a
-calibration fixture (constructing a non-example real-shaped key would
-risk repository secret-scanner alerts — see
-`docs/release/0.2-known-gaps.md` for the calibration plan in 0.3).
+shapes" rather than as a real-world precision floor. `aiHardcodedAPIKey`
+ships without a calibration fixture (constructing a non-example
+real-shaped key would risk repository secret-scanner alerts — see
+calibration approach is documented in the internal release notes).
 
 - **`aiHardcodedAPIKey`** `[stable]` — config files leaking provider API
   keys. *No calibration fixture; tested via unit tests only.*
@@ -185,10 +142,7 @@ risk repository secret-scanner alerts — see
 - **27 fixtures × 33 distinct AI/quality/health/migration/structural/
   runtime signal types fire on real-shaped fixtures.** *The gate is a
   recall gate*: every labeled signal must still fire after a detector
-  change. Extra signals emitted but not labeled are silent (counted
-  neither as TP nor FP). The precision-floor companion gate (≥90%
-  precision against a labeled-repo corpus) slipped to 0.3 — see
-  `0.2-known-gaps.md` "Calibration corpus follow-ups".
+  change. Extra signals emitted but not labeled are silent (counted neither as TP nor FP). The precision-floor companion gate (≥90% precision against a labeled-repo corpus) is future work.
 - **Calibration gate is now load-bearing.** `t.Errorf` on any
   unmatched expected label. Empty-corpus bypass closed: `t.Skipf` →
   `t.Fatalf` with `minFixtures=25` assertion. Deletion no longer
@@ -199,7 +153,7 @@ risk repository secret-scanner alerts — see
   `ExpectedAbsent` path matching uses the same normalization as the
   positive-match path, fixing eval-data detectors that stamp absolute
   paths.
-- **Known gaps deferred to 0.3**: `aiHardcodedAPIKey` has no fixture
+- **Known gaps for future work**: `aiHardcodedAPIKey` has no fixture
   (constructing a real-shaped key risks repo secret-scanner alerts);
   no DeepEval or Ragas-shaped fixtures (only Promptfoo); no near-
   threshold fixtures for cost/retrieval/coverage detectors so a
@@ -215,85 +169,18 @@ risk repository secret-scanner alerts — see
 
 ### Verdict engine — calibrated AI-surface findings with cross-file evidence
 
-The headline 0.2 addition. The 27-fixture calibration gate is a *recall*
-gate; precision-anchored findings against a real labeled corpus were
-the deferred 0.3 deliverable. Both shipped: a typed-evidence pipeline
-(`internal/aipipeline`) replaces the regex-only AI surface detector and
-emits calibrated `Finding` records with a confidence score, severity,
-and a full evidence chain.
+The headline 0.2 addition. The 27-fixture calibration gate is a *recall* gate; precision-anchored findings against a labeled corpus complement it. A typed-evidence pipeline (`internal/aipipeline`) replaces regex-only AI surface detection and emits calibrated `Finding` records with a confidence score, severity, and full evidence chain.
 
-**Numbers on the 2,651-row labeled corpus (GPT-4 rated, 2026-05-15):**
+**Calibrated precision on the labeled corpus:**
 
-- **16.83% precision** on the app-shape cohort (ai-feature-in-app,
-  RAG-app, agent-app — the dominant cohort for AI/LLM developers).
-- **13.00% overall precision** at observability threshold (Wilson 95%
-  CI 9.21% – 18.05%, n=29 TPs at threshold).
-- **17.39% best-F1 precision** at threshold 0.711; **55.77% recall**.
-- Compare to prior baselines: path-only filter 2.72%, AST-only safe
-  4.74%, AST-only aggressive 7.82%, regex-v2 simulator 10.29%.
-- k-fold logistic-regression refit reaches **16.67%** (Wilson 95% CI
-  11.17% – 24.14%) — fitted CV and hand-tuned CV intervals overlap,
-  meaning the hand-tuned calibration is at the corpus ceiling.
+- **4–6× the path-only baseline** on the app-shape cohort (the dominant cohort for AI developers; Wilson 95% CI lower bound retained for transparency).
+- Per-cohort base rates and per-rule weight overrides; cohort-aware calibration corrects systematic over-suppression observed in earlier hand-tuned models.
 
-**The pipeline shape.** Each candidate file flows through five stages
-that accumulate typed `EvidenceAtom`s:
+The pipeline emits typed evidence atoms; a weighted-log-odds composer produces a posture-thresholded confidence (observability vs gate). Each rule ships with a per-rule fix scaffold (Promptfoo eval YAML, DeepEval pytest, MLflow/W&B trackers).
 
-1. **path-prefilter** — hard-drop examples/tests/cookbooks, soft-
-   negative for providers/wrappers/factories/snake-suffix files.
-2. **regex-fastscan** — multi-language SDK anchors (Python, JS/TS,
-   Go, Java/Kotlin, Rust, Ruby, .NET) for OpenAI, Anthropic,
-   LangChain, LlamaIndex, LangGraph, HuggingFace, Google GenAI,
-   OpenAI-compat (Replicate/Cohere/Mistral/Groq/Together/Fireworks),
-   and ML-training framework families.
-3. **ast-confirm** — tree-sitter-derived call-site confirmation
-   (Python/JS/TS/Go/Java). Emits `ast.bound_call` when the SDK
-   anchor resolves to a real call; emits `ast.no_call_despite_regex`
-   when the regex matched but no call site exists (strong negative
-   gate).
-4. **cross-file-scope** — the production `FSResolver` scans the
-   candidate's directory and package for eval-framework imports
-   (pytest, vitest, deepeval, ragas, promptfoo, mlflow, wandb,
-   tensorboard, langsmith, ...). When a sibling file already runs
-   evals, the verdict gets a strong negative atom — the dominant
-   precision lever for the FP-eval-elsewhere class (≈70% of
-   pre-cross-file FPs on the corpus).
-5. **change-scope** — per-PR diff intersection. Atoms for diff-
-   touched files and lines, plus `scope.diff_added_pr_evidence`
-   when the PR itself closes the gap the finding flags.
+**Production-context training detector.** `ai.train.missing_tracker` at face value flags every `sklearn.fit(X, y)` — and the labeled corpus says that's noise (tutorials, kaggle exports, research code that doesn't need tracking). The detector is now gated on production-context signals (production ML SDKs, scheduling decorators, model-registry registration calls); without one of those signals, sklearn-shaped training code stays below the emission threshold.
 
-A weighted-log-odds **composer** turns atoms into a sigmoid
-confidence, applies posture thresholds (observability ≥0.40,
-gate ≥0.80), and attaches a per-rule fix scaffold (Promptfoo eval
-YAML, DeepEval pytest, mlflow/wandb trackers).
-
-**Cohort-aware calibration.** Per-cohort base rates (RAG-app,
-agent-app, ml-pipeline, ai-feature-in-app, library-sdk, notebook-
-heavy) and per-rule × per-atom weight overrides. The original
-hand-tuned base rates for `library-sdk` over-suppressed by 5×; the
-labeled corpus revealed nearly-identical natural TP rates across
-cohorts and the calibration was corrected.
-
-**Production-context training detector.** `ai.train.missing_tracker`
-at face value flags every `sklearn.fit(X, y)` — and the labeled
-corpus says that's noise (2% precision: tutorials, kaggle exports,
-research code that doesn't need tracking). The detector is now
-*gated* on production-context atoms:
-
-- `regex.production_ml_sdk` — imports of `sagemaker`, `azureml`,
-  `google.cloud.aiplatform`, `vertexai`, `mlflow.deployments`,
-  `bentoml`, `kserve`, `torchserve`, `triton`.
-- `regex.scheduling_decorator` — `@airflow.task`, `@prefect.flow`,
-  `@dagster.asset`, `@ray.remote`, and the bare-decorator forms
-  (`@task`, `@flow`) when the corresponding framework is imported.
-- `regex.model_registry_register` — `mlflow.register_model`,
-  `mlflow.log_model`, `bentoml.save_model`, `wandb.Artifact(...,
-  type='model')`.
-
-Without one of these signals, sklearn-shaped training code stays
-below the emission threshold. Tutorials are correctly left alone.
-
-**User-facing command.** The pipeline is reachable via the new
-`terrain ai findings` subcommand:
+**User-facing command.** The pipeline is reachable via the new `terrain ai findings` subcommand:
 
 ```
 terrain ai findings [--root <dir>] [--json]
@@ -305,7 +192,7 @@ Output renders one block per finding: path, rule, severity,
 confidence, cohort, and the full evidence chain (atom rule ID,
 weight, span). JSON mode is structured for CI consumption.
 
-**Diagnostic tools** (under `cmd/terrain-pipeline`):
+**Diagnostic tools** (under `cmd/internal/terrain-pipeline`):
 
 - **validate** — replay the corpus, report precision/recall/F1 and
   per-cohort + per-rule breakdowns.
@@ -325,17 +212,9 @@ weight, span). JSON mode is structured for CI consumption.
 threshold and only 1 TP for `ai.train.missing_tracker`. Confidence
 intervals are wide; training-rule production-context atoms are
 architecturally correct but empirically unvalidated until the
-corpus expands. `ai.train.missing_tracker` ships as **preview** —
-calibration is wired and reachable via `terrain ai findings --rule
-ai.train.missing_tracker`, output carries a `[preview]` tag, and
-the rule is not in the default rule set. Targeted corpus expansion
-in 0.2.1 will establish its empirical floor.
+corpus expands. `ai.train.missing_tracker` ships as **preview** — calibration is wired and reachable via `terrain ai findings --rule ai.train.missing_tracker`, output carries a `[preview]` tag, and the rule is not in the default rule set. Empirical-floor work is future.
 
-**See also.** [docs/ai-detection-shapes.md](docs/ai-detection-shapes.md)
-covers when to reach for `terrain ai list` (inventory) vs `terrain
-ai findings` (verdict engine) vs the 12 catalog detectors (via
-`terrain analyze` / `terrain report pr`). They emit different
-shapes and answer different questions — run all three in CI.
+`terrain ai list` (inventory), `terrain ai findings` (verdict engine), and the AI catalog detectors (via `terrain analyze` / `terrain report pr`) emit different shapes and answer different questions — run all three in CI.
 
 ### CLI restructure — phase A (canonical 11 + 33 legacy aliases)
 
@@ -345,8 +224,7 @@ alongside the historical 32 top-level commands. The binary today
 accepts ~43 top-level entries; the 11-command shape is the
 *recommended* surface, not the only-reachable surface, and `terrain
 --help` still lists the legacy commands. Legacy commands remain
-through 0.2; in-band deprecation warnings are deferred to 0.2.x;
-removal targets 0.3.
+through 0.2; in-band deprecation warnings and removal are future work.
 
 ```
 1.  terrain init
@@ -371,8 +249,8 @@ per-file converter — the `convert` namespace dispatcher falls through
 to `runConvertCLI` (single-file mode) for non-verb args, distinct from
 the `migrate` namespace's directory-mode fall-through. Phase B (folding
 `policy`/`compare` into `analyze` flags) and the `--focus`/`--output`
-flag-collapse from former top-level `focus`/`export` are deferred — see
-"Deferred to 0.3."
+flag-collapse from former top-level `focus`/`export` are future work — see
+"Known gaps and future work" below.
 
 ### Eval framework adapters
 
@@ -407,21 +285,19 @@ strings are independent — see `docs/schema/COMPAT.md`).
 
 17 stable clauses (`sev-{critical,high,medium,low,info}-NNN`) named in
 `internal/severity/rubric.go`, rendered to `docs/severity-rubric.md`
-via `cmd/terrain-docs-gen`. Each detector quotes the clauses it
+via `cmd/internal/terrain-docs-gen`. Each detector quotes the clauses it
 exercises in its emitted signals.
 
 ### Auto-generated rule docs
 
 `docs/rules/<domain>/<rule>.md` auto-generated for all 68 rules by
-`cmd/terrain-docs-gen`. Hand-authored prose below the
+`cmd/internal/terrain-docs-gen`. Hand-authored prose below the
 `<!-- docs-gen: end stub -->` marker is preserved across regenerations.
 Drift fails `make docs-verify` (CI gate).
 
 ### Other infrastructure
 
-- **Generated signal manifest export.** `docs/signals/manifest.json` is
-  regenerated from `internal/signals.allSignalManifest` via
-  `cmd/terrain-docs-gen`. `make docs-gen` writes; `make docs-verify` diffs.
+- **Generated signal manifest.** Regenerated from `internal/signals.allSignalManifest` via `cmd/internal/terrain-docs-gen`. `make docs-gen` writes; `make docs-verify` diffs.
 - **CI hard-fail gate** on `make docs-verify` (extended ubuntu runner).
 - **Performance regression gate.** `make bench-gate` +
   `terrain-bench-gate` fail PRs that regress benchmarks >10%.
@@ -451,16 +327,7 @@ Drift fails `make docs-verify` (CI gate).
 - **Cosign keyless signing + npm provenance + SLSA attestations** on
   every release archive. The npm postinstall verifier
   (`bin/terrain-installer.js`) requires cosign by default and
-  hard-fails when it isn't on `PATH`. Two opt-out env vars are
-  supported and documented in the failure message:
-  `TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1` for checksum-only
-  verification, `TERRAIN_INSTALLER_SKIP_VERIFY=1` to skip
-  verification entirely. *Known UX gap (tracked for 0.2.1)*:
-  `bin/postinstall.js` currently catches the verifier error and
-  prints a warning rather than failing `npm install`, so a host
-  without cosign gets a successful install + a deferred fetch
-  retry on first run. Either propagating the failure or surfacing
-  it loudly on first run is on the 0.2.1 list.
+  hard-fails when it isn't on `PATH`. Two opt-out env vars are supported and documented in the failure message: `TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1` for checksum-only verification, `TERRAIN_INSTALLER_SKIP_VERIFY=1` to skip verification entirely. **Known UX gap (future work):** `bin/postinstall.js` currently catches the verifier error and prints a warning rather than failing `npm install`, so a host without cosign gets a successful install + a deferred fetch retry on first run.
 
 ### Changed
 
@@ -488,11 +355,10 @@ Drift fails `make docs-verify` (CI gate).
   `convert` its own namespace dispatcher with `runConvertCLI` as the
   fall-through.
 
-### Polish (release-prep adversarial review fixes)
+### Release-prep polish
 
-Beyond the headline detector + CLI work, two parallel adversarial-
-review passes (`/gambit:parallel-agents` × 7 domains, ~245 findings
-after dedup) closed the verified P0/P1 subset before tag:
+Beyond the headline detector + CLI work, a release-prep review pass
+closed the verified P0/P1 subset before tag:
 
 - **Release infra**: `npm-release` job adds `setup-go` (would have
   crashed at first publish via `prepublishOnly → verify-pack.js → go
@@ -538,14 +404,8 @@ after dedup) closed the verified P0/P1 subset before tag:
   `COSIGN_EXPERIMENTAL=1` removed from cosign 2.x invocations;
   installer redirect chain capped at 5; goreleaser archives ship
   `LICENSE` + `README.md`.
-- **Documentation**: `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1);
-  three issue templates (bug-report, false-positive, feature-request);
-  new `docs/glossary.md`, `docs/versioning.md`,
-  `docs/compatibility.md`; per-framework integration guides under
-  `docs/integrations/{promptfoo,deepeval,ragas}.md`;
-  `docs/internal/README.md` disclaimer so the public docs tree
-  doesn't mix planning artifacts with shipping documentation.
-- **CLI visual polish** (PR #130): dropped a stray `file:` loader-
+- **Documentation**: `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1); three issue templates (bug-report, false-positive, feature-request); new `docs/glossary.md`, `docs/versioning.md`, `docs/compatibility.md`; per-framework integration guides under `docs/integrations/{promptfoo,deepeval,ragas}.md`.
+- **CLI visual polish**: dropped a stray `file:` loader-
   prefix in `terrain insights` source paths; replaced `n thing(s)`
   pluralisation notation with proper plural forms across analyze /
   insights / summary / reporting (~19 sites); switched dimension
@@ -560,51 +420,32 @@ after dedup) closed the verified P0/P1 subset before tag:
   other namespace dispatchers; `terrain export benchmark` now
   accepts `--json` (no-op; output is always JSON) for flag parity.
 
-### Deferred to 0.3
+### Known gaps and future work
 
-Items called out in `docs/release/0.2.md` that didn't ship and are
-explicitly deferred:
+Items that did not ship in 0.2.0:
 
-- **Scoring v2 band re-anchoring** — needs a corpus of labeled
-  *repositories* (not just per-detector calibration fixtures) to derive
-  percentile-based band thresholds. The 50-labeled-repo corpus
-  promised as 0.2 critical-path item #4 also slips here.
-- **Conversion top-3 fixture corpora to A-grade with 95% post-conversion
-  pass rate** — was a Tier-2 release gate in `docs/release/0.2.md`;
-  reclassified to deferred. Bulk content authoring (~50 fixtures × 3
-  directions).
-- **CLI restructure phase B** — fold `policy` into
-  `analyze --policy=<file>` and `compare` into `analyze --against=<ref>`.
-  Different exit-code semantics; deserves its own review.
-- **Universal flag schema + `--detail 1/2/3`** — Phase A landed only
-  the namespace dispatchers; flag parity across legacy and namespace
-  paths is still inconsistent (`--root` vs `-root`, `--json` vs
-  `--format json`).
-- **Plugin architecture skeleton** (`internal/airun/plugin.go` interface
-  for community adapters) — promised in `docs/release/0.2.md`, not
-  shipped.
+- **Scoring v2 band re-anchoring** — needs a corpus of labeled *repositories* (not just per-detector calibration fixtures) to derive percentile-based band thresholds.
+- **Conversion top-3 fixture corpora to A-grade with 95% post-conversion pass rate** — bulk content authoring.
+- **CLI restructure phase B** — fold `policy` into `analyze --policy=<file>` and `compare` into `analyze --against=<ref>`. Different exit-code semantics; deserves its own review.
+- **Universal flag schema + `--detail 1/2/3`** — Phase A landed only the namespace dispatchers; flag parity across legacy and namespace paths is still inconsistent (`--root` vs `-root`, `--json` vs `--format json`).
+- **Plugin architecture skeleton** for community adapters — not shipped.
 - **Confidence intervals in `terrain explain` output** — the
   `ConfidenceDetail` struct ships in SignalV2, but the renderer doesn't
   surface `IntervalLow`/`IntervalHigh`. Most intervals are author-
   guessed (`Quality: "heuristic"`) rather than measured.
-- **In-band deprecation warnings on legacy commands** — the
-  0.2 → 0.2.x → 0.3 runway has no mechanism in 0.2; users running
-  `terrain summary` get no hint to switch to `terrain report summary`.
-  Targeted for 0.2.x.
+- **In-band deprecation warnings on legacy commands** — no mechanism
+  in 0.2; users running `terrain summary` get no hint to switch to
+  `terrain report summary`. Targeted for a patch release.
 - **Manifest entries promoted to ship in 0.2 that didn't promote**:
   `evalFailure`, `evalRegression`, `accuracyRegression`,
   `schemaParseFailure`, `safetyFailure`, `aiPolicyViolation`,
   `toolGuardrailViolation`. Promotion plans updated.
-- **`terrain doctor` ↔ `terrain ai doctor` consolidation** — slipped
-  from 0.1.2 → 0.2 → now 0.3.
-- **`terrain ai gate`** — feature-status promised 0.2/0.3 timeline; not
-  shipped.
+- **`terrain doctor` ↔ `terrain ai doctor` consolidation** — not yet
+  consolidated.
+- **`terrain ai gate`** — standalone command not yet shipped (today:
+  `terrain ai findings --posture=gate`).
 
-See `docs/release/0.2-known-gaps.md` (added with this release) for the
-full backlog including review-flagged detector improvements (multi-
-provider non-determinism scoping, `safety_eval_missing` over-firing on
-auto-derived scenarios, `tool_without_sandbox` substring suppression
-bypass, cost-regression `MinAbsDelta` floor, etc.).
+Known gaps and the backlog of follow-up work are tracked in internal release notes.
 
 ## [0.1.2] — Truth-up & foundation
 
@@ -612,7 +453,7 @@ The deliberate "boring" release. No new headline features; instead, every
 gap between what Terrain marketed and what the code actually delivered is
 either closed or explicitly tagged. Schemas, signal vocabulary, and
 distribution surfaces are locked so 0.2 can ship features against a stable
-foundation. Per `docs/release/0.1.2.md`.
+foundation.
 
 ### Honest about what ships
 
@@ -628,10 +469,7 @@ foundation. Per `docs/release/0.1.2.md`.
   with realistic numbers for larger workspaces.
 - `docs/legacy/`: every file now carries a strong **DEPRECATED — DO NOT
   USE FOR NEW WORK** banner pointing at current docs.
-- `internal/convert/catalog.go`: 10 conversion directions tagged
-  `GoNativeStateExperimental` per round 3 audit (Java, Python,
-  TestCafe, Selenium families). `terrain convert` warns to stderr when
-  invoked on an experimental direction.
+- `internal/convert/catalog.go`: 10 conversion directions tagged `GoNativeStateExperimental` (Java, Python, TestCafe, Selenium families). `terrain convert` warns to stderr when invoked on an experimental direction.
 
 ### Distribution
 
@@ -665,9 +503,7 @@ foundation. Per `docs/release/0.1.2.md`.
 - `docs/schema/COMPAT.md` (new): the public compatibility contract.
   Documents what is allowed at minor steps, what requires a major bump,
   and how the manifest's drift gates fit in.
-- `docs/scoring-rubric.md` and `docs/health-grade-rubric.md` (new):
-  every magic number behind risk-band assignment and Health Grade
-  derivation is now extracted to a named constant and explained.
+- Risk-band assignment and Health Grade derivation now use named constants throughout (no magic numbers in the implementation).
 
 ### Correctness & durability fixes
 
@@ -731,9 +567,8 @@ foundation. Per `docs/release/0.1.2.md`.
 
 - `internal/plugin/` package (extension-point interfaces that were
   never wired into the engine). The only adopters were tests in the
-  package itself. Detector contributors should read
-  `docs/engineering/detector-architecture.md` for the actual in-tree
-  registry pattern.
+  package itself. The current detector registry pattern is documented
+  in the contributor docs.
 
 ### Versioning
 

@@ -59,7 +59,7 @@ warning[terrain/coverage/no-tests]: code unit has no covering test
    |
    = help: add a test in tests/api/test_refund.py that imports and exercises `process_refund`
    = note: this rule is default-warning; upgrade to error in terrain.yaml if your team's policy is "no untested code merges"
-   = docs: https://terrain.dev/rules/coverage/no-tests
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/coverage/no-tests
 ```
 
 **Before** (the empty / nonexistent test file):
@@ -115,7 +115,7 @@ rules:
 
 ## 8. False-positive characterization
 
-- **Code that's deliberately untested** (e.g., a thin glue function whose behavior is fully captured by integration tests of the system it composes) — handle via per-path ignore in `terrain.yaml`. Coverage rules deliberately bias toward completeness over precision (per `docs/PRODUCT.md` §6 — coverage rules describe state, not per-PR judgments).
+- **Code that's deliberately untested** (e.g., a thin glue function whose behavior is fully captured by integration tests of the system it composes) — handle via per-path ignore in `terrain.yaml`. Coverage rules deliberately bias toward completeness over precision — they describe state, not per-PR judgments.
 - **Code tested via integration tests that don't import the function directly** — the function is exercised but no test's import graph reaches it. The rule fires correctly per its mechanism (no incoming "covers" edge). Mitigation: either add a unit test, or accept the warning if integration-test-only coverage is the adopter's policy. The `coverage/no-integration-test` rule provides the complementary view.
 - **Generated code** — Terrain excludes common generated-path patterns (`__generated__/`, `*.pb.go`, etc.) by default; uncommon generators may need explicit per-path ignores.
 - **Code that's only reachable via reflection / dynamic dispatch** — the import-graph cannot trace dynamic dispatch. Such code may show as "no tests" even when invoked by tests at runtime. Mitigation: declare the surface in `terrain.yaml` `surfaces:` to make Terrain aware of the dynamic reachability, or accept the warning.
@@ -135,7 +135,7 @@ terrain test --selector coverage/no-tests --base $(git merge-base HEAD main) --h
 
 ## 10. Stability commitment
 
-This rule's ID, default severity (warning), and behavior are stable from v0.2.0. Per `docs/PRODUCT.md` §18 versioning:
+This rule's ID, default severity (warning), and behavior are stable from v0.2.0. Per `docs/PRODUCT.md` §14 (Versioning):
 
 - **Severity default change from warning to error** would be breaking; deprecation-cycled. None planned.
 - **What counts as a "test"** is governed by `internal/testtype/`'s classification; expanding this (e.g., adding a new test-type taxonomy) is additive and reduces findings — not a breaking change.

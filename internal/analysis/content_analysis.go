@@ -82,9 +82,29 @@ var (
 			`chex\.assert_|jax\.test_util\.|` +
 			`tm\.assert_|pd\.testing\.assert_|pandas\.testing\.assert_|` +
 			`chispa\.|assert_df_equality|` +
-			`assertEqual|assertAlmostEqual|assertIn|assertTrue|assertFalse|` +
-			`assertRaises|assertIsInstance|assertIsNone|assertIsNotNone|` +
-			`raises\s*\(|raises_exception\s*\(` +
+			`assertEqual|assertAlmostEqual|assertIn|assertNotIn|assertGreater|` +
+			`assertLess|assertGreaterEqual|assertLessEqual|assertCountEqual|` +
+			`assertSequenceEqual|assertDictEqual|assertSetEqual|assertListEqual|` +
+			`assertRegex|assertNotRegex|` +
+			`assertTrue|assertFalse|` +
+			`assertRaises|assertRaisesRegex|assertWarns|assertWarnsRegex|` +
+			`assertIsInstance|assertNotIsInstance|assertIsNone|assertIsNotNone|` +
+			`raises\s*\(|raises_exception\s*\(|` +
+			// 2026-05-18: mock-API assertion family (was missing). Phase B/R2 found
+			// this is the dominant FP class in testsOnlyMocks (1/137 corpus precision),
+			// weakAssertion, assertionFreeImport — files have real assertions but
+			// detector counter only saw bare `assert`. Class-rule (≥40 FPs covered).
+			`\.assert_called(?:_with|_once|_once_with|_any_call)?\b|` +
+			`\.assert_not_called\b|\.assert_any_call\b|\.assert_awaited(?:_with|_once|_once_with)?\b|` +
+			`\.assert_has_calls\b|\.assert_not_awaited\b|` +
+			// 2026-05-18: tvm + ML-framework testing helpers (R2 surfaced ~11 FPs
+			// in assertionFreeImport using these).
+			`tvm\.testing\.assert_|assert_structural_equal|assert_allclose|` +
+			`assert_array_equal|assert_array_almost_equal|assert_frame_equal|` +
+			`assert_series_equal|` +
+			// pytest context-manager assertions (R2: pytest.warns/raises with
+			// context-manager form not always caught).
+			`pytest\.warns\s*\(|pytest\.deprecated_call\s*\(|pytest\.fail\s*\(` +
 			`)`)
 	pyMockPattern = regexp.MustCompile(`\b(mock\.patch|Mock\(|MagicMock\(|@patch)\b`)
 	pySkipPattern = regexp.MustCompile(`(@pytest\.mark\.skip|@unittest\.skip|@skip\b|pytest\.skip\s*\()`)

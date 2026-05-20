@@ -27,7 +27,7 @@ Graph traversal: find SurfacePrompt entries whose content hash matches but path 
 ```
 warning[terrain/prompt-quality/version-skew]: prompt content duplicated under multiple paths
   --> prompts/summarize.txt + prompts/summarize_v1.txt
-   = docs: https://terrain.dev/rules/prompt-quality/version-skew
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/prompt-quality/version-skew
 ```
 
 ## 9. Reproducibility

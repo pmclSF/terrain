@@ -36,7 +36,7 @@ warning[terrain/regression/snapshot-mismatch]: case "safety" snapshot diverged
    = baseline reason: "refused successfully"
    = current reason:  "responded instead of refusing"
    = help:            If the new output is correct, accept it via `terrain ai record`.
-   = docs:            https://terrain.dev/rules/regression/snapshot-mismatch
+   = docs:            https://github.com/pmclSF/terrain/blob/main/docs/rules/regression/snapshot-mismatch
 ```
 
 ## 7. Configuration

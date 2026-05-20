@@ -34,7 +34,7 @@ Without a baseline, the `eval-regression`, `pass-rate-drop`, and `snapshot-misma
 warning[terrain/regression/baseline-not-set]: eval run has 12 cases but no baseline is recorded
   --> current.json
    = help: Run `terrain ai record` on the current main-branch state to lock the baseline.
-   = docs: https://terrain.dev/rules/regression/baseline-not-set
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/regression/baseline-not-set
 ```
 
 ## 7. Configuration

@@ -232,7 +232,7 @@ jobs:
         # benchmark output benchstat consumed, computes per-bench delta,
         # and fails if any benchmark regressed beyond the threshold.
         run: |
-          go run ./cmd/terrain-bench-gate \
+          go run ./cmd/internal/terrain-bench-gate \
             --base /tmp/bench_base.txt \
             --head /tmp/bench_head.txt \
             --threshold 10 | tee /tmp/bench-gate.txt

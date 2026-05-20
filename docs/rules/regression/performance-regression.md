@@ -34,7 +34,7 @@ error[terrain/regression/performance-regression]: accuracy regressed
   --> ml_results.json
    = baseline: 0.910 → current: 0.780 (delta 0.130)
    = help:     Inspect the diff for training data / hyperparameter / feature changes.
-   = docs:     https://terrain.dev/rules/regression/performance-regression
+   = docs:     https://github.com/pmclSF/terrain/blob/main/docs/rules/regression/performance-regression
 ```
 
 ## 7. Configuration

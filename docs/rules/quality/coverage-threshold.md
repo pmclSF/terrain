@@ -17,7 +17,7 @@ Target low-coverage, high-risk areas and raise meaningful coverage first.
 
 ## Promotion plan
 
-Severity flips at hard 100%-gap boundary; smooth gradient lands in 0.3 per docs/scoring-rubric.md.
+Severity flips at hard 100%-gap boundary; a smooth gradient is future work.
 
 ## Evidence sources
 

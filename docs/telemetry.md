@@ -43,9 +43,7 @@ terrain config telemetry --on
 terrain config telemetry --off
 ```
 
-The bare `terrain telemetry` form is a legacy alias and prints a
-deprecation hint when `TERRAIN_LEGACY_HINT=1` is set. Removal targets
-0.3.
+The bare `terrain telemetry` form is a legacy alias and prints a deprecation hint when `TERRAIN_LEGACY_HINT=1` is set. Removal is future work.
 
 Or set the environment variable (overrides file config):
 

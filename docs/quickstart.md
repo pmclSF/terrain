@@ -1,8 +1,6 @@
 # Terrain Quickstart
 
-Five minutes from `npm install` to one actionable insight on your repo.
-The walkthrough is structured around the three insights that count toward
-the [first-user success gate](../docs/product/vision.md):
+Five minutes from install to one actionable insight on your repo. The walkthrough is structured around three insights that anchor a first-user evaluation:
 
 1. **PR risk explanation** — a finding tied to a changed file
 2. **Coverage gap with explanation** — a named uncovered export with a
@@ -202,7 +200,7 @@ terrain ai run --base main --dry-run
 terrain ai doctor
 ```
 
-Terrain starts giving AI surfaces CI-visible structure: inventory, impact-scoped eval selection where configured, protection-gap detection, and reviewable risk signals. Suppression workflows and labeled-repo precision floors are 0.3 work — see [`docs/release/0.2-known-gaps.md`](release/0.2-known-gaps.md) for what 0.2 covers and what it doesn't.
+Terrain starts giving AI surfaces CI-visible structure: inventory, impact-scoped eval selection where configured, protection-gap detection, and reviewable risk signals. Suppression workflows and labeled-repo precision floors are future work.
 
 ## The four primary questions
 

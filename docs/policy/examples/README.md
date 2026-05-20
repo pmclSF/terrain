@@ -45,15 +45,11 @@ terrain policy check
 - **Suppressions** live in `.terrain/suppressions.yaml`, not the
   policy file. Suppressions wave specific findings; policy rules
   set repo-wide thresholds.
-- **Per-team overrides** are not yet supported. The policy file
-  is repo-wide. Per-team / per-directory policies are tracked for
-  0.3.
+- **Per-team overrides** are not yet supported. The policy file is repo-wide. Per-team / per-directory policies are future work.
 
 ## Related docs
 
-- [`docs/product/vision.md`](../../product/vision.md) — overall
-  product narrative
-- [`CONTRIBUTING.md`](../../../CONTRIBUTING.md#parity-gate-lifting-maturity-uniformly) —
-  parity gate semantics for contributors
+- [`docs/PRODUCT.md`](../../PRODUCT.md) — product reference
+- [`CONTRIBUTING.md`](../../../CONTRIBUTING.md#release-gates) — release gate semantics for contributors
 - [`docs/release/feature-status.md`](../../release/feature-status.md) —
   per-capability tier status

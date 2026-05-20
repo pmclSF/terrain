@@ -34,7 +34,7 @@ Data validation is to data pipelines what assertions are to code: the only way a
 warning[terrain/coverage/no-data-validation]: pipeline file has no data-validation import
   --> pipelines/load_users.py
    = help: Add Great Expectations / pandera / dbt-expectations to validate pipeline output.
-   = docs: https://terrain.dev/rules/coverage/no-data-validation
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/coverage/no-data-validation
 ```
 
 ## 7. Configuration

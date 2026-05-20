@@ -93,17 +93,13 @@ Disagreements are resolved by the maintainer. Pre-1.0, the maintainer's decision
 
 ### Default tier for new rules
 
-New rules ship as **preview** by default. Preview status is not a quality slight — preview rules ship with full detection implementations and short-form documentation. The distinction is whether LB-2a/b/c, LB-5 (FP rate at Wilson 95% lower bound), and LB-6 (recall) have been measured at the target bar on the dogfood repos. Preview rules are scope-under-evaluation; their reports from opt-in adopters feed graduation to stable.
+New rules ship as **preview** by default. Preview status is not a quality slight — preview rules ship with full detection implementations and short-form documentation. The distinction is whether triage time, false-positive rate, and recall have been measured at the target bar on the dogfood repos. Preview rules are scope-under-evaluation; their reports from opt-in adopters feed graduation to stable.
 
 ### Graduation to stable
 
 A preview rule graduates to stable when:
 
-1. The validation harness measures the rule on the dogfood corpora and the rule clears:
-   - LB-2a triage decision ≤60s P75
-   - LB-2b fix-direction ≤Ns P75 (per category target)
-   - LB-5 FP rate Wilson 95% lower bound ≤5% per dogfood repo where the rule fires N≥10 times
-   - LB-6 recall ≥90% on the seeded-failure corpus
+1. The validation harness measures the rule on the dogfood corpora and the rule clears the published quality bars (triage time, false-positive rate at Wilson 95% lower bound, and recall on the seeded-failure corpus).
 2. The rule's doc page is filled to full stable-tier (sections 1–11, ~800–1500 words)
 3. A graduation RFC is filed (lightweight; the RFC is mostly the measured-numbers report from the harness)
 4. Maintainer accepts the graduation
@@ -124,7 +120,7 @@ Deprecation follows the one-cycle process:
 
 ## Issue triage and response
 
-Documented per `docs/PRODUCT.md` §18. Targets at 0.2.0:
+Documented per `docs/PRODUCT.md` §14 (Versioning). Targets at 0.2.0:
 
 | Issue type | Acknowledgment target | Fix target |
 |---|---|---|
@@ -134,7 +130,7 @@ Documented per `docs/PRODUCT.md` §18. Targets at 0.2.0:
 | Feature request | 1 week | discussed via RFC process |
 | Documentation issue | 48 hours | best-effort within minor release cycle |
 
-**These are targets, not guarantees.** They scale with maintainer capacity. Pre-1.0, the project commits to publishing actual response-time data per release in `CHANGELOG.md`, with a single annual aggregate in `docs/RESPONSE-REPORT.md` summarizing the year's triage outcomes. Adopters can hold the project accountable to these targets via public artifacts.
+**These are targets, not guarantees.** They scale with maintainer capacity. Pre-1.0, the project commits to publishing actual response-time data per release in `CHANGELOG.md`. Adopters can hold the project accountable to these targets via public artifacts.
 
 ## Code-level contribution mechanics
 

@@ -2,7 +2,9 @@ package structural
 
 import (
 	"fmt"
+	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/models"
@@ -10,23 +12,80 @@ import (
 )
 
 // Blast-radius thresholds.
+//
+// 2026-05-18: Phase A.5 + R2 review on n=250 corpus showed blastRadiusHotspot
+// at 55.8% precision (cluster CI [48.7, 63.1]). Dominant FP class was
+// "graph-traversal inflation" — leaf modules with direct=0 and indirect>>0
+// pulled in via shared __init__.py / index.ts re-exports (~48/110 FPs).
+//
+// L2 review warned against a `direct >= 1` filter — that kills 27 canonical
+// TPs (foundational base classes whose entire signal is high indirect reach).
+// Instead, we tighten thresholds AND demote the pure-conduit shape
+// (direct=0 + barrel filename + high indirect) to info severity.
 const (
 	// minBlastRadiusTests is the minimum test count for a source file to be
-	// considered as a blast-radius candidate.
-	minBlastRadiusTests = 10
+	// considered as a blast-radius candidate. Raised from 10 → 20 per R2:
+	// at the 10-floor, ~30% of firings were trivial wrappers / leaves with
+	// inflated indirect counts. The 20-floor preserves base-class TPs
+	// (typical indirect count 50-500) while filtering the long tail.
+	minBlastRadiusTests = 20
 
 	// blastRadiusTopPercentDivisor controls the top-N% cutoff. A value of 20
 	// means the top 5% (1/20) of entries are always flagged.
 	blastRadiusTopPercentDivisor = 20
 
 	// blastRadiusHighThreshold is the test count above which a source file
-	// receives SeverityHigh.
-	blastRadiusHighThreshold = 50
+	// receives SeverityHigh. Raised from 50 → 80 — at 50, the gate panel
+	// included too many "moderate fanout + low logic density" hits per R2.
+	blastRadiusHighThreshold = 80
 
 	// blastRadiusMediumThreshold is the test count above which a source file
 	// receives SeverityMedium (and serves as the floor for the cutoff loop).
 	blastRadiusMediumThreshold = 20
+
+	// pureConduitIndirectFloor: when direct == 0 AND indirect exceeds this
+	// AND the filename matches a known re-export-hub pattern (__init__.py,
+	// index.ts, mod.rs), the firing is almost certainly graph-traversal
+	// inflation from shared imports — demote to info. Class-rule (~18 FPs
+	// of barrel-shape + ~5-12 of generated proto in n=250).
+	pureConduitIndirectFloor = 30
 )
+
+// barrelFileBasenames identifies re-export-hub filenames whose high indirect
+// fanout reflects package surface, not change risk in their own logic.
+var barrelFileBasenames = map[string]bool{
+	"__init__.py": true,
+	"index.ts":    true,
+	"index.tsx":   true,
+	"index.js":    true,
+	"index.jsx":   true,
+	"mod.rs":      true,
+	"lib.rs":      true,
+}
+
+// generatedFileSuffixes identifies codegen output by filename suffix.
+// These files are imported widely but have no human-written logic.
+var generatedFileSuffixes = []string{
+	".pb.go", "_pb2.py", ".pb.cc", ".pb.h",
+	".gen.go", "_generated.go", ".gen.ts",
+	".g.dart", ".freezed.dart",
+}
+
+// isPureConduitFile returns true when path basename is a barrel / re-export
+// hub OR a generated-code suffix — both classes contribute high indirect
+// fanout without representing change risk in the file's own logic.
+func isPureConduitFile(path string) bool {
+	base := filepath.Base(path)
+	if barrelFileBasenames[base] {
+		return true
+	}
+	for _, suf := range generatedFileSuffixes {
+		if strings.HasSuffix(base, suf) {
+			return true
+		}
+	}
+	return false
+}
 
 // BlastRadiusHotspotDetector finds source files where a change would
 // impact an unusually large number of tests.
@@ -100,7 +159,15 @@ func (d *BlastRadiusHotspotDetector) DetectWithGraph(snap *models.TestSuiteSnaps
 			directRatio = float64(e.direct) / float64(e.total)
 		}
 		severity := models.SeverityLow
+		// 2026-05-18 R2 finding: pure-conduit files (barrels + generated
+		// code) with direct=0 + high indirect represent graph-traversal
+		// inflation, not change risk. Demote to info regardless of total
+		// before the severity-by-impact switch.
+		isPureConduit := e.direct == 0 && e.indirect >= pureConduitIndirectFloor &&
+			isPureConduitFile(e.path)
 		switch {
+		case isPureConduit:
+			severity = models.SeverityInfo
 		case e.total > blastRadiusHighThreshold && directRatio < 0.20:
 			// Big blast, weak direct coverage → critical-quality concern.
 			severity = models.SeverityHigh

@@ -61,7 +61,7 @@
     "docs_url": {
       "type": "string",
       "format": "uri",
-      "description": "Canonical rule page URL. Always terrain.dev/rules/<category>/<rule-name> for shipped rules."
+      "description": "Canonical rule page URL for the finding's rule."
     },
     "reproduction": {
       "type": "string",

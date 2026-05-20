@@ -27,7 +27,7 @@ Inspect SurfaceRetrieval entries' associated config: top_k value and presence/ab
 ```
 info[terrain/retrieval-quality/no-rerank]: retrieval k=20 with no reranker
   --> rag/retriever.py:34
-   = docs: https://terrain.dev/rules/retrieval-quality/no-rerank
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/retrieval-quality/no-rerank
 ```
 
 ## 9. Reproducibility

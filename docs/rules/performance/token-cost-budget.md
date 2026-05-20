@@ -27,7 +27,7 @@ Read eval-framework reported token usage (promptfoo `tokenUsage`, deepeval `toke
 ```
 warning[terrain/performance/token-cost-budget]: run cost $4.20 exceeds budget $1.50
   --> current.json
-   = docs: https://terrain.dev/rules/performance/token-cost-budget
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/performance/token-cost-budget
 ```
 
 ## 9. Reproducibility

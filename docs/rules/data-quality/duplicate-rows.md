@@ -27,7 +27,7 @@ For each eval data file, hash the canonical input field per row and count collis
 ```
 warning[terrain/data-quality/duplicate-rows]: eval dataset has 23.0% duplicate inputs
   --> evals/qa.jsonl
-   = docs: https://terrain.dev/rules/data-quality/duplicate-rows
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/data-quality/duplicate-rows
 ```
 
 ## 9. Reproducibility

@@ -39,7 +39,7 @@ AI surfaces are the production system's behavioral substrate. Prompts, model wei
 error[terrain/coverage/no-eval]: AI surface "summarizer_v3.pt" (kind=model) has no eval coverage
   --> models/summarizer_v3.pt
    = help: Add an eval scenario that exercises "summarizer_v3.pt" and asserts on its output / metric / shape.
-   = docs: https://terrain.dev/rules/coverage/no-eval
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/coverage/no-eval
 ```
 
 **Before:** New `summarizer_v3.pt` checked in; production code starts loading it. No eval references it. Model behavior in production can drift across pulls of this checkpoint without any signal.

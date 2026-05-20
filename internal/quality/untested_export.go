@@ -201,6 +201,19 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 			continue
 		}
 
+		// (d) 2026-05-18 (R2 + Phase A.4 analysis): type/schema declaration
+		// exports get flagged as "untested" but they're not callable behavior.
+		// Hand-label of n=250 corpus showed ~8-12 FPs follow these naming
+		// conventions: Zod schemas (CamelCaseSchema), React component Props
+		// types (FooProps), config/params/request/response interfaces.
+		// These are type aliases, not behavior — no unit-test expected.
+		// Class-rule (≥5 FPs covered); not a single-file fix.
+		if (strings.HasSuffix(cu.Path, ".ts") || strings.HasSuffix(cu.Path, ".tsx") ||
+			strings.HasSuffix(cu.Path, ".js") || strings.HasSuffix(cu.Path, ".jsx")) &&
+			isTypeOrSchemaDecl(cu.Name) {
+			continue
+		}
+
 		cuPath := filepath.ToSlash(cu.Path)
 		cuDir := filepath.Dir(cuPath)
 		cuStem := stripExt(filepath.Base(cuPath))
@@ -277,6 +290,40 @@ func isJVMOverrideMethod(name string) bool {
 		"compareTo", "close", "dispose", "reset", "init", "<init>",
 		"readResolve", "writeReplace":
 		return true
+	}
+	return false
+}
+
+// typeOrSchemaSuffixes are name-suffix conventions for type / schema /
+// configuration declarations. Hand-label on n=250 corpus surfaced ~8-12
+// untestedExport FPs in this category. These are non-callable declarations
+// (Zod schemas, TypeScript type aliases, config interfaces, DTO definitions)
+// — adding unit tests for them isn't expected. Class-rule (≥5 FPs covered).
+//
+// PascalCase prefix check is intentional — a function named `parseSchema`
+// (camelCase) does behavior and should NOT be excluded. Only PascalCase
+// declarations matching these suffixes get filtered.
+var typeOrSchemaSuffixes = []string{
+	"Schema", "Props", "Type", "Config", "Params", "Request", "Response",
+	"Options", "Settings", "Args", "Input", "Output", "Variables", "Result",
+	"State", "Context",
+}
+
+// isTypeOrSchemaDecl returns true when name is a PascalCase identifier
+// ending in a type/schema/config suffix. Treats `FooSchema`, `UserProps`,
+// `ApiResponse` as non-behavioral type exports.
+func isTypeOrSchemaDecl(name string) bool {
+	if len(name) == 0 {
+		return false
+	}
+	// Must start uppercase (PascalCase).
+	if name[0] < 'A' || name[0] > 'Z' {
+		return false
+	}
+	for _, suffix := range typeOrSchemaSuffixes {
+		if strings.HasSuffix(name, suffix) && len(name) > len(suffix) {
+			return true
+		}
 	}
 	return false
 }

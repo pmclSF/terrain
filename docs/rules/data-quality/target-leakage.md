@@ -27,7 +27,7 @@ AST walk + name-pattern matching: find DataFrame-column assignments whose RHS re
 ```
 error[terrain/data-quality/target-leakage]: feature column derived from target column
   --> training/features.py:42
-   = docs: https://terrain.dev/rules/data-quality/target-leakage
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/data-quality/target-leakage
 ```
 
 ## 9. Reproducibility

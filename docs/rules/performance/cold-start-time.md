@@ -27,7 +27,7 @@ Compare first-call latency vs P50 of subsequent calls from runtime telemetry. Fi
 ```
 info[terrain/performance/cold-start-time]: cold-start latency 8.2× warm P50
   --> runtime/inference.py
-   = docs: https://terrain.dev/rules/performance/cold-start-time
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/performance/cold-start-time
 ```
 
 ## 9. Reproducibility

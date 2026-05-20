@@ -46,7 +46,7 @@ error[terrain/hygiene/model-fixture-unpinned]: *.from_pretrained loads a model w
   --> src/load.py:2
    = loader: *.from_pretrained
    = help:   Pass revision="<commit-sha-or-version>" to from_pretrained. Avoid revision="main" / "master" — they're branch heads.
-   = docs:   https://terrain.dev/rules/hygiene/model-fixture-unpinned
+   = docs:   https://github.com/pmclSF/terrain/blob/main/docs/rules/hygiene/model-fixture-unpinned
 ```
 
 **Before:**

@@ -657,6 +657,29 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	signalsBefore := len(snapshot.Signals)
 	registry.RunWithGraph(snapshot, dg)
 	signalsProduced := len(snapshot.Signals) - signalsBefore
+
+	// 2026-05-18 cycle-1 safety: apply user-configured disabled_detectors
+	// kill switch. Drops any signals whose Type is listed in the repo's
+	// policy. Logged at debug level so adopters can audit suppressions.
+	if disabled := policyCfg.DisabledDetectorSet(); len(disabled) > 0 {
+		kept := snapshot.Signals[:0]
+		suppressed := 0
+		for _, sig := range snapshot.Signals {
+			if disabled[string(sig.Type)] {
+				suppressed++
+				continue
+			}
+			kept = append(kept, sig)
+		}
+		snapshot.Signals = kept
+		if suppressed > 0 {
+			logging.L().Debug("disabled_detectors filter applied",
+				"suppressed", suppressed,
+				"disabled_detectors", policyCfg.Rules.DisabledDetectors)
+		}
+		signalsProduced -= suppressed
+	}
+
 	logging.L().Debug("signal detection complete", "detectors", registry.Len(), "signals", signalsProduced, "duration", time.Since(stepStart))
 	if diag != nil {
 		diag.add("signal-detection", time.Since(stepStart), signalsProduced)

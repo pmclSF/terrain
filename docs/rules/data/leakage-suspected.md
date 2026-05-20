@@ -38,7 +38,7 @@ Companion rule: `terrain/data/missing-train-test-split` fires when no split exis
 error[terrain/data/leakage-suspected]: preprocessing-leakage in training/model.py
   --> training/model.py
    = help: Move scaler/encoder fits to AFTER the split. fit on train, transform on test.
-   = docs: https://terrain.dev/rules/data/leakage-suspected
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/data/leakage-suspected
 ```
 
 **Before:**

@@ -35,7 +35,7 @@ error[terrain/regression/pass-rate-drop]: eval pass rate regressed
   --> current.json
    = baseline: 10/10 (100.0%) → current: 7/10 (70.0%); delta 30.0%
    = help:     Inspect per-case eval-regression findings for the cases that flipped from pass to fail.
-   = docs:     https://terrain.dev/rules/regression/pass-rate-drop
+   = docs:     https://github.com/pmclSF/terrain/blob/main/docs/rules/regression/pass-rate-drop
 ```
 
 ## 7. Configuration

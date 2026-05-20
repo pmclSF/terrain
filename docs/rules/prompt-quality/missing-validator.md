@@ -27,7 +27,7 @@ AST scan for LLM call sites paired with prompt content that requests structured 
 ```
 warning[terrain/prompt-quality/missing-validator]: structured-output prompt has no validator
   --> api/extract.py:18
-   = docs: https://terrain.dev/rules/prompt-quality/missing-validator
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/prompt-quality/missing-validator
 ```
 
 ## 9. Reproducibility

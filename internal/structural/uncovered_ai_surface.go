@@ -2,6 +2,8 @@ package structural
 
 import (
 	"fmt"
+	"regexp"
+	"strings"
 
 	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/models"
@@ -11,6 +13,67 @@ import (
 // UncoveredAISurfaceDetector finds AI surfaces (prompts, tools, datasets)
 // with zero test or scenario coverage.
 type UncoveredAISurfaceDetector struct{}
+
+// 2026-05-18 moat work — Phase A.4 + R2 findings on uncoveredAISurface
+// at merged n=250 corpus precision 21.5%, sub-lane breakdown:
+//   - aiPrompt: 41% precision — strongest lane, keep gate-eligible
+//   - aiModel:   5% precision — dominated by name-shape FPs (Zod schemas,
+//                synthesized line-suffix stems, decorator-injected stems)
+//   - aiDataset: 33% precision — moderate
+//
+// Below filters target the dominant FP classes in the aiModel lane
+// per the saved feedback memory (must clear ≥5 FPs as a class):
+//
+// modelSyntheticStemRe: names like `token_management_L47`, `*_L\d+`
+//   are line-number-suffix synthesized identifiers from the AI surface
+//   extractor — they're not addressable named LLM surfaces. (~32 FPs)
+//
+// modelTypeSchemaSuffix: PascalCase names ending in Schema/Props/Type/
+//   Config/Params/Request/Response — Zod/Pydantic/TS type aliases that
+//   look like model names. (~45 FPs combined Zod + Pydantic)
+//
+// modelDecoratorPrefix: names with `*_tool`, `tool_decorated_*` shapes
+//   that capture @tool decorator labels (not LLM call sites). (~28 FPs)
+var (
+	modelSyntheticStemRe = regexp.MustCompile(`_L\d+$`)
+	modelDecoratorRe     = regexp.MustCompile(`(?i)(^tool_decorated_|_tool$|_decorator(_|$))`)
+	modelTypeSchemaSuffix = []string{
+		"Schema", "Props", "Type", "Config", "Params", "Request",
+		"Response", "Options", "Settings", "Args", "Input", "Output",
+		"Variables", "Result", "State", "Context",
+	}
+)
+
+// isStructuralAIModelFP returns true when a NodeModel surface's name
+// matches one of the known non-model classes (Zod schemas, line-suffix
+// synthesized stems, decorator labels). Each class clears ≥5 FPs.
+//
+// Restricted to model lane only — aiPrompt and aiDataset lanes have
+// different FP shapes (covered separately if needed).
+func isStructuralAIModelFP(name string) bool {
+	if name == "" {
+		return false
+	}
+	if modelSyntheticStemRe.MatchString(name) {
+		return true // *_L\d+ synthesized stems (~32 FPs)
+	}
+	if modelDecoratorRe.MatchString(name) {
+		return true // @tool decorator captures (~28 FPs)
+	}
+	// PascalCase + type/schema suffix (Zod, Pydantic, TS type aliases).
+	if len(name) > 0 && name[0] >= 'A' && name[0] <= 'Z' {
+		for _, suffix := range modelTypeSchemaSuffix {
+			if strings.HasSuffix(name, suffix) && len(name) > len(suffix) {
+				return true // PascalCase type/schema (~45 FPs combined)
+			}
+		}
+	}
+	// snake_case zod_ prefix (TS Zod schemas auto-named).
+	if strings.HasPrefix(strings.ToLower(name), "zod_") {
+		return true
+	}
+	return false
+}
 
 func (d *UncoveredAISurfaceDetector) Detect(_ *models.TestSuiteSnapshot) []models.Signal {
 	return nil
@@ -46,12 +109,21 @@ func (d *UncoveredAISurfaceDetector) DetectWithGraph(snap *models.TestSuiteSnaps
 				continue
 			}
 
-			severity := severityForAISurfaceType(nt)
 			surfaceKind := string(nt)
 			name := n.Name
 			if name == "" {
 				name = n.ID
 			}
+
+			// 2026-05-18 moat work — drop aiModel lane FPs whose symbol
+			// shape matches known non-model classes. Filter ONLY applies
+			// to NodeModel — prompt and dataset lanes have different FP
+			// shapes and stay unfiltered here. Class-rule (≥5 FPs each).
+			if nt == depgraph.NodeModel && isStructuralAIModelFP(name) {
+				continue
+			}
+
+			severity := severityForAISurfaceType(nt)
 
 			out = append(out, models.Signal{
 				Type:             signals.SignalUncoveredAISurface,
@@ -69,6 +141,9 @@ func (d *UncoveredAISurfaceDetector) DetectWithGraph(snap *models.TestSuiteSnaps
 					"surfaceKind": surfaceKind,
 					"surfaceName": name,
 					"surfaceID":   n.ID,
+					// sub-lane metadata so users can filter by aiPrompt /
+					// aiModel / aiDataset / aiEvalMetric independently.
+					"subLane": surfaceKind,
 				},
 			})
 		}
@@ -80,9 +155,16 @@ func (d *UncoveredAISurfaceDetector) DetectWithGraph(snap *models.TestSuiteSnaps
 func severityForAISurfaceType(nt depgraph.NodeType) models.SignalSeverity {
 	switch nt {
 	case depgraph.NodePrompt:
+		// 2026-05-18: aiPrompt lane is the strongest (41% precision at
+		// n=250). Highest severity preserved — this is the moat surface.
 		return models.SeverityHigh
 	case depgraph.NodeModel:
-		return models.SeverityHigh
+		// 2026-05-18: aiModel lane was 4.9% precision pre-filter; even
+		// after isStructuralAIModelFP filter drops the dominant FP
+		// classes, residual precision is ~20-30% per Phase A.4 replay.
+		// Demoted to medium until LLM-call-site proximity gate (depgraph
+		// adjacency to call sites) lands.
+		return models.SeverityMedium
 	case depgraph.NodeDataset:
 		return models.SeverityMedium
 	case depgraph.NodeEvalMetric:

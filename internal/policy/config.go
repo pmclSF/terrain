@@ -54,6 +54,24 @@ type Rules struct {
 	// signals before a policy violation is raised.
 	MaxMockHeavyTests *int `yaml:"max_mock_heavy_tests"`
 
+	// DisabledDetectors lists detector signal types (e.g., "weakAssertion",
+	// "mockHeavyTest") that should be suppressed entirely — no findings
+	// emitted, no CI gating. Use when a detector has been demoted to
+	// observability tier but its findings are still cluttering output,
+	// OR when an adopter has confirmed the detector's signal isn't useful
+	// for their codebase.
+	//
+	// Implemented 2026-05-18 as cycle-1 safety machinery: per the
+	// detector validation plan, no gate-tier detector ships without a
+	// per-rule kill switch. Equivalent to `--disable-rule` on the CLI.
+	//
+	// Example .terrain/policy.yaml:
+	//   rules:
+	//     disabled_detectors:
+	//       - mockHeavyTest
+	//       - weakAssertion
+	DisabledDetectors []string `yaml:"disabled_detectors"`
+
 	// AI holds AI/eval-specific CI policy rules.
 	AI *AIRules `yaml:"ai"`
 }
@@ -108,5 +126,42 @@ func (c *Config) IsEmpty() bool {
 		r.MinimumCoveragePercent == nil &&
 		r.MaxWeakAssertions == nil &&
 		r.MaxMockHeavyTests == nil &&
+		len(r.DisabledDetectors) == 0 &&
 		r.AI == nil
+}
+
+// DisabledDetectorSet returns the configured disabled detectors as a
+// lookup set for O(1) membership checks during signal filtering. The
+// set normalizes whitespace and is case-sensitive on signal-type names
+// (the manifest uses camelCase signal types — we don't lowercase to
+// avoid surprise when an adopter's typo silently disables nothing).
+func (c *Config) DisabledDetectorSet() map[string]bool {
+	if c == nil || len(c.Rules.DisabledDetectors) == 0 {
+		return nil
+	}
+	out := make(map[string]bool, len(c.Rules.DisabledDetectors))
+	for _, d := range c.Rules.DisabledDetectors {
+		d = trimSpace(d)
+		if d != "" {
+			out[d] = true
+		}
+	}
+	return out
+}
+
+// trimSpace is a local trim helper to avoid pulling in strings/unicode
+// for one call site in a config-loading package.
+func trimSpace(s string) string {
+	start, end := 0, len(s)
+	for start < end && isSpace(s[start]) {
+		start++
+	}
+	for end > start && isSpace(s[end-1]) {
+		end--
+	}
+	return s[start:end]
+}
+
+func isSpace(b byte) bool {
+	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
 }

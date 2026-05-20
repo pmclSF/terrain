@@ -1,6 +1,6 @@
 # Integration template — canonical structure
 
-> *This file is the canonical template for integration documentation. Every named integration in the catalog has a page at `docs/integrations/<tool>.md` filled from this template. See `docs/PRODUCT.md` §15 templating discipline.*
+> *This file is the canonical template for integration documentation. Every named integration in the catalog has a page at `docs/integrations/<tool>.md` filled from this template.*
 
 Integration docs are template-fills, not independent essays. The structure below is canonical; sections are populated per tool.
 
@@ -99,7 +99,7 @@ For most permissive-licensed tools (MIT / Apache 2.0 / BSD), this section is jus
 ## See also
 
 - Related rule pages
-- The plan section that covers this integration: `docs/PRODUCT.md` §<N>
+- The product section that covers this integration: see [`docs/PRODUCT.md`](../PRODUCT.md)
 - Upstream <Tool> documentation
 ```
 

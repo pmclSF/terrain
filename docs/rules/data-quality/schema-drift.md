@@ -27,7 +27,7 @@ Compare baseline EvalRun (or schema-validation artifact) against current. Recogn
 ```
 error[terrain/data-quality/schema-drift]: column "user_id" type changed from int64 to string
   --> pipelines/users.py
-   = docs: https://terrain.dev/rules/data-quality/schema-drift
+   = docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/data-quality/schema-drift
 ```
 
 ## 9. Reproducibility
