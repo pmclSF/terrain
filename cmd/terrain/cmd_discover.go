@@ -31,7 +31,10 @@ func runDiscover(root string) error {
 		return err
 	}
 
-	initResult, err := engine.RunInit(abs)
+	// Discovery is strictly read-only. Use ScanRepo (does not write
+	// .terrain/policy.yaml or .terrain/terrain.yaml). Users who want
+	// the config-generation behavior invoke `terrain init` explicitly.
+	initResult, err := engine.ScanRepo(abs)
 	if err != nil {
 		return fmt.Errorf("repo scan: %w", err)
 	}

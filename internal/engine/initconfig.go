@@ -51,10 +51,17 @@ type DetectedFramework struct {
 	Confidence float64 `json:"confidence"`
 }
 
-// RunInit performs the full initialization scan. It detects frameworks,
-// artifacts, and existing configuration, then generates config files.
-// This is non-interactive by default — it scans, generates, and reports.
-func RunInit(root string) (*InitResult, error) {
+// ScanRepo performs a read-only scan of the repository at `root`. It
+// detects frameworks, artifacts, and existing configuration WITHOUT
+// writing anything to disk. Callers that want the legacy "scan + write
+// config files" behavior call RunInit, which calls ScanRepo first and
+// then writes config files via WriteInitConfig.
+//
+// `terrain` (no-args) discovery and any other read-only surface MUST
+// call ScanRepo, never RunInit. Writing config files from a discovery
+// surface is a UX surprise — users typing `terrain` to look around
+// don't expect a new directory to appear in their working tree.
+func ScanRepo(root string) (*InitResult, error) {
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
 		return nil, fmt.Errorf("resolve root path: %w", err)
@@ -112,32 +119,54 @@ func RunInit(root string) (*InitResult, error) {
 	// Discover artifacts.
 	result.Artifacts = DiscoverArtifacts(absRoot)
 
-	// Generate .terrain/ directory if it doesn't exist.
-	terrainDir := filepath.Join(absRoot, ".terrain")
+	return result, nil
+}
+
+// WriteInitConfig writes .terrain/policy.yaml and .terrain/terrain.yaml
+// based on a prior ScanRepo result. Mutates the result with the paths
+// of any newly-written files. Idempotent: existing files are preserved.
+// Splitting this from ScanRepo lets the discovery surface remain
+// read-only while `terrain init` (the explicit init command) keeps
+// generating defaults.
+func WriteInitConfig(result *InitResult) error {
+	terrainDir := filepath.Join(result.Root, ".terrain")
 	if !result.HasTerrainDir {
 		if err := os.MkdirAll(terrainDir, 0o755); err != nil {
-			return nil, fmt.Errorf("create .terrain/ directory: %w", err)
+			return fmt.Errorf("create .terrain/ directory: %w", err)
 		}
 	}
 
-	// Generate policy.yaml with commented defaults if it doesn't exist.
 	if !result.HasPolicyFile {
 		policyPath := filepath.Join(terrainDir, "policy.yaml")
 		if err := generatePolicyYAML(policyPath); err != nil {
-			return nil, fmt.Errorf("generate policy.yaml: %w", err)
+			return fmt.Errorf("generate policy.yaml: %w", err)
 		}
 		result.PolicyPath = policyPath
 	}
 
-	// Generate terrain.yaml only if it doesn't exist and we found interesting things.
 	if !result.HasTerrainYAML && (len(result.Frameworks) > 0 || result.TestFileCount > 0) {
 		configPath := filepath.Join(terrainDir, "terrain.yaml")
 		if err := generateTerrainYAML(configPath, result); err != nil {
-			return nil, fmt.Errorf("generate terrain.yaml: %w", err)
+			return fmt.Errorf("generate terrain.yaml: %w", err)
 		}
 		result.ConfigPath = configPath
 	}
 
+	return nil
+}
+
+// RunInit is the legacy "scan + write" entry point. ScanRepo +
+// WriteInitConfig is the new contract. RunInit calls both, preserving
+// the historical behavior for callers like `terrain init`. New callers
+// should call ScanRepo directly when only a read-only scan is needed.
+func RunInit(root string) (*InitResult, error) {
+	result, err := ScanRepo(root)
+	if err != nil {
+		return nil, err
+	}
+	if err := WriteInitConfig(result); err != nil {
+		return nil, err
+	}
 	return result, nil
 }
 
