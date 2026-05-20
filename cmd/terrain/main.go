@@ -110,6 +110,16 @@ const (
 )
 
 func main() {
+	// Extract --mechanisms.<name>=<state> flags from os.Args before
+	// subcommand dispatch. Each occurrence is captured into
+	// extractedMechanismOverrides; the args slice is rewritten with the
+	// matching entries removed so subcommands don't need to know about
+	// this global flag.
+	if overrides, rest := extractMechanismOverrides(os.Args[1:]); len(overrides) > 0 {
+		extractedMechanismOverrides = overrides
+		os.Args = append([]string{os.Args[0]}, rest...)
+	}
+
 	// Parse global --log-level flag before subcommand dispatch.
 	// Accepted values: quiet, debug (default: info-level).
 	initLogging(os.Args[1:])
@@ -1296,7 +1306,8 @@ func printAIUsage() {
 
 func defaultPipelineOptions() engine.PipelineOptions {
 	return engine.PipelineOptions{
-		EngineVersion: version,
+		EngineVersion:      version,
+		MechanismOverrides: mechanismOverrides(),
 	}
 }
 
@@ -1305,9 +1316,55 @@ func defaultPipelineOptions() engine.PipelineOptions {
 // suppress progress (keeps stdout clean for JSON).
 func defaultPipelineOptionsWithProgress(jsonOutput bool) engine.PipelineOptions {
 	return engine.PipelineOptions{
-		EngineVersion: version,
-		OnProgress:    newProgressFunc(jsonOutput),
+		EngineVersion:      version,
+		MechanismOverrides: mechanismOverrides(),
+		OnProgress:         newProgressFunc(jsonOutput),
 	}
+}
+
+// extractedMechanismOverrides holds parsed --mechanisms.<name>=<state>
+// CLI flag values, captured by extractMechanismOverrides at startup.
+var extractedMechanismOverrides []string
+
+func mechanismOverrides() []string {
+	if len(extractedMechanismOverrides) == 0 {
+		return nil
+	}
+	out := make([]string, len(extractedMechanismOverrides))
+	copy(out, extractedMechanismOverrides)
+	return out
+}
+
+// extractMechanismOverrides scans args for --mechanisms.<name>=<state>
+// entries (both --mechanisms.x=on and --mechanisms.x on forms),
+// captures each as "name=state", and returns the args with those
+// entries removed. Allows subcommand dispatch to remain agnostic of
+// the global mechanisms flag.
+func extractMechanismOverrides(args []string) (overrides, rest []string) {
+	const prefix = "--mechanisms."
+	rest = make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if !strings.HasPrefix(a, prefix) {
+			rest = append(rest, a)
+			continue
+		}
+		body := a[len(prefix):]
+		if eq := strings.IndexByte(body, '='); eq >= 0 {
+			overrides = append(overrides, body)
+			continue
+		}
+		// "--mechanisms.x on" — consume the next arg as the state.
+		if i+1 < len(args) {
+			overrides = append(overrides, body+"="+args[i+1])
+			i++
+			continue
+		}
+		// Malformed — leave as-is so the runtime registry validates and
+		// surfaces the error to the user.
+		overrides = append(overrides, body+"=")
+	}
+	return overrides, rest
 }
 
 func analysisPipelineOptions(coveragePath, coverageRunLabel string, runtimePaths []string, slowThreshold float64) engine.PipelineOptions {

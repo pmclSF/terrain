@@ -24,12 +24,14 @@ import (
 	"github.com/pmclSF/terrain/internal/gauntlet"
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/measurement"
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/ownership"
 	"github.com/pmclSF/terrain/internal/policy"
 	"github.com/pmclSF/terrain/internal/portfolio"
 	"github.com/pmclSF/terrain/internal/runtime"
 	"github.com/pmclSF/terrain/internal/scoring"
+	"github.com/pmclSF/terrain/internal/shadow"
 )
 
 // DefaultEngineVersion is used when PipelineOptions.EngineVersion is not set.
@@ -140,6 +142,12 @@ type PipelineOptions struct {
 	// to subtract; pipeline emits a warning so the user notices their
 	// flag is inert).
 	NewFindingsOnly bool
+
+	// MechanismOverrides is a list of "name=state" strings from the
+	// `--mechanisms.<name>=on|off|shadow` CLI flag. They are applied to
+	// the loaded mechanisms registry at pipeline start. Unknown names
+	// produce a startup error; malformed strings produce a startup error.
+	MechanismOverrides []string
 }
 
 // RunPipeline executes the full analysis pipeline:
@@ -171,6 +179,41 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	}
 	if err := validatePipelineOptions(root, opt); err != nil {
 		return nil, err
+	}
+
+	// Mechanisms registry (loaded once per pipeline run). All Phase 2
+	// detector behavior changes are gated by this registry; an unloaded
+	// registry means every gate is StateOff (legacy behavior). Per-run
+	// CLI overrides via --mechanisms.<name>=on|off|shadow.
+	mechReg, err := mechanisms.Load()
+	if err != nil {
+		return nil, fmt.Errorf("load mechanisms registry: %w", err)
+	}
+	if len(opt.MechanismOverrides) > 0 {
+		if err := mechReg.ApplyCLIOverrides(opt.MechanismOverrides); err != nil {
+			return nil, fmt.Errorf("apply --mechanisms overrides: %w", err)
+		}
+	}
+	mechanisms.SetDefault(mechReg)
+	defer mechanisms.SetDefault(nil)
+
+	// Shadow sink. When any mechanism is in shadow OR on state, install
+	// a FileSink at .terrain/shadow-report.jsonl so consumer detectors'
+	// would-suppress / would-add / would-demote events land on disk.
+	// When every mechanism is off, the sink is a no-op (no file is
+	// created).
+	if mechanismsAnyNonOff(mechReg) {
+		shadowPath := filepath.Join(root, ".terrain", "shadow-report.jsonl")
+		fs, ferr := shadow.NewFileSink(shadowPath)
+		if ferr != nil {
+			logging.L().Debug("shadow sink unavailable", "err", ferr, "path", shadowPath)
+		} else {
+			prev := shadow.SetSink(fs)
+			defer func() {
+				shadow.SetSink(prev)
+				_ = fs.Close()
+			}()
+		}
 	}
 
 	// Auto-discover coverage and runtime artifacts when not explicitly provided.
@@ -833,6 +876,19 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		ArtifactDiscovery: discovery,
 		DiscoveryMessages: discoveryMessages,
 	}, nil
+}
+
+// mechanismsAnyNonOff reports whether any mechanism in the registry is
+// in shadow or on state. Used to decide whether to install a shadow
+// sink (a registry with everything off → no sink, no .terrain/shadow-
+// report.jsonl file created).
+func mechanismsAnyNonOff(reg *mechanisms.Registry) bool {
+	for _, m := range reg.All() {
+		if m.State != mechanisms.StateOff {
+			return true
+		}
+	}
+	return false
 }
 
 func validatePipelineOptions(root string, opt PipelineOptions) error {

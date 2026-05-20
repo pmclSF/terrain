@@ -166,6 +166,36 @@ func MustLoad() *Registry {
 	return reg
 }
 
+// defaultRegistry is the process-wide registry consumer detectors and
+// Gate helpers fall back to when no explicit registry is threaded
+// through. Set once by the engine pipeline at startup; nil-safe (State
+// returns StateOff when nil).
+var (
+	defaultRegistryMu sync.RWMutex
+	defaultRegistry   *Registry
+)
+
+// SetDefault installs `reg` as the process-wide default registry.
+// Returns the previous default so callers (notably the pipeline at
+// shutdown) can restore it. Passing nil clears the default.
+func SetDefault(reg *Registry) *Registry {
+	defaultRegistryMu.Lock()
+	defer defaultRegistryMu.Unlock()
+	prev := defaultRegistry
+	defaultRegistry = reg
+	return prev
+}
+
+// Default returns the process-wide default registry. Detector
+// packages that need a registry without an explicit handle call this.
+// Returns nil when no default has been set; callers must be nil-safe
+// (Registry methods handle nil receivers).
+func Default() *Registry {
+	defaultRegistryMu.RLock()
+	defer defaultRegistryMu.RUnlock()
+	return defaultRegistry
+}
+
 // State returns the current state of mechanism `name`. Unknown
 // mechanisms return StateOff — the safe default: an unrecognized name
 // can't accidentally turn something on.
