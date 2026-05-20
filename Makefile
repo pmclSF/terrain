@@ -128,8 +128,15 @@ pr-gate:
 regression-precision:
 	python3 scripts/regression_precision.py
 
+# Validate regression suites + recall harnesses for shadow→live flips.
+# Loads every YAML under harness/regression-suites/ and
+# harness/recall-harnesses/, validates schema, prints a summary.
+# Exit non-zero on any load failure; gates merge of a mechanism flip.
+regression-gate:
+	go run ./cmd/internal/terrain-regression-gate
+
 # Release gate: full verification required before release
-release-gate: go-release-verify
+release-gate: go-release-verify regression-gate
 
 go-release-verify:
 	go vet $(GO_OWNED_PKGS)
