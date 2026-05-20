@@ -1,27 +1,25 @@
-// Package recallharness measures per-mechanism + union recall for rules that
-// have been split (or are about to be split) across multiple detection
-// mechanisms. It exists to make the binding rule from the cycle-2 plan
-// enforceable:
+// Package recallharness measures per-mechanism + union recall for
+// rules that have been split (or are about to be split) across multiple
+// detection mechanisms. The contract:
 //
 //	"When a rule R is split into mechanisms M1..Mn, the union recall
-//	 over the golden TP set must not drop more than the symmetric ≥10%
+//	 over the golden TP set must not drop more than the configured
 //	 threshold from the pre-split recall."
 //
-// The shape of the problem: a single rule (e.g. untestedExport) starts as one
-// regex/AST traversal. Over Phase 2 it gets split into multiple mechanisms
-// (barrel-export resolution, scope-classifier, def-following). Each mechanism
-// is a separate code path with its own precision/recall tradeoffs. When we
-// add or remove a mechanism, we want to know:
+// The shape of the problem: a single rule (e.g. untestedExport) starts
+// as one regex/AST traversal. Over time it gets split into multiple
+// mechanisms (barrel-export resolution, scope-classifier,
+// def-following). Each mechanism is a separate code path with its own
+// precision/recall tradeoffs. When a mechanism is added or removed,
+// the harness reports:
 //
-//   - Per-mechanism recall: what fraction of golden TPs does this mechanism
-//     alone catch?
-//   - Union recall: what fraction of golden TPs do all mechanisms together
-//     catch?
-//   - Overlap: which TPs are caught by multiple mechanisms (informational —
-//     high overlap is wasted work; zero overlap is fragile)?
-//
-// Phase 1 baseline: this package + empty placeholder YAMLs. Real harnesses
-// land alongside their rule-split PR in Phase 2.
+//   - Per-mechanism recall: what fraction of golden TPs does this
+//     mechanism alone catch?
+//   - Union recall: what fraction of golden TPs do all mechanisms
+//     together catch?
+//   - Overlap: which TPs are caught by multiple mechanisms
+//     (informational — high overlap is wasted work; zero overlap is
+//     fragile).
 package recallharness
 
 import (

@@ -1,24 +1,21 @@
-// Package regressionsuite is the frozen-TP regression machinery that gates
-// shared-infrastructure module ships. Per the binding rules:
+// Package regressionsuite is the frozen-TP regression machinery that
+// gates shared-infrastructure module ships.
 //
-//   - When a shared module (A7 barrel resolver, A3 scope classifier, ASCG,
-//     EHR, FvS, SurfaceLiteralPresenceGate, etc.) ships in Phase 2, it must
-//     ship with a frozen suite of TPs from each consumer detector.
-//   - The symmetric ≥10% rule (or ≥5 TPs) gates the ship: if a module change
-//     drops more than max_tp_loss frozen TPs, the module's PR is blocked.
+//   - Each shared module (barrel resolver, scope classifier, ASCG, EHR,
+//     SurfaceLiteralPresenceGate, etc.) ships with a frozen suite of
+//     true positives from each consumer detector.
+//   - If a module change drops more than max_tp_loss frozen TPs, the
+//     module's PR is blocked.
 //
 // Workflow:
 //
 //  1. Author of a shared-infrastructure module collects the TPs each
-//     consumer detector currently fires on (from v2 validation data or
-//     equivalent).
+//     consumer detector currently fires on (from labeled validation
+//     data).
 //  2. The TPs are written into a per-module YAML file under
 //     harness/regression-suites/<module>.yaml.
-//  3. CI runs LoadSuite + Check against the head SHA's findings; a regression
-//     past max_tp_loss fails the build.
-//
-// Phase 1 baseline: this package + empty placeholder YAMLs. Suites populate
-// as Phase 2 modules land.
+//  3. CI runs LoadSuite + Check against the head SHA's findings; a
+//     regression past max_tp_loss fails the build.
 package regressionsuite
 
 import (

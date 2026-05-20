@@ -28,11 +28,11 @@ const (
 	SignalSkippedTestsInCI       models.SignalType = "skippedTestsInCI"
 	SignalRuntimeBudgetExceeded  models.SignalType = "runtimeBudgetExceeded"
 	SignalStaticSkippedTest      models.SignalType = "staticSkippedTest"
-	// P2.5 rule split — preserves the 61 conditional-skip TPs (39% of
-	// base) that an A3 narrowing would otherwise kill. Both halves
-	// stay at gate; the conditional-gate variant carries the framing
-	// "skip is dynamic / environment-gated" so users who care about
-	// strictly-unconditional skips can suppress one side independently.
+	// Structural split of staticSkippedTest. Conditional-gate variant
+	// carries the framing "skip is dynamic / environment-gated" so
+	// users who care about strictly-unconditional skips can suppress
+	// one side independently. Preserves conditional-skip true positives
+	// that a narrower predicate would drop.
 	SignalStaticSkippedTestUnconditional   models.SignalType = "staticSkippedTest-unconditional"
 	SignalStaticSkippedTestConditionalGate models.SignalType = "staticSkippedTest-conditional-gate"
 
@@ -82,12 +82,11 @@ const (
 	SignalAIPromptVersioning       models.SignalType = "aiPromptVersioning"
 	SignalAIPromptInjectionRisk    models.SignalType = "aiPromptInjectionRisk"
 	SignalAIHardcodedAPIKey        models.SignalType = "aiHardcodedAPIKey"
-	// P2.12 structural split — the literal-shape half retains the
-	// regex-derived "API-key-shaped string in config" capability at
-	// observability tier. The coverage-degraded half flags the
-	// secret-scanner gap (CI integration absent). Per
-	// feedback_no_retire_default, this is redesign-via-split that
-	// stays regardless of v2 evidence.
+	// Structural split of aiHardcodedAPIKey. Literal-shape retains
+	// the regex-derived "API-key-shaped string in config" capability
+	// at observability tier. The coverage-degraded half flags the
+	// secret-scanner CI-integration gap. The underlying capability is
+	// preserved across the split.
 	SignalAIHardcodedAPIKeyLiteralShape       models.SignalType = "aiHardcodedAPIKey-literal-shape"
 	SignalSecretScannerCoverageDegraded       models.SignalType = "secretScannerCoverageDegraded"
 	SignalAIToolWithoutSandbox     models.SignalType = "aiToolWithoutSandbox"
@@ -127,10 +126,11 @@ const (
 	// baseline). Detects manifest files with a high share of moving-
 	// target version specs.
 	SignalDepsDriftRisk models.SignalType = "depsDriftRisk"
-	// P2.4 rule split — resolves the npm-vs-Poetry-vs-Cargo caret
-	// semantics inconsistency. Strict-pin half flags bare-name /
-	// unversioned specs; caret-policy half flags caret-range usage.
-	// Both halves are independent suppression / posture surfaces.
+	// Structural split of depsDriftRisk. Strict-pin half flags
+	// bare-name / unversioned specs; caret-policy half flags
+	// caret-range usage. Each half is an independent suppression and
+	// posture surface, so different ecosystems can tune them
+	// independently.
 	SignalDepsDriftRiskStrictPin   models.SignalType = "depsDriftRisk-strict-pin"
 	SignalDepsDriftRiskCaretPolicy models.SignalType = "depsDriftRisk-caret-policy"
 

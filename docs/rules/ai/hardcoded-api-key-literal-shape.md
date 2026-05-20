@@ -9,7 +9,7 @@
 
 ## Summary
 
-An API-key-shaped string literal (e.g. AKIA-prefix, sk-prefix, ghp_-prefix) appears in an eval, prompt, or agent definition file. The structural half of the cycle-1 aiHardcodedAPIKey detector — preserved at observability tier so the literal-shape capability stays available while the secret-scanner-coverage split lands.
+An API-key-shaped string literal (e.g. AKIA-prefix, sk-prefix, ghp_-prefix) appears in an eval, prompt, or agent definition file. Detects the literal in source; pairs with secretScannerCoverageDegraded which flags the absence of a CI-side secret scanner.
 
 ## Remediation
 
@@ -17,7 +17,7 @@ Move the secret to an environment variable or secrets store and reference it via
 
 ## Promotion plan
 
-Promotes to stable once secret-scanner-coverage-degraded (the other half of this split) is wired into CI integration as the gate-tier counterpart.
+Promotes to stable once secretScannerCoverageDegraded (the CI-coverage counterpart) ships at gate tier.
 
 ## Evidence sources
 

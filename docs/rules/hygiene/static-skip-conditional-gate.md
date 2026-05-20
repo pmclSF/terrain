@@ -17,7 +17,7 @@ No remediation required when the gate is correct. Audit the gate periodically; C
 
 ## Promotion plan
 
-Ships behind the static_skipped_test_split mechanism in shadow mode. Preserves the 39% of staticSkippedTest TPs that an A3 narrowing would otherwise drop.
+Gated by the static_skipped_test_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation.
 
 ## Evidence sources
 

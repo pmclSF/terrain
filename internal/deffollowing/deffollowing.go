@@ -1,8 +1,8 @@
-// Package deffollowing is the P2.3 A1 intra-repo def-following layer
-// for the assertion-counter family (assertionFreeImport,
-// assertionFreeTest, weakAssertion).
+// Package deffollowing is the intra-repo def-following layer for the
+// assertion-counter family (assertionFreeImport, assertionFreeTest,
+// weakAssertion).
 //
-// The cycle-1 detectors count assertions by scanning the immediate
+// The legacy detectors count assertions by scanning the immediate
 // test body for `assert*` / `expect*` / `t.is*` / `g.Expect*` tokens.
 // That misses helper functions: a test that calls
 // `verifyResponse(actual, expected)` and defines `verifyResponse` in
@@ -18,10 +18,9 @@
 //
 // The package is deliberately language-light. For JS/TS, Python, and
 // Go it locates function/class-method definitions via regex anchored
-// at the file scope. Full AST resolution per language is a cycle-3
-// upgrade — Phase 2 ships the structural improvement that the v2
-// validation showed clears the dominant FP class for these three
-// detectors.
+// at the file scope. Full per-language AST resolution is planned as a
+// follow-on; the structural improvement here clears the dominant FP
+// class for the three consumer detectors.
 package deffollowing
 
 import (

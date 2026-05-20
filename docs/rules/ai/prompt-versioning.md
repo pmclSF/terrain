@@ -9,7 +9,7 @@
 
 ## Summary
 
-Prompt-kind surface ships without a recognisable version marker (filename suffix, inline `version:` field, or `# version:` comment). Future content changes will silently drift; consumers can't detect the change.
+Prompt-kind surface ships without a recognizable version marker (filename suffix, inline `version:` field, or `# version:` comment). Future content changes will silently drift; consumers can't detect the change.
 
 ## Remediation
 
@@ -17,7 +17,7 @@ Add a `version:` field, a `_v<N>` filename suffix, or a `# version: ...` comment
 
 ## Promotion plan
 
-Measurement-phase per P2.13: stays at observability tier until baseline n≥150 stratified sample completes. Any lift mechanism from that sample must be structurally motivated or defer to n≥500.
+Stays at observability tier until a stratified-sample baseline confirms the detector's precision. Any subsequent lift mechanism must be structurally motivated; otherwise the rule remains at observability.
 
 ## Evidence sources
 

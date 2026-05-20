@@ -9,7 +9,7 @@
 
 ## Summary
 
-The repository configures or references AI surfaces that should be guarded by a secret scanner, but no secret-scanner CI integration (GitGuardian, GitHub secret scanning, gitleaks, trufflehog) is enabled or configured. Coverage-gap counterpart to the literal-shape detector.
+The repository configures or references AI surfaces that should be guarded by a secret scanner, but no secret-scanner CI integration (GitGuardian, GitHub secret scanning, gitleaks, trufflehog) is enabled or configured. CI-coverage counterpart to aiHardcodedAPIKey-literal-shape.
 
 ## Remediation
 
@@ -17,7 +17,7 @@ Enable a secret scanner in CI and document its coverage in the project README. R
 
 ## Promotion plan
 
-Planned — pairs with the literal-shape detector to cover both the in-repo signal and the CI-integration gap.
+Planned — pairs with aiHardcodedAPIKey-literal-shape to cover both the in-repo signal and the CI-integration gap.
 
 ## Evidence sources
 

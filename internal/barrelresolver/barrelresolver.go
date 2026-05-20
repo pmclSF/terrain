@@ -1,14 +1,13 @@
-// Package barrelresolver is the P2.6 A7 barrel/re-export resolver
-// hardening. It expands the import-graph resolution Terrain uses to
-// answer "does any production file import this test's target?" — the
-// question that drives orphanedTestFile, untestedExport,
-// assertionFreeImport, and assertionFreeTest.
+// Package barrelresolver is the barrel/re-export resolver hardening
+// layer. It expands the import-graph resolution Terrain uses to answer
+// "does any production file import this test's target?" — the question
+// that drives orphanedTestFile, untestedExport, assertionFreeImport,
+// and assertionFreeTest.
 //
 // The existing internal/analysis/import_graph.go handles the common
 // JS/TS cases: relative imports, tsconfig `paths` aliases, package.json
-// `imports` aliases, monorepo workspace packages. This package adds the
-// five FP sub-classes identified in the v2 corpus that the existing
-// resolver misses:
+// `imports` aliases, monorepo workspace packages. This package adds
+// the FP sub-classes that the legacy resolver misses:
 //
 //  1. relative sibling — already handled by import_graph.go; preserved
 //     here for API completeness.

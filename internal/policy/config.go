@@ -61,9 +61,8 @@ type Rules struct {
 	// OR when an adopter has confirmed the detector's signal isn't useful
 	// for their codebase.
 	//
-	// Implemented 2026-05-18 as cycle-1 safety machinery: per the
-	// detector validation plan, no gate-tier detector ships without a
-	// per-rule kill switch. Equivalent to `--disable-rule` on the CLI.
+	// Safety machinery: no gate-tier detector ships without a per-rule
+	// kill switch. Equivalent to `--disable-rule` on the CLI.
 	//
 	// Example .terrain/policy.yaml:
 	//   rules:

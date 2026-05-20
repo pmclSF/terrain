@@ -17,7 +17,7 @@ Use a prompt template with explicit user-content boundaries, or run user input t
 
 ## Promotion plan
 
-Measurement-phase per P2.13: stays at observability tier until baseline n≥150 stratified sample completes. Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands (lift mechanism is structurally motivated, so it can proceed pre-n=500).
+Stays at observability tier until a stratified-sample baseline confirms the detector's precision. Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands.
 
 ## Evidence sources
 

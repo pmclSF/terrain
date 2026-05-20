@@ -659,10 +659,10 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	registry.RunWithGraph(snapshot, dg)
 	signalsProduced := len(snapshot.Signals) - signalsBefore
 
-	// 2026-05-18 cycle-1 safety + P1b.1 alias expansion: apply user-configured
-	// disabled_detectors kill switch, expanding old/deprecated rule_ids
-	// through the alias registry so a policy on a pre-split ID continues to
-	// suppress every new ID it maps to. Logged at debug level for audit.
+	// Apply user-configured disabled_detectors kill switch, expanding
+	// old/deprecated rule_ids through the alias registry so a policy on
+	// a pre-split ID continues to suppress every new ID it maps to.
+	// Logged at debug level for audit.
 	if disabled := policyCfg.DisabledDetectorSet(); len(disabled) > 0 {
 		aliasReg, _ := aliases.Load()
 		expanded := make(map[string]bool, len(disabled))

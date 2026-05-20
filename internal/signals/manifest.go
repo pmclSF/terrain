@@ -138,9 +138,10 @@ type ManifestEntry struct {
 	// that existing user suppressions and CI gates don't break when a
 	// signal is split or renamed.
 	//
-	// Added 2026-05-18 as cycle-1 safety machinery — required before the
-	// uncoveredAISurface 3-lane split (aiPrompt / aiModel / aiDataset
-	// sub-rules) can ship without orphaning existing suppressions.
+	// Safety machinery — required before any rule split (e.g. the
+	// uncoveredAISurface 3-lane split into aiPrompt / aiModel /
+	// aiDataset sub-rules) can ship without orphaning existing
+	// suppressions.
 	//
 	// Example: SignalAIPromptUncovered.Replaces = []models.SignalType{
 	//   SignalUncoveredAISurface,
@@ -396,7 +397,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/static-skip-unconditional",
 		RuleURI:         "docs/rules/hygiene/static-skip-unconditional.md",
-		PromotionPlan:   "Ships behind the static_skipped_test_split mechanism in shadow mode. Promotes to stable when the split's per-mechanism recall + frozen-suite gates clear.",
+		PromotionPlan:   "Gated by the static_skipped_test_split mechanism; promotes to stable when its per-mechanism recall report and regression suite both clear.",
 	},
 	{
 		Type: SignalStaticSkippedTestConditionalGate, ConstName: "SignalStaticSkippedTestConditionalGate",
@@ -409,7 +410,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/static-skip-conditional-gate",
 		RuleURI:         "docs/rules/hygiene/static-skip-conditional-gate.md",
-		PromotionPlan:   "Ships behind the static_skipped_test_split mechanism in shadow mode. Preserves the 39% of staticSkippedTest TPs that an A3 narrowing would otherwise drop.",
+		PromotionPlan:   "Gated by the static_skipped_test_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation.",
 	},
 	{
 		Type: SignalAssertionFreeTest, ConstName: "SignalAssertionFreeTest",
@@ -467,7 +468,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/deps/drift-strict-pin",
 		RuleURI:         "docs/rules/deps/drift-strict-pin.md",
-		PromotionPlan:   "Ships behind the deps_drift_risk_split mechanism in shadow mode. Closes one half of the npm-vs-Poetry-vs-Cargo caret-semantics inconsistency.",
+		PromotionPlan:   "Gated by the deps_drift_risk_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation. Half of the deps-drift split.",
 	},
 	{
 		Type: SignalDepsDriftRiskCaretPolicy, ConstName: "SignalDepsDriftRiskCaretPolicy",
@@ -480,7 +481,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/deps/drift-caret-policy",
 		RuleURI:         "docs/rules/deps/drift-caret-policy.md",
-		PromotionPlan:   "Ships behind the deps_drift_risk_split mechanism in shadow mode. Closes the other half of the caret-semantics inconsistency.",
+		PromotionPlan:   "Gated by the deps_drift_risk_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation. Half of the deps-drift split.",
 	},
 	{
 		Type: SignalConfigSchemaDrift, ConstName: "SignalConfigSchemaDrift",
@@ -1030,14 +1031,14 @@ var allSignalManifest = []ManifestEntry{
 		Type: SignalAIPromptVersioning, ConstName: "SignalAIPromptVersioning",
 		Domain: models.CategoryAI, Status: StatusStable,
 		Title:           "Prompt Versioning",
-		Description:     "Prompt-kind surface ships without a recognisable version marker (filename suffix, inline `version:` field, or `# version:` comment). Future content changes will silently drift; consumers can't detect the change.",
+		Description:     "Prompt-kind surface ships without a recognizable version marker (filename suffix, inline `version:` field, or `# version:` comment). Future content changes will silently drift; consumers can't detect the change.",
 		Remediation:     "Add a `version:` field, a `_v<N>` filename suffix, or a `# version: ...` comment so downstream consumers can detect content drift.",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.75, ConfidenceMax: 0.92,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/prompt-versioning", RuleURI: "docs/rules/ai/prompt-versioning.md",
 		Tier:            TierObservability,
-		PromotionPlan:   "Measurement-phase per P2.13: stays at observability tier until baseline n≥150 stratified sample completes. Any lift mechanism from that sample must be structurally motivated or defer to n≥500.",
+		PromotionPlan:   "Stays at observability tier until a stratified-sample baseline confirms the detector's precision. Any subsequent lift mechanism must be structurally motivated; otherwise the rule remains at observability.",
 	},
 	{
 		Type: SignalAIPromptInjectionRisk, ConstName: "SignalAIPromptInjectionRisk",
@@ -1050,7 +1051,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/prompt-injection-risk", RuleURI: "docs/rules/ai/prompt-injection-risk.md",
 		Tier:            TierObservability,
-		PromotionPlan:   "Measurement-phase per P2.13: stays at observability tier until baseline n≥150 stratified sample completes. Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands (lift mechanism is structurally motivated, so it can proceed pre-n=500).",
+		PromotionPlan:   "Stays at observability tier until a stratified-sample baseline confirms the detector's precision. Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands.",
 	},
 	{
 		Type: SignalAIHardcodedAPIKey, ConstName: "SignalAIHardcodedAPIKey",
@@ -1063,13 +1064,13 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/hardcoded-api-key", RuleURI: "docs/rules/ai/hardcoded-api-key.md",
 		Tier:            TierObservability,
-		PromotionPlan:   "Measurement-phase per P2.13. Concurrent structural split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded preserves capability; this back-compat rule stays at observability until the split halves graduate.",
+		PromotionPlan:   "Stays at observability tier. A concurrent structural split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded preserves capability; this back-compat rule remains until the split halves graduate.",
 	},
 	{
 		Type: SignalAIHardcodedAPIKeyLiteralShape, ConstName: "SignalAIHardcodedAPIKeyLiteralShape",
 		Domain: models.CategoryAI, Status: StatusExperimental,
 		Title:           "Hard-Coded API Key — Literal Shape",
-		Description:     "An API-key-shaped string literal (e.g. AKIA-prefix, sk-prefix, ghp_-prefix) appears in an eval, prompt, or agent definition file. The structural half of the cycle-1 aiHardcodedAPIKey detector — preserved at observability tier so the literal-shape capability stays available while the secret-scanner-coverage split lands.",
+		Description:     "An API-key-shaped string literal (e.g. AKIA-prefix, sk-prefix, ghp_-prefix) appears in an eval, prompt, or agent definition file. Detects the literal in source; pairs with secretScannerCoverageDegraded which flags the absence of a CI-side secret scanner.",
 		Remediation:     "Move the secret to an environment variable or secrets store and reference it via the runner's secret-resolution path.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
@@ -1077,20 +1078,20 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/ai/hardcoded-api-key-literal-shape",
 		RuleURI:         "docs/rules/ai/hardcoded-api-key-literal-shape.md",
 		Tier:            TierObservability,
-		PromotionPlan:   "Promotes to stable once secret-scanner-coverage-degraded (the other half of this split) is wired into CI integration as the gate-tier counterpart.",
+		PromotionPlan:   "Promotes to stable once secretScannerCoverageDegraded (the CI-coverage counterpart) ships at gate tier.",
 	},
 	{
 		Type: SignalSecretScannerCoverageDegraded, ConstName: "SignalSecretScannerCoverageDegraded",
 		Domain: models.CategoryAI, Status: StatusPlanned,
 		Title:           "Secret-Scanner Coverage Degraded",
-		Description:     "The repository configures or references AI surfaces that should be guarded by a secret scanner, but no secret-scanner CI integration (GitGuardian, GitHub secret scanning, gitleaks, trufflehog) is enabled or configured. Coverage-gap counterpart to the literal-shape detector.",
+		Description:     "The repository configures or references AI surfaces that should be guarded by a secret scanner, but no secret-scanner CI integration (GitGuardian, GitHub secret scanning, gitleaks, trufflehog) is enabled or configured. CI-coverage counterpart to aiHardcodedAPIKey-literal-shape.",
 		Remediation:     "Enable a secret scanner in CI and document its coverage in the project README. Re-audit periodically.",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/secret-scanner-coverage-degraded",
 		RuleURI:         "docs/rules/ai/secret-scanner-coverage-degraded.md",
-		PromotionPlan:   "Planned — pairs with the literal-shape detector to cover both the in-repo signal and the CI-integration gap.",
+		PromotionPlan:   "Planned — pairs with aiHardcodedAPIKey-literal-shape to cover both the in-repo signal and the CI-integration gap.",
 	},
 	{
 		Type: SignalAIToolWithoutSandbox, ConstName: "SignalAIToolWithoutSandbox",

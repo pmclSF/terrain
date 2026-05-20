@@ -244,7 +244,7 @@ var clauses = []Clause{
 		ID:          "sev-medium-007",
 		Severity:    models.SeverityMedium,
 		Title:       "Prompt drift without version marker",
-		Description: "A prompt-kind surface ships without a recognisable version marker (filename suffix, inline `version:` literal, or comment-style version), so future content changes can't be tracked.",
+		Description: "A prompt-kind surface ships without a recognizable version marker (filename suffix, inline `version:` literal, or comment-style version), so future content changes can't be tracked.",
 		Examples: []string{
 			"`prompts/system.md` with no `_v1` suffix and no inline `version:` line",
 		},

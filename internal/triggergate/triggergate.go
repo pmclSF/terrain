@@ -1,18 +1,18 @@
-// Package triggergate is the P2.2 deprecatedTestPattern trigger-gate.
-// It implements two AST-shaped predicates that filter the dominant FP
+// Package triggergate is the deprecatedTestPattern trigger-gate. It
+// implements two AST-shaped predicates that filter the dominant FP
 // classes of the `deprecatedTestPattern` detector:
 //
 //  1. ImportsFrom(file, patterns) — only fire framework-specific
-//     sub-rules when the file actually imports the framework. Clears
-//     ~68% of cycle-1 FPs where the enzyme sub-rule fired on files
-//     that never imported enzyme (or any enzyme-adapter-*).
+//     sub-rules when the file actually imports the framework. Suppresses
+//     framework-mismatch FPs where (e.g.) the enzyme sub-rule fired on
+//     files that never imported enzyme or any enzyme-adapter-*.
 //
 //  2. IsSetTimeoutAtConfigScope(file, line) — flag jest/mocha-style
-//     test-timeout configuration calls (jest.setTimeout, test.setTimeout)
-//     only when they appear at config scope: module top-level, inside
-//     beforeAll/beforeEach blocks, or in setup files. In-test scope
-//     calls are intentional per-test overrides, not deprecated config.
-//     Clears the ~19 setTimeout FPs.
+//     test-timeout configuration calls (jest.setTimeout,
+//     test.setTimeout) only when they appear at config scope: module
+//     top-level, inside beforeAll/beforeEach blocks, or in setup
+//     files. In-test scope calls are intentional per-test overrides,
+//     not deprecated config.
 //
 // The gate is mechanism-gated by `deprecated_test_pattern_trigger_gate`.
 // Off → predicates return permissive defaults (true) so legacy behavior

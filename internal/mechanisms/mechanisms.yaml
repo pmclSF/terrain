@@ -1,14 +1,15 @@
 schema_version: 1
-# Phase 2 mechanisms registry. Every cycle-2 detector behavior change is
-# gated by an entry here. New mechanisms start at state: shadow per the
-# binding rule "every P2 module ships first in shadow mode."
+# Detector mechanism registry. Each entry gates one detector behavior
+# change. New mechanisms start at state: shadow — they run alongside
+# the pre-existing detector code, emit shadow events, but do NOT change
+# user-visible findings until flipped to state: on.
 #
 # Live activation requires:
-#   1. Zero TP regressions >10 per the symmetric ≥10% rule
-#      (enforced by internal/regressionsuite).
-#   2. Per-mechanism recall report (internal/recallharness) computed
-#      against shadow data.
-#   3. Explicit flip in this file from `shadow` to `on`.
+#   1. The mechanism's regression suite (internal/regressionsuite) shows
+#      zero TP regressions past the configured loss threshold.
+#   2. Per-mechanism recall report (internal/recallharness) confirms the
+#      union recall floor against shadow data.
+#   3. Explicit edit of this file flipping state: shadow → state: on.
 #
 # Per-process overrides via --mechanisms.<name>=on|off|shadow.
 
@@ -16,9 +17,9 @@ mechanisms:
   - name: surface_literal_presence_gate
     state: shadow
     description: |
-      Before any AI-moat detector fires, require that the surface name
-      in evidence.surface literally appears as an identifier token in
-      the flagged file (P2.1).
+      Before an AI-moat detector fires on a surface name, require that
+      the name literally appears as an identifier token in the flagged
+      file. Suppresses surface-hallucination findings.
     consumers:
       - aiModelDeprecationRisk
       - aiNonDeterministicEval
@@ -30,9 +31,9 @@ mechanisms:
   - name: deprecated_test_pattern_trigger_gate
     state: shadow
     description: |
-      Trigger-gate fix for deprecatedTestPattern: require structural
-      framework-import (enzyme, jest setTimeout scope) before the rule
-      fires (P2.2).
+      Require a structural framework-import predicate (enzyme,
+      jest setTimeout config scope) before the deprecatedTestPattern
+      rule fires. Suppresses framework-mismatch false positives.
     consumers:
       - deprecatedTestPattern
 
@@ -40,9 +41,8 @@ mechanisms:
     state: shadow
     description: |
       Intra-repo def-following for the assertion-counter family. When
-      call(x,y) appears in a test body and call's definition is
-      resolvable in-repo, recurse into the body and count transitive
-      assertions (P2.3).
+      a test body calls a helper whose definition is resolvable in-repo,
+      recurse into the helper's body and count transitive assertions.
     consumers:
       - assertionFreeImport
       - assertionFreeTest
@@ -52,8 +52,7 @@ mechanisms:
     state: shadow
     description: |
       Split depsDriftRisk into depsDriftRisk-strict-pin (bare-name /
-      unversioned) and depsDriftRisk-caret-policy (caret ranges)
-      (P2.4).
+      unversioned) and depsDriftRisk-caret-policy (caret ranges).
     consumers:
       - depsDriftRisk
 
@@ -61,17 +60,18 @@ mechanisms:
     state: shadow
     description: |
       Split staticSkippedTest into staticSkippedTest-unconditional and
-      staticSkippedTest-conditional-gate. Preserves the conditional-
-      skip TPs (P2.5).
+      staticSkippedTest-conditional-gate. Preserves conditional-skip
+      true positives that a narrower predicate would drop.
     consumers:
       - staticSkippedTest
 
   - name: a7_barrel_resolver
     state: shadow
     description: |
-      A7 import-graph barrel/re-export hardening. Handles relative
-      sibling, @/ path alias, absolute-package import, from x import y
-      namespace, dist-path indirection (P2.6).
+      Import-graph barrel/re-export hardening. Handles relative sibling
+      imports, @/-style path aliases, absolute-package imports,
+      Python `from x import y` namespace re-exports, and dist-path
+      indirection.
     consumers:
       - untestedExport
       - orphanedTestFile
@@ -81,17 +81,18 @@ mechanisms:
   - name: a3_loop_predicate
     state: shadow
     description: |
-      AST loop predicate for dynamicTestGeneration: gate on
-      IsTestBuilderInLoop (for/forEach/it.each) (P2.7).
+      AST loop predicate for dynamicTestGeneration: gates on
+      IsTestBuilderInLoop (for / forEach / it.each / test.each).
     consumers:
       - dynamicTestGeneration
 
   - name: ehr_surfaces_covered
     state: shadow
     description: |
-      EHR emits surfaces_covered: [...] not just eval-config: bool.
-      Prevents over-suppression when a token-counting eval covers a
-      different surface (P2.9).
+      Eval-harness recognizer that emits surfaces_covered: [...] per
+      eval config, not just an eval-config-present boolean. Prevents
+      over-suppression when an eval covers a different surface than
+      the one a finding fires on.
     consumers:
       - aiNonDeterministicEval
       - aiSafetyEvalMissing
@@ -100,18 +101,20 @@ mechanisms:
   - name: runtime_config_recognizer
     state: shadow
     description: |
-      Structural primitive: any YAML/properties file with import-graph-
-      reachable consumer that injects values into an SDK client
-      constructor. Ships at observability tier (P2.10).
+      Structural primitive — any YAML/properties file with an
+      import-graph-reachable consumer that injects values into an
+      SDK client constructor. Demotes findings to observability when
+      the file looks like a runtime config rather than an eval config.
     consumers:
       - aiNonDeterministicEval
 
   - name: ascg_live_vs_catalog
     state: shadow
     description: |
-      ASCG live-config-value vs catalog/example-string role pinning.
-      Demotes findings on catalog/example occurrences before they reach
-      the user-visible finding stream (P2.11).
+      Anchored-schema configuration gate: live-config-value vs
+      catalog/example-string role pinning. Demotes findings on
+      catalog or example occurrences before they reach the
+      user-visible finding stream.
     consumers:
       - aiModelDeprecationRisk
       - configSchemaDrift

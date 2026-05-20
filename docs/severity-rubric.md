@@ -193,7 +193,7 @@ Average per-case cost rose more than the configured percentage threshold versus 
 
 #### `sev-medium-007` — Prompt drift without version marker
 
-A prompt-kind surface ships without a recognisable version marker (filename suffix, inline `version:` literal, or comment-style version), so future content changes can't be tracked.
+A prompt-kind surface ships without a recognizable version marker (filename suffix, inline `version:` literal, or comment-style version), so future content changes can't be tracked.
 
 **Applies when:**
 

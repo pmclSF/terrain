@@ -12,7 +12,7 @@ import (
 )
 
 // PromptVersioningDetector flags prompt-kind surfaces that ship
-// without a recognisable version marker. The round-4 plan called for
+// without a recognizable version marker. The round-4 plan called for
 // detecting "prompt content changed without version bump" via baseline
 // comparison; that variant lands when ContentHashes are persisted on
 // the snapshot. This 0.2 detector ships the simpler-but-actionable
@@ -72,7 +72,7 @@ var filenameVersionPattern = regexp.MustCompile(`(?:[_\-.]v\d+)$`)
 // Pre-0.2.x the pattern only required `version:` followed by anything
 // (or nothing). `version: TODO` and `version:` with no value satisfied
 // the check, defeating the detector's intent — silent prompt drift.
-// Now we require a recognisable version literal.
+// Now we require a recognizable version literal.
 var inlineVersionPattern = regexp.MustCompile(
 	`(?i)(?:^|\s)(?:#|//|\*)?\s*"?version"?\s*[:=]\s*` +
 		`(?:` +
@@ -126,7 +126,7 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			// back.
 			Confidence:  0.50,
 			Location:    models.SignalLocation{File: surface.Path, Symbol: surface.Name},
-			Explanation: "Prompt file `" + surface.Path + "` has no recognisable version marker. Future content changes will silently drift; consumers can't detect the change.",
+			Explanation: "Prompt file `" + surface.Path + "` has no recognizable version marker. Future content changes will silently drift; consumers can't detect the change.",
 			SuggestedAction: "Add a `version:` field, a `_v<N>` suffix to the filename, or a `# version: ...` comment so downstream consumers can detect content drift.",
 
 			SeverityClauses: []string{"sev-medium-007"},
@@ -168,7 +168,7 @@ func filenameLooksVersioned(path string) bool {
 // virtually always appear at the top.
 //
 // 0.2.0 final-polish: even after `inlineVersionPattern` was tightened
-// to require a recognisable version literal, quoted-non-empty branch
+// to require a recognizable version literal, quoted-non-empty branch
 // still accepted `"TODO"`, `"tbd"`, `"xxx"`, `"?"`, `"unknown"` etc.
 // Reject those placeholder tokens explicitly so a comment like
 // `version: "TODO"` doesn't silence the detector.

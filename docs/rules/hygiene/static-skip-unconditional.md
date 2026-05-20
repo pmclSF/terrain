@@ -17,7 +17,7 @@ Re-enable, replace, or delete the test. Add a comment explaining why if the skip
 
 ## Promotion plan
 
-Ships behind the static_skipped_test_split mechanism in shadow mode. Promotes to stable when the split's per-mechanism recall + frozen-suite gates clear.
+Gated by the static_skipped_test_split mechanism; promotes to stable when its per-mechanism recall report and regression suite both clear.
 
 ## Evidence sources
 

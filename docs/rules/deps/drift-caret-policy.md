@@ -17,7 +17,7 @@ Adopt a stricter pinning policy (tilde, exact, or commit-pinned) where minor-ver
 
 ## Promotion plan
 
-Ships behind the deps_drift_risk_split mechanism in shadow mode. Closes the other half of the caret-semantics inconsistency.
+Gated by the deps_drift_risk_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation. Half of the deps-drift split.
 
 ## Evidence sources
 

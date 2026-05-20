@@ -505,7 +505,7 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			ID:             "ai.prompt-versioning",
 			Domain:         signals.DomainAI,
 			EvidenceType:   signals.EvidenceStructuralPattern,
-			Description:    "Flag prompt-kind surfaces with no recognisable version marker (filename, inline, or comment).",
+			Description:    "Flag prompt-kind surfaces with no recognizable version marker (filename, inline, or comment).",
 			SignalTypes:    []models.SignalType{signals.SignalAIPromptVersioning},
 			RequiresFileIO: true,
 		},

@@ -1,15 +1,15 @@
-// Package ehr is the P2.9 Eval-Harness Recognizer with surfaces_covered
+// Package ehr is the Eval-Harness Recognizer with surfaces_covered
 // output.
 //
-// The cycle-1 logic recorded eval-config presence as a boolean: "this
+// The legacy logic recorded eval-config presence as a boolean: "this
 // repo has at least one eval config file." That bool was used by
 // downstream detectors (promptFileMissingEval, aiNonDeterministicEval,
 // aiSafetyEvalMissing) to suppress findings on any prompt or surface
 // in the repo. The over-suppression bug: a token-counting eval over
-// some other surface incorrectly silenced real prompt-missing-eval
-// findings.
+// one surface incorrectly silenced real prompt-missing-eval findings
+// on unrelated surfaces.
 //
-// The fix is structural: every recognised eval config emits the set
+// The fix is structural: every recognized eval config emits the set
 // of surfaces it actually covers — prompt file paths, model names,
 // dataset paths. Downstream detectors check `surfaces_covered` against
 // the specific surface in their finding and only suppress when there's

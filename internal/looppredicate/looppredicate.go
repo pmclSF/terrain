@@ -1,9 +1,9 @@
-// Package looppredicate is the P2.7 A3 loop-predicate gate for the
-// dynamicTestGeneration detector. The cycle-1 detector flags any it()
-// / test() call inside a `describe` body — including `it.each([...])`
-// table-driven tests, `cases.forEach(c => it(c.name, ...))`, and
-// straightforward `for` loops generating per-iteration tests. Those are
-// the standard table-test idiom, not a bug.
+// Package looppredicate is the loop-predicate gate for the
+// dynamicTestGeneration detector. The legacy detector flags any
+// it() / test() call inside a `describe` body — including
+// `it.each([...])` table-driven tests, `cases.forEach(c => it(c.name,
+// ...))`, and straightforward `for` loops generating per-iteration
+// tests. Those are the standard table-test idiom, not a bug.
 //
 // IsTestBuilderInLoop reports whether the line in the source file is
 // wrapped by a loop construct: `for (...) { ... it(...) }`,

@@ -247,7 +247,7 @@
       ],
       "ruleId": "terrain/hygiene/static-skip-unconditional",
       "ruleUri": "docs/rules/hygiene/static-skip-unconditional.md",
-      "promotionPlan": "Ships behind the static_skipped_test_split mechanism in shadow mode. Promotes to stable when the split's per-mechanism recall + frozen-suite gates clear."
+      "promotionPlan": "Gated by the static_skipped_test_split mechanism; promotes to stable when its per-mechanism recall report and regression suite both clear."
     },
     {
       "type": "staticSkippedTest-conditional-gate",
@@ -265,7 +265,7 @@
       ],
       "ruleId": "terrain/hygiene/static-skip-conditional-gate",
       "ruleUri": "docs/rules/hygiene/static-skip-conditional-gate.md",
-      "promotionPlan": "Ships behind the static_skipped_test_split mechanism in shadow mode. Preserves the 39% of staticSkippedTest TPs that an A3 narrowing would otherwise drop."
+      "promotionPlan": "Gated by the static_skipped_test_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation."
     },
     {
       "type": "assertionFreeTest",
@@ -336,7 +336,7 @@
       ],
       "ruleId": "terrain/deps/drift-strict-pin",
       "ruleUri": "docs/rules/deps/drift-strict-pin.md",
-      "promotionPlan": "Ships behind the deps_drift_risk_split mechanism in shadow mode. Closes one half of the npm-vs-Poetry-vs-Cargo caret-semantics inconsistency."
+      "promotionPlan": "Gated by the deps_drift_risk_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation. Half of the deps-drift split."
     },
     {
       "type": "depsDriftRisk-caret-policy",
@@ -354,7 +354,7 @@
       ],
       "ruleId": "terrain/deps/drift-caret-policy",
       "ruleUri": "docs/rules/deps/drift-caret-policy.md",
-      "promotionPlan": "Ships behind the deps_drift_risk_split mechanism in shadow mode. Closes the other half of the caret-semantics inconsistency."
+      "promotionPlan": "Gated by the deps_drift_risk_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation. Half of the deps-drift split."
     },
     {
       "type": "configSchemaDrift",
@@ -1131,7 +1131,7 @@
       "domain": "ai",
       "status": "stable",
       "title": "Prompt Versioning",
-      "description": "Prompt-kind surface ships without a recognisable version marker (filename suffix, inline `version:` field, or `# version:` comment). Future content changes will silently drift; consumers can't detect the change.",
+      "description": "Prompt-kind surface ships without a recognizable version marker (filename suffix, inline `version:` field, or `# version:` comment). Future content changes will silently drift; consumers can't detect the change.",
       "remediation": "Add a `version:` field, a `_v\u003cN\u003e` filename suffix, or a `# version: ...` comment so downstream consumers can detect content drift.",
       "defaultSeverity": "medium",
       "confidenceMin": 0.75,
@@ -1141,7 +1141,7 @@
       ],
       "ruleId": "terrain/ai/prompt-versioning",
       "ruleUri": "docs/rules/ai/prompt-versioning.md",
-      "promotionPlan": "Measurement-phase per P2.13: stays at observability tier until baseline n≥150 stratified sample completes. Any lift mechanism from that sample must be structurally motivated or defer to n≥500."
+      "promotionPlan": "Stays at observability tier until a stratified-sample baseline confirms the detector's precision. Any subsequent lift mechanism must be structurally motivated; otherwise the rule remains at observability."
     },
     {
       "type": "aiPromptInjectionRisk",
@@ -1159,7 +1159,7 @@
       ],
       "ruleId": "terrain/ai/prompt-injection-risk",
       "ruleUri": "docs/rules/ai/prompt-injection-risk.md",
-      "promotionPlan": "Measurement-phase per P2.13: stays at observability tier until baseline n≥150 stratified sample completes. Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands (lift mechanism is structurally motivated, so it can proceed pre-n=500)."
+      "promotionPlan": "Stays at observability tier until a stratified-sample baseline confirms the detector's precision. Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands."
     },
     {
       "type": "aiHardcodedAPIKey",
@@ -1177,7 +1177,7 @@
       ],
       "ruleId": "terrain/ai/hardcoded-api-key",
       "ruleUri": "docs/rules/ai/hardcoded-api-key.md",
-      "promotionPlan": "Measurement-phase per P2.13. Concurrent structural split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded preserves capability; this back-compat rule stays at observability until the split halves graduate."
+      "promotionPlan": "Stays at observability tier. A concurrent structural split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded preserves capability; this back-compat rule remains until the split halves graduate."
     },
     {
       "type": "aiHardcodedAPIKey-literal-shape",
@@ -1185,7 +1185,7 @@
       "domain": "ai",
       "status": "experimental",
       "title": "Hard-Coded API Key — Literal Shape",
-      "description": "An API-key-shaped string literal (e.g. AKIA-prefix, sk-prefix, ghp_-prefix) appears in an eval, prompt, or agent definition file. The structural half of the cycle-1 aiHardcodedAPIKey detector — preserved at observability tier so the literal-shape capability stays available while the secret-scanner-coverage split lands.",
+      "description": "An API-key-shaped string literal (e.g. AKIA-prefix, sk-prefix, ghp_-prefix) appears in an eval, prompt, or agent definition file. Detects the literal in source; pairs with secretScannerCoverageDegraded which flags the absence of a CI-side secret scanner.",
       "remediation": "Move the secret to an environment variable or secrets store and reference it via the runner's secret-resolution path.",
       "defaultSeverity": "high",
       "confidenceMin": 0.75,
@@ -1195,7 +1195,7 @@
       ],
       "ruleId": "terrain/ai/hardcoded-api-key-literal-shape",
       "ruleUri": "docs/rules/ai/hardcoded-api-key-literal-shape.md",
-      "promotionPlan": "Promotes to stable once secret-scanner-coverage-degraded (the other half of this split) is wired into CI integration as the gate-tier counterpart."
+      "promotionPlan": "Promotes to stable once secretScannerCoverageDegraded (the CI-coverage counterpart) ships at gate tier."
     },
     {
       "type": "secretScannerCoverageDegraded",
@@ -1203,7 +1203,7 @@
       "domain": "ai",
       "status": "planned",
       "title": "Secret-Scanner Coverage Degraded",
-      "description": "The repository configures or references AI surfaces that should be guarded by a secret scanner, but no secret-scanner CI integration (GitGuardian, GitHub secret scanning, gitleaks, trufflehog) is enabled or configured. Coverage-gap counterpart to the literal-shape detector.",
+      "description": "The repository configures or references AI surfaces that should be guarded by a secret scanner, but no secret-scanner CI integration (GitGuardian, GitHub secret scanning, gitleaks, trufflehog) is enabled or configured. CI-coverage counterpart to aiHardcodedAPIKey-literal-shape.",
       "remediation": "Enable a secret scanner in CI and document its coverage in the project README. Re-audit periodically.",
       "defaultSeverity": "medium",
       "confidenceMin": 0.6,
@@ -1213,7 +1213,7 @@
       ],
       "ruleId": "terrain/ai/secret-scanner-coverage-degraded",
       "ruleUri": "docs/rules/ai/secret-scanner-coverage-degraded.md",
-      "promotionPlan": "Planned — pairs with the literal-shape detector to cover both the in-repo signal and the CI-integration gap."
+      "promotionPlan": "Planned — pairs with aiHardcodedAPIKey-literal-shape to cover both the in-repo signal and the CI-integration gap."
     },
     {
       "type": "aiToolWithoutSandbox",

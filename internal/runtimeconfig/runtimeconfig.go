@@ -1,15 +1,13 @@
-// Package runtimeconfig is the P2.10 RuntimeConfigRecognizer.
+// Package runtimeconfig is the RuntimeConfigRecognizer.
 //
-// The "Spring AI + n8n + generic LLM-client configs" framing from
-// earlier rounds is replaced with one structural primitive:
+// One structural primitive:
 //
 //	"Any YAML / properties file with import-graph-reachable consumer
 //	 that injects values into an SDK client constructor."
 //
-// Ships at OBSERVABILITY tier per the round-5 revision (F3 + F4). The
-// capability is preserved; if the structural primitive proves too
-// narrow at n≥150, demote further — never retire (Rule 2,
-// feedback_no_retire_default).
+// Ships at observability tier. The capability is preserved; if the
+// primitive proves too narrow on a labeled sample, demote further —
+// the rule is not retired.
 //
 // What the recognizer does today:
 //   1. RecognizeFile: parses a YAML or .properties file and reports

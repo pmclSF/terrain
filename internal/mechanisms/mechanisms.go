@@ -1,19 +1,18 @@
-// Package mechanisms is the registry that gates every Phase 2 detector
+// Package mechanisms is the registry that gates every detector
 // behavior change behind a named, three-state switch:
 //
-//   - off:    the mechanism is not active; pre-cycle-2 behavior runs.
-//   - shadow: the mechanism runs alongside the pre-cycle-2 code path and
+//   - off:    the mechanism is not active; the legacy detector runs.
+//   - shadow: the mechanism runs alongside the legacy code path and
 //             emits would-have-suppressed / would-have-added events to
 //             .terrain/shadow-report.jsonl, but does NOT change the
 //             user-visible findings.
 //   - on:     the mechanism is live — its behavior change is observable
 //             in findings.
 //
-// Per the cycle-2 binding rules, every new mechanism ships first as
-// shadow:true. Live activation requires zero TP regressions >10 per the
-// symmetric ≥10% rule (enforced by internal/regressionsuite), a
-// per-mechanism recall report (internal/recallharness), and an explicit
-// flip in mechanisms.yaml.
+// Every new mechanism ships first as state: shadow. Live activation
+// requires the mechanism's regression suite (internal/regressionsuite)
+// and per-mechanism recall report (internal/recallharness) both pass,
+// then an explicit flip in mechanisms.yaml.
 //
 // Mechanism state can also be overridden per-process via the
 // --mechanisms.<name>=on|off|shadow CLI flag, which calls Override.

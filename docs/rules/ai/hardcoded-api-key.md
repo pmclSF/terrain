@@ -17,7 +17,7 @@ Move the secret to an environment variable or secrets store and reference it thr
 
 ## Promotion plan
 
-Measurement-phase per P2.13. Concurrent structural split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded preserves capability; this back-compat rule stays at observability until the split halves graduate.
+Stays at observability tier. A concurrent structural split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded preserves capability; this back-compat rule remains until the split halves graduate.
 
 ## Evidence sources
 

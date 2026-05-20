@@ -17,7 +17,7 @@ Add an explicit version, version range, or lockfile-verification gate so install
 
 ## Promotion plan
 
-Ships behind the deps_drift_risk_split mechanism in shadow mode. Closes one half of the npm-vs-Poetry-vs-Cargo caret-semantics inconsistency.
+Gated by the deps_drift_risk_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation. Half of the deps-drift split.
 
 ## Evidence sources
 

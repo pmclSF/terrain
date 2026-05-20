@@ -77,8 +77,8 @@ type GraphFacts struct {
 }
 
 // RoleOf returns the structural role for `name` given the supplied
-// graph facts. Used by P2.11-consumer detectors after they collect
-// the facts during their scan.
+// graph facts. Used by consumer detectors after they collect the facts
+// during their scan.
 func RoleOf(facts GraphFacts) Role {
 	// Live: exported + consumed in same file via call-site, OR
 	// exported + consumed cross-file. We accept either as "live."
@@ -98,12 +98,12 @@ func RoleOf(facts GraphFacts) Role {
 	return RoleUnknown
 }
 
-// GateRole is the canonical mechanism-state wire-up for P2.11
-// consumers. Given the symbol facts + the finding's surrounding
-// context, returns a structural Decision telling the caller whether
-// to keep the finding, demote it, or take no action.
+// GateRole is the canonical mechanism-state wire-up for live-vs-
+// catalog consumers. Given the symbol facts + the finding's
+// surrounding context, returns a structural Decision telling the
+// caller whether to keep the finding, demote it, or take no action.
 //
-// Off → no role test runs, falls back to Phase 1 Classify verdict.
+// Off → no role test runs, falls back to the Classify verdict.
 // Shadow → role test runs, emits would_suppress / would_demote events
 //   on disagreement with legacy behavior, user-visible findings
 //   unchanged.

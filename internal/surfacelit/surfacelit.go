@@ -1,4 +1,4 @@
-// Package surfacelit implements the SurfaceLiteralPresenceGate (P2.1).
+// Package surfacelit implements the SurfaceLiteralPresenceGate.
 //
 // Before an AI-moat detector emits a finding referencing a surface name
 // (e.g. "gpt-4o", "chatbot-prompt", "summarizer_template"), the gate

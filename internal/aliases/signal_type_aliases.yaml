@@ -24,33 +24,33 @@ aliases:
     replaces_with:
       - staticSkippedTest-unconditional
       - staticSkippedTest-conditional-gate
-    deprecated_in: "0.3"
+    deprecated_in: "next"
     removal_target: "future"
     why: |
-      Split into unconditional (no surrounding env / feature-flag predicate)
-      and conditional-gate (skip is wrapped by a structural gate). Preserves
-      the 39% of TPs that an A3 narrowing would otherwise drop.
+      Split into unconditional (skip is permanent, no surrounding gate)
+      and conditional-gate (skip is wrapped by an environment, feature-
+      flag, or platform predicate). Each half carries its own
+      remediation guidance.
 
   depsDriftRisk:
     replaces_with:
       - depsDriftRisk-strict-pin
       - depsDriftRisk-caret-policy
-    deprecated_in: "0.3"
+    deprecated_in: "next"
     removal_target: "future"
     why: |
-      Split into strict-pin (bare name / unversioned) and caret-policy
-      (caret-range usage). Resolves the npm vs Poetry vs Cargo caret-
-      semantics inconsistency so each half can carry its own threshold.
+      Split into strict-pin (bare name or unversioned spec) and
+      caret-policy (caret-range usage). Each half can carry its own
+      threshold and suppression target.
 
   aiHardcodedAPIKey:
     replaces_with:
       - aiHardcodedAPIKey-literal-shape
       - secretScannerCoverageDegraded
-    deprecated_in: "0.3"
+    deprecated_in: "next"
     removal_target: "future"
     why: |
-      Structurally-motivated split. Literal-shape retains the regex-
-      derived "API-key-shaped string in config" capability at
-      observability tier; coverage-degraded flags the CI-integration
-      gap. Per feedback_no_retire_default, the original capability is
-      preserved across the split, not retired.
+      Structurally-motivated split. Literal-shape retains the in-repo
+      key-shaped-string detection capability; coverage-degraded flags
+      the secret-scanner CI-integration gap. Underlying capability is
+      preserved across the split.
