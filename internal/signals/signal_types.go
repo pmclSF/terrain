@@ -28,6 +28,14 @@ const (
 	SignalSkippedTestsInCI       models.SignalType = "skippedTestsInCI"
 	SignalRuntimeBudgetExceeded  models.SignalType = "runtimeBudgetExceeded"
 	SignalStaticSkippedTest      models.SignalType = "staticSkippedTest"
+	// P2.5 rule split — preserves the 61 conditional-skip TPs (39% of
+	// base) that an A3 narrowing would otherwise kill. Both halves
+	// stay at gate; the conditional-gate variant carries the framing
+	// "skip is dynamic / environment-gated" so users who care about
+	// strictly-unconditional skips can suppress one side independently.
+	SignalStaticSkippedTestUnconditional   models.SignalType = "staticSkippedTest-unconditional"
+	SignalStaticSkippedTestConditionalGate models.SignalType = "staticSkippedTest-conditional-gate"
+
 	SignalAssertionFreeTest      models.SignalType = "assertionFreeTest"
 	SignalOrphanedTestFile       models.SignalType = "orphanedTestFile"
 
@@ -111,6 +119,12 @@ const (
 	// baseline). Detects manifest files with a high share of moving-
 	// target version specs.
 	SignalDepsDriftRisk models.SignalType = "depsDriftRisk"
+	// P2.4 rule split — resolves the npm-vs-Poetry-vs-Cargo caret
+	// semantics inconsistency. Strict-pin half flags bare-name /
+	// unversioned specs; caret-policy half flags caret-range usage.
+	// Both halves are independent suppression / posture surfaces.
+	SignalDepsDriftRiskStrictPin   models.SignalType = "depsDriftRisk-strict-pin"
+	SignalDepsDriftRiskCaretPolicy models.SignalType = "depsDriftRisk-caret-policy"
 
 	// Tier 5.2 — config-schema-drift detector. Closes 5.7% of measured
 	// 0.2.0 recall gap (config-only PRs that ship regressions: untagged

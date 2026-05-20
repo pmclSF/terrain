@@ -17,11 +17,27 @@
 #
 # Adding an alias is part of the same PR that ships the rule split. Removing
 # an alias requires bumping `removal_target` past the current release.
-#
-# 0.2.0 baseline: empty. The machinery is in place so cycle-2 rule splits
-# (staticSkippedTest → unconditional + conditional-gate; depsDriftRisk →
-# strict-pin + caret-policy; aiHardcodedAPIKey → literal-shape +
-# secretScannerCoverageDegraded) can land without silent suppression breakage.
 
 version: 1
-aliases: {}
+aliases:
+  staticSkippedTest:
+    replaces_with:
+      - staticSkippedTest-unconditional
+      - staticSkippedTest-conditional-gate
+    deprecated_in: "0.3"
+    removal_target: "future"
+    why: |
+      Split into unconditional (no surrounding env / feature-flag predicate)
+      and conditional-gate (skip is wrapped by a structural gate). Preserves
+      the 39% of TPs that an A3 narrowing would otherwise drop.
+
+  depsDriftRisk:
+    replaces_with:
+      - depsDriftRisk-strict-pin
+      - depsDriftRisk-caret-policy
+    deprecated_in: "0.3"
+    removal_target: "future"
+    why: |
+      Split into strict-pin (bare name / unversioned) and caret-policy
+      (caret-range usage). Resolves the npm vs Poetry vs Cargo caret-
+      semantics inconsistency so each half can carry its own threshold.

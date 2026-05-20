@@ -232,6 +232,42 @@
       "ruleUri": "docs/rules/hygiene/permanently-skipped.md"
     },
     {
+      "type": "staticSkippedTest-unconditional",
+      "constName": "SignalStaticSkippedTestUnconditional",
+      "domain": "quality",
+      "status": "experimental",
+      "title": "Static Skipped Test — Unconditional",
+      "description": "A test is statically marked as skipped without any surrounding environment / feature-flag gate. The skip is permanent until the marker is removed.",
+      "remediation": "Re-enable, replace, or delete the test. Add a comment explaining why if the skip should persist.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.9,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/hygiene/static-skip-unconditional",
+      "ruleUri": "docs/rules/hygiene/static-skip-unconditional.md",
+      "promotionPlan": "Ships behind the static_skipped_test_split mechanism in shadow mode. Promotes to stable when the split's per-mechanism recall + frozen-suite gates clear."
+    },
+    {
+      "type": "staticSkippedTest-conditional-gate",
+      "constName": "SignalStaticSkippedTestConditionalGate",
+      "domain": "quality",
+      "status": "experimental",
+      "title": "Static Skipped Test — Conditional Gate",
+      "description": "A test is statically marked as skipped, but the skip is wrapped by an environment, feature-flag, or platform predicate. The skip is intentional and gated.",
+      "remediation": "No remediation required when the gate is correct. Audit the gate periodically; CI should run the test on platforms where the gate is false.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/hygiene/static-skip-conditional-gate",
+      "ruleUri": "docs/rules/hygiene/static-skip-conditional-gate.md",
+      "promotionPlan": "Ships behind the static_skipped_test_split mechanism in shadow mode. Preserves the 39% of staticSkippedTest TPs that an A3 narrowing would otherwise drop."
+    },
+    {
       "type": "assertionFreeTest",
       "constName": "SignalAssertionFreeTest",
       "domain": "quality",
@@ -283,6 +319,42 @@
       "ruleId": "terrain/deps/drift-risk",
       "ruleUri": "docs/rules/deps/drift-risk.md",
       "promotionPlan": "Promotes to stable once the calibration corpus confirms regression-PR lift ≥ 1.5x on deps-bump PRs."
+    },
+    {
+      "type": "depsDriftRisk-strict-pin",
+      "constName": "SignalDepsDriftRiskStrictPin",
+      "domain": "quality",
+      "status": "experimental",
+      "title": "Dependency Drift — Strict-Pin",
+      "description": "Dependencies are declared without an explicit version anchor (bare name, `*`, `latest`, or unversioned URL). The resolver picks whatever happens to be available at install time.",
+      "remediation": "Add an explicit version, version range, or lockfile-verification gate so installs are reproducible.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/deps/drift-strict-pin",
+      "ruleUri": "docs/rules/deps/drift-strict-pin.md",
+      "promotionPlan": "Ships behind the deps_drift_risk_split mechanism in shadow mode. Closes one half of the npm-vs-Poetry-vs-Cargo caret-semantics inconsistency."
+    },
+    {
+      "type": "depsDriftRisk-caret-policy",
+      "constName": "SignalDepsDriftRiskCaretPolicy",
+      "domain": "quality",
+      "status": "experimental",
+      "title": "Dependency Drift — Caret Policy",
+      "description": "Dependencies use caret-range specs (`^x.y.z`) under an ecosystem whose caret semantics make minor-version drift opaque (npm vs Poetry vs Cargo treat caret differently).",
+      "remediation": "Adopt a stricter pinning policy (tilde, exact, or commit-pinned) where minor-version drift would silently affect runtime behavior.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.55,
+      "confidenceMax": 0.8,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/deps/drift-caret-policy",
+      "ruleUri": "docs/rules/deps/drift-caret-policy.md",
+      "promotionPlan": "Ships behind the deps_drift_risk_split mechanism in shadow mode. Closes the other half of the caret-semantics inconsistency."
     },
     {
       "type": "configSchemaDrift",
