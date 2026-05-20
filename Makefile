@@ -210,6 +210,23 @@ voice-lint:
 calibrate:
 	go test -count=1 -v -run TestCalibration ./internal/engine/...
 
+# ── Canary set (real-PR weekly recall + precision gate) ──────
+# Reads harness/canary/canary-set.yaml. For each sealed entry (head_sha + base_sha
+# populated), runs terrain against the frozen tree and compares findings to
+# expected_findings / expected_non_findings. Exit code:
+#   0 — all sealed entries pass (or no sealed entries yet)
+#   1 — recall regression (expected TP missed)
+#   2 — precision regression (expected non-finding fired)
+#   3 — set not yet sealed (warning)
+# Selection criteria + sealing workflow: harness/canary/canary-set-criteria.md.
+canary:
+	@scripts/canary-run.sh
+
+# JSON form for CI integration.
+canary-json:
+	@scripts/canary-run.sh --strict 2>&1 | tee /dev/null
+	@cat .terrain/canary-report.json
+
 # ── Performance regression gate ─────────────────────────────
 # bench-baseline writes a fresh baseline benchmark snapshot. Run on a
 # main-branch commit and commit the result.
