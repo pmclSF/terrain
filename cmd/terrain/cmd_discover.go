@@ -43,7 +43,17 @@ func runDiscover(root string) error {
 	schemaFiles := detectSchemaFiles(abs)
 	traceLogs := detectTraceLogs(abs)
 
-	sep := strings.Repeat("─", 60)
+	// Pick a separator character based on terminal capability.
+	// Box-drawing U+2500 looks great on UTF-8 terminals but renders as
+	// `???` on legacy Windows cmd or any terminal that doesn't
+	// advertise UTF-8. Default to ASCII unless we can confirm UTF-8
+	// support via LANG/LC_ALL/LC_CTYPE. Users with non-standard
+	// locales can force ASCII via TERRAIN_ASCII=1.
+	sepChar := "─"
+	if useASCIIOutput() {
+		sepChar = "-"
+	}
+	sep := strings.Repeat(sepChar, 60)
 
 	fmt.Printf("Terrain — discovery report for %s\n", filepath.Base(abs))
 	fmt.Println(sep)
@@ -311,6 +321,28 @@ func shouldSkipDir(base string) bool {
 		return true
 	}
 	return false
+}
+
+// useASCIIOutput reports whether the discover output should use
+// ASCII-only characters (e.g. "-" instead of U+2500 "─"). Returns true
+// when TERRAIN_ASCII=1 is set, or when none of the standard locale
+// env vars (LC_ALL / LC_CTYPE / LANG) advertises UTF-8.
+//
+// The default is conservative: emit UTF-8 only when a locale actively
+// claims UTF-8 support. Windows cmd, dumb terminals, and CI runners
+// without locale config get the ASCII fallback so the report renders
+// as plain text instead of garbage.
+func useASCIIOutput() bool {
+	if os.Getenv("TERRAIN_ASCII") == "1" {
+		return true
+	}
+	for _, env := range []string{"LC_ALL", "LC_CTYPE", "LANG"} {
+		v := strings.ToUpper(os.Getenv(env))
+		if strings.Contains(v, "UTF-8") || strings.Contains(v, "UTF8") {
+			return false
+		}
+	}
+	return true
 }
 
 // _ ensures os import is used in code generated tests; safe to remove.
