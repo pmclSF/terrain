@@ -17,7 +17,7 @@ Verify the test file actually imports and exercises the target code, or correct 
 
 ## Promotion plan
 
-Promoted to Stable 2026-05-12 via Track 3 hand-validation against documented promptfoo rename incidents. Tier: Observability — silent eval-coverage gap, not gate-relevant. Severity raised from Medium → High because the failure mode (eval reports passing while running zero tests) is severe.
+Stable. Ships at observability tier because a silent eval-coverage gap is informational, not gate-blocking. Severity is High because the failure mode (eval reports passing while running zero tests) silently degrades trust in CI signal.
 
 ## Evidence sources
 

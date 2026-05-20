@@ -17,7 +17,7 @@ Audit the gate condition periodically. CI should run the test on platforms or br
 
 ## Promotion plan
 
-Gated by the static_skipped_test_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation.
+Preview status. Promotes to stable when calibration data confirms the conditional-gate variant preserves the intentional-skip true positives that a narrower predicate would drop.
 
 ## Evidence sources
 

@@ -66,7 +66,7 @@ const (
 // two is caught by TestManifest_MatchesSignalTypes in 0.1.2 and becomes a
 // release-gate failure once the doc-generation pipeline lands in 0.2.
 //
-// The manifest replaces three older mechanisms over time:
+// The manifest replaces three older registration layers over time:
 //   - Registry (registry.go): superset; will be regenerated from this manifest
 //   - typeInfoBySignal (signal_types.go): description/remediation pairs
 //   - docs/signal-catalog.md: hand-edited list with persistent drift
@@ -397,7 +397,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/static-skip-unconditional",
 		RuleURI:         "docs/rules/hygiene/static-skip-unconditional.md",
-		PromotionPlan:   "Gated by the static_skipped_test_split mechanism; promotes to stable when its per-mechanism recall report and regression suite both clear.",
+		PromotionPlan:   "Preview status. Promotes to stable when calibration data confirms the unconditional / conditional-gate split preserves true positives without inflating false positives.",
 	},
 	{
 		Type: SignalStaticSkippedTestConditionalGate, ConstName: "SignalStaticSkippedTestConditionalGate",
@@ -410,7 +410,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/static-skip-conditional-gate",
 		RuleURI:         "docs/rules/hygiene/static-skip-conditional-gate.md",
-		PromotionPlan:   "Gated by the static_skipped_test_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation.",
+		PromotionPlan:   "Preview status. Promotes to stable when calibration data confirms the conditional-gate variant preserves the intentional-skip true positives that a narrower predicate would drop.",
 	},
 	{
 		Type: SignalAssertionFreeTest, ConstName: "SignalAssertionFreeTest",
@@ -468,7 +468,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/deps/drift-strict-pin",
 		RuleURI:         "docs/rules/deps/drift-strict-pin.md",
-		PromotionPlan:   "Gated by the deps_drift_risk_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation. Half of the deps-drift split.",
+		PromotionPlan:   "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when calibration data confirms regression-PR lift on deps-bump PRs.",
 	},
 	{
 		Type: SignalDepsDriftRiskCaretPolicy, ConstName: "SignalDepsDriftRiskCaretPolicy",
@@ -481,7 +481,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/deps/drift-caret-policy",
 		RuleURI:         "docs/rules/deps/drift-caret-policy.md",
-		PromotionPlan:   "Gated by the deps_drift_risk_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation. Half of the deps-drift split.",
+		PromotionPlan:   "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when calibration data confirms regression-PR lift on deps-bump PRs.",
 	},
 	{
 		Type: SignalConfigSchemaDrift, ConstName: "SignalConfigSchemaDrift",
@@ -507,7 +507,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal"},
 		RuleID:          "terrain/ai/surface-missing-eval",
 		RuleURI:         "docs/rules/ai/surface-missing-eval.md",
-		PromotionPlan:   "Promotes to stable once AI-corpus harvest (re-clone in flight, 2026-05-12) confirms regression-PR lift ≥ 1.5× with CI lower bound > 1.0 on the 558-repo AI corpus.",
+		PromotionPlan:   "Promotes to stable once calibration data confirms regression-PR lift on prompt-eval-gap findings.",
 		Tier:            TierObservability,
 	},
 
@@ -684,7 +684,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal"},
 		RuleID:          "terrain/structural/phantom-eval",
 		RuleURI:         "docs/rules/structural/phantom-eval.md",
-		PromotionPlan: "Promoted to Stable 2026-05-12 via Track 3 hand-validation against documented promptfoo rename incidents. Tier: Observability — silent eval-coverage gap, not gate-relevant. Severity raised from Medium → High because the failure mode (eval reports passing while running zero tests) is severe.",
+		PromotionPlan: "Stable. Ships at observability tier because a silent eval-coverage gap is informational, not gate-blocking. Severity is High because the failure mode (eval reports passing while running zero tests) silently degrades trust in CI signal.",
 		Tier: TierObservability,
 	},
 	{
@@ -1038,7 +1038,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/prompt-versioning", RuleURI: "docs/rules/ai/prompt-versioning.md",
 		Tier:            TierObservability,
-		PromotionPlan:   "Stays at observability tier until a stratified-sample baseline confirms the detector's precision. Any subsequent lift mechanism must be structurally motivated; otherwise the rule remains at observability.",
+		PromotionPlan:   "Stays at observability tier until a labeled-sample baseline confirms the detector's precision. Any subsequent precision lift must be structurally motivated; the rule stays at observability otherwise.",
 	},
 	{
 		Type: SignalAIPromptInjectionRisk, ConstName: "SignalAIPromptInjectionRisk",
@@ -1051,7 +1051,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/prompt-injection-risk", RuleURI: "docs/rules/ai/prompt-injection-risk.md",
 		Tier:            TierObservability,
-		PromotionPlan:   "Stays at observability tier until a stratified-sample baseline confirms the detector's precision. Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands.",
+		PromotionPlan:   "Stays at observability tier until a labeled-sample baseline confirms the detector's precision. Promotes to stable when AST-precise taint-flow analysis lands.",
 	},
 	{
 		Type: SignalAIHardcodedAPIKey, ConstName: "SignalAIHardcodedAPIKey",
@@ -1595,7 +1595,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Agent Loop Risk", DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/agent-quality/loop-risk", RuleURI: "docs/rules/agent-quality/loop-risk.md",
-		PromotionPlan: "Promoted to Stable 2026-05-12 via Track 3 hand-validation against public CrewAI agent-loop incidents (crewai #3441, #5102, #5891). Severity raised from Medium → High because the failure mode (unbounded API spend) is high-impact when it fires.",
+		PromotionPlan: "Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; hand-validated against documented public agent-loop incidents.",
 	},
 	{
 		Type: SignalToolWithoutBudget, ConstName: "SignalToolWithoutBudget",

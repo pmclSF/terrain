@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-Promoted to Stable 2026-05-12 via Track 3 hand-validation against public CrewAI agent-loop incidents (crewai #3441, #5102, #5891). Severity raised from Medium → High because the failure mode (unbounded API spend) is high-impact when it fires.
+Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; hand-validated against documented public agent-loop incidents.
 
 ## Evidence sources
 

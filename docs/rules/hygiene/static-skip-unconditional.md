@@ -17,7 +17,7 @@ Re-enable, replace, or delete the test. Add a comment explaining why if the skip
 
 ## Promotion plan
 
-Gated by the static_skipped_test_split mechanism; promotes to stable when its per-mechanism recall report and regression suite both clear.
+Preview status. Promotes to stable when calibration data confirms the unconditional / conditional-gate split preserves true positives without inflating false positives.
 
 ## Evidence sources
 

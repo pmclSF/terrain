@@ -247,7 +247,7 @@
       ],
       "ruleId": "terrain/hygiene/static-skip-unconditional",
       "ruleUri": "docs/rules/hygiene/static-skip-unconditional.md",
-      "promotionPlan": "Gated by the static_skipped_test_split mechanism; promotes to stable when its per-mechanism recall report and regression suite both clear."
+      "promotionPlan": "Preview status. Promotes to stable when calibration data confirms the unconditional / conditional-gate split preserves true positives without inflating false positives."
     },
     {
       "type": "staticSkippedTest-conditional-gate",
@@ -265,7 +265,7 @@
       ],
       "ruleId": "terrain/hygiene/static-skip-conditional-gate",
       "ruleUri": "docs/rules/hygiene/static-skip-conditional-gate.md",
-      "promotionPlan": "Gated by the static_skipped_test_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation."
+      "promotionPlan": "Preview status. Promotes to stable when calibration data confirms the conditional-gate variant preserves the intentional-skip true positives that a narrower predicate would drop."
     },
     {
       "type": "assertionFreeTest",
@@ -336,7 +336,7 @@
       ],
       "ruleId": "terrain/deps/drift-strict-pin",
       "ruleUri": "docs/rules/deps/drift-strict-pin.md",
-      "promotionPlan": "Gated by the deps_drift_risk_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation. Half of the deps-drift split."
+      "promotionPlan": "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when calibration data confirms regression-PR lift on deps-bump PRs."
     },
     {
       "type": "depsDriftRisk-caret-policy",
@@ -354,7 +354,7 @@
       ],
       "ruleId": "terrain/deps/drift-caret-policy",
       "ruleUri": "docs/rules/deps/drift-caret-policy.md",
-      "promotionPlan": "Gated by the deps_drift_risk_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation. Half of the deps-drift split."
+      "promotionPlan": "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when calibration data confirms regression-PR lift on deps-bump PRs."
     },
     {
       "type": "configSchemaDrift",
@@ -390,7 +390,7 @@
       ],
       "ruleId": "terrain/ai/surface-missing-eval",
       "ruleUri": "docs/rules/ai/surface-missing-eval.md",
-      "promotionPlan": "Promotes to stable once AI-corpus harvest (re-clone in flight, 2026-05-12) confirms regression-PR lift ≥ 1.5× with CI lower bound \u003e 1.0 on the 558-repo AI corpus."
+      "promotionPlan": "Promotes to stable once calibration data confirms regression-PR lift on prompt-eval-gap findings."
     },
     {
       "type": "frameworkMigration",
@@ -602,7 +602,7 @@
       ],
       "ruleId": "terrain/structural/phantom-eval",
       "ruleUri": "docs/rules/structural/phantom-eval.md",
-      "promotionPlan": "Promoted to Stable 2026-05-12 via Track 3 hand-validation against documented promptfoo rename incidents. Tier: Observability — silent eval-coverage gap, not gate-relevant. Severity raised from Medium → High because the failure mode (eval reports passing while running zero tests) is severe."
+      "promotionPlan": "Stable. Ships at observability tier because a silent eval-coverage gap is informational, not gate-blocking. Severity is High because the failure mode (eval reports passing while running zero tests) silently degrades trust in CI signal."
     },
     {
       "type": "untestedPromptFlow",
@@ -1141,7 +1141,7 @@
       ],
       "ruleId": "terrain/ai/prompt-versioning",
       "ruleUri": "docs/rules/ai/prompt-versioning.md",
-      "promotionPlan": "Stays at observability tier until a stratified-sample baseline confirms the detector's precision. Any subsequent lift mechanism must be structurally motivated; otherwise the rule remains at observability."
+      "promotionPlan": "Stays at observability tier until a labeled-sample baseline confirms the detector's precision. Any subsequent precision lift must be structurally motivated; the rule stays at observability otherwise."
     },
     {
       "type": "aiPromptInjectionRisk",
@@ -1159,7 +1159,7 @@
       ],
       "ruleId": "terrain/ai/prompt-injection-risk",
       "ruleUri": "docs/rules/ai/prompt-injection-risk.md",
-      "promotionPlan": "Stays at observability tier until a stratified-sample baseline confirms the detector's precision. Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands."
+      "promotionPlan": "Stays at observability tier until a labeled-sample baseline confirms the detector's precision. Promotes to stable when AST-precise taint-flow analysis lands."
     },
     {
       "type": "aiHardcodedAPIKey",
@@ -1898,7 +1898,7 @@
       ],
       "ruleId": "terrain/agent-quality/loop-risk",
       "ruleUri": "docs/rules/agent-quality/loop-risk.md",
-      "promotionPlan": "Promoted to Stable 2026-05-12 via Track 3 hand-validation against public CrewAI agent-loop incidents (crewai #3441, #5102, #5891). Severity raised from Medium → High because the failure mode (unbounded API spend) is high-impact when it fires."
+      "promotionPlan": "Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; hand-validated against documented public agent-loop incidents."
     },
     {
       "type": "toolWithoutBudget",

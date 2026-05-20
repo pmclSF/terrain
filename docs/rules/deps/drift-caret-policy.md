@@ -17,7 +17,7 @@ Adopt a stricter pinning policy (tilde, exact, or commit-pinned) where minor-ver
 
 ## Promotion plan
 
-Gated by the deps_drift_risk_split mechanism; ships in shadow mode until the mechanism's regression suite clears live activation. Half of the deps-drift split.
+Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when calibration data confirms regression-PR lift on deps-bump PRs.
 
 ## Evidence sources
 

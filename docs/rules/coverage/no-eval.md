@@ -54,7 +54,7 @@ AI surfaces are the production system's behavioral substrate. Prompts, model wei
 - **AI surface kinds covered:** SurfacePrompt, SurfaceContext, SurfaceDataset, SurfaceToolDef, SurfaceRetrieval, SurfaceAgent, SurfaceEvalDef, SurfaceModel.
 - **Inputs consumed:** `TestSuiteSnapshot.CodeSurfaces` and `TestSuiteSnapshot.Evals`.
 - **Edge cases handled:** non-AI surface kinds (function, method, handler, route, class, fixture) are skipped entirely.
-- **Edge cases NOT handled at 0.2.0:** transitive coverage — an eval that covers a downstream surface doesn't suppress the rule for an upstream surface even when the downstream's behavior depends on the upstream. Track 5.x of the impact graph adds transitive coverage propagation.
+- **Edge cases NOT handled today:** transitive coverage — an eval that covers a downstream surface doesn't suppress the rule for an upstream surface even when the downstream's behavior depends on the upstream. Transitive coverage propagation through the impact graph is planned.
 
 ## 6. Worked example
 
@@ -83,7 +83,7 @@ ignore:
 ## 8. False-positive characterization
 
 - **Eval declares coverage via folder convention but not in `CoveredSurfaceIDs`** — the inference layer (`internal/aidetect/DeriveEvals`) usually populates this from co-location; when it doesn't, the eval's `terrain.yaml` declaration is the source of truth. Mitigation: list the surface in the eval's YAML.
-- **Indirect coverage** (eval exercises a pipeline that internally invokes the surface) — not credited at 0.2.0; explicit declaration is required. Track 5.x adds transitive propagation.
+- **Indirect coverage** (eval exercises a pipeline that internally invokes the surface) — not credited today; explicit declaration is required. Transitive propagation is planned.
 - **Vendored / experimental surfaces** — ignore via path.
 - **Measured FP rate at last validation:** see the per-rule readiness card.
 

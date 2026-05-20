@@ -17,7 +17,7 @@ Add a `version:` field, a `_v<N>` filename suffix, or a `# version: ...` comment
 
 ## Promotion plan
 
-Stays at observability tier until a stratified-sample baseline confirms the detector's precision. Any subsequent lift mechanism must be structurally motivated; otherwise the rule remains at observability.
+Stays at observability tier until a labeled-sample baseline confirms the detector's precision. Any subsequent precision lift must be structurally motivated; the rule stays at observability otherwise.
 
 ## Evidence sources
 

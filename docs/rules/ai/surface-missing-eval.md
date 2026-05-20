@@ -17,7 +17,7 @@ Add an eval scenario (promptfoo / DeepEval / Ragas / framework-specific) that ex
 
 ## Promotion plan
 
-Promotes to stable once AI-corpus harvest (re-clone in flight, 2026-05-12) confirms regression-PR lift ≥ 1.5× with CI lower bound > 1.0 on the 558-repo AI corpus.
+Promotes to stable once calibration data confirms regression-PR lift on prompt-eval-gap findings.
 
 ## Evidence sources
 

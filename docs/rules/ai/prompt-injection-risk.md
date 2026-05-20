@@ -17,7 +17,7 @@ Use a prompt template with explicit user-content boundaries, or run user input t
 
 ## Promotion plan
 
-Stays at observability tier until a stratified-sample baseline confirms the detector's precision. Ships heuristic regex detection today; promotes to stable when AST-precise taint-flow analysis lands.
+Stays at observability tier until a labeled-sample baseline confirms the detector's precision. Promotes to stable when AST-precise taint-flow analysis lands.
 
 ## Evidence sources
 
