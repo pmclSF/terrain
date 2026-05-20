@@ -173,6 +173,96 @@ func TestResolve_MalformedJestJSONIgnored(t *testing.T) {
 	}
 }
 
+func TestResolve_ScopedPackageImport(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "packages/lib/package.json", `{
+  "name": "@scope/lib",
+  "main": "dist/index.js",
+  "source": "src/index.ts"
+}`)
+	writeFile(t, root, "packages/lib/src/index.ts", "export {};")
+
+	r, _ := New(root)
+	reg := loadReg(t, mechanisms.StateShadow)
+
+	// `import { x } from '@scope/lib'` should resolve to the source file.
+	results := r.Resolve(reg, ".", "@scope/lib")
+	if len(results) != 1 || results[0].File != "packages/lib/src/index.ts" {
+		t.Errorf("scoped package import not resolved by name; got %v", results)
+	}
+}
+
+func TestResolve_ScopedPackageSubPathImport(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "packages/lib/package.json", `{
+  "name": "@scope/lib",
+  "main": "dist/index.js",
+  "source": "src/index.ts"
+}`)
+	writeFile(t, root, "packages/lib/src/feature.ts", "export const f = 1;")
+
+	r, _ := New(root)
+	reg := loadReg(t, mechanisms.StateShadow)
+
+	// `import { f } from '@scope/lib/feature'` should resolve to the
+	// sub-path in src.
+	results := r.Resolve(reg, ".", "@scope/lib/feature")
+	if len(results) != 1 || results[0].File != "packages/lib/src/feature.ts" {
+		t.Errorf("scoped sub-path import not resolved; got %v", results)
+	}
+}
+
+func TestResolve_JestJSWithNestedBraces(t *testing.T) {
+	root := t.TempDir()
+	// Real-world shape: a moduleNameMapper entry next to a transform
+	// block — the previous regex truncated the capture at the first `}`.
+	writeFile(t, root, "jest.config.js", `module.exports = {
+  preset: 'ts-jest',
+  transform: {
+    '^.+\\.tsx?$': 'ts-jest',
+  },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^~/(.*)$': '<rootDir>/lib/$1',
+  },
+  testEnvironment: 'jsdom',
+};`)
+	writeFile(t, root, "src/util.ts", "export {};")
+	writeFile(t, root, "lib/helper.ts", "export {};")
+
+	r, _ := New(root)
+	reg := loadReg(t, mechanisms.StateShadow)
+
+	if got := r.Resolve(reg, ".", "@/util"); len(got) != 1 || got[0].File != "src/util.ts" {
+		t.Errorf("@-alias should resolve through nested-brace jest config; got %v", got)
+	}
+	if got := r.Resolve(reg, ".", "~/helper"); len(got) != 1 || got[0].File != "lib/helper.ts" {
+		t.Errorf("~-alias should resolve through nested-brace jest config; got %v", got)
+	}
+}
+
+func TestResolve_PythonParenthesizedReexport(t *testing.T) {
+	root := t.TempDir()
+	writeFile(t, root, "pkg/__init__.py", `from .impl import (
+    Helper,
+    Other as Aliased,
+    OneMore,
+)
+`)
+	writeFile(t, root, "pkg/impl.py", "class Helper:\n    pass\n")
+
+	r, _ := New(root)
+	reg := loadReg(t, mechanisms.StateShadow)
+
+	// All three names — including the aliased one — should resolve.
+	for _, name := range []string{"pkg.Helper", "pkg.Aliased", "pkg.OneMore"} {
+		got := r.Resolve(reg, ".", name)
+		if len(got) != 1 || got[0].File != "pkg/impl.py" {
+			t.Errorf("%s should resolve via parenthesized re-export; got %v", name, got)
+		}
+	}
+}
+
 func TestNew_LoadsInputsLazily(t *testing.T) {
 	root := t.TempDir()
 	r, err := New(root)

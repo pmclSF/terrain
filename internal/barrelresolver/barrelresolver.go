@@ -170,27 +170,86 @@ func parsePackageJSONJest(data []byte) []moduleNameMapper {
 	return mappersFromMap(doc.Jest.ModuleNameMapper)
 }
 
-// parseJestJS extracts moduleNameMapper from jest.config.{js,ts,mjs,cjs}
-// via a regex. Handles the dominant shape:
+// parseJestJS extracts moduleNameMapper from jest.config.{js,ts,mjs,cjs}.
+// Handles the dominant shape:
 //
 //	moduleNameMapper: {
 //	  '^@/(.*)$': '<rootDir>/src/$1',
 //	}
 //
+// AND real-world variants the previous regex truncated on:
+//
+//   - Nested objects inside the block (`transform:` next to it; entries
+//     with brace-bearing values like `<rootDir>/{src,test}/$1`).
+//   - Multi-key configs with `{}` in adjacent entries.
+//
+// Strategy: locate the `moduleNameMapper` token, then walk forward via
+// a brace-balanced scan to find the matching closing `}`. Inside that
+// block, extract `['"]key['"]\s*:\s*['"]value['"]` entries via regex.
+//
 // More exotic JS (computed keys, spread operators, helper functions) is
 // not handled — those cases will fall through to the legacy resolver.
 var (
-	jestBlockRe   = regexp.MustCompile(`(?s)moduleNameMapper\s*[:=]\s*\{([^}]*)\}`)
-	jestEntryRe   = regexp.MustCompile(`['"]([^'"]+)['"]\s*:\s*['"]([^'"]+)['"]`)
+	jestTokenRe = regexp.MustCompile(`moduleNameMapper\s*[:=]\s*\{`)
+	jestEntryRe = regexp.MustCompile(`['"]([^'"\n]+)['"]\s*:\s*['"]([^'"\n]+)['"]`)
 )
 
 func parseJestJS(data []byte) []moduleNameMapper {
-	m := jestBlockRe.FindStringSubmatch(string(data))
-	if len(m) < 2 {
+	s := string(data)
+	loc := jestTokenRe.FindStringIndex(s)
+	if loc == nil {
+		return nil
+	}
+	// Find the matching `}` for the `{` at loc[1]-1 via brace-balanced
+	// scan that tolerates nested braces in entry values.
+	open := loc[1] - 1
+	depth := 0
+	end := -1
+	inSingle, inDouble := false, false
+	for i := open; i < len(s); i++ {
+		c := s[i]
+		if inSingle {
+			if c == '\\' && i+1 < len(s) {
+				i++
+				continue
+			}
+			if c == '\'' {
+				inSingle = false
+			}
+			continue
+		}
+		if inDouble {
+			if c == '\\' && i+1 < len(s) {
+				i++
+				continue
+			}
+			if c == '"' {
+				inDouble = false
+			}
+			continue
+		}
+		switch c {
+		case '\'':
+			inSingle = true
+		case '"':
+			inDouble = true
+		case '{':
+			depth++
+		case '}':
+			depth--
+			if depth == 0 {
+				end = i
+			}
+		}
+		if end >= 0 {
+			break
+		}
+	}
+	if end < 0 {
 		return nil
 	}
 	out := map[string]string{}
-	for _, e := range jestEntryRe.FindAllStringSubmatch(m[1], -1) {
+	for _, e := range jestEntryRe.FindAllStringSubmatch(s[loc[1]:end], -1) {
 		out[e[1]] = e[2]
 	}
 	return mappersFromMap(out)
@@ -238,6 +297,7 @@ func (r *Resolver) resolveJest(fromDir, importPath string) []Result {
 // ── dist-path indirection ──────────────────────────────────────────
 
 type distMapping struct {
+	pkgName string // declared package name (e.g. "@scope/lib" or "lib")
 	pkgRoot string // repo-relative dir containing package.json
 	main    string // repo-relative path the main field points at
 	source  string // repo-relative path the source field points at
@@ -267,6 +327,7 @@ func loadDistMappings(root string) []distMapping {
 			return nil
 		}
 		var doc struct {
+			Name   string `json:"name"`
 			Main   string `json:"main"`
 			Source string `json:"source"`
 			Module string `json:"module"`
@@ -284,6 +345,7 @@ func loadDistMappings(root string) []distMapping {
 		}
 		relRoot, _ := filepath.Rel(root, filepath.Dir(path))
 		out = append(out, distMapping{
+			pkgName: doc.Name,
 			pkgRoot: filepath.ToSlash(relRoot),
 			main:    filepath.ToSlash(doc.Main),
 			source:  filepath.ToSlash(source),
@@ -302,18 +364,48 @@ func firstNonEmpty(xs ...string) string {
 	return ""
 }
 
-// resolveDistPath maps dist/foo.js → src/foo.ts (and similar) by
-// substituting the main-path prefix for the source-path prefix on any
-// package whose mapping matches the import.
+// resolveDistPath maps dist/foo.js → src/foo.ts (and similar). Matches
+// the import in three ways:
+//
+//  1. The import refers to the package by name (`@scope/lib` or `lib`)
+//     and the package.json's `name` matches. This is the dominant
+//     npm-package case the previous implementation missed.
+//  2. The import refers to a sub-path of the package by name
+//     (`@scope/lib/feature`). Resolved by appending the sub-path to
+//     the source root and verifying the file exists.
+//  3. The import refers to the main file by path (`dist/index.js`).
+//     Substitutes the source path for the dist path.
 func (r *Resolver) resolveDistPath(fromDir, importPath string) []Result {
 	var out []Result
+	ip := filepath.ToSlash(filepath.Clean(importPath))
 	for _, dm := range r.distMappings {
-		// Construct the expected import path that would target main.
-		// We try both "<pkgRoot>/<main>" and just "<main>" forms.
 		mainAbs := filepath.ToSlash(filepath.Clean(filepath.Join(dm.pkgRoot, dm.main)))
 		sourceAbs := filepath.ToSlash(filepath.Clean(filepath.Join(dm.pkgRoot, dm.source)))
 
-		ip := filepath.ToSlash(filepath.Clean(importPath))
+		// Case 1: bare package-name import matches the declared name.
+		if dm.pkgName != "" && ip == dm.pkgName {
+			if fileExists(filepath.Join(r.root, sourceAbs)) {
+				out = append(out, Result{File: sourceAbs, SubClass: "dist-path-indirection"})
+			}
+			continue
+		}
+
+		// Case 2: package-name + sub-path (e.g. `@scope/lib/foo`).
+		if dm.pkgName != "" && strings.HasPrefix(ip, dm.pkgName+"/") {
+			sub := strings.TrimPrefix(ip, dm.pkgName+"/")
+			sourceDir := filepath.ToSlash(filepath.Clean(filepath.Dir(sourceAbs)))
+			candidateBase := filepath.ToSlash(filepath.Clean(filepath.Join(sourceDir, sub)))
+			for _, ext := range []string{"", ".ts", ".tsx", ".js", ".jsx", ".mjs"} {
+				candidate := candidateBase + ext
+				if fileExists(filepath.Join(r.root, candidate)) {
+					out = append(out, Result{File: candidate, SubClass: "dist-path-indirection"})
+					break
+				}
+			}
+			continue
+		}
+
+		// Case 3: explicit dist-path import.
 		if ip == mainAbs || strings.HasSuffix(ip, "/"+dm.main) || ip == dm.main {
 			if fileExists(filepath.Join(r.root, sourceAbs)) {
 				out = append(out, Result{File: sourceAbs, SubClass: "dist-path-indirection"})
@@ -358,20 +450,22 @@ func (r *Resolver) buildPyReexports() {
 		}
 		rel, _ := filepath.Rel(r.root, filepath.Dir(path))
 		pkg := strings.ReplaceAll(filepath.ToSlash(rel), "/", ".")
-		for _, m := range pyFromImportRe.FindAllStringSubmatch(string(data), -1) {
-			module := m[1]
-			names := m[2]
-			for _, n := range strings.Split(names, ",") {
+		for _, fi := range extractPythonFromImports(string(data)) {
+			for _, n := range strings.Split(fi.names, ",") {
 				n = strings.TrimSpace(n)
 				// Strip "as alias" → keep alias as exposed name.
 				if i := strings.Index(n, " as "); i >= 0 {
 					n = strings.TrimSpace(n[i+4:])
 				}
+				// Drop any stray punctuation left from parenthesized
+				// imports.
+				n = strings.Trim(n, "()")
+				n = strings.TrimSpace(n)
 				if n == "" || n == "*" {
 					continue
 				}
 				r.pyReexports[pkg] = append(r.pyReexports[pkg], pyReexport{
-					originModule: module,
+					originModule: fi.module,
 					name:         n,
 				})
 			}
@@ -381,7 +475,63 @@ func (r *Resolver) buildPyReexports() {
 	r.pyReexportsOK = true
 }
 
-var pyFromImportRe = regexp.MustCompile(`(?m)^\s*from\s+(\S+)\s+import\s+(.+?)\s*$`)
+// pyFromImport captures one normalized `from X import Y, Z` statement.
+type pyFromImport struct {
+	module string // X
+	names  string // raw comma-separated names (possibly multi-line content)
+}
+
+// extractPythonFromImports parses both single-line and parenthesized
+// multi-line `from X import (...)` forms. Trailing comments and
+// backslash continuations are handled best-effort.
+func extractPythonFromImports(content string) []pyFromImport {
+	var out []pyFromImport
+	lines := strings.Split(content, "\n")
+	for i := 0; i < len(lines); i++ {
+		line := strings.TrimRight(lines[i], "\r")
+		t := strings.TrimSpace(line)
+		// Strip trailing # comment outside any quoted string. Best
+		// effort: split on the first unquoted '#'.
+		if hash := strings.Index(t, "#"); hash >= 0 && !strings.ContainsAny(t[:hash], "'\"") {
+			t = strings.TrimSpace(t[:hash])
+		}
+		if !strings.HasPrefix(t, "from ") {
+			continue
+		}
+		// from MODULE import REST
+		body := strings.TrimPrefix(t, "from ")
+		impIdx := strings.Index(body, " import ")
+		if impIdx < 0 {
+			continue
+		}
+		module := strings.TrimSpace(body[:impIdx])
+		names := strings.TrimSpace(body[impIdx+len(" import "):])
+		// Multi-line parenthesized: read until matching ')'.
+		if strings.HasPrefix(names, "(") {
+			collected := strings.TrimPrefix(names, "(")
+			for !strings.Contains(collected, ")") && i+1 < len(lines) {
+				i++
+				more := strings.TrimRight(lines[i], "\r")
+				more = strings.TrimSpace(more)
+				if hash := strings.Index(more, "#"); hash >= 0 && !strings.ContainsAny(more[:hash], "'\"") {
+					more = strings.TrimSpace(more[:hash])
+				}
+				collected += " " + more
+			}
+			if idx := strings.Index(collected, ")"); idx >= 0 {
+				collected = collected[:idx]
+			}
+			names = collected
+		}
+		// Backslash continuation (rarely used with from-import but legal).
+		for strings.HasSuffix(names, "\\") && i+1 < len(lines) {
+			i++
+			names = strings.TrimSuffix(names, "\\") + " " + strings.TrimSpace(lines[i])
+		}
+		out = append(out, pyFromImport{module: module, names: names})
+	}
+	return out
+}
 
 // resolvePythonNamespace checks whether `importPath` (e.g.
 // "pkg.Helper") is a re-export from a namespace package's __init__.py.
