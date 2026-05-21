@@ -44,8 +44,8 @@ type Harness struct {
 	// and a documentary description.
 	Mechanisms []Mechanism `yaml:"mechanisms"`
 
-	// GoldenTPs is the hand-labeled set of true positives this harness uses
-	// as the recall denominator. Adding a TP requires a fresh PR + reviewer
+	// GoldenTPs is the curated set of true positives this harness uses as
+	// the recall denominator. Adding a TP requires a fresh PR + reviewer
 	// sign-off — never silently grow the set to "fix" recall.
 	GoldenTPs []GoldenTP `yaml:"golden_tps"`
 

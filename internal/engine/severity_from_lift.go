@@ -8,8 +8,8 @@ import (
 )
 
 // applyEvidenceBasedSeverity walks every signal in the snapshot and
-// re-evaluates its severity against corpus-measured evidence (lift CI +
-// hand-validated precision). Detectors with weak empirical lift get
+// re-evaluates its severity against the validation evidence (lift CI +
+// validated precision). Detectors with weak empirical lift get
 // demoted; detectors with no evidence at all are capped to Medium
 // (fail-closed — absence of evidence is not promotion to High/Critical).
 //
@@ -19,9 +19,9 @@ import (
 //   - sig.Metadata["declared_severity"] preserves the original
 //   - sig.Metadata["corpus_lift"], "corpus_lift_ci_low", "corpus_lift_ci_high"
 //     populated when evidence exists; consumed by `terrain explain`
-//   - sig.Metadata["hand_validated_precision"] populated when present
+//   - sig.Metadata["validated_precision"] populated when present
 //
-// This is the centralized point where Tier 5.3 (severity rebasing on
+// This is the centralized point where severity rebasing on
 // corpus lift) is enforced. Detectors continue to emit their declared
 // severity; this pass is the single source of truth for what users see.
 func applyEvidenceBasedSeverity(snapshot *models.TestSuiteSnapshot) {

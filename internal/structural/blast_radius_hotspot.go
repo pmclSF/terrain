@@ -13,21 +13,20 @@ import (
 
 // Blast-radius thresholds.
 //
-// 2026-05-18: Phase A.5 + R2 review on n=250 corpus showed blastRadiusHotspot
-// at 55.8% precision (cluster CI [48.7, 63.1]). Dominant FP class was
-// "graph-traversal inflation" — leaf modules with direct=0 and indirect>>0
-// pulled in via shared __init__.py / index.ts re-exports (~48/110 FPs).
+// Calibration found the dominant false-positive class is "graph-
+// traversal inflation" — leaf modules with direct=0 and indirect>>0
+// pulled in via shared __init__.py / index.ts re-exports.
 //
-// L2 review warned against a `direct >= 1` filter — that kills 27 canonical
-// TPs (foundational base classes whose entire signal is high indirect reach).
-// Instead, we tighten thresholds AND demote the pure-conduit shape
-// (direct=0 + barrel filename + high indirect) to info severity.
+// A simple `direct >= 1` filter kills foundational base classes
+// whose entire signal is high indirect reach (canonical true
+// positives). Instead, we tighten thresholds AND demote the pure-
+// conduit shape (direct=0 + barrel filename + high indirect) to info
+// severity.
 const (
 	// minBlastRadiusTests is the minimum test count for a source file to be
-	// considered as a blast-radius candidate. Raised from 10 → 20 per R2:
-	// at the 10-floor, ~30% of firings were trivial wrappers / leaves with
-	// inflated indirect counts. The 20-floor preserves base-class TPs
-	// (typical indirect count 50-500) while filtering the long tail.
+	// considered as a blast-radius candidate. The 20-floor filters trivial
+	// wrappers / leaves with inflated indirect counts while preserving
+	// base-class true positives.
 	minBlastRadiusTests = 20
 
 	// blastRadiusTopPercentDivisor controls the top-N% cutoff. A value of 20
@@ -35,8 +34,8 @@ const (
 	blastRadiusTopPercentDivisor = 20
 
 	// blastRadiusHighThreshold is the test count above which a source file
-	// receives SeverityHigh. Raised from 50 → 80 — at 50, the gate panel
-	// included too many "moderate fanout + low logic density" hits per R2.
+	// receives SeverityHigh. The 80-floor keeps the gate panel focused
+	// on high-fanout files.
 	blastRadiusHighThreshold = 80
 
 	// blastRadiusMediumThreshold is the test count above which a source file
@@ -46,8 +45,7 @@ const (
 	// pureConduitIndirectFloor: when direct == 0 AND indirect exceeds this
 	// AND the filename matches a known re-export-hub pattern (__init__.py,
 	// index.ts, mod.rs), the firing is almost certainly graph-traversal
-	// inflation from shared imports — demote to info. Class-rule (~18 FPs
-	// of barrel-shape + ~5-12 of generated proto in n=250).
+	// inflation from shared imports — demote to info.
 	pureConduitIndirectFloor = 30
 )
 
@@ -143,26 +141,21 @@ func (d *BlastRadiusHotspotDetector) DetectWithGraph(snap *models.TestSuiteSnaps
 			break
 		}
 
-		// 2026-05-11 corpus-driven severity refinement: global PR-lift on
-		// 5 clean corpora is 1.06x (essentially base rate), but lift
-		// climbs to 1.76x in non-AI mainstream OSS. The discriminator
-		// that matters is the *direct-test ratio*: a file with 100
-		// indirect tests but only 2 direct tests is genuinely
-		// regression-prone; a file with 50 direct + 50 indirect is
-		// likely well-covered.
-		//
-		// Severity now factors both blast radius AND direct-test
-		// inverse ratio so high-severity firings concentrate on the
-		// truly under-tested hotspots.
+		// The discriminator that matters is the *direct-test ratio*:
+		// a file with 100 indirect tests but only 2 direct tests is
+		// genuinely regression-prone; a file with 50 direct + 50
+		// indirect is likely well-covered. Severity factors both
+		// blast radius AND direct-test inverse ratio so high-severity
+		// firings concentrate on the truly under-tested hotspots.
 		directRatio := 0.0
 		if e.total > 0 {
 			directRatio = float64(e.direct) / float64(e.total)
 		}
 		severity := models.SeverityLow
-		// 2026-05-18 R2 finding: pure-conduit files (barrels + generated
-		// code) with direct=0 + high indirect represent graph-traversal
-		// inflation, not change risk. Demote to info regardless of total
-		// before the severity-by-impact switch.
+		// Pure-conduit files (barrels + generated code) with direct=0
+		// + high indirect represent graph-traversal inflation, not
+		// change risk. Demote to info regardless of total before the
+		// severity-by-impact switch.
 		isPureConduit := e.direct == 0 && e.indirect >= pureConduitIndirectFloor &&
 			isPureConduitFile(e.path)
 		switch {

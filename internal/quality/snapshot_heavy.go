@@ -25,19 +25,18 @@ func (d *SnapshotHeavyDetector) Detect(snap *models.TestSuiteSnapshot) []models.
 			ratio = float64(tf.SnapshotCount) / float64(tf.AssertionCount)
 		}
 
-		// 2026-05-18 (Phase A.5 + L2 review): replace the SnapshotCount<3
-		// AND ratio<1.0 filter with a disjunction that catches two distinct
-		// "incidental snapshot" shapes without killing canonical TPs:
+		// Disjunction that catches two distinct "incidental snapshot"
+		// shapes without killing canonical TPs:
 		//
 		//   (snap≥2 AND ratio≥0.3): heavy snapshot pattern with ratio that
 		//     dominates direct assertions
-		//   (snap≥1 AND direct≤2): the snapshot IS the whole test (Claude-
-		//     confirmed TP class — single big snapshot covering everything)
+		//   (snap≥1 AND direct≤2): the snapshot IS the whole test (one
+		//     big snapshot covering everything)
 		//
 		// Anything outside both shapes is incidental snapshot use:
 		//   - snap=1 with direct=20+ → one incidental snapshot in a real test
 		//   - snap=4, direct=164, ratio=0.02 → snapshot is supplementary, not
-		//     dominant (the n=50 FP that the SnapshotCount<3 filter missed)
+		//     dominant
 		keepHeavyRatio := tf.SnapshotCount >= 2 && ratio >= 0.3
 		keepDominantSnap := tf.SnapshotCount >= 1 && tf.AssertionCount <= 2
 		if !keepHeavyRatio && !keepDominantSnap {

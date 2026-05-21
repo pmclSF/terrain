@@ -50,7 +50,7 @@ func NewFSResolver(repoRoot string) *FSResolver {
 // and each gets a correct answer because we subtract the candidate's
 // own basename at check time. Caching just `bool` is unsafe — the
 // first candidate's self-exclusion would poison every subsequent
-// candidate's lookup (this exact bug was found 2026-05-15).
+// candidate's lookup.
 func (r *FSResolver) SiblingHasEvalMarker(repoRelativePath string) bool {
 	dir := filepath.Dir(filepath.Join(r.root, repoRelativePath))
 	self := filepath.Base(repoRelativePath)
@@ -237,10 +237,9 @@ func looksLikeSourceFile(name string) bool {
 // surface_missing_eval suppression chain — a sibling promptfooconfig.
 // yaml means "this directory already runs evals."
 //
-// Identified in the 2026-05-16 real-repo dogfood: anthropic/courses
-// emits a finding on prompt_evaluations/.../custom_llm_eval.py even
-// though promptfooconfig.yaml sits beside it. Treating eval CONFIG
-// files (not just imports) as markers closes that FP class.
+// Closes a false-positive class where a finding fires on a file
+// whose sibling already runs an eval — treating eval CONFIG files
+// (not just imports) as markers suppresses the FP.
 func looksLikeEvalConfigFile(name string) bool {
 	lower := strings.ToLower(name)
 	for _, marker := range evalConfigFilenames {

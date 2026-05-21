@@ -35,14 +35,13 @@ type ToolWithoutSandboxDetector struct {
 // match `delete_user`. Allowing `_` as a boundary catches the common
 // `verb_object` snake-case form that almost every real-world tool
 // definition uses.
-// 2026-05-11 corpus-driven refinement: 25-sample hand-label on clean
-// AI harvest found 25/25 FPs. Two failure modes:
+// Calibration found two dominant false-positive failure modes:
 //   (a) Bare "execute" / "exec" matches `execute_event_loop_cycle`
-//       (autogen agent main loop) and `execute_tool $X` where the
+//       (agent framework main loop) and `execute_tool $X` where the
 //       wrapped tool $X is benign (calculate, get_weather). The
 //       framework boilerplate verb doesn't make the tool destructive.
 //   (b) Bare "transfer" matches `transfer_to_spanish_agent` (agent
-//       handoff in deepeval/strands fixtures), not financial transfer.
+//       handoff between assistants), not financial transfer.
 //
 // Tightened regex:
 //   - exec / execute now require explicit destructive context:
@@ -102,10 +101,10 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 		if isAPIKeyFixturePath(relPath) {
 			continue
 		}
-		// 2026-05-11 corpus addition: deepeval/strands test-integration
-		// schema fixtures dominated the FP set (24 of 25 hand-labeled
-		// firings). These paths are explicitly fixtures for integration
-		// tests against agent frameworks, not real tool definitions.
+		// Test-integration schema fixtures dominated the false-positive
+		// set in calibration. These paths are explicitly fixtures for
+		// integration tests against agent frameworks, not real tool
+		// definitions.
 		lp := strings.ToLower(filepath.ToSlash(relPath))
 		if strings.Contains(lp, "test_integrations/") ||
 			strings.Contains(lp, "/schemas/") && strings.Contains(lp, "tests/") {
@@ -118,10 +117,7 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 				Type:        signals.SignalAIToolWithoutSandbox,
 				Category:    models.CategoryAI,
 				Severity:    models.SeverityHigh,
-				// 2026-05-11 corpus-driven recalibration: declared 0.78,
-				// clean ML harvest precision LB 0.26 (43% point). Demoted
-				// to 0.50 pending hand-validation (task #42). When the AI
-				// clean harvest completes, reassess.
+				// Confidence held at 0.50 pending broader validation data.
 				Confidence:  0.50,
 				Location:    models.SignalLocation{File: relPath, Symbol: f.ToolName},
 				Explanation: f.Explanation,

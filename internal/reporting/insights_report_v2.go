@@ -88,9 +88,8 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 	}
 
 	// If no findings at all, render the designed empty state with a
-	// next-move nudge instead of the bare line. Track 10.6 — every
-	// list-producing command should reward the clean state with a
-	// designed message.
+	// next-move nudge instead of the bare line. Every list-producing
+	// command should reward the clean state with a designed message.
 	if len(r.Findings) == 0 {
 		es := EmptyStateFor(EmptyZeroFindings)
 		line("%s", es.Header)

@@ -9,12 +9,9 @@ import (
 // Calibration carries per-rule, per-cohort base rates, per-atom weight
 // overrides, severity declarations, and posture thresholds.
 //
-// The current implementation uses heuristic weights derived from the
-// adversarial regex review (2026-05-15): ctx-loose+neg composition
-// reached 10.29% precision at 98% TP retention on the 2,651-row labeled
-// corpus. Future revisions will fit weights from the corpus via
-// logistic regression; for now this hand-tuned table reproduces the
-// known frontier.
+// The current implementation uses hand-tuned weights. Future revisions
+// may fit weights from a labeled sample via logistic regression; for
+// now this table reflects the heuristic baseline.
 type Calibration struct {
 	// BaseRates maps (cohort, rule) → base log-odds. Cohort "unknown"
 	// is the fallback when cohort detection didn't fire.
@@ -43,8 +40,7 @@ type Calibration struct {
 }
 
 // DefaultCalibration returns the hand-tuned calibration table used at
-// pipeline launch. Weights come from the adversarial regex/AST review
-// on the 2,651-row labeled corpus.
+// pipeline launch.
 //
 // Convention:
 //   - Atom IDs use dotted namespaces (e.g. "regex.openai.import",
@@ -78,14 +74,9 @@ func DefaultCalibration() *Calibration {
 			"ml-pipeline": {
 				"ai.train.missing_tracker": -2.0,
 			},
-			// library-sdk base rate matches unknown — the labeled corpus
-			// (2026-05-15) shows nearly identical natural TP rates
-			// (2.08% app vs 1.90% library), so the strong suppression
-			// the hand-tuned -4.5 imposed was not empirically grounded.
-			// It killed 31 of 33 library-sdk TPs at the observability
-			// threshold and dropped overall recall ~40%. Keep cohort
-			// labels (still useful for emission posture and explain
-			// strings), but don't tax the base rate.
+			// library-sdk base rate matches unknown. Cohort labels are
+			// kept (still useful for emission posture and explain
+			// strings) but the base rate is not differentiated.
 			"library-sdk": {
 				"ai.surface.missing_eval":  -3.5,
 				"ai.train.missing_tracker": -3.5,
@@ -96,12 +87,7 @@ func DefaultCalibration() *Calibration {
 			"*": {
 				"*": {
 					// Lexical positives — weights calibrated for the 0.40
-					// observability threshold. The k-fold logistic-fit
-					// (2026-05-15) found smaller absolute magnitudes
-					// would also work at a lower threshold; for product
-					// contract reasons we hold the threshold and keep
-					// the weights at the levels validated to clear it
-					// on real positives.
+					// observability threshold.
 					"regex.openai.import":            +0.8,
 					"regex.openai.call":              +1.6,
 					"regex.anthropic.import":         +0.6,
@@ -221,18 +207,16 @@ func DefaultCalibration() *Calibration {
 			"ai.uncovered_surface":        SeverityMedium,
 		},
 
-		// Preview rules — calibration ships, behavior is wired, but
-		// the labeled corpus doesn't yet contain enough TPs to give a
-		// meaningful precision floor. Targeted corpus expansion in
-		// 0.2.1 will land empirical validation. Until then the rule
-		// is opt-in only (not in the default rule set) and findings
-		// carry a [preview] tag so the calling engineer knows the
-		// confidence number is not corpus-validated.
+		// Preview rules — calibration ships and behavior is wired but
+		// the precision floor is not yet validated. Rules listed here
+		// are opt-in only (not in the default rule set) and findings
+		// carry a [preview] tag so callers know the confidence number
+		// is heuristic.
 		Preview: map[string]bool{
-			// 1 TP in the 2,651-row v3 corpus → CI on training-rule
-			// precision is essentially unbounded. Production-context
-			// gating (regex.production_ml_sdk etc.) is architecturally
-			// right per the design discussion but unvalidated.
+			// Preview only — too few true positives to bound precision
+			// on a labeled sample. Production-context gating
+			// (regex.production_ml_sdk etc.) is architecturally right
+			// but unvalidated.
 			"ai.train.missing_tracker": true,
 		},
 

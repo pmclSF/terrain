@@ -12,8 +12,7 @@
 // This package is the canonical implementation. Detectors should
 // prefer `pathnoise.IsToolingPath(p)` over inline path matching.
 //
-// The patterns here are all corpus-validated — each was identified
-// during an internal hand-labeled FP analysis.
+// The patterns here are all validated against the calibration set.
 package pathnoise
 
 import (
@@ -23,9 +22,7 @@ import (
 )
 
 // toolingPrefixes are path-component patterns where detector firings
-// are virtually always FPs. The list was assembled from corpus hand-
-// label sessions on uncoveredAISurface, untestedExport, aiHardcoded-
-// APIKey, aiToolWithoutSandbox.
+// are virtually always false positives.
 var toolingPrefixes = []string{
 	// CI/build infrastructure
 	".github/",
@@ -60,11 +57,10 @@ var toolingPrefixes = []string{
 	"_vendor/",
 	"node_modules/",
 
-	// Editor / framework build output (added 2026-05-12 after self-fire
-	// audit: terrain analyzing its own repo fired [critical] on
-	// extension/vscode/out/. Same pattern hits any repo with TS-compiled
-	// VS Code extensions / Next.js / Nuxt / SvelteKit / Vite / Turborepo
-	// outputs that ride alongside source in the same tree.)
+	// Editor / framework build output. These are TS-compiled
+	// VS Code extension outputs and Next.js / Nuxt / SvelteKit / Vite /
+	// Turborepo build directories that ride alongside source in the
+	// same tree.
 	".next/",
 	".nuxt/",
 	".svelte-kit/",

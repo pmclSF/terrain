@@ -109,10 +109,9 @@ func (d *PromptInjectionDetector) Detect(snap *models.TestSuiteSnapshot) []model
 				Type:        signals.SignalAIPromptInjectionRisk,
 				Category:    models.CategoryAI,
 				Severity:    models.SeverityHigh,
-				// 2026-05-11 corpus-driven recalibration: declared 0.7,
-				// clean-data LB 0.36 (7 firings cross-corpus). Demoted to
-				// 0.40 pending more data + hand-validation. Low firing
-				// volume makes the floor unstable.
+				// Confidence demoted to 0.40 pending more data; the
+				// low natural firing volume makes the empirical floor
+				// unstable.
 				Confidence:  0.40,
 				Location:    models.SignalLocation{File: relPath, Line: h.Line},
 				Explanation: h.Explanation,

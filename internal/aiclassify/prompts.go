@@ -8,10 +8,9 @@
 // path; that path will be migrated to consume these helpers in a
 // follow-up so both surfaces agree on "what counts as a prompt file."
 //
-// The Track 2 ablation experiment surfaced a real divergence: the
-// boundary scanner detected a prompt file in src/test-ablation-prompts/
-// while the analyzer's surface extractor did not. That kind of drift
-// is what this package exists to prevent.
+// Calibration surfaced a real divergence where the boundary scanner
+// detected a prompt file but the analyzer's surface extractor did
+// not. That kind of drift is what this package exists to prevent.
 package aiclassify
 
 import (
@@ -92,8 +91,8 @@ func hasSegment(p, name string) bool {
 // programming-language extension, or files under known code-gen
 // directories (`_templates/`, `generators/`).
 //
-// Refined against the 2026-05-12 validation sample (Track 2 ablation +
-// hand-validation). 11% of pre-v2 boundary FPs were code-gen jinja.
+// Refined against the calibration set, where code-gen jinja templates
+// produced a meaningful share of boundary false positives.
 func IsCodeGenTemplate(rel string) bool {
 	low := strings.ToLower(rel)
 

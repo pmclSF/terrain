@@ -40,8 +40,7 @@
 //
 // # Calibration
 //
-// Per-rule, per-cohort weights live in calibration.go. Initial weights
-// are heuristic; subsequent revisions fit from an internal hand-labeled
-// corpus. The composer is the only consumer of the calibration table;
-// stages just emit atoms with their declared default weight.
+// Per-rule, per-cohort weights live in calibration.go. The composer
+// is the only consumer of the calibration table; stages just emit
+// atoms with their declared default weight.
 package aipipeline

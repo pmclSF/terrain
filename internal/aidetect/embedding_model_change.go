@@ -122,9 +122,8 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 			continue
 		}
 		emitted[comp.Path] = true
-		// 2026-05-11 confidence recalibration: structured-config path
-		// dropped from 0.85 to 0.55 — clean ML harvest LB 0.25 on
-		// 7-firing sample. Re-evaluate after AI clean harvest lands.
+		// Structured-config path confidence is held at 0.55 pending
+		// more validation data — current sample is small.
 		out = append(out, buildEmbeddingChangeSignal(comp.Path, comp.Line, comp.Config.ModelName, 1, models.EvidenceStrong, 0.55))
 	}
 

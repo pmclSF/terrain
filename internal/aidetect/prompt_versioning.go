@@ -119,11 +119,7 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			Type:        signals.SignalAIPromptVersioning,
 			Category:    models.CategoryAI,
 			Severity:    models.SeverityMedium,
-			// Corpus-driven recalibration: declared 0.85, hand-
-			// validated precision dropped on a small-sample review;
-			// an aiInstructionMarkers fix addressed the worst FPs but
-			// a re-harvest hand-label is needed before raising this
-			// back.
+			// Confidence held at 0.50 pending further validation.
 			Confidence:  0.50,
 			Location:    models.SignalLocation{File: surface.Path, Symbol: surface.Name},
 			Explanation: "Prompt file `" + surface.Path + "` has no recognizable version marker. Future content changes will silently drift; consumers can't detect the change.",

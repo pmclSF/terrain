@@ -589,17 +589,16 @@ func renderAISection(line func(string, ...any), pr *PRAnalysis) {
 }
 
 // postureBadge delegates to uitokens.BracketedVerdict so the badge
-// vocabulary is owned by the design system. Track 10.2.
+// vocabulary is owned by the design system.
 func postureBadge(band string) string {
 	return uitokens.BracketedVerdict(band)
 }
 
 // severityIcon delegates to uitokens.BracketedSeverity so the badge
-// vocabulary is owned by the design system. Track 10.2 — every
-// renderer that emits user-visible severity should consume from
-// uitokens rather than carrying its own switch. Pre-Track-10.2 this
-// function returned its own bracketed strings; the wrapper is kept
-// (rather than inlining the call) so internal helpers like
+// vocabulary is owned by the design system. Every renderer that
+// emits user-visible severity should consume from uitokens rather
+// than carrying its own switch. The wrapper is kept (rather than
+// inlining the call) so internal helpers like
 // renderFindingCard remain unchanged and the diff stays surgical.
 func severityIcon(severity string) string {
 	return uitokens.BracketedSeverity(severity)

@@ -26,7 +26,8 @@ type EvidenceCI struct {
 	Sample int     `json:"sample_size,omitempty"`
 }
 
-// HandValidated is the result of a hand-label session against a sample.
+// HandValidated is the result of a sampled review against a labeled
+// subset.
 type HandValidated struct {
 	TruePositives  int     `json:"tp,omitempty"`
 	FalsePositives int     `json:"fp,omitempty"`
@@ -77,15 +78,12 @@ func LookupEvidence(t models.SignalType) (Evidence, bool) {
 }
 
 // EffectiveSeverity adjusts a signal's declared severity based on the
-// corpus-measured lift and hand-validated precision for its detector.
-// The ladder is one-way: evidence can DEMOTE severity, never promote.
+// validation evidence for its detector. The ladder is one-way:
+// evidence can DEMOTE severity, never promote.
 //
-// Tightened bar (2026-05-12 — v2.1 labels cleaned the corpus and now
-// most detectors register lift ≥ 1.5; the prior ladder let them all
-// keep their declared severity, producing 600+ "high" findings on a
-// dogfood repo. The tighter bar requires lift ≥ 2 with a CI > 1.5
-// before declared severity stands at High, and lift ≥ 3 with CI > 1.5
-// before Critical is allowed):
+// The ladder requires lift >= 2 with a CI > 1.5 before declared
+// severity stands at High, and lift >= 3 with CI > 1.5 before
+// Critical is allowed:
 //
 //   - lift CI upper < 1.0                          → floor to Low
 //   - lift CI upper < 1.5 (any hand-prec)          → cap at Low
@@ -99,11 +97,11 @@ func LookupEvidence(t models.SignalType) (Evidence, bool) {
 // Returns (effective, adjusted) where `adjusted` indicates whether the
 // declared severity was changed. Callers can surface this in metadata.
 func EffectiveSeverity(t models.SignalType, declared models.SignalSeverity) (effective models.SignalSeverity, adjusted bool) {
-	// Tier 2 (observability) detectors short-circuit the lift ladder.
-	// Their failure mode is silent quality degradation that PR-revert
-	// proxy cannot measure; lift-based demotion would be wrong-headed.
-	// Cap at Medium so they never gate CI; declared severity otherwise
-	// stands. Validated via Track 3 (public-incident hand-validation).
+	// Observability-tier detectors short-circuit the lift ladder.
+	// Their failure mode is silent quality degradation that the
+	// PR-revert proxy cannot measure, so lift-based demotion would be
+	// wrong-headed. Cap at Medium so they never gate CI; declared
+	// severity otherwise stands.
 	if isObservabilityTier(t) {
 		return capSeverity(declared, models.SeverityMedium)
 	}

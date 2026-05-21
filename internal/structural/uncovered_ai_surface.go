@@ -14,15 +14,16 @@ import (
 // with zero test or scenario coverage.
 type UncoveredAISurfaceDetector struct{}
 
-// Sub-lane precision tuning. Corpus validation at n=250 showed the
-// AI-surface lanes have meaningfully different precision profiles:
+// Sub-lane precision tuning. The AI-surface lanes have meaningfully
+// different precision profiles:
 //   - aiPrompt: strongest lane, kept gate-eligible
-//   - aiModel: weakest lane, dominated by name-shape FPs (Zod schemas,
-//              synthesized line-suffix stems, decorator-injected stems)
+//   - aiModel: weakest lane, dominated by name-shape false positives
+//              (Zod schemas, synthesized line-suffix stems, decorator-
+//              injected stems)
 //   - aiDataset: moderate
 //
-// The filters below target the dominant FP classes in the aiModel lane.
-// Each filter clears ≥5 FPs as a class per the no-single-file-rules rule:
+// The filters below target the dominant false-positive classes in the
+// aiModel lane:
 //
 // modelSyntheticStemRe: names like `token_management_L47`, `*_L\d+`
 //   are line-number-suffix synthesized identifiers from the AI surface

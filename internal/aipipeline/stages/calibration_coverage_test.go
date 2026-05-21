@@ -6,11 +6,11 @@ import (
 	"github.com/pmclSF/terrain/internal/aipipeline"
 )
 
-// TestCalibrationCoversAllRegexAtoms is a regression test for the
-// calibration key-mismatch bug fixed on 2026-05-15. The bug:
-// calibration keys ("regex.sklearn.train") didn't match the atom IDs
-// the regex stage emits ("regex.sklearn_train.call"), so the hand-
-// tuned per-cohort overrides for those atoms were dead code.
+// TestCalibrationCoversAllRegexAtoms is a regression test for a
+// calibration key-mismatch bug. The bug: calibration keys
+// ("regex.sklearn.train") didn't match the atom IDs the regex stage
+// emits ("regex.sklearn_train.call"), so the hand-tuned per-cohort
+// overrides for those atoms were dead code.
 //
 // This test enumerates every SDK pair the regex stage knows about and
 // asserts the default calibration has an explicit weight entry for

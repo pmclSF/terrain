@@ -34,7 +34,7 @@ type integrationImportPattern struct {
 
 // integrationImportPatterns is the explicit allowlist of integration-
 // library import signatures. Adding a pattern here is the way to
-// extend integration-test classification rigor (Track 3.3).
+// extend integration-test classification rigor.
 //
 // Conservative by design: false-positive integration claims are
 // worse than false negatives because they distort the test-system

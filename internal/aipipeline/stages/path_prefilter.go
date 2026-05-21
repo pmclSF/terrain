@@ -19,9 +19,10 @@ import (
 // tests, provider wrappers, factories) and short-circuits on the
 // strongest negative signals.
 //
-// The patterns mirror the empirical "combined-v3" path filter from
-// the precision study (2026-05-15), which on the 2,651-row corpus
-// lifted precision from 1.96% → 2.72% with zero TP loss.
+// The patterns mirror the path-filter heuristic from the calibration
+// pass — drops candidates in tutorial / example / docs directories
+// where AI surfaces are almost always illustrative rather than
+// runtime-evaluated.
 type PathPrefilter struct {
 	// HardDropExamples causes the stage to drop candidates outright
 	// when a path matches an examples/tutorials/cookbook directory.

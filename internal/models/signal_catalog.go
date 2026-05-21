@@ -124,13 +124,13 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	// DefaultDetectorBudget). Same posture as detectorPanic — without
 	// it in the catalog, ValidateSnapshot would reject the entire
 	// snapshot whenever a detector hit its budget, defeating the
-	// timeout enforcement shipped in 0.2 (Track 9.4).
+	// timeout enforcement.
 	"detectorBudgetExceeded": {Source: SignalSourceStatic},
 	// detectorMissingInput is emitted by safeDetectChecked when a
 	// detector's RequiresRuntime / RequiresBaseline /
 	// RequiresEvalArtifact metadata is set but the snapshot lacks
-	// the corresponding input. Track 9.3 — surfaces input gaps as
-	// a single per-detector marker instead of silent zero-output.
+	// the corresponding input — surfaces input gaps as a single
+	// per-detector marker instead of silent zero-output.
 	"detectorMissingInput": {Source: SignalSourceStatic},
 
 	// suppressionExpired is emitted by the suppression-loading pass

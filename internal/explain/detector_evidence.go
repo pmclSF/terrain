@@ -7,10 +7,9 @@ import (
 	"sync"
 )
 
-// Per-detector corpus-derived evidence (precision floors, PR-lift,
-// recall, hand-validated samples). Shipped embedded in the binary so
-// `terrain explain` can surface "this detector has been measured at
-// 1.81x lift on 326 OSS repos" alongside each finding.
+// Per-detector validation evidence (precision floors, PR-lift,
+// recall, validated samples) shipped embedded in the binary so
+// `terrain explain` can surface a trust line alongside each finding.
 
 //go:embed data/detector-evidence.json
 var detectorEvidenceJSON []byte
@@ -92,7 +91,7 @@ func DetectorEvidenceFor(detectorType string) *DetectorEvidenceEntry {
 
 // FormatTrustLine renders a one-line "trust this detector" summary
 // suitable for inline rendering in `terrain explain` output. Picks
-// the strongest available evidence (hand-validated > global lift >
+// the strongest available evidence (validated sample > global lift >
 // heuristic precision).
 func (e *DetectorEvidenceEntry) FormatTrustLine() string {
 	if e == nil {

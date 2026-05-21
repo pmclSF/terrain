@@ -4,7 +4,7 @@ import (
 	"github.com/pmclSF/terrain/internal/mechanisms"
 )
 
-// Gate is the canonical wire-up helper used by AI-moat detectors. Given
+// Gate is the canonical wire-up helper used by AI surface-aware detectors. Given
 // a mechanisms registry, a surface name, the file the finding will
 // reference, and the rule_id, it:
 //

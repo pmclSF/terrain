@@ -27,14 +27,11 @@ import (
 //
 // Each detection carries tier, confidence, and evidence metadata.
 //
-// Hand-label-driven fix (2026-05-11): require AI context in the file
-// before emitting schema surfaces. The previous version fired on every
-// Zod/Pydantic schema whose name contained "Schema", "Input", "Output",
-// "Tool", etc. — which includes form schemas, HTTP response types,
-// auto-generated SDK types, and internal API contracts. Hand-validated
-// 25-sample corpus review showed uncoveredAISurface real precision was
-// ~5% vs heuristic 78%. The gap was almost entirely this parser firing
-// without context.
+// AI context is required in the file before emitting schema surfaces.
+// Without this gate the detector fires on every Zod/Pydantic schema
+// whose name contains "Schema", "Input", "Output", "Tool", etc. — which
+// includes form schemas, HTTP response types, auto-generated SDK
+// types, and internal API contracts.
 func ParseToolSchemas(relPath, src, lang string) []models.CodeSurface {
 	switch lang {
 	case "js":

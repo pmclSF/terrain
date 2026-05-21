@@ -1,11 +1,11 @@
 // Package surfacelit implements the SurfaceLiteralPresenceGate.
 //
-// Before an AI-moat detector emits a finding referencing a surface name
+// Before an AI surface-aware detector emits a finding referencing a surface name
 // (e.g. "gpt-4o", "chatbot-prompt", "summarizer_template"), the gate
 // verifies that the name literally appears as an identifier-like token
 // in the flagged file. Names that the detector inferred but that don't
 // actually appear in the file are the dominant FP class across 4 of
-// 6 AI-moat detectors (surface-hallucination, 21-77% per detector).
+// AI surface-aware detectors (the surface-hallucination false-positive class).
 //
 // The check is intentionally narrow:
 //
@@ -40,7 +40,7 @@ import (
 const MaxFileBytes = 4 * 1024 * 1024 // 4 MiB
 
 // strippedCache caches comment-stripped file content keyed by absolute
-// path + modtime. AI-moat detectors call Check per finding per file;
+// path + modtime. AI surface-aware detectors call Check per finding per file;
 // the cache keeps repeated calls on the same file off the disk and
 // off the regex pass.
 //

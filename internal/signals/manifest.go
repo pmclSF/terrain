@@ -28,10 +28,10 @@ const (
 
 // SignalTier separates gate-relevant detectors (lift-validated, CI-blocking)
 // from observability detectors (target silent failure modes that PR-revert
-// proxy cannot measure, never block CI). Set 2026-05-12 after the Track 3
-// public-incident hand-validation surfaced detectors that have flat corpus
-// lift but match real incident classes (aiEmbeddingModelChange,
-// aiSafetyEvalMissing, uncoveredAISurface).
+// proxy cannot measure, never block CI). Some detectors have flat corpus
+// lift but match real public-incident classes (aiEmbeddingModelChange,
+// aiSafetyEvalMissing, uncoveredAISurface); the observability tier exists
+// so those detectors can ship without abusing severity ladders.
 //
 // Severity-from-lift logic respects this tier:
 //   - TierGate detectors: declared severity may be demoted per the lift CI
@@ -52,11 +52,12 @@ const (
 
 	// TierObservability detectors target structural conditions for *silent*
 	// quality degradation (eval-score drift, hallucination-rate creep,
-	// embedding-model-without-reindex). Never produce revert/hotfix patterns
-	// because the failure mode is gradual. Validated by hand-validation and
-	// public-incident matching, NOT by PR-lift. Severity capped at Medium;
-	// never gate-relevant. Examples: aiSafetyEvalMissing, uncoveredAISurface,
-	// aiEmbeddingModelChange, aiPromptVersioning.
+	// embedding-model-without-reindex). They never produce revert/hotfix
+	// patterns because the failure mode is gradual. Validated by sampled
+	// review and public-incident matching, NOT by PR-lift. Severity
+	// capped at Medium; never gate-relevant. Examples:
+	// aiSafetyEvalMissing, uncoveredAISurface, aiEmbeddingModelChange,
+	// aiPromptVersioning.
 	TierObservability SignalTier = "observability"
 )
 
@@ -266,15 +267,14 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/weak-assertion",
 		RuleURI:         "docs/rules/hygiene/weak-assertion.md",
-		// 2026-05-18: Phase B.3 framing test showed 55% verdict flip rate
-		// between strict-QA vs pragmatic-engineer Claude framings. The
-		// "is this assertion strong enough?" question is a value judgment
-		// that doesn't have stable extension. Gate-tier ship would mean
-		// ~55% user-suppression rate. Capability preserved at observability.
+		// "Is this assertion strong enough?" is a value judgment that
+		// doesn't have a stable extension across framing assumptions —
+		// validation showed substantial verdict instability under shifts
+		// in reviewer persona. Capability preserved at observability;
+		// not appropriate for CI gating without an explicit policy
+		// threshold from the user.
 		Tier: TierObservability,
-		PromotionPlan: "Detector is regex/density-based; AST-based semantic scoring lands in a future release " +
-			"alongside the calibration corpus. Gate-tier promotion requires explicit policy " +
-			"threshold (e.g., user-declared strict-vs-pragmatic mode) AND framing-test flip <15%.",
+		PromotionPlan: "Observability-tier. Gate-tier promotion requires an explicit user-declared policy threshold and framing-stable evaluation.",
 	},
 	{
 		Type: SignalMockHeavyTest, ConstName: "SignalMockHeavyTest",
@@ -283,27 +283,22 @@ var allSignalManifest = []ManifestEntry{
 		Description:     "Tests rely heavily on mocks and may miss integration-level regressions.",
 		Remediation:     "Replace brittle mocks with real collaborators where practical.",
 		DefaultSeverity: models.SeverityLow,
-		// 2026-05-11 corpus-driven demotion: stable → experimental + severity
-		// medium → low. PR-lift on 4 clean corpora shows 0.00–0.02x —
-		// mock-heavy files are NOT regression-prone. The underlying
-		// hypothesis ("too many mocks => brittle tests => regressions")
-		// is refuted at scale. Either the rule needs a fundamentally
-		// different signal (e.g. mock-target diversity), or it should
-		// be removed entirely. Kept in experimental status pending
-		// rebuild or final deletion.
+		// Demoted to experimental + low severity because the underlying
+		// hypothesis ("more mocks => brittle tests => regressions") is
+		// not supported by validation — mock-heavy files do not show
+		// elevated regression rates. The rule either needs a different
+		// underlying signal (e.g. mock-target diversity, module vs
+		// callback distinction) or should be removed.
 		ConfidenceMin: 0.3, ConfidenceMax: 0.5,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/mock-heavy",
 		RuleURI:         "docs/rules/hygiene/mock-heavy.md",
-		// 2026-05-18: Phase B.3-ext framing test showed 41.7% verdict flip
-		// rate. "Are mocks > assertions a defect or design?" is a stylistic
-		// question. Gate-tier ship would mean ~42% suppression. Capability
-		// preserved at observability; rebuild path requires distinguishing
-		// module-boundary mocks (vi.mock) from callback-spy stubs (vi.fn()).
+		// "Are mocks > assertions a defect or a design choice?" is
+		// stylistic and framing-unstable. Capability preserved at
+		// observability; rebuild path requires distinguishing
+		// module-boundary mocks from callback-spy stubs.
 		Tier: TierObservability,
-		PromotionPlan: "Underlying hypothesis empirically refuted (corpus lift 0.02x). " +
-			"Framing-instability confirmed. Rebuild requires a mock-classifier " +
-			"distinguishing module vs callback mocks. Defer or remove.",
+		PromotionPlan: "Observability-tier. Rebuild requires a mock-classifier distinguishing module vs callback mocks.",
 	},
 	{
 		Type: SignalTestsOnlyMocks, ConstName: "SignalTestsOnlyMocks",
@@ -316,15 +311,12 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/quality/tests-only-mocks",
 		RuleURI:         "docs/rules/quality/tests-only-mocks.md",
-		// 2026-05-18: n=137 corpus precision 0.7% (1 TP). Base rate of true
-		// "wiring-only" tests is ~1% in AI corpus. Per-file gate-tier
-		// signal is structurally near-silent. Re-frame as repo-aggregate
-		// metric ("% of tests with zero assertions across all framework
-		// idioms") rather than per-file finding.
+		// True "wiring-only" tests are a low-base-rate phenomenon, so
+		// the per-file gate-tier signal is structurally near-silent.
+		// Re-frame as a repo-aggregate posture metric rather than a
+		// per-file finding.
 		Tier: TierObservability,
-		PromotionPlan: "Rebuild as repo-aggregate posture metric. Per-file detection blocked by " +
-			"assertion-counter blindness (caught only bare `assert`); A1 multi-dialect oracle " +
-			"would lift to ~55-70% but TP base rate is fundamental ceiling.",
+		PromotionPlan: "Observability-tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting.",
 	},
 	{
 		Type: SignalSnapshotHeavyTest, ConstName: "SignalSnapshotHeavyTest",
@@ -337,16 +329,12 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/snapshot-heavy",
 		RuleURI:         "docs/rules/hygiene/snapshot-heavy.md",
-		// 2026-05-18: Phase B.3-ext framing test showed 33.3% verdict flip
-		// rate. Also: n=48 corpus came from only 7 unique repos (54% from
-		// one). "Is snapshot use heavy enough to flag?" is value-judgment.
-		// Gate-tier promotion requires corpus diversity AND framing-stable
-		// threshold (e.g., the snap≥2 AND ratio≥0.3 conjunction tested in
-		// Phase A but with broader corpus validation).
+		// "Is snapshot use heavy enough to flag?" is a value judgment;
+		// validation showed it is framing-unstable. Capability preserved
+		// at observability. Gate-tier promotion requires broader corpus
+		// diversity AND a framing-stable threshold conjunction.
 		Tier: TierObservability,
-		PromotionPlan: "Gate-tier promotion gated on: (1) n=200+ from ≥40 unique repos; (2) " +
-			"framing flip <15% under threshold-conjunction (snap≥2 AND ratio≥0.3); (3) " +
-			"explicit user-facing policy declaration.",
+		PromotionPlan: "Observability-tier. Gate-tier promotion requires a broader corpus and a framing-stable threshold (e.g. snap>=2 AND ratio>=0.3) plus an explicit user-facing policy declaration.",
 	},
 	{
 		Type: SignalCoverageBlindSpot, ConstName: "SignalCoverageBlindSpot",
@@ -423,14 +411,12 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/no-assertions",
 		RuleURI:         "docs/rules/hygiene/no-assertions.md",
-		// 2026-05-18: n=396 corpus precision 35.6%. Phase A.2 measured that
-		// regex-floor expansion catches 76% of FPs (assertion-counter blind
-		// to self.assertX, np.testing.*, mock.assert_called_*). Even after
-		// regex floor lift, ceiling ~70% before framing stability needed.
-		// Observability tier until A1 multi-dialect oracle + framing test.
+		// The assertion counter is blind to several real assertion
+		// dialects (self.assertX, np.testing.*, mock.assert_called_*),
+		// which leaves a ceiling on precision until a multi-dialect
+		// oracle plus a path-role gate are in place.
 		Tier: TierObservability,
-		PromotionPlan: "Gate-tier requires: (1) regex-floor lift to 70%+ precision, (2) A3 path-role " +
-			"gate to exclude conftest/fixtures/commented-out, (3) framing test flip <15%.",
+		PromotionPlan: "Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role gate that excludes conftest/fixtures/commented-out tests, and framing-stable evaluation.",
 	},
 	{
 		Type: SignalOrphanedTestFile, ConstName: "SignalOrphanedTestFile",
@@ -535,18 +521,13 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/migration/migration-blocker",
 		RuleURI:         "docs/rules/migration/migration-blocker.md",
-		// 2026-05-18: n=250 corpus precision 0% (0 TPs in 250 firings; all
-		// 250 fired "enzyme-usage" on Vitest/RTL/Playwright tests with NO
-		// enzyme import). Phase A.1 confirmed an enzyme-import gate would
-		// drop 233 of 250 FPs but 0 TPs exist in AI corpus — enzyme as a
-		// migration target is historical in modern AI repos. Capability
-		// preserved by refreshing trigger set to LIVING dead frameworks
-		// (mocha→jest, jasmine→jest, unittest→pytest) — pending corpus
-		// confirmation that those exist at meaningful base rates.
+		// Validation found that the enzyme-usage sub-rule no longer has
+		// real positives in modern AI repos — enzyme as a migration
+		// target is historical. Capability preserved by refreshing the
+		// trigger set to living migration patterns (mocha->jest,
+		// jasmine->jest, unittest->pytest).
 		Tier: TierObservability,
-		PromotionPlan: "Refresh trigger set to mocha→jest, jasmine→jest, unittest→pytest after " +
-			"confirming base rate ≥5 per 100 repos. Drop enzyme sub-rule entirely; AI corpus " +
-			"has zero enzyme migrations remaining.",
+		PromotionPlan: "Observability-tier. Refresh the trigger set to living migration patterns and drop the enzyme sub-rule once base rates are confirmed.",
 	},
 	{
 		Type: SignalDeprecatedTestPattern, ConstName: "SignalDeprecatedTestPattern",
@@ -559,16 +540,14 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/migration/deprecated-pattern",
 		RuleURI:         "docs/rules/migration/deprecated-pattern.md",
-		// 2026-05-18: n=372 corpus precision 21.0%. Cluster CI [11.2, 33.6]
-		// (2.7x wider than row CI). Two sub-rules:
-		//   - enzyme-usage: 0/188 TPs — Enzyme is dead in AI corpus, retire
-		//     sub-rule and refresh to living patterns
-		//   - setTimeout-in-test: 38% precision — needs A3 scope/binding
-		//     gate to distinguish jest.setTimeout from bare setTimeout
+		// Validation surfaced two sub-rules:
+		//   - enzyme-usage is no longer a productive trigger in modern
+		//     AI repos and should be retired or refreshed
+		//   - setTimeout-in-test needs a scope/binding gate to
+		//     distinguish jest.setTimeout config from bare setTimeout
+		//     in a test body
 		Tier: TierObservability,
-		PromotionPlan: "Drop enzyme sub-rule; refresh trigger set; setTimeout sub-rule needs A3 " +
-			"scope gate (jest.setTimeout config vs bare setTimeout in test body). Path-role " +
-			"gate to exclude fuzzer/fixture/comment-only matches.",
+		PromotionPlan: "Observability-tier. Drop the enzyme sub-rule, refresh the trigger set, and add a scope gate distinguishing jest.setTimeout from bare setTimeout in a test body.",
 	},
 	{
 		Type: SignalDynamicTestGeneration, ConstName: "SignalDynamicTestGeneration",
@@ -738,15 +717,12 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal", "structural-pattern"},
 		RuleID:          "terrain/structural/assertion-free-import",
 		RuleURI:         "docs/rules/structural/assertion-free-import.md",
-		// 2026-05-18: n=249 corpus precision 17.3%. Cluster CI [10.6, 27.7]
-		// (1.8x wider than row CI). Same assertion-counter blindness as
-		// weakAssertion/assertionFreeTest: misses self.assertX, np.testing,
-		// mock.assert_called_*, fluent helpers. Regex-floor expansion lifts
-		// most FPs (per A.2 analogue). Inherited-base-class assertions
-		// (8.3%) require cross-file resolution to fully fix.
+		// Shares the same assertion-counter blindness as the other
+		// assertion detectors — misses self.assertX, np.testing,
+		// mock.assert_called_*, and fluent helpers. Inherited-base-class
+		// assertions also require cross-file resolution to fully fix.
 		Tier: TierObservability,
-		PromotionPlan: "Gate-tier requires: (1) A1 multi-dialect assertion oracle + path-role test " +
-			"gate, (2) cross-file inherited-assertion resolution, (3) framing test flip <15%.",
+		PromotionPlan: "Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role test gate, cross-file inherited-assertion resolution, and framing-stable evaluation.",
 	},
 	{
 		Type: SignalCapabilityValidationGap, ConstName: "SignalCapabilityValidationGap",
@@ -759,9 +735,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal", "structural-pattern"},
 		RuleID:          "terrain/structural/capability-gap",
 		RuleURI:         "docs/rules/structural/capability-gap.md",
-		PromotionPlan: "Capability inference is heuristic in 0.1.2; 0.2 introduces the AI " +
-			"taxonomy v2 with explicit capability tags so this signal can fire only on declared " +
-			"capabilities, eliminating false positives. Promote once precision >=0.8.",
+		PromotionPlan: "Capability inference is heuristic; promote to gate-tier once the AI taxonomy supports explicit capability tags and validated precision meets the gate-tier bar.",
 		Tier: TierObservability,
 	},
 
@@ -1213,12 +1187,12 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"static"},
 		RuleID:          "terrain/engine/detector-panic", RuleURI: "docs/rules/engine/detector-panic.md",
 	},
-	// Track 9.4: per-detector wall-clock timeout budgets. Emitted by
-	// the pipeline (safeDetectWithBudget) when a detector exceeds
-	// its DetectorMeta.Budget (default DefaultDetectorBudget). The
-	// detector's signals from any post-budget completion are
-	// dropped — this marker is the only signal returned for the
-	// abandoned detector.
+	// Per-detector wall-clock timeout budgets. Emitted by the
+	// pipeline (safeDetectWithBudget) when a detector exceeds its
+	// DetectorMeta.Budget (default DefaultDetectorBudget). The
+	// detector's signals from any post-budget completion are dropped
+	// — this marker is the only signal returned for the abandoned
+	// detector.
 	{
 		Type: SignalDetectorBudgetExceeded, ConstName: "SignalDetectorBudgetExceeded",
 		Domain: models.CategoryQuality, Status: StatusStable,
@@ -1230,11 +1204,11 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"static"},
 		RuleID:          "terrain/engine/detector-budget", RuleURI: "docs/rules/engine/detector-budget.md",
 	},
-	// Track 9.3: emitted by safeDetectChecked when a detector's
-	// declared input requirements (RequiresRuntime / RequiresBaseline
-	// / RequiresEvalArtifact) aren't satisfied by the current
-	// snapshot. Surfaces the gap so adopters know which flag to add
-	// rather than seeing silent zero-output from the affected detector.
+	// Emitted by safeDetectChecked when a detector's declared input
+	// requirements (RequiresRuntime / RequiresBaseline /
+	// RequiresEvalArtifact) aren't satisfied by the current snapshot.
+	// Surfaces the gap so adopters know which flag to add rather than
+	// seeing silent zero-output from the affected detector.
 	{
 		Type: SignalDetectorMissingInput, ConstName: "SignalDetectorMissingInput",
 		Domain: models.CategoryQuality, Status: StatusStable,
@@ -1595,7 +1569,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Agent Loop Risk", DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/agent-quality/loop-risk", RuleURI: "docs/rules/agent-quality/loop-risk.md",
-		PromotionPlan: "Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; hand-validated against documented public agent-loop incidents.",
+		PromotionPlan: "Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; validated against documented public agent-loop incidents.",
 	},
 	{
 		Type: SignalToolWithoutBudget, ConstName: "SignalToolWithoutBudget",

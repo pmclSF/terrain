@@ -83,7 +83,7 @@ type EmptyState struct {
 // The strings are deliberately short — first sentence is the header,
 // next-move nudge is one short imperative. No exclamation marks
 // (jarring on terminal); no emojis (out-of-vocabulary in the design
-// system); plain English voice consistent with Track 10.7.
+// system); plain English voice.
 func EmptyStateFor(kind EmptyStateKind) EmptyState {
 	switch kind {
 	case EmptyZeroFindings:

@@ -11,14 +11,7 @@ import (
 // UntestedExportDetector identifies exported/public code units that have
 // no linked test coverage in the current analysis model.
 //
-// CORPUS NOTE (2026-05-11): per-language PR-lift on 5 clean corpora:
-//   non-AI mainstream OSS:  1.37x lift  (useful gating signal)
-//   ML-specialized:         0.81x       (base rate)
-//   JVM/Rust monorepos:     0.07x       (anti-signal — fires on stable code)
-//   diverse OSS:            0.66x
-//   AI/ML:                  0.71x
-//
-// In mature JVM/Rust codebases this detector fires on stable
+// In mature JVM/Rust codebases this detector tends to fire on stable
 // infrastructure code that doesn't change — the maintenance-debt
 // reading, not the regression-risk reading. Adopters in those
 // ecosystems should pair with `--new-findings-only` to scope firings
@@ -73,8 +66,7 @@ var toolingPathPrefixes = []string{
 	"proto/",
 	"protobuf/",
 	"autogen/",
-	// 2026-05-11 corpus-driven additions, from hand-labeled untestedExport
-	// 25-sample set (4 of 25 fired in these paths):
+	// Additional generated-code paths surfaced by labeled-sample review:
 	"tests-gen/",       // Kotlin/JetBrains auto-generated test stubs
 	"applyconfigurations/", // Kubernetes auto-generated SDK setters
 	"apps/playground/", // React/compiler playground demo
@@ -165,7 +157,7 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 			continue
 		}
 
-		// 2026-05-11 corpus-driven filters:
+		// Calibration-driven filters:
 		//
 		// (a) Filenames that self-declare as test infrastructure:
 		//     internal-for-testing.ts, test-helpers.*, *-fixture.*, etc.
@@ -194,20 +186,17 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 		// (c) Standard JVM Object method overrides — toString,
 		// hashCode, equals, finalize. Framework-mandated, every class
 		// has them, no separate test expected. Same for AutoCloseable
-		// close(), Comparable compareTo() — patterns confirmed via
-		// hand-label on error-prone, RxJava, kafka.
+		// close() and Comparable compareTo().
 		if (strings.HasSuffix(cu.Path, ".java") || strings.HasSuffix(cu.Path, ".kt")) &&
 			isJVMOverrideMethod(cu.Name) {
 			continue
 		}
 
-		// (d) 2026-05-18 (R2 + Phase A.4 analysis): type/schema declaration
-		// exports get flagged as "untested" but they're not callable behavior.
-		// Hand-label of n=250 corpus showed ~8-12 FPs follow these naming
-		// conventions: Zod schemas (CamelCaseSchema), React component Props
-		// types (FooProps), config/params/request/response interfaces.
-		// These are type aliases, not behavior — no unit-test expected.
-		// Class-rule (≥5 FPs covered); not a single-file fix.
+		// (d) Type/schema declaration exports get flagged as "untested"
+		// but they're not callable behavior: Zod schemas
+		// (CamelCaseSchema), React component Props types (FooProps),
+		// config/params/request/response interfaces. Type aliases, not
+		// behavior — no unit test expected.
 		if (strings.HasSuffix(cu.Path, ".ts") || strings.HasSuffix(cu.Path, ".tsx") ||
 			strings.HasSuffix(cu.Path, ".js") || strings.HasSuffix(cu.Path, ".jsx")) &&
 			isTypeOrSchemaDecl(cu.Name) {
@@ -253,11 +242,11 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 			},
 			Explanation: "Exported " + string(cu.Kind) + " \"" + cu.Name +
 				"\" has no linked tests in the current analysis model.",
-			// 2026-05-11 corpus-driven suggestion update: PR-lift on
-			// JVM/Rust monorepos shows 0.07x — this detector identifies
-			// stable infrastructure, not regression risk. Adopters who
-			// want regression-focused gating should pair it with
-			// --new-findings-only to scope to changing code.
+			// In some ecosystems (JVM/Rust monorepos especially) this
+			// detector identifies stable infrastructure rather than
+			// regression risk. Adopters who want regression-focused
+			// gating should pair it with --new-findings-only to scope
+			// to changing code.
 			SuggestedAction: "Add direct tests for this exported behavior or improve test-to-code linkage. " +
 				"For regression-focused gating, use `terrain analyze --baseline <prev> --new-findings-only` " +
 				"so this rule only fires on newly-added untested exports rather than long-standing debt.",
@@ -295,10 +284,9 @@ func isJVMOverrideMethod(name string) bool {
 }
 
 // typeOrSchemaSuffixes are name-suffix conventions for type / schema /
-// configuration declarations. Hand-label on n=250 corpus surfaced ~8-12
-// untestedExport FPs in this category. These are non-callable declarations
-// (Zod schemas, TypeScript type aliases, config interfaces, DTO definitions)
-// — adding unit tests for them isn't expected. Class-rule (≥5 FPs covered).
+// configuration declarations. These are non-callable declarations
+// (Zod schemas, TypeScript type aliases, config interfaces, DTO
+// definitions) — adding unit tests for them isn't expected.
 //
 // PascalCase prefix check is intentional — a function named `parseSchema`
 // (camelCase) does behavior and should NOT be excluded. Only PascalCase

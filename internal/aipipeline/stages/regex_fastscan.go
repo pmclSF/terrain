@@ -10,10 +10,8 @@ import (
 
 // RegexFastscan is Stage 2: context-window regex scanning. It emits
 // lexical atoms when an SDK anchor and a call-form verb co-occur in
-// the same file. This is the Go port of the regex-v2 simulator
-// (`/tmp/regex_v2.py`) ctx-loose+neg composition, which on the
-// 2,651-row corpus reached 10.29% precision at 98% TP retention —
-// a 5pp absolute improvement over AST-aggressive (7.82%).
+// the same file. Uses a context-loose composition with explicit
+// negative atoms for shape suppression.
 //
 // Two derived atoms:
 //

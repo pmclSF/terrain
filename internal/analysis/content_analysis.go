@@ -27,11 +27,10 @@ func analyzeTestFileContentCached(tf *models.TestFile, root string) string {
 	return src
 }
 
-// Assertion-counting patterns. Expanded 2026-05-11 based on a
-// 25-sample hand-label of weakAssertion firings that found 18/25 FPs
-// due to missed assertion vocabulary (test-helper delegation,
-// framework-specific assertion families like chex/chispa/torch.testing,
-// JUnit @Test(expected=) form, Mockito verify() as quasi-assertion).
+// Assertion-counting patterns. Covers test-helper delegation,
+// framework-specific assertion families (chex, chispa, torch.testing,
+// numpy.testing.*, pandas testing.assert_*), JUnit @Test(expected=)
+// form, and Mockito verify() as quasi-assertion.
 var (
 	// JS/TS patterns
 	jsTestPattern   = regexp.MustCompile(`\b(it|test)\s*\(`)
@@ -90,20 +89,21 @@ var (
 			`assertRaises|assertRaisesRegex|assertWarns|assertWarnsRegex|` +
 			`assertIsInstance|assertNotIsInstance|assertIsNone|assertIsNotNone|` +
 			`raises\s*\(|raises_exception\s*\(|` +
-			// 2026-05-18: mock-API assertion family (was missing). Phase B/R2 found
-			// this is the dominant FP class in testsOnlyMocks (1/137 corpus precision),
-			// weakAssertion, assertionFreeImport — files have real assertions but
-			// detector counter only saw bare `assert`. Class-rule (≥40 FPs covered).
+			// Mock-API assertion family — a common false-positive class
+			// for testsOnlyMocks, weakAssertion, and assertionFreeImport
+			// where files have real assertions but the detector counter
+			// only sees bare `assert`.
 			`\.assert_called(?:_with|_once|_once_with|_any_call)?\b|` +
 			`\.assert_not_called\b|\.assert_any_call\b|\.assert_awaited(?:_with|_once|_once_with)?\b|` +
 			`\.assert_has_calls\b|\.assert_not_awaited\b|` +
-			// 2026-05-18: tvm + ML-framework testing helpers (R2 surfaced ~11 FPs
-			// in assertionFreeImport using these).
+			// TVM + ML-framework testing helpers — common in
+			// assertionFreeImport false positives.
 			`tvm\.testing\.assert_|assert_structural_equal|assert_allclose|` +
 			`assert_array_equal|assert_array_almost_equal|assert_frame_equal|` +
 			`assert_series_equal|` +
-			// pytest context-manager assertions (R2: pytest.warns/raises with
-			// context-manager form not always caught).
+			// pytest context-manager assertions (pytest.warns/raises in
+			// context-manager form not always caught by the bare-assert
+			// path).
 			`pytest\.warns\s*\(|pytest\.deprecated_call\s*\(|pytest\.fail\s*\(` +
 			`)`)
 	pyMockPattern = regexp.MustCompile(`\b(mock\.patch|Mock\(|MagicMock\(|@patch)\b`)

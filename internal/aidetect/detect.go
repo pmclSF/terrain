@@ -60,10 +60,10 @@ func Detect(root string) *DetectResult {
 // phases so a caller cancelling between Phase 2 and Phase 3 doesn't
 // pay for the source walk.
 //
-// Track 5.3 — added in 0.2 to prove cancellation through the AI
-// detector path. The pre-0.2 shape (`Detect(root)` only) silently
-// ignored ctx, so a slow AI scan would block until the walk
-// completed even when the calling pipeline had already cancelled.
+// Honors caller cancellation through the AI detector path. The
+// non-context shape (`Detect(root)` only) silently ignores ctx, so a
+// slow AI scan would block until the walk completed even when the
+// calling pipeline had already cancelled.
 func DetectContext(ctx context.Context, root string) *DetectResult {
 	result := &DetectResult{}
 

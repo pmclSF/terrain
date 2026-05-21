@@ -3,9 +3,9 @@
 // One small palette + one symbol set + one severity-badge shape used
 // across every renderer. Terminal output, HTML report, PR-comment
 // markdown, and SARIF tags all consume from here. Ad-hoc styling
-// outside this package is a parity-gate violation (V1 axis); a
-// future linter (Track 10.2) will catch raw ANSI codes / inline
-// styles in user-visible code paths.
+// outside this package is a parity-gate violation; a future linter
+// will catch raw ANSI codes / inline styles in user-visible code
+// paths.
 //
 // Design constraints:
 //
@@ -148,8 +148,7 @@ func SeverityBadge(s Severity) string {
 // other surface where the bracket makes the badge scan more
 // reliably than color (e.g. GitHub-flavored markdown which strips
 // most ANSI color attempts). Used by internal/changescope and
-// related renderers; locked by the unified-PR-comment golden tests
-// (Track 3.5).
+// related renderers; locked by the unified-PR-comment golden tests.
 //
 // Severity strings (lowercase) map to the canonical Severity ladder
 // before rendering; unknown strings produce "[---]" so renderers

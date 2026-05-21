@@ -62,8 +62,8 @@ func safeDetect(reg DetectorRegistration, fn func() []models.Signal) (out []mode
 }
 
 // safeDetectWithBudget wraps safeDetect with a per-detector wall-
-// clock timeout. Track 9.4 — the budget protects the pipeline from
-// any single hung detector blocking the rest.
+// clock timeout. The budget protects the pipeline from any single
+// hung detector blocking the rest.
 //
 // Note: a detector that ignores ctx and runs a tight CPU loop will
 // still complete its work after the budget elapses (Go has no
@@ -107,10 +107,9 @@ func safeDetectWithBudget(reg DetectorRegistration, fn func() []models.Signal) [
 // signalTypeMissingInputDiagnostic is the marker emitted by the
 // registry when a detector's RequiresRuntime / RequiresBaseline /
 // RequiresEvalArtifact flag is set but the snapshot doesn't carry
-// the corresponding input. Track 9.3 — adopters running `terrain
-// analyze` without coverage / baseline / eval artifacts get a
-// single visible diagnostic per affected detector instead of
-// silent zero-output.
+// the corresponding input. Adopters running `terrain analyze`
+// without coverage / baseline / eval artifacts get a single visible
+// diagnostic per affected detector instead of silent zero-output.
 const signalTypeMissingInputDiagnostic = SignalDetectorMissingInput
 
 // missingInputs returns a list of human-readable input-name strings
@@ -167,10 +166,10 @@ func missingInputDiagnostic(meta DetectorMeta, missing []string) models.Signal {
 }
 
 // safeDetectChecked is the registry's canonical detector-invocation
-// path. It composes Track 9.3 (missing-input check) with Track 9.4
-// (per-detector budget) over Track 9.2's panic recovery: input
-// gates first (skip detectors that can't fire), then budget-bounded
-// invocation that delegates to safeDetect for panic handling.
+// path. It composes the missing-input check with the per-detector
+// budget over panic recovery: input gates first (skip detectors that
+// can't fire), then budget-bounded invocation that delegates to
+// safeDetect for panic handling.
 // All call sites in Run / RunWithGraph route through here.
 func safeDetectChecked(reg DetectorRegistration, snap *models.TestSuiteSnapshot, fn func() []models.Signal) []models.Signal {
 	if missing := missingInputs(reg.Meta, snap); len(missing) > 0 {
@@ -256,8 +255,8 @@ type DetectorMeta struct {
 	// Budget is the maximum wall-clock time this detector is allowed
 	// to run before the pipeline cancels it and treats it as a no-op
 	// for the run. Zero means "use the registry default" (see
-	// DefaultDetectorBudget). Track 9.4 — protects analyze runs from
-	// a single hung detector blocking the whole pipeline.
+	// DefaultDetectorBudget). Protects analyze runs from a single
+	// hung detector blocking the whole pipeline.
 	//
 	// When the budget elapses, safeDetectWithBudget emits a
 	// SignalDetectorBudgetExceeded marker so the user sees the
@@ -271,14 +270,14 @@ type DetectorMeta struct {
 	// catches accidental quadratic-or-worse code paths.
 	Budget time.Duration
 
-	// --- Track 9.1 capability metadata ---
+	// --- Capability metadata ---
 	//
 	// The fields below describe what a detector consumes beyond the
 	// in-memory snapshot. They're descriptive (so docs / `terrain
 	// doctor` can surface "this detector needs runtime data") AND
-	// load-bearing (Track 9.3 — when a required input is missing
-	// the registry emits a single per-detector missingInputDiagnostic
-	// instead of silently running a detector that can't fire).
+	// load-bearing: when a required input is missing the registry
+	// emits a single per-detector missingInputDiagnostic instead of
+	// silently running a detector that can't fire.
 	//
 	// All zero values mean "don't require this input", which keeps
 	// the existing detector roster behaving exactly as before. New

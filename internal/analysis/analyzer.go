@@ -193,8 +193,8 @@ func (a *Analyzer) AnalyzeContext(ctx context.Context) (*models.TestSuiteSnapsho
 	// Infer test types (unit, integration, e2e, etc.) with evidence.
 	testCases = testtype.InferAll(testCases)
 
-	// Track 3.3 — Refine integration-test classification using
-	// content-based detection (supertest, httptest, MockMvc, …).
+	// Refine integration-test classification using content-based
+	// detection (supertest, httptest, MockMvc, ...).
 	// Path/suite/framework heuristics miss the common case where
 	// integration tests live in flat directories alongside unit tests
 	// and identify themselves only through HTTP-testing imports.

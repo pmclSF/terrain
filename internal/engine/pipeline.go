@@ -528,8 +528,8 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	// Detects eval frameworks (promptfoo, deepeval, langchain, etc.) and
 	// derives scenarios from eval test files and AI import patterns.
 	// DetectContext respects pipeline cancellation in the source-walk
-	// inner loop — pre-Track 5.3 a slow AI scan would block until the
-	// walk completed even when ctx had been cancelled.
+	// inner loop, so a slow AI scan no longer blocks until the walk
+	// completes when ctx has been cancelled.
 	aiDetection := aidetect.DetectContext(ctx, root)
 	derivedScenarios := aidetect.DeriveEvals(root, aiDetection, snapshot.CodeSurfaces, snapshot.TestFiles)
 	if len(derivedScenarios) > 0 {
