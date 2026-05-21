@@ -106,7 +106,7 @@ ignore:
 - **Test fixtures intentionally using `example.com` / `noreply@example.com`** — `example.com` is RFC-2606 reserved for examples but the regex matches. Mitigation: same.
 - **Measured FP rate at last validation:** see the per-rule readiness card.
 
-The rule's stable status requires false-positive rate ≤ 5% (Wilson 95% lower bound) on the hand-labeled green corpus per dogfood repo. Adopters report false positives via the GitHub issue tracker with the originating snippet.
+Stable rules must clear the FP-rate bar set in the release readiness criteria. Adopters report false positives via the GitHub issue tracker with the originating snippet.
 
 ## 9. Reproducibility
 

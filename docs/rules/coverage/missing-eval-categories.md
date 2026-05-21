@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — fires when eval suite has happy_path coverage but no adversarial / edge_case categories.
+Fires when an eval suite has happy-path coverage but no adversarial or edge-case categories.
 
 ## Evidence sources
 

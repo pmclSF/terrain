@@ -17,7 +17,7 @@ Rotate the leaked credential immediately, then move it to an environment variabl
 
 ## Promotion plan
 
-0.2 — Go-native regex detector ships first; gitleaks library integration is the deeper followup for richer secret vocabulary.
+Stable — Go-native regex detector ships first; richer secret-vocabulary integration is a possible follow-up.
 
 ## Evidence sources
 

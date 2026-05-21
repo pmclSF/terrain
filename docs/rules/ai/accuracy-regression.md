@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-Planned — accuracy axis regression detector. Per-case score data lands in EvalRuns via the airun adapters; detector wiring is the remaining work.
+Planned. Reserved signal type — detector not yet wired.
 
 ## Evidence sources
 

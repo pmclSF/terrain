@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — fires when an Eval has no CoveredSurfaceIDs (references no surface).
+Fires when an eval has no CoveredSurfaceIDs (references no surface).
 
 ## Evidence sources
 

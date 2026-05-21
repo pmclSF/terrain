@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-Planned — depends on a uniform safety-verdict field across Promptfoo / DeepEval / Ragas adapters. The structural counterpart (aiSafetyEvalMissing) shipped earlier.
+Planned. Reserved signal type — runtime detector not yet wired.
 
 ## Evidence sources
 

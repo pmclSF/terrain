@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-Planned
+Planned. Reserved signal type — detector not yet wired.
 
 ## Evidence sources
 

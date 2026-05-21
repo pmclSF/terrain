@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — fires when pipeline output schema changed between baseline and current run.
+Fires when the pipeline output schema has changed between baseline and current run.
 
 ## Evidence sources
 

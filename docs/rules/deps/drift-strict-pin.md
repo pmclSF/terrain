@@ -5,7 +5,7 @@
 **Type:** `depsDriftRisk-strict-pin`  
 **Domain:** quality  
 **Default severity:** medium  
-**Status:** experimental
+**Status:** planned
 
 ## Summary
 

@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — fires when first-request latency exceeds configured threshold (e.g., 2× P50).
+Fires when first-request latency exceeds the configured threshold (e.g., 2x P50).
 
 ## Evidence sources
 

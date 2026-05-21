@@ -17,7 +17,7 @@ Add eval scenarios that exercise this capability to ensure behavioral regression
 
 ## Promotion plan
 
-Capability inference is heuristic in 0.1.2; 0.2 introduces the AI taxonomy v2 with explicit capability tags so this signal can fire only on declared capabilities, eliminating false positives. Promote once precision >=0.8.
+Capability inference is heuristic; promote to gate-tier once the AI taxonomy supports explicit capability tags and validated precision meets the gate-tier bar.
 
 ## Evidence sources
 

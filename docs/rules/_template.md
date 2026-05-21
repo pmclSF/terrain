@@ -112,7 +112,7 @@ Known patterns where the rule trips falsely, and how to handle them.
 - **Pattern B:** [describe]. [same shape]
 - **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag.
 
-The rule's stable status requires false-positive rate ≤ 5% (Wilson 95% lower bound) on the hand-labeled green corpus per dogfood repo. If you encounter a sustained FP pattern outside the documented ones, file a GitHub issue with reproducer.
+Stable rules must clear the FP-rate bar set in the release readiness criteria. If you encounter a sustained FP pattern outside the documented ones, file a GitHub issue with a reproducer.
 
 ## 9. Reproducibility
 

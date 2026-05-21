@@ -5,7 +5,7 @@
 **Type:** `depsDriftRisk-caret-policy`  
 **Domain:** quality  
 **Default severity:** low  
-**Status:** experimental
+**Status:** planned
 
 ## Summary
 

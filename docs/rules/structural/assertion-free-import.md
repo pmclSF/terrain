@@ -17,7 +17,7 @@ Add assertions to validate behavior or remove tests that verify nothing.
 
 ## Promotion plan
 
-Gate-tier requires: (1) A1 multi-dialect assertion oracle + path-role test gate, (2) cross-file inherited-assertion resolution, (3) framing test flip <15%.
+Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role test gate, cross-file inherited-assertion resolution, and framing-stable evaluation.
 
 ## Evidence sources
 

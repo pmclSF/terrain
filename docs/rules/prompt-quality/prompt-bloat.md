@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — fires when prompt token count exceeds configured budget. Calibrated against dogfood corpus before promotion.
+Fires when prompt token count exceeds the configured budget.
 
 ## Evidence sources
 

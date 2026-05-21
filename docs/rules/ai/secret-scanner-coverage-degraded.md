@@ -17,7 +17,7 @@ Enable a secret scanner in CI and document its coverage in the project README. R
 
 ## Promotion plan
 
-Planned — pairs with aiHardcodedAPIKey-literal-shape to cover both the in-repo signal and the CI-integration gap.
+Planned. Reserved signal type for the CI-integration gap that pairs with the in-repo key-shape detector.
 
 ## Evidence sources
 

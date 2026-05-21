@@ -5,7 +5,7 @@
 **Type:** `staticSkippedTest-unconditional`  
 **Domain:** quality  
 **Default severity:** low  
-**Status:** experimental
+**Status:** planned
 
 ## Summary
 

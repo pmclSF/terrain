@@ -17,7 +17,7 @@ Address blockers incrementally before broad migration changes.
 
 ## Promotion plan
 
-Refresh trigger set to mocha→jest, jasmine→jest, unittest→pytest after confirming base rate ≥5 per 100 repos. Drop enzyme sub-rule entirely; AI corpus has zero enzyme migrations remaining.
+Observability-tier. Refresh the trigger set to living migration patterns and drop the enzyme sub-rule once base rates are confirmed.
 
 ## Evidence sources
 

@@ -17,7 +17,7 @@ Add assertions on outputs, state changes, or side effects to validate real behav
 
 ## Promotion plan
 
-Rebuild as repo-aggregate posture metric. Per-file detection blocked by assertion-counter blindness (caught only bare `assert`); A1 multi-dialect oracle would lift to ~55-70% but TP base rate is fundamental ceiling.
+Observability-tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting.
 
 ## Evidence sources
 

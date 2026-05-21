@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — fires when LLM SDK call has no temperature= kwarg. Defaults differ across SDKs; explicit value is reproducibility-critical.
+Fires when an LLM SDK call has no temperature kwarg. Defaults differ across SDKs; an explicit value is reproducibility-critical.
 
 ## Evidence sources
 

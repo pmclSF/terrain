@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — fires when vector store is initialized but no index population call exists in the same module.
+Fires when a vector store is initialized but no index-population call exists in the same module.
 
 ## Evidence sources
 

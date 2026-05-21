@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; hand-validated against documented public agent-loop incidents.
+Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; validated against documented public agent-loop incidents.
 
 ## Evidence sources
 

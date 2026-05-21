@@ -17,7 +17,7 @@ Replace brittle mocks with real collaborators where practical.
 
 ## Promotion plan
 
-Underlying hypothesis empirically refuted (corpus lift 0.02x). Framing-instability confirmed. Rebuild requires a mock-classifier distinguishing module vs callback mocks. Defer or remove.
+Observability-tier. Rebuild requires a mock-classifier distinguishing module vs callback mocks.
 
 ## Evidence sources
 

@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-Planned — depends on airun adapters surfacing parse-error buckets distinct from assertion-failure buckets (currently lumped into Failures).
+Planned. Reserved signal type — runtime detector not yet wired.
 
 ## Evidence sources
 

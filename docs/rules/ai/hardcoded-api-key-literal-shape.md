@@ -5,11 +5,11 @@
 **Type:** `aiHardcodedAPIKey-literal-shape`  
 **Domain:** ai  
 **Default severity:** high  
-**Status:** experimental
+**Status:** planned
 
 ## Summary
 
-An API-key-shaped string (e.g. AKIA-prefix, sk-prefix, ghp_-prefix) appears verbatim in an eval, prompt, or agent definition file. Pairs with secretScannerCoverageDegraded, which flags the absence of a CI-side secret scanner.
+An API-key-shaped string appears verbatim in an eval, prompt, or agent definition file. Pairs with the CI-coverage counterpart, secretScannerCoverageDegraded.
 
 ## Remediation
 
@@ -17,7 +17,7 @@ Move the secret to an environment variable or secrets store and reference it via
 
 ## Promotion plan
 
-Promotes to stable once secretScannerCoverageDegraded (the CI-coverage counterpart) ships at gate tier.
+Planned. Reserved signal type — the literal-shape half of the API-key split; detector not yet wired.
 
 ## Evidence sources
 

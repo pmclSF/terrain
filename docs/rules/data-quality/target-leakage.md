@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — feature column derived from target column (e.g., y_lag1 in features after target encoding).
+Fires when a feature column is derived from the target column (e.g., y_lag1 in features after target encoding).
 
 ## Evidence sources
 

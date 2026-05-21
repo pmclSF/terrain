@@ -123,7 +123,7 @@
       ],
       "ruleId": "terrain/hygiene/weak-assertion",
       "ruleUri": "docs/rules/hygiene/weak-assertion.md",
-      "promotionPlan": "Detector is regex/density-based; AST-based semantic scoring lands in a future release alongside the calibration corpus. Gate-tier promotion requires explicit policy threshold (e.g., user-declared strict-vs-pragmatic mode) AND framing-test flip \u003c15%."
+      "promotionPlan": "Observability-tier. Gate-tier promotion requires an explicit user-declared policy threshold and framing-stable evaluation."
     },
     {
       "type": "mockHeavyTest",
@@ -142,7 +142,7 @@
       ],
       "ruleId": "terrain/hygiene/mock-heavy",
       "ruleUri": "docs/rules/hygiene/mock-heavy.md",
-      "promotionPlan": "Underlying hypothesis empirically refuted (corpus lift 0.02x). Framing-instability confirmed. Rebuild requires a mock-classifier distinguishing module vs callback mocks. Defer or remove."
+      "promotionPlan": "Observability-tier. Rebuild requires a mock-classifier distinguishing module vs callback mocks."
     },
     {
       "type": "testsOnlyMocks",
@@ -161,7 +161,7 @@
       ],
       "ruleId": "terrain/quality/tests-only-mocks",
       "ruleUri": "docs/rules/quality/tests-only-mocks.md",
-      "promotionPlan": "Rebuild as repo-aggregate posture metric. Per-file detection blocked by assertion-counter blindness (caught only bare `assert`); A1 multi-dialect oracle would lift to ~55-70% but TP base rate is fundamental ceiling."
+      "promotionPlan": "Observability-tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting."
     },
     {
       "type": "snapshotHeavyTest",
@@ -180,7 +180,7 @@
       ],
       "ruleId": "terrain/hygiene/snapshot-heavy",
       "ruleUri": "docs/rules/hygiene/snapshot-heavy.md",
-      "promotionPlan": "Gate-tier promotion gated on: (1) n=200+ from ≥40 unique repos; (2) framing flip \u003c15% under threshold-conjunction (snap≥2 AND ratio≥0.3); (3) explicit user-facing policy declaration."
+      "promotionPlan": "Observability-tier. Gate-tier promotion requires a broader corpus and a framing-stable threshold (e.g. snap\u003e=2 AND ratio\u003e=0.3) plus an explicit user-facing policy declaration."
     },
     {
       "type": "coverageBlindSpot",
@@ -239,7 +239,7 @@
       "type": "staticSkippedTest-unconditional",
       "constName": "SignalStaticSkippedTestUnconditional",
       "domain": "quality",
-      "status": "experimental",
+      "status": "planned",
       "title": "Static Skipped Test — Unconditional",
       "description": "A test is statically marked as skipped without any surrounding environment / feature-flag gate. The skip is permanent until the marker is removed.",
       "remediation": "Re-enable, replace, or delete the test. Add a comment explaining why if the skip should persist.",
@@ -257,7 +257,7 @@
       "type": "staticSkippedTest-conditional-gate",
       "constName": "SignalStaticSkippedTestConditionalGate",
       "domain": "quality",
-      "status": "experimental",
+      "status": "planned",
       "title": "Conditionally-Skipped Test (informational)",
       "description": "A test is statically marked as skipped, but the skip is wrapped by an environment, feature-flag, or platform predicate. The skip is intentional and gated by code. This finding is informational — no action is required unless the gate condition itself is wrong.",
       "remediation": "Audit the gate condition periodically. CI should run the test on platforms or branches where the gate evaluates to false.",
@@ -288,7 +288,7 @@
       ],
       "ruleId": "terrain/hygiene/no-assertions",
       "ruleUri": "docs/rules/hygiene/no-assertions.md",
-      "promotionPlan": "Gate-tier requires: (1) regex-floor lift to 70%+ precision, (2) A3 path-role gate to exclude conftest/fixtures/commented-out, (3) framing test flip \u003c15%."
+      "promotionPlan": "Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role gate that excludes conftest/fixtures/commented-out tests, and framing-stable evaluation."
     },
     {
       "type": "orphanedTestFile",
@@ -329,7 +329,7 @@
       "type": "depsDriftRisk-strict-pin",
       "constName": "SignalDepsDriftRiskStrictPin",
       "domain": "quality",
-      "status": "experimental",
+      "status": "planned",
       "title": "Unpinned Dependency",
       "description": "One or more dependencies are declared without an explicit version anchor (bare name, `*`, `latest`, or unversioned URL). The resolver picks whatever happens to be available at install time, so installs are not reproducible across runs.",
       "remediation": "Add an explicit version, version range, or lockfile-verification gate so installs are reproducible.",
@@ -347,7 +347,7 @@
       "type": "depsDriftRisk-caret-policy",
       "constName": "SignalDepsDriftRiskCaretPolicy",
       "domain": "quality",
-      "status": "experimental",
+      "status": "planned",
       "title": "Caret-Range Dependency Drift",
       "description": "Dependencies use caret-range specs (`^x.y.z`) in an ecosystem where caret semantics let minor versions drift silently (npm, Poetry, and Cargo each interpret caret differently). The runtime version can change without a manifest edit.",
       "remediation": "Adopt a stricter pinning policy (tilde, exact, or commit-pinned) where minor-version drift would silently affect runtime behavior.",
@@ -432,7 +432,7 @@
       ],
       "ruleId": "terrain/migration/migration-blocker",
       "ruleUri": "docs/rules/migration/migration-blocker.md",
-      "promotionPlan": "Refresh trigger set to mocha→jest, jasmine→jest, unittest→pytest after confirming base rate ≥5 per 100 repos. Drop enzyme sub-rule entirely; AI corpus has zero enzyme migrations remaining."
+      "promotionPlan": "Observability-tier. Refresh the trigger set to living migration patterns and drop the enzyme sub-rule once base rates are confirmed."
     },
     {
       "type": "deprecatedTestPattern",
@@ -451,7 +451,7 @@
       ],
       "ruleId": "terrain/migration/deprecated-pattern",
       "ruleUri": "docs/rules/migration/deprecated-pattern.md",
-      "promotionPlan": "Drop enzyme sub-rule; refresh trigger set; setTimeout sub-rule needs A3 scope gate (jest.setTimeout config vs bare setTimeout in test body). Path-role gate to exclude fuzzer/fixture/comment-only matches."
+      "promotionPlan": "Observability-tier. Drop the enzyme sub-rule, refresh the trigger set, and add a scope gate distinguishing jest.setTimeout from bare setTimeout in a test body."
     },
     {
       "type": "dynamicTestGeneration",
@@ -685,7 +685,7 @@
       ],
       "ruleId": "terrain/structural/assertion-free-import",
       "ruleUri": "docs/rules/structural/assertion-free-import.md",
-      "promotionPlan": "Gate-tier requires: (1) A1 multi-dialect assertion oracle + path-role test gate, (2) cross-file inherited-assertion resolution, (3) framing test flip \u003c15%."
+      "promotionPlan": "Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role test gate, cross-file inherited-assertion resolution, and framing-stable evaluation."
     },
     {
       "type": "capabilityValidationGap",
@@ -705,7 +705,7 @@
       ],
       "ruleId": "terrain/structural/capability-gap",
       "ruleUri": "docs/rules/structural/capability-gap.md",
-      "promotionPlan": "Capability inference is heuristic in 0.1.2; 0.2 introduces the AI taxonomy v2 with explicit capability tags so this signal can fire only on declared capabilities, eliminating false positives. Promote once precision \u003e=0.8."
+      "promotionPlan": "Capability inference is heuristic; promote to gate-tier once the AI taxonomy supports explicit capability tags and validated precision meets the gate-tier bar."
     },
     {
       "type": "evalFailure",
@@ -723,7 +723,7 @@
       ],
       "ruleId": "terrain/ai/eval-failure",
       "ruleUri": "docs/rules/ai/eval-failure.md",
-      "promotionPlan": "Planned — generic per-case failure surfacing on top of airun eval ingestion. Today's per-case failures route through the specific aiHallucinationRate / aiCostRegression / aiRetrievalRegression detectors."
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "evalRegression",
@@ -757,7 +757,7 @@
       ],
       "ruleId": "terrain/ai/accuracy-regression",
       "ruleUri": "docs/rules/ai/accuracy-regression.md",
-      "promotionPlan": "Planned — accuracy axis regression detector. Per-case score data lands in EvalRuns via the airun adapters; detector wiring is the remaining work."
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "citationMissing",
@@ -774,7 +774,7 @@
       ],
       "ruleId": "terrain/ai/citation-missing",
       "ruleUri": "docs/rules/ai/citation-missing.md",
-      "promotionPlan": "Planned — RAG-specific detectors."
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "retrievalMiss",
@@ -791,7 +791,7 @@
       ],
       "ruleId": "terrain/ai/retrieval-miss",
       "ruleUri": "docs/rules/ai/retrieval-miss.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "answerGroundingFailure",
@@ -808,7 +808,7 @@
       ],
       "ruleId": "terrain/ai/grounding-failure",
       "ruleUri": "docs/rules/ai/grounding-failure.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "toolSelectionError",
@@ -825,7 +825,7 @@
       ],
       "ruleId": "terrain/ai/tool-selection-error",
       "ruleUri": "docs/rules/ai/tool-selection-error.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "schemaParseFailure",
@@ -842,7 +842,7 @@
       ],
       "ruleId": "terrain/ai/schema-parse-failure",
       "ruleUri": "docs/rules/ai/schema-parse-failure.md",
-      "promotionPlan": "Planned — depends on airun adapters surfacing parse-error buckets distinct from assertion-failure buckets (currently lumped into Failures)."
+      "promotionPlan": "Planned. Reserved signal type — runtime detector not yet wired."
     },
     {
       "type": "safetyFailure",
@@ -860,7 +860,7 @@
       ],
       "ruleId": "terrain/ai/safety-failure",
       "ruleUri": "docs/rules/ai/safety-failure.md",
-      "promotionPlan": "Planned — depends on a uniform safety-verdict field across Promptfoo / DeepEval / Ragas adapters. The structural counterpart (aiSafetyEvalMissing) shipped earlier."
+      "promotionPlan": "Planned. Reserved signal type — runtime detector not yet wired."
     },
     {
       "type": "aiPolicyViolation",
@@ -877,7 +877,7 @@
       ],
       "ruleId": "terrain/ai/ai-policy-violation",
       "ruleUri": "docs/rules/ai/ai-policy-violation.md",
-      "promotionPlan": "0.2"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "hallucinationDetected",
@@ -894,7 +894,7 @@
       ],
       "ruleId": "terrain/ai/hallucination",
       "ruleUri": "docs/rules/ai/hallucination.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "latencyRegression",
@@ -911,7 +911,7 @@
       ],
       "ruleId": "terrain/ai/latency-regression",
       "ruleUri": "docs/rules/ai/latency-regression.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "costRegression",
@@ -928,7 +928,7 @@
       ],
       "ruleId": "terrain/ai/cost-regression-umbrella",
       "ruleUri": "docs/rules/ai/cost-regression-umbrella.md",
-      "promotionPlan": "Planned — generic cost-regression umbrella that absorbs the prompt-specific terrain/ai/cost-regression detector."
+      "promotionPlan": "Planned. Reserved signal type — generic cost-regression umbrella; not yet wired."
     },
     {
       "type": "contextOverflowRisk",
@@ -946,7 +946,7 @@
       ],
       "ruleId": "terrain/ai/context-overflow",
       "ruleUri": "docs/rules/ai/context-overflow.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "wrongSourceSelected",
@@ -963,7 +963,7 @@
       ],
       "ruleId": "terrain/ai/wrong-source",
       "ruleUri": "docs/rules/ai/wrong-source.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "citationMismatch",
@@ -980,7 +980,7 @@
       ],
       "ruleId": "terrain/ai/citation-mismatch",
       "ruleUri": "docs/rules/ai/citation-mismatch.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "staleSourceRisk",
@@ -997,7 +997,7 @@
       ],
       "ruleId": "terrain/ai/stale-source",
       "ruleUri": "docs/rules/ai/stale-source.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "chunkingRegression",
@@ -1014,7 +1014,7 @@
       ],
       "ruleId": "terrain/ai/chunking-regression",
       "ruleUri": "docs/rules/ai/chunking-regression.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "rerankerRegression",
@@ -1031,7 +1031,7 @@
       ],
       "ruleId": "terrain/ai/reranker-regression",
       "ruleUri": "docs/rules/ai/reranker-regression.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "topKRegression",
@@ -1048,7 +1048,7 @@
       ],
       "ruleId": "terrain/ai/topk-regression",
       "ruleUri": "docs/rules/ai/topk-regression.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "toolRoutingError",
@@ -1065,7 +1065,7 @@
       ],
       "ruleId": "terrain/ai/tool-routing-error",
       "ruleUri": "docs/rules/ai/tool-routing-error.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "toolGuardrailViolation",
@@ -1083,7 +1083,7 @@
       ],
       "ruleId": "terrain/ai/tool-guardrail",
       "ruleUri": "docs/rules/ai/tool-guardrail.md",
-      "promotionPlan": "0.2 — tools-without-sandbox detection."
+      "promotionPlan": "Planned. Reserved signal type for runtime tool-guardrail violations; the structural side ships as aiToolWithoutSandbox."
     },
     {
       "type": "toolBudgetExceeded",
@@ -1101,7 +1101,7 @@
       ],
       "ruleId": "terrain/ai/tool-budget",
       "ruleUri": "docs/rules/ai/tool-budget.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "agentFallbackTriggered",
@@ -1118,7 +1118,7 @@
       ],
       "ruleId": "terrain/ai/agent-fallback",
       "ruleUri": "docs/rules/ai/agent-fallback.md",
-      "promotionPlan": "Planned"
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "aiSafetyEvalMissing",
@@ -1200,10 +1200,10 @@
       "type": "aiHardcodedAPIKey-literal-shape",
       "constName": "SignalAIHardcodedAPIKeyLiteralShape",
       "domain": "ai",
-      "status": "experimental",
+      "status": "planned",
       "tier": "observability",
       "title": "Hard-Coded API Key in Source",
-      "description": "An API-key-shaped string (e.g. AKIA-prefix, sk-prefix, ghp_-prefix) appears verbatim in an eval, prompt, or agent definition file. Pairs with secretScannerCoverageDegraded, which flags the absence of a CI-side secret scanner.",
+      "description": "An API-key-shaped string appears verbatim in an eval, prompt, or agent definition file. Pairs with the CI-coverage counterpart, secretScannerCoverageDegraded.",
       "remediation": "Move the secret to an environment variable or secrets store and reference it via the runner's secret-resolution path.",
       "defaultSeverity": "high",
       "confidenceMin": 0.75,
@@ -1213,7 +1213,7 @@
       ],
       "ruleId": "terrain/ai/hardcoded-api-key-literal-shape",
       "ruleUri": "docs/rules/ai/hardcoded-api-key-literal-shape.md",
-      "promotionPlan": "Promotes to stable once secretScannerCoverageDegraded (the CI-coverage counterpart) ships at gate tier."
+      "promotionPlan": "Planned. Reserved signal type — the literal-shape half of the API-key split; detector not yet wired."
     },
     {
       "type": "secretScannerCoverageDegraded",
@@ -1231,7 +1231,7 @@
       ],
       "ruleId": "terrain/ai/secret-scanner-coverage-degraded",
       "ruleUri": "docs/rules/ai/secret-scanner-coverage-degraded.md",
-      "promotionPlan": "Planned — pairs with aiHardcodedAPIKey-literal-shape to cover both the in-repo signal and the CI-integration gap."
+      "promotionPlan": "Planned. Reserved signal type for the CI-integration gap that pairs with the in-repo key-shape detector."
     },
     {
       "type": "aiToolWithoutSandbox",
@@ -1474,7 +1474,7 @@
       ],
       "ruleId": "terrain/hygiene/secrets-in-prompt",
       "ruleUri": "docs/rules/hygiene/secrets-in-prompt.md",
-      "promotionPlan": "0.2 — Go-native regex detector ships first; gitleaks library integration is the deeper followup for richer secret vocabulary."
+      "promotionPlan": "Stable — Go-native regex detector ships first; richer secret-vocabulary integration is a possible follow-up."
     },
     {
       "type": "noTestsForCodeUnit",
@@ -1815,7 +1815,7 @@
       ],
       "ruleId": "terrain/prompt-quality/prompt-bloat",
       "ruleUri": "docs/rules/prompt-quality/prompt-bloat.md",
-      "promotionPlan": "0.2 — fires when prompt token count exceeds configured budget. Calibrated against dogfood corpus before promotion."
+      "promotionPlan": "Fires when prompt token count exceeds the configured budget."
     },
     {
       "type": "promptWithoutTemperature",
@@ -1832,7 +1832,7 @@
       ],
       "ruleId": "terrain/prompt-quality/prompt-without-temperature",
       "ruleUri": "docs/rules/prompt-quality/prompt-without-temperature.md",
-      "promotionPlan": "0.2 — fires when LLM SDK call has no temperature= kwarg. Defaults differ across SDKs; explicit value is reproducibility-critical."
+      "promotionPlan": "Fires when an LLM SDK call has no temperature kwarg. Defaults differ across SDKs; an explicit value is reproducibility-critical."
     },
     {
       "type": "missingPromptValidator",
@@ -1849,7 +1849,7 @@
       ],
       "ruleId": "terrain/prompt-quality/missing-validator",
       "ruleUri": "docs/rules/prompt-quality/missing-validator.md",
-      "promotionPlan": "0.2 — fires when prompt template has no instructor / guardrails / pydantic output schema."
+      "promotionPlan": "Fires when a prompt template has no output-validator schema attached."
     },
     {
       "type": "promptVersionSkew",
@@ -1866,7 +1866,7 @@
       ],
       "ruleId": "terrain/prompt-quality/version-skew",
       "ruleUri": "docs/rules/prompt-quality/version-skew.md",
-      "promotionPlan": "0.2 — detects when same prompt template referenced by multiple eval scenarios under different version names."
+      "promotionPlan": "Detects when the same prompt template is referenced by multiple eval scenarios under different version names."
     },
     {
       "type": "retrievalWithoutRerank",
@@ -1883,7 +1883,7 @@
       ],
       "ruleId": "terrain/retrieval-quality/no-rerank",
       "ruleUri": "docs/rules/retrieval-quality/no-rerank.md",
-      "promotionPlan": "0.2 — flags retrieval pipelines with top_k \u003e 5 and no reranker."
+      "promotionPlan": "Flags retrieval pipelines with top_k \u003e 5 and no reranker."
     },
     {
       "type": "coldVectorStore",
@@ -1900,7 +1900,7 @@
       ],
       "ruleId": "terrain/retrieval-quality/cold-store",
       "ruleUri": "docs/rules/retrieval-quality/cold-store.md",
-      "promotionPlan": "0.2 — fires when vector store is initialized but no index population call exists in the same module."
+      "promotionPlan": "Fires when a vector store is initialized but no index-population call exists in the same module."
     },
     {
       "type": "agentLoopRisk",
@@ -1917,7 +1917,7 @@
       ],
       "ruleId": "terrain/agent-quality/loop-risk",
       "ruleUri": "docs/rules/agent-quality/loop-risk.md",
-      "promotionPlan": "Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; hand-validated against documented public agent-loop incidents."
+      "promotionPlan": "Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; validated against documented public agent-loop incidents."
     },
     {
       "type": "toolWithoutBudget",
@@ -1934,7 +1934,7 @@
       ],
       "ruleId": "terrain/agent-quality/tool-no-budget",
       "ruleUri": "docs/rules/agent-quality/tool-no-budget.md",
-      "promotionPlan": "0.2 — tool-call-enabled agent with no rate limit / cost ceiling configured."
+      "promotionPlan": "Fires when a tool-call-enabled agent has no rate limit or cost ceiling configured."
     },
     {
       "type": "targetLeakage",
@@ -1951,7 +1951,7 @@
       ],
       "ruleId": "terrain/data-quality/target-leakage",
       "ruleUri": "docs/rules/data-quality/target-leakage.md",
-      "promotionPlan": "0.2 — feature column derived from target column (e.g., y_lag1 in features after target encoding)."
+      "promotionPlan": "Fires when a feature column is derived from the target column (e.g., y_lag1 in features after target encoding)."
     },
     {
       "type": "duplicateEvalRows",
@@ -1968,7 +1968,7 @@
       ],
       "ruleId": "terrain/data-quality/duplicate-rows",
       "ruleUri": "docs/rules/data-quality/duplicate-rows.md",
-      "promotionPlan": "0.2 — fires when eval dataset has \u003e5% duplicate input rows."
+      "promotionPlan": "Fires when an eval dataset has more than 5% duplicate input rows."
     },
     {
       "type": "schemaDrift",
@@ -1985,7 +1985,7 @@
       ],
       "ruleId": "terrain/data-quality/schema-drift",
       "ruleUri": "docs/rules/data-quality/schema-drift.md",
-      "promotionPlan": "0.2 — fires when pipeline output schema changed between baseline and current run."
+      "promotionPlan": "Fires when the pipeline output schema has changed between baseline and current run."
     },
     {
       "type": "missingEvalCategories",
@@ -2002,7 +2002,7 @@
       ],
       "ruleId": "terrain/coverage/missing-eval-categories",
       "ruleUri": "docs/rules/coverage/missing-eval-categories.md",
-      "promotionPlan": "0.2 — fires when eval suite has happy_path coverage but no adversarial / edge_case categories."
+      "promotionPlan": "Fires when an eval suite has happy-path coverage but no adversarial or edge-case categories."
     },
     {
       "type": "orphanedEval",
@@ -2019,7 +2019,7 @@
       ],
       "ruleId": "terrain/coverage/orphaned-eval",
       "ruleUri": "docs/rules/coverage/orphaned-eval.md",
-      "promotionPlan": "0.2 — fires when an Eval has no CoveredSurfaceIDs (references no surface)."
+      "promotionPlan": "Fires when an eval has no CoveredSurfaceIDs (references no surface)."
     },
     {
       "type": "coldStartTime",
@@ -2036,7 +2036,7 @@
       ],
       "ruleId": "terrain/performance/cold-start-time",
       "ruleUri": "docs/rules/performance/cold-start-time.md",
-      "promotionPlan": "0.2 — fires when first-request latency exceeds configured threshold (e.g., 2× P50)."
+      "promotionPlan": "Fires when first-request latency exceeds the configured threshold (e.g., 2x P50)."
     },
     {
       "type": "tokenCostBudget",
@@ -2053,7 +2053,7 @@
       ],
       "ruleId": "terrain/performance/token-cost-budget",
       "ruleUri": "docs/rules/performance/token-cost-budget.md",
-      "promotionPlan": "0.2 — fires when per-run token cost exceeds configured ceiling."
+      "promotionPlan": "Fires when per-run token cost exceeds the configured ceiling."
     }
   ]
 }

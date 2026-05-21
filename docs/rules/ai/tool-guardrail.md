@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — tools-without-sandbox detection.
+Planned. Reserved signal type for runtime tool-guardrail violations; the structural side ships as aiToolWithoutSandbox.
 
 ## Evidence sources
 

@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-Planned — generic cost-regression umbrella that absorbs the prompt-specific terrain/ai/cost-regression detector.
+Planned. Reserved signal type — generic cost-regression umbrella; not yet wired.
 
 ## Evidence sources
 

@@ -17,7 +17,7 @@ Investigate the failing case in the eval framework's report and patch the prompt
 
 ## Promotion plan
 
-Planned — generic per-case failure surfacing on top of airun eval ingestion. Today's per-case failures route through the specific aiHallucinationRate / aiCostRegression / aiRetrievalRegression detectors.
+Planned. Reserved signal type — detector not yet wired.
 
 ## Evidence sources
 

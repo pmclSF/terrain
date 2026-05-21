@@ -17,7 +17,7 @@ Supplement snapshots with targeted assertions on critical behavior.
 
 ## Promotion plan
 
-Gate-tier promotion gated on: (1) n=200+ from ≥40 unique repos; (2) framing flip <15% under threshold-conjunction (snap≥2 AND ratio≥0.3); (3) explicit user-facing policy declaration.
+Observability-tier. Gate-tier promotion requires a broader corpus and a framing-stable threshold (e.g. snap>=2 AND ratio>=0.3) plus an explicit user-facing policy declaration.
 
 ## Evidence sources
 

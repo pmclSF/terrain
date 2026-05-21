@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — fires when prompt template has no instructor / guardrails / pydantic output schema.
+Fires when a prompt template has no output-validator schema attached.
 
 ## Evidence sources
 

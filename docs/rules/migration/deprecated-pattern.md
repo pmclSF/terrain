@@ -17,7 +17,7 @@ Replace deprecated APIs with supported alternatives.
 
 ## Promotion plan
 
-Drop enzyme sub-rule; refresh trigger set; setTimeout sub-rule needs A3 scope gate (jest.setTimeout config vs bare setTimeout in test body). Path-role gate to exclude fuzzer/fixture/comment-only matches.
+Observability-tier. Drop the enzyme sub-rule, refresh the trigger set, and add a scope gate distinguishing jest.setTimeout from bare setTimeout in a test body.
 
 ## Evidence sources
 

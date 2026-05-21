@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — tool-call-enabled agent with no rate limit / cost ceiling configured.
+Fires when a tool-call-enabled agent has no rate limit or cost ceiling configured.
 
 ## Evidence sources
 

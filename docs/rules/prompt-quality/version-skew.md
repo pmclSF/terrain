@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — detects when same prompt template referenced by multiple eval scenarios under different version names.
+Detects when the same prompt template is referenced by multiple eval scenarios under different version names.
 
 ## Evidence sources
 

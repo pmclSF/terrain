@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — fires when eval dataset has >5% duplicate input rows.
+Fires when an eval dataset has more than 5% duplicate input rows.
 
 ## Evidence sources
 

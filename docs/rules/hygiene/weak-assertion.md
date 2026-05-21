@@ -17,7 +17,7 @@ Add behavior-focused assertions on outputs, state transitions, and side effects.
 
 ## Promotion plan
 
-Detector is regex/density-based; AST-based semantic scoring lands in a future release alongside the calibration corpus. Gate-tier promotion requires explicit policy threshold (e.g., user-declared strict-vs-pragmatic mode) AND framing-test flip <15%.
+Observability-tier. Gate-tier promotion requires an explicit user-declared policy threshold and framing-stable evaluation.
 
 ## Evidence sources
 

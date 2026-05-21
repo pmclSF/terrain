@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — fires when per-run token cost exceeds configured ceiling.
+Fires when per-run token cost exceeds the configured ceiling.
 
 ## Evidence sources
 

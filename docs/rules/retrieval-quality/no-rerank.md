@@ -9,7 +9,7 @@
 
 ## Promotion plan
 
-0.2 — flags retrieval pipelines with top_k > 5 and no reranker.
+Flags retrieval pipelines with top_k > 5 and no reranker.
 
 ## Evidence sources
 
