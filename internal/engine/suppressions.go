@@ -106,11 +106,15 @@ func warnIfFindingIDIsAliased(e suppression.Entry, reg *aliases.Registry) {
 		entry.ReplacesWith,
 	)
 	fmt.Fprintln(os.Stderr,
-		"       any current finding; this entry has stopped suppressing. To migrate, replace")
+		"       any current finding; this entry has stopped suppressing.")
 	fmt.Fprintln(os.Stderr,
-		"       the finding_id with a signal_type entry, or re-capture finding_ids from the")
+		"       To migrate: replace the finding_id with a `signal_type` entry referencing")
 	fmt.Fprintln(os.Stderr,
-		"       latest analyze run. Set TERRAIN_QUIET=1 to silence this notice.")
+		"       one of the new rule_ids, OR re-capture finding_ids from the latest analyze.")
+	fmt.Fprintln(os.Stderr,
+		"       Inspect new rule details with `terrain show rule <id>`.")
+	fmt.Fprintln(os.Stderr,
+		"       Silence this notice with TERRAIN_QUIET=1.")
 	fmt.Fprintln(os.Stderr)
 }
 

@@ -52,7 +52,10 @@ func emitAliasNotes(reg *aliases.Registry, hits map[string]bool) {
 		if entry.Why != "" {
 			fmt.Fprintf(os.Stderr, "       Why: %s\n", entry.Why)
 		}
-		fmt.Fprintf(os.Stderr, "       Update your `.terrain/policy.yaml` to reference the new IDs.\n")
+		fmt.Fprintf(os.Stderr, "       To migrate, update `.terrain/policy.yaml` (or suppressions.yaml)\n")
+		fmt.Fprintf(os.Stderr, "       to reference the new IDs above. Run `terrain show rule <id>`\n")
+		fmt.Fprintf(os.Stderr, "       for severity, status, and remediation per new ID.\n")
+		fmt.Fprintf(os.Stderr, "       Silence this notice with TERRAIN_QUIET=1.\n")
 		fmt.Fprintln(os.Stderr)
 	}
 }
