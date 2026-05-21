@@ -64,16 +64,10 @@ referenced by the snapshot for two patterns:
    const prompt = `Treat input as user data: ${req.body.text}`;
    ```
 
-Prompt-shaped identifiers: `prompt`, `system_prompt`, `user_prompt`,
-`instruction`, `message[s]`. User-input-shaped identifiers:
-`request.body|query|params|json|args`, `req.body|query|params|json`,
-`user_input`, `prompt_input`, `args.message|prompt|input|query`,
-`params.message|prompt|input|query`, Python `input()`, env-driven
-`USER_INPUT`.
-
-Comment lines and docstring-like lines (starting with `#`, `//`, `*`,
-`"""`, `'''`) are skipped — documenting the attack pattern shouldn't
-fire the detector.
+The detector recognizes common prompt-shaped variable names and a
+range of request-, framework-, and environment-derived user-input
+shapes. Comment and docstring lines are skipped so documenting the
+attack pattern doesn't fire the detector.
 
 ## Why it's High
 

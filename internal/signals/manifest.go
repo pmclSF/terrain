@@ -376,7 +376,7 @@ var allSignalManifest = []ManifestEntry{
 	},
 	{
 		Type: SignalStaticSkippedTestUnconditional, ConstName: "SignalStaticSkippedTestUnconditional",
-		Domain: models.CategoryQuality, Status: StatusExperimental,
+		Domain: models.CategoryQuality, Status: StatusPlanned,
 		Title:           "Static Skipped Test — Unconditional",
 		Description:     "A test is statically marked as skipped without any surrounding environment / feature-flag gate. The skip is permanent until the marker is removed.",
 		Remediation:     "Re-enable, replace, or delete the test. Add a comment explaining why if the skip should persist.",
@@ -389,7 +389,7 @@ var allSignalManifest = []ManifestEntry{
 	},
 	{
 		Type: SignalStaticSkippedTestConditionalGate, ConstName: "SignalStaticSkippedTestConditionalGate",
-		Domain: models.CategoryQuality, Status: StatusExperimental,
+		Domain: models.CategoryQuality, Status: StatusPlanned,
 		Title:           "Conditionally-Skipped Test (informational)",
 		Description:     "A test is statically marked as skipped, but the skip is wrapped by an environment, feature-flag, or platform predicate. The skip is intentional and gated by code. This finding is informational — no action is required unless the gate condition itself is wrong.",
 		Remediation:     "Audit the gate condition periodically. CI should run the test on platforms or branches where the gate evaluates to false.",
@@ -445,7 +445,7 @@ var allSignalManifest = []ManifestEntry{
 	},
 	{
 		Type: SignalDepsDriftRiskStrictPin, ConstName: "SignalDepsDriftRiskStrictPin",
-		Domain: models.CategoryQuality, Status: StatusExperimental,
+		Domain: models.CategoryQuality, Status: StatusPlanned,
 		Title:           "Unpinned Dependency",
 		Description:     "One or more dependencies are declared without an explicit version anchor (bare name, `*`, `latest`, or unversioned URL). The resolver picks whatever happens to be available at install time, so installs are not reproducible across runs.",
 		Remediation:     "Add an explicit version, version range, or lockfile-verification gate so installs are reproducible.",
@@ -458,7 +458,7 @@ var allSignalManifest = []ManifestEntry{
 	},
 	{
 		Type: SignalDepsDriftRiskCaretPolicy, ConstName: "SignalDepsDriftRiskCaretPolicy",
-		Domain: models.CategoryQuality, Status: StatusExperimental,
+		Domain: models.CategoryQuality, Status: StatusPlanned,
 		Title:           "Caret-Range Dependency Drift",
 		Description:     "Dependencies use caret-range specs (`^x.y.z`) in an ecosystem where caret semantics let minor versions drift silently (npm, Poetry, and Cargo each interpret caret differently). The runtime version can change without a manifest edit.",
 		Remediation:     "Adopt a stricter pinning policy (tilde, exact, or commit-pinned) where minor-version drift would silently affect runtime behavior.",
@@ -757,10 +757,10 @@ var allSignalManifest = []ManifestEntry{
 		// The airun eval-framework adapters (Promptfoo, DeepEval, Ragas)
 		// emit per-case failure data into the snapshot's EvalRuns, but
 		// the standalone evalFailure detector did not ship — failures
-		// surface today via the more specific aiHallucinationRate /
-		// aiCostRegression / aiRetrievalRegression detectors. A reframe
-		// is planned.
-		PromotionPlan: "Planned — generic per-case failure surfacing on top of airun eval ingestion. Today's per-case failures route through the specific aiHallucinationRate / aiCostRegression / aiRetrievalRegression detectors.",
+		// Today's per-case failures surface via more specific
+		// detectors (hallucination-rate, cost-regression,
+		// retrieval-regression).
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalEvalRegression, ConstName: "SignalEvalRegression",
@@ -781,10 +781,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/accuracy-regression", RuleURI: "docs/rules/ai/accuracy-regression.md",
-		// Did not ship in 0.2; deferred. The airun adapters surface
-		// per-case score data into the snapshot, so the detector
-		// itself is plumbing-only when it lands.
-		PromotionPlan: "Planned — accuracy axis regression detector. Per-case score data lands in EvalRuns via the airun adapters; detector wiring is the remaining work.",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalCitationMissing, ConstName: "SignalCitationMissing",
@@ -793,7 +790,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/citation-missing", RuleURI: "docs/rules/ai/citation-missing.md",
-		PromotionPlan: "Planned — RAG-specific detectors.",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalRetrievalMiss, ConstName: "SignalRetrievalMiss",
@@ -802,7 +799,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/retrieval-miss", RuleURI: "docs/rules/ai/retrieval-miss.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalAnswerGroundingFailure, ConstName: "SignalAnswerGroundingFailure",
@@ -811,7 +808,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/grounding-failure", RuleURI: "docs/rules/ai/grounding-failure.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalToolSelectionError, ConstName: "SignalToolSelectionError",
@@ -820,7 +817,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/tool-selection-error", RuleURI: "docs/rules/ai/tool-selection-error.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalSchemaParseFailure, ConstName: "SignalSchemaParseFailure",
@@ -829,13 +826,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/schema-parse-failure", RuleURI: "docs/rules/ai/schema-parse-failure.md",
-		// The structural side shipped earlier (aiToolWithoutSandbox now
-		// reads typed fields, prompt-versioning rejects empty values,
-		// embedding-change detector sees env-var-loaded models). The
-		// runtime side — schema parse failures from eval frameworks —
-		// is deferred until the airun adapters expose `errors` buckets
-		// distinct from `failures`.
-		PromotionPlan: "Planned — depends on airun adapters surfacing parse-error buckets distinct from assertion-failure buckets (currently lumped into Failures).",
+		PromotionPlan: "Planned. Reserved signal type — runtime detector not yet wired.",
 	},
 	{
 		Type: SignalSafetyFailure, ConstName: "SignalSafetyFailure",
@@ -844,13 +835,10 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.9, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"runtime", "policy"},
 		RuleID:          "terrain/ai/safety-failure", RuleURI: "docs/rules/ai/safety-failure.md",
-		// The structural counterpart aiSafetyEvalMissing shipped
-		// earlier; it warns when no safety-shaped scenario covers the
-		// AI surfaces. Runtime first-class safety failures (where the
-		// eval framework explicitly grades a case as a safety
-		// violation) wait on a uniform `safetyVerdict` field across
-		// adapters.
-		PromotionPlan: "Planned — depends on a uniform safety-verdict field across Promptfoo / DeepEval / Ragas adapters. The structural counterpart (aiSafetyEvalMissing) shipped earlier.",
+		// The structural counterpart aiSafetyEvalMissing already
+		// ships; this runtime variant fires when an eval framework
+		// explicitly grades a case as a safety violation.
+		PromotionPlan: "Planned. Reserved signal type — runtime detector not yet wired.",
 	},
 	{
 		Type: SignalAIPolicyViolation, ConstName: "SignalAIPolicyViolation",
@@ -859,7 +847,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"policy"},
 		RuleID:          "terrain/ai/ai-policy-violation", RuleURI: "docs/rules/ai/ai-policy-violation.md",
-		PromotionPlan: "0.2",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalHallucinationDetected, ConstName: "SignalHallucinationDetected",
@@ -868,7 +856,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/hallucination", RuleURI: "docs/rules/ai/hallucination.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalLatencyRegression, ConstName: "SignalLatencyRegression",
@@ -877,7 +865,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/latency-regression", RuleURI: "docs/rules/ai/latency-regression.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalCostRegression, ConstName: "SignalCostRegression",
@@ -886,7 +874,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/cost-regression-umbrella", RuleURI: "docs/rules/ai/cost-regression-umbrella.md",
-		PromotionPlan: "Planned — generic cost-regression umbrella that absorbs the prompt-specific terrain/ai/cost-regression detector.",
+		PromotionPlan: "Planned. Reserved signal type — generic cost-regression umbrella; not yet wired.",
 	},
 	{
 		Type: SignalContextOverflowRisk, ConstName: "SignalContextOverflowRisk",
@@ -895,7 +883,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"structural-pattern", "runtime"},
 		RuleID:          "terrain/ai/context-overflow", RuleURI: "docs/rules/ai/context-overflow.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalWrongSourceSelected, ConstName: "SignalWrongSourceSelected",
@@ -904,7 +892,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/wrong-source", RuleURI: "docs/rules/ai/wrong-source.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalCitationMismatch, ConstName: "SignalCitationMismatch",
@@ -913,7 +901,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/citation-mismatch", RuleURI: "docs/rules/ai/citation-mismatch.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalStaleSourceRisk, ConstName: "SignalStaleSourceRisk",
@@ -922,7 +910,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.5, ConfidenceMax: 0.8,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/stale-source", RuleURI: "docs/rules/ai/stale-source.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalChunkingRegression, ConstName: "SignalChunkingRegression",
@@ -931,7 +919,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/chunking-regression", RuleURI: "docs/rules/ai/chunking-regression.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalRerankerRegression, ConstName: "SignalRerankerRegression",
@@ -940,7 +928,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/reranker-regression", RuleURI: "docs/rules/ai/reranker-regression.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalTopKRegression, ConstName: "SignalTopKRegression",
@@ -949,7 +937,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/topk-regression", RuleURI: "docs/rules/ai/topk-regression.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalToolRoutingError, ConstName: "SignalToolRoutingError",
@@ -958,7 +946,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/tool-routing-error", RuleURI: "docs/rules/ai/tool-routing-error.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalToolGuardrailViolation, ConstName: "SignalToolGuardrailViolation",
@@ -967,7 +955,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime", "policy"},
 		RuleID:          "terrain/ai/tool-guardrail", RuleURI: "docs/rules/ai/tool-guardrail.md",
-		PromotionPlan: "0.2 — tools-without-sandbox detection.",
+		PromotionPlan: "Planned. Reserved signal type for runtime tool-guardrail violations; the structural side ships as aiToolWithoutSandbox.",
 	},
 	{
 		Type: SignalToolBudgetExceeded, ConstName: "SignalToolBudgetExceeded",
@@ -976,7 +964,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime", "policy"},
 		RuleID:          "terrain/ai/tool-budget", RuleURI: "docs/rules/ai/tool-budget.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 	{
 		Type: SignalAgentFallbackTriggered, ConstName: "SignalAgentFallbackTriggered",
@@ -985,7 +973,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/agent-fallback", RuleURI: "docs/rules/ai/agent-fallback.md",
-		PromotionPlan: "Planned",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
 	},
 
 	// ── 0.2 AI signals (planned in 0.2, detectors land before 0.2 close) ──
@@ -1042,9 +1030,9 @@ var allSignalManifest = []ManifestEntry{
 	},
 	{
 		Type: SignalAIHardcodedAPIKeyLiteralShape, ConstName: "SignalAIHardcodedAPIKeyLiteralShape",
-		Domain: models.CategoryAI, Status: StatusExperimental,
+		Domain: models.CategoryAI, Status: StatusPlanned,
 		Title:           "Hard-Coded API Key in Source",
-		Description:     "An API-key-shaped string (e.g. AKIA-prefix, sk-prefix, ghp_-prefix) appears verbatim in an eval, prompt, or agent definition file. Pairs with secretScannerCoverageDegraded, which flags the absence of a CI-side secret scanner.",
+		Description:     "An API-key-shaped string appears verbatim in an eval, prompt, or agent definition file. Pairs with the CI-coverage counterpart, secretScannerCoverageDegraded.",
 		Remediation:     "Move the secret to an environment variable or secrets store and reference it via the runner's secret-resolution path.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
@@ -1052,7 +1040,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/ai/hardcoded-api-key-literal-shape",
 		RuleURI:         "docs/rules/ai/hardcoded-api-key-literal-shape.md",
 		Tier:            TierObservability,
-		PromotionPlan:   "Promotes to stable once secretScannerCoverageDegraded (the CI-coverage counterpart) ships at gate tier.",
+		PromotionPlan:   "Planned. Reserved signal type — the literal-shape half of the API-key split; detector not yet wired.",
 	},
 	{
 		Type: SignalSecretScannerCoverageDegraded, ConstName: "SignalSecretScannerCoverageDegraded",
@@ -1065,7 +1053,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/secret-scanner-coverage-degraded",
 		RuleURI:         "docs/rules/ai/secret-scanner-coverage-degraded.md",
-		PromotionPlan:   "Planned — pairs with aiHardcodedAPIKey-literal-shape to cover both the in-repo signal and the CI-integration gap.",
+		PromotionPlan:   "Planned. Reserved signal type for the CI-integration gap that pairs with the in-repo key-shape detector.",
 	},
 	{
 		Type: SignalAIToolWithoutSandbox, ConstName: "SignalAIToolWithoutSandbox",
@@ -1268,7 +1256,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/secrets-in-prompt",
 		RuleURI:         "docs/rules/hygiene/secrets-in-prompt.md",
-		PromotionPlan:   "0.2 — Go-native regex detector ships first; gitleaks library integration is the deeper followup for richer secret vocabulary.",
+		PromotionPlan:   "Stable — Go-native regex detector ships first; richer secret-vocabulary integration is a possible follow-up.",
 	},
 	{
 		Type: SignalNoTestsForCodeUnit, ConstName: "SignalNoTestsForCodeUnit",
@@ -1521,7 +1509,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Prompt Bloat", DefaultSeverity: models.SeverityLow,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/prompt-quality/prompt-bloat", RuleURI: "docs/rules/prompt-quality/prompt-bloat.md",
-		PromotionPlan: "0.2 — fires when prompt token count exceeds configured budget. Calibrated against dogfood corpus before promotion.",
+		PromotionPlan: "Fires when prompt token count exceeds the configured budget.",
 	},
 	{
 		Type: SignalPromptWithoutTemperature, ConstName: "SignalPromptWithoutTemperature",
@@ -1529,7 +1517,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Prompt Without Temperature", DefaultSeverity: models.SeverityLow,
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/prompt-quality/prompt-without-temperature", RuleURI: "docs/rules/prompt-quality/prompt-without-temperature.md",
-		PromotionPlan: "0.2 — fires when LLM SDK call has no temperature= kwarg. Defaults differ across SDKs; explicit value is reproducibility-critical.",
+		PromotionPlan: "Fires when an LLM SDK call has no temperature kwarg. Defaults differ across SDKs; an explicit value is reproducibility-critical.",
 	},
 	{
 		Type: SignalMissingPromptValidator, ConstName: "SignalMissingPromptValidator",
@@ -1537,7 +1525,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Missing Prompt Validator", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/prompt-quality/missing-validator", RuleURI: "docs/rules/prompt-quality/missing-validator.md",
-		PromotionPlan: "0.2 — fires when prompt template has no instructor / guardrails / pydantic output schema.",
+		PromotionPlan: "Fires when a prompt template has no output-validator schema attached.",
 	},
 	{
 		Type: SignalPromptVersionSkew, ConstName: "SignalPromptVersionSkew",
@@ -1545,7 +1533,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Prompt Version Skew", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.75, ConfidenceMax: 0.9, EvidenceSources: []string{"graph-traversal"},
 		RuleID: "terrain/prompt-quality/version-skew", RuleURI: "docs/rules/prompt-quality/version-skew.md",
-		PromotionPlan: "0.2 — detects when same prompt template referenced by multiple eval scenarios under different version names.",
+		PromotionPlan: "Detects when the same prompt template is referenced by multiple eval scenarios under different version names.",
 	},
 	{
 		Type: SignalRetrievalWithoutRerank, ConstName: "SignalRetrievalWithoutRerank",
@@ -1553,7 +1541,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Retrieval Without Rerank", DefaultSeverity: models.SeverityLow,
 		ConfidenceMin: 0.65, ConfidenceMax: 0.8, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/retrieval-quality/no-rerank", RuleURI: "docs/rules/retrieval-quality/no-rerank.md",
-		PromotionPlan: "0.2 — flags retrieval pipelines with top_k > 5 and no reranker.",
+		PromotionPlan: "Flags retrieval pipelines with top_k > 5 and no reranker.",
 	},
 	{
 		Type: SignalColdVectorStore, ConstName: "SignalColdVectorStore",
@@ -1561,7 +1549,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Cold Vector Store", DefaultSeverity: models.SeverityLow,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/retrieval-quality/cold-store", RuleURI: "docs/rules/retrieval-quality/cold-store.md",
-		PromotionPlan: "0.2 — fires when vector store is initialized but no index population call exists in the same module.",
+		PromotionPlan: "Fires when a vector store is initialized but no index-population call exists in the same module.",
 	},
 	{
 		Type: SignalAgentLoopRisk, ConstName: "SignalAgentLoopRisk",
@@ -1577,7 +1565,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Tool Without Budget", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.75, ConfidenceMax: 0.9, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/agent-quality/tool-no-budget", RuleURI: "docs/rules/agent-quality/tool-no-budget.md",
-		PromotionPlan: "0.2 — tool-call-enabled agent with no rate limit / cost ceiling configured.",
+		PromotionPlan: "Fires when a tool-call-enabled agent has no rate limit or cost ceiling configured.",
 	},
 	{
 		Type: SignalTargetLeakage, ConstName: "SignalTargetLeakage",
@@ -1585,7 +1573,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Target Leakage", DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/data-quality/target-leakage", RuleURI: "docs/rules/data-quality/target-leakage.md",
-		PromotionPlan: "0.2 — feature column derived from target column (e.g., y_lag1 in features after target encoding).",
+		PromotionPlan: "Fires when a feature column is derived from the target column (e.g., y_lag1 in features after target encoding).",
 	},
 	{
 		Type: SignalDuplicateEvalRows, ConstName: "SignalDuplicateEvalRows",
@@ -1593,7 +1581,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Duplicate Eval Rows", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.9, ConfidenceMax: 0.99, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/data-quality/duplicate-rows", RuleURI: "docs/rules/data-quality/duplicate-rows.md",
-		PromotionPlan: "0.2 — fires when eval dataset has >5% duplicate input rows.",
+		PromotionPlan: "Fires when an eval dataset has more than 5% duplicate input rows.",
 	},
 	{
 		Type: SignalSchemaDrift, ConstName: "SignalSchemaDrift",
@@ -1601,7 +1589,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Schema Drift", DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/data-quality/schema-drift", RuleURI: "docs/rules/data-quality/schema-drift.md",
-		PromotionPlan: "0.2 — fires when pipeline output schema changed between baseline and current run.",
+		PromotionPlan: "Fires when the pipeline output schema has changed between baseline and current run.",
 	},
 	{
 		Type: SignalMissingEvalCategories, ConstName: "SignalMissingEvalCategories",
@@ -1609,7 +1597,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Missing Eval Categories", DefaultSeverity: models.SeverityLow,
 		ConfidenceMin: 0.65, ConfidenceMax: 0.8, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/coverage/missing-eval-categories", RuleURI: "docs/rules/coverage/missing-eval-categories.md",
-		PromotionPlan: "0.2 — fires when eval suite has happy_path coverage but no adversarial / edge_case categories.",
+		PromotionPlan: "Fires when an eval suite has happy-path coverage but no adversarial or edge-case categories.",
 	},
 	{
 		Type: SignalOrphanedEval, ConstName: "SignalOrphanedEval",
@@ -1617,7 +1605,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Orphaned Eval", DefaultSeverity: models.SeverityLow,
 		ConfidenceMin: 0.8, ConfidenceMax: 0.95, EvidenceSources: []string{"graph-traversal"},
 		RuleID: "terrain/coverage/orphaned-eval", RuleURI: "docs/rules/coverage/orphaned-eval.md",
-		PromotionPlan: "0.2 — fires when an Eval has no CoveredSurfaceIDs (references no surface).",
+		PromotionPlan: "Fires when an eval has no CoveredSurfaceIDs (references no surface).",
 	},
 	{
 		Type: SignalColdStartTime, ConstName: "SignalColdStartTime",
@@ -1625,7 +1613,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Cold Start Time", DefaultSeverity: models.SeverityLow,
 		ConfidenceMin: 0.8, ConfidenceMax: 0.95, EvidenceSources: []string{"runtime"},
 		RuleID: "terrain/performance/cold-start-time", RuleURI: "docs/rules/performance/cold-start-time.md",
-		PromotionPlan: "0.2 — fires when first-request latency exceeds configured threshold (e.g., 2× P50).",
+		PromotionPlan: "Fires when first-request latency exceeds the configured threshold (e.g., 2x P50).",
 	},
 	{
 		Type: SignalTokenCostBudget, ConstName: "SignalTokenCostBudget",
@@ -1633,7 +1621,7 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Token Cost Budget Exceeded", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.9, ConfidenceMax: 0.99, EvidenceSources: []string{"runtime"},
 		RuleID: "terrain/performance/token-cost-budget", RuleURI: "docs/rules/performance/token-cost-budget.md",
-		PromotionPlan: "0.2 — fires when per-run token cost exceeds configured ceiling.",
+		PromotionPlan: "Fires when per-run token cost exceeds the configured ceiling.",
 	},
 }
 
