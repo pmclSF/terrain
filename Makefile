@@ -269,6 +269,16 @@ canary-json:
 	@scripts/canary-run.sh --strict 2>&1 | tee /dev/null
 	@cat .terrain/canary-report.json
 
+# PR-scope variant: each entry runs `terrain analyze` on the base_sha
+# first, writes a snapshot, then on the head_sha with --baseline +
+# --new-findings-only. UFPP becomes NEW-findings-per-PR (cycle-2's
+# success-metric definition). Doubles wall time (~2 analyze runs per
+# entry). Recall checks that rely on "finding-exists-anywhere"
+# semantic will show as misses because pre-existing findings are
+# filtered out — by design for the UFPP measurement.
+canary-pr-scope:
+	@scripts/canary-run.sh --pr-scope
+
 # ── Performance regression gate ─────────────────────────────
 # bench-baseline writes a fresh baseline benchmark snapshot. Run on a
 # main-branch commit and commit the result.

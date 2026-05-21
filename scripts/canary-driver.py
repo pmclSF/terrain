@@ -168,6 +168,8 @@ def main():
     parser.add_argument("--terrain-bin", required=True)
     parser.add_argument("--id", action="append", help="Run only specific canary id(s). Repeatable.")
     parser.add_argument("--strict", action="store_true", help="Treat 'set not sealed' as a hard failure.")
+    parser.add_argument("--pr-scope", action="store_true",
+                        help="Use --new-findings-only against base_sha snapshot. UFPP becomes NEW-findings-per-PR (cycle-2 metric). Doubles run time.")
     args = parser.parse_args()
 
     canary_file = Path(args.canary_file)
@@ -234,7 +236,7 @@ def main():
     passes, fails, per_pr = [], [], []
     for pr in sealed:
         pr_id = pr["id"]
-        result = run_one(pr, work_root, args.terrain_bin)
+        result = run_one(pr, work_root, args.terrain_bin, pr_scope=args.pr_scope)
         per_pr.append(result)
         if result["status"] == "pass":
             passes.append(pr_id)
@@ -264,12 +266,29 @@ def main():
     return 0 if not fails else 1
 
 
-def run_one(pr, work_root, terrain_bin):
+def run_one(pr, work_root, terrain_bin, pr_scope=False):
     """Run terrain against one sealed canary PR. Returns a dict with status,
-    findings_by_detector, ufpp, and recall/precision violations."""
+    findings_by_detector, ufpp, and recall/precision violations.
+
+    Scope modes:
+      - whole-repo (default): analyze head_sha only. UFPP = total
+        findings on the head tree. Catches whole-repo recall but
+        precision checks (`expected_non_findings: ANY_AI_RULE`)
+        false-trigger on PRs that touch doc/deps in repos with
+        pre-existing AI surfaces.
+      - PR-scope (`pr_scope=True`): analyze base_sha → write
+        snapshot → analyze head_sha with --baseline=<base> and
+        --new-findings-only. UFPP = NEW findings introduced by the
+        PR. Aligned with cycle-2 success metric (UFPP <= 3 per PR).
+        Caveat: recall checks for "finding-exists-on-head" PRs that
+        also exist on the base (typical prompt-without-versioning,
+        un-versioned tech debt) won't fire because --new-findings-only
+        excludes pre-existing findings. Future: per-entry scope tag.
+    """
     pr_id = pr["id"]
     repo = pr["repo"]  # "github.com/owner/repo"
     head_sha = pr["head_sha"]
+    base_sha = pr.get("base_sha")
     if not repo.startswith("github.com/"):
         return {"id": pr_id, "status": "fail", "reason": f"unsupported repo host: {repo}"}
     owner_name = repo[len("github.com/"):]
@@ -279,8 +298,7 @@ def run_one(pr, work_root, terrain_bin):
         shutil.rmtree(pr_dir)
     pr_dir.mkdir(parents=True)
 
-    # Shallow-fetch the head SHA. `git init` + `git fetch --depth=1 <sha>`
-    # is faster than full clone when we only need one commit.
+    # Shallow-fetch the head SHA (and base too if PR-scope is on).
     clone_url = f"https://github.com/{owner_name}.git"
     try:
         subprocess.check_call(["git", "init", "-q", str(pr_dir)], timeout=30)
@@ -288,13 +306,11 @@ def run_one(pr, work_root, terrain_bin):
             ["git", "-C", str(pr_dir), "remote", "add", "origin", clone_url],
             timeout=30,
         )
-        subprocess.check_call(
-            ["git", "-C", str(pr_dir), "fetch", "--depth=1", "origin", head_sha],
-            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=180,
-        )
-        subprocess.check_call(
-            ["git", "-C", str(pr_dir), "checkout", "-q", head_sha],
-            timeout=30,
+        fetch_args = ["git", "-C", str(pr_dir), "fetch", "--depth=1", "origin", head_sha]
+        if pr_scope and base_sha:
+            fetch_args.append(base_sha)
+        subprocess.check_call(fetch_args,
+            stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, timeout=240,
         )
     except subprocess.CalledProcessError as e:
         err = e.stderr.decode() if hasattr(e, "stderr") and e.stderr else str(e)
@@ -302,13 +318,43 @@ def run_one(pr, work_root, terrain_bin):
     except subprocess.TimeoutExpired:
         return {"id": pr_id, "status": "fail", "reason": "git fetch timeout"}
 
-    # Run terrain analyze. The exit code is non-zero when findings exist
-    # at a high enough severity to fail the gate; for canary purposes we
-    # capture stdout regardless.
+    base_snapshot = pr_dir / ".terrain" / "canary-base-snapshot.json"
+    if pr_scope and base_sha:
+        # Step 1: analyze base_sha and write the baseline snapshot.
+        try:
+            subprocess.check_call(
+                ["git", "-C", str(pr_dir), "checkout", "-q", base_sha],
+                timeout=30,
+            )
+            subprocess.run(
+                [terrain_bin, "analyze", "--root", str(pr_dir),
+                 "--json", "--write-snapshot"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=600,
+            )
+            latest = pr_dir / ".terrain" / "snapshots" / "latest.json"
+            if latest.exists():
+                base_snapshot.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy(latest, base_snapshot)
+        except subprocess.CalledProcessError as e:
+            err = e.stderr.decode() if hasattr(e, "stderr") and e.stderr else str(e)
+            return {"id": pr_id, "status": "fail", "reason": f"base analyze: {err[:120]}"}
+        except subprocess.TimeoutExpired:
+            return {"id": pr_id, "status": "fail", "reason": "base analyze timeout"}
+
+    # Step 2 (or only step in whole-repo mode): checkout head_sha and
+    # analyze. PR-scope adds --baseline + --new-findings-only.
     try:
+        subprocess.check_call(
+            ["git", "-C", str(pr_dir), "checkout", "-q", head_sha],
+            timeout=30,
+        )
+        analyze_args = [terrain_bin, "analyze", "--root", str(pr_dir), "--json"]
+        if pr_scope and base_snapshot.exists():
+            analyze_args.extend(["--baseline", str(base_snapshot),
+                                 "--new-findings-only"])
         out = subprocess.run(
-            [terrain_bin, "analyze", "--root", str(pr_dir), "--json"],
-            capture_output=True, timeout=600,
+            analyze_args, capture_output=True, timeout=600,
         )
         report = json.loads(out.stdout) if out.stdout else {}
     except subprocess.TimeoutExpired:
