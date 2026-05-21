@@ -60,10 +60,7 @@ func (a *Analyzer) AnalyzeContext(ctx context.Context) (*models.TestSuiteSnapsho
 		return nil, err
 	}
 	// Snapshot timestamp. Honour SOURCE_DATE_EPOCH so reproducible
-	// builds and byte-for-byte snapshot determinism are achievable
-	// (round-4 review pinned this; pre-0.2.x the wall clock leaked
-	// unconditionally, breaking `terrain compare` byte equality and
-	// `terrain ai replay` artifact hashing).
+	// builds and byte-for-byte snapshot determinism are achievable.
 	analyzedAt := deterministicNowUTC()
 
 	// Check context before starting work.

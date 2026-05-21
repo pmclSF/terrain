@@ -9,8 +9,8 @@ import (
 // RunDetectors runs all provided detectors against the snapshot and
 // appends the resulting signals to snap.Signals.
 //
-// 0.2.0 final-polish: each detector now runs through `safeDetect` so
-// a panic in one detector emits the standard `detectorPanic` sentinel
+// Each detector runs through `safeDetect` so a panic in one detector
+// emits the standard `detectorPanic` sentinel
 // instead of unwinding the call stack and tanking the rest of the
 // pass. Pre-fix `RunDetectors` was the only signal-producing entry
 // point that bypassed panic recovery — tests calling it directly

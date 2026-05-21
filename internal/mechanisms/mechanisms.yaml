@@ -42,10 +42,14 @@ mechanisms:
       Intra-repo def-following for the assertion-counter family. When
       a test body calls a helper whose definition is resolvable in-repo,
       recurse into the helper's body and count transitive assertions.
+      The lifted AssertionCount also flows into snapshot-ratio and
+      mock-vs-assertion detectors that read it from the snapshot.
     consumers:
       - assertionFreeImport
       - assertionFreeTest
       - weakAssertion
+      - snapshotHeavyTest
+      - mockHeavyTest
 
   - name: deps_drift_risk_split
     state: shadow

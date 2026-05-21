@@ -102,9 +102,8 @@ func discoverTestFiles(root string, projectCtx ...*ProjectContext) ([]models.Tes
 
 		// Vitest in-source: a regular .js/.ts source file becomes
 		// test-bearing if it contains an `if (import.meta.vitest)` /
-		// `import.meta.vitest &&` block. Closes the round-4 finding
-		// "Vitest in-source tests". The marker check is gated on the
-		// extension allowlist to keep the cost bounded.
+		// `import.meta.vitest &&` block. The marker check is gated
+		// on the extension allowlist to keep the cost bounded.
 		if hasVitestInSourceMarker(relPath, path) {
 			candidates = append(candidates, candidate{
 				relPath: relPath,

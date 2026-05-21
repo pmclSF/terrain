@@ -1,16 +1,15 @@
 // Package looppredicate is the loop-predicate gate for the
-// dynamicTestGeneration detector. The legacy detector flags any
-// it() / test() call inside a `describe` body — including
-// `it.each([...])` table-driven tests, `cases.forEach(c => it(c.name,
-// ...))`, and straightforward `for` loops generating per-iteration
-// tests. Those are the standard table-test idiom, not a bug.
+// dynamicTestGeneration detector. The legacy regex over-matches:
+// it fires on any it()/test() that happens to follow a forEach /
+// map / for in the surrounding context, even when the test builder
+// isn't actually wrapped by that loop.
 //
-// IsTestBuilderInLoop reports whether the line in the source file is
-// wrapped by a loop construct: `for (...) { ... it(...) }`,
+// IsTestBuilderInLoop reports whether the line in the source file
+// IS wrapped by a loop construct: `for (...) { ... it(...) }`,
 // `arr.forEach(...)`, `arr.map(...)`, `it.each([...])`, or
-// `test.each(...)`. When the predicate fires (returns true), the
-// dynamicTestGeneration finding for that line should be suppressed —
-// the test generation is intentional.
+// `test.each(...)`. The Gate keeps the finding when this is true
+// (genuine dynamic test generation) and suppresses it when the AST
+// shows no surrounding loop (the FP class of the regex match).
 //
 // The walker handles single/double/backtick strings, line + block
 // comments, and properly nests both loop scopes and function scopes.

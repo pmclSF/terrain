@@ -499,10 +499,10 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 		for i, reg := range graphRegs {
 			gd, ok := reg.Detector.(GraphDetector)
 			if !ok {
-				// 0.2.0 final-polish: pre-fix this branch silently
-				// dropped the registration with no signal, no log, no
-				// diagnostic — a detector declared `RequiresGraph: true`
-				// but whose runtime type didn't satisfy the GraphDetector
+				// Previously this branch silently dropped the
+				// registration with no signal, no log, no diagnostic
+				// — a detector declared `RequiresGraph: true` but
+				// whose runtime type didn't satisfy the GraphDetector
 				// interface vanished from the pipeline entirely. Now we
 				// emit a detectorPanic-shaped diagnostic so the user
 				// sees something is wrong instead of getting a quietly

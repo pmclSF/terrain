@@ -131,18 +131,36 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 			}
 		}
 	}
-	// Mechanism gate: a7_barrel_resolver. Only when ON does the
-	// resolver actively expand the legacy importedModules set; in
-	// shadow / off the set stays as the legacy import-graph yielded
-	// so downstream user-visible findings are unchanged.
-	if d.RepoRoot != "" && mechanisms.Default().State(barrelresolver.MechanismName) == mechanisms.StateOn {
+	// Mechanism gate: a7_barrel_resolver. Routed through
+	// mechanisms.GateAdd so shadow mode runs the resolver and emits
+	// would-add events without changing user-visible behavior; state=on
+	// merges the resolved paths into importedModules.
+	if d.RepoRoot != "" && mechanisms.Default().State(barrelresolver.MechanismName) != mechanisms.StateOff {
 		resolver, err := barrelresolver.New(d.RepoRoot)
 		if err == nil {
+			resolved := map[string]bool{}
 			for testPath, imports := range snap.ImportGraph {
 				fromDir := filepath.Dir(testPath)
 				for importPath := range imports {
 					for _, res := range resolver.Resolve(mechanisms.Default(), fromDir, importPath) {
-						importedModules[res.File] = true
+						if !importedModules[res.File] {
+							resolved[res.File] = true
+						}
+					}
+				}
+			}
+			if len(resolved) > 0 {
+				add := mechanisms.GateAdd(mechanisms.Default(), barrelresolver.MechanismName,
+					mechanisms.EventContext{RuleID: "untestedExport"},
+					func() mechanisms.PredicateResult {
+						return mechanisms.PredicateResult{
+							Fired:   true,
+							Reasons: []string{"barrel-resolved imports would expand the linked-test set"},
+						}
+					})
+				if add {
+					for path := range resolved {
+						importedModules[path] = true
 					}
 				}
 			}

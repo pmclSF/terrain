@@ -49,11 +49,11 @@ func (d *OrphanedTestDetector) Detect(snap *models.TestSuiteSnapshot) []models.S
 	}
 	var candidates []candidate
 
-	// Mechanism gate: a7_barrel_resolver. Build a resolver only when
-	// the mechanism is ON; in shadow / off, the rescue path is
-	// disabled so user-visible findings match legacy behavior.
+	// Mechanism gate: a7_barrel_resolver. Build the resolver in
+	// shadow + on so shadow mode can emit would-add events for tests
+	// whose orphan claim the resolver would rescue.
 	var resolver *barrelresolver.Resolver
-	if d.RepoRoot != "" && mechanisms.Default().State(barrelresolver.MechanismName) == mechanisms.StateOn {
+	if d.RepoRoot != "" && mechanisms.Default().State(barrelresolver.MechanismName) != mechanisms.StateOff {
 		if r, err := barrelresolver.New(d.RepoRoot); err == nil {
 			resolver = r
 		}
@@ -64,12 +64,19 @@ func (d *OrphanedTestDetector) Detect(snap *models.TestSuiteSnapshot) []models.S
 			continue
 		}
 		if len(tf.LinkedCodeUnits) == 0 {
-			// Rescue path: if barrel resolver can resolve any of this
-			// test's imports to an in-repo file, the test isn't
-			// orphaned in any meaningful sense.
 			if resolver != nil && snap.ImportGraph != nil {
-				if resolved := barrelResolvesAny(resolver, filepath.Dir(tf.Path), snap.ImportGraph[tf.Path]); resolved {
-					continue
+				if barrelResolvesAny(resolver, filepath.Dir(tf.Path), snap.ImportGraph[tf.Path]) {
+					rescue := mechanisms.GateAdd(mechanisms.Default(), barrelresolver.MechanismName,
+						mechanisms.EventContext{RuleID: "orphanedTestFile", File: tf.Path},
+						func() mechanisms.PredicateResult {
+							return mechanisms.PredicateResult{
+								Fired:   true,
+								Reasons: []string{"barrel-resolved imports would rescue this orphan candidate"},
+							}
+						})
+					if rescue {
+						continue
+					}
 				}
 			}
 			candidates = append(candidates, candidate{

@@ -11,7 +11,7 @@ import (
 
 // DetectExtraAISurfaces broadens the set of AI surfaces beyond the
 // framework-attributed inference in ai_context_infer.go. Catches
-// patterns the round-4 review flagged as gaps:
+// patterns the framework-based inferrer misses:
 //
 //   - Dataset filename detection: .jsonl, .parquet, .csv, .arrow,
 //     .tfrecord, .npy, .npz

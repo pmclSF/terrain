@@ -164,6 +164,11 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 	return out
 }
 
+// syntheticLineSuffixRe matches the "_L<line>" suffix that the
+// AI-surface extractor synthesizes for unnamed surfaces. These
+// identifiers never appear as literal tokens in source.
+var syntheticLineSuffixRe = regexp.MustCompile(`_L\d+$`)
+
 // isSyntheticIdentifier reports whether `id` is a constructor-driven
 // or otherwise synthetic identifier label that won't appear as a
 // literal token in source. Used to skip the surfacelit gate (which
@@ -171,19 +176,29 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 //
 // Recognized synthetic shapes:
 //   - contains '(' or whitespace — e.g. "OpenAIEmbeddings (model loaded indirectly)"
-//   - all snake_case "constructor-derived" labels emitted by the
-//     structured RAG parser: system_message, user_message,
-//     vector_store, embedding_model, retriever_config, etc.
+//   - "<name>_L<line>" suffix synthesized for unnamed surfaces
+//   - constructor-derived snake_case labels from the structured RAG
+//     parser (system_message, vector_store, embedding_model, etc.)
+//     and framework-specific message labels (langchain_message,
+//     llamaindex_message, chunking_config, reranker_config,
+//     vector_store_config, retrieval_query, rag_component)
 //   - empty
 func isSyntheticIdentifier(id string) bool {
 	if id == "" || strings.ContainsAny(id, "( ") {
 		return true
 	}
+	if syntheticLineSuffixRe.MatchString(id) {
+		return true
+	}
 	switch id {
 	case "system_message", "user_message", "assistant_message",
 		"vector_store", "vector_store_chroma", "vector_store_faiss",
+		"vector_store_config",
 		"embedding_model", "retriever_config", "prompt_template",
-		"system_prompt", "user_prompt", "rag_pipeline":
+		"system_prompt", "user_prompt", "rag_pipeline",
+		"langchain_message", "llamaindex_message",
+		"chunking_config", "reranker_config",
+		"retrieval_query", "rag_component":
 		return true
 	}
 	return false

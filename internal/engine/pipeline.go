@@ -1425,7 +1425,7 @@ func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
 // relativeArtifactPath converts a CLI-provided path into a repo-
 // relative form when possible. 0.2.0 final-polish: pre-fix the
 // SourcePath stamped into EvalRunEnvelope was whatever the user
-// passed on the CLI — `--promptfoo-results /Users/alice/proj/...`
+// passed on the CLI — `--promptfoo-results <repo>/eval/...`
 // produced absolute paths in SARIF output, leaking developer home
 // directories. Now `filepath.Rel(root, p)` is attempted; on failure
 // (different volume, error) we fall back to the original path.

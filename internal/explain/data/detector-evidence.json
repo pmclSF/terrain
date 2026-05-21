@@ -1,7 +1,5 @@
 {
   "schema_version": "1",
-  "generated_at": "2026-05-11",
-  "methodology": "Corpus: 326 OSS repos + 76 language-diversity. PR-lift = P(detector fires on regression-PR file) / P(detector fires on safe-PR file). Hand-precision = TP/(TP+FP) from 25-sample reviews where available.",
   "detectors": {
     "untestedExport": {
       "heuristic_precision": {
@@ -997,6 +995,5 @@
         "safe_hits": 5047
       }
     }
-  },
-  "last_refresh": "2026-05-12 v2.2 (labeler v2 + 60d graduation: 2894 reg / 65367 safe)"
+  }
 }

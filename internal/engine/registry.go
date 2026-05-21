@@ -159,8 +159,7 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		Detector: &quality.OrphanedTestDetector{RepoRoot: cfg.RepoRoot},
 	})
 
-	// Dependency-drift detector (Tier 5.1): targets the 35.2% of the
-	// 0.2.0 recall gap attributable to bot-authored deps-bump PRs.
+	// Dependency-drift detector: targets bot-authored deps-bump PRs.
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
 			ID:             "deps.drift-risk",
@@ -173,9 +172,8 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		Detector: &deps.DriftRiskDetector{Root: cfg.RepoRoot},
 	})
 
-	// Config-schema-drift detector (Tier 5.2): targets the 5.7% of the
-	// 0.2.0 recall gap that is config-only PRs (CI, docker-compose,
-	// helm, k8s manifests).
+	// Config-schema-drift detector: targets config-only PRs (CI,
+	// docker-compose, helm, k8s manifests).
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
 			ID:             "config.schema-drift",

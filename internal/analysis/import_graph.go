@@ -335,8 +335,7 @@ func resolveFromRoot(root, pathNoExt string) []string {
 // For each tsconfig the loader merges in `extends` results first, then
 // overlays the leaf's own paths. Each path entry can map to multiple
 // targets — we now emit one alias per target so consumers see all the
-// candidate locations (round-4 finding "TypeScript tsconfig.json paths
-// consistent across import resolution").
+// candidate locations.
 func loadTSPathAliases(root string) []pathAlias {
 	for _, name := range []string{"tsconfig.json", "jsconfig.json"} {
 		path := filepath.Join(root, name)
