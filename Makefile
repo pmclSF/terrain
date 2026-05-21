@@ -135,6 +135,18 @@ regression-precision:
 regression-gate:
 	go run ./cmd/internal/terrain-regression-gate
 
+# Per-mechanism recall accounting against the v2 validation corpus.
+# For each Phase 2 mechanism, applies its predicate to every row in
+# tier-4/detector-validation-v2-combined-good.jsonl and reports TP-loss
+# vs FP-gain per consumer detector. The graduation rule per R3.8:
+# FP-gain >= TP-loss AND TP-loss / TotalRows <= 0.05 before flipping
+# a mechanism from state: shadow to state: on.
+mechanism-recall:
+	go run ./cmd/internal/terrain-mechanism-recall \
+		--in tier-4/detector-validation-v2-combined-good.jsonl \
+		--out tier-4/mechanism-recall-report.json \
+		| tee tier-4/mechanism-recall-report.md
+
 # Release gate: full verification required before release
 release-gate: go-release-verify regression-gate
 
