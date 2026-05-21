@@ -22,6 +22,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -55,13 +56,26 @@ type v2Row struct {
 
 // mechanism is a thin record describing one Phase 2 mechanism's
 // applicability + predicate against a v2 row. Each predicate returns
-// (changesBehavior, action). action is "suppress" or "demote" — the
-// caller uses verdict to bucket TP-loss vs FP-gain.
+// true when the mechanism's action would apply.
+//
+// action semantics:
+//   - "suppress": the mechanism would drop the finding entirely.
+//     TP-loss is bad (legitimate finding lost), FP-gain is good.
+//     R3.8 graduation rule: FP-gain >= TP-loss AND TP-loss/n <= 5%.
+//   - "demote": the mechanism would reduce severity one tier.
+//     TP-loss = legitimate finding downgraded (somewhat bad);
+//     FP-gain = noise downgraded (good). Same R3.8 rule.
+//   - "add": the mechanism would lift an over-broad suppression
+//     OR switch the signal Type (split mechanisms). For type-switch
+//     splits, precision is preserved (both halves stay at gate
+//     tier), so the R3.8 rule doesn't apply — verdict is reported
+//     as TYPE-SWITCH instead of HOLD/GRADUATE.
 type mechanism struct {
-	name      string
-	action    string // "suppress" or "demote"
-	consumers map[string]bool
-	predicate func(v2Row) bool
+	name       string
+	action     string // "suppress" | "demote" | "add"
+	typeSwitch bool   // true when action=add and the mechanism preserves precision (split mechanisms)
+	consumers  map[string]bool
+	predicate  func(v2Row) bool
 }
 
 // counts is the per-detector recall accounting for one mechanism.
@@ -268,17 +282,111 @@ func buildMechanisms() []mechanism {
 				return c.CountTransitive(r.FileExcerpt, deffollowing.MaxDepth) > 0
 			},
 		},
-		// Note: a7_barrel_resolver, ehr_surfaces_covered,
-		// runtime_config_recognizer, and the two split mechanisms
-		// (static_skipped_test_split, deps_drift_risk_split) need
-		// either full-repo context (barrelresolver), runtime
-		// eval-report data (ehr / runtimeconfig), or measure a
-		// Type-switch rather than precision change (the splits).
-		// Subsequent harness passes cover them via separate code
-		// paths (stacking analysis + dedicated split harnesses).
-		// Subsequent harness passes cover them.
+		{
+			// a7_barrel_resolver: resolves Jest path aliases, dist-
+			// path indirection, and Python namespace re-exports. The
+			// predicate needs a full-repo import-graph; v2 excerpts
+			// don't carry that. Harness reports NO SIGNAL — this
+			// mechanism graduates via a different validation path
+			// (frozen regression suite on the 141 v2 TPs of
+			// untestedExport, per master plan R3.4).
+			name:   "a7_barrel_resolver",
+			action: "add",
+			consumers: map[string]bool{
+				"untestedExport":   true,
+				"orphanedTestFile": true,
+			},
+			predicate: func(r v2Row) bool { return false },
+		},
+		{
+			// ehr_surfaces_covered: needs structured eval-config
+			// parsing of the actual eval files in the repo (Report
+			// shape). v2 excerpts of the FLAGGED file don't give
+			// us those. Harness reports NO SIGNAL — graduates via
+			// a dedicated ehr-against-eval-configs harness.
+			name:   "ehr_surfaces_covered",
+			action: "add",
+			consumers: map[string]bool{
+				"aiSafetyEvalMissing": true,
+			},
+			predicate: func(r v2Row) bool { return false },
+		},
+		{
+			// runtime_config_recognizer: structural recognizer of
+			// runtime config files (YAML/properties with loader
+			// reachability). Needs the repo-side loader-reach graph
+			// to fire. Excerpt-only harness has no signal.
+			name:   "runtime_config_recognizer",
+			action: "demote",
+			consumers: map[string]bool{
+				"aiNonDeterministicEval": true,
+			},
+			predicate: func(r v2Row) bool { return false },
+		},
+		{
+			// static_skipped_test_split: changes the emitted Type
+			// rather than precision. The v2 corpus has legacy
+			// `staticSkippedTest` rows only; the split-half
+			// allocation is observable by checking each row's file
+			// excerpt for the gate-predicate pattern (env var,
+			// pytest.mark.skipif, etc.). Both split halves remain
+			// at gate tier, so precision is preserved; "Changed"
+			// rows here just emit a different Type, not a lost TP.
+			name:       "static_skipped_test_split",
+			action:     "add",
+			typeSwitch: true,
+			consumers: map[string]bool{
+				"staticSkippedTest": true,
+			},
+			predicate: func(r v2Row) bool {
+				// "Changed" here means: this row would emit the
+				// conditional-gate variant (file has a gate
+				// predicate). Otherwise it emits the unconditional
+				// variant. Either way both halves remain at gate
+				// tier, so the split is precision-neutral.
+				body := r.FileExcerpt
+				if body == "" {
+					return false
+				}
+				return staticSkipGatePredicateRe.MatchString(body)
+			},
+		},
+		{
+			// deps_drift_risk_split: ditto — emits caret-policy vs
+			// strict-pin based on which moving-target class dominates.
+			// Precision-neutral; both halves stay at gate tier.
+			name:       "deps_drift_risk_split",
+			action:     "add",
+			typeSwitch: true,
+			consumers: map[string]bool{
+				"depsDriftRisk": true,
+			},
+			predicate: func(r v2Row) bool {
+				// "Changed" = this row would emit caret-policy.
+				body := r.FileExcerpt
+				if body == "" {
+					return false
+				}
+				return strings.Contains(body, "^") && strings.Contains(body, ".")
+			},
+		},
 	}
 }
+
+// staticSkipGatePredicateRe mirrors the StaticSkipDetector
+// gate-predicate regex (internal/quality/static_skip.go) so the
+// harness can model the split mechanism's allocation.
+var staticSkipGatePredicateRe = regexp.MustCompile(
+	`(?i)` +
+		`process\.env\.[A-Z_]+|` +
+		`os\.environ\b|os\.getenv\(|` +
+		`@\s*pytest\.mark\.skipif\b|` +
+		`@\s*unittest\.skipIf\b|` +
+		`@\s*Skip[A-Z]\w*\b|` +
+		`if\s+__name__\b|` +
+		`platform\.(system|machine|python_implementation)\b|` +
+		`feature[_]?flag\b|featureFlag\b|` +
+		`os\.Getenv\(`)
 
 func printMarkdown(mechs []mechanism, report map[string]map[string]counts) {
 	fmt.Println("# Per-mechanism recall accounting (v2 corpus)")
@@ -350,6 +458,12 @@ func printMarkdown(mechs []mechanism, report map[string]map[string]counts) {
 			if c.Changed > 0 {
 				anyChange = true
 			}
+			// Type-switch mechanisms preserve precision (both halves
+			// stay at gate tier), so the R3.8 FP-gain >= TP-loss rule
+			// doesn't apply. Skip the failure check for them.
+			if m.typeSwitch {
+				continue
+			}
 			recallLoss := float64(c.TPChanged) / float64(c.TotalRows)
 			if c.FPChanged < c.TPChanged || recallLoss > 0.05 {
 				failing = append(failing, fmt.Sprintf("%s (loss %.1f%%, TP=%d FP=%d)", det, recallLoss*100, c.TPChanged, c.FPChanged))
@@ -361,6 +475,9 @@ func printMarkdown(mechs []mechanism, report map[string]map[string]counts) {
 		case !anyData:
 			verdict = "NO V2 DATA"
 			fails = "no v2 rows for any consumer"
+		case m.typeSwitch && anyChange:
+			verdict = "TYPE-SWITCH OK"
+			fails = "split halves stay at gate tier — precision preserved"
 		case len(failing) > 0:
 			verdict = "HOLD"
 			fails = strings.Join(failing, "; ")
