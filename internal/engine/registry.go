@@ -105,7 +105,7 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			Description:  "Detect exported code units without matching test files.",
 			SignalTypes:  []models.SignalType{signals.SignalUntestedExport},
 		},
-		Detector: &quality.UntestedExportDetector{},
+		Detector: &quality.UntestedExportDetector{RepoRoot: cfg.RepoRoot},
 	})
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
@@ -136,7 +136,7 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			Description:  "Detect statically skipped tests from source code patterns (.skip, xit, @skip, etc.).",
 			SignalTypes:  []models.SignalType{signals.SignalStaticSkippedTest},
 		},
-		Detector: &quality.StaticSkipDetector{},
+		Detector: &quality.StaticSkipDetector{RepoRoot: cfg.RepoRoot},
 	})
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
@@ -156,7 +156,7 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			Description:  "Detect test files with no linked source code units.",
 			SignalTypes:  []models.SignalType{signals.SignalOrphanedTestFile},
 		},
-		Detector: &quality.OrphanedTestDetector{},
+		Detector: &quality.OrphanedTestDetector{RepoRoot: cfg.RepoRoot},
 	})
 
 	// Dependency-drift detector (Tier 5.1): targets the 35.2% of the
@@ -458,7 +458,7 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			Description:  "Detect safety-critical surfaces with no safety-shaped scenario coverage.",
 			SignalTypes:  []models.SignalType{signals.SignalAISafetyEvalMissing},
 		},
-		Detector: &aidetect.SafetyEvalMissingDetector{},
+		Detector: &aidetect.SafetyEvalMissingDetector{Root: cfg.RepoRoot},
 	})
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{

@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/looppredicate"
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/triggergate"
@@ -258,7 +259,14 @@ func (d *DynamicTestGenerationDetector) Detect(snap *models.TestSuiteSnapshot) [
 			continue
 		}
 
-		if hasDynamicTestGeneration(content) {
+		if line, ok := dynamicTestGenerationLine(content); ok {
+			// Mechanism gate: a3_loop_predicate. When ON, the
+			// AST-precise looppredicate verifies the it/test/describe
+			// call at `line` is actually wrapped by a loop construct.
+			absPath := filepath.Join(d.RepoRoot, tf.Path)
+			if !looppredicate.Gate(mechanisms.Default(), absPath, line, "dynamicTestGeneration") {
+				continue
+			}
 			signals = append(signals, models.Signal{
 				Type:             "dynamicTestGeneration",
 				Category:         models.CategoryMigration,
@@ -372,6 +380,31 @@ func hasDynamicTestGeneration(content string) bool {
 		mapTestPattern.MatchString(content) ||
 		testEachPattern.MatchString(content) ||
 		forLoopTestPattern.MatchString(content)
+}
+
+// dynamicTestGenerationLine returns the 1-based line number of the
+// first dynamic-test-gen pattern match, plus a presence bool. Used
+// by the a3_loop_predicate gate to test whether the test builder at
+// that line is actually inside a loop construct (AST-precise).
+func dynamicTestGenerationLine(content string) (int, bool) {
+	stripped := stripJSNoise(content)
+	var bestIdx = -1
+	for _, re := range []*regexp.Regexp{
+		forEachTestPattern, mapTestPattern, testEachPattern, forLoopTestPattern,
+	} {
+		if loc := re.FindStringIndex(stripped); loc != nil {
+			if bestIdx == -1 || loc[0] < bestIdx {
+				bestIdx = loc[0]
+			}
+		}
+	}
+	if bestIdx == -1 {
+		return 0, false
+	}
+	// Convert byte offset in stripped → 1-based line number in stripped.
+	// stripJSNoise preserves newlines (it replaces comments/strings with
+	// spaces) so line numbers are stable.
+	return 1 + strings.Count(stripped[:bestIdx], "\n"), true
 }
 
 // Custom matcher patterns

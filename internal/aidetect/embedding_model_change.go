@@ -7,8 +7,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/ascg"
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/surfacelit"
 )
 
 // EmbeddingModelChangeDetector flags repos that reference an embedding
@@ -122,6 +125,11 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 			continue
 		}
 		emitted[comp.Path] = true
+		// Mechanism gate: surface_literal_presence_gate.
+		abs := filepath.Join(d.Root, comp.Path)
+		if dec := surfacelit.Gate(mechanisms.Default(), comp.Config.ModelName, abs, "aiEmbeddingModelChange"); !dec.Keep {
+			continue
+		}
 		// Structured-config path confidence is held at 0.55 pending
 		// more validation data — current sample is small.
 		out = append(out, buildEmbeddingChangeSignal(comp.Path, comp.Line, comp.Config.ModelName, 1, models.EvidenceStrong, 0.55))
@@ -132,8 +140,13 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 		if emitted[rel] {
 			continue
 		}
-		hits := scanFileForEmbeddingModels(filepath.Join(d.Root, rel))
+		abs := filepath.Join(d.Root, rel)
+		hits := scanFileForEmbeddingModels(abs)
 		if len(hits) == 0 {
+			continue
+		}
+		// Mechanism gate: surface_literal_presence_gate.
+		if dec := surfacelit.Gate(mechanisms.Default(), hits[0].Identifier, abs, "aiEmbeddingModelChange"); !dec.Keep {
 			continue
 		}
 		emitted[rel] = true
@@ -157,10 +170,18 @@ func buildEmbeddingChangeSignal(path string, line int, identifier string, matche
 	if intervalHigh > 1 {
 		intervalHigh = 1
 	}
+	// Mechanism gate: ascg_live_vs_catalog. Demote one tier on
+	// catalog/example/fixture paths.
+	severity := models.SignalSeverity(models.SeverityMedium)
+	if ascg.GateClassifyDemote(mechanisms.Default(),
+		ascg.Location{Path: path, Line: line},
+		"aiEmbeddingModelChange") {
+		severity = demoteSeverity(severity)
+	}
 	return models.Signal{
 		Type:            signals.SignalAIEmbeddingModelChange,
 		Category:        models.CategoryAI,
-		Severity:        models.SeverityMedium,
+		Severity:        severity,
 		Confidence:      confidence,
 		Location:        models.SignalLocation{File: path, Line: line},
 		Explanation:     "File references embedding model `" + identifier + "` but the project has no retrieval-shaped eval scenario. A future model swap will silently change retrieval quality.",

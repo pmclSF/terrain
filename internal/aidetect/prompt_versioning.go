@@ -7,8 +7,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/surfacelit"
 )
 
 // PromptVersioningDetector flags prompt-kind surfaces that ship
@@ -112,6 +114,10 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 		}
 		abs := filepath.Join(d.Root, surface.Path)
 		if fileHasInlineVersion(abs) {
+			continue
+		}
+		// Mechanism gate: surface_literal_presence_gate.
+		if dec := surfacelit.Gate(mechanisms.Default(), surface.Name, abs, "aiPromptVersioning"); !dec.Keep {
 			continue
 		}
 

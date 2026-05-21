@@ -6,7 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/ascg"
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/runtimeconfig"
 	"github.com/pmclSF/terrain/internal/signals"
 	"gopkg.in/yaml.v3"
 )
@@ -66,11 +69,28 @@ func (d *NonDeterministicEvalDetector) Detect(snap *models.TestSuiteSnapshot) []
 	for _, relPath := range paths {
 		abs := filepath.Join(d.Root, relPath)
 		findings := analyseEvalConfig(abs)
+		// Mechanism gate: runtime_config_recognizer. When on, a finding
+		// that fires on a runtime-config (not eval-config) file is
+		// demoted to Low severity. The recognizer runs once per file.
+		demote := false
+		if rep, err := runtimeconfig.RecognizeFile(abs, d.Root); err == nil && rep != nil {
+			demote = runtimeconfig.GateDemotion(mechanisms.Default(), rep, "aiNonDeterministicEval", relPath)
+		}
 		for _, f := range findings {
+			severity := models.SeverityMedium
+			if demote {
+				severity = models.SeverityLow
+			}
+			// Mechanism gate: ascg_live_vs_catalog.
+			if ascg.GateClassifyDemote(mechanisms.Default(),
+				ascg.Location{Path: relPath},
+				"aiNonDeterministicEval") {
+				severity = demoteSeverity(severity)
+			}
 			out = append(out, models.Signal{
 				Type:        signals.SignalAINonDeterministicEval,
 				Category:    models.CategoryAI,
-				Severity:    models.SeverityMedium,
+				Severity:    severity,
 				// Corpus-driven recalibration: declared 0.93, hand-
 				// validated point estimate ~67% (lower bound ~47%) on a
 				// small-sample corpus review. Demoted to 0.50 to match

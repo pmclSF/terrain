@@ -84,6 +84,11 @@ type Counter struct {
 	defCache  map[string][]string
 	indexOnce sync.Once
 	visited   map[string]bool
+	// countMu serializes Count / CountTransitive so a single Counter
+	// can be shared across parallel scan goroutines without racing on
+	// the visited map. The expensive index build is sync.Once-guarded
+	// independently.
+	countMu sync.Mutex
 }
 
 // NewCounter constructs a Counter for the given repo root.
@@ -105,6 +110,8 @@ func (c *Counter) Count(reg *mechanisms.Registry, body string) int {
 		return count
 	}
 	c.ensureDefIndex()
+	c.countMu.Lock()
+	defer c.countMu.Unlock()
 	// Reset per-test visited set so two unrelated tests don't share
 	// "already counted" state.
 	c.visited = map[string]bool{}
@@ -116,6 +123,8 @@ func (c *Counter) Count(reg *mechanisms.Registry, body string) int {
 // transitively-discovered count.
 func (c *Counter) CountTransitive(body string, maxDepth int) int {
 	c.ensureDefIndex()
+	c.countMu.Lock()
+	defer c.countMu.Unlock()
 	c.visited = map[string]bool{}
 	if maxDepth > MaxDepth {
 		maxDepth = MaxDepth

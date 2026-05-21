@@ -135,6 +135,31 @@ func GateRole(reg *mechanisms.Registry, facts GraphFacts, loc Location, ruleID s
 	return dec
 }
 
+// GateClassifyDemote is the no-depgraph variant of GateRole used by
+// consumers that have a file path + line but no symbol-level graph
+// facts. It runs the path-based Classify and routes the
+// CatalogOrExample verdict through mechanisms.GateDemote so the
+// off/shadow/on state machine is shared.
+//
+// Returns true when the finding should be demoted (severity dropped
+// one tier). Mechanism=off → always false. Shadow → emits a
+// would-demote-severity event but returns false. On → returns true
+// when Classify says CatalogOrExample.
+func GateClassifyDemote(reg *mechanisms.Registry, loc Location, ruleID string) bool {
+	res := Classify(loc)
+	return mechanisms.GateDemote(reg, RoleMechanismName,
+		mechanisms.EventContext{RuleID: ruleID, File: loc.Path, Line: loc.Line},
+		func() mechanisms.PredicateResult {
+			if res.Class == CatalogOrExample {
+				return mechanisms.PredicateResult{
+					Fired:   true,
+					Reasons: append([]string{"path-based classifier: catalog/example"}, res.Reasons...),
+				}
+			}
+			return mechanisms.PredicateResult{Fired: false}
+		})
+}
+
 // CombineWithClassify merges a structural role decision with the
 // Phase 1 Classify verdict. Returns the strictest verdict — if either
 // says "catalog/example," demote; if either says "live," keep.

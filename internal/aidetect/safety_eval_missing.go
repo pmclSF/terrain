@@ -1,10 +1,14 @@
 package aidetect
 
 import (
+	"path/filepath"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/ehr"
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/surfacelit"
 )
 
 // SafetyEvalMissingDetector flags AI surfaces (prompt / agent / tool
@@ -22,7 +26,27 @@ import (
 // and Description to allow projects that don't standardise on a
 // `category: safety` field. The match list lives in
 // safetyCategoryMarkers.
-type SafetyEvalMissingDetector struct{}
+type SafetyEvalMissingDetector struct {
+	// Root is the repository root used to resolve surface paths for
+	// the surface_literal_presence_gate mechanism. Empty defaults to
+	// "."; the gate is a no-op when paths can't be read.
+	Root string
+}
+
+// ehrKindFor maps the snapshot's CodeSurfaceKind to the ehr package's
+// SurfaceKind. The ehr taxonomy is narrower (prompt/model/dataset);
+// anything else falls back to "prompt" since the gate's job is to
+// check whether a same-named surface appears in the eval's report.
+func ehrKindFor(k models.CodeSurfaceKind) ehr.SurfaceKind {
+	switch k {
+	case models.SurfaceModel:
+		return ehr.SurfaceModel
+	case models.SurfaceDataset:
+		return ehr.SurfaceDataset
+	default:
+		return ehr.SurfacePrompt
+	}
+}
 
 var safetyCriticalSurfaceKinds = map[models.CodeSurfaceKind]bool{
 	models.SurfacePrompt:   true,
@@ -84,6 +108,27 @@ func (d *SafetyEvalMissingDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 		}
 	}
 
+	// Mechanism gate: ehr_surfaces_covered.
+	// Build ehr reports once per scan from eval config paths so the
+	// gate can override the coarse safelyCoveredDirs heuristic on a
+	// per-surface basis.
+	var evalReports []*ehr.Report
+	{
+		root := d.Root
+		if root == "" {
+			root = "."
+		}
+		for _, sc := range snap.Evals {
+			if !scenarioLooksSafety(sc) || sc.Path == "" {
+				continue
+			}
+			rep, err := ehr.Recognize(filepath.Join(root, sc.Path))
+			if err == nil && rep != nil {
+				evalReports = append(evalReports, rep)
+			}
+		}
+	}
+
 	var out []models.Signal
 	for _, surface := range snap.CodeSurfaces {
 		if !safetyCriticalSurfaceKinds[surface.Kind] {
@@ -92,7 +137,30 @@ func (d *SafetyEvalMissingDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 		if safelyCoveredSurfaces[surface.SurfaceID] {
 			continue
 		}
+		dirHit := false
 		if dir := topLevelDir(surface.Path); dir != "" && safelyCoveredDirs[dir] {
+			dirHit = true
+		}
+		// Mechanism gate: ehr_surfaces_covered. When ON, the per-eval
+		// surface report can override the coarse dirHit heuristic. The
+		// gate lifts suppression only when the eval doesn't actually
+		// cover this specific surface name.
+		root := d.Root
+		if root == "" {
+			root = "."
+		}
+		abs := filepath.Join(root, surface.Path)
+		keep := ehr.GateSuppression(
+			mechanisms.Default(), evalReports,
+			ehrKindFor(surface.Kind),
+			surface.Name, "aiSafetyEvalMissing", surface.Path,
+			dirHit,
+		)
+		if !keep {
+			continue
+		}
+		// Mechanism gate: surface_literal_presence_gate.
+		if dec := surfacelit.Gate(mechanisms.Default(), surface.Name, abs, "aiSafetyEvalMissing"); !dec.Keep {
 			continue
 		}
 		out = append(out, models.Signal{

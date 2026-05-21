@@ -2,10 +2,21 @@ package quality
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"regexp"
 	"sort"
+	"strings"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 )
+
+// SplitMechanismName is the canonical mechanism name that toggles the
+// static_skipped_test split (unconditional vs conditional-gate). When
+// the mechanism is on, the detector emits the split signal types; when
+// off, it emits the legacy "staticSkippedTest" type for back-compat.
+const SplitMechanismName = "static_skipped_test_split"
 
 // StaticSkipDetector identifies statically skipped tests from source code patterns.
 //
@@ -17,7 +28,12 @@ import (
 //
 // This closes the P0 gap where docs promise skip detection from `terrain analyze`
 // but the runtime-based SkippedTestDetector requires --runtime artifacts.
-type StaticSkipDetector struct{}
+type StaticSkipDetector struct {
+	// RepoRoot is used to read file contents for the conditional-gate
+	// classification when the static_skipped_test_split mechanism is on.
+	// Empty defaults to "." for back-compat.
+	RepoRoot string
+}
 
 // Detect scans test files for static skip patterns.
 func (d *StaticSkipDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
@@ -96,10 +112,24 @@ func (d *StaticSkipDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sig
 		return skippedFiles[i].path < skippedFiles[j].path
 	})
 
+	splitOn := mechanisms.Default().State(SplitMechanismName) == mechanisms.StateOn
 	for _, sf := range skippedFiles {
 		fileRatio := float64(sf.skips) / float64(sf.tests)
+		// Per-file Type is "staticSkippedTest" by default; when the
+		// static_skipped_test_split mechanism is on, classify the file
+		// as unconditional (no gate predicate present) vs
+		// conditional-gate (env/feature-flag/platform predicate
+		// present somewhere in the file).
+		sigType := models.SignalType("staticSkippedTest")
+		if splitOn {
+			if d.fileHasGatePredicate(sf.path) {
+				sigType = "staticSkippedTest-conditional-gate"
+			} else {
+				sigType = "staticSkippedTest-unconditional"
+			}
+		}
 		signals = append(signals, models.Signal{
-			Type:             "staticSkippedTest",
+			Type:             sigType,
 			Category:         models.CategoryHealth,
 			Severity:         staticSkipSeverity(fileRatio),
 			Confidence:       0.8,
@@ -122,6 +152,40 @@ func (d *StaticSkipDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sig
 	}
 
 	return signals
+}
+
+// gatePredicateRe matches the shapes that indicate a skip is wrapped
+// by a runtime gate condition (environment, feature flag, platform).
+var gatePredicateRe = regexp.MustCompile(
+	`(?i)` +
+		`process\.env\.[A-Z_]+|` + // JS: process.env.FOO
+		`os\.environ\b|os\.getenv\(|` + // Python: os.environ / os.getenv
+		`@\s*pytest\.mark\.skipif\b|` + // Pytest: skipif
+		`@\s*unittest\.skipIf\b|` + // Python unittest: skipIf
+		`@\s*Skip[A-Z]\w*\b|` + // JUnit/etc: @SkipOnX
+		`if\s+__name__\b|` + // common platform/CI gate
+		`platform\.(system|machine|python_implementation)\b|` +
+		`feature[_]?flag\b|featureFlag\b|` +
+		`os\.Getenv\(`)
+
+func (d *StaticSkipDetector) fileHasGatePredicate(relPath string) bool {
+	root := d.RepoRoot
+	if root == "" {
+		root = "."
+	}
+	abs := filepath.Join(root, relPath)
+	data, err := os.ReadFile(abs)
+	if err != nil {
+		// Unreadable file — fail open to the more conservative
+		// "unconditional" classification, since we can't confirm a
+		// gate exists.
+		return false
+	}
+	text := string(data)
+	// Skip comment-only or quoted-only matches by stripping comments
+	// the cheap way before regex match.
+	text = strings.ReplaceAll(text, "// ", " ")
+	return gatePredicateRe.MatchString(text)
 }
 
 func staticSkipSeverity(ratio float64) models.SignalSeverity {

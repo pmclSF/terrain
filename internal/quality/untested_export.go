@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/barrelresolver"
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -30,7 +32,14 @@ import (
 //   - Heuristic fallback cannot determine actual runtime coverage.
 //   - Code tested via integration tests in a different directory may be flagged
 //     unless the import graph captures the linkage.
-type UntestedExportDetector struct{}
+type UntestedExportDetector struct {
+	// RepoRoot enables the a7_barrel_resolver mechanism. When set, the
+	// detector consults barrelresolver to follow re-export / barrel
+	// indirection that the legacy import graph misses (Jest path
+	// aliases, dist-path indirection, Python namespace re-exports).
+	// Empty disables the barrel-resolver fallback.
+	RepoRoot string
+}
 
 // toolingPathPrefixes are repo-root-relative path prefixes that we
 // treat as build / CI / tooling code and exclude from untested-export
@@ -119,6 +128,23 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 		for _, imports := range snap.ImportGraph {
 			for mod := range imports {
 				importedModules[mod] = true
+			}
+		}
+	}
+	// Mechanism gate: a7_barrel_resolver. When on, expand the legacy
+	// importedModules set by routing each test file's imports through
+	// barrelresolver, which handles Jest path aliases, dist-path
+	// indirection, and Python namespace re-exports.
+	if d.RepoRoot != "" && mechanisms.Default().State(barrelresolver.MechanismName) != mechanisms.StateOff {
+		resolver, err := barrelresolver.New(d.RepoRoot)
+		if err == nil {
+			for testPath, imports := range snap.ImportGraph {
+				fromDir := filepath.Dir(testPath)
+				for importPath := range imports {
+					for _, res := range resolver.Resolve(mechanisms.Default(), fromDir, importPath) {
+						importedModules[res.File] = true
+					}
+				}
 			}
 		}
 	}

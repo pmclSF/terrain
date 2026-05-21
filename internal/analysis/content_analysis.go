@@ -5,9 +5,32 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
+	"github.com/pmclSF/terrain/internal/deffollowing"
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 )
+
+// defFollowingCounter is the per-root cache of deffollowing.Counter
+// instances. Sharing one Counter across parallel scan goroutines
+// avoids re-indexing the repo for every file. Counter.Count is now
+// mutex-guarded internally.
+var (
+	defFollowingMu     sync.Mutex
+	defFollowingCounter = map[string]*deffollowing.Counter{}
+)
+
+func counterFor(root string) *deffollowing.Counter {
+	defFollowingMu.Lock()
+	defer defFollowingMu.Unlock()
+	if c, ok := defFollowingCounter[root]; ok {
+		return c
+	}
+	c := deffollowing.NewCounter(root)
+	defFollowingCounter[root] = c
+	return c
+}
 
 // analyzeTestFileContentCached reads a test file, populates analysis counts,
 // and returns the file content string for reuse by downstream stages.
@@ -20,7 +43,15 @@ func analyzeTestFileContentCached(tf *models.TestFile, root string) string {
 	src := string(content)
 
 	tf.TestCount = countTests(src, tf.Framework)
-	tf.AssertionCount = countAssertions(src, tf.Framework)
+	immediate := countAssertions(src, tf.Framework)
+	// Mechanism gate: a1_def_following. When on, the per-file
+	// assertion count is lifted to include transitive assertions
+	// inside in-repo helper bodies that the test calls. When off, the
+	// immediate count is preserved.
+	tf.AssertionCount = deffollowing.GateLift(
+		mechanisms.Default(), counterFor(root), src,
+		"assertionCounterFamily", tf.Path, immediate,
+	)
 	tf.MockCount = countMocks(src, tf.Framework)
 	tf.SnapshotCount = countSnapshots(src, tf.Framework)
 	tf.SkipCount = countSkips(src, tf.Framework)

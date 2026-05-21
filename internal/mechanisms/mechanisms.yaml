@@ -75,8 +75,6 @@ mechanisms:
     consumers:
       - untestedExport
       - orphanedTestFile
-      - assertionFreeImport
-      - assertionFreeTest
 
   - name: a3_loop_predicate
     state: shadow
@@ -94,9 +92,7 @@ mechanisms:
       over-suppression when an eval covers a different surface than
       the one a finding fires on.
     consumers:
-      - aiNonDeterministicEval
       - aiSafetyEvalMissing
-      - promptFileMissingEval
 
   - name: runtime_config_recognizer
     state: shadow

@@ -7,8 +7,11 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/ascg"
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/surfacelit"
 )
 
 // modelDeprecationList is the curated registry of model identifiers that
@@ -45,6 +48,21 @@ var modelDeprecationList = []deprecationRule{
 	{Match: "code-cushman-001", Category: "deprecated", Explanation: "OpenAI code-cushman-001 is sunset (Codex deprecation, 2023-03); use gpt-3.5-turbo or gpt-4"},
 	{Match: "claude-2", Category: "deprecated", Explanation: "Anthropic claude-2 lineage is being sunset; migrate to claude-3.x"},
 	{Match: "claude-1", Category: "deprecated", Explanation: "Anthropic claude-1 is sunset"},
+}
+
+// demoteSeverity returns the severity one tier below `s`. Used by
+// gate helpers that demote findings on catalog/example occurrences.
+func demoteSeverity(s models.SignalSeverity) models.SignalSeverity {
+	switch s {
+	case models.SeverityCritical:
+		return models.SeverityHigh
+	case models.SeverityHigh:
+		return models.SeverityMedium
+	case models.SeverityMedium:
+		return models.SeverityLow
+	default:
+		return models.SeverityLow
+	}
 }
 
 type deprecationRule struct {
@@ -164,6 +182,10 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 		abs := filepath.Join(d.Root, relPath)
 		hits := scanFileForModelTags(abs)
 		for _, h := range hits {
+			// Mechanism gate: surface_literal_presence_gate.
+			if dec := surfacelit.Gate(mechanisms.Default(), h.Rule.Match, abs, "aiModelDeprecationRisk"); !dec.Keep {
+				continue
+			}
 			// 0.2.0 final-polish: severity now tracks the category.
 			// "deprecated" tags (text-davinci-003, code-davinci-002,
 			// claude-1) are sunset and the next API call WILL break;
@@ -174,6 +196,14 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			severity := models.SeverityMedium
 			if h.Rule.Category == "deprecated" {
 				severity = models.SeverityHigh
+			}
+			// Mechanism gate: ascg_live_vs_catalog. Demote one tier
+			// when the occurrence is in a catalog/example/fixture
+			// path or other non-live context.
+			if ascg.GateClassifyDemote(mechanisms.Default(),
+				ascg.Location{Path: relPath, Line: h.Line},
+				"aiModelDeprecationRisk") {
+				severity = demoteSeverity(severity)
 			}
 			out = append(out, models.Signal{
 				Type:        signals.SignalAIModelDeprecationRisk,

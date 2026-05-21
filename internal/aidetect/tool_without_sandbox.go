@@ -6,8 +6,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/surfacelit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -113,6 +115,10 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 		abs := filepath.Join(d.Root, relPath)
 		findings := analyseToolConfig(abs)
 		for _, f := range findings {
+			// Mechanism gate: surface_literal_presence_gate.
+			if dec := surfacelit.Gate(mechanisms.Default(), f.ToolName, abs, "aiToolWithoutSandbox"); !dec.Keep {
+				continue
+			}
 			out = append(out, models.Signal{
 				Type:        signals.SignalAIToolWithoutSandbox,
 				Category:    models.CategoryAI,

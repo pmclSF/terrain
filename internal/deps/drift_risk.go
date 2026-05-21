@@ -31,9 +31,15 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
 )
+
+// SplitMechanismName toggles the depsDriftRisk split:
+// strict-pin (bare-name / unversioned) vs caret-policy (caret ranges).
+// When off, the detector emits the legacy "depsDriftRisk" signal type.
+const SplitMechanismName = "deps_drift_risk_split"
 
 // DriftRiskDetector emits SignalDepsDriftRisk for each manifest file
 // whose share of moving-target deps exceeds the configured threshold.
@@ -106,8 +112,26 @@ func (d *DriftRiskDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sign
 		} else if share < 0.50 {
 			severity = models.SeverityLow
 		}
+		// Mechanism gate: deps_drift_risk_split. When on, emit the
+		// split signal type whose underlying issue dominates this
+		// manifest (strict-pin vs caret-policy). When off, emit the
+		// legacy "depsDriftRisk" so callers don't see a Type change.
+		sigType := signals.SignalDepsDriftRisk
+		ruleID := "terrain/deps/drift-risk"
+		ruleURI := "docs/rules/deps/drift-risk.md"
+		if mechanisms.Default().State(SplitMechanismName) == mechanisms.StateOn {
+			if stats.CaretIssues > stats.StrictPinIssues {
+				sigType = signals.SignalDepsDriftRiskCaretPolicy
+				ruleID = "terrain/deps/drift-caret-policy"
+				ruleURI = "docs/rules/deps/drift-caret-policy.md"
+			} else {
+				sigType = signals.SignalDepsDriftRiskStrictPin
+				ruleID = "terrain/deps/drift-strict-pin"
+				ruleURI = "docs/rules/deps/drift-strict-pin.md"
+			}
+		}
 		out = append(out, models.Signal{
-			Type:             signals.SignalDepsDriftRisk,
+			Type:             sigType,
 			Category:         models.CategoryQuality,
 			Severity:         severity,
 			Confidence:       0.7,
@@ -119,17 +143,19 @@ func (d *DriftRiskDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sign
 			Explanation: "Dependency manifest `" + rel + "` has " +
 				itoa(stats.MovingTargets) + " of " + itoa(stats.TotalDeps) +
 				" deps using moving-target version specs (no version pin, range, or `latest`). " +
-				"Bot-authored bumps to this manifest correlate with ~5x baseline regression rate in the public-OSS corpus.",
+				"Bot-authored bumps to this manifest correlate with elevated regression rates in public-OSS data.",
 			SuggestedAction: "Pin deps to specific versions (or narrow ranges with upper bounds). Configure renovate/dependabot to group + test bumps before auto-merging. Consider `--ignore-scripts` for install steps.",
 			Metadata: map[string]any{
-				"manifest":            name,
-				"ecosystem":           stats.Ecosystem,
-				"totalDeps":           stats.TotalDeps,
-				"movingTargetDeps":    stats.MovingTargets,
-				"movingTargetShare":   share,
+				"manifest":          name,
+				"ecosystem":         stats.Ecosystem,
+				"totalDeps":         stats.TotalDeps,
+				"movingTargetDeps":  stats.MovingTargets,
+				"movingTargetShare": share,
+				"strictPinIssues":   stats.StrictPinIssues,
+				"caretIssues":       stats.CaretIssues,
 			},
-			RuleID:  "terrain/deps/drift-risk",
-			RuleURI: "docs/rules/deps/drift-risk.md",
+			RuleID:  ruleID,
+			RuleURI: ruleURI,
 		})
 		return nil
 	})
@@ -150,6 +176,11 @@ type manifestStats struct {
 	Ecosystem     string
 	TotalDeps     int
 	MovingTargets int
+	// StrictPinIssues counts moving-target deps that have no pin at
+	// all (bare name, `*`, `latest`, untagged git+/file:/workspace:).
+	StrictPinIssues int
+	// CaretIssues counts moving-target deps using caret-range (`^x.y.z`).
+	CaretIssues int
 }
 
 func analyseManifest(path string) (manifestStats, bool) {
@@ -202,6 +233,11 @@ func analyseNPM(data []byte) manifestStats {
 			s := strings.TrimSpace(spec)
 			if isNPMMovingTarget(s) {
 				stats.MovingTargets++
+				if strings.HasPrefix(s, "^") {
+					stats.CaretIssues++
+				} else {
+					stats.StrictPinIssues++
+				}
 			}
 		}
 	}
