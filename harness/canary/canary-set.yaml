@@ -4,7 +4,7 @@
 # Selection criteria + coverage matrix: harness/canary/canary-set-criteria.md
 # Sampling strategy: terrain_corpus_and_gate.md (sample apps, not stars).
 schema_version: 1
-sealed_at: null  # not yet sealed; seal after first make-canary run produces ground truth
+sealed_at: 2026-05-21  # SHAs fetched via `gh pr view`; see scripts/canary-driver.py for run logic
 drafted_at: 2026-05-19
 
 # Organization-diversity tally (cap: ≤2 PR per org, only when each PR exercises a different detector):
@@ -31,6 +31,8 @@ prs:
     repo: github.com/danny-avila/LibreChat
     pr_number: 12960
     pr_url: https://github.com/danny-avila/LibreChat/pull/12960
+    head_sha: 8c60200710e4419cf289cd90e5fdeb674dd295d7
+    base_sha: b39bf837a7aea32be0b7c221c30019d78c3e4700
     merged_at: 2026-05-08
     languages: [typescript, javascript]
     category: schemaChangePromptConsumer
@@ -49,6 +51,8 @@ prs:
     repo: github.com/infiniflow/ragflow
     pr_number: 13929
     pr_url: https://github.com/infiniflow/ragflow/pull/13929
+    head_sha: f44f0ba885730abddb771dfcc82c443f33046e0a
+    base_sha: b3891ba6a429b671cc109e56f3f589cf1908c7e0
     merged_at: 2026-05-15
     languages: [python]
     category: schemaChangePromptConsumer
@@ -66,6 +70,8 @@ prs:
     repo: github.com/langchain4j/langchain4j
     pr_number: 5148
     pr_url: https://github.com/langchain4j/langchain4j/pull/5148
+    head_sha: 8a7d74460b8cfbacb25677f5eb2189c4b4e50a9a
+    base_sha: ef65c3ac772ae5f646bbd666240c75810a8bea82
     merged_at: 2026-05-11
     languages: [java]
     category: schemaChangePromptConsumer
@@ -86,6 +92,8 @@ prs:
     repo: github.com/Aider-AI/aider
     pr_number: 4935
     pr_url: https://github.com/Aider-AI/aider/pull/4935
+    head_sha: 55164933dc152308b8aeb8f78afc461248470e5c
+    base_sha: 861a1e4d154f268547a06497cc380e5a5dc8483a
     merged_at: 2026-03-16
     languages: [python]
     category: aiModelDeprecationRisk
@@ -107,6 +115,8 @@ prs:
     repo: github.com/vercel/ai-chatbot
     pr_number: 1487
     pr_url: https://github.com/vercel/ai-chatbot/pull/1487
+    head_sha: d0759c1eb6742b2975eb2e66da244f56767d91d8
+    base_sha: d25b71c0a1933ac379ccee979a510b43f30573d9
     merged_at: 2026-04-17
     languages: [typescript]
     category: aiModelDeprecationRisk
@@ -126,6 +136,8 @@ prs:
     repo: github.com/continuedev/continue
     pr_number: 8665
     pr_url: https://github.com/continuedev/continue/pull/8665
+    head_sha: 3c85721ef755366371a71c60d732e6382931ac42
+    base_sha: 23cc853785e229ef68058dce5268b500237c6ebd
     merged_at: 2025-11-17
     languages: [typescript]
     category: aiPromptVersioning
@@ -143,6 +155,8 @@ prs:
     repo: github.com/infiniflow/ragflow
     pr_number: 14164
     pr_url: https://github.com/infiniflow/ragflow/pull/14164
+    head_sha: 73d562d2b40b698fe3c7f7b017918be2d704291e
+    base_sha: b3891ba6a429b671cc109e56f3f589cf1908c7e0
     merged_at: 2026-05-11
     languages: [python]
     category: aiPromptVersioning
@@ -160,6 +174,8 @@ prs:
     repo: github.com/huggingface/chat-ui
     pr_number: 2233
     pr_url: https://github.com/huggingface/chat-ui/pull/2233
+    head_sha: 077f5fb0154f17f646f732148837128437c11484
+    base_sha: 8acc603cf7ae7e4cb18601904bb1959456a2c520
     merged_at: 2026-04-28
     languages: [typescript]
     category: aiPromptVersioning
@@ -180,6 +196,8 @@ prs:
     repo: github.com/OpenBMB/ChatDev
     pr_number: 559
     pr_url: https://github.com/OpenBMB/ChatDev/pull/559
+    head_sha: a6717bed9bf625f51e047f3f20dee7c9fa62e725
+    base_sha: 6fe4fd1a0a27cbd690ba64431072c82c45495dce
     merged_at: 2026-03-11
     languages: [python, markdown, yaml]
     category: promptFileMissingEval
@@ -199,6 +217,8 @@ prs:
     repo: github.com/promptfoo/promptfoo
     pr_number: 9061
     pr_url: https://github.com/promptfoo/promptfoo/pull/9061
+    head_sha: 75266460908043fe6ef76f8057d399420a0f9e8a
+    base_sha: a39fac1e60054faa992831d769381b3aa029d03e
     merged_at: 2026-05-04
     languages: [python, typescript, yaml, markdown]
     category: promptFileMissingEval
@@ -218,6 +238,8 @@ prs:
     repo: github.com/promptfoo/promptfoo
     pr_number: 8763
     pr_url: https://github.com/promptfoo/promptfoo/pull/8763
+    head_sha: 63f8b4a8a791f4b446662885ef24f18fc1484d9e
+    base_sha: 6cff1b9ebaa8225bdd12fb6004297e23fb1b46aa
     merged_at: 2026-04-16
     languages: [yaml, typescript]
     category: aiNonDeterministicEval
@@ -240,6 +262,8 @@ prs:
     repo: github.com/weaviate/Verba
     pr_number: 462
     pr_url: https://github.com/weaviate/Verba/pull/462
+    head_sha: 75a5bc1ac777f8adc290924b457a95148c44233e
+    base_sha: ca9a11c2f77c657c7416b5451825fa78322fc283
     merged_at: 2026-05-11
     languages: [python]
     category: untestedExport
@@ -259,6 +283,8 @@ prs:
     repo: github.com/danny-avila/LibreChat
     pr_number: 13139
     pr_url: https://github.com/danny-avila/LibreChat/pull/13139
+    head_sha: 0ae1ea916d0c1c305407a063e5d42d11a1794dd3
+    base_sha: ca8c212c0dbbc52d3edca47ecdfe15ff4e0e11d6
     merged_at: 2026-05-15
     languages: [typescript, javascript]
     category: mockHeavyTest
@@ -277,6 +303,8 @@ prs:
     repo: github.com/letta-ai/letta
     pr_number: 2854
     pr_url: https://github.com/letta-ai/letta/pull/2854
+    head_sha: 9426fb43700a6d0e1cb13e10977418fdce62b123
+    base_sha: 112e34a5115f152f1b27543803bceefe1c44d80f
     merged_at: 2025-09-12
     languages: [python]
     category: weakAssertion
@@ -296,6 +324,8 @@ prs:
     repo: github.com/letta-ai/letta
     pr_number: 2160
     pr_url: https://github.com/letta-ai/letta/pull/2160
+    head_sha: aeb3109554ddaab721b91f2118520c9953c6315d
+    base_sha: 38168f8b62b8d0504c89606be725c778e2c6806d
     merged_at: 2024-12-04
     languages: [python]
     category: staticSkippedTest
@@ -317,6 +347,8 @@ prs:
     repo: github.com/ChatGPTNextWeb/NextChat
     pr_number: 6570
     pr_url: https://github.com/ChatGPTNextWeb/NextChat/pull/6570
+    head_sha: 1600b96454cf098490098e8cd043745403f15b02
+    base_sha: 80d7fd9b9882a7f6a3a0ff6710f2250c3cd5a231
     merged_at: 2025-07-17
     languages: [typescript]
     category: floatingModelTag
@@ -345,6 +377,8 @@ prs:
     repo: HAND-SEED-REQUIRED
     pr_number: null
     pr_url: null
+    head_sha: null  # HAND-SEED-REQUIRED or fetch error
+    base_sha: null
     merged_at: null
     languages: [any]
     category: hardcodedApiKey_negative
@@ -359,6 +393,8 @@ prs:
     repo: HAND-SEED-REQUIRED
     pr_number: null
     pr_url: null
+    head_sha: null  # HAND-SEED-REQUIRED or fetch error
+    base_sha: null
     merged_at: null
     languages: [any]
     category: hardcodedApiKey_positive
@@ -377,6 +413,8 @@ prs:
     repo: github.com/vercel/ai-chatbot
     pr_number: 1476
     pr_url: https://github.com/vercel/ai-chatbot/pull/1476
+    head_sha: 77c38e0df4653b6560793e6fbc88c831cf892228
+    base_sha: 691c3cb05fddf292e1f52788d383937740c57cb9
     merged_at: 2026-04-01
     languages: [markdown]
     category: negative_docs_only
@@ -395,6 +433,8 @@ prs:
     repo: github.com/continuedev/continue
     pr_number: 10886
     pr_url: https://github.com/continuedev/continue/pull/10886
+    head_sha: 7fb255c9accea6cd330df826def3a33adf7ab798
+    base_sha: 391da4e461522c516e5862e3e7401fb022693671
     merged_at: 2026-03-10
     languages: [yaml]
     category: negative_deps_bump
@@ -410,6 +450,8 @@ prs:
     repo: github.com/huggingface/chat-ui
     pr_number: 2047
     pr_url: https://github.com/huggingface/chat-ui/pull/2047
+    head_sha: 09350ac43ec83425abe0e0bd7dea44716494810e
+    base_sha: 4ed954b41b65e96a72b73de5e480fc50bdd809ac
     merged_at: 2026-01-15
     languages: [json]
     category: negative_deps_bump
@@ -429,6 +471,8 @@ prs:
     repo: github.com/ChatGPTNextWeb/NextChat
     pr_number: 6515
     pr_url: https://github.com/ChatGPTNextWeb/NextChat/pull/6515
+    head_sha: eb193ac0ff426bd3344046f8f7351fc2710b45e1
+    base_sha: c30ddfbb07b9edca0b964c0902495225693ca3d6
     merged_at: 2025-06-14
     languages: [typescript]
     category: aiModelDeprecationRisk

@@ -167,14 +167,8 @@ openai-cross-rate:
 			--in tier-4/detector-validation-v2-combined-good.jsonl \
 			--out tier-4/detector-validation-v2-openai.jsonl
 
-# Canary runner — re-runs terrain against each canary PR and tracks
-# UFPP per entry. Copy harness/canary/canary-set.yaml.example to
-# harness/canary/canary-set.yaml first and fill in 15-25 PR entries.
-canary-run:
-	python3 scripts/run_canary.py \
-		--canary harness/canary/canary-set.yaml \
-		--terrain-bin /tmp/terrain-bin \
-		--out tier-4/canary-results.jsonl
+# (Canary set runs via `make canary` further down — uses
+#  scripts/canary-run.sh against harness/canary/canary-set.yaml.)
 
 # Release gate: full verification required before release
 release-gate: go-release-verify regression-gate

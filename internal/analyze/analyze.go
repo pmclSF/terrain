@@ -260,7 +260,10 @@ type RiskDimension struct {
 	Band      string `json:"band"`
 }
 
-// SignalBreakdown counts signals by severity and category.
+// SignalBreakdown counts signals by severity, category, and type.
+// `byType` is the per-rule_id breakdown used by the canary harness
+// (scripts/canary-driver.py) to verify expected_findings recall
+// without re-parsing the raw signal list.
 type SignalBreakdown struct {
 	Total      int            `json:"total"`
 	Critical   int            `json:"critical"`
@@ -268,6 +271,7 @@ type SignalBreakdown struct {
 	Medium     int            `json:"medium"`
 	Low        int            `json:"low"`
 	ByCategory map[string]int `json:"byCategory"`
+	ByType     map[string]int `json:"byType,omitempty"`
 }
 
 // ManualCoverageSummary summarizes manual validation overlays.
@@ -657,6 +661,7 @@ func buildSignalSummary(snap *models.TestSuiteSnapshot) SignalBreakdown {
 	sb := SignalBreakdown{
 		Total:      len(snap.Signals),
 		ByCategory: map[string]int{},
+		ByType:     map[string]int{},
 	}
 	for _, s := range snap.Signals {
 		switch s.Severity {
@@ -670,6 +675,7 @@ func buildSignalSummary(snap *models.TestSuiteSnapshot) SignalBreakdown {
 			sb.Low++
 		}
 		sb.ByCategory[string(s.Category)]++
+		sb.ByType[string(s.Type)]++
 	}
 	return sb
 }
