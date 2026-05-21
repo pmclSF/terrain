@@ -64,6 +64,16 @@ type Rules struct {
 	// Safety machinery: no gate-tier detector ships without a per-rule
 	// kill switch. Equivalent to `--disable-rule` on the CLI.
 	//
+	// Alias expansion: a bare rule_id that's registered as an alias old-ID
+	// expands through the alias registry. E.g. `aiHardcodedAPIKey` disables
+	// the back-compat shim AND every split half (literal-shape +
+	// secret-scanner-coverage-degraded). To disable JUST the back-compat
+	// rule and keep the split halves firing, prefix the name with `=`:
+	//
+	//   disabled_detectors:
+	//     - "=aiHardcodedAPIKey"         # literal: only the back-compat shim
+	//     - aiHardcodedAPIKey-literal-shape  # explicit new ID
+	//
 	// Example .terrain/policy.yaml:
 	//   rules:
 	//     disabled_detectors:

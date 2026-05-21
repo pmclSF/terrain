@@ -749,22 +749,12 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	registry.RunWithGraph(snapshot, dg)
 	signalsProduced := len(snapshot.Signals) - signalsBefore
 
-	// Apply user-configured disabled_detectors kill switch, expanding
-	// old/deprecated rule_ids through the alias registry so a policy on
-	// a pre-split ID continues to suppress every new ID it maps to.
-	// Logged at debug level for audit.
+	// Apply user-configured disabled_detectors kill switch. The set is
+	// expanded through the alias registry by expandDisabledDetectors —
+	// see that helper for the "=" literal-prefix opt-out semantics.
 	if disabled := policyCfg.DisabledDetectorSet(); len(disabled) > 0 {
 		aliasReg, _ := aliases.Load()
-		expanded := make(map[string]bool, len(disabled))
-		aliasesHit := map[string]bool{}
-		for old := range disabled {
-			for _, expandedID := range aliasReg.ExpandOldID(old) {
-				expanded[expandedID] = true
-				if expandedID != old {
-					aliasesHit[old] = true
-				}
-			}
-		}
+		expanded, aliasesHit := expandDisabledDetectors(disabled, aliasReg)
 		emitAliasNotes(aliasReg, aliasesHit)
 
 		kept := snapshot.Signals[:0]
@@ -923,6 +913,42 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		ArtifactDiscovery: discovery,
 		DiscoveryMessages: discoveryMessages,
 	}, nil
+}
+
+// expandDisabledDetectors takes the user's disabled_detectors set
+// (typically from policy.yaml) and produces the actual set of rule_ids
+// the engine should suppress, plus the subset of old IDs that hit an
+// alias rule (for migration NOTE emission).
+//
+// Entries with a "=" prefix are LITERAL — they are added to the
+// expanded set without consulting the alias registry. This lets a
+// user suppress JUST a back-compat shim while letting the split halves
+// fire:
+//
+//	disabled_detectors:
+//	  - "=aiHardcodedAPIKey"   # literal: only the legacy ID
+//
+// Bare entries route through aliases.ExpandOldID, so a policy on a
+// pre-split ID continues to suppress every replacement ID too.
+func expandDisabledDetectors(disabled map[string]bool, reg *aliases.Registry) (expanded, aliasesHit map[string]bool) {
+	expanded = make(map[string]bool, len(disabled))
+	aliasesHit = map[string]bool{}
+	for old := range disabled {
+		if strings.HasPrefix(old, "=") {
+			literal := strings.TrimPrefix(old, "=")
+			if literal != "" {
+				expanded[literal] = true
+			}
+			continue
+		}
+		for _, expandedID := range reg.ExpandOldID(old) {
+			expanded[expandedID] = true
+			if expandedID != old {
+				aliasesHit[old] = true
+			}
+		}
+	}
+	return expanded, aliasesHit
 }
 
 // ensureTerrainGitignore creates .terrain/ and writes a default
