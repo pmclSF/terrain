@@ -147,6 +147,35 @@ mechanism-recall:
 		--out tier-4/mechanism-recall-report.json \
 		| tee tier-4/mechanism-recall-report.md
 
+# R3.7: v2 baseline measurement for the four claim-without-evidence
+# detectors (aiPromptVersioning, aiPromptInjectionRisk,
+# aiHardcodedAPIKey, testsOnlyMocks). Cycle-2 deliverable is
+# measurement, not a lift target.
+r37-baseline:
+	python3 scripts/baseline_measure_r37.py \
+		--repo-list tier-4/sample-repos.txt \
+		--terrain-bin /tmp/terrain-bin \
+		--output tier-4/r37-baseline.jsonl \
+		--per-detector 150
+
+# OpenAI cross-rate against the cycle-1 v2 Claude baseline. Computes
+# Cohen's kappa per detector. Detectors with kappa < 0.6 are
+# deprioritized for cycle-2 engineering. Requires OPENAI_API_KEY.
+openai-cross-rate:
+	OPENAI_API_KEY=$${OPENAI_API_KEY:?set OPENAI_API_KEY} \
+		python3 scripts/cross_rate_openai.py \
+			--in tier-4/detector-validation-v2-combined-good.jsonl \
+			--out tier-4/detector-validation-v2-openai.jsonl
+
+# Canary runner — re-runs terrain against each canary PR and tracks
+# UFPP per entry. Copy harness/canary/canary-set.yaml.example to
+# harness/canary/canary-set.yaml first and fill in 15-25 PR entries.
+canary-run:
+	python3 scripts/run_canary.py \
+		--canary harness/canary/canary-set.yaml \
+		--terrain-bin /tmp/terrain-bin \
+		--out tier-4/canary-results.jsonl
+
 # Release gate: full verification required before release
 release-gate: go-release-verify regression-gate
 

@@ -15,11 +15,16 @@ schema_version: 1
 
 mechanisms:
   - name: surface_literal_presence_gate
-    state: shadow
+    state: on
     description: |
       Before an AI surface-aware detector fires on a surface name,
       require that the name literally appears as an identifier token
       in the flagged file. Suppresses surface-hallucination findings.
+      Validated by `make mechanism-recall` against the v2 corpus:
+      30 FP-gain, 9 TP-loss on aiSafetyEvalMissing (within the 5%
+      R3.8 recall budget) — passes the graduation rule. The
+      isSyntheticIdentifier wrap at consumer call sites prevents
+      over-suppression of constructor-derived synthetic labels.
     consumers:
       - aiModelDeprecationRisk
       - aiPromptVersioning

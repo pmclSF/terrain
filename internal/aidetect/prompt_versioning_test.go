@@ -202,7 +202,11 @@ content: |
 
 	d := &PromptVersioningDetector{Root: root}
 
-	// Shadow → both fire (legacy behavior).
+	// Mechanism is now live by default — flip to shadow to verify
+	// legacy behavior preserves both findings.
+	if err := reg.ApplyCLIOverrides([]string{"surface_literal_presence_gate=shadow"}); err != nil {
+		t.Fatalf("override shadow: %v", err)
+	}
 	if got := d.Detect(snap); len(got) != 2 {
 		t.Fatalf("shadow: expected 2 signals; got %d", len(got))
 	}
