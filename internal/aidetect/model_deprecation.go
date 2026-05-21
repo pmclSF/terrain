@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pmclSF/terrain/internal/ascg"
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
@@ -194,14 +193,12 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			if h.Rule.Category == "deprecated" {
 				severity = models.SeverityHigh
 			}
-			// Mechanism gate: ascg_live_vs_catalog. Demote one tier
-			// when the occurrence is in a catalog/example/fixture
-			// path or other non-live context.
-			if ascg.GateClassifyDemote(mechanisms.Default(),
-				ascg.Location{Path: relPath, Line: h.Line},
-				"aiModelDeprecationRisk") {
-				severity = demoteSeverity(severity)
-			}
+			// aiModelDeprecationRisk was previously demoted via
+			// ascg_live_vs_catalog. v2 corpus evidence
+			// (`make mechanism-recall`) showed the path-based demote
+			// dropped 4 TPs with 0 FP-gain — model deprecations in
+			// `examples/` are still real findings because the example
+			// is meant to be copied. Removed.
 			out = append(out, models.Signal{
 				Type:        signals.SignalAIModelDeprecationRisk,
 				Category:    models.CategoryAI,

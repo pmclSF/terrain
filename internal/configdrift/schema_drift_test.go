@@ -213,17 +213,15 @@ func writeFile(t *testing.T, path, content string) {
 	}
 }
 
-// TestSchemaDriftDetector_AscgGate_On proves the ascg_live_vs_catalog
-// mechanism observably demotes findings on catalog/example paths
-// (e.g. docs/, examples/) when state=on.
-func TestSchemaDriftDetector_AscgGate_On(t *testing.T) {
-	// Same hazard count, two paths: one in production /charts/, one
-	// under examples/. The path-based ascg classifier demotes the
-	// examples/ path; the prod path is unaffected.
+// TestSchemaDriftDetector_NotDemotedInExamples proves
+// configSchemaDrift findings on `examples/` paths are NOT demoted
+// by ascg_live_vs_catalog. v2 corpus evidence: docker-compose /
+// k8s / helm files in `examples/` directories are typically
+// deployable artifacts — `:latest` tags in them are still
+// forward-compat hazards regardless of path. The configSchemaDrift
+// detector was therefore removed from ascg's consumer list.
+func TestSchemaDriftDetector_NotDemotedInExamples(t *testing.T) {
 	root := t.TempDir()
-	// Both files: three distinct hazards → High severity. The gate's
-	// demote is observable when both severities start above the
-	// Low floor.
 	composeHigh := `version: "2"
 services:
   app:
@@ -241,41 +239,21 @@ services:
 	prev := mechanisms.SetDefault(reg)
 	defer mechanisms.SetDefault(prev)
 
-	d := &SchemaDriftDetector{Root: root}
-
-	prodPath := "deploy/docker-compose.yml"
-	examplePath := "examples/docker-compose.yml"
-
-	// Shadow → both findings emit at the same severity.
-	got := d.Detect(&models.TestSuiteSnapshot{})
-	if len(got) != 2 {
-		t.Fatalf("shadow: expected 2 findings, got %d", len(got))
-	}
-	sevProdShadow := severityFor(got, prodPath)
-	sevExShadow := severityFor(got, examplePath)
-	if sevProdShadow == "" || sevExShadow == "" {
-		t.Fatalf("shadow: missing one of the expected findings: %+v", got)
-	}
-	// Prod fixture has multiple hazard classes, examples has one;
-	// prod severity should be at least Medium so the on-state demote
-	// is observable below it.
-	if severityRank(sevProdShadow) < severityRank(models.SeverityMedium) {
-		t.Skipf("fixture didn't produce Medium+ severity for prod (got %s) — gate effect not observable", sevProdShadow)
-	}
-
-	// On → ascg demotes findings on examples/ paths one tier; prod
-	// is unaffected because the path-based classifier doesn't flag it.
+	// Flip ascg to ON — should have NO effect on configSchemaDrift.
 	if err := reg.ApplyCLIOverrides([]string{"ascg_live_vs_catalog=on"}); err != nil {
 		t.Fatalf("override: %v", err)
 	}
-	got = d.Detect(&models.TestSuiteSnapshot{})
-	sevProdOn := severityFor(got, prodPath)
-	sevExOn := severityFor(got, examplePath)
-	if severityRank(sevProdOn) != severityRank(sevProdShadow) {
-		t.Errorf("on: prod severity unchanged expected; shadow=%s on=%s", sevProdShadow, sevProdOn)
+
+	d := &SchemaDriftDetector{Root: root}
+	got := d.Detect(&models.TestSuiteSnapshot{})
+	if len(got) != 2 {
+		t.Fatalf("expected 2 findings, got %d", len(got))
 	}
-	if severityRank(sevExOn) >= severityRank(sevExShadow) {
-		t.Errorf("on: examples severity should demote; shadow=%s on=%s", sevExShadow, sevExOn)
+	sevProd := severityFor(got, "deploy/docker-compose.yml")
+	sevEx := severityFor(got, "examples/docker-compose.yml")
+	if sevProd != sevEx {
+		t.Errorf("expected matching severity prod=%s vs examples=%s — configSchemaDrift should not be demoted by ascg",
+			sevProd, sevEx)
 	}
 
 	_ = signals.SignalConfigSchemaDrift

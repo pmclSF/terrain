@@ -95,6 +95,15 @@ type Location struct {
 	// (yaml.safe_load, json.load, dotenv.load_dotenv, pydantic.BaseSettings,
 	// ConfigParser, hydra @hydra.main, os.getenv, ...).
 	ReachedByLoader bool
+
+	// FileBody is the (optional) text content of the file. When
+	// provided, the classifier runs a structural test on top of the
+	// path-based heuristic: a file under a catalog path (examples/,
+	// demos/) that ALSO contains real function/class definitions and
+	// SDK call sites is treated as live working code, not catalog
+	// data (per master plan R3.6 — catalog-shape recognizer requires
+	// dict-literal exports + no call sites, not just path).
+	FileBody string
 }
 
 // Result is the classifier verdict + the reasons it reached that verdict.
@@ -141,6 +150,19 @@ func Classify(loc Location) Result {
 		liveReasons = append(liveReasons, "reached_by_loader")
 	}
 
+	// Structural override (R3.6): when the path looks catalog-shaped
+	// but the file body contains real function/class definitions and
+	// SDK call sites, treat as live working code. This is the
+	// `examples/server.py` case — a langchain-style demo with
+	// `from openai import OpenAI; client = OpenAI(); ...`. The
+	// catalog-path heuristic alone would wrongly demote it.
+	if len(catalogReasons) > 0 && loc.FileBody != "" {
+		if isLiveCodeBody(loc.FileBody) {
+			liveReasons = append(liveReasons, "live_code_body_structural")
+			catalogReasons = nil
+		}
+	}
+
 	switch {
 	case len(catalogReasons) > 0:
 		return Result{Class: CatalogOrExample, Reasons: catalogReasons}
@@ -149,6 +171,39 @@ func Classify(loc Location) Result {
 	default:
 		return Result{Class: Unknown}
 	}
+}
+
+// liveCodeStructuralSignals matches the structural shapes that
+// indicate a file contains real working code: function / class
+// definitions, plus SDK call sites (constructor invocations of known
+// AI/ML clients or live framework imports).
+var (
+	// Function or class definitions at module level. Languages
+	// covered: Python, JS/TS, Go.
+	liveCodeDefRegex = regexp.MustCompile(
+		`(?m)^(?:async\s+)?(?:def|class|function|export\s+(?:default\s+)?function|export\s+(?:default\s+)?class|func)\s+\w+`)
+
+	// Call-site shapes: parens with content (function calls), arrow
+	// functions, method calls, await expressions.
+	liveCodeCallRegex = regexp.MustCompile(
+		`\w+\s*\([^)]*\)\s*[\.:=,;{]|=>\s*\{|await\s+\w+`)
+
+	// Known AI SDK imports / constructor names that imply live code
+	// when present alongside function definitions.
+	liveCodeSDKRegex = regexp.MustCompile(
+		`(?i)from\s+(openai|anthropic|langchain|llama_index|llamaindex|cohere|replicate|google\.generativeai)|` +
+			`import\s+(openai|anthropic|cohere)|` +
+			`require\(['"](openai|@anthropic|@langchain)`)
+)
+
+// isLiveCodeBody returns true when `body` contains the structural
+// shapes of a working code file: at least one function or class
+// definition AND either (a) a call-site or (b) an AI-SDK import.
+func isLiveCodeBody(body string) bool {
+	if !liveCodeDefRegex.MatchString(body) {
+		return false
+	}
+	return liveCodeCallRegex.MatchString(body) || liveCodeSDKRegex.MatchString(body)
 }
 
 // catalogPathRegex matches path segments where occurrences are almost always

@@ -116,14 +116,23 @@ mechanisms:
       - aiNonDeterministicEval
 
   - name: ascg_live_vs_catalog
-    state: shadow
+    state: on
     description: |
       Anchored-schema configuration gate: live-config-value vs
       catalog/example-string role pinning. Demotes findings on
       catalog or example occurrences before they reach the
-      user-visible finding stream.
+      user-visible finding stream. The path-based classifier is
+      paired with a structural override (file body must contain
+      function/class definitions + call sites or SDK imports) so
+      live working code under `examples/` is not wrongly demoted
+      (per master plan R3.6 catalog-shape recognizer).
+
+      Consumer scope: v2 corpus evidence (`make mechanism-recall`)
+      showed ascg has strong signal for aiNonDeterministicEval
+      (59 FP-gain vs 7 TP-loss) but marginal/negative signal for
+      other AI detectors whose findings reference real model names
+      in code — those references are TPs regardless of path.
+      configSchemaDrift was likewise removed because deployable
+      configs in examples/ are still real findings.
     consumers:
-      - aiModelDeprecationRisk
-      - configSchemaDrift
       - aiNonDeterministicEval
-      - aiEmbeddingModelChange

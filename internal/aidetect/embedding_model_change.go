@@ -7,7 +7,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/pmclSF/terrain/internal/ascg"
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
@@ -247,14 +246,12 @@ func buildEmbeddingChangeSignal(path string, line int, identifier string, matche
 	if intervalHigh > 1 {
 		intervalHigh = 1
 	}
-	// Mechanism gate: ascg_live_vs_catalog. Demote one tier on
-	// catalog/example/fixture paths.
+	// aiEmbeddingModelChange was previously demoted via
+	// ascg_live_vs_catalog. v2 corpus evidence
+	// (`make mechanism-recall`) showed the path-based demote
+	// dropped 2 TPs with 1 FP-gain — embedding model references in
+	// `examples/` are still real findings. Removed.
 	severity := models.SignalSeverity(models.SeverityMedium)
-	if ascg.GateClassifyDemote(mechanisms.Default(),
-		ascg.Location{Path: path, Line: line},
-		"aiEmbeddingModelChange") {
-		severity = demoteSeverity(severity)
-	}
 	return models.Signal{
 		Type:            signals.SignalAIEmbeddingModelChange,
 		Category:        models.CategoryAI,

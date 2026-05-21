@@ -226,13 +226,14 @@ func buildMechanisms() []mechanism {
 			name:   "ascg_live_vs_catalog",
 			action: "demote",
 			consumers: map[string]bool{
-				"aiModelDeprecationRisk": true,
-				"aiEmbeddingModelChange": true,
 				"aiNonDeterministicEval": true,
-				"configSchemaDrift":      true,
 			},
 			predicate: func(r v2Row) bool {
-				cls := ascg.Classify(ascg.Location{Path: r.File, Line: r.Line})
+				cls := ascg.Classify(ascg.Location{
+					Path:     r.File,
+					Line:     r.Line,
+					FileBody: r.FileExcerpt,
+				})
 				return cls.Class == ascg.CatalogOrExample
 			},
 		},
