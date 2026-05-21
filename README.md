@@ -472,9 +472,9 @@ jobs:
 | Command | Question |
 |---------|----------|
 | `terrain analyze` | What is the state of our test system? |
-| `terrain insights` | What should we fix in our test system? |
-| `terrain impact` | What validations matter for this change? |
-| `terrain explain <target>` | Why did Terrain make this decision? |
+| `terrain report insights` | What should we fix in our test system? |
+| `terrain report impact` | What validations matter for this change? |
+| `terrain report explain <target>` | Why did Terrain make this decision? |
 
 ### Supporting commands
 
@@ -494,6 +494,8 @@ jobs:
 | `terrain policy check` | Evaluate local policy rules |
 | `terrain export benchmark` | Privacy-safe JSON export for benchmarking |
 | `terrain serve` | Local HTTP server with HTML report and JSON API |
+| `terrain mechanisms list` / `show <name>` | Inspect available detector mechanisms |
+| `terrain mcp` | Start the MCP server on stdio for AI assistants |
 
 ### AI / eval
 
@@ -533,6 +535,14 @@ jobs:
 | `terrain debug depgraph` | Full dependency graph analysis (all engines) |
 
 Repository-scoped commands support `--root PATH`, and machine-readable commands support `--json`. Most analysis commands support `--verbose` for additional detail. Run `terrain <command> --help` for full flag documentation.
+
+### Environment variables
+
+| Variable | Effect |
+|----------|--------|
+| `TERRAIN_QUIET=1` | Suppress all stderr chatter (alias migration `[NOTE]`s, legacy deprecation hints). |
+| `TERRAIN_ASCII=1` | Force ASCII separators in the discovery report (`terrain` no-args) for non-UTF-8 terminals. |
+| `TERRAIN_LEGACY_HINT=1` | Surface canonical-shape suggestions when a legacy command name is invoked. |
 
 ## Architecture
 
