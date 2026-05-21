@@ -5,6 +5,16 @@
 # fork has Terrain's source, they should not get Terrain's corpus
 # or the tools that built it. Stripped from history 2026-05-16 via
 # git filter-repo; gitignored here to prevent re-adding.
+
+# internal/docs/ — internal-only architecture, release plans, product
+# notes, and roadmap material. The two parity YAMLs that the
+# terrain-parity-gate binary reads are explicitly un-ignored so the
+# binary still builds and tests from a fresh clone.
+internal/docs/
+!internal/docs/release/
+!internal/docs/release/parity/
+!internal/docs/release/parity/**
+
 cmd/internal/terrain-corpus/
 cmd/internal/terrain-precision/
 scripts/clone-ai-corpus.sh

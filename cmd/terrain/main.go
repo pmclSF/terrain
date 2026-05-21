@@ -1192,6 +1192,8 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "Canonical commands (0.2 — recommended):")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "  analyze [path] [flags]    What is the state of our test system?")
+	fmt.Fprintln(os.Stderr, "  test [flags]              CI-mode wrapper around analyze: emits JUnit XML")
+	fmt.Fprintln(os.Stderr, "                            + step-summary markdown alongside the report")
 	fmt.Fprintln(os.Stderr, "  init [path]               set up Terrain in a repository")
 	fmt.Fprintln(os.Stderr, "  report <verb> [flags]     read-side queries: summary, insights, metrics,")
 	fmt.Fprintln(os.Stderr, "                            explain, show, impact, pr, posture, select-tests")

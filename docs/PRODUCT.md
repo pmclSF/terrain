@@ -72,7 +72,7 @@ These will not be added to Terrain. Adopters needing them should look elsewhere.
 Terrain emits the same diagnostic artifact through three surfaces:
 
 - **CI surface.** GitHub Actions status check + JUnit XML + GitHub annotations + Step Summary. The merge gate.
-- **CLI surface.** `terrain analyze`, `terrain test`, `terrain explain`, etc. Local reproduction parity with CI.
+- **CLI surface.** Local reproduction parity with CI. The four canonical commands are `terrain analyze`, `terrain insights`, `terrain impact`, and `terrain explain` — they answer "state of the test system", "what to fix", "what does a change affect", and "why did Terrain decide this". `terrain test` is a CI-mode wrapper that emits JUnit XML + a step summary alongside the report.
 - **Agent surface.** MCP server exposing diagnostic tools to MCP-aware agents (Claude Code, Cursor, etc.) — read-only.
 
 The artifact format (JUnit + `findings.json`) is the handoff contract. All three surfaces read it; no surface invents new diagnostic semantics.
