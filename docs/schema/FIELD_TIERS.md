@@ -5,10 +5,9 @@ tiers. The tier tells adopters whether they can build long-lived
 tooling against the field, accept temporary brittleness, or treat
 the field as Terrain's internal scratch space.
 
-This is the Track 9.12 deliverable for the 0.2.0 release plan. The
-parity-plan rationale: adopters integrating Terrain into CI / IDE /
-dashboard tooling need to know which fields are safe to depend on
-and which can churn between minor releases.
+Adopters integrating Terrain into CI / IDE / dashboard tooling need
+to know which fields are safe to depend on and which can churn
+between minor releases.
 
 ## The three tiers
 
@@ -28,7 +27,7 @@ long-lived tooling against stable fields with confidence.
 - `codeUnits[].name`, `codeUnits[].path`, `codeUnits[].kind`,
   `codeUnits[].exported`, `codeUnits[].unitID`
 - `signals[].type`, `signals[].severity`, `signals[].path`
-- `findingId` on every signal (Track 4.4)
+- `findingId` on every signal
 - `aggregates.successRate` on EvalRunResult
 
 Stable fields are claimed publicly. Removing one is a major-version
@@ -43,13 +42,12 @@ calibration corpora arrive.
 
 **Examples:**
 
-- `signals[].confidence` — will be calibrated against the 0.3
-  precision corpus; today's confidence values are detector self-
-  reports, not measured against ground truth
+- `signals[].confidence` — current values are detector self-reports;
+  they will be re-calibrated against validation data in future releases
 - `signals[].evidence[]` — the field shape is stable; the set
   of evidence sources cited may grow per detector
-- `aiSubdomain` (Track 5.1) — vocabulary is stable for 0.2; new
-  AI signal types may add entries
+- `aiSubdomain` — vocabulary is stable; new AI signal types may add
+  entries
 - `testTypeConfidence`, `testTypeEvidence` — same shape; rule
   set may expand
 - `metadata.compatibilityNotes` — populated by the snapshot

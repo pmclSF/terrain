@@ -168,7 +168,7 @@ both.
 
 ### "Terrain reports unfamiliar Promptfoo shape"
 
-Track 7.2 surfaces a single warning when Promptfoo's output shape
+Terrain surfaces a single warning when Promptfoo's output shape
 doesn't match v3 or v4. The warning text names the specific drift.
 Most often it means Promptfoo got upgraded and the export shape
 shifted; file an issue with the Terrain version + Promptfoo

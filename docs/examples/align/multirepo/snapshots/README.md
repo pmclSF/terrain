@@ -1,7 +1,7 @@
 # Per-repo snapshot fixtures
 
-The Track 6 manifest format supports two ways to feed a repo into
-the cross-repo aggregator:
+The multirepo manifest format supports two ways to feed a repo
+into the cross-repo aggregator:
 
 1. **`path:` only.** The aggregator walks each repo and produces a
    fresh snapshot during the portfolio run. Convenient for small

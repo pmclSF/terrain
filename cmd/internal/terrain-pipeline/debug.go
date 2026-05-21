@@ -138,9 +138,8 @@ func runTune(args []string) {
 	fs.StringVar(&f.filesV1Dir, "files-v1", "/tmp/sample-files", "v1 cache root")
 	fs.StringVar(&f.filesV2Dir, "files-v2", "/tmp/sample-files-v2", "v2 cache root")
 	fs.StringVar(&f.filesV3Dir, "files-v3", "/tmp/sample-files-v3", "v3 cache root")
-	fs.StringVar(&f.appShapeTxt, "app-shape",
-		"/Users/pzachary/terrain/tier-4/app-shaped-repos.txt",
-		"app-shape filter; empty disables cohort calibration")
+	fs.StringVar(&f.appShapeTxt, "app-shape", "",
+		"path to app-shape filter file; empty disables cohort calibration")
 	fs.StringVar(&f.rule, "rule", "ai.surface.missing_eval", "rule ID")
 	fs.IntVar(&f.maxRows, "max", 0, "max rows")
 	fs.Float64Var(&minThresh, "min", 0.10, "lowest threshold to sweep")

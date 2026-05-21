@@ -71,8 +71,8 @@ func TestRunDiscover_TestRepo(t *testing.T) {
 		}
 	})
 
-	if !strings.Contains(out, "terrain insights") {
-		t.Errorf("expected non-AI next-step routing to `terrain insights`, got: %s", out)
+	if !strings.Contains(out, "terrain report insights") {
+		t.Errorf("expected non-AI next-step routing to `terrain report insights`, got: %s", out)
 	}
 	if strings.Contains(out, "terrain ai findings") {
 		t.Errorf("did not expect AI next-step on non-AI repo, got: %s", out)

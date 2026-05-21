@@ -11,8 +11,15 @@
 #   aliases:
 #     <old_id>:
 #       replaces_with:    list of new rule_ids the old ID maps to
-#       deprecated_in:    semver when the old ID entered deprecation
-#       removal_target:   semver when the alias will stop expanding
+#       deprecated_in:    semver when the old ID entered deprecation, OR
+#                         "next" when the replacement IDs land in the next
+#                         minor release. Resolved to a concrete semver in
+#                         the same PR that ships the replacement.
+#       removal_target:   semver when the alias will stop expanding, OR
+#                         "future" when no removal is scheduled yet. The
+#                         alias stays load-bearing until a concrete semver
+#                         is set; "future" means "still active, no fixed
+#                         removal date".
 #       why:              short prose explaining the split / rename
 #
 # Adding an alias is part of the same PR that ships the rule split. Removing

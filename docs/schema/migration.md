@@ -158,9 +158,8 @@ for the current per-direction tier matrix.
 }
 ```
 
-The `pillars` field arrived in Track 2 (`PR #167`) and adds
-per-pillar maturity assessment alongside the legacy migration
-checks.
+The `pillars` field adds per-pillar maturity assessment alongside
+the legacy migration checks.
 
 ## Stability commitment
 
@@ -191,7 +190,7 @@ conversion directions. Each row carries a `tier` field:
 }
 ```
 
-The `tier` field follows the Track 6.6 vocabulary documented in
+The `tier` field follows the vocabulary documented in
 [`docs/release/feature-status.md`](../release/feature-status.md).
 Experimental and preview directions emit a banner-warning when
 invoked via `terrain migrate run` (see `cmd/terrain/cmd_workflow.go`).

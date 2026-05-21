@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "generated_from": "tier-4/harvest-*.jsonl.gz (326-repo corpus)",
+  "generated_from": "calibration harvest",
   "examples": {
     "aiEmbeddingModelChange": [
       {

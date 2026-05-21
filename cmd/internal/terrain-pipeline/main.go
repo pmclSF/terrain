@@ -104,9 +104,8 @@ func runValidate(args []string) {
 		"root of the v2 cached-file tree")
 	fs.StringVar(&f.filesV3Dir, "files-v3", "/tmp/sample-files-v3",
 		"root of the v3 cached-file tree")
-	fs.StringVar(&f.appShapeTxt, "app-shape",
-		"/Users/pzachary/terrain/tier-4/app-shaped-repos.txt",
-		"one repo per line; rows in these repos get cohort=ai-feature-in-app, others cohort=library-sdk")
+	fs.StringVar(&f.appShapeTxt, "app-shape", "",
+		"path to a file with one repo per line; rows in these repos get cohort=ai-feature-in-app, others cohort=library-sdk. Empty disables cohort labels.")
 	fs.StringVar(&f.rule, "rule", "ai.surface.missing_eval",
 		"rule ID to evaluate against")
 	fs.StringVar(&f.posture, "posture", "observability",
