@@ -169,20 +169,52 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 // identifiers never appear as literal tokens in source.
 var syntheticLineSuffixRe = regexp.MustCompile(`_L\d+$`)
 
+// syntheticPrefixes are the known synthetic-label prefixes the
+// surface extractor emits (internal/analysis/prompt_ast_parser.go,
+// internal/analysis/ai_context_infer.go, internal/analysis/
+// rag_structured_parser.go). Surfaces named with any of these
+// prefixes are constructor / framework / array-shape derived; the
+// label itself doesn't appear as a literal token in source so a
+// presence check would always fail.
+var syntheticPrefixes = []string{
+	"sdk_client_", "llm_call_", "framework_msg_",
+	"template_prompt_", "api_prompt_", "system_prompt_",
+	"message_array_", "message_list_",
+	"few_shot_", "prompt_const_", "dspy_",
+}
+
+// syntheticExactMatches are constructor-derived labels that don't
+// follow a "<prefix>_<var>" shape.
+var syntheticExactMatches = map[string]bool{
+	"structured_output":   true,
+	"message_slice":       true,
+	"message_array":       true,
+	"template_file":       true,
+	"system_message":      true,
+	"user_message":        true,
+	"assistant_message":   true,
+	"vector_store":        true,
+	"vector_store_chroma": true,
+	"vector_store_faiss":  true,
+	"vector_store_config": true,
+	"embedding_model":     true,
+	"retriever_config":    true,
+	"prompt_template":     true,
+	"system_prompt":       true,
+	"user_prompt":         true,
+	"rag_pipeline":        true,
+	"langchain_message":   true,
+	"llamaindex_message":  true,
+	"chunking_config":     true,
+	"reranker_config":     true,
+	"retrieval_query":     true,
+	"rag_component":       true,
+}
+
 // isSyntheticIdentifier reports whether `id` is a constructor-driven
 // or otherwise synthetic identifier label that won't appear as a
 // literal token in source. Used to skip the surfacelit gate (which
 // requires a literal-token presence check) for these labels.
-//
-// Recognized synthetic shapes:
-//   - contains '(' or whitespace — e.g. "OpenAIEmbeddings (model loaded indirectly)"
-//   - "<name>_L<line>" suffix synthesized for unnamed surfaces
-//   - constructor-derived snake_case labels from the structured RAG
-//     parser (system_message, vector_store, embedding_model, etc.)
-//     and framework-specific message labels (langchain_message,
-//     llamaindex_message, chunking_config, reranker_config,
-//     vector_store_config, retrieval_query, rag_component)
-//   - empty
 func isSyntheticIdentifier(id string) bool {
 	if id == "" || strings.ContainsAny(id, "( ") {
 		return true
@@ -190,16 +222,13 @@ func isSyntheticIdentifier(id string) bool {
 	if syntheticLineSuffixRe.MatchString(id) {
 		return true
 	}
-	switch id {
-	case "system_message", "user_message", "assistant_message",
-		"vector_store", "vector_store_chroma", "vector_store_faiss",
-		"vector_store_config",
-		"embedding_model", "retriever_config", "prompt_template",
-		"system_prompt", "user_prompt", "rag_pipeline",
-		"langchain_message", "llamaindex_message",
-		"chunking_config", "reranker_config",
-		"retrieval_query", "rag_component":
+	if syntheticExactMatches[id] {
 		return true
+	}
+	for _, p := range syntheticPrefixes {
+		if strings.HasPrefix(id, p) {
+			return true
+		}
 	}
 	return false
 }

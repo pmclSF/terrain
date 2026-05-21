@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
 )
@@ -158,6 +159,65 @@ func TestPromptVersioning_RejectsPlaceholderTokens(t *testing.T) {
 				t.Fatalf("placeholder version `%s` should NOT satisfy the inline-version requirement; expected detector to fire", tc.body)
 			}
 		})
+	}
+}
+
+// TestPromptVersioning_SurfaceLitGate_On proves flipping the
+// surface_literal_presence_gate mechanism observably suppresses
+// findings when the surface name doesn't literally appear in the
+// flagged file, AND preserves findings when surface.Name is a
+// synthetic constructor-derived label (via isSyntheticIdentifier).
+func TestPromptVersioning_SurfaceLitGate_On(t *testing.T) {
+	root := t.TempDir()
+
+	// File A: surface.Name "myPrompt" but the file content doesn't
+	// have that token literally — the FP class the gate suppresses.
+	relA := writePromptFile(t, root, "prompts/file_a.yaml", `
+role: system
+content: |
+  You are a helpful assistant.
+`)
+	// File B: synthetic surface label "system_message" — the gate
+	// should SKIP the presence check (isSyntheticIdentifier=true),
+	// so the finding still emits.
+	relB := writePromptFile(t, root, "prompts/file_b.yaml", `
+role: system
+content: |
+  You are a helpful assistant.
+`)
+
+	snap := &models.TestSuiteSnapshot{
+		CodeSurfaces: []models.CodeSurface{
+			{SurfaceID: "a", Path: relA, Name: "myPrompt", Kind: models.SurfacePrompt},
+			{SurfaceID: "b", Path: relB, Name: "system_message", Kind: models.SurfacePrompt},
+		},
+	}
+
+	reg, err := mechanisms.Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	prev := mechanisms.SetDefault(reg)
+	defer mechanisms.SetDefault(prev)
+
+	d := &PromptVersioningDetector{Root: root}
+
+	// Shadow → both fire (legacy behavior).
+	if got := d.Detect(snap); len(got) != 2 {
+		t.Fatalf("shadow: expected 2 signals; got %d", len(got))
+	}
+
+	// On → File A suppressed (token absent), File B kept (synthetic
+	// label skips the presence check).
+	if err := reg.ApplyCLIOverrides([]string{"surface_literal_presence_gate=on"}); err != nil {
+		t.Fatalf("override: %v", err)
+	}
+	got := d.Detect(snap)
+	if len(got) != 1 {
+		t.Fatalf("on: expected 1 signal (File B kept; File A suppressed); got %d", len(got))
+	}
+	if got[0].Location.File != relB {
+		t.Errorf("on: expected synthetic-label file kept; got file=%q", got[0].Location.File)
 	}
 }
 

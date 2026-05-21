@@ -35,15 +35,24 @@ func TestLoad_EmbeddedYAMLParses(t *testing.T) {
 	}
 }
 
-func TestLoad_AllMechanismsStartShadow(t *testing.T) {
+func TestLoad_NewMechanismsStartShadow(t *testing.T) {
 	reg, err := Load()
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	// Binding rule: new mechanisms ship as shadow. The baseline file is
-	// the source of truth — a future PR that flips one to "on" must come
-	// with its own gate evidence + this test gets the exception added.
+	// Binding rule: new mechanisms ship as shadow. Mechanisms that
+	// have graduated to live are explicitly listed in liveMechanisms;
+	// every other mechanism must remain at shadow.
+	liveMechanisms := map[string]bool{
+		"deprecated_test_pattern_trigger_gate": true,
+	}
 	for _, m := range reg.All() {
+		if liveMechanisms[m.Name] {
+			if m.State != StateOn {
+				t.Errorf("%s is on the live list but loaded at %s", m.Name, m.State)
+			}
+			continue
+		}
 		if m.State != StateShadow {
 			t.Errorf("%s starts at %s; binding rule requires shadow for new mechanisms", m.Name, m.State)
 		}

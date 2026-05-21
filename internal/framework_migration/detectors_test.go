@@ -124,22 +124,68 @@ func TestDeprecatedPatternDetector_EnzymeGate(t *testing.T) {
 
 	d := &DeprecatedPatternDetector{RepoRoot: dir}
 
-	// Gate at default state (shadow) — legacy behavior, enzyme-usage fires.
+	// Default state for this mechanism is "on" (graduated to live).
+	// Verify enzyme-usage is suppressed since the file has no enzyme
+	// import.
 	got := d.Detect(snap)
-	if !containsPattern(got, "enzyme-usage") {
-		t.Fatalf("expected enzyme-usage signal in shadow state; got %d signals", len(got))
+	if containsPattern(got, "enzyme-usage") {
+		t.Fatalf("default=on: expected enzyme-usage suppressed; %d signals total", len(got))
 	}
 
-	// Flip gate to ON — enzyme-usage should be suppressed since the
-	// file has no enzyme import.
+	// Flip to shadow → legacy behavior, enzyme-usage fires.
 	if err := reg.ApplyCLIOverrides([]string{
-		"deprecated_test_pattern_trigger_gate=on",
+		"deprecated_test_pattern_trigger_gate=shadow",
 	}); err != nil {
 		t.Fatalf("override gate: %v", err)
 	}
 	got = d.Detect(snap)
-	if containsPattern(got, "enzyme-usage") {
-		t.Fatalf("expected enzyme-usage suppressed in gate=on, still got it; %d signals total", len(got))
+	if !containsPattern(got, "enzyme-usage") {
+		t.Fatalf("shadow: expected enzyme-usage signal; got %d signals", len(got))
+	}
+}
+
+// TestDynamicTestGenerationDetector_LoopPredicate_On_KeepsTruePositive
+// proves the a3_loop_predicate gate doesn't suppress legitimate
+// dynamicTestGeneration findings when the AST confirms the regex
+// match IS inside a loop. The FP-suppression half of the contract
+// (regex match where the AST disagrees) is rare in practice because
+// the legacy regexes tightly couple the test builder to the loop
+// body; that half is exercised by the gate-package unit tests.
+func TestDynamicTestGenerationDetector_LoopPredicate_On_KeepsTruePositive(t *testing.T) {
+	dir := t.TempDir()
+	// Forecast: forEachTestPattern requires `.forEach(... ) => { ... it(`
+	// inside the same braces — a textbook dynamic-test-gen shape.
+	writeTestFile(t, dir, "test/loop.test.js", `
+		cases.forEach((c) => {
+			it('runs ' + c.name, () => { expect(c.ok).toBe(true); });
+		});
+	`)
+	snap := &models.TestSuiteSnapshot{
+		TestFiles: []models.TestFile{
+			{Path: "test/loop.test.js", Framework: "jest"},
+		},
+	}
+
+	reg, err := mechanisms.Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	prev := mechanisms.SetDefault(reg)
+	defer mechanisms.SetDefault(prev)
+
+	d := &DynamicTestGenerationDetector{RepoRoot: dir}
+
+	// Shadow → fires.
+	if got := d.Detect(snap); len(got) != 1 {
+		t.Fatalf("shadow: expected 1 dynamicTestGeneration signal; got %d", len(got))
+	}
+
+	// On → AST agrees in-loop, gate keeps the finding.
+	if err := reg.ApplyCLIOverrides([]string{"a3_loop_predicate=on"}); err != nil {
+		t.Fatalf("override: %v", err)
+	}
+	if got := d.Detect(snap); len(got) != 1 {
+		t.Fatalf("on + in-loop: gate should keep true positive; got %d signals", len(got))
 	}
 }
 

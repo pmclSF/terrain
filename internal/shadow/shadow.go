@@ -127,9 +127,11 @@ func Emit(e Event) {
 // a repo-wide scan emitting many events doesn't spend most of its time
 // in fsync.
 //
-// Trade-off: a crash mid-pipeline may lose the last buffered events
-// since the most recent Flush. For shadow-mode telemetry — which the
-// next run will reproduce anyway — that's the right call.
+// Durability contract: Emit flushes the buffered writer after every
+// event, so a crash mid-pipeline preserves everything written so far
+// (mirrors the checkpoint policy used elsewhere in the codebase).
+// Shadow events are sparse (one per gate firing, not per detection),
+// so the per-event flush cost is bounded.
 type FileSink struct {
 	mu   sync.Mutex
 	path string
@@ -159,8 +161,9 @@ func NewFileSink(path string) (*FileSink, error) {
 	}, nil
 }
 
-// Emit appends one JSON-encoded event line to the buffered writer.
-// Use Flush to persist; Close flushes + syncs automatically.
+// Emit appends one JSON-encoded event line and flushes the buffered
+// writer immediately. Callers do not need a separate Flush; Close
+// still flushes + syncs as a final durability barrier.
 func (f *FileSink) Emit(e Event) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -169,6 +172,11 @@ func (f *FileSink) Emit(e Event) error {
 	}
 	if err := f.enc.Encode(e); err != nil {
 		return fmt.Errorf("encode shadow event: %w", err)
+	}
+	if f.bw != nil {
+		if err := f.bw.Flush(); err != nil {
+			return fmt.Errorf("flush shadow event: %w", err)
+		}
 	}
 	return nil
 }

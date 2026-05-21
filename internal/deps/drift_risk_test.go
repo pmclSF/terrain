@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
 )
@@ -188,6 +189,63 @@ func TestDriftRiskDetector_NilSafe(t *testing.T) {
 	d2 := &DriftRiskDetector{Root: ""}
 	if got := d2.Detect(&models.TestSuiteSnapshot{}); got != nil {
 		t.Errorf("expected nil with empty Root, got %v", got)
+	}
+}
+
+// TestDriftRiskDetector_SplitMechanism_On asserts the
+// deps_drift_risk_split mechanism observably swaps the emitted
+// signal Type between strict-pin and caret-policy based on which
+// moving-target class dominates the manifest.
+func TestDriftRiskDetector_SplitMechanism_On(t *testing.T) {
+	// Caret-dominated manifest.
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, "package.json"), `{
+	"dependencies": {
+		"react": "^18.0.0",
+		"lodash": "^4.17.0",
+		"chalk": "^5.3.0",
+		"axios": "^1.6.0"
+	}
+}`)
+
+	reg, err := mechanisms.Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	prev := mechanisms.SetDefault(reg)
+	defer mechanisms.SetDefault(prev)
+
+	d := &DriftRiskDetector{Root: root}
+
+	// Shadow → legacy "depsDriftRisk" type.
+	out := d.Detect(&models.TestSuiteSnapshot{})
+	if len(out) != 1 || out[0].Type != signals.SignalDepsDriftRisk {
+		t.Fatalf("shadow: expected legacy depsDriftRisk; got %v", out)
+	}
+
+	// On + caret-dominated → caret-policy split type.
+	if err := reg.ApplyCLIOverrides([]string{"deps_drift_risk_split=on"}); err != nil {
+		t.Fatalf("override: %v", err)
+	}
+	out = d.Detect(&models.TestSuiteSnapshot{})
+	if len(out) != 1 || out[0].Type != signals.SignalDepsDriftRiskCaretPolicy {
+		t.Fatalf("on + caret-dominated: expected SignalDepsDriftRiskCaretPolicy; got %v", out)
+	}
+
+	// Switch to strict-pin-dominated manifest.
+	root2 := t.TempDir()
+	writeFile(t, filepath.Join(root2, "package.json"), `{
+	"dependencies": {
+		"left-pad": "*",
+		"is-odd": "*",
+		"chalk": "latest",
+		"react": "18.2.0"
+	}
+}`)
+	d2 := &DriftRiskDetector{Root: root2}
+	out = d2.Detect(&models.TestSuiteSnapshot{})
+	if len(out) != 1 || out[0].Type != signals.SignalDepsDriftRiskStrictPin {
+		t.Fatalf("on + strict-pin-dominated: expected SignalDepsDriftRiskStrictPin; got %v", out)
 	}
 }
 

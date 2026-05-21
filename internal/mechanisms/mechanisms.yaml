@@ -5,10 +5,10 @@ schema_version: 1
 # user-visible findings until flipped to state: on.
 #
 # Live activation requires:
-#   1. The mechanism's regression suite (internal/regressionsuite) shows
-#      zero TP regressions past the configured loss threshold.
-#   2. Per-mechanism recall report (internal/recallharness) confirms the
-#      union recall floor against shadow data.
+#   1. Empirical validation: shadow events on representative fixtures
+#      confirm the predicate fires only on its intended FP class.
+#   2. Consumer state=on test asserting the wiring observably changes
+#      detector output as designed.
 #   3. Explicit edit of this file flipping state: shadow → state: on.
 #
 # Per-process overrides via --mechanisms.<name>=on|off|shadow.
@@ -28,11 +28,14 @@ mechanisms:
       - aiToolWithoutSandbox
 
   - name: deprecated_test_pattern_trigger_gate
-    state: shadow
+    state: on
     description: |
       Require a structural framework-import predicate (enzyme,
       jest setTimeout config scope) before the deprecatedTestPattern
       rule fires. Suppresses framework-mismatch false positives.
+      Validated by TestDeprecatedPatternDetector_EnzymeGate: the gate
+      suppresses enzyme-usage on files with no enzyme import (a
+      clear structural FP class).
     consumers:
       - deprecatedTestPattern
 

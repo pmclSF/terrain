@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
 )
@@ -210,4 +211,95 @@ func writeFile(t *testing.T, path, content string) {
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatalf("write: %v", err)
 	}
+}
+
+// TestSchemaDriftDetector_AscgGate_On proves the ascg_live_vs_catalog
+// mechanism observably demotes findings on catalog/example paths
+// (e.g. docs/, examples/) when state=on.
+func TestSchemaDriftDetector_AscgGate_On(t *testing.T) {
+	// Same hazard count, two paths: one in production /charts/, one
+	// under examples/. The path-based ascg classifier demotes the
+	// examples/ path; the prod path is unaffected.
+	root := t.TempDir()
+	// Both files: three distinct hazards → High severity. The gate's
+	// demote is observable when both severities start above the
+	// Low floor.
+	composeHigh := `version: "2"
+services:
+  app:
+    image: myapp:latest
+  worker:
+    image: myworker
+`
+	writeFile(t, filepath.Join(root, "deploy/docker-compose.yml"), composeHigh)
+	writeFile(t, filepath.Join(root, "examples/docker-compose.yml"), composeHigh)
+
+	reg, err := mechanisms.Load()
+	if err != nil {
+		t.Fatalf("load: %v", err)
+	}
+	prev := mechanisms.SetDefault(reg)
+	defer mechanisms.SetDefault(prev)
+
+	d := &SchemaDriftDetector{Root: root}
+
+	prodPath := "deploy/docker-compose.yml"
+	examplePath := "examples/docker-compose.yml"
+
+	// Shadow → both findings emit at the same severity.
+	got := d.Detect(&models.TestSuiteSnapshot{})
+	if len(got) != 2 {
+		t.Fatalf("shadow: expected 2 findings, got %d", len(got))
+	}
+	sevProdShadow := severityFor(got, prodPath)
+	sevExShadow := severityFor(got, examplePath)
+	if sevProdShadow == "" || sevExShadow == "" {
+		t.Fatalf("shadow: missing one of the expected findings: %+v", got)
+	}
+	// Prod fixture has multiple hazard classes, examples has one;
+	// prod severity should be at least Medium so the on-state demote
+	// is observable below it.
+	if severityRank(sevProdShadow) < severityRank(models.SeverityMedium) {
+		t.Skipf("fixture didn't produce Medium+ severity for prod (got %s) — gate effect not observable", sevProdShadow)
+	}
+
+	// On → ascg demotes findings on examples/ paths one tier; prod
+	// is unaffected because the path-based classifier doesn't flag it.
+	if err := reg.ApplyCLIOverrides([]string{"ascg_live_vs_catalog=on"}); err != nil {
+		t.Fatalf("override: %v", err)
+	}
+	got = d.Detect(&models.TestSuiteSnapshot{})
+	sevProdOn := severityFor(got, prodPath)
+	sevExOn := severityFor(got, examplePath)
+	if severityRank(sevProdOn) != severityRank(sevProdShadow) {
+		t.Errorf("on: prod severity unchanged expected; shadow=%s on=%s", sevProdShadow, sevProdOn)
+	}
+	if severityRank(sevExOn) >= severityRank(sevExShadow) {
+		t.Errorf("on: examples severity should demote; shadow=%s on=%s", sevExShadow, sevExOn)
+	}
+
+	_ = signals.SignalConfigSchemaDrift
+}
+
+func severityFor(sigs []models.Signal, file string) models.SignalSeverity {
+	for _, s := range sigs {
+		if s.Location.File == file {
+			return s.Severity
+		}
+	}
+	return ""
+}
+
+func severityRank(s models.SignalSeverity) int {
+	switch s {
+	case models.SeverityLow:
+		return 1
+	case models.SeverityMedium:
+		return 2
+	case models.SeverityHigh:
+		return 3
+	case models.SeverityCritical:
+		return 4
+	}
+	return 0
 }

@@ -258,14 +258,20 @@ func (d *DynamicTestGenerationDetector) Detect(snap *models.TestSuiteSnapshot) [
 			continue
 		}
 
-		if line, ok := dynamicTestGenerationLine(content); ok {
-			// Mechanism gate: a3_loop_predicate. The Gate helper now
-			// suppresses only when AST confirms the regex match was
-			// NOT in a loop (the FP class). State machine + shadow
-			// emit are handled inside.
-			absPath := filepath.Join(d.RepoRoot, tf.Path)
-			if !looppredicate.Gate(mechanisms.Default(), absPath, line, "dynamicTestGeneration") {
-				continue
+		if line, isTableTest, ok := dynamicTestGenerationLine(content); ok {
+			// Mechanism gate: a3_loop_predicate. The gate's AST
+			// predicate suppresses only the FP class — regex matches
+			// where the test builder isn't inside a loop construct.
+			// Table-test matches (it.each / test.each) are themselves
+			// the dynamic-gen pattern and bypass the gate; otherwise
+			// the line we report is the it/test/describe token
+			// inside the for/forEach body and the AST walker can
+			// confirm it.
+			if !isTableTest {
+				absPath := filepath.Join(d.RepoRoot, tf.Path)
+				if !looppredicate.Gate(mechanisms.Default(), absPath, line, "dynamicTestGeneration") {
+					continue
+				}
 			}
 			signals = append(signals, models.Signal{
 				Type:             "dynamicTestGeneration",
@@ -383,28 +389,53 @@ func hasDynamicTestGeneration(content string) bool {
 }
 
 // dynamicTestGenerationLine returns the 1-based line number of the
-// first dynamic-test-gen pattern match, plus a presence bool. Used
-// by the a3_loop_predicate gate to test whether the test builder at
-// that line is actually inside a loop construct (AST-precise).
-func dynamicTestGenerationLine(content string) (int, bool) {
+// test builder (it/test/describe) inside the first dynamic-test-gen
+// pattern match, a flag indicating whether the match is a
+// "table-test" form (it.each / test.each), and a presence bool.
+//
+// The table-test form (testEachPattern) is its own loop — the line
+// of `test.each(` precedes any brace frame, so the AST walker would
+// say "not in loop" even though this IS dynamic test generation.
+// Callers should bypass the looppredicate gate for table-test
+// matches.
+//
+// For for/forEach/map matches the line returned is the line of the
+// captured (it|test|describe) token inside the loop body, which the
+// AST walker correctly sees as "in loop."
+func dynamicTestGenerationLine(content string) (line int, isTableTest bool, ok bool) {
 	stripped := stripJSNoise(content)
-	var bestIdx = -1
-	for _, re := range []*regexp.Regexp{
-		forEachTestPattern, mapTestPattern, testEachPattern, forLoopTestPattern,
+	bestIdx := -1
+	bestIsTable := false
+	for _, entry := range []struct {
+		re          *regexp.Regexp
+		isTableTest bool
+	}{
+		{forEachTestPattern, false},
+		{mapTestPattern, false},
+		{forLoopTestPattern, false},
+		{testEachPattern, true},
 	} {
-		if loc := re.FindStringIndex(stripped); loc != nil {
-			if bestIdx == -1 || loc[0] < bestIdx {
-				bestIdx = loc[0]
-			}
+		re := entry.re
+		idx := re.FindStringSubmatchIndex(stripped)
+		if idx == nil {
+			continue
+		}
+		// Index 2 is the start of the first capture group; for the
+		// three loop patterns that's the (it|test|describe) token.
+		// testEachPattern's capture group is also (it|test|describe).
+		pos := idx[0]
+		if len(idx) >= 4 && idx[2] >= 0 {
+			pos = idx[2]
+		}
+		if bestIdx == -1 || pos < bestIdx {
+			bestIdx = pos
+			bestIsTable = entry.isTableTest
 		}
 	}
 	if bestIdx == -1 {
-		return 0, false
+		return 0, false, false
 	}
-	// Convert byte offset in stripped → 1-based line number in stripped.
-	// stripJSNoise preserves newlines (it replaces comments/strings with
-	// spaces) so line numbers are stable.
-	return 1 + strings.Count(stripped[:bestIdx], "\n"), true
+	return 1 + strings.Count(stripped[:bestIdx], "\n"), bestIsTable, true
 }
 
 // Custom matcher patterns
