@@ -91,15 +91,11 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 
 	var out []models.Signal
 	for _, relPath := range paths {
-		// Skip test fixtures and mock-recording files. Verified on
-		// the 70-repo ML-specialized corpus: cloud-custodian produced
-		// many firings on `tools/c7n_azure/tests_azure/cassettes/
-		// *.json` — vcrpy-recorded Azure Activity Log responses that
-		// happen to contain strings like "Activity Log Alert for
-		// Delete Network Security Group". Those aren't tool
-		// definitions; they're recorded API responses where the
-		// destructive verb appears in a log-entry display name.
-		// Same pattern as the aiHardcodedAPIKey FP shape (cf. 84dcaf7).
+		// Skip test fixtures and mock-recording files. Recorded API
+		// responses can contain destructive verbs in log-entry
+		// display names (e.g. vcrpy cassettes of cloud-provider
+		// Activity Log responses) — those aren't tool definitions
+		// and shouldn't fire.
 		if isAPIKeyFixturePath(relPath) {
 			continue
 		}

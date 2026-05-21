@@ -168,8 +168,25 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 // or otherwise synthetic identifier label that won't appear as a
 // literal token in source. Used to skip the surfacelit gate (which
 // requires a literal-token presence check) for these labels.
+//
+// Recognized synthetic shapes:
+//   - contains '(' or whitespace — e.g. "OpenAIEmbeddings (model loaded indirectly)"
+//   - all snake_case "constructor-derived" labels emitted by the
+//     structured RAG parser: system_message, user_message,
+//     vector_store, embedding_model, retriever_config, etc.
+//   - empty
 func isSyntheticIdentifier(id string) bool {
-	return strings.Contains(id, "(") || strings.Contains(id, " ") || id == ""
+	if id == "" || strings.ContainsAny(id, "( ") {
+		return true
+	}
+	switch id {
+	case "system_message", "user_message", "assistant_message",
+		"vector_store", "vector_store_chroma", "vector_store_faiss",
+		"embedding_model", "retriever_config", "prompt_template",
+		"system_prompt", "user_prompt", "rag_pipeline":
+		return true
+	}
+	return false
 }
 
 // buildEmbeddingChangeSignal constructs the canonical

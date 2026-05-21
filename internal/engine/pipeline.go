@@ -215,9 +215,10 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	surfacelit.ClearCache()
 	runtimeconfig.ClearLoaderCache()
 
-	// Mechanisms registry (loaded once per pipeline run). All Phase 2
-	// detector behavior changes are gated by this registry; an unloaded
-	// registry means every gate is StateOff (legacy behavior). Per-run
+	// Mechanisms registry (loaded once per pipeline run). Every
+	// detector behavior change is gated by this registry; an
+	// unloaded registry means every gate is StateOff (legacy
+	// behavior). Per-run
 	// CLI overrides via --mechanisms.<name>=on|off|shadow.
 	mechReg, err := mechanisms.Load()
 	if err != nil {

@@ -196,40 +196,47 @@ func TestGate_Off_AlwaysKeeps(t *testing.T) {
 	}
 }
 
-func TestGate_On_InLoopDrops(t *testing.T) {
+// Polarity: dynamicTestGeneration's regex over-matches surrounding
+// context. The gate suppresses ONLY the FP class — when the AST
+// confirms the line is NOT inside a loop. In-loop matches are true
+// positives and the gate keeps them.
+
+func TestGate_On_InLoopKeeps(t *testing.T) {
 	reg := loadReg(t, mechanisms.StateOn)
 	path := writeFile(t, `for (const c of cases) {
   it(c.name, () => {});
 }`)
-	if Gate(reg, path, 2, "dynamicTestGeneration") {
-		t.Errorf("state=on + in-loop should drop")
+	if !Gate(reg, path, 2, "dynamicTestGeneration") {
+		t.Errorf("state=on + in-loop should KEEP (true positive)")
 	}
 }
 
-func TestGate_On_NotInLoopKeeps(t *testing.T) {
+func TestGate_On_NotInLoopDrops(t *testing.T) {
 	reg := loadReg(t, mechanisms.StateOn)
 	path := writeFile(t, `describe('a', () => {
   it('x', () => {});
 });`)
-	if !Gate(reg, path, 2, "dynamicTestGeneration") {
-		t.Errorf("state=on + not-in-loop should keep")
+	if Gate(reg, path, 2, "dynamicTestGeneration") {
+		t.Errorf("state=on + not-in-loop should DROP (FP class)")
 	}
 }
 
-func TestGate_Shadow_InLoopEmitsEvent(t *testing.T) {
+func TestGate_Shadow_NotInLoopEmitsEvent(t *testing.T) {
 	sink := shadow.NewMemorySink()
 	prev := shadow.SetSink(sink)
 	t.Cleanup(func() { shadow.SetSink(prev) })
 
 	reg := loadReg(t, mechanisms.StateShadow)
-	path := writeFile(t, `cases.forEach(c => {
-  it(c.name, () => {});
+	// Regex would match dynamicTestGeneration but the it() call is
+	// NOT inside a loop — the FP class the gate suppresses.
+	path := writeFile(t, `describe('a', () => {
+  it('x', () => {});
 });`)
 	if !Gate(reg, path, 2, "dynamicTestGeneration") {
 		t.Errorf("shadow should keep")
 	}
 	if len(sink.Events()) != 1 {
-		t.Errorf("expected 1 shadow event, got %d", len(sink.Events()))
+		t.Errorf("expected 1 shadow event (would-suppress on FP class), got %d", len(sink.Events()))
 	}
 }
 

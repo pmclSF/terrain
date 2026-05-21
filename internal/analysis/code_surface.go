@@ -275,11 +275,10 @@ func (e *jsSurfaceExtractor) ExtractSurfaces(root, relPath string) []models.Code
 
 	// Passes 3a–8: AI-surface classifications (context, prompt, dataset,
 	// tool, retrieval, agent, eval). Gated on hasAIContextJS to suppress
-	// substring-match false positives on non-AI code — verified against
-	// the 80-repo non-AI OSS corpus where these patterns fired on
-	// Angular's HTTP `streaming_handler`, benchpress's
-	// `few_shot__DEFAULT_PROVIDERS`, deploy-script `eval_metric`, etc.
-	// without any LLM SDK import to corroborate.
+	// substring-match false positives on non-AI code — without this
+	// gate the patterns fire on plain HTTP streaming handlers,
+	// statistical helpers, and deploy-script metric names that have
+	// no LLM SDK import.
 	//
 	// Files that match here but have no AI marker fall through to
 	// pass 9 and get classified as SurfaceFunction (correct for

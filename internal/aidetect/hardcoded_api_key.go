@@ -159,14 +159,11 @@ func (d *HardcodedAPIKeyDetector) Detect(snap *models.TestSuiteSnapshot) []model
 	candidatePaths := d.gatherConfigPaths(snap)
 	var out []models.Signal
 	for _, relPath := range candidatePaths {
-		// Skip test-fixture paths. Verified on the 70-repo ML-specialized
-		// corpus: cloud-custodian produced 52 firings on
-		// `tests/data/placebo/test_iam_*/iam.ListAccessKeys_1.json`,
-		// which are placebo-library mock AWS API responses containing
-		// fake access keys (`AKIA...EXAMPLE`-style) for test purposes.
-		// Same shape exists in other AWS-SDK-testing repos. A real
-		// committed-key incident in test fixtures is rare relative to
-		// the per-repo FP load these mocks generate.
+		// Skip test-fixture paths. SDK-testing fixtures commonly
+		// contain example-shaped keys (e.g. AKIA...EXAMPLE) in mocked
+		// API responses; a real committed-key incident in test
+		// fixtures is rare relative to the per-repo FP load these
+		// mocks generate.
 		if isAPIKeyFixturePath(relPath) {
 			continue
 		}

@@ -116,9 +116,14 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 		if fileHasInlineVersion(abs) {
 			continue
 		}
-		// Mechanism gate: surface_literal_presence_gate.
-		if dec := surfacelit.Gate(mechanisms.Default(), surface.Name, abs, "aiPromptVersioning"); !dec.Keep {
-			continue
+		// Mechanism gate: surface_literal_presence_gate. Skip the
+		// presence check when surface.Name is synthetic
+		// (constructor-derived label), which wouldn't appear as a
+		// literal token in a prompt file.
+		if !isSyntheticIdentifier(surface.Name) {
+			if dec := surfacelit.Gate(mechanisms.Default(), surface.Name, abs, "aiPromptVersioning"); !dec.Keep {
+				continue
+			}
 		}
 
 		out = append(out, models.Signal{

@@ -10,11 +10,9 @@ import (
 
 // Fixture fragility thresholds.
 //
-// Calibrated against the 80-repo OSS corpus + AutoGPT (29K previously-
-// reported firings). The pre-calibration thresholds fired on fixtures
-// used by ≥5 tests in a single file — which is normal DRY test design,
-// not fragility. The current shape requires fan-out *across files*
-// before flagging.
+// The pre-calibration thresholds fired on fixtures used by >=5 tests
+// in a single file — which is normal DRY test design, not fragility.
+// The current shape requires fan-out *across files* before flagging.
 const (
 	// minFixtureDependents is the minimum direct-test count before a
 	// fixture is even considered. Raised from 5 to 10 — fewer than 10
@@ -23,8 +21,7 @@ const (
 
 	// minFixtureTestFiles is the minimum *file* span — a fixture used
 	// by 20 tests in a single file is local DRY; it becomes fragile
-	// only when many independent test groups depend on it. Drops
-	// the bulk of single-file fixture FPs the corpus surfaced.
+	// only when many independent test groups depend on it.
 	minFixtureTestFiles = 2
 
 	// fixtureHighTestThreshold flags SeverityHigh when direct tests exceed this.

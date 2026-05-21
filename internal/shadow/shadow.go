@@ -1,4 +1,4 @@
-// Package shadow is the sink for Phase 2 shadow-mode mechanism events.
+// Package shadow is the sink for shadow-mode mechanism events.
 //
 // When a mechanism is in shadow state (per internal/mechanisms), each
 // would-have-suppressed or would-have-added behavior change is logged to
@@ -6,9 +6,9 @@
 // affected.
 //
 // The shadow report lets the team measure the impact of a mechanism
-// against the v2 corpus before flipping it to live. The frozen
-// regression suites (internal/regressionsuite) and per-mechanism recall
-// reports (internal/recallharness) consume this data.
+// before flipping it to live. The regression suites
+// (internal/regressionsuite) and per-mechanism recall reports
+// (internal/recallharness) consume this data.
 //
 // Sink behavior:
 //   - One process-global sink, set via SetSink. Detectors call Emit which
@@ -106,8 +106,8 @@ func SetSink(s Sink) Sink {
 
 // Emit dispatches one shadow event to the active sink. No-op if no
 // sink is set. Timestamp is filled in if the caller left it blank.
-// Errors from the sink are swallowed because shadow logging must never
-// fail an analyze run — pre-cycle-2 behavior keeps running regardless.
+// Errors from the sink are swallowed because shadow logging must
+// never fail an analyze run.
 func Emit(e Event) {
 	globalMu.RLock()
 	s := globalSink

@@ -12,17 +12,15 @@
 // catalogs, docstring examples, and fixture data. ASCG is the structural
 // gate that demotes those occurrences before they become findings.
 //
-// Phase 1 scope: structural definition + string-context classifier. The
-// classifier consumes:
+// The classifier consumes:
 //
 //   - The file path (for path-based catalog/fixture signals).
 //   - The surrounding context (docstring, comment, list-of-options shape).
 //   - An optional ReachedByLoader hint, set upstream when the cross-language
 //     graph reports the file is on a known config-loader path.
 //
-// Phase 2 wires this into the detector pipeline; consumer detectors call
-// Classify(location) and demote findings whose classification is
-// CatalogOrExample.
+// Consumer detectors call Classify(location) and demote findings whose
+// classification is CatalogOrExample.
 //
 // The classifier is intentionally conservative: when no signal applies the
 // result is Unknown, NOT Live. Detectors decide their own policy for

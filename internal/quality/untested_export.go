@@ -200,10 +200,9 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 		}
 
 		// (b) Go test functions matching ^Test[A-Z] are tests, not
-		// production exports. Same convention as `go test`. Hand-labeled
-		// go-ethereum/v5test/discv5tests.go `TestHandshakeResend`
-		// surfaced this — Go's exported-Test pattern crosses the
-		// "production export" line accidentally.
+		// production exports. Same convention as `go test`. Go's
+		// exported-Test pattern can accidentally cross the
+		// "production export" line.
 		if (strings.HasSuffix(cu.Path, ".go") || strings.HasSuffix(cu.Path, "_test.go")) &&
 			isGoTestFunction(cu.Name) {
 			continue

@@ -112,14 +112,21 @@ func (d *DriftRiskDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sign
 		} else if share < 0.50 {
 			severity = models.SeverityLow
 		}
-		// Mechanism gate: deps_drift_risk_split. When on, emit the
-		// split signal type whose underlying issue dominates this
-		// manifest (strict-pin vs caret-policy). When off, emit the
-		// legacy "depsDriftRisk" so callers don't see a Type change.
+		// Mechanism gate: deps_drift_risk_split. Route through GateAdd
+		// so shadow mode emits would-add events without changing
+		// user-visible types. Only state=on actually swaps the type.
 		sigType := signals.SignalDepsDriftRisk
 		ruleID := "terrain/deps/drift-risk"
 		ruleURI := "docs/rules/deps/drift-risk.md"
-		if mechanisms.Default().State(SplitMechanismName) == mechanisms.StateOn {
+		splitOn := mechanisms.GateAdd(mechanisms.Default(), SplitMechanismName,
+			mechanisms.EventContext{RuleID: "depsDriftRisk", File: rel},
+			func() mechanisms.PredicateResult {
+				return mechanisms.PredicateResult{
+					Fired:   true,
+					Reasons: []string{"emit split signal type (strict-pin vs caret-policy)"},
+				}
+			})
+		if splitOn {
 			if stats.CaretIssues > stats.StrictPinIssues {
 				sigType = signals.SignalDepsDriftRiskCaretPolicy
 				ruleID = "terrain/deps/drift-caret-policy"

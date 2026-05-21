@@ -112,7 +112,17 @@ func (d *StaticSkipDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sig
 		return skippedFiles[i].path < skippedFiles[j].path
 	})
 
-	splitOn := mechanisms.Default().State(SplitMechanismName) == mechanisms.StateOn
+	// Route the split decision through the canonical state machine so
+	// shadow mode emits would-add events without changing user-visible
+	// types. Only state=on actually swaps the emitted Type.
+	splitOn := mechanisms.GateAdd(mechanisms.Default(), SplitMechanismName,
+		mechanisms.EventContext{RuleID: "staticSkippedTest"},
+		func() mechanisms.PredicateResult {
+			return mechanisms.PredicateResult{
+				Fired:   true,
+				Reasons: []string{"emit split signal types (unconditional vs conditional-gate)"},
+			}
+		})
 	for _, sf := range skippedFiles {
 		fileRatio := float64(sf.skips) / float64(sf.tests)
 		// Per-file Type is "staticSkippedTest" by default; when the

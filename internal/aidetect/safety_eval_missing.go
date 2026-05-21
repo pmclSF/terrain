@@ -159,9 +159,15 @@ func (d *SafetyEvalMissingDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 		if !keep {
 			continue
 		}
-		// Mechanism gate: surface_literal_presence_gate.
-		if dec := surfacelit.Gate(mechanisms.Default(), surface.Name, abs, "aiSafetyEvalMissing"); !dec.Keep {
-			continue
+		// Mechanism gate: surface_literal_presence_gate. Skip the
+		// presence check when surface.Name is a synthetic
+		// constructor-derived label (e.g. "system_message",
+		// "vector_store_chroma") that wouldn't appear as a literal
+		// token in the prompt/config file.
+		if !isSyntheticIdentifier(surface.Name) {
+			if dec := surfacelit.Gate(mechanisms.Default(), surface.Name, abs, "aiSafetyEvalMissing"); !dec.Keep {
+				continue
+			}
 		}
 		out = append(out, models.Signal{
 			Type:        signals.SignalAISafetyEvalMissing,

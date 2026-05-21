@@ -35,7 +35,7 @@ var defaultYAML []byte
 type State int
 
 const (
-	// StateOff means the mechanism does nothing — pre-cycle-2 behavior.
+	// StateOff means the mechanism does nothing — legacy behavior.
 	StateOff State = iota
 	// StateShadow means the mechanism runs and emits shadow events but
 	// does not affect findings.

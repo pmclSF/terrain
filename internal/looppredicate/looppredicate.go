@@ -179,21 +179,31 @@ func loopScopeOpensAt(s string, openBraceIdx int) bool {
 
 // Gate is the canonical mechanism-state wire-up for the
 // dynamicTestGeneration detector. Routes through mechanisms.GateSuppress
-// for uniform state-machine semantics. Returns Keep=true when the
-// mechanism is off, when the line is not in a loop, or on unreadable
-// file. Returns Keep=false when the mechanism is on AND the line is
-// wrapped by a loop. Shadow → keeps but emits a would-suppress event.
+// for uniform state-machine semantics.
+//
+// Polarity: the dynamicTestGeneration regex is over-broad and matches
+// surrounding-context shapes where the it/test/describe call isn't
+// actually wrapped by a loop. The gate suppresses ONLY when the AST
+// confirms the line is NOT in a loop — that's the structural FP class
+// the gate exists to remove.
+//
+//	mechanism off → Keep=true (legacy regex behavior)
+//	mechanism on  + line IS in loop  → Keep=true (true positive)
+//	mechanism on  + line NOT in loop → Keep=false (suppress FP)
+//	mechanism shadow → Keep=true, emit would-suppress event on FP class
+//	unreadable file or error → Keep=true (fail open)
 func Gate(reg *mechanisms.Registry, path string, line int, ruleID string) bool {
 	return mechanisms.GateSuppress(reg, MechanismName,
 		mechanisms.EventContext{RuleID: ruleID, File: path, Line: line},
 		true, func() mechanisms.PredicateResult {
 			inLoop, err := IsTestBuilderInLoop(path, line)
-			if err != nil || !inLoop {
+			if err != nil || inLoop {
+				// Fail open on read error; in-loop is a true positive.
 				return mechanisms.PredicateResult{Fired: false}
 			}
 			return mechanisms.PredicateResult{
 				Fired:   true,
-				Reasons: []string{"test builder wrapped by a loop construct"},
+				Reasons: []string{"regex matched but AST confirms test builder is NOT wrapped by a loop"},
 			}
 		})
 }

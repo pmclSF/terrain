@@ -104,9 +104,9 @@ var jsAnthropicCallPattern = regexp.MustCompile(
 // fine-tuning, tool-control) are deliberately broad — they have to
 // match many phrasings. Run unguarded, they fire on plain HTTP
 // streaming, statistics primitives, schema validators, etc., in
-// non-AI code (verified against an 80-repo non-AI OSS corpus). To
-// keep them sharp we require co-presence of an explicit AI marker
-// in the same file before the infrastructure loop runs.
+// non-AI code. To keep them sharp we require co-presence of an
+// explicit AI marker in the same file before the infrastructure loop
+// runs.
 //
 // "AI marker" = SDK constructor / generation call / known AI import.
 // If a file has none of these, we don't classify ReadableStream as
@@ -521,8 +521,8 @@ func parsePromptASTJS(relPath, src string) []models.CodeSurface {
 	// AI context. Without it, infrastructure patterns match plain HTTP
 	// streaming (ReadableStream, text/event-stream), statistics
 	// primitives (BLEU/F1/cosine), and schema validators in non-AI
-	// code — 814 false-positive uncoveredAISurface signals across the
-	// 80-repo non-AI OSS corpus.
+	// code, producing false-positive uncoveredAISurface signals on
+	// non-AI repos.
 	if aiContext {
 		infraPatterns := []struct {
 			pat        *regexp.Regexp
@@ -803,8 +803,8 @@ func parsePromptASTPython(relPath, src string) []models.CodeSurface {
 	// 8. AI infrastructure detection — streaming, tokens, metrics, guardrails, fine-tuning, tools.
 	// Same gate. Without it, infrastructure patterns match plain HTTP
 	// streaming, statistics primitives, and schema validators in
-	// non-AI code — 814 false-positive uncoveredAISurface signals in
-	// the 80-repo non-AI corpus.
+	// non-AI code, producing false-positive uncoveredAISurface
+	// signals on non-AI repos.
 	if pyAIContext {
 		pyInfraPatterns := []struct {
 			pat        *regexp.Regexp

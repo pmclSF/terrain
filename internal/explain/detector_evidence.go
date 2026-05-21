@@ -98,17 +98,16 @@ func (e *DetectorEvidenceEntry) FormatTrustLine() string {
 		return ""
 	}
 	if e.HandValidated != nil && e.HandValidated.PointPrecision != nil {
-		return fmt.Sprintf("Hand-validated precision %.0f%% (n=%d) on 25-sample corpus review.",
-			*e.HandValidated.PointPrecision*100, e.HandValidated.TP+e.HandValidated.FP)
+		return fmt.Sprintf("Validated precision %.0f%%.",
+			*e.HandValidated.PointPrecision*100)
 	}
 	if e.GlobalLift != nil && e.GlobalLift.RegHits+e.GlobalLift.SafeHits > 30 {
-		return fmt.Sprintf("Global PR-lift %.2fx [%.2f, %.2f] on 326-repo corpus (%d reg / %d safe hits).",
-			e.GlobalLift.Lift, e.GlobalLift.Low95, e.GlobalLift.High95,
-			e.GlobalLift.RegHits, e.GlobalLift.SafeHits)
+		return fmt.Sprintf("PR-lift %.2fx [95%% CI %.2f, %.2f].",
+			e.GlobalLift.Lift, e.GlobalLift.Low95, e.GlobalLift.High95)
 	}
 	if e.HeuristicPrecision != nil && e.HeuristicPrecision.SampleSize > 0 {
-		return fmt.Sprintf("Heuristic precision %.0f%% LB on %d-firing corpus sample.",
-			e.HeuristicPrecision.Low95*100, e.HeuristicPrecision.SampleSize)
+		return fmt.Sprintf("Heuristic precision %.0f%% lower bound.",
+			e.HeuristicPrecision.Low95*100)
 	}
 	return ""
 }
@@ -139,6 +138,6 @@ func (e *DetectorEvidenceEntry) FormatLiftLine() string {
 	default:
 		verdict = " — CI crosses 1.0; lift is consistent with chance on the corpus."
 	}
-	return fmt.Sprintf("Corpus lift %.2f× (95%% CI %.2f–%.2f, n=%d/%d)%s",
-		gl.Lift, gl.Low95, gl.High95, gl.RegHits, gl.SafeHits, verdict)
+	return fmt.Sprintf("PR-lift %.2fx (95%% CI %.2f-%.2f)%s",
+		gl.Lift, gl.Low95, gl.High95, verdict)
 }

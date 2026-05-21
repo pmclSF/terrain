@@ -195,7 +195,7 @@ func main() {
 		timeoutFlag := analyzeCmd.Duration("timeout", 0, "abort the analysis after this duration (e.g. 5m); 0 means no timeout")
 		suppressionsFlag := analyzeCmd.String("suppressions", "", "path to .terrain/suppressions.yaml (default: $root/.terrain/suppressions.yaml; missing file is fine)")
 		newOnlyFlag := analyzeCmd.Bool("new-findings-only", false, "filter signals to those NOT present in --baseline (lets established repos with debt adopt --fail-on without bricking CI)")
-		previewFlag := analyzeCmd.Bool("preview", false, "enable the §9 preview-tier AI/ML detectors (default off; pending LB-5/LB-6 calibration)")
+		previewFlag := analyzeCmd.Bool("preview", false, "enable preview-tier AI detectors (default off; not yet calibrated)")
 		diagFlag := analyzeCmd.Bool("diag", false, "print per-step pipeline timing diagnostics to stderr (for performance investigation)")
 		_ = analyzeCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("analyze", analyzeCmd.Args(), rootFlag)

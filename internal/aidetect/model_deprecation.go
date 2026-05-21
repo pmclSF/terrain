@@ -167,10 +167,7 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 	var out []models.Signal
 	for _, relPath := range paths {
 		// Skip non-actionable paths: test code, docs, GitHub issue
-		// templates, changelogs, etc. Verified on the 70-repo
-		// ML-specialized corpus: 22 of 64 aiModelDeprecationRisk
-		// firings on FLAML were in `test/autogen/`, `.github/
-		// ISSUE_TEMPLATE/`, `docs/content/` — places where deprecated
+		// templates, changelogs, etc. In these locations deprecated
 		// model names appear by reference (tests pin specific
 		// versions for behavior testing; issue templates ask users
 		// which model they used; docs reference models historically).

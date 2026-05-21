@@ -7,8 +7,8 @@
 // embedded at build time. Tests can load a custom registry via LoadFromBytes
 // for hermeticity.
 //
-// Cycle-2 plan reference: P1b.1 — the alias machinery must ship BEFORE any
-// rule split lands in Phase 2 so existing suppressions don't silently break.
+// The alias machinery must ship before any rule split lands so existing
+// suppressions don't silently break across the rename.
 package aliases
 
 import (

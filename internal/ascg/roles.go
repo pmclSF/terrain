@@ -8,13 +8,13 @@ import (
 const RoleMechanismName = "ascg_live_vs_catalog"
 
 // Role names two structural occurrences distinguished by import-graph
-// position, not text content (the Phase 1 Classify function classified
-// by file context; roles add the cross-file structural test).
+// position, not text content (the Classify function classifies by
+// file context; roles add the cross-file structural test).
 type Role int
 
 const (
 	// RoleUnknown means the import-graph data doesn't satisfy either
-	// pinning condition. Callers fall back to the Phase 1 Classify
+	// pinning condition. Callers fall back to the path-based Classify
 	// verdict.
 	RoleUnknown Role = iota
 
@@ -161,7 +161,7 @@ func GateClassifyDemote(reg *mechanisms.Registry, loc Location, ruleID string) b
 }
 
 // CombineWithClassify merges a structural role decision with the
-// Phase 1 Classify verdict. Returns the strictest verdict — if either
+// path-based Classify verdict. Returns the strictest verdict — if either
 // says "catalog/example," demote; if either says "live," keep.
 func CombineWithClassify(roleDec RoleDecision, classifyRes Result) RoleDecision {
 	// If the role gate already produced a strong verdict, trust it.

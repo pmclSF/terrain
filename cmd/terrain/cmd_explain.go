@@ -304,7 +304,7 @@ func renderFindingExplanation(s models.Signal, id string, snap *models.TestSuite
 		}
 		// Surface corpus-lift inline even when trust-line picked hand-
 		// validated precision — precision alone doesn't tell users
-		// whether the firing predicts regression risk. Tier 5.4.
+		// whether the firing predicts regression risk.
 		if line := ev.FormatLiftLine(); line != "" {
 			lines = append(lines, line)
 		}
@@ -351,7 +351,7 @@ func renderFindingExplanation(s models.Signal, id string, snap *models.TestSuite
 	}
 
 	if exs := explain.CorpusExamplesFor(string(s.Type), 3); len(exs) > 0 {
-		fmt.Println("Real-world examples from public OSS (326-repo corpus):")
+		fmt.Println("Real-world examples from public OSS:")
 		for _, e := range exs {
 			loc := e.File
 			if e.Line > 0 {

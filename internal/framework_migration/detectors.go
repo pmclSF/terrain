@@ -106,11 +106,10 @@ type DeprecatedPatternDetector struct {
 func (d *DeprecatedPatternDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
 	var signals []models.Signal
 	// Track hard-blocker patterns to roll up into one migrationBlocker
-	// per pattern across the project. Before this change, the detector
-	// emitted a separate migrationBlocker per (pattern, file) — which
-	// produced 1,097 duplicate "enzyme-usage" signals on AutoGPT alone
-	// (verified on the 80-repo OSS corpus). Now the per-file signal is
-	// `deprecatedTestPattern` (still per-file, actionable) and the
+	// per pattern across the project. The pre-rollup shape emitted a
+	// separate migrationBlocker per (pattern, file), which produced
+	// noisy duplicates on large repos. The per-file signal is now
+	// `deprecatedTestPattern` (per-file, actionable) and the
 	// project-wide migrationBlocker carries the file list in metadata.
 	blockerFiles := map[string][]string{}      // pattern -> file list
 	blockerOwners := map[string]string{}       // pattern -> first owner seen
@@ -260,17 +259,13 @@ func (d *DynamicTestGenerationDetector) Detect(snap *models.TestSuiteSnapshot) [
 		}
 
 		if line, ok := dynamicTestGenerationLine(content); ok {
-			// Mechanism gate: a3_loop_predicate. When ON, the
-			// AST-precise looppredicate verifies the it/test/describe
-			// call at `line` is actually wrapped by a loop construct.
-			// Suppress only when the AST confirms the regex match was
-			// NOT in a loop (the FP class — surrounding-context regex
-			// match where the test builder isn't actually wrapped).
+			// Mechanism gate: a3_loop_predicate. The Gate helper now
+			// suppresses only when AST confirms the regex match was
+			// NOT in a loop (the FP class). State machine + shadow
+			// emit are handled inside.
 			absPath := filepath.Join(d.RepoRoot, tf.Path)
-			if mechanisms.Default().State(looppredicate.MechanismName) == mechanisms.StateOn {
-				if inLoop, err := looppredicate.IsTestBuilderInLoop(absPath, line); err == nil && !inLoop {
-					continue
-				}
+			if !looppredicate.Gate(mechanisms.Default(), absPath, line, "dynamicTestGeneration") {
+				continue
 			}
 			signals = append(signals, models.Signal{
 				Type:             "dynamicTestGeneration",
