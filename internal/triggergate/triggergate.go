@@ -28,7 +28,6 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
-	"github.com/pmclSF/terrain/internal/shadow"
 )
 
 // MechanismName is the canonical name in mechanisms.yaml.
@@ -351,59 +350,43 @@ func findLineComment(line string) int {
 // imports check passes (gate is satisfied), or when the mechanism is
 // off / the file is unreadable (fail open). Emits shadow events on
 // would-suppress.
-func GateImports(reg *mechanisms.Registry, path, ruleID string, patterns []string) (keep bool) {
-	state := reg.State(MechanismName)
-	if state == mechanisms.StateOff {
-		return true
-	}
-	hit, err := ImportsFrom(path, patterns)
-	if err != nil {
-		// Unreadable file → fail open.
-		return true
-	}
-	if hit {
-		return true
-	}
-	if state == mechanisms.StateOn {
-		return false
-	}
-	// Shadow.
-	shadow.Emit(shadow.Event{
-		Mechanism: MechanismName,
-		RuleID:    ruleID,
-		Action:    shadow.ActionSuppress,
-		File:      path,
-		Reasons:   []string{"file does not import any of: " + strings.Join(patterns, ", ")},
-	})
-	return true
+//
+// Routes through mechanisms.GateSuppress so the off/shadow/on state
+// machine is shared with every other gate helper in the codebase.
+func GateImports(reg *mechanisms.Registry, path, ruleID string, patterns []string) bool {
+	return mechanisms.GateSuppress(reg, MechanismName,
+		mechanisms.EventContext{RuleID: ruleID, File: path},
+		true, func() mechanisms.PredicateResult {
+			hit, err := ImportsFrom(path, patterns)
+			if err != nil {
+				// Unreadable file → fail open (predicate does not fire).
+				return mechanisms.PredicateResult{Fired: false}
+			}
+			if hit {
+				return mechanisms.PredicateResult{Fired: false}
+			}
+			return mechanisms.PredicateResult{
+				Fired:   true,
+				Reasons: []string{"file does not import any of: " + strings.Join(patterns, ", ")},
+			}
+		})
 }
 
 // GateSetTimeoutScope is the canonical wire-up for setTimeout config-
 // scope filtering. Returns Keep=true when the call is at config scope
 // (the deprecation should fire) or the mechanism is off. Returns
 // Keep=false when the call is in-test scope and the mechanism is on.
-func GateSetTimeoutScope(reg *mechanisms.Registry, path string, line int, ruleID string) (keep bool) {
-	state := reg.State(MechanismName)
-	if state == mechanisms.StateOff {
-		return true
-	}
-	atConfig, err := IsSetTimeoutAtConfigScope(path, line)
-	if err != nil {
-		return true
-	}
-	if atConfig {
-		return true
-	}
-	if state == mechanisms.StateOn {
-		return false
-	}
-	shadow.Emit(shadow.Event{
-		Mechanism: MechanismName,
-		RuleID:    ruleID,
-		Action:    shadow.ActionSuppress,
-		File:      path,
-		Line:      line,
-		Reasons:   []string{"setTimeout call is in-test scope, not config scope"},
-	})
-	return true
+func GateSetTimeoutScope(reg *mechanisms.Registry, path string, line int, ruleID string) bool {
+	return mechanisms.GateSuppress(reg, MechanismName,
+		mechanisms.EventContext{RuleID: ruleID, File: path, Line: line},
+		true, func() mechanisms.PredicateResult {
+			atConfig, err := IsSetTimeoutAtConfigScope(path, line)
+			if err != nil || atConfig {
+				return mechanisms.PredicateResult{Fired: false}
+			}
+			return mechanisms.PredicateResult{
+				Fired:   true,
+				Reasons: []string{"setTimeout call is in-test scope, not config scope"},
+			}
+		})
 }

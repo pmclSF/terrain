@@ -36,7 +36,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
-	"github.com/pmclSF/terrain/internal/shadow"
 )
 
 // MechanismName is the canonical name in mechanisms.yaml.
@@ -322,29 +321,29 @@ func Covers(reports []*Report, kind SurfaceKind, name string) bool {
 // findings that legacy behavior would have suppressed but the
 // per-surface check now keeps — i.e., the detector should fire
 // despite some other eval being present.
-func GateSuppression(reg *mechanisms.Registry, reports []*Report, kind SurfaceKind, name, ruleID, file string, legacyHadEvalConfig bool) (keep bool) {
-	state := reg.State(MechanismName)
-	if state == mechanisms.StateOff {
-		// Legacy behavior: any eval config suppresses every surface.
-		return !legacyHadEvalConfig
-	}
-	covered := Covers(reports, kind, name)
-	if state == mechanisms.StateOn {
-		// Live: only suppress if THIS surface is covered.
-		return !covered
-	}
-	// Shadow: keep the legacy verdict on the user-visible finding, but
-	// emit a would-add event when the legacy verdict would have
-	// suppressed and the per-surface verdict says "should fire."
+func GateSuppression(reg *mechanisms.Registry, reports []*Report, kind SurfaceKind, name, ruleID, file string, legacyHadEvalConfig bool) bool {
 	keepLegacy := !legacyHadEvalConfig
-	if !keepLegacy && !covered {
-		shadow.Emit(shadow.Event{
-			Mechanism: MechanismName,
-			RuleID:    ruleID,
-			Action:    shadow.ActionAdd,
-			File:      file,
-			Reasons:   []string{"eval config present but does not cover surface " + name},
+
+	// Gate fires when legacy would have suppressed (eval config present)
+	// AND the per-surface check says this specific surface is NOT
+	// covered — the gate's job is to LIFT the over-broad suppression.
+	shouldAdd := mechanisms.GateAdd(reg, MechanismName,
+		mechanisms.EventContext{RuleID: ruleID, File: file},
+		func() mechanisms.PredicateResult {
+			if !legacyHadEvalConfig {
+				return mechanisms.PredicateResult{Fired: false}
+			}
+			if Covers(reports, kind, name) {
+				return mechanisms.PredicateResult{Fired: false}
+			}
+			return mechanisms.PredicateResult{
+				Fired:   true,
+				Reasons: []string{"eval config present but does not cover surface " + name},
+			}
 		})
+
+	if shouldAdd {
+		return true // gate lifted the legacy suppression
 	}
 	return keepLegacy
 }

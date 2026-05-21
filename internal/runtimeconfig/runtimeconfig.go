@@ -32,7 +32,6 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
-	"github.com/pmclSF/terrain/internal/shadow"
 )
 
 // MechanismName is the canonical name in mechanisms.yaml.
@@ -261,26 +260,20 @@ func ClearLoaderCache() {
 // GateDemotion is the canonical wire-up for the aiNonDeterministicEval
 // consumer. Returns true when the finding should be demoted (when the
 // mechanism is on AND the file is a runtime config). Shadow → returns
-// false (no demotion to user-visible findings) but emits a
-// would-demote-severity event.
+// false but emits a would-demote-severity event.
+//
+// Routes through mechanisms.GateDemote so the off/shadow/on state
+// machine is shared with every other gate helper.
 func GateDemotion(reg *mechanisms.Registry, report *Report, ruleID, file string) bool {
-	state := reg.State(MechanismName)
-	if state == mechanisms.StateOff {
-		return false
-	}
-	if !report.IsRuntimeConfig() {
-		return false
-	}
-	if state == mechanisms.StateOn {
-		return true
-	}
-	// Shadow.
-	shadow.Emit(shadow.Event{
-		Mechanism: MechanismName,
-		RuleID:    ruleID,
-		Action:    shadow.ActionDemoteSeverity,
-		File:      file,
-		Reasons:   append([]string{"runtime config keys: " + strings.Join(report.ConfigKeysHit, ", ")}, "loader_in_repo"),
-	})
-	return false
+	return mechanisms.GateDemote(reg, MechanismName,
+		mechanisms.EventContext{RuleID: ruleID, File: file},
+		func() mechanisms.PredicateResult {
+			if !report.IsRuntimeConfig() {
+				return mechanisms.PredicateResult{Fired: false}
+			}
+			return mechanisms.PredicateResult{
+				Fired:   true,
+				Reasons: []string{"runtime config keys: " + strings.Join(report.ConfigKeysHit, ", "), "loader_in_repo"},
+			}
+		})
 }

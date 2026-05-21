@@ -23,7 +23,6 @@ import (
 	"regexp"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
-	"github.com/pmclSF/terrain/internal/shadow"
 )
 
 // MechanismName is the canonical name in mechanisms.yaml.
@@ -179,36 +178,24 @@ func loopScopeOpensAt(s string, openBraceIdx int) bool {
 // ── Gate helper ────────────────────────────────────────────────────
 
 // Gate is the canonical mechanism-state wire-up for the
-// dynamicTestGeneration detector. Returns Keep=true when the
-// mechanism is off, when the line is not in a loop, or on
-// unreadable file. Returns Keep=false when the mechanism is on AND
-// the line is wrapped by a loop. Shadow → keeps but emits a
-// would-suppress event.
-func Gate(reg *mechanisms.Registry, path string, line int, ruleID string) (keep bool) {
-	state := reg.State(MechanismName)
-	if state == mechanisms.StateOff {
-		return true
-	}
-	inLoop, err := IsTestBuilderInLoop(path, line)
-	if err != nil {
-		return true // fail open
-	}
-	if !inLoop {
-		return true
-	}
-	if state == mechanisms.StateOn {
-		return false
-	}
-	// Shadow.
-	shadow.Emit(shadow.Event{
-		Mechanism: MechanismName,
-		RuleID:    ruleID,
-		Action:    shadow.ActionSuppress,
-		File:      path,
-		Line:      line,
-		Reasons:   []string{"test builder wrapped by a loop construct"},
-	})
-	return true
+// dynamicTestGeneration detector. Routes through mechanisms.GateSuppress
+// for uniform state-machine semantics. Returns Keep=true when the
+// mechanism is off, when the line is not in a loop, or on unreadable
+// file. Returns Keep=false when the mechanism is on AND the line is
+// wrapped by a loop. Shadow → keeps but emits a would-suppress event.
+func Gate(reg *mechanisms.Registry, path string, line int, ruleID string) bool {
+	return mechanisms.GateSuppress(reg, MechanismName,
+		mechanisms.EventContext{RuleID: ruleID, File: path, Line: line},
+		true, func() mechanisms.PredicateResult {
+			inLoop, err := IsTestBuilderInLoop(path, line)
+			if err != nil || !inLoop {
+				return mechanisms.PredicateResult{Fired: false}
+			}
+			return mechanisms.PredicateResult{
+				Fired:   true,
+				Reasons: []string{"test builder wrapped by a loop construct"},
+			}
+		})
 }
 
 // SourceShapes returns a short human-readable list of the loop shapes

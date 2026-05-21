@@ -2,7 +2,6 @@ package ascg
 
 import (
 	"github.com/pmclSF/terrain/internal/mechanisms"
-	"github.com/pmclSF/terrain/internal/shadow"
 )
 
 // RoleMechanismName is the canonical name in mechanisms.yaml.
@@ -113,37 +112,26 @@ type RoleDecision struct {
 }
 
 func GateRole(reg *mechanisms.Registry, facts GraphFacts, loc Location, ruleID string) RoleDecision {
-	state := reg.State(RoleMechanismName)
-	if state == mechanisms.StateOff {
+	// Off short-circuits: no role test runs, fall back to Classify.
+	if reg.State(RoleMechanismName) == mechanisms.StateOff {
 		return RoleDecision{Role: RoleUnknown, Keep: true}
 	}
+
 	role := RoleOf(facts)
 	dec := RoleDecision{Role: role, Keep: true}
-	switch role {
-	case RoleLiveConfigValue:
-		// Live: keep, no shadow event needed.
-	case RoleCatalogOrExampleString:
-		// Catalog: demote to NOTE severity (live), or emit would-demote
-		// event (shadow).
-		if state == mechanisms.StateOn {
-			dec.Keep = true
-			dec.Demote = true
-		} else { // shadow
-			shadow.Emit(shadow.Event{
-				Mechanism: RoleMechanismName,
-				RuleID:    ruleID,
-				Action:    shadow.ActionDemoteSeverity,
-				File:      loc.Path,
-				Line:      loc.Line,
-				Reasons:   []string{"symbol is a catalog/example-string per import-graph role"},
-			})
-		}
-	default:
-		// Unknown role: the gate doesn't have enough evidence to
-		// reclassify. Fall through to whatever the Phase 1 Classify
-		// verdict was. Callers can additionally run Classify() and
-		// combine.
-	}
+
+	// Route the catalog-demotion through the canonical state machine;
+	// returns true when state=on AND role is catalog (the demote
+	// trigger), false otherwise. Shadow-mode emit is handled inside.
+	demote := mechanisms.GateDemote(reg, RoleMechanismName,
+		mechanisms.EventContext{RuleID: ruleID, File: loc.Path, Line: loc.Line},
+		func() mechanisms.PredicateResult {
+			return mechanisms.PredicateResult{
+				Fired:   role == RoleCatalogOrExampleString,
+				Reasons: []string{"symbol is a catalog/example-string per import-graph role"},
+			}
+		})
+	dec.Demote = demote
 	return dec
 }
 

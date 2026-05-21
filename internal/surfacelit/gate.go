@@ -2,7 +2,6 @@ package surfacelit
 
 import (
 	"github.com/pmclSF/terrain/internal/mechanisms"
-	"github.com/pmclSF/terrain/internal/shadow"
 )
 
 // Gate is the canonical wire-up helper used by AI-moat detectors. Given
@@ -10,52 +9,41 @@ import (
 // reference, and the rule_id, it:
 //
 //  1. Runs Check(name, file) to compute presence.
-//  2. Reads the surface_literal_presence_gate mechanism state.
+//  2. Routes through mechanisms.GateSuppress which handles the
+//     state-machine (off/shadow/on) + shadow event emission uniformly
+//     across every gate-helper in the codebase.
 //  3. Returns a Decision telling the caller whether to keep emitting
 //     the finding.
-//  4. When state=shadow AND the name is absent, emits a `would_suppress`
-//     event to the configured shadow sink (if any).
 //
-// When state=off (or the mechanism is unknown), the gate is a no-op —
-// Decision.Keep is always true and no shadow event is emitted. This
-// keeps pre-cycle-2 behavior intact when the mechanism is disabled.
-//
-// When state=on AND the name is absent, Decision.Keep is false (drop
-// the finding). No shadow event is emitted in state=on because the
-// suppression is already user-visible.
+// When state=off (or the registry is nil), the gate is a no-op —
+// Decision.Keep is always true and no shadow event is emitted. When
+// state=on AND the surface name is absent, Decision.Keep is false
+// (drop the finding). When state=shadow AND absent, Keep is true but
+// a would-suppress event is emitted to the configured shadow sink.
 //
 // Callers pass the rule_id so the shadow event records which detector
 // the finding originated from.
 func Gate(reg *mechanisms.Registry, name, file, ruleID string) Decision {
-	state := reg.State(MechanismName)
-
-	// State=off: gate is fully disabled.
-	if state == mechanisms.StateOff {
-		return Decision{Result: Skipped, Keep: true}
+	// Predicate: presence check. Fires (returns Fired=true) when the
+	// surface name is ABSENT from the file's non-comment content —
+	// that's the case where the gate would suppress the finding.
+	var presence Result
+	predicate := func() mechanisms.PredicateResult {
+		res, _ := Check(name, file)
+		presence = res
+		return mechanisms.PredicateResult{
+			Fired:   res == Absent,
+			Reasons: []string{Reason(res, name, file)},
+		}
 	}
 
-	// Run the check; failures (missing file, oversize) fail open.
-	res, _ := Check(name, file)
-	if res != Absent {
-		return Decision{Result: res, Keep: true}
+	keep := mechanisms.GateSuppress(reg, MechanismName,
+		mechanisms.EventContext{RuleID: ruleID, File: file},
+		true, predicate)
+
+	dec := Decision{Result: presence, Keep: keep}
+	if !keep {
+		dec.ShadowAction = "would_suppress"
 	}
-
-	dec := Decision{Result: Absent, ShadowAction: string(shadow.ActionSuppress)}
-
-	if state == mechanisms.StateOn {
-		// Live: actually suppress the finding.
-		dec.Keep = false
-		return dec
-	}
-
-	// Shadow: keep the finding, emit a would-suppress event.
-	dec.Keep = true
-	shadow.Emit(shadow.Event{
-		Mechanism: MechanismName,
-		RuleID:    ruleID,
-		Action:    shadow.ActionSuppress,
-		File:      file,
-		Reasons:   []string{Reason(res, name, file)},
-	})
 	return dec
 }
