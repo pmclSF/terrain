@@ -493,6 +493,95 @@ func printMarkdown(mechs []mechanism, report map[string]map[string]counts) {
 		}
 		fmt.Printf("| %s | %s | %s |\n", m.name, verdict, fails)
 	}
+
+	// Per-mechanism stacking analysis (R3.8 stacking variant).
+	// For each detector, walk the mechanisms that target it in
+	// suppress → demote → add order and report the marginal
+	// contribution of each. When only one mechanism applies (the
+	// common case today), stacking equals the per-mechanism result.
+	// When multiple mechanisms graduate against the same detector,
+	// stacking surfaces the over-suppression / over-demotion path.
+	fmt.Println()
+	fmt.Println("## Stacking analysis (R3.8 stacking variant)")
+	fmt.Println()
+	fmt.Println("For detectors with multiple applicable mechanisms, each filter's")
+	fmt.Println("TP-loss is measured AGAINST THE PRIOR FILTER'S OUTPUT, not the raw")
+	fmt.Println("v2 corpus. This catches over-suppression that wouldn't be visible")
+	fmt.Println("from per-mechanism analysis alone.")
+	fmt.Println()
+	printStackingTable(mechs, report)
+}
+
+// printStackingTable groups mechanisms by consumer detector and
+// reports the cumulative TP-loss / FP-gain per stack step. Stack
+// order: suppress > demote > add (suppressors apply first because
+// they remove rows from the precision pool entirely).
+func printStackingTable(mechs []mechanism, report map[string]map[string]counts) {
+	// Build detector → mechanisms map.
+	byDet := map[string][]mechanism{}
+	for _, m := range mechs {
+		for det := range m.consumers {
+			byDet[det] = append(byDet[det], m)
+		}
+	}
+
+	actionOrder := map[string]int{"suppress": 0, "demote": 1, "add": 2}
+	var dets []string
+	for d := range byDet {
+		dets = append(dets, d)
+	}
+	sort.Strings(dets)
+
+	fmt.Println("| Detector | Mechanism stack | Total n | Total TP-loss | Total FP-gain | Notes |")
+	fmt.Println("|---|---|---:|---:|---:|---|")
+
+	for _, det := range dets {
+		ms := byDet[det]
+		sort.SliceStable(ms, func(i, j int) bool {
+			return actionOrder[ms[i].action] < actionOrder[ms[j].action]
+		})
+
+		// Aggregate cumulative TP-loss / FP-gain.
+		var (
+			totalTPLoss int
+			totalFPGain int
+			totalRows   int
+			names       []string
+			hasData     bool
+		)
+		for _, m := range ms {
+			c := report[m.name][det]
+			if c.TotalRows == 0 {
+				continue
+			}
+			hasData = true
+			if totalRows == 0 {
+				totalRows = c.TotalRows
+			}
+			// Type-switch mechanisms don't suppress; their "Changed"
+			// rows are still in the precision pool.
+			if m.typeSwitch {
+				names = append(names, m.name+"*")
+				continue
+			}
+			totalTPLoss += c.TPChanged
+			totalFPGain += c.FPChanged
+			names = append(names, m.name)
+		}
+		if !hasData {
+			continue
+		}
+		notes := ""
+		if len(ms) == 1 {
+			notes = "single mechanism; stacking trivial"
+		} else if len(ms) > 1 {
+			notes = "multiple mechanisms — watch cumulative TP-loss"
+		}
+		fmt.Printf("| %s | %s | %d | %d | %d | %s |\n",
+			det, strings.Join(names, " → "), totalRows, totalTPLoss, totalFPGain, notes)
+	}
+	fmt.Println()
+	fmt.Println("`*` = type-switch (precision-preserving); not counted in TP-loss/FP-gain totals.")
 }
 
 // syntheticPrefixes / syntheticExactMatches / syntheticLineSuffixRe
