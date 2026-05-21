@@ -263,9 +263,14 @@ func (d *DynamicTestGenerationDetector) Detect(snap *models.TestSuiteSnapshot) [
 			// Mechanism gate: a3_loop_predicate. When ON, the
 			// AST-precise looppredicate verifies the it/test/describe
 			// call at `line` is actually wrapped by a loop construct.
+			// Suppress only when the AST confirms the regex match was
+			// NOT in a loop (the FP class — surrounding-context regex
+			// match where the test builder isn't actually wrapped).
 			absPath := filepath.Join(d.RepoRoot, tf.Path)
-			if !looppredicate.Gate(mechanisms.Default(), absPath, line, "dynamicTestGeneration") {
-				continue
+			if mechanisms.Default().State(looppredicate.MechanismName) == mechanisms.StateOn {
+				if inLoop, err := looppredicate.IsTestBuilderInLoop(absPath, line); err == nil && !inLoop {
+					continue
+				}
 			}
 			signals = append(signals, models.Signal{
 				Type:             "dynamicTestGeneration",

@@ -106,8 +106,7 @@ func (d *PromptFileMissingEvalDetector) Detect(snap *models.TestSuiteSnapshot) [
 				Symbol: surface.Name,
 			},
 			Explanation: "AI/ML surface `" + surface.Name + "` (kind=" + string(surface.Kind) +
-				") has no eval scenario covering it. In a 2000-repo OSS corpus this gap appears " +
-				"in 136 of every 137 detected surfaces — the dominant AI testing failure mode.",
+				") has no eval scenario covering it. Surfaces without eval coverage are a common AI testing gap.",
 			SuggestedAction: "Add an eval scenario (promptfoo, DeepEval, Ragas, or a framework-specific " +
 				"format) that exercises this surface. Run `terrain ai list` to see what other surfaces " +
 				"in this repo are uncovered.",

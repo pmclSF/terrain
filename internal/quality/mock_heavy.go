@@ -73,8 +73,8 @@ func (d *MockHeavyDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sign
 				Location:         models.SignalLocation{File: tf.Path},
 				Explanation: "High mock usage detected: " + itoa(tf.MockCount) +
 					" mock(s) vs " + itoa(tf.AssertionCount) +
-					" assertion(s). [Note: corpus PR-lift shows mock-heavy files are NOT regression-prone; treat as informational only until detector is rebuilt.]",
-				SuggestedAction: "Consider adding assertions on real outputs or supplementing with integration coverage. (Detector flagged as experimental — see CHANGELOG.)",
+					" assertion(s).",
+				SuggestedAction: "Consider adding assertions on real outputs or supplementing with integration coverage. Detector is experimental.",
 			})
 		}
 	}

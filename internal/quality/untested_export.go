@@ -131,11 +131,11 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 			}
 		}
 	}
-	// Mechanism gate: a7_barrel_resolver. When on, expand the legacy
-	// importedModules set by routing each test file's imports through
-	// barrelresolver, which handles Jest path aliases, dist-path
-	// indirection, and Python namespace re-exports.
-	if d.RepoRoot != "" && mechanisms.Default().State(barrelresolver.MechanismName) != mechanisms.StateOff {
+	// Mechanism gate: a7_barrel_resolver. Only when ON does the
+	// resolver actively expand the legacy importedModules set; in
+	// shadow / off the set stays as the legacy import-graph yielded
+	// so downstream user-visible findings are unchanged.
+	if d.RepoRoot != "" && mechanisms.Default().State(barrelresolver.MechanismName) == mechanisms.StateOn {
 		resolver, err := barrelresolver.New(d.RepoRoot)
 		if err == nil {
 			for testPath, imports := range snap.ImportGraph {

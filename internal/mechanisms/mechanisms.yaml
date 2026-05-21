@@ -22,7 +22,6 @@ mechanisms:
       in the flagged file. Suppresses surface-hallucination findings.
     consumers:
       - aiModelDeprecationRisk
-      - aiNonDeterministicEval
       - aiPromptVersioning
       - aiEmbeddingModelChange
       - aiSafetyEvalMissing

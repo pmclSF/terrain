@@ -49,13 +49,11 @@ func (d *OrphanedTestDetector) Detect(snap *models.TestSuiteSnapshot) []models.S
 	}
 	var candidates []candidate
 
-	// Mechanism gate: a7_barrel_resolver. Build a resolver once so a
-	// test file claimed-orphaned by the legacy linkage can still be
-	// rescued by a barrel-re-export-resolved import. When the
-	// mechanism is off, Resolve returns nil and the rescue path is a
-	// no-op.
+	// Mechanism gate: a7_barrel_resolver. Build a resolver only when
+	// the mechanism is ON; in shadow / off, the rescue path is
+	// disabled so user-visible findings match legacy behavior.
 	var resolver *barrelresolver.Resolver
-	if d.RepoRoot != "" && mechanisms.Default().State(barrelresolver.MechanismName) != mechanisms.StateOff {
+	if d.RepoRoot != "" && mechanisms.Default().State(barrelresolver.MechanismName) == mechanisms.StateOn {
 		if r, err := barrelresolver.New(d.RepoRoot); err == nil {
 			resolver = r
 		}

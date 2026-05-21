@@ -1,8 +1,6 @@
 package engine
 
 import (
-	"fmt"
-
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
 )
@@ -44,25 +42,18 @@ func applyEvidenceBasedSeverityToSignal(sig *models.Signal) {
 		sig.Metadata["declared_severity"] = string(declared)
 		sig.Metadata["effective_severity_lowered"] = true
 	}
-	// Always populate lift evidence when we have it, even if severity
-	// didn't change — `terrain explain` shows lift inline.
+	// Always populate the lift point + CI when we have it so callers
+	// can filter on effect size. Methodology-revealing fields
+	// (sample-size n, formatted summary strings) are not exposed in
+	// the public metadata — `terrain explain` surfaces them in its
+	// own rendering when verbose is requested.
 	if ev, ok := signals.LookupEvidence(sig.Type); ok {
 		if ev.GlobalLift != nil {
 			sig.Metadata["corpus_lift"] = roundTo2(ev.GlobalLift.LiftPoint())
 			if ev.GlobalLift.Low95 != 0 || ev.GlobalLift.High95 != 0 {
 				sig.Metadata["corpus_lift_ci_low"] = roundTo2(ev.GlobalLift.Low95)
 				sig.Metadata["corpus_lift_ci_high"] = roundTo2(ev.GlobalLift.High95)
-				sig.Metadata["corpus_lift_summary"] = fmt.Sprintf(
-					"%.2f× (95%% CI %.2f–%.2f)",
-					ev.GlobalLift.LiftPoint(),
-					ev.GlobalLift.Low95,
-					ev.GlobalLift.High95,
-				)
 			}
-		}
-		if ev.HandValidated != nil && (ev.HandValidated.TruePositives+ev.HandValidated.FalsePositives) > 0 {
-			sig.Metadata["hand_validated_precision"] = roundTo2(ev.HandValidated.PointPrecision)
-			sig.Metadata["hand_validated_n"] = ev.HandValidated.TruePositives + ev.HandValidated.FalsePositives + ev.HandValidated.Unknown
 		}
 	} else {
 		sig.Metadata["corpus_lift"] = "unmeasured"

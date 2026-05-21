@@ -164,8 +164,7 @@ func classifyConfig(repoRoot, p string) *models.Signal {
 			File: rel,
 		},
 		Explanation: "Config `" + rel + "` uses " + itoa(len(hazards)) +
-			" forward-compat-hazard pattern(s) (e.g. `:latest`, untagged action ref, deprecated apiVersion). " +
-			"Config-only PRs were 5.7% of unflagged regression PRs in the 326-repo corpus.",
+			" forward-compat-hazard pattern(s) (e.g. `:latest`, untagged action ref, deprecated apiVersion).",
 		SuggestedAction: "Pin image tags, action refs, and apiVersions to concrete versions. Add a CI check that fails on `:latest` and floating action refs.",
 		Metadata: map[string]any{
 			"kind":         kind,

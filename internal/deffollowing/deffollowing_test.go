@@ -223,10 +223,12 @@ func TestGateLift_Shadow_EmitsWhenLifted(t *testing.T) {
 	c := NewCounter(root)
 	reg := loadReg(t, mechanisms.StateShadow)
 
-	// Immediate body has no assertions; transitive finds one.
+	// Shadow contract: observe only. Immediate body has no
+	// assertions; transitive finds one, but shadow returns the
+	// immediate count (no behavior change) and emits an event.
 	total := GateLift(reg, c, `verify();`, "assertionFreeTest", "test.ts", 0)
-	if total != 1 {
-		t.Errorf("expected transitive lift to 1, got %d", total)
+	if total != 0 {
+		t.Errorf("shadow should return immediate count (0), got %d", total)
 	}
 	if len(sink.Events()) != 1 {
 		t.Errorf("expected shadow event, got %d", len(sink.Events()))

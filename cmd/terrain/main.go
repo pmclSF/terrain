@@ -812,11 +812,7 @@ func main() {
 			postureFlag := aiCmd.String("posture", "observability",
 				"emission posture: observability (≥0.40) | gate (≥0.80)")
 			ruleFlag := aiCmd.String("rule", "",
-				"rule to evaluate. default: ai.surface.missing_eval (calibrated, "+
-					"~16.83% precision on app-shape cohort). "+
-					"ai.train.missing_tracker is PREVIEW — production-context "+
-					"gating ships but is empirically unvalidated (1 TP in corpus); "+
-					"empirical floor lands in 0.2.1")
+				"rule to evaluate (default: ai.surface.missing_eval; see docs/rules/ai/)")
 			_ = aiCmd.Parse(os.Args[3:])
 			if err := runAIFindings(*rootFlag, *jsonFlag, *postureFlag, *ruleFlag); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -1042,7 +1038,7 @@ var knownCommands = []string{
 	"debug", "depgraph",
 	"version", "serve", "help", "--help", "-h",
 	"mechanisms", "mcp",
-	// Phase A namespaces.
+	"suppress", "test", "describe", "accept-snapshot",
 	"report", "config",
 }
 

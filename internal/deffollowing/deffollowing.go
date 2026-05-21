@@ -405,17 +405,23 @@ func GateLift(reg *mechanisms.Registry, c *Counter, body, ruleID, file string, i
 		return immediateCount
 	}
 	transitive := c.CountTransitive(body, MaxDepth)
-	total := immediateCount + transitive
-	if state == mechanisms.StateShadow && transitive > 0 && immediateCount == 0 {
-		shadow.Emit(shadow.Event{
-			Mechanism: MechanismName,
-			RuleID:    ruleID,
-			Action:    shadow.ActionSuppress,
-			File:      file,
-			Reasons: []string{
-				"transitive assertion(s) reachable via in-repo def-following",
-			},
-		})
+	if state == mechanisms.StateShadow {
+		// Shadow contract: observe only. Emit a would-suppress event
+		// when transitive assertions would have lifted an
+		// otherwise-zero-assertion test, but return the immediate
+		// count so downstream detectors see legacy behavior.
+		if transitive > 0 && immediateCount == 0 {
+			shadow.Emit(shadow.Event{
+				Mechanism: MechanismName,
+				RuleID:    ruleID,
+				Action:    shadow.ActionSuppress,
+				File:      file,
+				Reasons: []string{
+					"transitive assertion(s) reachable via in-repo def-following",
+				},
+			})
+		}
+		return immediateCount
 	}
-	return total
+	return immediateCount + transitive
 }

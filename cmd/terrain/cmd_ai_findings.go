@@ -13,17 +13,12 @@ import (
 
 // runAIFindings is the user-facing entry point for the calibrated
 // aipipeline. It walks the repo root through the full pipeline
-// (path-prefilter → regex-fastscan → ast-confirm → cross-file-scope →
-// change-scope → composer) and renders the surviving findings.
-//
-// This is the production-side surface that exposes the calibration
-// work done in internal/aipipeline. On the labeled corpus
-// (2,651 rows, 2026-05-15) the same pipeline reaches 16.83% precision
-// on app-shaped repos and 13.00% overall at observability threshold.
+// (path-prefilter -> regex-fastscan -> ast-confirm -> cross-file-scope
+// -> change-scope -> composer) and renders the surviving findings.
 //
 // Posture defaults to "observability" — emit anything that clears the
-// 0.40 confidence threshold. Pass --posture=gate for the stricter
-// 0.80 cut used by CI gate decisions.
+// observability confidence threshold. Pass --posture=gate for the
+// stricter CI-gate cut.
 func runAIFindings(root string, jsonOutput bool, posture string, rule string) error {
 	rules := []string{"ai.surface.missing_eval"}
 	if rule != "" {

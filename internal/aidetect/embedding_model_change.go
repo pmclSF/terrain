@@ -125,10 +125,15 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 			continue
 		}
 		emitted[comp.Path] = true
-		// Mechanism gate: surface_literal_presence_gate.
+		// Mechanism gate: surface_literal_presence_gate. Skip the
+		// presence check when the model name is a synthetic label
+		// (e.g. constructor-driven detection where the literal isn't
+		// in the file as a token).
 		abs := filepath.Join(d.Root, comp.Path)
-		if dec := surfacelit.Gate(mechanisms.Default(), comp.Config.ModelName, abs, "aiEmbeddingModelChange"); !dec.Keep {
-			continue
+		if !isSyntheticIdentifier(comp.Config.ModelName) {
+			if dec := surfacelit.Gate(mechanisms.Default(), comp.Config.ModelName, abs, "aiEmbeddingModelChange"); !dec.Keep {
+				continue
+			}
 		}
 		// Structured-config path confidence is held at 0.55 pending
 		// more validation data — current sample is small.
@@ -145,15 +150,26 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 		if len(hits) == 0 {
 			continue
 		}
-		// Mechanism gate: surface_literal_presence_gate.
-		if dec := surfacelit.Gate(mechanisms.Default(), hits[0].Identifier, abs, "aiEmbeddingModelChange"); !dec.Keep {
-			continue
+		// Mechanism gate: surface_literal_presence_gate. Skip when
+		// the identifier is a synthetic constructor-driven label.
+		if !isSyntheticIdentifier(hits[0].Identifier) {
+			if dec := surfacelit.Gate(mechanisms.Default(), hits[0].Identifier, abs, "aiEmbeddingModelChange"); !dec.Keep {
+				continue
+			}
 		}
 		emitted[rel] = true
 		// Same recalibration; pattern-scan path declared 0.8 → 0.50.
 		out = append(out, buildEmbeddingChangeSignal(rel, hits[0].Line, hits[0].Identifier, len(hits), models.EvidenceModerate, 0.50))
 	}
 	return out
+}
+
+// isSyntheticIdentifier reports whether `id` is a constructor-driven
+// or otherwise synthetic identifier label that won't appear as a
+// literal token in source. Used to skip the surfacelit gate (which
+// requires a literal-token presence check) for these labels.
+func isSyntheticIdentifier(id string) bool {
+	return strings.Contains(id, "(") || strings.Contains(id, " ") || id == ""
 }
 
 // buildEmbeddingChangeSignal constructs the canonical
