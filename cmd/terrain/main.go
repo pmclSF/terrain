@@ -343,6 +343,12 @@ func main() {
 	case "doctor":
 		os.Exit(runDoctorCLI(os.Args[2:]))
 
+	case "mechanisms":
+		if err := runMechanismsCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
 	case "reset":
 		legacyDeprecationNotice("reset", "config reset")
 		if err := runResetCLI(os.Args[2:]); err != nil {
@@ -1196,6 +1202,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "                            baseline, replay")
 	fmt.Fprintln(os.Stderr, "  config <verb> [flags]     workspace prefs: feedback, telemetry")
 	fmt.Fprintln(os.Stderr, "  doctor [path]             diagnostics for current setup")
+	fmt.Fprintln(os.Stderr, "  mechanisms <verb>         list / show detector mechanisms (list, show)")
 	fmt.Fprintln(os.Stderr, "  debug <verb> [flags]      dependency graph drill-downs:")
 	fmt.Fprintln(os.Stderr, "                            graph, coverage, fanout, duplicates, depgraph")
 	fmt.Fprintln(os.Stderr, "  portfolio [flags]         multi-repo workspace intelligence")
@@ -1209,11 +1216,14 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  4. terrain report explain <target> understand why")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Common flags (most commands):")
-	fmt.Fprintln(os.Stderr, "  --root PATH               repository root (default: current dir; positional accepted)")
-	fmt.Fprintln(os.Stderr, "  --json                    machine-readable output")
-	fmt.Fprintln(os.Stderr, "  --base REF                git base ref for diff (impact / pr / select-tests)")
-	fmt.Fprintln(os.Stderr, "  --baseline PATH           baseline snapshot for regression detectors")
-	fmt.Fprintln(os.Stderr, "  --log-level LEVEL         diagnostic verbosity: quiet, debug (default: info)")
+	fmt.Fprintln(os.Stderr, "  --root PATH                       repository root (default: current dir; positional accepted)")
+	fmt.Fprintln(os.Stderr, "  --json                            machine-readable output")
+	fmt.Fprintln(os.Stderr, "  --base REF                        git base ref for diff (impact / pr / select-tests)")
+	fmt.Fprintln(os.Stderr, "  --baseline PATH                   baseline snapshot for regression detectors")
+	fmt.Fprintln(os.Stderr, "  --log-level LEVEL                 diagnostic verbosity: quiet, debug (default: info)")
+	fmt.Fprintln(os.Stderr, "  --mechanisms.<name>=<state>       override one detector mechanism per run")
+	fmt.Fprintln(os.Stderr, "                                    states: on | off | shadow")
+	fmt.Fprintln(os.Stderr, "                                    list available names: terrain mechanisms list")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Legacy aliases (still work; scheduled for future removal — see CHANGELOG):")
 	fmt.Fprintln(os.Stderr, "  init [flags]             detect data paths and print recommended analyze command")
