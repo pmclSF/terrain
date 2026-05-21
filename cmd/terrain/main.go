@@ -1232,6 +1232,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  config <verb> [flags]     workspace prefs: feedback, telemetry")
 	fmt.Fprintln(os.Stderr, "  doctor [path]             diagnostics for current setup")
 	fmt.Fprintln(os.Stderr, "  mechanisms <verb>         list / show detector mechanisms (list, show)")
+	fmt.Fprintln(os.Stderr, "  mcp [--root <dir>]        start the MCP server on stdio for AI assistants")
 	fmt.Fprintln(os.Stderr, "  debug <verb> [flags]      dependency graph drill-downs:")
 	fmt.Fprintln(os.Stderr, "                            graph, coverage, fanout, duplicates, depgraph")
 	fmt.Fprintln(os.Stderr, "  portfolio [flags]         multi-repo workspace intelligence")
