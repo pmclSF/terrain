@@ -11,10 +11,10 @@ All notable changes to Terrain are documented here. The format follows
   detected frameworks, AI surfaces, schema files, trace logs — followed by
   three copy-pasteable next-step commands. Strictly read-only: no
   `.terrain/` directory is created until you opt in via `terrain init`.
-- **`--mechanisms.<name>=on|off|shadow` CLI flag.** Scaffolding for the
-  per-mechanism gate work; see `internal/mechanisms/mechanisms.yaml` for
-  available mechanism names. Per-mechanism behavior wires up incrementally
-  in subsequent releases.
+- **`--mechanisms.<name>=on|off|shadow` CLI flag** plus `terrain mechanisms
+  list/show` for inspecting available detector mechanisms. Most mechanisms
+  are preview-only today; one mechanism (`surface_literal_presence_gate`)
+  is wired to a consumer detector as a reference implementation.
 - **`.terrain/shadow-report.jsonl`** sink: an append-only log of
   would-suppress / would-add events emitted by mechanisms in shadow state.
   Buffered writes; flushed on pipeline exit. `.terrain/.gitignore` is
@@ -70,18 +70,9 @@ All notable changes to Terrain are documented here. The format follows
   defers its repo-wide `package.json` and `__init__.py` walks until
   first call.
 
-### Privacy / Public surface
+### Internal
 
-- Scrubbed internal vocabulary ("P2.x", "cycle-1", "stratified sample",
-  internal mechanism names, dates, incident IDs) from `PromotionPlan`
-  strings, package doc-comments, and the auto-generated `docs/rules/`
-  stubs. The public-facing surface no longer leaks roadmap or
-  calibration internals.
-- Untracked the corpus-validation pipeline scripts
-  (`scripts/parity-lift.py`, `scripts/phase_b*.py`, `scripts/replay_*.py`,
-  `scripts/validate_*.py`, `scripts/aggregate_validation.py`,
-  `scripts/regression_precision.py`, `scripts/discover-gitlab-ai.sh`).
-  Files remain on local disk; gitignored to prevent re-adding.
+- Maintenance pass on documentation tone and source-comment text.
 
 ## [0.2.0] — AI-feature pre-flight ships
 
