@@ -349,6 +349,32 @@ func main() {
 			os.Exit(exitCodeForCLIError(err))
 		}
 
+	case "mcp":
+		root := "."
+		for i := 2; i < len(os.Args); i++ {
+			a := os.Args[i]
+			if a == "--root" && i+1 < len(os.Args) {
+				root = os.Args[i+1]
+				i++
+				continue
+			}
+			if len(a) > len("--root=") && a[:len("--root=")] == "--root=" {
+				root = a[len("--root="):]
+				continue
+			}
+			if isHelpArg(a) {
+				fmt.Fprintln(os.Stderr, "Usage: terrain mcp [--root <dir>]")
+				fmt.Fprintln(os.Stderr)
+				fmt.Fprintln(os.Stderr, "Starts the MCP server on stdio. Loads the most-recent")
+				fmt.Fprintln(os.Stderr, "`terrain analyze` artifacts from .terrain/ when present.")
+				return
+			}
+		}
+		if err := runMCPCommand(root); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
 	case "reset":
 		legacyDeprecationNotice("reset", "config reset")
 		if err := runResetCLI(os.Args[2:]); err != nil {
@@ -1015,7 +1041,8 @@ var knownCommands = []string{
 	"ai", "feedback", "telemetry",
 	"debug", "depgraph",
 	"version", "serve", "help", "--help", "-h",
-	// Phase A namespaces — added 0.2.
+	"mechanisms", "mcp",
+	// Phase A namespaces.
 	"report", "config",
 }
 

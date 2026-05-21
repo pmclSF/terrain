@@ -16,7 +16,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/triggergate"
 )
 
 // Blocker taxonomy categories.
@@ -125,6 +127,21 @@ func (d *DeprecatedPatternDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 
 		found := detectDeprecatedJS(content, tf.Framework)
 		for _, pattern := range found {
+			// Mechanism gate: deprecated_test_pattern_trigger_gate.
+			// When ON, only fire enzyme-usage on files that actually
+			// import enzyme. The legacy regex match alone produces
+			// framework-mismatch false positives (e.g. matching
+			// `mount(<Foo>)` in vitest tests).
+			if pattern == "enzyme-usage" {
+				absPath := filepath.Join(d.RepoRoot, tf.Path)
+				keep := triggergate.GateImports(
+					mechanisms.Default(), absPath, "deprecatedTestPattern",
+					[]string{"enzyme", "enzyme-adapter-*"},
+				)
+				if !keep {
+					continue
+				}
+			}
 			tier := patternToTier[pattern]
 			if tier == "" {
 				tier = blockerTypeToDefaultTier[BlockerDeprecatedPattern]

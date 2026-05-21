@@ -71,14 +71,20 @@ func runMechanismsList(w io.Writer, jsonOut bool) error {
 		type listEntry struct {
 			Name        string   `json:"name"`
 			State       string   `json:"state"`
+			Tag         string   `json:"tag"`
 			Description string   `json:"description"`
 			Consumers   []string `json:"consumers,omitempty"`
 		}
 		out := make([]listEntry, 0, len(all))
 		for _, m := range all {
+			tag := "preview"
+			if m.State == mechanisms.StateOn {
+				tag = "live"
+			}
 			out = append(out, listEntry{
 				Name:        m.Name,
 				State:       m.State.String(),
+				Tag:         tag,
 				Description: m.Description,
 				Consumers:   m.Consumers,
 			})
@@ -87,8 +93,17 @@ func runMechanismsList(w io.Writer, jsonOut bool) error {
 		enc.SetIndent("", "  ")
 		return enc.Encode(out)
 	}
+	previewCount := 0
+	for _, m := range all {
+		if m.State != mechanisms.StateOn {
+			previewCount++
+		}
+	}
+	if previewCount > 0 {
+		fmt.Fprintf(w, "Note: %d of %d mechanisms are in preview (state=shadow or off) and do not change user-visible findings.\n\n", previewCount, len(all))
+	}
 	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(tw, "NAME\tSTATE\tCONSUMERS")
+	fmt.Fprintln(tw, "NAME\tSTATE\tTAG\tCONSUMERS")
 	for _, m := range all {
 		consumers := "—"
 		if len(m.Consumers) > 0 {
@@ -97,7 +112,11 @@ func runMechanismsList(w io.Writer, jsonOut bool) error {
 				consumers = fmt.Sprintf("%s (+%d more)", consumers, len(m.Consumers)-1)
 			}
 		}
-		fmt.Fprintf(tw, "%s\t%s\t%s\n", m.Name, m.State.String(), consumers)
+		tag := "preview"
+		if m.State == mechanisms.StateOn {
+			tag = "live"
+		}
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\n", m.Name, m.State.String(), tag, consumers)
 	}
 	if err := tw.Flush(); err != nil {
 		return err
@@ -121,8 +140,12 @@ func runMechanismsShow(w io.Writer, name string) error {
 		all := reg.Names()
 		return fmt.Errorf("unknown mechanism %q\n\nAvailable mechanisms: %v", name, all)
 	}
+	tag := "preview"
+	if m.State == mechanisms.StateOn {
+		tag = "live"
+	}
 	fmt.Fprintf(w, "Mechanism: %s\n", m.Name)
-	fmt.Fprintf(w, "State:     %s\n", m.State.String())
+	fmt.Fprintf(w, "State:     %s (%s)\n", m.State.String(), tag)
 	fmt.Fprintln(w)
 	if m.Description != "" {
 		fmt.Fprintln(w, "Description:")

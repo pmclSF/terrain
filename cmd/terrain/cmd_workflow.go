@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/aliases"
 	conv "github.com/pmclSF/terrain/internal/convert"
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/reporting"
 )
 
@@ -330,6 +333,9 @@ func runDoctor(root string, jsonOutput, verbose bool) (conv.MigrationDoctorResul
 	if err != nil {
 		return conv.MigrationDoctorResult{}, err
 	}
+	result.Checks = append(result.Checks, terrainInfraDoctorChecks(root)...)
+	result.Summary = recountDoctorSummary(result.Checks)
+	result.HasFail = result.Summary.Fail > 0
 	pillars := assessPillars(root)
 	if jsonOutput {
 		// Preserve the legacy doctor envelope (checks / summary /
@@ -357,6 +363,125 @@ func runDoctor(root string, jsonOutput, verbose bool) (conv.MigrationDoctorResul
 	fmt.Println()
 	fmt.Printf("  %d checks: %d passed, %d warnings, %d failed\n", result.Summary.Total, result.Summary.Pass, result.Summary.Warn, result.Summary.Fail)
 	return result, nil
+}
+
+// terrainInfraDoctorChecks returns infra-status checks for the
+// mechanisms registry, alias registry, shadow sink, and the optional
+// .terrain gitignore entry. These checks supplement the legacy
+// migration doctor with terrain-runtime hygiene signals.
+func terrainInfraDoctorChecks(root string) []conv.MigrationDoctorCheck {
+	var checks []conv.MigrationDoctorCheck
+
+	// Mechanisms registry — load it; report counts by state.
+	if reg, err := mechanisms.Load(); err != nil {
+		checks = append(checks, conv.MigrationDoctorCheck{
+			ID: "mechanisms.registry", Label: "Mechanisms registry",
+			Status: "FAIL",
+			Detail: fmt.Sprintf("could not load registry: %v", err),
+		})
+	} else {
+		all := reg.All()
+		var on, shadow, off int
+		for _, m := range all {
+			switch m.State {
+			case mechanisms.StateOn:
+				on++
+			case mechanisms.StateShadow:
+				shadow++
+			default:
+				off++
+			}
+		}
+		checks = append(checks, conv.MigrationDoctorCheck{
+			ID: "mechanisms.registry", Label: "Mechanisms registry",
+			Status: "PASS",
+			Detail: fmt.Sprintf("%d mechanisms loaded (live=%d, shadow=%d, off=%d)", len(all), on, shadow, off),
+		})
+	}
+
+	// Alias registry — load and report count.
+	if reg, err := aliases.Load(); err != nil {
+		checks = append(checks, conv.MigrationDoctorCheck{
+			ID: "aliases.registry", Label: "Signal-type alias registry",
+			Status: "FAIL",
+			Detail: fmt.Sprintf("could not load registry: %v", err),
+		})
+	} else {
+		checks = append(checks, conv.MigrationDoctorCheck{
+			ID: "aliases.registry", Label: "Signal-type alias registry",
+			Status: "PASS",
+			Detail: fmt.Sprintf("%d aliases loaded", len(reg.AllOldIDs())),
+		})
+	}
+
+	// Shadow sink — `.terrain/shadow-report.jsonl` is optional; if it
+	// exists, report its size so the user knows shadow data is being
+	// captured.
+	shadowPath := filepath.Join(root, ".terrain", "shadow-report.jsonl")
+	if info, err := os.Stat(shadowPath); err == nil {
+		checks = append(checks, conv.MigrationDoctorCheck{
+			ID: "shadow.sink", Label: "Shadow sink",
+			Status: "PASS",
+			Detail: fmt.Sprintf("%s present (%d bytes)", shadowPath, info.Size()),
+		})
+	} else {
+		checks = append(checks, conv.MigrationDoctorCheck{
+			ID: "shadow.sink", Label: "Shadow sink",
+			Status: "WARN",
+			Detail: "no shadow events captured yet (.terrain/shadow-report.jsonl absent)",
+			Remediation: "Run `terrain analyze` once with one or more mechanisms in shadow state to populate the sink.",
+		})
+	}
+
+	// .gitignore for .terrain/ — warn if .gitignore exists but doesn't
+	// list .terrain (so users don't accidentally commit runtime cache).
+	gitignorePath := filepath.Join(root, ".gitignore")
+	if data, err := os.ReadFile(gitignorePath); err == nil {
+		text := string(data)
+		hasEntry := false
+		for _, line := range strings.Split(text, "\n") {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == ".terrain" || trimmed == ".terrain/" || trimmed == "/.terrain" || trimmed == "/.terrain/" {
+				hasEntry = true
+				break
+			}
+		}
+		if hasEntry {
+			checks = append(checks, conv.MigrationDoctorCheck{
+				ID: "gitignore.terrain", Label: ".gitignore covers .terrain/",
+				Status: "PASS",
+				Detail: ".gitignore lists .terrain",
+			})
+		} else {
+			checks = append(checks, conv.MigrationDoctorCheck{
+				ID: "gitignore.terrain", Label: ".gitignore covers .terrain/",
+				Status: "WARN",
+				Detail: ".terrain not listed in .gitignore",
+				Remediation: "Add `.terrain/` to .gitignore so the runtime cache and shadow sink aren't committed.",
+			})
+		}
+	}
+
+	return checks
+}
+
+// recountDoctorSummary recomputes Pass / Warn / Fail / Total counts
+// after appending checks. Case-insensitive on Status so both "PASS"
+// (legacy doctor) and "pass" (infra checks) are recognized.
+func recountDoctorSummary(checks []conv.MigrationDoctorCheck) conv.MigrationDoctorSummary {
+	var s conv.MigrationDoctorSummary
+	s.Total = len(checks)
+	for _, c := range checks {
+		switch strings.ToLower(c.Status) {
+		case "pass", "ok":
+			s.Pass++
+		case "warn", "warning":
+			s.Warn++
+		case "fail", "error":
+			s.Fail++
+		}
+	}
+	return s
 }
 
 func runReset(root string, yes, jsonOutput bool) error {

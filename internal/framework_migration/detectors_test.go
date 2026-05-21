@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -91,6 +92,66 @@ func TestDeprecatedPatternDetector_NoDeprecated(t *testing.T) {
 	if len(signals) != 0 {
 		t.Errorf("expected 0 signals for modern test, got %d", len(signals))
 	}
+}
+
+// TestDeprecatedPatternDetector_EnzymeGate proves that flipping the
+// `deprecated_test_pattern_trigger_gate` mechanism to On suppresses the
+// enzyme-usage sub-rule on files that don't import enzyme.
+func TestDeprecatedPatternDetector_EnzymeGate(t *testing.T) {
+	// `mount(<Foo/>)` matches the enzyme regex but the file has no
+	// enzyme import — this is the FP class the gate exists to suppress.
+	dir := t.TempDir()
+	writeTestFile(t, dir, "test/no-enzyme.test.js", `
+		import { mount } from '@vue/test-utils';
+		test('renders', () => {
+			const wrapper = mount(<MyComp/>);
+			expect(wrapper.exists()).toBe(true);
+		});
+	`)
+
+	snap := &models.TestSuiteSnapshot{
+		TestFiles: []models.TestFile{
+			{Path: "test/no-enzyme.test.js", Framework: "jest"},
+		},
+	}
+
+	reg, err := mechanisms.Load()
+	if err != nil {
+		t.Fatalf("load mechanisms: %v", err)
+	}
+	prev := mechanisms.SetDefault(reg)
+	defer mechanisms.SetDefault(prev)
+
+	d := &DeprecatedPatternDetector{RepoRoot: dir}
+
+	// Gate at default state (shadow) — legacy behavior, enzyme-usage fires.
+	got := d.Detect(snap)
+	if !containsPattern(got, "enzyme-usage") {
+		t.Fatalf("expected enzyme-usage signal in shadow state; got %d signals", len(got))
+	}
+
+	// Flip gate to ON — enzyme-usage should be suppressed since the
+	// file has no enzyme import.
+	if err := reg.ApplyCLIOverrides([]string{
+		"deprecated_test_pattern_trigger_gate=on",
+	}); err != nil {
+		t.Fatalf("override gate: %v", err)
+	}
+	got = d.Detect(snap)
+	if containsPattern(got, "enzyme-usage") {
+		t.Fatalf("expected enzyme-usage suppressed in gate=on, still got it; %d signals total", len(got))
+	}
+}
+
+// containsPattern reports whether any signal in s has the given
+// pattern in its metadata.
+func containsPattern(s []models.Signal, pattern string) bool {
+	for _, sig := range s {
+		if p, _ := sig.Metadata["pattern"].(string); p == pattern {
+			return true
+		}
+	}
+	return false
 }
 
 func TestDeprecatedPatternDetector_IgnoresCommentsAndStrings(t *testing.T) {
