@@ -87,10 +87,6 @@ type Mechanism struct {
 	// Consumers lists the rule_ids whose behavior this mechanism gates.
 	// Used by the doctor surface and per-mechanism recall reports.
 	Consumers []string `yaml:"consumers,omitempty"`
-
-	// rawState is the YAML-side representation of State, kept for
-	// round-trip parsing.
-	rawState string `yaml:"state"`
 }
 
 // raw mirrors the YAML structure for unmarshalling — the public Mechanism

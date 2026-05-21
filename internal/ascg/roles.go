@@ -1,8 +1,6 @@
 package ascg
 
 import (
-	"strings"
-
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/shadow"
 )
@@ -167,12 +165,3 @@ func CombineWithClassify(roleDec RoleDecision, classifyRes Result) RoleDecision 
 	}
 }
 
-// debugRoleName returns a short representation useful in shadow event
-// reasons.
-func debugRoleName(r Role) string {
-	return strings.ReplaceAll(r.String(), "_", "-")
-}
-
-// unused but kept for callers that want a Reason text suitable for
-// the shadow event.
-var _ = debugRoleName

@@ -128,12 +128,11 @@ type Finding struct {
 
 // Report is the outcome of running Check against a set of findings.
 type Report struct {
-	Module          string
-	TotalFrozen     int
-	MissingTPs      []FrozenTP
-	UnexpectedFires []Finding // findings that exceed the frozen set (informational only)
-	MaxAllowedLoss  int
-	Failed          bool
+	Module         string
+	TotalFrozen    int
+	MissingTPs     []FrozenTP
+	MaxAllowedLoss int
+	Failed         bool
 }
 
 // Check compares findings against the frozen suite. A FrozenTP counts as

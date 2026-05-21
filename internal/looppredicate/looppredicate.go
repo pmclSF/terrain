@@ -21,7 +21,6 @@ package looppredicate
 import (
 	"os"
 	"regexp"
-	"strings"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/shadow"
@@ -228,6 +227,3 @@ func SourceShapes() []string {
 	}
 }
 
-// reservedWordOnly is unused; kept as an extension point for a future
-// "skip when the loop is bounded by a known small literal" optimisation.
-var _ = strings.Builder{}
