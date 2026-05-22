@@ -134,14 +134,25 @@ func EffectiveSeverity(t models.SignalType, declared models.SignalSeverity) (eff
 	}
 }
 
-// isObservabilityTier returns true when the signal type's manifest entry
-// declares Tier == TierObservability. Default (empty tier) is gate.
+// isObservabilityTier returns true when the signal type's manifest
+// entry does NOT declare Tier == TierGate. Empty tier defaults to
+// observability — every detector with a manifest entry must
+// explicitly opt in to TierGate (CI-blocking) by setting
+// Tier: TierGate. Rationale: a detector that has not been
+// lift-validated should not silently block CI just because its
+// manifest entry forgot to set Tier.
+//
+// Signal types with NO manifest entry (runtime/eval-derived signals
+// such as safetyFailure or costRegression that originate from
+// adapter ingestion rather than the static detector registry) keep
+// the legacy "treat as gate-relevant" behavior so they continue to
+// surface in PR-comment Blocking sections.
 func isObservabilityTier(t models.SignalType) bool {
 	entry, ok := ManifestByType(t)
 	if !ok {
 		return false
 	}
-	return entry.Tier == TierObservability
+	return entry.Tier != TierGate
 }
 
 // IsGateRelevant returns true when the signal type can block CI via

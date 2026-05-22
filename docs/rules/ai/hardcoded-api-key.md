@@ -17,7 +17,7 @@ Move the secret to an environment variable or secrets store and reference it thr
 
 ## Promotion plan
 
-Stays at observability tier. A concurrent structural split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded preserves capability; this back-compat rule remains until the split halves graduate.
+Off by default. The current literal-shape predicate is too narrow to fire reliably across typical adopter codebases; capability is preserved via the planned split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded. Opt in via .terrain/policy.yaml when the local repo shape matches the predicate.
 
 ## Evidence sources
 

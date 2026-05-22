@@ -15,7 +15,7 @@ schema_version: 1
 
 mechanisms:
   - name: surface_literal_presence_gate
-    state: on
+    state: shadow
     description: |
       Before an AI surface-aware detector fires on a surface name,
       require that the name literally appears as an identifier token

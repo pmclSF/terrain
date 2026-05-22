@@ -33,6 +33,7 @@ import (
 	"github.com/pmclSF/terrain/internal/runtimeconfig"
 	"github.com/pmclSF/terrain/internal/scoring"
 	"github.com/pmclSF/terrain/internal/shadow"
+	"github.com/pmclSF/terrain/internal/signals"
 	"github.com/pmclSF/terrain/internal/surfacelit"
 )
 
@@ -150,6 +151,13 @@ type PipelineOptions struct {
 	// the loaded mechanisms registry at pipeline start. Unknown names
 	// produce a startup error; malformed strings produce a startup error.
 	MechanismOverrides []string
+
+	// EnabledDetectorsOverride opts back IN to detectors marked
+	// DisabledByDefault in the manifest, in addition to any
+	// `enabled_detectors` specified in `.terrain/policy.yaml`. Useful
+	// for calibration / test harnesses that need to exercise detectors
+	// regardless of the shipped default-disabled set.
+	EnabledDetectorsOverride []string
 }
 
 // RunPipeline executes the full analysis pipeline:
@@ -750,12 +758,39 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	registry.RunWithGraph(snapshot, dg)
 	signalsProduced := len(snapshot.Signals) - signalsBefore
 
-	// Apply user-configured disabled_detectors kill switch. The set is
-	// expanded through the alias registry by expandDisabledDetectors —
-	// see that helper for the "=" literal-prefix opt-out semantics.
-	if disabled := policyCfg.DisabledDetectorSet(); len(disabled) > 0 {
+	// Apply disabled-detectors kill switch. The set combines:
+	//   - manifest entries marked DisabledByDefault (off in default config)
+	//   - user-configured disabled_detectors in .terrain/policy.yaml
+	// The combined set is expanded through the alias registry by
+	// expandDisabledDetectors — see that helper for the "=" literal-prefix
+	// opt-out semantics. User config can override a default-disabled
+	// detector by passing it in `enabled_detectors`.
+	manifestDisabled := signals.DefaultDisabledTypes()
+	userDisabled := policyCfg.DisabledDetectorSet()
+	userEnabled := policyCfg.EnabledDetectorSet()
+	// Merge in pipeline-options override.
+	if len(opt.EnabledDetectorsOverride) > 0 {
+		if userEnabled == nil {
+			userEnabled = map[string]bool{}
+		}
+		for _, t := range opt.EnabledDetectorsOverride {
+			if t = strings.TrimSpace(t); t != "" {
+				userEnabled[t] = true
+			}
+		}
+	}
+	combined := map[string]bool{}
+	for t := range manifestDisabled {
+		if !userEnabled[t] {
+			combined[t] = true
+		}
+	}
+	for t := range userDisabled {
+		combined[t] = true
+	}
+	if len(combined) > 0 {
 		aliasReg, _ := aliases.Load()
-		expanded, aliasesHit := expandDisabledDetectors(disabled, aliasReg)
+		expanded, aliasesHit := expandDisabledDetectors(combined, aliasReg)
 		emitAliasNotes(aliasReg, aliasesHit)
 
 		kept := snapshot.Signals[:0]
@@ -769,9 +804,14 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		}
 		snapshot.Signals = kept
 		if suppressed > 0 {
+			var userList []string
+			if policyCfg != nil {
+				userList = policyCfg.Rules.DisabledDetectors
+			}
 			logging.L().Debug("disabled_detectors filter applied",
 				"suppressed", suppressed,
-				"disabled_detectors", policyCfg.Rules.DisabledDetectors)
+				"disabled_detectors_user", userList,
+				"disabled_detectors_default", manifestDisabled)
 		}
 		signalsProduced -= suppressed
 	}

@@ -39,8 +39,10 @@ const (
 //   - TierObservability detectors: lift evidence informs explain output but
 //     does NOT demote severity (since lift can't measure their failure
 //     mode); severity is capped at Medium so they never gate CI.
-//   - Empty tier: defaults to TierGate (back-compat for entries pre-dating
-//     this distinction; should be filled in over time).
+//   - Empty tier: defaults to TierObservability. Every CI-blocking
+//     detector must opt in to TierGate explicitly; a missing Tier
+//     field means "do not block CI" so an un-validated rule cannot
+//     silently fail a build.
 type SignalTier string
 
 const (
@@ -129,7 +131,8 @@ type ManifestEntry struct {
 
 	// Tier classifies the detector as gate (lift-validated, CI-blocking)
 	// or observability (silent-failure-mode, never blocks CI). Empty
-	// defaults to TierGate for back-compat. See SignalTier comment.
+	// defaults to TierObservability — a detector must opt in to
+	// TierGate explicitly. See SignalTier comment.
 	Tier SignalTier
 
 	// Replaces lists prior SignalTypes that this entry supersedes. When
@@ -148,6 +151,28 @@ type ManifestEntry struct {
 	//   SignalUncoveredAISurface,
 	// }
 	Replaces []models.SignalType
+
+	// DisabledByDefault marks a detector as off in the default config.
+	// Used for detectors whose precision is below an actionable bar
+	// pending a structural redesign: the implementation stays in tree
+	// so a future fix or an opt-in user can exercise it, but the
+	// pipeline does not emit its findings unless the user opts in via
+	// .terrain/policy.yaml.
+	DisabledByDefault bool
+}
+
+// DefaultDisabledTypes returns the set of signal types disabled by
+// default at the manifest level. The engine's emission path consults
+// this and skips emission for any signal type in the set unless the
+// user has explicitly enabled it via policy config.
+func DefaultDisabledTypes() map[string]bool {
+	out := map[string]bool{}
+	for _, e := range allSignalManifest {
+		if e.DisabledByDefault {
+			out[string(e.Type)] = true
+		}
+	}
+	return out
 }
 
 // LegacyAliasFor returns the canonical (current) SignalType for a legacy
@@ -255,6 +280,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"path-name", "graph-traversal"},
 		RuleID:          "terrain/coverage/untested-export",
 		RuleURI:         "docs/rules/coverage/untested-export.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalWeakAssertion, ConstName: "SignalWeakAssertion",
@@ -347,6 +373,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"coverage", "graph-traversal"},
 		RuleID:          "terrain/coverage/blind-spot",
 		RuleURI:         "docs/rules/coverage/blind-spot.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalCoverageThresholdBreak, ConstName: "SignalCoverageThresholdBreak",
@@ -361,6 +388,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleURI:         "docs/rules/quality/coverage-threshold.md",
 		PromotionPlan: "Severity flips at hard 100%-gap boundary; a smooth gradient lands in a future release " +
 			"per docs/scoring-rubric.md.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalStaticSkippedTest, ConstName: "SignalStaticSkippedTest",
@@ -373,6 +401,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/permanently-skipped",
 		RuleURI:         "docs/rules/hygiene/permanently-skipped.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalStaticSkippedTestUnconditional, ConstName: "SignalStaticSkippedTestUnconditional",
@@ -442,6 +471,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/deps/drift-risk",
 		RuleURI:         "docs/rules/deps/drift-risk.md",
 		PromotionPlan:   "Promotes to stable once the calibration corpus confirms regression-PR lift ≥ 1.5x on deps-bump PRs.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalDepsDriftRiskStrictPin, ConstName: "SignalDepsDriftRiskStrictPin",
@@ -481,6 +511,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/config/schema-drift",
 		RuleURI:         "docs/rules/config/schema-drift.md",
 		PromotionPlan:   "Promotes to stable once the calibration corpus confirms regression-PR lift ≥ 1.5x on config-only PRs.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalPromptFileMissingEval, ConstName: "SignalPromptFileMissingEval",
@@ -509,6 +540,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/migration/framework-migration",
 		RuleURI:         "docs/rules/migration/framework-migration.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalMigrationBlocker, ConstName: "SignalMigrationBlocker",
@@ -693,6 +725,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal"},
 		RuleID:          "terrain/structural/blast-radius",
 		RuleURI:         "docs/rules/structural/blast-radius.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalFixtureFragilityHotspot, ConstName: "SignalFixtureFragilityHotspot",
@@ -839,6 +872,7 @@ var allSignalManifest = []ManifestEntry{
 		// ships; this runtime variant fires when an eval framework
 		// explicitly grades a case as a safety violation.
 		PromotionPlan: "Planned. Reserved signal type — runtime detector not yet wired.",
+		Tier:           TierGate,
 	},
 	{
 		Type: SignalAIPolicyViolation, ConstName: "SignalAIPolicyViolation",
@@ -848,6 +882,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"policy"},
 		RuleID:          "terrain/ai/ai-policy-violation", RuleURI: "docs/rules/ai/ai-policy-violation.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:           TierGate,
 	},
 	{
 		Type: SignalHallucinationDetected, ConstName: "SignalHallucinationDetected",
@@ -857,6 +892,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/hallucination", RuleURI: "docs/rules/ai/hallucination.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:           TierGate,
 	},
 	{
 		Type: SignalLatencyRegression, ConstName: "SignalLatencyRegression",
@@ -866,6 +902,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/latency-regression", RuleURI: "docs/rules/ai/latency-regression.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:           TierGate,
 	},
 	{
 		Type: SignalCostRegression, ConstName: "SignalCostRegression",
@@ -875,6 +912,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/cost-regression-umbrella", RuleURI: "docs/rules/ai/cost-regression-umbrella.md",
 		PromotionPlan: "Planned. Reserved signal type — generic cost-regression umbrella; not yet wired.",
+		Tier:           TierGate,
 	},
 	{
 		Type: SignalContextOverflowRisk, ConstName: "SignalContextOverflowRisk",
@@ -1013,7 +1051,8 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/prompt-injection-risk", RuleURI: "docs/rules/ai/prompt-injection-risk.md",
 		Tier:            TierObservability,
-		PromotionPlan:   "Stays at observability tier until a labeled-sample baseline confirms the detector's precision. Promotes to stable when AST-precise taint-flow analysis lands.",
+		PromotionPlan:   "Off by default. The current pattern-matching predicate over-fires on non-injection prompt templates; the rule will be re-enabled when a structurally precise taint-flow predicate replaces it. Opt in via .terrain/policy.yaml only when an adopter has confirmed the local signal is useful.",
+		DisabledByDefault: true,
 	},
 	{
 		Type: SignalAIHardcodedAPIKey, ConstName: "SignalAIHardcodedAPIKey",
@@ -1026,7 +1065,8 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/hardcoded-api-key", RuleURI: "docs/rules/ai/hardcoded-api-key.md",
 		Tier:            TierObservability,
-		PromotionPlan:   "Stays at observability tier. A concurrent structural split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded preserves capability; this back-compat rule remains until the split halves graduate.",
+		PromotionPlan:   "Off by default. The current literal-shape predicate is too narrow to fire reliably across typical adopter codebases; capability is preserved via the planned split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded. Opt in via .terrain/policy.yaml when the local repo shape matches the predicate.",
+		DisabledByDefault: true,
 	},
 	{
 		Type: SignalAIHardcodedAPIKeyLiteralShape, ConstName: "SignalAIHardcodedAPIKeyLiteralShape",

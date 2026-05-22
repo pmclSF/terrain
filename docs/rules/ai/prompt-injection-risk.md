@@ -17,7 +17,7 @@ Use a prompt template with explicit user-content boundaries, or run user input t
 
 ## Promotion plan
 
-Stays at observability tier until a labeled-sample baseline confirms the detector's precision. Promotes to stable when AST-precise taint-flow analysis lands.
+Off by default. The current pattern-matching predicate over-fires on non-injection prompt templates; the rule will be re-enabled when a structurally precise taint-flow predicate replaces it. Opt in via .terrain/policy.yaml only when an adopter has confirmed the local signal is useful.
 
 ## Evidence sources
 

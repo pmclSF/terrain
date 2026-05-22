@@ -96,7 +96,15 @@ func TestCalibration_CorpusRunner(t *testing.T) {
 	}
 
 	analyze := func(fixturePath string) ([]models.Signal, error) {
-		opts := engine.PipelineOptions{}
+		opts := engine.PipelineOptions{
+			// Calibration corpus exercises every detector, including
+			// those that ship disabled-by-default. The override opts
+			// them back in for the duration of the test.
+			EnabledDetectorsOverride: []string{
+				"aiPromptInjectionRisk",
+				"aiHardcodedAPIKey",
+			},
+		}
 		// Auto-discover per-fixture eval artifacts. Each path is added to
 		// PipelineOptions only when the file exists; fixtures without
 		// these artifacts behave exactly as before.

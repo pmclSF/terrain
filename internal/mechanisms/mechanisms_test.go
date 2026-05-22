@@ -45,7 +45,6 @@ func TestLoad_NewMechanismsStartShadow(t *testing.T) {
 	// every other mechanism must remain at shadow.
 	liveMechanisms := map[string]bool{
 		"deprecated_test_pattern_trigger_gate": true,
-		"surface_literal_presence_gate":        true,
 		"ascg_live_vs_catalog":                 true,
 	}
 	for _, m := range reg.All() {

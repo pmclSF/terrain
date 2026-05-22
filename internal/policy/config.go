@@ -81,6 +81,19 @@ type Rules struct {
 	//       - weakAssertion
 	DisabledDetectors []string `yaml:"disabled_detectors"`
 
+	// EnabledDetectors opts back IN to detectors that are marked
+	// DisabledByDefault in the manifest. Example: an adopter wants to
+	// run aiPromptInjectionRisk on their codebase even though the
+	// default config has it off. The list takes plain rule_id /
+	// signal-type names (no alias prefix). Has no effect on detectors
+	// not in the default-disabled set.
+	//
+	// Example .terrain/policy.yaml:
+	//   rules:
+	//     enabled_detectors:
+	//       - aiPromptInjectionRisk
+	EnabledDetectors []string `yaml:"enabled_detectors"`
+
 	// AI holds AI/eval-specific CI policy rules.
 	AI *AIRules `yaml:"ai"`
 }
@@ -136,6 +149,7 @@ func (c *Config) IsEmpty() bool {
 		r.MaxWeakAssertions == nil &&
 		r.MaxMockHeavyTests == nil &&
 		len(r.DisabledDetectors) == 0 &&
+		len(r.EnabledDetectors) == 0 &&
 		r.AI == nil
 }
 
@@ -150,6 +164,24 @@ func (c *Config) DisabledDetectorSet() map[string]bool {
 	}
 	out := make(map[string]bool, len(c.Rules.DisabledDetectors))
 	for _, d := range c.Rules.DisabledDetectors {
+		d = trimSpace(d)
+		if d != "" {
+			out[d] = true
+		}
+	}
+	return out
+}
+
+// EnabledDetectorSet returns the configured enabled-detector opt-ins
+// as a lookup set. Mirrors DisabledDetectorSet shape but expresses an
+// opt-in: a detector that is disabled by default at the manifest
+// level can be re-enabled by listing its rule_id here.
+func (c *Config) EnabledDetectorSet() map[string]bool {
+	if c == nil || len(c.Rules.EnabledDetectors) == 0 {
+		return nil
+	}
+	out := make(map[string]bool, len(c.Rules.EnabledDetectors))
+	for _, d := range c.Rules.EnabledDetectors {
 		d = trimSpace(d)
 		if d != "" {
 			out[d] = true
