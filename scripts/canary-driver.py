@@ -342,6 +342,16 @@ def run_one(pr, work_root, terrain_bin, pr_scope=False):
         except subprocess.TimeoutExpired:
             return {"id": pr_id, "status": "fail", "reason": "base analyze timeout"}
 
+        # Hard-fail when the base snapshot wasn't produced. Without it,
+        # --baseline + --new-findings-only can't be applied and the head
+        # analyze would silently fall back to whole-repo mode — making
+        # the UFPP measurement meaningless. See canary-002 in the
+        # 2026-05-21 run: produced 188 "new" findings because the base
+        # snapshot was missing and the head analyze ran whole-repo.
+        if not base_snapshot.exists():
+            return {"id": pr_id, "status": "fail",
+                    "reason": "base analyze produced no snapshot at .terrain/snapshots/latest.json; pr-scope UFPP cannot be measured"}
+
     # Step 2 (or only step in whole-repo mode): checkout head_sha and
     # analyze. PR-scope adds --baseline + --new-findings-only.
     try:
