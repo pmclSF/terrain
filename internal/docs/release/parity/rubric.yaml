@@ -168,7 +168,7 @@ axes:
     levels:
       "1": "Anecdotal / heuristic only"
       "3": "Calibrated on synthetic fixtures (recall-anchored)"
-      "5": "Calibrated against a labeled real-repository corpus with published precision/recall"
+      "5": "Calibrated against a curated benchmark corpus with published precision/recall"
 
   - id: P3
     name: "Documentation"
