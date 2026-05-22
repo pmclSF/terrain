@@ -56,6 +56,10 @@
     "low": 0,
     "byCategory": {
       "quality": 2
+    },
+    "byType": {
+      "untestedExport": 1,
+      "weakAssertion": 1
     }
   },
   "hasTopInsight": true,
