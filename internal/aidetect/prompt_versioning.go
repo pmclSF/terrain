@@ -120,7 +120,7 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 		// presence check when surface.Name is synthetic
 		// (constructor-derived label), which wouldn't appear as a
 		// literal token in a prompt file.
-		if !isSyntheticIdentifier(surface.Name) {
+		if !IsSyntheticIdentifier(surface.Name) {
 			if dec := surfacelit.Gate(mechanisms.Default(), surface.Name, abs, "aiPromptVersioning"); !dec.Keep {
 				continue
 			}

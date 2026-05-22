@@ -164,7 +164,7 @@ func (d *SafetyEvalMissingDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 		// constructor-derived label (e.g. "system_message",
 		// "vector_store_chroma") that wouldn't appear as a literal
 		// token in the prompt/config file.
-		if !isSyntheticIdentifier(surface.Name) {
+		if !IsSyntheticIdentifier(surface.Name) {
 			if dec := surfacelit.Gate(mechanisms.Default(), surface.Name, abs, "aiSafetyEvalMissing"); !dec.Keep {
 				continue
 			}

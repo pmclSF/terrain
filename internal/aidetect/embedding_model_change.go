@@ -129,7 +129,7 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 		// (e.g. constructor-driven detection where the literal isn't
 		// in the file as a token).
 		abs := filepath.Join(d.Root, comp.Path)
-		if !isSyntheticIdentifier(comp.Config.ModelName) {
+		if !IsSyntheticIdentifier(comp.Config.ModelName) {
 			if dec := surfacelit.Gate(mechanisms.Default(), comp.Config.ModelName, abs, "aiEmbeddingModelChange"); !dec.Keep {
 				continue
 			}
@@ -151,7 +151,7 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 		}
 		// Mechanism gate: surface_literal_presence_gate. Skip when
 		// the identifier is a synthetic constructor-driven label.
-		if !isSyntheticIdentifier(hits[0].Identifier) {
+		if !IsSyntheticIdentifier(hits[0].Identifier) {
 			if dec := surfacelit.Gate(mechanisms.Default(), hits[0].Identifier, abs, "aiEmbeddingModelChange"); !dec.Keep {
 				continue
 			}

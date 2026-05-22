@@ -630,6 +630,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"policy"},
 		RuleID:          "terrain/governance/policy-violation",
 		RuleURI:         "docs/rules/governance/policy-violation.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalLegacyFrameworkUsage, ConstName: "SignalLegacyFrameworkUsage",
@@ -642,6 +643,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"policy", "structural-pattern"},
 		RuleID:          "terrain/governance/legacy-framework",
 		RuleURI:         "docs/rules/governance/legacy-framework.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalSkippedTestsInCI, ConstName: "SignalSkippedTestsInCI",
@@ -654,6 +656,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"policy", "structural-pattern"},
 		RuleID:          "terrain/governance/skipped-in-ci",
 		RuleURI:         "docs/rules/governance/skipped-in-ci.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalRuntimeBudgetExceeded, ConstName: "SignalRuntimeBudgetExceeded",
@@ -666,6 +669,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"policy", "runtime"},
 		RuleID:          "terrain/governance/runtime-budget",
 		RuleURI:         "docs/rules/governance/runtime-budget.md",
+		Tier:            TierGate,
 	},
 
 	// ── Structural (graph-powered) ─────────────────────────────
@@ -824,6 +828,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/citation-missing", RuleURI: "docs/rules/ai/citation-missing.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalRetrievalMiss, ConstName: "SignalRetrievalMiss",
@@ -833,6 +838,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/retrieval-miss", RuleURI: "docs/rules/ai/retrieval-miss.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalAnswerGroundingFailure, ConstName: "SignalAnswerGroundingFailure",
@@ -842,6 +848,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/grounding-failure", RuleURI: "docs/rules/ai/grounding-failure.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalToolSelectionError, ConstName: "SignalToolSelectionError",
@@ -851,6 +858,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/tool-selection-error", RuleURI: "docs/rules/ai/tool-selection-error.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalSchemaParseFailure, ConstName: "SignalSchemaParseFailure",
@@ -860,6 +868,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/schema-parse-failure", RuleURI: "docs/rules/ai/schema-parse-failure.md",
 		PromotionPlan: "Planned. Reserved signal type — runtime detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalSafetyFailure, ConstName: "SignalSafetyFailure",

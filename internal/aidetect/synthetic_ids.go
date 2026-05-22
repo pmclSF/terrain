@@ -82,9 +82,3 @@ func IsSyntheticIdentifier(id string) bool {
 	return false
 }
 
-// isSyntheticIdentifier is the package-local alias kept for the
-// in-package call sites that pre-date the export. New callers should
-// use IsSyntheticIdentifier.
-func isSyntheticIdentifier(id string) bool {
-	return IsSyntheticIdentifier(id)
-}

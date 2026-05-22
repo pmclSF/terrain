@@ -9,8 +9,8 @@ import (
 func TestBuildGateRelevantSummary_ExcludesObservabilityTier(t *testing.T) {
 	snap := &models.TestSuiteSnapshot{
 		Signals: []models.Signal{
-			// configSchemaDrift has no explicit Tier in the manifest →
-			// default is gate-tier.
+			// configSchemaDrift carries Tier: TierGate explicitly in
+			// the manifest — so it counts toward the gate summary.
 			{Type: "configSchemaDrift", Severity: models.SeverityHigh},
 			{Type: "configSchemaDrift", Severity: models.SeverityMedium},
 			// testsOnlyMocks ships at Tier: TierObservability.

@@ -272,22 +272,6 @@ Output renders one block per finding: path, rule, severity,
 confidence, cohort, and the full evidence chain (atom rule ID,
 weight, span). JSON mode is structured for CI consumption.
 
-**Diagnostic tools** (under `cmd/internal/terrain-pipeline`):
-
-- **validate** — replay the corpus, report precision/recall/F1 and
-  per-cohort + per-rule breakdowns.
-- **debug** — per-row inspection with `--filter missed-tps |
-  emitted-fps | all`.
-- **tune** — threshold sweep with `--by-cohort` rendering of
-  precision/recall at each cut.
-- **atoms** — per-atom marginal TP rate, lift over base, and
-  calibration weight alignment ("POS confirmed", "NEG MISALIGNED",
-  etc.).
-- **cv** — k-fold cross-validation against the current calibration
-  with Wilson 95% CI on aggregate precision.
-- **fit** — k-fold logistic-regression refit via batch gradient
-  descent. Honest out-of-sample precision check.
-
 **Known limits.** The labeled corpus has 52 TPs at observability
 threshold and only 1 TP for `ai.train.missing_tracker`. Confidence
 intervals are wide; training-rule production-context atoms are

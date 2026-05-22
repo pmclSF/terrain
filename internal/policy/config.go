@@ -84,9 +84,15 @@ type Rules struct {
 	// EnabledDetectors opts back IN to detectors that are marked
 	// DisabledByDefault in the manifest. Example: an adopter wants to
 	// run aiPromptInjectionRisk on their codebase even though the
-	// default config has it off. The list takes plain rule_id /
-	// signal-type names (no alias prefix). Has no effect on detectors
+	// default config has it off. The list takes plain signal-type
+	// names (no alias prefix). Has no effect on detectors that are
 	// not in the default-disabled set.
+	//
+	// Alias expansion: a name listed here is matched as-is against the
+	// manifest signal type. If a detector ships under a deprecated
+	// rule_id with an alias entry, use the canonical new ID (the alias
+	// registry does NOT expand opt-ins; expansion only applies to the
+	// `disabled_detectors` opt-out list).
 	//
 	// Example .terrain/policy.yaml:
 	//   rules:
