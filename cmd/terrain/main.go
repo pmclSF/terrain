@@ -1208,7 +1208,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Treats unit tests, integration tests, e2e tests, and AI/ML evals as one")
 	fmt.Fprintln(os.Stderr, "dependency graph; gates pull requests on AI-specific risks plus")
-	fmt.Fprintln(os.Stderr, "test-system regressions. Locally, no API key required.")
+	fmt.Fprintln(os.Stderr, "test-system regressions. No API key required.")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Run `terrain` with no arguments for a discovery report.")
 	fmt.Fprintln(os.Stderr)

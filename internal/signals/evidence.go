@@ -162,6 +162,13 @@ func IsGateRelevant(t models.SignalType) bool {
 	return !isObservabilityTier(t)
 }
 
+// IsObservabilityTier is the exported form of isObservabilityTier
+// for cross-package callers that need to label a finding's tier
+// without re-deriving the lookup.
+func IsObservabilityTier(t models.SignalType) bool {
+	return isObservabilityTier(t)
+}
+
 // capSeverity returns the lesser of declared and cap, by severity rank.
 // Returns (effective, true) when the cap actually lowered the severity.
 func capSeverity(declared, cap models.SignalSeverity) (models.SignalSeverity, bool) {

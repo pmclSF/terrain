@@ -216,8 +216,8 @@ func (r *Registry) Get(name string) *Mechanism {
 	defer r.mu.RUnlock()
 	if m, ok := r.mechanisms[name]; ok {
 		// Return a copy to keep internal state from leaking.
-		copy := *m
-		return &copy
+		out := *m
+		return &out
 	}
 	return nil
 }
@@ -248,8 +248,8 @@ func (r *Registry) All() []*Mechanism {
 	defer r.mu.RUnlock()
 	out := make([]*Mechanism, 0, len(r.mechanisms))
 	for _, m := range r.mechanisms {
-		copy := *m
-		out = append(out, &copy)
+		dup := *m
+		out = append(out, &dup)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out

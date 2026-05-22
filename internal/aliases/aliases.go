@@ -14,6 +14,7 @@ package aliases
 import (
 	_ "embed"
 	"fmt"
+	"sort"
 
 	"gopkg.in/yaml.v3"
 )
@@ -140,8 +141,7 @@ func (r *Registry) AllOldIDs() []string {
 	for k := range r.Aliases {
 		out = append(out, k)
 	}
-	// Note: callers that need sorting should call sort.Strings themselves —
-	// most callers consume this with a map, so the sort isn't free.
+	sort.Strings(out)
 	return out
 }
 

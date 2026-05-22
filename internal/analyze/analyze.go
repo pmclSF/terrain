@@ -122,6 +122,53 @@ type Report struct {
 
 	// NextActions are up to 3 prioritized recommendations with runnable commands.
 	NextActions []NextAction `json:"nextActions,omitempty"`
+
+	// Signals is the per-finding record stream. One entry per emitted
+	// signal with the data needed to render an inline PR comment or
+	// route an action: rule id, file:line, severity, tier, evidence
+	// text, finding id (for suppression), and a content-hash so two
+	// runs over the same input produce identical entries. Consumers
+	// that only need counts can read SignalSummary instead.
+	Signals []FindingRecord `json:"signals,omitempty"`
+}
+
+// FindingRecord is the per-finding payload included in Report.Signals.
+// Captures the data required to render a PR comment at the line of
+// risk or look the finding up for suppression / dismissal.
+type FindingRecord struct {
+	// FindingID is the stable content-hashed identifier used by
+	// `terrain suppress` and friends.
+	FindingID string `json:"findingId,omitempty"`
+
+	// RuleID is the canonical rule identifier (e.g. "terrain/quality/weak-assertion").
+	RuleID string `json:"ruleID"`
+
+	// Type is the signal type (e.g. "weakAssertion").
+	Type string `json:"type"`
+
+	// Category is the high-level domain (quality / ai / coverage / ...).
+	Category string `json:"category,omitempty"`
+
+	// Severity is critical / high / medium / low / info.
+	Severity string `json:"severity"`
+
+	// Tier is gate / observability — whether the finding can block CI.
+	Tier string `json:"tier"`
+
+	// File is the source file the finding fires on (relative to repo root).
+	File string `json:"file,omitempty"`
+
+	// Line is the line within File. 0 means "file-scoped, no specific line".
+	Line int `json:"line,omitempty"`
+
+	// Symbol is the function/class name at the finding site, when known.
+	Symbol string `json:"symbol,omitempty"`
+
+	// Evidence is the human-readable explanation rendered next to the finding.
+	Evidence string `json:"evidence,omitempty"`
+
+	// Suggestion is the actionable hint for closing the finding, when present.
+	Suggestion string `json:"suggestion,omitempty"`
 }
 
 // KeyFinding is a prioritized finding surfaced in the analyze output.
@@ -412,9 +459,12 @@ func Build(input *BuildInput) *Report {
 	r.RiskPosture = buildRiskPosture(snap)
 
 	// Signal summary — full breakdown for reporting + gate-relevant
-	// breakdown that excludes observability-tier findings.
+	// breakdown that excludes observability-tier findings. Signals
+	// is the per-finding payload that PR-comment renderers and the
+	// suppression workflow consume.
 	r.SignalSummary = buildSignalSummary(snap)
 	r.GateRelevantSummary = BuildGateRelevantSummary(snap)
+	r.Signals = buildFindingRecords(snap)
 
 	// Top insight (backward compat).
 	r.TopInsight = deriveTopInsight(r, &dgFanout, &dgDupes, &dgCov)
@@ -678,6 +728,40 @@ func buildSignalSummary(snap *models.TestSuiteSnapshot) SignalBreakdown {
 		sb.ByType[string(s.Type)]++
 	}
 	return sb
+}
+
+// buildFindingRecords converts the snapshot's flat signal stream into
+// the per-finding payload included in Report.Signals. Each entry has
+// the data needed to render an inline PR comment or route an action.
+func buildFindingRecords(snap *models.TestSuiteSnapshot) []FindingRecord {
+	if len(snap.Signals) == 0 {
+		return nil
+	}
+	out := make([]FindingRecord, 0, len(snap.Signals))
+	for _, s := range snap.Signals {
+		tier := "gate"
+		if signals.IsObservabilityTier(s.Type) {
+			tier = "observability"
+		}
+		ruleID := ""
+		if entry, ok := signals.ManifestByType(s.Type); ok {
+			ruleID = entry.RuleID
+		}
+		out = append(out, FindingRecord{
+			FindingID:  s.FindingID,
+			RuleID:     ruleID,
+			Type:       string(s.Type),
+			Category:   string(s.Category),
+			Severity:   string(s.Severity),
+			Tier:       tier,
+			File:       s.Location.File,
+			Line:       s.Location.Line,
+			Symbol:     s.Location.Symbol,
+			Evidence:   s.Explanation,
+			Suggestion: s.SuggestedAction,
+		})
+	}
+	return out
 }
 
 // BuildGateRelevantSummary returns a SignalBreakdown that counts only

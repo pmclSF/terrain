@@ -111,9 +111,10 @@ prompts:
   - file://%s
 
 providers:
-  # Configure at least one provider. The OPENAI_API_KEY env var
-  # is the simplest path; swap in Anthropic / Gemini / etc. as
-  # appropriate.
+  # Configure at least one provider for your runner. Promptfoo
+  # supports OpenAI, Anthropic, Google Gemini, local Ollama, and
+  # others — see https://www.promptfoo.dev/docs/providers/ for
+  # the full list and the env var each one expects.
   - openai:chat:gpt-4o-mini
 
 tests:

@@ -163,74 +163,8 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 	return out
 }
 
-// syntheticLineSuffixRe matches the "_L<line>" suffix that the
-// AI-surface extractor synthesizes for unnamed surfaces. These
-// identifiers never appear as literal tokens in source.
-var syntheticLineSuffixRe = regexp.MustCompile(`_L\d+$`)
-
-// syntheticPrefixes are the known synthetic-label prefixes the
-// surface extractor emits (internal/analysis/prompt_ast_parser.go,
-// internal/analysis/ai_context_infer.go, internal/analysis/
-// rag_structured_parser.go). Surfaces named with any of these
-// prefixes are constructor / framework / array-shape derived; the
-// label itself doesn't appear as a literal token in source so a
-// presence check would always fail.
-var syntheticPrefixes = []string{
-	"sdk_client_", "llm_call_", "framework_msg_",
-	"template_prompt_", "api_prompt_", "system_prompt_",
-	"message_array_", "message_list_",
-	"few_shot_", "prompt_const_", "dspy_",
-}
-
-// syntheticExactMatches are constructor-derived labels that don't
-// follow a "<prefix>_<var>" shape.
-var syntheticExactMatches = map[string]bool{
-	"structured_output":   true,
-	"message_slice":       true,
-	"message_array":       true,
-	"template_file":       true,
-	"system_message":      true,
-	"user_message":        true,
-	"assistant_message":   true,
-	"vector_store":        true,
-	"vector_store_chroma": true,
-	"vector_store_faiss":  true,
-	"vector_store_config": true,
-	"embedding_model":     true,
-	"retriever_config":    true,
-	"prompt_template":     true,
-	"system_prompt":       true,
-	"user_prompt":         true,
-	"rag_pipeline":        true,
-	"langchain_message":   true,
-	"llamaindex_message":  true,
-	"chunking_config":     true,
-	"reranker_config":     true,
-	"retrieval_query":     true,
-	"rag_component":       true,
-}
-
-// isSyntheticIdentifier reports whether `id` is a constructor-driven
-// or otherwise synthetic identifier label that won't appear as a
-// literal token in source. Used to skip the surfacelit gate (which
-// requires a literal-token presence check) for these labels.
-func isSyntheticIdentifier(id string) bool {
-	if id == "" || strings.ContainsAny(id, "( ") {
-		return true
-	}
-	if syntheticLineSuffixRe.MatchString(id) {
-		return true
-	}
-	if syntheticExactMatches[id] {
-		return true
-	}
-	for _, p := range syntheticPrefixes {
-		if strings.HasPrefix(id, p) {
-			return true
-		}
-	}
-	return false
-}
+// Synthetic-identifier helpers moved to synthetic_ids.go so consumers
+// can share one source of truth.
 
 // buildEmbeddingChangeSignal constructs the canonical
 // SignalAIEmbeddingModelChange signal. Confidence and evidence
