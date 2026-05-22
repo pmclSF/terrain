@@ -1,10 +1,11 @@
 # Regression suites
 
-Per the cycle-2 binding rules, each shared-infrastructure module (A7 barrel
-resolver, A3 scope classifier, ASCG, EHR, FvS, SurfaceLiteralPresenceGate,
-A1 def-following, RuntimeConfigRecognizer) ships with a frozen suite of
-true positives from its consumer detectors. A change that drops more than
-`max_tp_loss` frozen TPs blocks the module's PR.
+Each shared-infrastructure module (barrel resolver, scope classifier,
+ASCG, eval-harness recognizer, fixture/source classifier, surface-literal
+presence gate, intra-repo def-following, runtime-config recognizer)
+ships with a frozen suite of true positives from its consumer detectors.
+A change that drops more than `max_tp_loss` frozen TPs blocks the
+module's PR.
 
 ## File layout
 
