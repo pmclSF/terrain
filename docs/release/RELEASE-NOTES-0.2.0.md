@@ -22,7 +22,7 @@ The release groups deliverables by three pillars — Understand, Align, Gate. Ev
 
 ## Verdict engine
 
-Twelve new AI detectors ship with calibration anchors at **100% recall on a 27-fixture corpus** (a recall regression gate; prevents silent recall loss when detectors change shape). On top of that, the verdict engine lands — a typed-evidence pipeline with cross-file context, per-cohort calibration, production-context training gating, and a labeled-corpus precision floor:
+Twelve new AI detectors ship with recall-anchor calibration fixtures (a regression gate that prevents silent recall loss when detectors change shape). On top of that, the verdict engine lands — a typed-evidence pipeline with cross-file context, per-cohort calibration, production-context training gating, and a precision floor on the calibrated panel:
 
 - **16.83% precision on the app-shape cohort** — 4–6× the path-only baseline; Wilson 95% CI lower bound 11%.
 - Reach it from `terrain ai findings`.

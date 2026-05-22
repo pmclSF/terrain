@@ -40,13 +40,12 @@ pillars:
 # Per-pillar floor requirements for the 0.2.0 release gate.
 #
 # Gate floor is 3 in 0.2.0: the pillar ships recall-anchored on a
-# synthetic 27-fixture corpus (axes P2, E2 at level 3 = "calibrated
+# synthetic calibration corpus (axes P2, E2 at level 3 = "calibrated
 # on synthetic fixtures"). The level-4/5 jump on those axes requires
-# a labeled real-repo precision floor — the central deliverable of
-# the 0.3 program (see docs/benchmark/0.3-prompt-injection-python.md
-# and the per-track plan). Setting Gate floor=4 in 0.2.0 would have
-# been unsatisfiable by construction; floor=3 is the honest contract
-# for what 0.2.0 actually delivers, and the rubric continues to
+# a real-repo precision floor — the central deliverable of the 0.3
+# program. Setting Gate floor=4 in 0.2.0 would have been unsatisfiable
+# by construction; floor=3 is the honest contract for what 0.2.0
+# actually delivers, and the rubric continues to
 # measure the 4→5 trajectory cell-by-cell as the corpus work lands.
 #
 # Understand is workable for adopters (≥ 3). Align is soft (warn-only
@@ -169,7 +168,7 @@ axes:
     levels:
       "1": "Anecdotal / heuristic only"
       "3": "Calibrated on synthetic fixtures (recall-anchored)"
-      "5": "Calibrated against labeled real-repo corpus with published precision/recall"
+      "5": "Calibrated against a labeled real-repository corpus with published precision/recall"
 
   - id: P3
     name: "Documentation"

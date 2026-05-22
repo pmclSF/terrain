@@ -8,29 +8,19 @@ internal/docs/
 
 cmd/internal/terrain-corpus/
 cmd/internal/terrain-precision/
-scripts/clone-ai-corpus.sh
-scripts/discover-ai-repos.sh
-scripts/expand-ai-corpus.sh
-scripts/harvest-blocklist.txt
-scripts/label-boundary-validation.sh
-scripts/overnight-ai-corpus.sh
-scripts/prep-boundary-validation.sh
-scripts/process-ai-corpus.sh
-scripts/reclone-and-harvest-ai.sh
-scripts/resume-boundary-rescan.sh
-scripts/run-ai-corpus-analysis.sh
-scripts/stream-ai-corpus.sh
-scripts/stream-harvest-ai.sh
-scripts/stream-rescan-boundaries.sh
-scripts/parity-lift.py
-scripts/aggregate_validation.py
-scripts/discover-gitlab-ai.sh
-scripts/phase_*.py
-scripts/replay_*.py
-scripts/regression_precision.py
-scripts/validate_corpus_*.py
-scripts/validate_detectors_*.py
-scripts/validate_recall_*.py
+
+# scripts/ is local-only by default, except for the bench + verification
+# helpers that the public Makefile + npm packaging tasks reference.
+scripts/
+!scripts/benchmarks/
+!scripts/benchmarks/**
+!scripts/docs-verify.sh
+!scripts/test-installer-marker.mjs
+!scripts/verify-pack.js
+!scripts/verify_copy_policy.py
+!scripts/_checkpoint.py
+!scripts/_checkpoint_test.py
+
 tier-4/
 .terrain/
 
