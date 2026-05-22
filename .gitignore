@@ -168,3 +168,4 @@ terrain-docs-linkcheck
 terrain-truth-verify
 /terrain-corpus
 terrain-mechanism-recall
+.venv/
