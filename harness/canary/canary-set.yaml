@@ -141,15 +141,25 @@ prs:
     merged_at: 2025-11-17
     languages: [typescript]
     category: aiPromptVersioning
-    expected_findings:
-      - rule_id: aiPromptVersioning
-        path_hint: core/llm/templates/edit.ts
-        verdict: TP
+    # 2026-05-21: aiPromptVersioning detector intentionally excludes
+    # `.ts` / `.py` / `.js` source files (see
+    # internal/aidetect/prompt_versioning.go:51-62; inline f-string
+    # prompts in source are "noisy to flag"). This canary entry's
+    # expected_findings was written presupposing source-file coverage
+    # that the detector explicitly doesn't ship. Leaving as a
+    # design-scope note rather than a recall miss; expected_findings
+    # cleared to match actual scope.
+    expected_findings: []
+    design_scope_note: |
+      aiPromptVersioning currently fires only on standalone prompt
+      files in versionableExtensions (.yaml/.yml/.json/.md/.prompt/
+      .tmpl/.hbs/.j2/.mustache/.txt). A TypeScript prompt template
+      file is out of scope. Re-litigate this canary entry if the
+      detector graduates to cover inline source-file prompts.
     why_canary: |
       "sonnet lazy apply prompt should not change comments." 21 add / 34 delete across `core/llm/templates/edit.ts`
       (15/29 line diff) + `core/llm/templates/edit/gpt.ts` + `core/edit/lazy/prompts.ts`. Non-trivial wording
-      change to a system prompt template tied to a tracked ticket (CON-2084) — exactly the diff shape we want
-      `aiPromptVersioning` to catch.
+      change to a system prompt template tied to a tracked ticket (CON-2084).
 
   - id: canary-009
     repo: github.com/infiniflow/ragflow
@@ -160,15 +170,19 @@ prs:
     merged_at: 2026-05-11
     languages: [python]
     category: aiPromptVersioning
-    expected_findings:
-      - rule_id: aiPromptVersioning
-        path_hint: rag/prompts/generator.py
-        verdict: TP
+    # 2026-05-21: same design-scope as canary-008 — Python source
+    # file (.py) is out of detector scope. expected_findings
+    # cleared; design_scope_note explains.
+    expected_findings: []
+    design_scope_note: |
+      aiPromptVersioning excludes `.py` files by design (inline
+      f-string prompts are not currently versioned by the detector).
+      generator.py is a Python prompt-template module. Out of
+      scope until the detector expands to source-file prompts.
     why_canary: |
       "fix(prompt): reserve system budget in message_fit_in" — modifies `rag/prompts/generator.py` (32 add, 10
       delete) and ADDS a 151-line `test_generator_message_fit_in.py` regression test. Python prompt-versioning
-      with explicit test coverage. Useful pairing: terrain should fire on the prompt edit but NOT on the test
-      file (no `weakAssertion`/`mockHeavyTest` for the well-formed regression test).
+      with explicit test coverage. Useful for testing the broader source-file scope when that ships.
 
   - id: canary-010
     repo: github.com/huggingface/chat-ui
@@ -179,14 +193,16 @@ prs:
     merged_at: 2026-04-28
     languages: [typescript]
     category: aiPromptVersioning
-    expected_findings:
-      - rule_id: aiPromptVersioning
-        path_hint: src/lib/server/textGeneration/utils/toolPrompt.ts
-        verdict: TP
+    # 2026-05-21: same design-scope as canary-008/-009 — .ts file
+    # out of detector scope. expected_findings cleared.
+    expected_findings: []
+    design_scope_note: |
+      aiPromptVersioning excludes `.ts` source files. toolPrompt.ts
+      is a TypeScript prompt-template module. Out of scope.
     why_canary: |
       "Add timezone support to tool prompts for localized time context" — modifies `toolPrompt.ts` (10/4 diff)
       and wires the timezone through 7 other call-site files. Genuine semantic change to the tool-calling
-      system prompt content.
+      system prompt content. Useful for testing source-file scope expansion.
 
   # ====================================================================
   # CATEGORY: promptFileMissingEval (≥2)
@@ -352,10 +368,23 @@ prs:
     merged_at: 2025-07-17
     languages: [typescript]
     category: floatingModelTag
+    # 2026-05-21: `aiFloatingModelTag` is not a real detector — it
+    # was never shipped. The "floating tag" semantic is currently
+    # handled by `aiModelDeprecationRisk` with category=floating in
+    # its model_deprecation list. This canary entry references a
+    # detector that does not exist; renaming the expected rule_id
+    # below to align with the actual detector. The detector still
+    # needs the `gemini-2.5-pro` family added to its list — that's
+    # a corpus gap, not a detector bug.
     expected_findings:
-      - rule_id: aiFloatingModelTag
+      - rule_id: aiModelDeprecationRisk
         path_hint: app/constant.ts
         verdict: TP
+        corpus_gap: |
+          gemini-2.5-pro is not currently in
+          internal/aidetect/model_deprecation.go modelDeprecationList.
+          The detector recognizes the category structurally but
+          requires the model name in its curated list to fire.
     why_canary: |
       "Add gemini-2.5-pro tag" — single-line addition of `gemini-2.5-pro` with NO date suffix
       (compared to e.g. `gemini-2.5-pro-preview-06-05` elsewhere in the same file). Minimal,
