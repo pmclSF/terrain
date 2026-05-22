@@ -1,5 +1,5 @@
 // Command terrain-docs-linkcheck scans docs/ for broken intra-repo
-// markdown links. It is a Track 9.8 deliverable for the parity-gated
+// markdown links. It is a deliverable for the parity-gated
 // 0.2.0 release plan: docs that promise the user a path to a related
 // page should not break that promise silently.
 //

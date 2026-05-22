@@ -61,8 +61,8 @@ type Rules struct {
 	// OR when an adopter has confirmed the detector's signal isn't useful
 	// for their codebase.
 	//
-	// Safety machinery: no gate-tier detector ships without a per-rule
-	// kill switch. Equivalent to `--disable-rule` on the CLI.
+	// Safety machinery: every CI-blocking detector has a per-rule kill
+	// switch. Equivalent to `--disable-rule` on the CLI.
 	//
 	// Alias expansion: a bare rule_id that's registered as an alias old-ID
 	// expands through the alias registry. E.g. `aiHardcodedAPIKey` disables

@@ -138,14 +138,11 @@ func classifyConfig(repoRoot, p string) *models.Signal {
 	} else if len(hazards) == 1 {
 		severity = models.SeverityLow
 	}
-	// configSchemaDrift was previously wired through
-	// ascg_live_vs_catalog to demote findings on `examples/` paths,
-	// but the v2 corpus shows docker-compose / k8s / helm files in
-	// `examples/` directories are ALMOST ALWAYS real findings — they
-	// are intended to be deployable, and `:latest` tags in them ARE
-	// forward-compat hazards regardless of path. Removing the demote
-	// avoids 12 of 12 verified TP losses on the v2 corpus
-	// (configSchemaDrift TPs in examples/ docker-compose files).
+	// configSchemaDrift findings on `examples/` paths are NOT demoted
+	// by the live-vs-catalog classifier. Docker-compose / k8s / helm
+	// files under `examples/` are typically intended to be deployable,
+	// and `:latest` tags in them are forward-compat hazards regardless
+	// of path.
 	return &models.Signal{
 		Type:             signals.SignalConfigSchemaDrift,
 		Category:         models.CategoryQuality,

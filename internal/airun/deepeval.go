@@ -71,7 +71,7 @@ func ParseDeepEvalJSON(data []byte) (*EvalRunResult, error) {
 		RunID:     runID,
 	}
 	// DeepEval CreatedAt is variously RFC3339 (newer), space-separated
-	// `2026-04-30 12:00:00` (older), or unix-epoch numeric. Try each
+	// `YYYY-MM-DD HH:MM:SS` (older), or unix-epoch numeric. Try each
 	// shape; failures are silent (zero CreatedAt is non-fatal).
 	if t, err := time.Parse(time.RFC3339, raw.CreatedAt); err == nil {
 		out.CreatedAt = t.UTC()

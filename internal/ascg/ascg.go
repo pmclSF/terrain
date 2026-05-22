@@ -101,8 +101,8 @@ type Location struct {
 	// path-based heuristic: a file under a catalog path (examples/,
 	// demos/) that ALSO contains real function/class definitions and
 	// SDK call sites is treated as live working code, not catalog
-	// data (per master plan R3.6 — catalog-shape recognizer requires
-	// dict-literal exports + no call sites, not just path).
+	// data. Catalog shape requires dict-literal exports with no call
+	// sites — path alone is not sufficient.
 	FileBody string
 }
 
@@ -150,12 +150,12 @@ func Classify(loc Location) Result {
 		liveReasons = append(liveReasons, "reached_by_loader")
 	}
 
-	// Structural override (R3.6): when the path looks catalog-shaped
-	// but the file body contains real function/class definitions and
-	// SDK call sites, treat as live working code. This is the
-	// `examples/server.py` case — a langchain-style demo with
-	// `from openai import OpenAI; client = OpenAI(); ...`. The
-	// catalog-path heuristic alone would wrongly demote it.
+	// Structural override: when the path looks catalog-shaped but the
+	// file body contains real function/class definitions and SDK call
+	// sites, treat as live working code. This is the `examples/server.py`
+	// case — a langchain-style demo with `from openai import OpenAI;
+	// client = OpenAI(); ...`. The catalog-path heuristic alone would
+	// wrongly demote it.
 	if len(catalogReasons) > 0 && loc.FileBody != "" {
 		if isLiveCodeBody(loc.FileBody) {
 			liveReasons = append(liveReasons, "live_code_body_structural")

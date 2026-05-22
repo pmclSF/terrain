@@ -163,8 +163,8 @@ func TestRunAnalyze_JSONStdoutPurity(t *testing.T) {
 
 // TestPRSeverityBreakdown verifies the helper that converts a PR's
 // findings + AI blocking signals into a SignalBreakdown for the gate.
-// Track 3.1 — the gate decision must apply uniformly across analyze
-// + pr, sharing one helper.
+// The gate decision must apply uniformly across `analyze` and `pr`,
+// sharing one helper.
 func TestPRSeverityBreakdown(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

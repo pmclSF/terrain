@@ -189,7 +189,7 @@ func runConvert(source string, opts convertCommandOptions) error {
 		return cliUsageError{message: err.Error()}
 	}
 
-	// Track 10.5 — surface a TTY-aware spinner while the conversion
+	// surface a TTY-aware spinner while the conversion
 	// runs. No-op when stdout/stderr is piped, when --json suppresses
 	// progress, or when running in a Plan/DryRun mode (those are fast
 	// enough that progress would flash and disappear).

@@ -261,9 +261,9 @@ type RiskDimension struct {
 }
 
 // SignalBreakdown counts signals by severity, category, and type.
-// `byType` is the per-rule_id breakdown used by the canary harness
-// (scripts/canary-driver.py) to verify expected_findings recall
-// without re-parsing the raw signal list.
+// ByType is the per-rule_id breakdown — useful for downstream tools
+// that need a quick "did rule X fire?" check without re-parsing the
+// raw signal list.
 type SignalBreakdown struct {
 	Total      int            `json:"total"`
 	Critical   int            `json:"critical"`

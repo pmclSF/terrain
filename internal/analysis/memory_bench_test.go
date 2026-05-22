@@ -21,7 +21,7 @@ func requireMemoryBench(t *testing.T) {
 	}
 }
 
-// Track 9.10 — Memory benchmark suite.
+// Memory benchmark suite.
 //
 // The existing CPU benchmarks (BenchmarkFullAnalysis_*) measure how
 // long analysis takes; they don't fail on memory regressions. Real-
@@ -170,7 +170,7 @@ func TestMemoryCeiling_5kFiles(t *testing.T) {
 	// 5k-file service repo (every file has the same few patterns
 	// the parser pool re-extracts) — but worth tracking. Ceiling
 	// at 1300 MB catches >25% regressions; reducing this number
-	// is a Track 9.5 (pipeline architectural separation) and
+	// is a (pipeline architectural separation) and
 	// 9.10 follow-up.
 	const ceilingMB = 1300
 
@@ -223,7 +223,7 @@ func TestMemoryNoLeak_RepeatedAnalysis(t *testing.T) {
 	_, afterAlloc := snapshotHeap()
 	growthMB := (afterAlloc - beforeAlloc) / (1024 * 1024)
 
-	// Track 9.10 follow-up: the current observed growth across 5
+	// follow-up: the current observed growth across 5
 	// iterations is high (~1500 MB) — much higher than a truly
 	// stateless re-run should produce. The leading hypothesis is
 	// that something in the per-run allocation graph (FileCache

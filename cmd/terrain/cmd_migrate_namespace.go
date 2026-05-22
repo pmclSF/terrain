@@ -6,8 +6,8 @@ import (
 	"os"
 )
 
-// Phase A of the 0.2 CLI restructure folds the conversion + migration
-// universe into a single noun: `terrain migrate`. The canonical shape:
+// The CLI restructure folds the conversion + migration universe into
+// a single noun: `terrain migrate`. The canonical shape:
 //
 //   terrain migrate run <from-to>     // execute a conversion
 //   terrain migrate config <from-to>  // convert config files only

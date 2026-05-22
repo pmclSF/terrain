@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-// Track 9.9 — Adversarial filesystem suite.
+// Adversarial filesystem suite.
 //
 // These tests exercise the analyzer against deliberately weird
 // filesystem inputs that real repositories surface but synthetic
@@ -72,7 +72,7 @@ func TestAdversarialFS_BinaryFileWithSourceExtension(t *testing.T) {
 
 // TestAdversarialFS_OversizeSourceFile verifies the analyzer skips
 // (rather than reading + processing) source files above the size
-// threshold. Pre-Track 9.9 a single 50MB minified bundle with a
+// threshold. Pre-a single 50MB minified bundle with a
 // .ts extension would consume seconds of analysis time and balloon
 // memory; the size-skip threshold protects against this.
 func TestAdversarialFS_OversizeSourceFile(t *testing.T) {

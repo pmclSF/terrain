@@ -124,7 +124,7 @@ func runInit(root string, jsonOutput bool) error {
 		fmt.Println()
 	}
 
-	// CI integration pointer — Track 8.4. Always shown so adopters
+	// CI integration pointer — . Always shown so adopters
 	// see the whole ladder from `terrain init` onwards. The trust-
 	// ladder doc explains the four-rung adoption path; the example
 	// workflow is the one canonical CI config.
@@ -146,8 +146,7 @@ func relativeToRoot(path, root string) string {
 
 // analyzeRunOpts collects every input runAnalyze takes. Replaces a
 // seventeen-positional-argument signature with one struct so future
-// flag additions stop expanding the call site. Track 4.6/4.7/4.8
-// recovery (PR #140) introduced the struct; gate + timeout fields
+// flag additions stop expanding the call site. // recovery (PR #140) introduced the struct; gate + timeout fields
 // were already on the previous positional signature and are
 // preserved here.
 type analyzeRunOpts struct {

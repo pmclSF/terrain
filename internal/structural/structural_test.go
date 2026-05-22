@@ -140,10 +140,9 @@ func TestUncoveredAISurface_SeverityVariesByType(t *testing.T) {
 	}
 
 	expected := map[string]models.SignalSeverity{
-		"a.ts": models.SeverityHigh, // prompt — strongest lane (41% n=250)
-		// 2026-05-18: aiModel lane demoted to medium severity per Phase B
-		// findings (4.9% precision pre-filter; ~20-30% post-filter).
-		// Promotion back to high requires LLM-call-site proximity gate.
+		"a.ts": models.SeverityHigh, // prompt — strongest lane
+		// aiModel lane sits at medium severity; promotion back to high
+		// requires an LLM-call-site proximity gate.
 		"b.ts": models.SeverityMedium, // model
 		"c.ts": models.SeverityMedium, // dataset
 		"d.ts": models.SeverityLow,    // eval metric
@@ -722,10 +721,10 @@ func TestBlastRadiusHotspot_HighTestCountFlagged(t *testing.T) {
 	if sigs[0].Type != signals.SignalBlastRadiusHotspot {
 		t.Errorf("type = %q, want %q", sigs[0].Type, signals.SignalBlastRadiusHotspot)
 	}
-	// 2026-05-11 corpus-driven refinement: 25 *direct* tests is strong
-	// coverage, so severity now lands at Info (informational topology
-	// finding, not gating). To force Medium/High we'd need a low
-	// direct-test ratio — see TestBlastRadiusHotspot_LowDirectRatio.
+	// 25 *direct* tests is strong coverage, so severity lands at Info
+	// (informational topology finding, not gating). To force
+	// Medium/High we'd need a low direct-test ratio — see
+	// TestBlastRadiusHotspot_LowDirectRatio.
 	if sigs[0].Severity != models.SeverityInfo &&
 		sigs[0].Severity != models.SeverityLow &&
 		sigs[0].Severity != models.SeverityMedium &&

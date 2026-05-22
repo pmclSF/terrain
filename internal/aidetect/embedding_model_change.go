@@ -246,11 +246,9 @@ func buildEmbeddingChangeSignal(path string, line int, identifier string, matche
 	if intervalHigh > 1 {
 		intervalHigh = 1
 	}
-	// aiEmbeddingModelChange was previously demoted via
-	// ascg_live_vs_catalog. v2 corpus evidence
-	// (`make mechanism-recall`) showed the path-based demote
-	// dropped 2 TPs with 1 FP-gain — embedding model references in
-	// `examples/` are still real findings. Removed.
+	// Embedding-model references in `examples/` are still real
+	// findings: an example is meant to be copied, so a stale model
+	// id propagates if a user follows it.
 	severity := models.SignalSeverity(models.SeverityMedium)
 	return models.Signal{
 		Type:            signals.SignalAIEmbeddingModelChange,

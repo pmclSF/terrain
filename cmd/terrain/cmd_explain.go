@@ -188,7 +188,7 @@ func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
 
 	// Try as a stable finding ID (e.g.
 	// "weakAssertion@internal/auth/login_test.go:TestLogin#a1b2c3d4").
-	// `terrain explain finding <id>` per Track 4.6 — round-trip a
+	// `terrain explain finding <id>` — round-trip a
 	// finding ID back to its evidence + suggest a suppression command.
 	if _, _, _, _, ok := identity.ParseFindingID(target); ok {
 		if sig, found := lookupSignalByFindingID(snap, target); found {

@@ -312,11 +312,11 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/quality/tests-only-mocks",
 		RuleURI:         "docs/rules/quality/tests-only-mocks.md",
 		// True "wiring-only" tests are a low-base-rate phenomenon, so
-		// the per-file gate-tier signal is structurally near-silent.
-		// Re-frame as a repo-aggregate posture metric rather than a
-		// per-file finding.
+		// the per-file signal is structurally near-silent. Re-frame as
+		// a repo-aggregate posture metric rather than a per-file
+		// finding.
 		Tier: TierObservability,
-		PromotionPlan: "Observability-tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting.",
+		PromotionPlan: "Observability tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting.",
 	},
 	{
 		Type: SignalSnapshotHeavyTest, ConstName: "SignalSnapshotHeavyTest",
@@ -735,7 +735,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal", "structural-pattern"},
 		RuleID:          "terrain/structural/capability-gap",
 		RuleURI:         "docs/rules/structural/capability-gap.md",
-		PromotionPlan: "Capability inference is heuristic; promote to gate-tier once the AI taxonomy supports explicit capability tags and validated precision meets the gate-tier bar.",
+		PromotionPlan: "Capability inference is heuristic; will be promoted once the AI taxonomy supports explicit capability tags and precision is validated.",
 		Tier: TierObservability,
 	},
 

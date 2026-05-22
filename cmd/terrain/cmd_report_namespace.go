@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// Phase A of the 0.2 CLI restructure folds the 11 read-side top-level
-// commands into one noun: `terrain report`. The canonical shape:
+// The CLI restructure folds the 11 read-side top-level commands into
+// one noun: `terrain report`. The canonical shape:
 //
 //   terrain report summary       (was: summary)
 //   terrain report insights      (was: insights)
@@ -20,12 +20,11 @@ import (
 //   terrain report select-tests  (was: select-tests)
 //
 // The `focus → --focus=<path>` and `export → --output=<path>` flag
-// collapses are DEFERRED to Phase B — the underlying runners
-// (runFocus, runExport*) don't yet accept the path/output parameters
-// these flags would set, so wiring the flags here would silently drop
-// the user's value. Until Phase B lands the runner-side plumbing,
-// use the legacy top-level commands (`terrain focus`, `terrain
-// export`).
+// collapses are DEFERRED — the underlying runners (runFocus,
+// runExport*) don't yet accept the path/output parameters these flags
+// would set, so wiring the flags here would silently drop the user's
+// value. Until the runner-side plumbing lands, use the legacy
+// top-level commands (`terrain focus`, `terrain export`).
 //
 // The 9 read-side legacy top-level commands keep working unchanged;
 // they will get a deprecation note in a later release and be removed

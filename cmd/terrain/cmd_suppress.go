@@ -13,7 +13,7 @@ import (
 // runSuppress writes a new entry into `.terrain/suppressions.yaml`
 // for the given finding ID. The flow is:
 //
-//  1. Validate the finding ID parses (Track 4.4 format).
+//  1. Validate the finding ID parses (format).
 //  2. Load the existing suppressions file (or create an empty one).
 //  3. Refuse to add a duplicate entry — if one already exists, print
 //     a helpful message pointing at the existing reason and exit.

@@ -115,60 +115,13 @@ release-dry-run:
 pr-gate:
 	$(MAKE) check
 	$(MAKE) test
-	$(MAKE) regression-precision
-
-# regression-precision: replay n=250 corpus against current detector logic
-# and fail if any detector's precision dropped >2pp from baseline.
-# Baseline captured 2026-05-18 after Phase A/B validation + Phase C structural
-# fixes. Updated whenever a detector's behavior intentionally changes — the
-# script's BASELINE_PRECISION dict is the source of truth.
-#
-# Data: tier-4/detector-validation.jsonl + tier-4/detector-validation-n200.jsonl
-# Filter helpers mirror production Go code; keep in sync via this target.
-regression-precision:
-	python3 scripts/regression_precision.py
 
 # Validate regression suites + recall harnesses for shadow→live flips.
 # Loads every YAML under harness/regression-suites/ and
 # harness/recall-harnesses/, validates schema, prints a summary.
-# Exit non-zero on any load failure; gates merge of a mechanism flip.
+# Exit non-zero on any load failure.
 regression-gate:
 	go run ./cmd/internal/terrain-regression-gate
-
-# Per-mechanism recall accounting against the v2 validation corpus.
-# For each Phase 2 mechanism, applies its predicate to every row in
-# tier-4/detector-validation-v2-combined-good.jsonl and reports TP-loss
-# vs FP-gain per consumer detector. The graduation rule per R3.8:
-# FP-gain >= TP-loss AND TP-loss / TotalRows <= 0.05 before flipping
-# a mechanism from state: shadow to state: on.
-mechanism-recall:
-	go run ./cmd/internal/terrain-mechanism-recall \
-		--in tier-4/detector-validation-v2-combined-good.jsonl \
-		--out tier-4/mechanism-recall-report.json \
-		| tee tier-4/mechanism-recall-report.md
-
-# R3.7: v2 baseline measurement for the four claim-without-evidence
-# detectors (aiPromptVersioning, aiPromptInjectionRisk,
-# aiHardcodedAPIKey, testsOnlyMocks). Cycle-2 deliverable is
-# measurement, not a lift target.
-r37-baseline:
-	python3 scripts/baseline_measure_r37.py \
-		--repo-list tier-4/sample-repos.txt \
-		--terrain-bin /tmp/terrain-bin \
-		--output tier-4/r37-baseline.jsonl \
-		--per-detector 150
-
-# OpenAI cross-rate against the cycle-1 v2 Claude baseline. Computes
-# Cohen's kappa per detector. Detectors with kappa < 0.6 are
-# deprioritized for cycle-2 engineering. Requires OPENAI_API_KEY.
-openai-cross-rate:
-	OPENAI_API_KEY=$${OPENAI_API_KEY:?set OPENAI_API_KEY} \
-		python3 scripts/cross_rate_openai.py \
-			--in tier-4/detector-validation-v2-combined-good.jsonl \
-			--out tier-4/detector-validation-v2-openai.jsonl
-
-# (Canary set runs via `make canary` further down — uses
-#  scripts/canary-run.sh against harness/canary/canary-set.yaml.)
 
 # Release gate: full verification required before release
 release-gate: go-release-verify regression-gate
@@ -218,10 +171,8 @@ pillar-parity-floor:
 
 # `docs-linkcheck` walks docs/ and verifies that every intra-repo
 # markdown link resolves to a real file. Skips docs/internal/ and
-# docs/legacy/ by default — those subtrees hold planning notes whose
-# link discipline is inherited debt; run with -include-internal to
-# also scan them. External links (http/https/mailto) are out of
-# scope. Track 9.8 deliverable for the 0.2.0 parity plan.
+# docs/legacy/ by default; run with -include-internal to also scan
+# them. External links (http/https/mailto) are out of scope.
 docs-linkcheck:
 	@go run ./cmd/internal/terrain-docs-linkcheck
 
@@ -231,16 +182,15 @@ docs-linkcheck:
 # don't resolve (typo, renamed, removed) fail the build. Orphan stable
 # signals (in the manifest, not in the curated doc) print as
 # advisory warnings — pass --strict-orphans to fail on them too.
-# Track 9.7 deliverable for the 0.2.0 parity plan.
 truth-verify:
 	@go run ./cmd/internal/terrain-truth-verify
 
-# `voice-lint` enforces the voice-and-tone rules from the parity
-# plan's Track 10.7: no exclamation-mark prose (jarring), no British
-# spellings (mixed-spelling reads as under-edited). Scans Go source
-# in the user-visible code paths (signals manifest, command package,
-# reporting, changescope). Test files are skipped — tests can use any
-# prose without tripping the lint.
+# `voice-lint` enforces voice-and-tone rules: no exclamation-mark
+# prose (jarring), no British spellings (mixed-spelling reads as
+# under-edited). Scans Go source in the user-visible code paths
+# (signals manifest, command package, reporting, changescope). Test
+# files are skipped — tests can use any prose without tripping the
+# lint.
 voice-lint:
 	@go run ./cmd/internal/terrain-voice-lint
 
@@ -251,33 +201,6 @@ voice-lint:
 # populated. See docs/calibration/CORPUS.md.
 calibrate:
 	go test -count=1 -v -run TestCalibration ./internal/engine/...
-
-# ── Canary set (real-PR weekly recall + precision gate) ──────
-# Reads harness/canary/canary-set.yaml. For each sealed entry (head_sha + base_sha
-# populated), runs terrain against the frozen tree and compares findings to
-# expected_findings / expected_non_findings. Exit code:
-#   0 — all sealed entries pass (or no sealed entries yet)
-#   1 — recall regression (expected TP missed)
-#   2 — precision regression (expected non-finding fired)
-#   3 — set not yet sealed (warning)
-# Selection criteria + sealing workflow: harness/canary/canary-set-criteria.md.
-canary:
-	@scripts/canary-run.sh
-
-# JSON form for CI integration.
-canary-json:
-	@scripts/canary-run.sh --strict 2>&1 | tee /dev/null
-	@cat .terrain/canary-report.json
-
-# PR-scope variant: each entry runs `terrain analyze` on the base_sha
-# first, writes a snapshot, then on the head_sha with --baseline +
-# --new-findings-only. UFPP becomes NEW-findings-per-PR (cycle-2's
-# success-metric definition). Doubles wall time (~2 analyze runs per
-# entry). Recall checks that rely on "finding-exists-anywhere"
-# semantic will show as misses because pre-existing findings are
-# filtered out — by design for the UFPP measurement.
-canary-pr-scope:
-	@scripts/canary-run.sh --pr-scope
 
 # ── Performance regression gate ─────────────────────────────
 # bench-baseline writes a fresh baseline benchmark snapshot. Run on a
@@ -293,8 +216,7 @@ bench-baseline:
 # `memory-bench` runs the memory ceiling + leak-detection tests
 # (TestMemoryCeiling_*, TestMemoryNoLeak_*). Skipped in the default
 # `go test ./...` loop because they're slow (force GC + run analysis
-# at scale) and surface ceiling regressions per the Track 9.10
-# baseline. Set TERRAIN_MEMORY_BENCH=1 inline; this target does it
+# at scale). Set TERRAIN_MEMORY_BENCH=1 inline; this target does it
 # for you.
 memory-bench:
 	@TERRAIN_MEMORY_BENCH=1 go test -v -count=1 -run 'TestMemory' ./internal/analysis/...

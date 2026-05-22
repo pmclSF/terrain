@@ -214,12 +214,11 @@ func writeFile(t *testing.T, path, content string) {
 }
 
 // TestSchemaDriftDetector_NotDemotedInExamples proves
-// configSchemaDrift findings on `examples/` paths are NOT demoted
-// by ascg_live_vs_catalog. v2 corpus evidence: docker-compose /
-// k8s / helm files in `examples/` directories are typically
-// deployable artifacts — `:latest` tags in them are still
-// forward-compat hazards regardless of path. The configSchemaDrift
-// detector was therefore removed from ascg's consumer list.
+// configSchemaDrift findings on `examples/` paths are NOT demoted by
+// the live-vs-catalog classifier. Docker-compose / k8s / helm files in
+// `examples/` directories are typically deployable artifacts —
+// `:latest` tags in them are still forward-compat hazards regardless
+// of path.
 func TestSchemaDriftDetector_NotDemotedInExamples(t *testing.T) {
 	root := t.TempDir()
 	composeHigh := `version: "2"

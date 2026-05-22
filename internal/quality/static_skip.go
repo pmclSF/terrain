@@ -57,10 +57,9 @@ func (d *StaticSkipDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sig
 		// excludes skipped tests (jsTestPattern matches `it(` but not
 		// `it.skip(`), so a legitimate skip-heavy file with 4 skips of
 		// 1 running test reports SkipCount=4/TestCount=1 = ratio 400%
-		// — a real signal,
-		// not a counting bug. Proper fix is to include skipped tests in
-		// TestCount; deferred to detector rebuild. Until then, the
-		// detector lives at gate-tier with this known noise floor.
+		// — a real signal, not a counting bug. Proper fix is to
+		// include skipped tests in TestCount; deferred to a later
+		// detector rebuild.
 		totalTests += tf.TestCount
 		if tf.SkipCount > 0 {
 			totalSkipped += tf.SkipCount

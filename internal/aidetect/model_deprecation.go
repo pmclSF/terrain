@@ -193,12 +193,8 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			if h.Rule.Category == "deprecated" {
 				severity = models.SeverityHigh
 			}
-			// aiModelDeprecationRisk was previously demoted via
-			// ascg_live_vs_catalog. v2 corpus evidence
-			// (`make mechanism-recall`) showed the path-based demote
-			// dropped 4 TPs with 0 FP-gain — model deprecations in
-			// `examples/` are still real findings because the example
-			// is meant to be copied. Removed.
+			// Model deprecations in `examples/` are still real findings
+			// because the example is meant to be copied.
 			out = append(out, models.Signal{
 				Type:        signals.SignalAIModelDeprecationRisk,
 				Category:    models.CategoryAI,

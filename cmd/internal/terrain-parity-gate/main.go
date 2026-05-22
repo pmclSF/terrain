@@ -504,7 +504,7 @@ func pillarLabel(r *rubric, id string) string {
 
 func scoreMarker(score int) string {
 	// Three-state marker: ≥4 = strong, 3 = workable, ≤2 = below floor.
-	// When the design tokens land (Track 10.1), this becomes a token
+	// When the design tokens land, this becomes a token
 	// reference rather than ad-hoc characters.
 	switch {
 	case score >= 4:

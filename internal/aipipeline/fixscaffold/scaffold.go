@@ -1,16 +1,12 @@
 // Package fixscaffold generates concrete remediation snippets that
-// developers can drop into their repo to close a finding.
-//
-// Fix scaffolds raise per-PR act-on rate — Dependabot's "upgrade to
-// version X" is itself a fix scaffold; Terrain's semantic equivalent
-// is "here's a Promptfoo eval YAML that covers this prompt."
-// Scaffolds don't need to be auto-applied; having them inline at the
-// finding raises remediation rates substantially.
+// developers can drop into their repo to close a finding (for example,
+// an eval YAML template that covers a flagged prompt). Scaffolds don't
+// need to be auto-applied; having them inline at the finding raises
+// remediation rates substantially.
 //
 // One generator per rule + language is the right grain. Each generator
 // returns the scaffold body plus a target path hint ("evals/X.yaml").
-// The PR-comment renderer is responsible for actually attaching the
-// scaffold to the comment.
+// Consumers attach the scaffold to the relevant output surface.
 package fixscaffold
 
 import (

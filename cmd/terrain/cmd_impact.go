@@ -70,7 +70,7 @@ func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string, 
 	}
 
 	// `--explain-selection` defends the pitch claim
-	// "see which tests matter for a PR — and why" (Track 3.2). Surfaces
+	// "see which tests matter for a PR — and why". Surfaces
 	// the structured reason chains that internal/explain produces and
 	// renders them via the existing RenderSelectionExplanation. Passes
 	// `verbose=true` so per-test evidence (selection reasons, code unit

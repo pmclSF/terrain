@@ -7,8 +7,8 @@ import (
 	"github.com/pmclSF/terrain/internal/telemetry"
 )
 
-// Phase A of the 0.2 CLI restructure groups workspace preferences
-// under one noun: `terrain config`. The canonical shape:
+// The CLI restructure groups workspace preferences under one noun:
+// `terrain config`. The canonical shape:
 //
 //   terrain config feedback                       (was: feedback)
 //   terrain config telemetry [--on|--off|--status]   (was: telemetry)

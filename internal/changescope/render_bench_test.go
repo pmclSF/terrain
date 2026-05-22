@@ -13,7 +13,7 @@ import (
 //
 // Run with: go test -bench=BenchmarkRenderPR -benchmem ./internal/changescope/
 //
-// Reference baseline (Intel i7-8850H @ 2.60GHz, captured 2026-05):
+// Reference order-of-magnitude baseline on a recent x86_64 laptop:
 //   small  (5 findings)    ≈ 19 µs/op,  9 KB/op,  93 allocs/op
 //   medium (50 findings)   ≈ 51 µs/op, 44 KB/op, 241 allocs/op
 //   large  (200 findings)  ≈ 155 µs/op, 164 KB/op, 553 allocs/op

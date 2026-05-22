@@ -18,7 +18,7 @@ var errSeverityGateBlocked = errors.New("severity gate blocked")
 // blocking signals into the same SignalBreakdown shape that
 // `analyze.SignalSummary` uses, so `severityGateBlocked` works
 // uniformly across `terrain analyze --fail-on` and
-// `terrain report pr --fail-on`. Track 3.1 — defends the pitch's
+// `terrain report pr --fail-on`. defends the pitch's
 // "gate changes based on that system as a whole" claim by sharing
 // the gate decision logic, not duplicating it.
 //

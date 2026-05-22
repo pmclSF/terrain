@@ -489,7 +489,7 @@ func main() {
 
 	case "suppress":
 		// `terrain suppress <finding-id> --reason "why" [--expires YYYY-MM-DD] [--owner @who]`
-		// Track 4.7 — appends a suppression entry to .terrain/suppressions.yaml.
+		// appends a suppression entry to .terrain/suppressions.yaml.
 		// No legacy alias: this command is new in 0.2.0 and lives in the
 		// canonical surface as a Gate-pillar primitive.
 		suppressCmd := flag.NewFlagSet("suppress", flag.ExitOnError)

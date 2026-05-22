@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-// Track 9.11 — Schema migration tests against a real 0.1.x fixture.
+// Schema migration tests against a real 0.1.x fixture.
 //
 // MigrateSnapshotInPlace is exercised by migrate_test.go's synthetic
 // in-memory cases, but the load-bearing question for adopters is:

@@ -15,7 +15,7 @@ import (
 //
 // Run with: go test -bench=BenchmarkBuild -benchmem ./internal/insights/
 //
-// Reference baseline (Intel i7-8850H @ 2.60GHz, captured 2026-05):
+// Reference order-of-magnitude baseline on a recent x86_64 laptop:
 //   healthy            ≈ 2.5 µs/op,  1 KB/op,  10 allocs/op
 //   with-depgraph      ≈ 8 µs/op,    5 KB/op,  45 allocs/op
 //   large (500 files)  ≈ 40 µs/op,  28 KB/op,  10 allocs/op
