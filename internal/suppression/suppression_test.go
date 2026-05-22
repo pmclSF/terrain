@@ -30,7 +30,7 @@ func TestLoad_ValidFindingID(t *testing.T) {
 suppressions:
   - finding_id: weakAssertion@internal/auth/login_test.go:TestLogin#a1b2c3d4
     reason: false positive; sanitized upstream
-    expires: 2026-08-01
+    expires: 2099-08-01
     owner: "@platform-team"
 `
 	path := writeTemp(t, body)
@@ -46,7 +46,7 @@ suppressions:
 		t.Errorf("expected populated entry, got %+v", e)
 	}
 	if e.expiresAt.IsZero() {
-		t.Error("expiresAt should be parsed for 2026-08-01")
+		t.Error("expiresAt should be parsed for 2099-08-01")
 	}
 }
 

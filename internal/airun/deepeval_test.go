@@ -4,7 +4,7 @@ import "testing"
 
 const deepEvalSample = `{
   "testRunId": "run-deepeval-1",
-  "createdAt": "2026-04-30T12:00:00Z",
+  "createdAt": "2099-04-30T12:00:00Z",
   "testCases": [
     {
       "id": "tc-1",

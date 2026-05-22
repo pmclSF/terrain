@@ -17,7 +17,7 @@ Add eval scenarios that exercise this capability to ensure behavioral regression
 
 ## Promotion plan
 
-Capability inference is heuristic; promote to gate-tier once the AI taxonomy supports explicit capability tags and validated precision meets the gate-tier bar.
+Capability inference is heuristic; will be promoted once the AI taxonomy supports explicit capability tags and precision is validated.
 
 ## Evidence sources
 

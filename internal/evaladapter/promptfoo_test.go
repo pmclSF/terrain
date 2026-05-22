@@ -14,7 +14,7 @@ func TestPromptfooAdapter_CanIngest(t *testing.T) {
   "evalId": "abc123",
   "results": {
     "version": 3,
-    "timestamp": "2026-05-01T12:00:00Z",
+    "timestamp": "2099-05-01T12:00:00Z",
     "results": [
       {"id": "x", "success": true, "score": 1.0, "testCase": {"description": "x"}}
     ],
@@ -52,7 +52,7 @@ func TestPromptfooAdapter_Ingest(t *testing.T) {
   "evalId": "abc123",
   "results": {
     "version": 3,
-    "timestamp": "2026-05-01T12:00:00Z",
+    "timestamp": "2099-05-01T12:00:00Z",
     "results": [
       {
         "id": "safety-1",
@@ -88,7 +88,7 @@ func TestPromptfooAdapter_Ingest(t *testing.T) {
 	if run.Source != path {
 		t.Errorf("Source = %q", run.Source)
 	}
-	if run.Timestamp != "2026-05-01T12:00:00Z" {
+	if run.Timestamp != "2099-05-01T12:00:00Z" {
 		t.Errorf("Timestamp = %q", run.Timestamp)
 	}
 	if len(run.Cases) != 2 {

@@ -4,7 +4,7 @@ import "testing"
 
 const ragasSample = `{
   "run_id": "ragas-run-1",
-  "created_at": "2026-04-30T12:00:00Z",
+  "created_at": "2099-04-30T12:00:00Z",
   "results": [
     {
       "id": "row-1",

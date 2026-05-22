@@ -50,7 +50,7 @@ func TestGEAdapter_Ingest(t *testing.T) {
   "success": false,
   "meta": {
     "great_expectations_version": "0.18.4",
-    "run_id": {"run_time": "2026-05-01T12:00:00Z"}
+    "run_id": {"run_time": "2099-05-01T12:00:00Z"}
   },
   "statistics": {
     "evaluated_expectations": 3,
@@ -95,7 +95,7 @@ func TestGEAdapter_Ingest(t *testing.T) {
 	if run.Framework != FrameworkGreatExpectations {
 		t.Errorf("framework = %q", run.Framework)
 	}
-	if run.Timestamp != "2026-05-01T12:00:00Z" {
+	if run.Timestamp != "2099-05-01T12:00:00Z" {
 		t.Errorf("timestamp = %q", run.Timestamp)
 	}
 	if len(run.Cases) != 3 {

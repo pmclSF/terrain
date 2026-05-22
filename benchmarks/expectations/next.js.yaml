@@ -1,6 +1,6 @@
 # Expectations for vercel/next.js benchmark.
 # Massive monorepo with 14000+ test files. Stress-level scale.
-# Baselines from 2026-03-06 run.
+# Baselines from a recent benchmark run.
 min_test_files: 5000
 min_code_units: 1000
 require_posture: true

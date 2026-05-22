@@ -51,7 +51,7 @@ const promptfooV3Sample = `{
 // an object instead of a string.
 const promptfooV4Sample = `{
   "evalId": "eval-xyz",
-  "createdAtISO": "2026-04-30T12:00:00Z",
+  "createdAtISO": "2099-04-30T12:00:00Z",
   "results": [
     {
       "id": "r1",

@@ -25,7 +25,7 @@ Gauntlet produces a JSON artifact that Terrain ingests via `--gauntlet`. The sch
 {
   "version": "1",
   "provider": "gauntlet",
-  "timestamp": "2026-03-15T12:00:00Z",
+  "timestamp": "2099-03-15T12:00:00Z",
   "repository": "my-app",
   "scenarios": [
     {

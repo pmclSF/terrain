@@ -130,7 +130,7 @@ func TestIngestGauntletArtifacts_ValidArtifact(t *testing.T) {
 	art := map[string]any{
 		"version":    "1",
 		"provider":   "gauntlet",
-		"timestamp":  "2026-01-01T00:00:00Z",
+		"timestamp":  "2099-01-01T00:00:00Z",
 		"repository": "test/repo",
 		"scenarios": []any{
 			map[string]any{"scenarioId": "sc:test", "name": "test", "status": "passed", "durationMs": 100},

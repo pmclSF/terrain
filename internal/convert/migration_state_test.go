@@ -49,8 +49,8 @@ func TestMigrationStateManager_LoadsLegacyStatePath(t *testing.T) {
 
 	legacy := migrationState{
 		Version:   migrationStateVersion,
-		StartedAt: "2026-04-04T00:00:00Z",
-		UpdatedAt: "2026-04-04T00:00:00Z",
+		StartedAt: "2099-04-04T00:00:00Z",
+		UpdatedAt: "2099-04-04T00:00:00Z",
 		Source:    "cypress",
 		Target:    "playwright",
 		Files: map[string]migrationStateFile{

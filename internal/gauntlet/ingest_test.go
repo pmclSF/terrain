@@ -13,7 +13,7 @@ func TestIngest_ValidArtifact(t *testing.T) {
 	path := writeArtifact(t, `{
 		"version": "1",
 		"provider": "gauntlet",
-		"timestamp": "2026-03-15T12:00:00Z",
+		"timestamp": "2099-03-15T12:00:00Z",
 		"scenarios": [
 			{"scenarioId": "eval:safety", "name": "safety-check", "status": "passed", "durationMs": 1200},
 			{"scenarioId": "eval:accuracy", "name": "accuracy-check", "status": "failed", "durationMs": 3000}

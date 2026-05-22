@@ -1,15 +1,6 @@
-# === Proprietary — NEVER commit ===
-# Terrain's labeling pipeline + corpus harvest tooling + boundary
-# data are commercial moats. The verdict engine ships in the binary;
-# the infrastructure that produced its calibration does NOT. If a
-# fork has Terrain's source, they should not get Terrain's corpus
-# or the tools that built it. Stripped from history 2026-05-16 via
-# git filter-repo; gitignored here to prevent re-adding.
-
-# internal/docs/ — internal-only architecture, release plans, product
-# notes, and roadmap material. The two parity YAMLs that the
-# terrain-parity-gate binary reads are explicitly un-ignored so the
-# binary still builds and tests from a fresh clone.
+# Local-only research and harness directories. The parity YAMLs the
+# terrain-parity-gate binary reads are un-ignored so the binary still
+# builds and tests from a fresh clone.
 internal/docs/
 !internal/docs/release/
 !internal/docs/release/parity/
@@ -31,12 +22,7 @@ scripts/run-ai-corpus-analysis.sh
 scripts/stream-ai-corpus.sh
 scripts/stream-harvest-ai.sh
 scripts/stream-rescan-boundaries.sh
-# Internal release/parity tracking — enumerates planning artifacts and
-# PR numbers; not part of the public distribution.
 scripts/parity-lift.py
-# Corpus-validation pipeline (Claude/OpenAI labeling, phase replay, regression
-# precision) — operates on tier-4/ inputs and outputs. Same calibration-
-# infrastructure carveout as the harvest tooling above.
 scripts/aggregate_validation.py
 scripts/discover-gitlab-ai.sh
 scripts/phase_b1_self_consistency.py
@@ -169,3 +155,4 @@ terrain-truth-verify
 /terrain-corpus
 terrain-mechanism-recall
 .venv/
+terrain-pipeline

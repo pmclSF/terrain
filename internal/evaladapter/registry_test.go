@@ -42,7 +42,7 @@ func TestRegistry_AutoIngest_PromptfooDispatch(t *testing.T) {
   "evalId": "x",
   "results": {
     "version": 3,
-    "timestamp": "2026-05-01T00:00:00Z",
+    "timestamp": "2099-05-01T00:00:00Z",
     "results": [{"id": "a", "success": true, "score": 1.0, "testCase": {"description": "a"}}],
     "stats": {"successes": 1, "failures": 0}
   }

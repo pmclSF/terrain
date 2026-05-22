@@ -23,7 +23,7 @@ manual_coverage:
     owner: qa-platform
     criticality: high
     frequency: weekly
-    last_executed: "2026-03-01"
+    last_executed: "2099-03-01"
 
   - name: admin portal smoke test
     area: admin
@@ -58,7 +58,7 @@ manual_coverage:
     owner: qa-security
     criticality: high
     frequency: per-release
-    last_executed: "2026-03-10"
+    last_executed: "2099-03-10"
 
   - name: Payment processing regression
     area: payments
@@ -66,7 +66,7 @@ manual_coverage:
     owner: qa-payments
     criticality: high
     frequency: per-release
-    last_executed: "2026-03-10"
+    last_executed: "2099-03-10"
 
   - name: Reporting dashboard validation
     area: reporting
@@ -74,7 +74,7 @@ manual_coverage:
     owner: qa-analytics
     criticality: medium
     frequency: monthly
-    last_executed: "2026-02-15"
+    last_executed: "2099-02-15"
 ```
 
 ## Example: QA Checklist Workflow
@@ -96,7 +96,7 @@ manual_coverage:
     owner: frontend-team
     criticality: medium
     frequency: monthly
-    last_executed: "2026-02-01"
+    last_executed: "2099-02-01"
 ```
 
 ## Example: Exploratory Testing
@@ -111,7 +111,7 @@ manual_coverage:
     owner: senior-qa
     criticality: high
     frequency: weekly
-    last_executed: "2026-03-12"
+    last_executed: "2099-03-12"
 
   - name: Edge case discovery
     area: billing-core

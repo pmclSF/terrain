@@ -30,4 +30,4 @@ manual_coverage:
     owner: ops-team
     criticality: high
     frequency: per-release
-    last_executed: "2026-03-01"
+    last_executed: "2099-03-01"

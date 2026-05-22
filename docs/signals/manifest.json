@@ -161,7 +161,7 @@
       ],
       "ruleId": "terrain/quality/tests-only-mocks",
       "ruleUri": "docs/rules/quality/tests-only-mocks.md",
-      "promotionPlan": "Observability-tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting."
+      "promotionPlan": "Observability tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting."
     },
     {
       "type": "snapshotHeavyTest",
@@ -705,7 +705,7 @@
       ],
       "ruleId": "terrain/structural/capability-gap",
       "ruleUri": "docs/rules/structural/capability-gap.md",
-      "promotionPlan": "Capability inference is heuristic; promote to gate-tier once the AI taxonomy supports explicit capability tags and validated precision meets the gate-tier bar."
+      "promotionPlan": "Capability inference is heuristic; will be promoted once the AI taxonomy supports explicit capability tags and precision is validated."
     },
     {
       "type": "evalFailure",

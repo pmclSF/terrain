@@ -7,13 +7,13 @@
 //	suppressions:
 //	  - finding_id: "weakAssertion@internal/legacy/old.go:TestFoo#a1b2c3d4"
 //	    reason: "false positive; sanitized upstream"
-//	    expires: "2026-08-01"
+//	    expires: "2099-08-01"
 //	    owner: "@platform-team"
 //
 //	  - signal_type: "aiPromptInjectionRisk"
 //	    file: "internal/legacy/**"
 //	    reason: "rewriting this layer in 0.3"
-//	    expires: "2026-09-01"
+//	    expires: "2099-09-01"
 //
 // Each entry matches via one of two paths:
 //

@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Author:** @pmclSF
-- **Created:** 2026-05-10
-- **Decided:** 2026-05-10
+- **Created:** 2099-05-10
+- **Decided:** 2099-05-10
 - **Discussion:** N/A (foundational RFC; project genesis pre-dates the formal RFC process)
 
 ---
@@ -17,7 +17,7 @@ This RFC ratifies the Terrain 0.2.0 product plan documented in `docs/PRODUCT.md`
 This is the first RFC the project files. The RFC process documented in `docs/CONTRIBUTING.md` requires significant changes to go through this directory. The product plan itself is the most significant change in the project's history; filing it as RFC 0000 establishes:
 
 1. **Process self-consistency.** The project commits to RFCs for significant changes; the plan is significant; therefore it has an RFC.
-2. **Public record.** Future contributors who want to know "why does Terrain do X?" can read RFC 0000 and see the answer is "by design, ratified on 2026-05-10."
+2. **Public record.** Future contributors who want to know "why does Terrain do X?" can read RFC 0000 and see the answer is "by design, ratified on 2099-05-10."
 3. **Reference shape.** Subsequent RFCs use this RFC as the shape they're amending.
 
 ## Detailed design
@@ -84,6 +84,6 @@ LB-12 panel validation of `docs/OVERVIEW.md` is a release-tag gate, not an RFC-a
 
 ## Decision
 
-**Accepted on 2026-05-10.** The plan is the binding scope of Terrain 0.2.0.
+**Accepted on 2099-05-10.** The plan is the binding scope of Terrain 0.2.0.
 
 Subsequent RFCs may amend specific sections of `docs/PRODUCT.md` per the one-cycle deprecation contract; the plan itself stays a living document referenced by RFC 0000. When `docs/PRODUCT.md` is materially edited, the change is documented either via a new amendment RFC or via `CHANGELOG.md` if the change is non-significant.

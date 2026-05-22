@@ -1,6 +1,6 @@
 # Expectations for storybookjs/storybook benchmark.
 # Massive monorepo with 100+ packages. 423+ test files, 5275+ code units.
-# Baselines from 2026-03-06 run.
+# Baselines from a recent benchmark run.
 min_test_files: 200
 min_code_units: 1000
 require_posture: true

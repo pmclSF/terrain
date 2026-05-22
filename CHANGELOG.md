@@ -327,10 +327,10 @@ through 0.2; in-band deprecation warnings and removal are future work.
 `terrain convert <file> --to <framework>` continues to work via the
 per-file converter — the `convert` namespace dispatcher falls through
 to `runConvertCLI` (single-file mode) for non-verb args, distinct from
-the `migrate` namespace's directory-mode fall-through. Phase B (folding
-`policy`/`compare` into `analyze` flags) and the `--focus`/`--output`
-flag-collapse from former top-level `focus`/`export` are future work — see
-"Known gaps and future work" below.
+the `migrate` namespace's directory-mode fall-through. Folding
+`policy`/`compare` into `analyze` flags and the `--focus`/`--output`
+flag-collapse from former top-level `focus`/`export` are future work —
+see "Known gaps and future work" below.
 
 ### Eval framework adapters
 
@@ -506,8 +506,8 @@ Items that did not ship in 0.2.0:
 
 - **Scoring v2 band re-anchoring** — needs a corpus of labeled *repositories* (not just per-detector calibration fixtures) to derive percentile-based band thresholds.
 - **Conversion top-3 fixture corpora to A-grade with 95% post-conversion pass rate** — bulk content authoring.
-- **CLI restructure phase B** — fold `policy` into `analyze --policy=<file>` and `compare` into `analyze --against=<ref>`. Different exit-code semantics; deserves its own review.
-- **Universal flag schema + `--detail 1/2/3`** — Phase A landed only the namespace dispatchers; flag parity across legacy and namespace paths is still inconsistent (`--root` vs `-root`, `--json` vs `--format json`).
+- **Next-stage CLI restructure** — fold `policy` into `analyze --policy=<file>` and `compare` into `analyze --against=<ref>`. Different exit-code semantics; deserves its own review.
+- **Universal flag schema + `--detail 1/2/3`** — this release landed only the namespace dispatchers; flag parity across legacy and namespace paths is still inconsistent (`--root` vs `-root`, `--json` vs `--format json`).
 - **Plugin architecture skeleton** for community adapters — not shipped.
 - **Confidence intervals in `terrain explain` output** — the
   `ConfidenceDetail` struct ships in SignalV2, but the renderer doesn't

@@ -51,7 +51,7 @@ Without this, baseline matching dropped into the framework-wide
 first-match fallback and could cross-attribute runs.
 
 `createdAt` accepts RFC3339, the older space-separated
-`2026-04-30 12:00:00` shape, and microsecond-fractional without
+`2099-04-30 12:00:00` shape, and microsecond-fractional without
 timezone.
 
 ## Metric name normalization

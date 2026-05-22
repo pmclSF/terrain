@@ -127,8 +127,8 @@ for the current per-direction tier matrix.
   "pending":    1,     // not yet processed
   "source":     "jest",
   "target":     "vitest",
-  "startedAt":  "2026-05-04T12:00:00Z",
-  "updatedAt":  "2026-05-04T12:08:33Z",
+  "startedAt":  "2099-05-04T12:00:00Z",
+  "updatedAt":  "2099-05-04T12:08:33Z",
   "outputRoot": "converted/"
 }
 ```

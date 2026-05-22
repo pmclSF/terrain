@@ -17,7 +17,7 @@ Add assertions on outputs, state changes, or side effects to validate real behav
 
 ## Promotion plan
 
-Observability-tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting.
+Observability tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting.
 
 ## Evidence sources
 

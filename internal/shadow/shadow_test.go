@@ -50,8 +50,8 @@ func TestEmit_RespectsCallerTimestamp(t *testing.T) {
 	prev := SetSink(sink)
 	t.Cleanup(func() { SetSink(prev) })
 
-	Emit(Event{Timestamp: "2026-01-01T00:00:00Z", Mechanism: "m"})
-	if got := sink.Events()[0].Timestamp; got != "2026-01-01T00:00:00Z" {
+	Emit(Event{Timestamp: "2099-01-01T00:00:00Z", Mechanism: "m"})
+	if got := sink.Events()[0].Timestamp; got != "2099-01-01T00:00:00Z" {
 		t.Errorf("Timestamp = %q, want preserved", got)
 	}
 }

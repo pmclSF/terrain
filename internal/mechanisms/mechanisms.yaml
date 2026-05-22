@@ -20,11 +20,8 @@ mechanisms:
       Before an AI surface-aware detector fires on a surface name,
       require that the name literally appears as an identifier token
       in the flagged file. Suppresses surface-hallucination findings.
-      Validated by `make mechanism-recall` against the v2 corpus:
-      30 FP-gain, 9 TP-loss on aiSafetyEvalMissing (within the 5%
-      R3.8 recall budget) — passes the graduation rule. The
-      isSyntheticIdentifier wrap at consumer call sites prevents
-      over-suppression of constructor-derived synthetic labels.
+      Consumers wrap with isSyntheticIdentifier to avoid suppressing
+      constructor-derived synthetic labels.
     consumers:
       - aiModelDeprecationRisk
       - aiPromptVersioning
@@ -35,12 +32,10 @@ mechanisms:
   - name: deprecated_test_pattern_trigger_gate
     state: on
     description: |
-      Require a structural framework-import predicate (enzyme,
-      jest setTimeout config scope) before the deprecatedTestPattern
-      rule fires. Suppresses framework-mismatch false positives.
-      Validated by TestDeprecatedPatternDetector_EnzymeGate: the gate
-      suppresses enzyme-usage on files with no enzyme import (a
-      clear structural FP class).
+      Require a structural framework-import predicate (enzyme, jest
+      setTimeout config scope) before the deprecatedTestPattern rule
+      fires. Suppresses framework-mismatch false positives such as
+      enzyme-style calls in files with no enzyme import.
     consumers:
       - deprecatedTestPattern
 
@@ -122,17 +117,17 @@ mechanisms:
       catalog/example-string role pinning. Demotes findings on
       catalog or example occurrences before they reach the
       user-visible finding stream. The path-based classifier is
-      paired with a structural override (file body must contain
-      function/class definitions + call sites or SDK imports) so
-      live working code under `examples/` is not wrongly demoted
-      (per master plan R3.6 catalog-shape recognizer).
+      paired with a structural override — file body must contain
+      function/class definitions plus call sites or SDK imports —
+      so live working code under `examples/` is not wrongly demoted.
 
-      Consumer scope: v2 corpus evidence (`make mechanism-recall`)
-      showed ascg has strong signal for aiNonDeterministicEval
-      (59 FP-gain vs 7 TP-loss) but marginal/negative signal for
-      other AI detectors whose findings reference real model names
-      in code — those references are TPs regardless of path.
-      configSchemaDrift was likewise removed because deployable
-      configs in examples/ are still real findings.
+      Consumer scope is narrow: this gate is wired only to detectors
+      whose findings benefit from path-based demotion (most TPs
+      reference symbols defined in the same file). Detectors whose
+      findings reference real model identifiers in code (model
+      deprecation, embedding model change) and detectors firing on
+      genuinely-deployable configs (schema drift in examples/) are
+      NOT wired through this gate; those references are TPs
+      regardless of path.
     consumers:
       - aiNonDeterministicEval

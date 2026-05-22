@@ -23,7 +23,7 @@ func TestRunSuppress_CreatesNewFile(t *testing.T) {
 	id := identity.BuildFindingID("weakAssertion", "internal/auth/login_test.go", "TestLogin", 42)
 
 	if err := runCaptured(func() error {
-		return runSuppress(id, "false positive — sanitized upstream", "2026-08-01", "@platform", root)
+		return runSuppress(id, "false positive — sanitized upstream", "2099-08-01", "@platform", root)
 	}); err != nil {
 		t.Fatalf("runSuppress: %v", err)
 	}
@@ -129,11 +129,11 @@ func TestLooksLikeISODate(t *testing.T) {
 		in   string
 		want bool
 	}{
-		{"2026-08-01", true},
+		{"2099-08-01", true},
 		{"2099-12-31", true},
 		{"2026/08/01", false},
 		{"08-01-2026", false},
-		{"2026-8-1", false}, // not zero-padded
+		{"2099-8-1", false}, // not zero-padded
 		{"", false},
 		{"abc", false},
 	}
