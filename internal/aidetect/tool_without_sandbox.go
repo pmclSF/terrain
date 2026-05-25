@@ -96,7 +96,7 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 		// display names (e.g. vcrpy cassettes of cloud-provider
 		// Activity Log responses) — those aren't tool definitions
 		// and shouldn't fire.
-		if isAPIKeyFixturePath(relPath) {
+		if isTestFixturePath(relPath) {
 			continue
 		}
 		// Test-integration schema fixtures are a known false-positive

@@ -50,13 +50,13 @@ func runConfigNamespaceCLI(args []string) error {
 }
 
 func printConfigUsage() {
-	fmt.Println("Usage: terrain config <verb> [flags]")
-	fmt.Println()
-	fmt.Println("Workspace preferences and feedback channels.")
-	fmt.Println()
-	fmt.Println("Verbs:")
-	fmt.Println("  feedback                       open the feedback link")
-	fmt.Println("  telemetry [--on|--off|--status] manage local telemetry config")
+	fmt.Fprintln(os.Stderr, "Usage: terrain config <verb> [flags]")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Workspace preferences and feedback channels.")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Verbs:")
+	fmt.Fprintln(os.Stderr, "  feedback                       open the feedback link")
+	fmt.Fprintln(os.Stderr, "  telemetry [--on|--off|--status] manage local telemetry config")
 }
 
 // runConfigFeedbackCLI mirrors the legacy `terrain feedback` behavior.

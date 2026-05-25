@@ -789,7 +789,10 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		combined[t] = true
 	}
 	if len(combined) > 0 {
-		aliasReg, _ := aliases.Load()
+		aliasReg, aliasErr := aliases.Load()
+		if aliasErr != nil {
+			logging.L().Debug("alias registry load failed; disabled_detectors aliases will not expand", "err", aliasErr)
+		}
 		expanded, aliasesHit := expandDisabledDetectors(combined, aliasReg)
 		emitAliasNotes(aliasReg, aliasesHit)
 

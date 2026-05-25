@@ -90,8 +90,7 @@ func (d *WeakAssertionDetector) Detect(snap *models.TestSuiteSnapshot) []models.
 				EvidenceStrength: models.EvidenceModerate,
 				EvidenceSource:   models.SourceStructuralPattern,
 				Location:         models.SignalLocation{File: tf.Path},
-				Explanation: "No assertions detected in file with " +
-					itoa(tf.TestCount) + " test(s). Tests execute code but do not verify behavior.",
+				Explanation: fmt.Sprintf("No assertions detected in file with %d test(s). Tests execute code but do not verify behavior.", tf.TestCount),
 				SuggestedAction: "Add assertions on returned values, state transitions, or side effects.",
 			})
 		} else {
@@ -130,14 +129,3 @@ func (d *WeakAssertionDetector) Detect(snap *models.TestSuiteSnapshot) []models.
 	return signals
 }
 
-func itoa(n int) string {
-	if n == 0 {
-		return "0"
-	}
-	s := ""
-	for n > 0 {
-		s = string(rune('0'+n%10)) + s
-		n /= 10
-	}
-	return s
-}

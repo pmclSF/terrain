@@ -171,9 +171,9 @@ func TestIsAPIKeyFixturePath(t *testing.T) {
 		{"src/config/api_keys.yaml", false},
 	}
 	for _, c := range cases {
-		got := isAPIKeyFixturePath(c.path)
+		got := isTestFixturePath(c.path)
 		if got != c.want {
-			t.Errorf("isAPIKeyFixturePath(%q) = %v, want %v", c.path, got, c.want)
+			t.Errorf("isTestFixturePath(%q) = %v, want %v", c.path, got, c.want)
 		}
 	}
 }

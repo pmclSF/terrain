@@ -99,12 +99,12 @@ var configFileExts = map[string]bool{
 	".dockerfile": true, // explicit dockerfile extension
 }
 
-// isAPIKeyFixturePath returns true when the path looks like a
+// isTestFixturePath returns true when the path looks like a
 // test-mock / recorded-response fixture rather than real config.
 // Used to suppress aiHardcodedAPIKey FPs on fixture libraries
 // (placebo, vcrpy, cassettes, etc.) that contain mocked SDK
 // responses with fake credentials by design.
-func isAPIKeyFixturePath(relPath string) bool {
+func isTestFixturePath(relPath string) bool {
 	lower := strings.ToLower(filepath.ToSlash(relPath))
 	// Test-path prefixes (handled the same way as
 	// quality.isToolingPath).
@@ -164,7 +164,7 @@ func (d *HardcodedAPIKeyDetector) Detect(snap *models.TestSuiteSnapshot) []model
 		// API responses; a real committed-key incident in test
 		// fixtures is rare relative to the per-repo FP load these
 		// mocks generate.
-		if isAPIKeyFixturePath(relPath) {
+		if isTestFixturePath(relPath) {
 			continue
 		}
 		abs := filepath.Join(d.Root, relPath)
