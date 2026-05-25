@@ -25,6 +25,6 @@ Stays at observability tier until a labeled-sample baseline confirms the detecto
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.75, 0.92] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.75–0.92.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

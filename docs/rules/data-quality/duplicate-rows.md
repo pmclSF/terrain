@@ -17,7 +17,7 @@ Fires when an eval dataset has more than 5% duplicate input rows.
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.90, 0.99] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.90–0.99.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

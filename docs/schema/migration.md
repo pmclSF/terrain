@@ -14,7 +14,7 @@ The migration namespace is **stable** for the Tier-1 conversion
 directions (Jest ↔ Vitest is the canonical example). Other
 directions are tagged Experimental in `terrain migrate list`
 output; their schema remains the same but conversion confidence
-ratings are still being calibrated. See
+ratings are still being tuned. See
 [`docs/release/feature-status.md`](../release/feature-status.md)
 for the current per-direction tier matrix.
 
@@ -168,8 +168,8 @@ schema:
 
 - New optional fields may be added in minor releases
 - Removal requires a major version bump and a migration window
-- Confidence-score thresholds (90/70) may shift once conversion-
-  corpus calibration work lands; the field shape itself stays stable.
+- Confidence-score thresholds (90/70) may shift in future releases;
+  the field shape itself stays stable.
 
 ## Per-direction status
 
@@ -183,8 +183,7 @@ conversion directions. Each row carries a `tier` field:
       "from":          "jest",
       "to":            "vitest",
       "tier":          "stable",       // stable | experimental | preview
-      "description":   "...",
-      "calibrationStatus": "..."
+      "description":   "..."
     }
   ]
 }

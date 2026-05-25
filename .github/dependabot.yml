@@ -46,8 +46,8 @@ updates:
       include: "scope"
 
   # ── Go modules (analysis engine) ────────────────────────────────────
-  # New in 0.1.2: round-2 review flagged that gomod was uncovered. Tree-sitter
-  # grammars and the YAML library both need security update visibility.
+  # Tree-sitter grammars and the YAML library both need security
+  # update visibility.
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:

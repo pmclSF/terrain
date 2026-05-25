@@ -21,7 +21,7 @@ Inspect per-case eval-regression findings for cases that flipped from pass to fa
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.90, 0.99] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.90–0.99.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

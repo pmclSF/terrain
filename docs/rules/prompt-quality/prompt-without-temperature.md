@@ -17,7 +17,7 @@ Fires when an LLM SDK call has no temperature kwarg. Defaults differ across SDKs
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.85, 0.95] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.85–0.95.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 
@@ -30,7 +30,7 @@ An LLM SDK call lacks an explicit `temperature` argument. Default temperatures d
 - **Tier:** preview
 - **Default severity:** off (opt-in via `terrain.yaml`)
 - **Status:** preview — pending validation
-- **Graduation criteria:** false-positive rate ≤ 5% (Wilson 95% lower bound) on dogfood corpus.
+- **Graduation criteria:** false-positive rate ≤ 5%.
 
 ## 3. What this catches
 

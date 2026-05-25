@@ -264,9 +264,8 @@ models.Signal{
 `internal/severity.ValidateClauseIDs` returns the set of unknown IDs from a list,
 which detectors and tests use to fail loudly on typos.
 
-## Calibration ladder
+## Quality ladder
 
 Clauses start as heuristic — author-set based on the rule's structure and the
-examples above. A calibration corpus of labeled repos measures per-clause
-precision/recall over time and re-anchors borderline severities. Calibrated
-clauses gain a `Quality: "calibrated"` field on the corresponding `ConfidenceDetail`.
+examples above. Measured clauses gain a `Quality: "measured"` field on the
+corresponding `ConfidenceDetail` once their precision/recall has been re-anchored.

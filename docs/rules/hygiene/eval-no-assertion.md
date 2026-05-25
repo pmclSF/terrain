@@ -21,7 +21,7 @@ Add an assert / score check that fails when the eval output deviates from expect
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.80, 0.95] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.80–0.95.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

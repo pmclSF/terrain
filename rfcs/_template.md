@@ -68,9 +68,9 @@ If this RFC ships in a release, what's the rollout?
 
 How do we know the change worked? What harness measurements or release gates validate this?
 
-- For rules: which LB bars apply, what's the target
+- For rules: which quality bars apply, what's the target
 - For breaking changes: how do we verify the deprecation cycle is complete
-- For integrations: what end-to-end test confirms the integration works on a dogfood repo
+- For integrations: what end-to-end test confirms the integration works on a representative repo
 
 ## Decision (filled when status moves out of Draft)
 

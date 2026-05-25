@@ -1,6 +1,6 @@
 # ADR-004: Jest ESM Strategy and Worker Shutdown Warning
 
-> **Historical note:** This ADR documents the retired JavaScript/Jest runtime that existed before Terrain's Go-native conversion migration was completed on 2026-04-04. It is preserved for historical context only.
+> **Historical note:** This ADR documents the retired JavaScript/Jest runtime that existed before Terrain's Go-native conversion. It is preserved for historical context only.
 
 ## Status
 

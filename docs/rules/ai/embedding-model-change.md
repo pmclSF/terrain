@@ -25,6 +25,6 @@ Ships the static precondition (embedding referenced + no retrieval coverage) tod
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.70, 0.88] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.70–0.88.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

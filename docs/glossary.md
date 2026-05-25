@@ -60,13 +60,12 @@ the inference rule applies); evidence-strength is about the
 underlying observation. Used by report layers to decide what to
 surface and what to footnote.
 
-## Calibration corpus
+## Recall-regression fixture suite
 
-The labeled fixture set under `tests/calibration/`. Each fixture
-declares the signals that *must* fire (and optionally the signals
-that *must not* fire) so a detector regression is caught at CI
-time. The runner is `internal/calibration/runner.go`; the gate is
-`make calibrate`.
+The bundled fixture set used to catch detector regressions at CI
+time. Each fixture declares the signals that *must* fire (and
+optionally the signals that *must not* fire); any drift fails the
+build.
 
 ## Eval run
 

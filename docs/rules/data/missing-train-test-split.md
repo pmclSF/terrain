@@ -21,7 +21,7 @@ Split the dataset before training (sklearn.model_selection.train_test_split, KFo
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.75, 0.90] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.75–0.90.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

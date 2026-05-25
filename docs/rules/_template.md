@@ -167,7 +167,7 @@ One-line description.
 - **Tier:** preview
 - **Default severity:** off (opt-in via `terrain.yaml`)
 - **Status:** preview — pending validation
-- **Graduation criteria:** triage time, false-positive rate, and recall measured at target on the dogfood repos.
+- **Graduation criteria:** triage time, false-positive rate, and recall measured at target against representative repos.
 
 ## 3. What this catches
 

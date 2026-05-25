@@ -21,7 +21,7 @@ Pin the load to a commit SHA (revision="<sha>" for HuggingFace), a version-suffi
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.85, 0.95] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.85–0.95.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

@@ -21,7 +21,7 @@ Replace PII in the eval dataset with synthetic equivalents (Faker, Mimesis, mock
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.75, 0.95] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.75–0.95.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

@@ -41,14 +41,13 @@ When a Dependabot PR proposes a tree-sitter bump, run:
 go test ./internal/testcase/... ./internal/convert/...
 ```
 
-against a calibration fixture set that exercises every grammar. The
-existing `make calibrate` target is one entry point; expand the
-fixture set if a grammar's coverage is light.
+against the bundled fixture set that exercises every grammar.
+Expand the fixture set if a grammar's coverage is light.
 
 ## YAML parser
 
 `gopkg.in/yaml.v3` parses eval configs, agent definitions, and the
-calibration `labels.yaml` schema. Pinned to the v3 line because the
+fixture `labels.yaml` schema. Pinned to the v3 line because the
 v3 → v4 migration changed default behaviors (escaping, anchor
 handling) that would break existing fixtures.
 

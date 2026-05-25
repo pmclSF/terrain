@@ -21,7 +21,7 @@ Add a test that imports the code unit and exercises its observable behavior. The
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.85, 0.95] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.85–0.95.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 
@@ -142,7 +142,7 @@ rules:
 - **Code tested via integration tests that don't import the function directly** — the function is exercised but no test's import graph reaches it. The rule fires correctly per its mechanism (no incoming "covers" edge). Mitigation: either add a unit test, or accept the warning if integration-test-only coverage is the adopter's policy. The `coverage/no-integration-test` rule provides the complementary view.
 - **Generated code** — Terrain excludes common generated-path patterns (`__generated__/`, `*.pb.go`, etc.) by default; uncommon generators may need explicit per-path ignores.
 - **Code that's only reachable via reflection / dynamic dispatch** — the import-graph cannot trace dynamic dispatch. Such code may show as "no tests" even when invoked by tests at runtime. Mitigation: declare the surface in `terrain.yaml` `surfaces:` to make Terrain aware of the dynamic reachability, or accept the warning.
-- **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag (`harness/readiness/v0.2.0/coverage-no-tests.md`). Coverage rules typically have higher FP/false-relevance rates than detection rules; the 5% LB-5 bar may be relaxed for this category — see the readiness card for measured values.
+- **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag (`harness/readiness/v0.2.0/coverage-no-tests.md`). Coverage rules typically have higher FP/false-relevance rates than detection rules; the 5% target FP-rate may be relaxed for this category — see the readiness card for measured values.
 
 ## 9. Reproducibility
 

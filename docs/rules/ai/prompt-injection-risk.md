@@ -25,7 +25,7 @@ Off by default. The current pattern-matching predicate over-fires on non-injecti
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.60, 0.85] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.60–0.85.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

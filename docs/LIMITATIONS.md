@@ -45,7 +45,7 @@ These capabilities are not in scope for 0.2.0. They may land in future releases 
 
 ## Rules in *preview* at 0.2.0 (not default-on)
 
-A subset of rules ship as preview — fully implemented and documented in short-form, but default-off because triage time and false-positive rate have not been measured at the target bar on the dogfood repos at release time. Adopters can opt in via `terrain.yaml`; their feedback feeds graduation to stable.
+A subset of rules ship as preview — fully implemented and documented in short-form, but default-off because triage time and false-positive rate have not been measured at the target bar at release time. Adopters can opt in via `terrain.yaml`; their feedback feeds graduation to stable.
 
 The largest preview categories:
 
@@ -63,7 +63,7 @@ These are not "deferred to later" — they are explicit limitations of how 0.2.0
 - **`security/insecure-deserialization` is structural at 0.2.0** — flags any unguarded `pickle.load` / `joblib.load` / `torch.load` / `yaml.load` regardless of whether the path resolves to user-controlled input. Higher FP rate on legitimate trusted-load patterns; adopters can suppress via path-level ignore. Content-aware refinement lands with future intra-procedural data-flow tracing.
 - **MCP spec version is pinned to 2025-11-25.** Newer MCP spec versions adopt via the one-cycle deprecation contract; adopters using newer MCP clients should consult `docs/integrations/mcp.md` for compatibility notes.
 - **VS Code extension is alpha.** Marketplace-published but with limited capability — reads artifacts, renders Problems-pane findings, click-to-navigate. No inline squigglies, no real-time analysis. Full extension capability is future work.
-- **The validation harness measures against the dogfood corpora.** False-positive rate, triage time, and recall are all measured against the project's curated test substrate. They are *predictive of* real adopter behavior but are not adopter-specific. Adopters can run the harness against their own repos to get repo-specific measurements.
+- **The validation harness measures against the project's curated test substrate.** False-positive rate, triage time, and recall are all measured there. They are *predictive of* real adopter behavior but are not adopter-specific. Adopters can run the harness against their own repos to get repo-specific measurements.
 - **Telemetry is none-by-default; there is no anonymous usage data.** Adopters who want to share usage stats with the project to inform development priorities can opt in (not yet implemented; future feature behind explicit config). The project cannot tell, by default, how many adopters use Terrain or which rules they've configured.
 
 ## Things the project will *not* do under stability commitments
@@ -73,7 +73,7 @@ These are not "deferred to later" — they are explicit limitations of how 0.2.0
 - **Will not break the `terrain.yaml` schema without a deprecation cycle.** v1 schema is stable from 0.2.0 release.
 - **Will not change the JUnit / SARIF / `findings.json` artifact contract without a deprecation cycle.**
 - **Will not introduce mandatory cloud dependencies.** Default operation is fully offline.
-- **Will not publish adopter data.** The labeled calibration corpus contains data from real OSS repos under permissive licenses, not adopter repos; adopter usage is not aggregated or shared.
+- **Will not publish adopter data.** Adopter usage is not aggregated or shared.
 
 ---
 

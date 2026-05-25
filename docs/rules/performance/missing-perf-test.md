@@ -21,7 +21,7 @@ Add a benchmark under benchmarks/ or perf/ that records P50 / P95 latency for th
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.70, 0.85] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.70–0.85.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

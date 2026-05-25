@@ -194,11 +194,9 @@ truth-verify:
 voice-lint:
 	@go run ./cmd/internal/terrain-voice-lint
 
-# ── Calibration corpus ──────────────────────────────────────
-# Runs the engine pipeline against every fixture under tests/calibration/
-# and prints precision/recall per detector. Today a smoke gate (advisory
-# misses); flips to a hard ≥90% precision gate once the corpus is
-# populated. See docs/calibration/CORPUS.md.
+# ── Recall-regression fixture suite ─────────────────────────
+# Runs the engine pipeline against the bundled fixture set and prints
+# per-detector recall. Any unmatched expected label fails the build.
 calibrate:
 	go test -count=1 -v -run TestCalibration ./internal/engine/...
 

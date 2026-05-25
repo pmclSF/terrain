@@ -65,7 +65,7 @@
     },
     "reproduction": {
       "type": "string",
-      "description": "Exact CLI command to reproduce this finding locally. Required for LB-4 (local reproduction parity)."
+      "description": "Exact CLI command to reproduce this finding locally."
     },
     "metadata": {
       "type": "object",

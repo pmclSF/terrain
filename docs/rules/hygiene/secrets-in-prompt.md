@@ -25,7 +25,7 @@ Stable — Go-native regex detector ships first; richer secret-vocabulary integr
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.95, 0.99] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.95–0.99.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

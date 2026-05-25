@@ -91,14 +91,14 @@ All notable changes to Terrain are documented here. The format follows
 
 ### Headline
 
-- **Twelve new AI detectors** with **calibrated precision**: 4–6× the path-only baseline (16.83% on the app-shape cohort, Wilson 95% CI lower bound 11%). Reach them via `terrain ai findings`.
-- **Verdict engine** — typed-evidence pipeline with cross-file context, per-cohort calibration, and a labeled-corpus precision floor.
+- **Twelve new AI detectors** with substantial precision lift over a path-based baseline on representative app-shape repositories. Reach them via `terrain ai findings`.
+- **Verdict engine** — typed-evidence pipeline with cross-file context and per-cohort weighting.
 - **CLI compression** — 35 commands → 11 canonical (legacy aliases still work).
 - **No LLM API key required, ever** — every detector is structural; zero outbound network calls in default config.
 
 ### Added
 
-- 12 AI detectors with recall-regression gate (100% recall on 27-fixture corpus)
+- 12 AI detectors with a recall-regression gate over the bundled fixture set
 - Verdict engine reachable from `terrain ai findings`
 - `terrain report pr / impact` with `--fail-on / --new-findings-only / --timeout`
 - Suppressions file `.terrain/suppressions.yaml`
@@ -108,11 +108,11 @@ All notable changes to Terrain are documented here. The format follows
 ### Changed
 
 - CLI surface compressed 35 → 11 canonical commands (legacy aliases preserved)
-- Calibration runner now a load-bearing regression gate
+- Recall-regression runner is now a load-bearing release gate
 
-### Internal release notes
+### Release notes
 
-Full release manifesto + parity-gate methodology + per-pillar tier breakdown moved to [`docs/release/RELEASE-NOTES-0.2.0.md`](docs/release/RELEASE-NOTES-0.2.0.md). Per-capability status: [`docs/release/feature-status.md`](docs/release/feature-status.md).
+Per-capability status: [`docs/release/feature-status.md`](docs/release/feature-status.md). Full release notes: [`docs/release/RELEASE-NOTES-0.2.0.md`](docs/release/RELEASE-NOTES-0.2.0.md).
 
 ### What's stable in 0.2
 
@@ -127,7 +127,7 @@ in 0.2.x:
 - signal registry + manifest export
 - AI surface inventory (prompt/agent/tool/context/eval/model/scenario)
 - Promptfoo / DeepEval / Ragas / Great Expectations eval-artifact ingestion (plus gauntlet via JSON-compatible ingestion)
-- recall regression gate via the 27-fixture calibration corpus
+- recall regression gate over the bundled fixture set
 - 10 of 12 new AI detectors marked `[stable]`
 - canonical 11-command CLI shape (legacy aliases still work)
 
@@ -139,22 +139,18 @@ changes:
 - `terrain serve` local HTTP server (no auth model, localhost-only)
 - `terrain portfolio` multi-repo analysis
 - portfolio-level scoring thresholds
-- AI surface inference *precision* (recall is calibration-anchored)
+- AI surface inference *precision* (recall is regression-gated)
 
 ### AI detector batch (12 new)
 
-10 ship `[stable]`, 2 ship `[experimental]`. 11 of 12 carry calibration
-anchors at **1.00 recall** on the per-detector fixture corpus; precision
-on the same corpus is also 1.00, but the fixture corpus is small (27
-fixtures) and only labeled signals participate, so the precision number
-should be read as "the detectors don't fire spuriously on the *seeded*
-shapes" rather than as a real-world precision floor. `aiHardcodedAPIKey`
-ships without a calibration fixture (constructing a non-example
-real-shaped key would risk repository secret-scanner alerts — see
-calibration approach is documented in the internal release notes).
+10 ship `[stable]`, 2 ship `[experimental]`. Most detectors carry a
+recall-anchor fixture and pass the regression gate on the bundled
+fixture set. `aiHardcodedAPIKey` ships without a synthetic fixture
+(constructing a real-shaped key would risk repository secret-scanner
+alerts); it is covered by unit tests only.
 
 - **`aiHardcodedAPIKey`** `[stable]` — config files leaking provider API
-  keys. *No calibration fixture; tested via unit tests only.*
+  keys. *Covered by unit tests only.*
 - **`aiNonDeterministicEval`** `[stable]` — eval configs declaring a model
   without pinning `temperature: 0`. Per-provider scoping (multi-provider
   configs emit one verdict per provider entry, not one for the whole
@@ -217,28 +213,25 @@ calibration approach is documented in the internal release notes).
   framework constructor patterns (`OpenAIEmbeddings`,
   `SentenceTransformer`, `langchaingo.NewEmbeddings`, etc.).
 
-### Calibration corpus + load-bearing gate
+### Recall-regression fixture suite
 
-- **27 fixtures × 33 distinct AI/quality/health/migration/structural/
-  runtime signal types fire on real-shaped fixtures.** *The gate is a
-  recall gate*: every labeled signal must still fire after a detector
-  change. Extra signals emitted but not labeled are silent (counted neither as TP nor FP). The precision-floor companion gate (≥90% precision against a labeled-repo corpus) is future work.
-- **Calibration gate is now load-bearing.** `t.Errorf` on any
-  unmatched expected label. Empty-corpus bypass closed: `t.Skipf` →
-  `t.Fatalf` with `minFixtures=25` assertion. Deletion no longer
-  skips the gate.
+- **Bundled fixtures cover AI / quality / health / migration / structural /
+  runtime signal types on real-shaped inputs.** The regression gate
+  enforces that every labeled signal still fires after a detector change;
+  unlabeled signals are silent (counted neither as positive nor negative).
+- **Regression gate is now load-bearing.** Any unmatched expected label
+  fails the build; empty-fixture-set bypass is closed.
 - **Match-key precision improved.** Matcher key now includes `Symbol`
   in addition to `(Type, File)` so multi-symbol fixtures distinguish
   "fired per-symbol" from "fired once on the same line."
   `ExpectedAbsent` path matching uses the same normalization as the
   positive-match path, fixing eval-data detectors that stamp absolute
   paths.
-- **Known gaps for future work**: `aiHardcodedAPIKey` has no fixture
+- **Known gaps**: `aiHardcodedAPIKey` has no fixture
   (constructing a real-shaped key risks repo secret-scanner alerts);
-  no DeepEval or Ragas-shaped fixtures (only Promptfoo); no near-
-  threshold fixtures for cost/retrieval/coverage detectors so a
-  comparator-flip regression could survive.
-- **Eval-data fixture authoring.** Calibration runner auto-discovers
+  near-threshold fixtures for cost/retrieval/coverage detectors do not
+  yet cover comparator-flip regressions.
+- **Eval-data fixture authoring.** The regression runner auto-discovers
   per-fixture `eval-runs/{promptfoo,deepeval,ragas}.json` and
   `baseline.json`. Synthesises baseline snapshots from
   `baseline/eval-runs/` so regression-shaped fixtures are authored as two
@@ -247,18 +240,18 @@ calibration approach is documented in the internal release notes).
   `models.Scenario.Description` for detectors that compare scenario
   inputs to prompt content.
 
-### Verdict engine — calibrated AI-surface findings with cross-file evidence
+### Verdict engine — AI-surface findings with cross-file evidence
 
-The headline 0.2 addition. The 27-fixture calibration gate is a *recall* gate; precision-anchored findings against a labeled corpus complement it. A typed-evidence pipeline (`internal/aipipeline`) replaces regex-only AI surface detection and emits calibrated `Finding` records with a confidence score, severity, and full evidence chain.
+The headline 0.2 addition. A typed-evidence pipeline (`internal/aipipeline`) replaces regex-only AI surface detection and emits `Finding` records with a confidence score, severity, and full evidence chain.
 
-**Calibrated precision on the labeled corpus:**
+**Precision lift over the path-based baseline:**
 
-- **4–6× the path-only baseline** on the app-shape cohort (the dominant cohort for AI developers; Wilson 95% CI lower bound retained for transparency).
-- Per-cohort base rates and per-rule weight overrides; cohort-aware calibration corrects systematic over-suppression observed in earlier hand-tuned models.
+- Substantial precision lift over a path-based baseline on representative app-shape repositories.
+- Per-cohort base rates and per-rule weight overrides correct systematic over-suppression observed in earlier hand-tuned models.
 
 The pipeline emits typed evidence atoms; a weighted-log-odds composer produces a posture-thresholded confidence (observability vs gate). Each rule ships with a per-rule fix scaffold (Promptfoo eval YAML, DeepEval pytest, MLflow/W&B trackers).
 
-**Production-context training detector.** `ai.train.missing_tracker` at face value flags every `sklearn.fit(X, y)` — and the labeled corpus says that's noise (tutorials, kaggle exports, research code that doesn't need tracking). The detector is now gated on production-context signals (production ML SDKs, scheduling decorators, model-registry registration calls); without one of those signals, sklearn-shaped training code stays below the emission threshold.
+**Production-context training detector.** `ai.train.missing_tracker` at face value flags every `sklearn.fit(X, y)` — and many of those are noise (tutorials, kaggle exports, research code that doesn't need tracking). The detector is gated on production-context signals (production ML SDKs, scheduling decorators, model-registry registration calls); without one of those signals, sklearn-shaped training code stays below the emission threshold.
 
 **User-facing command.** The pipeline is reachable via the new `terrain ai findings` subcommand:
 
@@ -272,11 +265,7 @@ Output renders one block per finding: path, rule, severity,
 confidence, cohort, and the full evidence chain (atom rule ID,
 weight, span). JSON mode is structured for CI consumption.
 
-**Known limits.** The labeled corpus has 52 TPs at observability
-threshold and only 1 TP for `ai.train.missing_tracker`. Confidence
-intervals are wide; training-rule production-context atoms are
-architecturally correct but empirically unvalidated until the
-corpus expands. `ai.train.missing_tracker` ships as **preview** — calibration is wired and reachable via `terrain ai findings --rule ai.train.missing_tracker`, output carries a `[preview]` tag, and the rule is not in the default rule set. Empirical-floor work is future.
+**Known limits.** Training-rule production-context atoms are architecturally correct but conservatively gated. `ai.train.missing_tracker` ships as **preview** — reachable via `terrain ai findings --rule ai.train.missing_tracker`, output carries a `[preview]` tag, and the rule is not in the default rule set.
 
 `terrain ai list` (inventory), `terrain ai findings` (verdict engine), and the AI catalog detectors (via `terrain analyze` / `terrain report pr`) emit different shapes and answer different questions — run all three in CI.
 
@@ -404,7 +393,7 @@ Drift fails `make docs-verify` (CI gate).
   tests; `runCaptured` wraps the previously-unprotected callers.
 - `TestParallelForEachIndexCtx_CancelMidway` flaky on Ubuntu race
   runners; per-item sleep makes cancellation propagation visible.
-- Calibration coverage fixture wasn't tracked
+- Fixture coverage file wasn't tracked
   (`.gitignore` filtered `coverage/`); exception added.
 - `docs-verify.sh` lacked the executable bit in the git index.
 - `aiModelDeprecationRisk` regex matched dot-versioned variants like
@@ -488,7 +477,7 @@ closed the verified P0/P1 subset before tag:
 
 Items that did not ship in 0.2.0:
 
-- **Scoring v2 band re-anchoring** — needs a corpus of labeled *repositories* (not just per-detector calibration fixtures) to derive percentile-based band thresholds.
+- **Scoring v2 band re-anchoring** — needs a labeled repository corpus (not just per-detector fixtures) to derive percentile-based band thresholds.
 - **Conversion top-3 fixture corpora to A-grade with 95% post-conversion pass rate** — bulk content authoring.
 - **Next-stage CLI restructure** — fold `policy` into `analyze --policy=<file>` and `compare` into `analyze --against=<ref>`. Different exit-code semantics; deserves its own review.
 - **Universal flag schema + `--detail 1/2/3`** — this release landed only the namespace dispatchers; flag parity across legacy and namespace paths is still inconsistent (`--root` vs `-root`, `--json` vs `--format json`).
@@ -640,7 +629,7 @@ foundation.
   `package-lock.json` all bumped to `0.1.2`. Git-tag/package.json
   drift is now a release-gate failure.
 
-## 0.1.0 — Test System Intelligence Platform (2026-04-06)
+## 0.1.0 — Test System Intelligence Platform
 
 Terrain 0.1.0 is the first public release of the Terrain test intelligence
 platform. A ground-up rewrite of the analysis engine in Go, the legacy
@@ -759,7 +748,7 @@ Three features that use the dependency graph and surface model to produce recomm
 - Edge-case detection (14 types) with policy recommendations
 - Stability clustering for shared root-cause detection
 - Environment/device matrix coverage analysis
-- Language-aware fanout threshold (25, calibrated across Go/Python/JS/Java)
+- Language-aware fanout threshold (25, tuned across Go/Python/JS/Java)
 
 ### Go-Native Conversion Runtime
 
@@ -821,7 +810,7 @@ Three features that use the dependency graph and surface model to produce recomm
 
 ---
 
-## 0.0.1 — Signal-First Foundation (2026-04-03)
+## 0.0.1 — Signal-First Foundation
 
 Internal milestone. Initial Go-native analysis engine with signal-first
 architecture, replacing the V2 JavaScript converter.

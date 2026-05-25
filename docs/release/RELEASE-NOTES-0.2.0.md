@@ -1,14 +1,14 @@
 # Terrain 0.2.0 — Release notes (long form)
 
-> *This file is the long-form release notes for 0.2.0. The user-facing changelog summary is in [`CHANGELOG.md`](../../CHANGELOG.md). This document captures the parity-gate methodology and the three-pillar breakdown.*
+> *This file is the long-form release notes for 0.2.0. The user-facing changelog summary is in [`CHANGELOG.md`](../../CHANGELOG.md).*
 
 ## Headline
 
 0.2.0 is the first release where pre-flight checks for AI/ML systems land end-to-end as a static analyzer that runs locally and in CI, with **no LLM API key required**, ever.
 
-## Parity-gate methodology
+## Release scope
 
-0.2.0 is the first release shipped under the parity gate: every functional area must clear its pillar floor (Gate ≥ 3, Understand ≥ 3, Align ≥ 3 soft) before the tag cuts. Gate floor=3 reflects recall-anchored synthetic calibration in 0.2.0; real-repo precision-floor work continues in subsequent releases.
+0.2.0 ships under a parity gate: every functional area must clear its pillar floor (Gate, Understand, Align) before the tag cuts.
 
 Per-capability status with pillar + tier: [`feature-status.md`](feature-status.md).
 
@@ -22,14 +22,14 @@ The release groups deliverables by three pillars — Understand, Align, Gate. Ev
 
 ## Verdict engine
 
-Twelve new AI detectors ship with recall-anchor calibration fixtures (a regression gate that prevents silent recall loss when detectors change shape). On top of that, the verdict engine lands — a typed-evidence pipeline with cross-file context, per-cohort calibration, production-context training gating, and a precision floor on the calibrated panel:
+Twelve new AI detectors ship with recall-anchor regression fixtures (a regression gate that prevents silent recall loss when detectors change shape). On top of that, the verdict engine lands — a typed-evidence pipeline with cross-file context, per-cohort weighting, and production-context training gating:
 
-- **16.83% precision on the app-shape cohort** — 4–6× the path-only baseline; Wilson 95% CI lower bound 11%.
+- Substantial precision lift over a path-based baseline on representative app-shape repositories.
 - Reach it from `terrain ai findings`.
 
 ## CLI compression
 
-The CLI surface compresses 35 → 11 canonical commands while keeping every legacy alias working. The calibration runner becomes a load-bearing regression gate (any drop below the 100%-recall anchor blocks the build).
+The CLI surface compresses 35 → 11 canonical commands while keeping every legacy alias working. The recall-regression runner becomes a load-bearing release gate (any drop below the bundled-fixture recall anchor blocks the build).
 
 ## What's stable in 0.2
 
@@ -37,4 +37,4 @@ See [`CHANGELOG.md`](../../CHANGELOG.md) "What's stable in 0.2" section for the 
 
 ## Strategic framing
 
-This release lands the substrate for AI-feature pre-flight in CI. Real-repo precision and detector-roster expansion continue in subsequent releases.
+This release lands the substrate for AI-feature pre-flight in CI. Coverage expansion continues in subsequent releases.

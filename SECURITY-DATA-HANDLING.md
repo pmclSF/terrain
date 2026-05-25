@@ -94,12 +94,7 @@ Beyond LLM tiers, Terrain emits artifacts that are consumed by the CI platform i
 
 The CI provider's own data handling (retention, indexing, access control) is the adopter's responsibility to evaluate. Terrain emits the artifacts; the platform stores them.
 
-## What about labeled corpus data?
-
-The published labeled calibration corpus (under CC-BY 4.0) is sourced from:
-- Project-owned reference repos built from scratch — safe to publish
-- Forked OSS repos under permissive license — code is already public; corpus labels are project-authored
-- *(Not* sourced from adopter repos, even with permission. Corpus contents are project-owned.)
+## What about adopter data?
 
 Adopter usage data is not aggregated, shared, or published. Terrain has no mechanism to collect it (see "no telemetry" above).
 

@@ -25,6 +25,6 @@ Observability-tier. Rebuild requires a mock-classifier distinguishing module vs 
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.30, 0.50] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.30–0.50.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

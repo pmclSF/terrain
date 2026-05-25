@@ -38,12 +38,12 @@ breaking change with deprecation lead time.
 **Contract:** the field name and type are unlikely to change in
 the next minor release, but the *semantics* (what value Terrain
 puts into the field, when, with what precision) may evolve as
-calibration corpora arrive.
+measurement broadens.
 
 **Examples:**
 
 - `signals[].confidence` — current values are detector self-reports;
-  they will be re-calibrated against validation data in future releases
+  they may be re-anchored against validation data in future releases
 - `signals[].evidence[]` — the field shape is stable; the set
   of evidence sources cited may grow per detector
 - `aiSubdomain` — vocabulary is stable; new AI signal types may add
@@ -99,7 +99,7 @@ that the contract is sustainable.
 | From → To | Trigger |
 |-----------|---------|
 | internal → beta | Field is read by at least one external integration; Terrain commits to a name + type for the next minor |
-| beta → stable | Calibration evidence + adopter usage demonstrate the semantic contract is durable; field is named in the schema's `required` block when applicable |
+| beta → stable | Measurement evidence + adopter usage demonstrate the semantic contract is durable; field is named in the schema's `required` block when applicable |
 | stable → demoted | Never within a major version. A stable field that's wrong stays through the major and changes at the next major bump. |
 
 ## What this means for `terrain analyze --json`

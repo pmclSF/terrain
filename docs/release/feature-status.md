@@ -12,8 +12,8 @@ The pillar tells you which of the three workflow questions this capability answe
 
 Statuses:
 
-- **stable** — implemented, tested, calibrated; no known breaking changes planned.
-- **experimental** — implemented but rough: behavior may change, calibration is in progress, or surface area is intentionally narrow. Documented but flagged.
+- **stable** — implemented, tested, measured; no known breaking changes planned.
+- **experimental** — implemented but rough: behavior may change, measurement is in progress, or surface area is intentionally narrow. Documented but flagged.
 - **planned** — described in marketing/design docs as a Terrain capability but not yet implemented in code. Examples that show the future shape are kept in docs only with a `[planned]` tag.
 - **deprecated** — was implemented; being removed. Will not appear in this list past one release.
 
@@ -71,7 +71,7 @@ The full inventory is in `internal/signals/manifest.go`. The table below is a cu
 | `frameworkMigration` | `internal/migration/detectors.go` | |
 | `policyViolation` | `internal/governance/evaluate.go` | |
 | `assertionFreeImport` | `internal/structural/assertion_free_import.go` | |
-| `aiHardcodedAPIKey` | `internal/aidetect/hardcoded_api_key.go` | **No calibration fixture** (would risk repository secret-scanner alerts on synthetic high-entropy keys). Tested via unit tests only. |
+| `aiHardcodedAPIKey` | `internal/aidetect/hardcoded_api_key.go` | **No fixture** (would risk repository secret-scanner alerts on synthetic high-entropy keys). Tested via unit tests only. |
 | `aiNonDeterministicEval` | `internal/aidetect/non_deterministic_eval.go` | Per-provider scoping (multi-provider configs emit one verdict per provider entry). Accepts YAML / JSON / TOML. |
 | `aiModelDeprecationRisk` | `internal/aidetect/model_deprecation.go` | Severity by category: deprecated → High, floating → Medium. Trailing-boundary class excludes `.` so dot-versioned variants (`claude-2.1`) no longer match their undated parent. Comment-prefix detection covers SQL `--`, INI `;`, HTML, Markdown, RST, VB. Dated `code-davinci-{001,002,edit-001}` + `code-cushman-001` enumerated. |
 | `aiToolWithoutSandbox` | `internal/aidetect/tool_without_sandbox.go` | Approval markers checked structurally (key name + truthy value, description fields excluded) — closes the description-bypass loophole. Benign-object whitelist (`delete_cache`, `purge_logs`, etc.) suppresses bounded-blast-radius cases; always-high verbs (`exec`, `eval`, `send_payment`) keep firing regardless. |
@@ -94,8 +94,8 @@ _…plus the long-standing structural / quality / migration / governance signals
 |---|---|
 | `aiPromptInjectionRisk` | Pattern-based; assignment-anchored; 3-line concatenation window so multi-line concatenation is caught. User-input shapes cover Express/Koa, FastAPI typed params, Flask, Django, Pyramid, gRPC, CLI args. AST-precise taint-flow analysis is future work. |
 | `aiFewShotContamination` | Substring overlap with minimum-chunk + distinct-word guards; implicit path-based coverage matches auto-derived scenarios. Full n-gram overlap is future work. |
-| AI surface inference (`SurfacePrompt`, `SurfaceContext`, `SurfaceDataset`, `SurfaceToolDef`, `SurfaceRetrieval`) | Detection works; precision/recall uncalibrated. |
-| Risk band + Health Grade thresholds | Code is deterministic but thresholds are uncalibrated against a labeled corpus. Calibrated v2 scoring is future work. |
+| AI surface inference (`SurfacePrompt`, `SurfaceContext`, `SurfaceDataset`, `SurfaceToolDef`, `SurfaceRetrieval`) | Detection works; precision/recall not yet measured. |
+| Risk band + Health Grade thresholds | Code is deterministic but thresholds are author-set. A future scoring revision will re-anchor them against representative repository data. |
 | `terrain compare` snapshot diff | Implemented; output format may shift. |
 
 ### Planned (referenced in docs but not yet implemented)
@@ -122,7 +122,7 @@ Several detector entries (xfail accumulation, statistical flaky-test rate, addit
 
 - AI surface inference (prompts, contexts, datasets, tool definitions, RAG components) — stable
 - `terrain ai list` / `terrain ai doctor` / `terrain ai run` — stable
-- AI signal detectors (mix of **stable** and **experimental**) — calibrated against the fixture corpus at `tests/calibration/`
+- AI signal detectors (mix of **stable** and **experimental**) — gated by the bundled recall-regression fixture set
 - Additional AI capabilities (multi-model comparison, full LSP/MCP IDE integration) are future work
 
 ## CLI restructure

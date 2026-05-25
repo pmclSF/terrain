@@ -10,7 +10,7 @@
 - **Backend / platform engineer** — see which models are affected by a schema or API change.
 - **Classical ML engineer** — train/test integrity, drift, fairness regressions, performance deltas.
 - **LLM engineer** — scenario-based eval regression across prompts, RAG components, and models.
-- **Senior decision-maker** — public per-rule readiness cards, open calibration corpus, reproducible benchmarks.
+- **Senior decision-maker** — public per-rule readiness cards and reproducible benchmarks.
 
 Two commands an adopter learns first:
 
@@ -289,7 +289,7 @@ These are explicit non-claims:
 - **Terrain does not guarantee safe test skipping.** It provides explainable selection and gating signals. The "see which tests matter — and why" pitch is a clarity claim, not a safe-skip claim.
 - **Terrain does not run your tests.** Test runners execute; Terrain reads what they produce.
 - **Terrain does not judge model truthfulness.** AI risk detectors surface heuristic structural patterns and ingest eval-framework metadata.
-- **Terrain does not promise public-grade precision floors in 0.2.x.** Recall-anchored calibration only; labeled-corpus precision floors arrive in a future release.
+- **Terrain does not promise universal precision floors in 0.2.x.** Coverage broadens in subsequent releases.
 
 ## AI Testing in CI
 

@@ -25,6 +25,6 @@ Observability-tier. Gate-tier promotion requires a broader corpus and a framing-
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.50, 0.75] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.50–0.75.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

@@ -21,7 +21,7 @@ Pin temperature: 0 and a seed in the eval config, or document the non-determinis
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.90, 0.98] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.90–0.98.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

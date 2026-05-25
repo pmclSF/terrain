@@ -227,10 +227,9 @@ jobs:
           "$(go env GOPATH)/bin/benchstat" /tmp/bench_base.txt /tmp/bench_head.txt | tee /tmp/benchstat.txt
 
       - name: Regression gate (>10% fails the job)
-        # Carries the round-4 review's "perf regression suite establishes
-        # baseline" finding into a hard-fail gate. The gate parses the same
-        # benchmark output benchstat consumed, computes per-bench delta,
-        # and fails if any benchmark regressed beyond the threshold.
+        # The gate parses the same benchmark output benchstat consumed,
+        # computes per-bench delta, and fails if any benchmark regressed
+        # beyond the threshold.
         run: |
           go run ./cmd/internal/terrain-bench-gate \
             --base /tmp/bench_base.txt \

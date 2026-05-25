@@ -21,8 +21,11 @@ scripts/
 !scripts/_checkpoint.py
 !scripts/_checkpoint_test.py
 
-tier-4/
 .terrain/
+
+# Private working directories (not committed).
+tier-4/
+.private/
 
 # === Python ===
 __pycache__/

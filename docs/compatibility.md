@@ -39,8 +39,7 @@ Source builds work on any platform Go 1.23+ supports.
 ### Test frameworks
 
 Terrain's `analyze` command structurally models tests for the
-following frameworks. "Tier" reflects fixture coverage in the
-calibration corpus.
+following frameworks. "Tier" reflects fixture coverage.
 
 | Framework | Language | Tier |
 |-----------|----------|------|
@@ -61,7 +60,7 @@ calibration corpus.
 | Puppeteer | JS/TS | Tier 2 |
 
 Tier 1 = stable detector + structural model + at least one
-calibration fixture. Tier 2 = detected and counted, but with
+recall-regression fixture. Tier 2 = detected and counted, but with
 shallower structural modeling.
 
 ### AI eval frameworks

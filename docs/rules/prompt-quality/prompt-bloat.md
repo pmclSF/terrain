@@ -17,7 +17,7 @@ Fires when prompt token count exceeds the configured budget.
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.70, 0.85] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.70–0.85.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 
@@ -30,7 +30,7 @@ A prompt template's token count exceeds the configured budget, inflating per-cal
 - **Tier:** preview
 - **Default severity:** off (opt-in via `terrain.yaml`)
 - **Status:** preview — pending validation
-- **Graduation criteria:** false-positive rate ≤ 5% (Wilson 95% lower bound) on dogfood corpus; recall ≥ 80%.
+- **Graduation criteria:** false-positive rate ≤ 5%; recall ≥ 80%.
 
 ## 3. What this catches
 

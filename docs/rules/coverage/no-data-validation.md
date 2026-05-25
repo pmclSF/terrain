@@ -21,7 +21,7 @@ Add data validation (GE expectations, pandera schemas, dbt-expectations tests) o
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.75, 0.90] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.75–0.90.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

@@ -18,14 +18,14 @@ It is **not** an eval framework — it integrates with promptfoo, deepeval, raga
 | **Backend / platform engineer** | Learn which models are affected by a schema or API change |
 | **ML engineer (classical ML)** | Regression detection on test-set metrics, drift, fairness; train/test integrity checks |
 | **ML engineer (LLMs)** | Scenario-based eval regression detection across prompts, models, and RAG components |
-| **Senior decision-maker** | Public per-rule readiness cards, open calibration corpus, reproducible benchmarks — auditable trust profile |
+| **Senior decision-maker** | Public per-rule readiness cards and reproducible benchmarks — auditable trust profile |
 
 ## What 0.2.0 ships
 
 - **Detection rules across ten categories** — regression, coverage, hygiene, reproducibility, security, performance, fairness, data, lifecycle, and documentation. Stable rules ship default-on at measured quality; preview rules ship default-off and graduate as their false-positive rate and triage time clear the quality bars.
 - **Three surfaces** for the same diagnostic artifact: CI (status check + JUnit + GitHub annotations + Step Summary), CLI (`terrain test` / `terrain explain`), and an MCP server for AI assistants (Claude Code, Cursor).
 - **Unified graph** that crosses language boundaries: TS/JS ↔ Python/Go/Java via OpenAPI / tRPC / gRPC / GraphQL / HTTP-route inference, plus database schema awareness (Postgres / MySQL / sqlc / gorm / prisma / sqlalchemy) and pipeline awareness (dbt / Airflow / Prefect).
-- **Public quality artifacts:** per-rule readiness cards (measured FP rate via Wilson 95% lower bound) published with every release. Open-sourced labeled calibration corpus (CC-BY 4.0).
+- **Public quality artifacts:** per-rule readiness cards (measured false-positive rate) published with every release.
 - **VS Code Marketplace extension** (alpha) reading the artifact format; renders findings in the IDE Problems pane.
 
 ## The trust profile
@@ -40,8 +40,8 @@ What Terrain commits to at the 0.2.0 release tag:
 | **CLI flags** | Stable from 0.2.0; same deprecation contract |
 | **Telemetry** | **None by default.** No phone home, no usage stats, no crash reports unless opted in. Verifiable via `terrain --print-network` (which lists every external call Terrain would make under the current config — `none` for templates-only operation) |
 | **Data flow** | Templates tier: zero network calls. Optional LLM tiers: Ollama (local; no data leaves machine) is the documented default; alternatives are explicit adopter choices |
-| **Quality** | Load-bearing quality bars measured per release on the dogfood repos; readiness cards published per stable rule |
-| **License** | Apache 2.0 (Terrain itself); CC-BY 4.0 (labeled calibration corpus) |
+| **Quality** | Load-bearing quality bars measured per release; readiness cards published per stable rule |
+| **License** | Apache 2.0 |
 
 ## What 0.2.0 deliberately does *not* do
 

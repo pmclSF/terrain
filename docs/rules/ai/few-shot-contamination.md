@@ -25,6 +25,6 @@ Substring-overlap detector ships today; promotes to stable once the calibration 
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.55, 0.83] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.55–0.83.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

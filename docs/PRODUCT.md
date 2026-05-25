@@ -32,7 +32,7 @@ Terrain commits to three goals as load-bearing, all measured at every release:
 
 1. **Unified graph.** Code, tests, AI surfaces, evals, and data live in one dependency graph. Cross-language edges (TS/JS ↔ Python/Go/Java) via OpenAPI / tRPC / gRPC / GraphQL / HTTP-route inference, plus database schema and pipeline awareness.
 2. **Real CI gate.** Output is failing test cases in the platform's Tests tab — not narrative review comments. Blocks merge on the same primitive as any other test runner.
-3. **Auditable quality.** Per-rule readiness cards measure false-positive rate and triage time on dogfood repos and are published with each release. The labeled calibration corpus is open-source.
+3. **Auditable quality.** Per-rule readiness cards measure false-positive rate and triage time on representative repositories and are published with each release.
 
 ## 4. Non-goals
 
@@ -60,10 +60,10 @@ These will not be added to Terrain. Adopters needing them should look elsewhere.
 
 ## 6. Principles
 
-- **Calibration over intuition.** Every shipped rule's false-positive rate is measured against a labeled corpus before it is promoted from preview to stable.
+- **Measurement over intuition.** Every shipped rule's false-positive rate is measured before it is promoted from preview to stable.
 - **Local-first, no required keys.** Every gate finding, every detector, every PR-comment surface must work without an LLM API key. Optional LLM-enhanced features layer on when a user brings their own key — never gating core value.
 - **Stability is a public contract.** Rule IDs, JSON output schema, `terrain.yaml` schema, and CLI flags are stable from 0.2.0 forward. Changes follow a one-cycle deprecation with stderr warnings.
-- **Detectors are redesigned, not retired.** Low-precision detectors enter redesign cycles. The observability tier is the safety net; the gate panel earns its place via measurement.
+- **Detectors are redesigned, not retired.** Low-precision detectors enter redesign. The observability tier is the safety net; the gate set earns its place via measurement.
 - **Failures are loud.** When Terrain itself crashes or errors mid-run, the gate fails closed (status check red) and emits a clear annotation. Adopters who can't tolerate this set `on_terrain_error: pass` in `terrain.yaml`.
 - **Findings carry evidence.** Every finding includes a cause path, the signals that produced it, and a reproduction command. `terrain explain` surfaces this directly.
 
@@ -138,12 +138,11 @@ For the data-handling contract in full, see [`../SECURITY-DATA-HANDLING.md`](../
 
 ## 12. Quality
 
-Each stable rule's measured false-positive rate (Wilson 95% lower bound on a labeled corpus) and median triage time are published as readiness cards alongside the release tag.
+Each stable rule's measured false-positive rate and median triage time are published as readiness cards alongside the release tag.
 
 ## 13. License
 
 - **Terrain itself:** Apache 2.0. Permissive license with explicit patent grant. Unambiguous for commercial adopters.
-- **Labeled calibration corpus:** CC-BY 4.0. Permissive with attribution requirement. Contributors retain credit; downstream users can redistribute and modify freely.
 
 ## 14. Versioning
 

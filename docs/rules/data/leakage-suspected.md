@@ -21,7 +21,7 @@ Move scaler/encoder fits to AFTER the split. For time-series, use TimeSeriesSpli
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.70, 0.90] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.70–0.90.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 

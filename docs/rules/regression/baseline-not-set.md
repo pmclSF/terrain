@@ -21,7 +21,7 @@ Run `terrain ai record` on the current main-branch state to lock the baseline. S
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.99, 0.99] (heuristic today; calibrated against a labeled corpus over time).
+Confidence interval: 0.99–0.99.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 
