@@ -17,7 +17,7 @@ Adopt a stricter pinning policy (tilde, exact, or commit-pinned) where minor-ver
 
 ## Promotion plan
 
-Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when calibration data confirms regression-PR lift on deps-bump PRs.
+Preview status. One half of the dependency-drift split (the other is the strict-pin counterpart). Promotes to stable when broader validation confirms regression-PR lift on deps-bump PRs.
 
 ## Evidence sources
 

@@ -17,7 +17,7 @@ Re-enable, replace, or delete the test. Add a comment explaining why if the skip
 
 ## Promotion plan
 
-Preview status. Promotes to stable when calibration data confirms the unconditional / conditional-gate split preserves true positives without inflating false positives.
+Preview status. Promotes to stable when broader validation confirms the unconditional / conditional-gate split preserves true positives without inflating false positives.
 
 ## Evidence sources
 

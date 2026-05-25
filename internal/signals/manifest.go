@@ -419,8 +419,12 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/static-skip-unconditional",
 		RuleURI:         "docs/rules/hygiene/static-skip-unconditional.md",
-		PromotionPlan:   "Preview status. Promotes to stable when calibration data confirms the unconditional / conditional-gate split preserves true positives without inflating false positives.",
-		Tier:            TierObservability,
+		PromotionPlan:   "Preview status. Promotes to stable when broader validation confirms the unconditional / conditional-gate split preserves true positives without inflating false positives.",
+		// Tier deliberately observability while StatusPlanned. The
+		// parent SignalStaticSkippedTest is TierGate; this split child
+		// stays out of the gate decision until its precision is
+		// validated and Status moves to StatusStable.
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalStaticSkippedTestConditionalGate, ConstName: "SignalStaticSkippedTestConditionalGate",
@@ -433,8 +437,10 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/static-skip-conditional-gate",
 		RuleURI:         "docs/rules/hygiene/static-skip-conditional-gate.md",
-		PromotionPlan:   "Preview status. Promotes to stable when calibration data confirms the conditional-gate variant preserves the intentional-skip true positives that a narrower predicate would drop.",
-		Tier:            TierObservability,
+		PromotionPlan:   "Preview status. Promotes to stable when broader validation confirms the conditional-gate variant preserves the intentional-skip true positives that a narrower predicate would drop.",
+		// Informational by design — see the Description. Tier stays
+		// observability even after promotion to StatusStable.
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalAssertionFreeTest, ConstName: "SignalAssertionFreeTest",
@@ -492,8 +498,12 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/deps/drift-strict-pin",
 		RuleURI:         "docs/rules/deps/drift-strict-pin.md",
-		PromotionPlan:   "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when calibration data confirms regression-PR lift on deps-bump PRs.",
-		Tier:            TierObservability,
+		PromotionPlan:   "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when broader validation confirms regression-PR lift on deps-bump PRs.",
+		// Tier deliberately observability while StatusPlanned. The
+		// parent SignalDepsDriftRisk is TierGate; this split child
+		// stays out of the gate decision until promotion to
+		// StatusStable.
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalDepsDriftRiskCaretPolicy, ConstName: "SignalDepsDriftRiskCaretPolicy",
@@ -506,8 +516,10 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/deps/drift-caret-policy",
 		RuleURI:         "docs/rules/deps/drift-caret-policy.md",
-		PromotionPlan:   "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when calibration data confirms regression-PR lift on deps-bump PRs.",
-		Tier:            TierObservability,
+		PromotionPlan:   "Preview status. One half of the dependency-drift split (the other is the strict-pin counterpart). Promotes to stable when broader validation confirms regression-PR lift on deps-bump PRs.",
+		// Tier deliberately observability while StatusPlanned. See the
+		// strict-pin counterpart above for rationale.
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalConfigSchemaDrift, ConstName: "SignalConfigSchemaDrift",

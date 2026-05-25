@@ -46,20 +46,32 @@ func TestIsObservabilityTier(t *testing.T) {
 }
 
 // TestManifest_AllEntriesHaveExplicitTier asserts that every manifest
-// entry sets Tier explicitly. Empty Tier would silently flow through
-// IsObservabilityTier (returns true) and silently demote any High/
-// Critical detector to capped-Medium observability. The contract is
-// "no implicit default": every entry chooses gate or observability at
+// entry sets Tier to a known value (TierGate or TierObservability).
+// Empty Tier would silently flow through IsObservabilityTier (returns
+// true) and silently demote any High/Critical detector to capped-
+// Medium observability. A typo like Tier: "Observability" (capital O)
+// would do the same. The contract is "no implicit default and no
+// unknown values": every entry chooses one of the two known tiers at
 // declaration time.
 func TestManifest_AllEntriesHaveExplicitTier(t *testing.T) {
 	var missing []string
+	var unknown []string
 	for _, e := range allSignalManifest {
-		if e.Tier == "" {
+		switch e.Tier {
+		case "":
 			missing = append(missing, string(e.Type))
+		case TierGate, TierObservability:
+			// ok
+		default:
+			unknown = append(unknown, string(e.Type)+"="+string(e.Tier))
 		}
 	}
 	if len(missing) > 0 {
 		t.Fatalf("manifest entries missing explicit Tier (%d): %v", len(missing), missing)
+	}
+	if len(unknown) > 0 {
+		t.Fatalf("manifest entries with unknown Tier value (%d): %v (expected one of: %q, %q)",
+			len(unknown), unknown, TierGate, TierObservability)
 	}
 }
 
