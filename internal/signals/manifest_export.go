@@ -77,6 +77,13 @@ func BuildManifestExport() ManifestExport {
 		Entries:       make([]ManifestExportEntry, 0, len(allSignalManifest)),
 	}
 	for _, e := range allSignalManifest {
+		ruleURI := e.RuleURI
+		// docs-gen skips rule-doc emission for StatusPlanned entries
+		// (their docs haven't shipped yet). Suppress the RuleURI here
+		// too so external consumers don't dereference a stale path.
+		if e.Status == StatusPlanned {
+			ruleURI = ""
+		}
 		out.Entries = append(out.Entries, ManifestExportEntry{
 			Type:              e.Type,
 			ConstName:         e.ConstName,
@@ -92,7 +99,7 @@ func BuildManifestExport() ManifestExport {
 			ConfidenceMax:     e.ConfidenceMax,
 			EvidenceSources:   e.EvidenceSources,
 			RuleID:            e.RuleID,
-			RuleURI:           e.RuleURI,
+			RuleURI:           ruleURI,
 			PromotionPlan:     e.PromotionPlan,
 		})
 	}

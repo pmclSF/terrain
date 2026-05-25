@@ -260,7 +260,6 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/hygiene/static-skip-unconditional",
-      "ruleUri": "docs/rules/hygiene/static-skip-unconditional.md",
       "promotionPlan": "Preview status. Promotes to stable when broader validation confirms the unconditional / conditional-gate split preserves true positives without inflating false positives."
     },
     {
@@ -279,7 +278,6 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/hygiene/static-skip-conditional-gate",
-      "ruleUri": "docs/rules/hygiene/static-skip-conditional-gate.md",
       "promotionPlan": "Preview status. Promotes to stable when broader validation confirms the conditional-gate variant preserves the intentional-skip true positives that a narrower predicate would drop."
     },
     {
@@ -354,7 +352,6 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/deps/drift-strict-pin",
-      "ruleUri": "docs/rules/deps/drift-strict-pin.md",
       "promotionPlan": "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when broader validation confirms regression-PR lift on deps-bump PRs."
     },
     {
@@ -373,7 +370,6 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/deps/drift-caret-policy",
-      "ruleUri": "docs/rules/deps/drift-caret-policy.md",
       "promotionPlan": "Preview status. One half of the dependency-drift split (the other is the strict-pin counterpart). Promotes to stable when broader validation confirms regression-PR lift on deps-bump PRs."
     },
     {
@@ -749,7 +745,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/eval-failure",
-      "ruleUri": "docs/rules/ai/eval-failure.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -785,7 +780,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/accuracy-regression",
-      "ruleUri": "docs/rules/ai/accuracy-regression.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -803,7 +797,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/citation-missing",
-      "ruleUri": "docs/rules/ai/citation-missing.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -821,7 +814,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/retrieval-miss",
-      "ruleUri": "docs/rules/ai/retrieval-miss.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -839,7 +831,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/grounding-failure",
-      "ruleUri": "docs/rules/ai/grounding-failure.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -857,7 +848,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/tool-selection-error",
-      "ruleUri": "docs/rules/ai/tool-selection-error.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -875,7 +865,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/schema-parse-failure",
-      "ruleUri": "docs/rules/ai/schema-parse-failure.md",
       "promotionPlan": "Planned. Reserved signal type — runtime detector not yet wired."
     },
     {
@@ -894,7 +883,6 @@
         "policy"
       ],
       "ruleId": "terrain/ai/safety-failure",
-      "ruleUri": "docs/rules/ai/safety-failure.md",
       "promotionPlan": "Planned. Reserved signal type — runtime detector not yet wired."
     },
     {
@@ -912,7 +900,6 @@
         "policy"
       ],
       "ruleId": "terrain/ai/ai-policy-violation",
-      "ruleUri": "docs/rules/ai/ai-policy-violation.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -930,7 +917,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/hallucination",
-      "ruleUri": "docs/rules/ai/hallucination.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -948,7 +934,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/latency-regression",
-      "ruleUri": "docs/rules/ai/latency-regression.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -966,7 +951,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/cost-regression-umbrella",
-      "ruleUri": "docs/rules/ai/cost-regression-umbrella.md",
       "promotionPlan": "Planned. Reserved signal type — generic cost-regression umbrella; not yet wired."
     },
     {
@@ -985,7 +969,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/context-overflow",
-      "ruleUri": "docs/rules/ai/context-overflow.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -1003,7 +986,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/wrong-source",
-      "ruleUri": "docs/rules/ai/wrong-source.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -1021,7 +1003,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/citation-mismatch",
-      "ruleUri": "docs/rules/ai/citation-mismatch.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -1039,7 +1020,6 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/ai/stale-source",
-      "ruleUri": "docs/rules/ai/stale-source.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -1057,7 +1037,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/chunking-regression",
-      "ruleUri": "docs/rules/ai/chunking-regression.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -1075,7 +1054,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/reranker-regression",
-      "ruleUri": "docs/rules/ai/reranker-regression.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -1093,7 +1071,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/topk-regression",
-      "ruleUri": "docs/rules/ai/topk-regression.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -1111,7 +1088,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/tool-routing-error",
-      "ruleUri": "docs/rules/ai/tool-routing-error.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -1130,7 +1106,6 @@
         "policy"
       ],
       "ruleId": "terrain/ai/tool-guardrail",
-      "ruleUri": "docs/rules/ai/tool-guardrail.md",
       "promotionPlan": "Planned. Reserved signal type for runtime tool-guardrail violations; the structural side ships as aiToolWithoutSandbox."
     },
     {
@@ -1149,7 +1124,6 @@
         "policy"
       ],
       "ruleId": "terrain/ai/tool-budget",
-      "ruleUri": "docs/rules/ai/tool-budget.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -1167,7 +1141,6 @@
         "runtime"
       ],
       "ruleId": "terrain/ai/agent-fallback",
-      "ruleUri": "docs/rules/ai/agent-fallback.md",
       "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
@@ -1264,7 +1237,6 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/ai/hardcoded-api-key-literal-shape",
-      "ruleUri": "docs/rules/ai/hardcoded-api-key-literal-shape.md",
       "promotionPlan": "Planned. Reserved signal type — the literal-shape half of the API-key split; detector not yet wired."
     },
     {
@@ -1283,7 +1255,6 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/ai/secret-scanner-coverage-degraded",
-      "ruleUri": "docs/rules/ai/secret-scanner-coverage-degraded.md",
       "promotionPlan": "Planned. Reserved signal type for the CI-integration gap that pairs with the in-repo key-shape detector."
     },
     {
