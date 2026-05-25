@@ -296,7 +296,7 @@ These are explicit non-claims:
 Terrain gives AI components the same CI safety net as regular tests:
 
 - **Surface discovery** — automatically detects prompts, contexts, datasets, tool definitions, RAG pipelines, and eval scenarios in your code
-- **Calibrated findings** — `terrain ai findings` emits findings with a confidence score, severity, cohort, and full evidence chain. Per-rule false-positive rate is published per release in the readiness cards
+- **AI eval-gap findings** — `terrain ai findings` emits findings with a confidence score, severity, cohort, and full evidence chain. Per-rule false-positive rate is published per release in the readiness cards.
 - **Impact-scoped selection** — `terrain ai run --base main` runs only the eval scenarios affected by your change
 - **Protection gaps** — `terrain pr` flags changed AI surfaces that have no eval scenario covering them
 - **Policy enforcement** — block PRs that modify uncovered AI surfaces, regress accuracy, or trigger safety failures
@@ -305,12 +305,12 @@ Terrain gives AI components the same CI safety net as regular tests:
 The same structural graph that powers test selection for regular code also traces AI surface dependencies, so a change to a prompt template triggers the right eval scenarios automatically.
 
 ```bash
-terrain ai findings                      # observability posture (≥0.40)
-terrain ai findings --posture=gate       # gate posture (≥0.80)
+terrain ai findings                      # observability posture
+terrain ai findings --posture=gate       # gate posture
 terrain ai findings --json               # CI-consumable output
 ```
 
-`terrain ai list` (inventory), `terrain ai findings` (calibrated findings via the verdict engine), and the AI catalog detectors (via `terrain analyze`) answer different questions — run all three in CI.
+`terrain ai list` (inventory), `terrain ai findings` (AI eval-gap findings), and the AI catalog detectors (via `terrain analyze`) answer different questions — run all three in CI.
 
 ## Installation
 

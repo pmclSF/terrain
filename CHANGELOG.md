@@ -18,11 +18,11 @@ All notable changes to Terrain are documented here. The format follows
   on stdio and loads the most-recent `terrain analyze` artifacts from
   `.terrain/`. (The server existed previously; it just wasn't reachable
   from the CLI.)
-- **`terrain doctor` infra checks** for the mechanisms registry, the
-  signal-type alias registry, the `.terrain/shadow-report.jsonl` sink,
-  and whether `.gitignore` covers `.terrain/`. Surfaces hygiene gaps
-  (e.g. shadow sink absent, runtime cache not gitignored) the legacy
-  doctor missed.
+- **`terrain doctor` infra checks** for the detector registry, the
+  signal-type alias registry, and whether `.gitignore` covers
+  `.terrain/`. Additional maintainer-only checks (per-state detector
+  breakdown, shadow-sink presence + byte count) surface only when
+  `TERRAIN_DEV=1` is set, so the default doctor output stays tight.
 - **`.terrain/shadow-report.jsonl`** sink: an append-only log of
   would-suppress / would-add events emitted by mechanisms in shadow state.
   Buffered writes; flushed on pipeline exit. `.terrain/.gitignore` is

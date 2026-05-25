@@ -117,6 +117,7 @@ The complete adopter-facing CLI is documented in [`docs/cli-spec.md`](docs/cli-s
 | [`SECURITY-DATA-HANDLING.md`](SECURITY-DATA-HANDLING.md) | Data-flow doc for security review |
 | [`rfcs/`](rfcs/) | RFCs for significant changes |
 | [`docs/cli-spec.md`](docs/cli-spec.md) | Full CLI command and flag reference |
+| [`docs/signal-catalog.md`](docs/signal-catalog.md) | Signal types, categories, and the four-tier data-availability model |
 
 ## Vocabulary
 

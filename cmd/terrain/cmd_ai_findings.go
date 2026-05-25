@@ -11,8 +11,8 @@ import (
 	"github.com/pmclSF/terrain/internal/aipiperun"
 )
 
-// runAIFindings is the user-facing entry point for the calibrated
-// aipipeline. It walks the repo root through the full pipeline
+// runAIFindings is the user-facing entry point for the AI eval-gap
+// findings pipeline. It walks the repo root through the full pipeline
 // (path-prefilter -> regex-fastscan -> ast-confirm -> cross-file-scope
 // -> change-scope -> composer) and renders the surviving findings.
 //
