@@ -33,32 +33,32 @@ func useASCIIOutput() bool {
 // so the output renders cleanly on locales that can't display U+2713
 // ("✓"), U+26A0 ("⚠"), etc.
 //
-//	ok     → "✓" or "[OK]"
-//	warn   → "⚠" or "[!]"
-//	miss   → "✗" or "[x]"
-//	info   → "?" or "[?]"
+// Returns a single token without surrounding brackets — the renderer
+// supplies the bracket wrapper (e.g. `[%s]`).
+//
+//	ok     → "✓" or "OK"
+//	warn   → "⚠" or "!"
+//	miss   → "✗" or "x"
+//	info   → "?" (same either way)
 func statusGlyph(kind string) string {
 	ascii := useASCIIOutput()
 	switch kind {
 	case "ok":
 		if ascii {
-			return "[OK]"
+			return "OK"
 		}
 		return "✓"
 	case "warn":
 		if ascii {
-			return "[!]"
+			return "!"
 		}
 		return "⚠"
 	case "miss":
 		if ascii {
-			return "[x]"
+			return "x"
 		}
 		return "✗"
 	case "info":
-		if ascii {
-			return "[?]"
-		}
 		return "?"
 	}
 	return kind
