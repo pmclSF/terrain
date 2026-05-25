@@ -5,7 +5,7 @@ When a rule is split into multiple detection mechanisms (regex + AST + def-follo
 - **Per-mechanism recall:** what fraction of golden TPs this mechanism alone catches (against the subset of TPs hinted at it).
 - **Union recall:** what fraction of golden TPs *all* mechanisms together catch.
 
-A CI run loads the harness, runs terrain against the labeled corpus, and compares the findings against the golden TPs. A drop past `union_min_recall` fails the build.
+A CI run loads the harness, runs terrain against the validation set, and compares the findings against the golden TPs. A drop past `union_min_recall` fails the build.
 
 ## File layout
 
