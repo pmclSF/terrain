@@ -1,6 +1,6 @@
 // Package terrainconfig parses and validates terrain.yaml v1 — the
-// adopter-facing configuration file. Schema is locked from v0.2.0
-// per PRODUCT.md §10 and §18; changes are one-cycle deprecation-cycled.
+// adopter-facing configuration file. Schema is locked from v0.2.0;
+// changes are one-cycle deprecation-cycled.
 //
 // The package is the canonical reader for terrain.yaml. Existing legacy
 // readers in internal/policy/ continue to work for backward compat but

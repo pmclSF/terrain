@@ -512,8 +512,8 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	exitCode := 0
 	if decision.Action == actionBlock {
 		// exitAIGateBlock = 4 is the documented "AI gate blocks the run"
-		// exit code per cmd/terrain/main.go's exit-code scheme. Pre-0.2.x
-		// this path used exitError = 1, so CI scripts couldn't
+		// exit code per cmd/terrain/main.go's exit-code scheme. Earlier
+		// revisions used exitError = 1 here, so CI scripts couldn't
 		// distinguish AI-gate failure from any other runtime error.
 		exitCode = exitAIGateBlock
 	}

@@ -13,9 +13,9 @@ import (
 	"github.com/pmclSF/terrain/internal/models"
 )
 
-// runDescribeCommand implements `terrain describe` — the first-run UX
-// per PRODUCT.md §16. Inspects the repo, lists detected AI/ML surfaces,
-// and either prints them or writes a starter terrain.yaml.
+// runDescribeCommand implements `terrain describe` — the first-run UX.
+// Inspects the repo, lists detected AI/ML surfaces, and either prints
+// them or writes a starter terrain.yaml.
 //
 // Security-friendly defaults per the task brief:
 //   - No network calls (everything inferred from source structure)

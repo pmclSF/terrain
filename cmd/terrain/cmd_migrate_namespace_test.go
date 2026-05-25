@@ -62,14 +62,14 @@ func TestMigrateNamespace_LegacyDirectInvocationStillWorks(t *testing.T) {
 }
 
 // TestMigrateNamespace_EmptyArgsPrintsCanonicalHelp ensures bare
-// `terrain migrate` prints the canonical 0.2 verb listing instead of
+// `terrain migrate` prints the canonical verb listing instead of
 // falling through to the legacy directory-mode usage block.
 //
-// Pre-0.2.x: bare `terrain migrate` errored with
+// Earlier revisions: bare `terrain migrate` errored with
 // `--from <framework> is required (or pass <directory>)` — actively
 // misleading users away from the canonical shape.
 //
-// 0.2 lock-in: stderr capture must contain "Usage: terrain migrate <verb>"
+// Lock-in: stderr capture must contain "Usage: terrain migrate <verb>"
 // and the verb table.
 func TestMigrateNamespace_EmptyArgsPrintsCanonicalHelp(t *testing.T) {
 	t.Parallel()
@@ -94,8 +94,8 @@ func TestMigrateNamespace_EmptyArgsPrintsCanonicalHelp(t *testing.T) {
 }
 
 // TestMigrateNamespace_HelpFlagPrintsCanonicalHelp covers the
-// `terrain migrate --help` and `-h` shapes. Pre-0.2.x both forwarded
-// to the legacy directory-mode help, which printed
+// `terrain migrate --help` and `-h` shapes. Earlier revisions had
+// both forward to the legacy directory-mode help, which printed
 // `Usage: terrain migrate <dir>` and never named any of the
 // 11 canonical verbs — the worst possible introduction to the new
 // shape since the user explicitly asked for help.

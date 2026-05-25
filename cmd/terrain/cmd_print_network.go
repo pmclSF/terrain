@@ -13,9 +13,8 @@ import (
 
 // runPrintNetwork prints the unified detection network for a repo:
 // frameworks, surfaces, evals (when present), and the surface→eval
-// coverage edges. Per PRODUCT.md §16, this is the "what did Terrain
-// see" diagnostic that adopters reach for when surface inference
-// looks wrong.
+// coverage edges. This is the "what did Terrain see" diagnostic that
+// adopters reach for when surface inference looks wrong.
 func runPrintNetwork(root string) error {
 	abs, err := filepath.Abs(root)
 	if err != nil {

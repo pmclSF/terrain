@@ -36,7 +36,7 @@
       ],
       "ruleId": "terrain/health/flaky-test",
       "ruleUri": "docs/rules/health/flaky-test.md",
-      "promotionPlan": "Today's detector is retry-based, not statistical failure-rate. Statistical detection lands in a future release with the calibration corpus."
+      "promotionPlan": "Today's detector is retry-based, not statistical failure-rate. Statistical detection lands in a future release."
     },
     {
       "type": "skippedTest",
@@ -334,7 +334,7 @@
       ],
       "ruleId": "terrain/deps/drift-risk",
       "ruleUri": "docs/rules/deps/drift-risk.md",
-      "promotionPlan": "Promotes to stable once the calibration corpus confirms regression-PR lift ≥ 1.5x on deps-bump PRs."
+      "promotionPlan": "Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on deps-bump PRs."
     },
     {
       "type": "depsDriftRisk-strict-pin",
@@ -389,7 +389,7 @@
       ],
       "ruleId": "terrain/config/schema-drift",
       "ruleUri": "docs/rules/config/schema-drift.md",
-      "promotionPlan": "Promotes to stable once the calibration corpus confirms regression-PR lift ≥ 1.5x on config-only PRs."
+      "promotionPlan": "Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on config-only PRs."
     },
     {
       "type": "promptFileMissingEval",
@@ -1364,7 +1364,7 @@
       ],
       "ruleId": "terrain/ai/few-shot-contamination",
       "ruleUri": "docs/rules/ai/few-shot-contamination.md",
-      "promotionPlan": "Substring-overlap detector ships today; promotes to stable once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes."
+      "promotionPlan": "Substring-overlap detector ships today; promotes to stable once broader validation tunes the threshold and adds token-level n-gram + semantic-similarity passes."
     },
     {
       "type": "aiEmbeddingModelChange",

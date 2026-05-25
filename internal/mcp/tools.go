@@ -13,7 +13,7 @@ type Tool struct {
 	Handler     func(*Artifacts, json.RawMessage) (any, error)
 }
 
-// toolRegistry is the canonical inventory per PRODUCT.md §16.
+// toolRegistry is the canonical tool inventory exposed by the server.
 var toolRegistry = []Tool{
 	{
 		Name:        "list_findings",

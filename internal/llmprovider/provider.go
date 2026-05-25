@@ -1,6 +1,6 @@
 // Package llmprovider abstracts LLM inference for `terrain explain`
-// and other CLI-only LLM-enrichment paths. Per PRODUCT.md §16, three
-// provider families are supported:
+// and other CLI-only LLM-enrichment paths. Three provider families
+// are supported:
 //
 //   - Ollama (default, security-friendly — local-only inference at
 //     http://localhost:11434, no network)

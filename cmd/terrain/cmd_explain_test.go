@@ -13,8 +13,8 @@ import (
 // generic `exitError = 1`. This lets CI scripts branch on "the entity
 // you asked about doesn't exist" without parsing stderr text.
 //
-// Pre-0.2.x both commands collapsed not-found into exit 1, so a CI
-// step that ran `terrain show owner platform || rebuild_owner_index`
+// Earlier revisions collapsed not-found into exit 1, so a CI step
+// that ran `terrain show owner platform || rebuild_owner_index`
 // could not tell the difference between "owner doesn't exist" and
 // "the analysis itself crashed." The dedicated code restores that
 // distinction.

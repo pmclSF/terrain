@@ -6,7 +6,7 @@
 // long_message, cause-path summary, reproduction command, and docs
 // link.
 //
-// Per PRODUCT.md §16 minimum capability set for 0.2.0:
+// Minimum capability set for 0.2.0:
 //   - artifacts → Problems pane
 //   - click-to-navigate
 //   - hover diagnostics

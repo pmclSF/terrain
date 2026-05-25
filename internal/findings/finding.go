@@ -3,7 +3,7 @@
 // CLI / JUnit / SARIF / Step Summary surfaces.
 //
 // The schema is documented in schemas/finding.v1.json and locked from
-// v0.2.0 per PRODUCT.md §8 / §18.
+// v0.2.0.
 package findings
 
 import (

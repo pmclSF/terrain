@@ -486,9 +486,9 @@ func analyzeFromScope(scope *ChangeScope, snap *models.TestSuiteSnapshot) *Impac
 	// Map changed files to code units.
 	// Pass the graph so per-unit coverage lookups consult the typed graph
 	// (covers_code_surface / imports_module edges) rather than direct-scanning
-	// snap.TestFiles[].LinkedCodeUnits. See PRODUCT.md §7 "Snapshot pipeline as
-	// the integration boundary" and §16 must-ship "ImpactGraph consulted by
-	// selection" (audit CH5 fix).
+	// snap.TestFiles[].LinkedCodeUnits — keeps the snapshot pipeline as
+	// the integration boundary and ensures ImpactGraph is consulted by
+	// selection.
 	result.ImpactedUnits = mapChangedUnits(scope, snap, result.Graph)
 
 	// Find impacted tests (using graph when available).

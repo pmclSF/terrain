@@ -19,7 +19,7 @@ import (
 
 // DetectVersionFloating walks parsed dependency manifests and emits one
 // Signal per dependency with a non-exact version pinning. Implements
-// the rule terrain/reproducibility/version-floating per PRODUCT.md §9.
+// the rule terrain/reproducibility/version-floating.
 //
 // Severity ladder:
 //

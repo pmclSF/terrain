@@ -57,11 +57,11 @@ func ParseDeepEvalJSON(data []byte) (*EvalRunResult, error) {
 		return nil, fmt.Errorf("deepeval payload has no testCases")
 	}
 
-	// 0.2.0 final-polish: DeepEval newer schemas write `runId` instead of
-	// `testRunId`. When TestRunID is empty fall back to the secondary
-	// field. Without this, downstream baseline matching dropped into
-	// the "first envelope of matching framework" fallback and could
-	// cross-attribute runs in repos with multiple eval suites.
+	// DeepEval newer schemas write `runId` instead of `testRunId`. When
+	// TestRunID is empty fall back to the secondary field. Without
+	// this, downstream baseline matching dropped into the "first
+	// envelope of matching framework" fallback and could cross-
+	// attribute runs in repos with multiple eval suites.
 	runID := raw.TestRunID
 	if runID == "" {
 		runID = raw.RunID
@@ -172,12 +172,12 @@ func aggregateMetricsData(metrics []deepEvalMetricEntry) (success bool, score fl
 			success = false
 		}
 		sum += m.Score
-		// 0.2.0 final-polish: DeepEval emits metric names in two
-		// shapes — snake_case (`answer_relevancy`) and human-readable
-		// (`Answer Relevancy`). The latter contains internal spaces
-		// that must be normalized to underscores; otherwise the keys
-		// mismatch retrievalScoreKeys / hallucinationGroundingKeys
-		// whitelists in the consumer detectors.
+		// DeepEval emits metric names in two shapes — snake_case
+		// (`answer_relevancy`) and human-readable (`Answer Relevancy`).
+		// The latter contains internal spaces that must be normalized
+		// to underscores; otherwise the keys mismatch
+		// retrievalScoreKeys / hallucinationGroundingKeys whitelists
+		// in the consumer detectors.
 		key := strings.ToLower(strings.TrimSpace(m.Name))
 		key = strings.ReplaceAll(key, " ", "_")
 		if key != "" {

@@ -258,9 +258,9 @@ func runAnalyze(o analyzeRunOpts) error {
 	opt.EnablePreviewRules = o.EnablePreview
 	opt.CollectDiagnostics = o.Diag
 	opt.OnProgress = newProgressFunc(jsonOutput)
-	// Honour Ctrl-C and the optional --timeout: pre-0.2.x analyze
-	// exited abruptly on SIGINT with no cleanup, and unbounded
-	// monorepo scans could block CI indefinitely.
+	// Honour Ctrl-C and the optional --timeout: without this, analyze
+	// exits abruptly on SIGINT with no cleanup, and unbounded
+	// monorepo scans can block CI indefinitely.
 	// runPipelineWithSignalsAndTimeout wraps RunPipelineContext with a
 	// SIGINT-aware context plus an optional deadline so in-flight
 	// detectors check ctx.Err and unwind cooperatively.
@@ -369,10 +369,10 @@ func runAnalyze(o analyzeRunOpts) error {
 	}
 
 	// `--write-snapshot` runs first so it persists regardless of the
-	// output format. Pre-0.2.x the persist call lived after the
-	// rendering switch, so `--write-snapshot --json` returned from the
-	// JSON branch before the snapshot was written — the canonical CI
-	// shape (capture JSON to stdout, save snapshot to disk) silently
+	// output format. Earlier revisions placed the persist call after
+	// the rendering switch, so `--write-snapshot --json` returned from
+	// the JSON branch before the snapshot was written — the canonical
+	// CI shape (capture JSON to stdout, save snapshot to disk) silently
 	// dropped the snapshot.
 	if writeSnap {
 		if err := persistSnapshot(result.Snapshot, root); err != nil {

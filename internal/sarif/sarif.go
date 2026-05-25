@@ -39,8 +39,7 @@ type Rule struct {
 	// HelpURI links to the rule's documentation. SARIF consumers
 	// (GitHub Code Scanning, IDE integrations) render this as a
 	// clickthrough so a finding pivots to its docs/rules/<rule>.md
-	// page. Pre-0.2.x this field was missing entirely; rule pages were
-	// dead-end strings.
+	// page. Without it, rule pages are dead-end strings.
 	HelpURI    string      `json:"helpUri,omitempty"`
 	Properties *Properties `json:"properties,omitempty"`
 }

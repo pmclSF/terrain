@@ -21,7 +21,7 @@ set -euo pipefail
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-go run ./cmd/terrain-docs-gen -out "$tmp" >/dev/null
+go run ./cmd/internal/terrain-docs-gen -out "$tmp" >/dev/null
 
 rc=0
 

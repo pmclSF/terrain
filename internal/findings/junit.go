@@ -10,11 +10,11 @@ import (
 
 // JUnit XML emission.
 //
-// PRODUCT.md §7 requires JUnit output that renders cleanly in the
-// three dominant CI consumers: dorny/test-reporter,
-// mikepenz/action-junit-report, and GitLab native. The shape below
-// is the intersection of what those three accept; deviations from
-// the JUnit XML schema that any of them reject are not used.
+// JUnit output must render cleanly in the three dominant CI consumers:
+// dorny/test-reporter, mikepenz/action-junit-report, and GitLab native.
+// The shape below is the intersection of what those three accept;
+// deviations from the JUnit XML schema that any of them reject are
+// not used.
 //
 // Mapping rules:
 //   - One <testsuite> per rule_id. Suite name is the rule_id.
@@ -43,8 +43,7 @@ type JUnitOptions struct {
 }
 
 // WriteJUnit emits the artifact as JUnit XML. The output passes the
-// validators used by dorny/test-reporter and mikepenz/action-junit-report
-// per PRODUCT.md §7.
+// validators used by dorny/test-reporter and mikepenz/action-junit-report.
 func (a *Artifact) WriteJUnit(w io.Writer, opts JUnitOptions) error {
 	suites := groupBySuite(a.Findings, opts.EmitWarnings)
 

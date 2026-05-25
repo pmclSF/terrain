@@ -26,13 +26,13 @@ The detailed design is `docs/PRODUCT.md` in its entirety. This RFC does not dupl
 
 Key commitments accepted by this RFC:
 
-- **Three co-equal product goals** (PRODUCT.md §3): unified graph + real CI gate + auditable quality
-- **Rule catalog** spanning ten categories with stable (default-on) and preview (opt-in) tiers. Stable count is a ceiling; actual stable count at release is whatever clears the quality bars (PRODUCT.md §9)
-- **Three-surface model** (PRODUCT.md §7): CI surface (templates only, no LLM ever); CLI surface (`terrain test` / `terrain explain` / `terrain describe` / `terrain accept-snapshot` / `terrain init`); agent surface (MCP server pinned to spec 2025-11-25)
-- **Quality bars** (PRODUCT.md §12): measured false-positive rate, recall on seeded-failure fixtures, per-phase runtime, bidirectional cause attribution, senior-decision-maker comprehension
-- **Validation harness** (PRODUCT.md §13): representative-repository coverage with published readiness cards per release
-- **Project operations** (PRODUCT.md §18): Apache 2.0 license; semver with pre-1.0 deprecation cycles; zero telemetry by default; RFC governance; documented issue-triage SLOs
-- **Dependency-order spine** (PRODUCT.md §16): foundation → edges/adapters → rules → surfaces → validation
+- **Three co-equal product goals**: unified graph + real CI gate + auditable quality
+- **Rule catalog** spanning ten categories with stable (default-on) and preview (opt-in) tiers. Stable count is a ceiling; actual stable count at release is whatever clears the quality bars
+- **Three-surface model**: CI surface (templates only, no LLM ever); CLI surface (`terrain test` / `terrain explain` / `terrain describe` / `terrain accept-snapshot` / `terrain init`); agent surface (MCP server pinned to spec 2025-11-25)
+- **Quality bars**: measured false-positive rate, recall on seeded-failure fixtures, per-phase runtime, bidirectional cause attribution, senior-decision-maker comprehension
+- **Validation harness**: representative-repository coverage with published readiness cards per release
+- **Project operations**: Apache 2.0 license; semver with pre-1.0 deprecation cycles; zero telemetry by default; RFC governance; documented issue-triage SLOs
+- **Dependency-order spine**: foundation → edges/adapters → rules → surfaces → validation
 
 ## Drawbacks
 

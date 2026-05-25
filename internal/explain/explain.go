@@ -584,9 +584,9 @@ type EvalExplanation struct {
 	Signals []EvalSignal `json:"signals,omitempty"`
 
 	// PolicyDecision is the CI policy outcome for this scenario.
-	// Canonical actions: "pass" | "warn" | "block" (matches airun.Decision.Action
-	// per PRODUCT.md §16 vocabulary discipline). When PolicyDecision is "block"
-	// or "warn", PolicyReason carries the human-readable explanation.
+	// Canonical actions: "pass" | "warn" | "block" (matches
+	// airun.Decision.Action). When PolicyDecision is "block" or "warn",
+	// PolicyReason carries the human-readable explanation.
 	PolicyDecision string `json:"policyDecision,omitempty"`
 
 	// PolicyReason carries the explanation when PolicyDecision is "block" or

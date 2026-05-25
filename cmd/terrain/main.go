@@ -99,9 +99,9 @@ const (
 	// exitNotFound distinguishes "the entity you asked about does not
 	// exist in this repo" from "analysis itself failed." Used by
 	// `terrain show` and `terrain explain` so CI scripts can branch on
-	// "missing entity" without parsing stderr text. Pre-0.2.x these
-	// commands collapsed not-found into exit 1, indistinguishable from
-	// a real analysis crash.
+	// "missing entity" without parsing stderr text. Earlier revisions
+	// collapsed not-found into exit 1, indistinguishable from a real
+	// analysis crash.
 	exitNotFound = 5
 	// exitSeverityGateBlock signals that `--fail-on` blocked a
 	// successful analysis. Code 6 leaves room for code 3 (planned for
@@ -144,7 +144,7 @@ func main() {
 
 	// Global --print-network flag prints the unified network of
 	// detected surfaces / evals / tests / code units and exits.
-	// Per PRODUCT.md §16. Must run before subcommand dispatch.
+	// Must run before subcommand dispatch.
 	if os.Args[1] == "--print-network" {
 		root := "."
 		for i := 2; i < len(os.Args)-1; i++ {
@@ -940,9 +940,9 @@ func main() {
 			enc.SetIndent("", "  ")
 			// schemaVersion is the snapshot-JSON contract version this
 			// binary produces; CI tooling that pins on the snapshot
-			// shape can gate on this field. Pre-0.2.x the JSON output
-			// only carried version/commit/date — consumers had to load
-			// a snapshot and read its `meta.schemaVersion` to find out.
+			// shape can gate on this field. Earlier revisions only
+			// carried version/commit/date — consumers had to load a
+			// snapshot and read its `meta.schemaVersion` to find out.
 			_ = enc.Encode(map[string]string{
 				"version":       version,
 				"commit":        commit,
@@ -1050,11 +1050,11 @@ var knownCommands = []string{
 // `--root` value. This makes `terrain <command> <path>` work alongside
 // `terrain <command> --root=<path>` for every analysis-style command.
 //
-// Pre-0.2.x, most analysis commands silently ignored positionals — a
-// user typing `terrain analyze ./myproj` got cwd analysis with no
-// warning. Adversarial review caught this on analyze, ai run, ai list,
-// ai doctor, debug graph, debug coverage, report impact, report
-// insights — fix is uniform across the family.
+// Earlier revisions had most analysis commands silently ignore
+// positionals — a user typing `terrain analyze ./myproj` got cwd
+// analysis with no warning. The fix is now uniform across the family:
+// analyze, ai run, ai list, ai doctor, debug graph, debug coverage,
+// report impact, report insights.
 //
 // Errors out with exit 2 (usage error) if more than one positional was
 // supplied. Callers must pass the FlagSet's args slice (post-Parse).

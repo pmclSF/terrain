@@ -69,11 +69,12 @@ func runConvertNamespaceCLI(args []string) error {
 
 func runMigrateOrConvertNamespaceCLI(args []string, fallthroughFn func([]string) error) error {
 	if len(args) == 0 {
-		// Pre-0.2.x bare `terrain migrate` / `terrain convert` fell
-		// through to the legacy directory-mode runner which printed an
-		// error-shaped usage block. The canonical 0.2 shape is the
-		// verb listing — a plain `terrain migrate` without args means
-		// "show me what I can do," not "I'm trying to migrate the cwd."
+		// Earlier revisions had bare `terrain migrate` / `terrain
+		// convert` fall through to the legacy directory-mode runner
+		// which printed an error-shaped usage block. The canonical
+		// shape is the verb listing — a plain `terrain migrate`
+		// without args means "show me what I can do," not "I'm trying
+		// to migrate the cwd."
 		printMigrateNamespaceUsage(noun(fallthroughFn))
 		return nil
 	}
@@ -82,7 +83,7 @@ func runMigrateOrConvertNamespaceCLI(args []string, fallthroughFn func([]string)
 	if isHelpArg(verb) {
 		// `terrain migrate --help` / `terrain convert -h` — print the
 		// namespace-verb listing instead of falling through to the
-		// legacy directory-mode help. Pre-0.2.x this printed
+		// legacy directory-mode help. Earlier revisions printed
 		// `Usage: terrain migrate <dir>` which actively misled users
 		// away from the canonical shape.
 		printMigrateNamespaceUsage(noun(fallthroughFn))

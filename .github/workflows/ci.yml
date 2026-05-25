@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 # Cancel in-progress CI runs when a new commit is pushed to the same
-# PR / branch. Pre-0.2.x final-polish, force-pushes piled up
-# overlapping runs that all consumed runner minutes pointlessly.
+# PR / branch. Without this, force-pushes pile up overlapping runs
+# that all consume runner minutes pointlessly.
 # `cancel-in-progress: true` on PR-triggered runs keeps the queue
 # clean; we leave main-branch runs uncancelled so post-merge runs
 # always complete (they're rare and the result is load-bearing for

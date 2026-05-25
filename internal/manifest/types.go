@@ -1,8 +1,8 @@
 // Package manifest parses dependency manifests across ecosystems
 // (Python, Node, Go, Rust, Ruby) and reports each declared dependency
 // alongside its version-pinning state. Used by the reproducibility /
-// version-floating rule (PRODUCT.md §16) to flag unpinned dependencies
-// that introduce non-determinism into test runs and CI evals.
+// version-floating rule to flag unpinned dependencies that introduce
+// non-determinism into test runs and CI evals.
 package manifest
 
 // Ecosystem identifies a package ecosystem.

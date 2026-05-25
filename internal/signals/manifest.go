@@ -230,7 +230,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/health/flaky-test",
 		RuleURI:         "docs/rules/health/flaky-test.md",
 		PromotionPlan: "Today's detector is retry-based, not statistical failure-rate. " +
-			"Statistical detection lands in a future release with the calibration corpus.",
+			"Statistical detection lands in a future release.",
 		Tier:            TierObservability,
 	},
 	{
@@ -484,7 +484,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/deps/drift-risk",
 		RuleURI:         "docs/rules/deps/drift-risk.md",
-		PromotionPlan:   "Promotes to stable once the calibration corpus confirms regression-PR lift ≥ 1.5x on deps-bump PRs.",
+		PromotionPlan:   "Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on deps-bump PRs.",
 		Tier:            TierGate,
 	},
 	{
@@ -532,7 +532,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/config/schema-drift",
 		RuleURI:         "docs/rules/config/schema-drift.md",
-		PromotionPlan:   "Promotes to stable once the calibration corpus confirms regression-PR lift ≥ 1.5x on config-only PRs.",
+		PromotionPlan:   "Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on config-only PRs.",
 		Tier:            TierGate,
 	},
 	{
@@ -1227,7 +1227,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.55, ConfidenceMax: 0.83,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/few-shot-contamination", RuleURI: "docs/rules/ai/few-shot-contamination.md",
-		PromotionPlan:   "Substring-overlap detector ships today; promotes to stable once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes.",
+		PromotionPlan:   "Substring-overlap detector ships today; promotes to stable once broader validation tunes the threshold and adds token-level n-gram + semantic-similarity passes.",
 		Tier:            TierObservability,
 	},
 	{
@@ -1321,12 +1321,12 @@ var allSignalManifest = []ManifestEntry{
 		Tier:            TierObservability,
 	},
 
-	// ── §9 Stable rules ──────────────────────────────────────────
-	// These implement the canonical PRODUCT.md §9 stable taxonomy
-	// (regression / coverage / hygiene / reproducibility / security /
-	// performance / data). Domain stays as the closest existing
-	// SignalCategory until the SignalCategory enum is extended in a
-	// separate change; the rule ID encodes the §9 category.
+	// ── Stable rules ─────────────────────────────────────────────
+	// These implement the canonical stable taxonomy (regression /
+	// coverage / hygiene / reproducibility / security / performance /
+	// data). Domain stays as the closest existing SignalCategory until
+	// the SignalCategory enum is extended in a separate change; the
+	// rule ID encodes the taxonomy category.
 
 	{
 		Type: SignalVersionFloating, ConstName: "SignalVersionFloating",
@@ -1615,14 +1615,13 @@ var allSignalManifest = []ManifestEntry{
 		Tier:            TierObservability,
 	},
 
-	// ── §9 Preview rules ─────────────────────────────────────────
-	// Per PRODUCT.md §15, preview rules ship detection logic with a
-	// short-form doc page (sections 1, 2, 3, 5, 6, 9 only — ~250
-	// words). They're default-off and pending LB-5 / LB-6 calibration
-	// on the dogfood corpus before promotion to Stable.
+	// ── Preview rules ────────────────────────────────────────────
+	// Preview rules ship detection logic with a short-form doc page.
+	// They're default-off and pending broader validation before
+	// promotion to Stable.
 	//
-	// Status=Experimental signals "detection works but not yet
-	// calibrated"; detectors land alongside these entries in
+	// Status=Experimental signals "detection works but not yet broadly
+	// validated"; detectors land alongside these entries in
 	// internal/preview/.
 
 	{

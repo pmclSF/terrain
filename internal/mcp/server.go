@@ -1,9 +1,9 @@
 // Package mcp implements a Model Context Protocol server for Terrain.
 //
 // The server speaks the JSON-RPC 2.0 transport defined in the MCP
-// specification, pinned to version 2025-11-25 per PRODUCT.md §16. It
-// runs over stdio (the default MCP transport) and exposes the minimum
-// tool inventory listed in §16:
+// specification, pinned to version 2025-11-25. It runs over stdio
+// (the default MCP transport) and exposes the canonical tool
+// inventory:
 //
 //	list_findings        — list findings from the most recent run
 //	get_finding          — retrieve one finding by ID
@@ -29,10 +29,9 @@ import (
 	"github.com/pmclSF/terrain/internal/findings"
 )
 
-// SpecVersion is the MCP spec version this server implements. Pinned
-// per PRODUCT.md §16; adopters that pin to a different version on
-// their client side will see initialize fail with a version
-// mismatch.
+// SpecVersion is the MCP spec version this server implements.
+// Adopters that pin to a different version on their client side will
+// see initialize fail with a version mismatch.
 const SpecVersion = "2025-11-25"
 
 // ServerName is the server's name as reported in initialize.

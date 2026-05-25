@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://terrain.dev/schemas/terrain.yaml.v1.json",
   "title": "Terrain Configuration",
-  "description": "Adopter-facing configuration. Stable from v0.2.0 per docs/PRODUCT.md §10 and §18. Defaults work with no file; this schema is purely opt-in overrides.",
+  "description": "Adopter-facing configuration. Stable from v0.2.0. Defaults work with no file; this schema is purely opt-in overrides.",
   "type": "object",
   "required": ["version"],
   "additionalProperties": false,

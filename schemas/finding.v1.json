@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://terrain.dev/schemas/finding.v1.json",
   "title": "Terrain Finding",
-  "description": "A single result from one Terrain rule. Stable from v0.2.0 per docs/PRODUCT.md §8 and §18.",
+  "description": "A single result from one Terrain rule. Stable from v0.2.0.",
   "type": "object",
   "required": ["version", "rule_id", "severity", "primary_loc", "short_message", "docs_url"],
   "additionalProperties": false,

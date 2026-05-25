@@ -17,7 +17,7 @@ Pin versions or add a lockfile-verification gate. Re-audit the manifest after pi
 
 ## Promotion plan
 
-Promotes to stable once the calibration corpus confirms regression-PR lift ≥ 1.5x on deps-bump PRs.
+Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on deps-bump PRs.
 
 ## Evidence sources
 

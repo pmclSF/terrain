@@ -17,7 +17,7 @@ Stabilize timing, shared state, and external dependency handling.
 
 ## Promotion plan
 
-Today's detector is retry-based, not statistical failure-rate. Statistical detection lands in a future release with the calibration corpus.
+Today's detector is retry-based, not statistical failure-rate. Statistical detection lands in a future release.
 
 ## Evidence sources
 

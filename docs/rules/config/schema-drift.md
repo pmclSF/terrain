@@ -17,7 +17,7 @@ Pin action refs to a SHA or tagged release. Replace `:latest` and untagged image
 
 ## Promotion plan
 
-Promotes to stable once the calibration corpus confirms regression-PR lift ≥ 1.5x on config-only PRs.
+Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on config-only PRs.
 
 ## Evidence sources
 

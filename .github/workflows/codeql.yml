@@ -23,7 +23,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      # 0.2.0 final-polish: dropped `python` from the language matrix.
+      # `python` is intentionally excluded from the language matrix.
       # The repo has only a handful of Python helper scripts (no
       # production Python under analysis); CodeQL Python autobuild was
       # spending ~5 min/week with effectively no coverage. Re-add when

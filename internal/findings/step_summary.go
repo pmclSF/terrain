@@ -9,8 +9,8 @@ import (
 // StepSummaryOptions controls Step Summary markdown rendering.
 type StepSummaryOptions struct {
 	// AnnotationCap is the maximum number of PR annotations to surface
-	// inline in the markdown. Default 50 per PRODUCT.md §7. The
-	// remaining findings are linked to findings.json.
+	// inline in the markdown. Default 50. The remaining findings are
+	// linked to findings.json.
 	AnnotationCap int
 
 	// RepoName is the optional repository name used in the header.
@@ -21,7 +21,7 @@ type StepSummaryOptions struct {
 }
 
 // WriteStepSummary renders the artifact as GitHub Step Summary markdown.
-// Format per PRODUCT.md §7 (silence-on-green discipline):
+// Silence-on-green discipline:
 //   - When zero findings: a single auditable line confirming the run
 //     and the rule count that didn't fire. No noise.
 //   - When findings exist: severity-grouped sections with primary_loc
@@ -87,9 +87,9 @@ func writeHeader(w io.Writer, opts StepSummaryOptions, total, errs, warns, notic
 	return nil
 }
 
-// writeGreenStateLine renders the silence-on-green confirmation per
-// PRODUCT.md §7. Not literally silent — adopters need to see that
-// Terrain ran. But a single auditable line, not a noise burst.
+// writeGreenStateLine renders the silence-on-green confirmation. Not
+// literally silent — adopters need to see that Terrain ran. But a
+// single auditable line, not a noise burst.
 func writeGreenStateLine(w io.Writer) error {
 	_, err := io.WriteString(w, "Terrain analyzed this change. No findings — all rules passed.\n")
 	return err

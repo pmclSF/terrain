@@ -32,12 +32,12 @@ const DefaultDetectorBudget = 30 * time.Second
 // under it.
 const signalTypeDetectorBudgetExceeded = SignalDetectorBudgetExceeded
 
-// safeDetect wraps a detector call with panic recovery. Pre-0.2.x a
-// nil deref or index-out-of-range in any of ~30 detectors would
-// terminate the whole pipeline goroutine, taking down `terrain
-// analyze` and the calibration test along with the offending fixture.
-// With recovery in place, a single broken detector emits zero signals
-// for that run instead — the rest of the pipeline continues.
+// safeDetect wraps a detector call with panic recovery. Without it, a
+// nil deref or index-out-of-range in any detector terminates the whole
+// pipeline goroutine, taking down `terrain analyze` along with the
+// offending fixture. With recovery in place, a single broken detector
+// emits zero signals for that run — the rest of the pipeline
+// continues.
 //
 // When a panic is caught, we leave a marker in the returned slice
 // (Severity=Critical, Type=detectorPanic) so the user sees there was a
@@ -398,8 +398,8 @@ func (r *DetectorRegistry) Run(snap *models.TestSuiteSnapshot) {
 
 	// Pre-allocate results to len(r.registrations) so the per-goroutine
 	// append doesn't trigger repeated copy-grow under the mutex. Cheap
-	// micro-optimization, but useful at scale: with ~30 detectors the
-	// pre-fix slice grew through 0/1/2/4/8/16/32 reallocations.
+	// micro-optimization, but useful at scale: without this, the slice
+	// grows through 0/1/2/4/8/16/32 reallocations.
 	var (
 		wg         sync.WaitGroup
 		mu         sync.Mutex
@@ -512,7 +512,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 					Category:    models.CategoryQuality,
 					Severity:    models.SeverityCritical,
 					Confidence:  1.0,
-					Explanation: fmt.Sprintf("detector %q declared RequiresGraph=true but does not implement GraphDetector — registration silently skipped pre-0.2.x; surfaced now as a configuration bug.", reg.Meta.ID),
+					Explanation: fmt.Sprintf("detector %q declared RequiresGraph=true but does not implement GraphDetector — surfaced as a configuration bug rather than silently skipped.", reg.Meta.ID),
 					SuggestedAction: "Verify that the detector's concrete type implements DetectWithGraph(*TestSuiteSnapshot, *Graph), or set RequiresGraph=false in the registration.",
 				})
 				continue

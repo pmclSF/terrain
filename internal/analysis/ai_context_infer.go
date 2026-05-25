@@ -309,9 +309,9 @@ func detectTemplateFiles(root string, existingIDs map[string]bool) []models.Code
 		if err != nil || info.IsDir() {
 			if info != nil && info.IsDir() {
 				// Use the same canonical skip set as discoverTestFiles.
-				// Pre-0.2.x this inline list omitted .terrain, dist, build,
-				// target, .next, .venv, etc., causing extra walks on dirs
-				// other walkers correctly avoid.
+				// Earlier revisions inlined a list that omitted .terrain,
+				// dist, build, target, .next, .venv, etc., causing extra
+				// walks on dirs other walkers correctly avoid.
 				if skipDirs[filepath.Base(path)] {
 					return filepath.SkipDir
 				}

@@ -17,7 +17,7 @@ Hold out the contaminated examples from the prompt's few-shot block, or rewrite 
 
 ## Promotion plan
 
-Substring-overlap detector ships today; promotes to stable once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes.
+Substring-overlap detector ships today; promotes to stable once broader validation tunes the threshold and adds token-level n-gram + semantic-similarity passes.
 
 ## Evidence sources
 

@@ -12,8 +12,8 @@ import (
 
 // runAcceptSnapshotCommand implements `terrain accept-snapshot`.
 //
-// Per PRODUCT.md §16 the command walks the adopter through accepting
-// baseline updates deliberately. 0.2.0 ships a focused version:
+// The command walks the adopter through accepting baseline updates
+// deliberately. 0.2.0 ships a focused version:
 //   - Reads the current eval-run artifact at .terrain/eval-runs/latest.json
 //     (or a path passed as the first positional arg).
 //   - Diff against .terrain/baselines/latest.json.

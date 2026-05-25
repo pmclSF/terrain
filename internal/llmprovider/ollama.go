@@ -10,8 +10,8 @@ import (
 )
 
 // OllamaProvider implements Provider against the Ollama local server.
-// Default endpoint http://localhost:11434, default model llama3.2:3b
-// per PRODUCT.md §16 security-friendly default.
+// Default endpoint http://localhost:11434, default model llama3.2:3b —
+// a security-friendly default (local-only, no network).
 type OllamaProvider struct {
 	Endpoint string
 	Model    string
