@@ -11,12 +11,9 @@ All notable changes to Terrain are documented here. The format follows
   detected frameworks, AI surfaces, schema files, trace logs — followed by
   three copy-pasteable next-step commands. Strictly read-only: no
   `.terrain/` directory is created until you opt in via `terrain init`.
-- **`--mechanisms.<name>=on|off|shadow` CLI flag** plus `terrain mechanisms
-  list/show` for inspecting available detector mechanisms. Each entry is
-  tagged `preview` (no observable effect when flipped) or `live` (an active
-  gate that changes detector output). One mechanism
-  (`deprecated_test_pattern_trigger_gate`) ships live as a reference
-  consumer wiring; the rest are preview.
+- **`--mechanisms.<name>=on|off|shadow` runtime override** for per-detector
+  shadow/live experiments. Internal mechanism inspection verbs are
+  maintainer-only and gated behind `TERRAIN_DEV=1`.
 - **`terrain mcp`** is now a top-level command that starts the MCP server
   on stdio and loads the most-recent `terrain analyze` artifacts from
   `.terrain/`. (The server existed previously; it just wasn't reachable
