@@ -39,10 +39,10 @@ const (
 //   - TierObservability detectors: lift evidence informs explain output but
 //     does NOT demote severity (since lift can't measure their failure
 //     mode); severity is capped at Medium so they never gate CI.
-//   - Empty tier: defaults to TierObservability. Every CI-blocking
-//     detector must opt in to TierGate explicitly; a missing Tier
-//     field means "do not block CI" so an un-validated rule cannot
-//     silently fail a build.
+//   - Tier is REQUIRED on every manifest entry. The contract is enforced
+//     by TestManifest_AllEntriesHaveExplicitTier. Empty Tier is a build
+//     error so no detector can silently fall through to either side of
+//     the gate/observability split.
 type SignalTier string
 
 const (
@@ -216,6 +216,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/health/slow-test",
 		RuleURI:         "docs/rules/health/slow-test.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalFlakyTest, ConstName: "SignalFlakyTest",
@@ -230,6 +231,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleURI:         "docs/rules/health/flaky-test.md",
 		PromotionPlan: "Today's detector is retry-based, not statistical failure-rate. " +
 			"Statistical detection lands in a future release with the calibration corpus.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalSkippedTest, ConstName: "SignalSkippedTest",
@@ -242,6 +244,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime", "structural-pattern"},
 		RuleID:          "terrain/health/skipped-test",
 		RuleURI:         "docs/rules/health/skipped-test.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalDeadTest, ConstName: "SignalDeadTest",
@@ -254,6 +257,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/health/dead-test",
 		RuleURI:         "docs/rules/health/dead-test.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalUnstableSuite, ConstName: "SignalUnstableSuite",
@@ -266,6 +270,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/health/unstable-suite",
 		RuleURI:         "docs/rules/health/unstable-suite.md",
+		Tier:            TierObservability,
 	},
 
 	// ── Quality ────────────────────────────────────────────────
@@ -415,6 +420,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/hygiene/static-skip-unconditional",
 		RuleURI:         "docs/rules/hygiene/static-skip-unconditional.md",
 		PromotionPlan:   "Preview status. Promotes to stable when calibration data confirms the unconditional / conditional-gate split preserves true positives without inflating false positives.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalStaticSkippedTestConditionalGate, ConstName: "SignalStaticSkippedTestConditionalGate",
@@ -428,6 +434,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/hygiene/static-skip-conditional-gate",
 		RuleURI:         "docs/rules/hygiene/static-skip-conditional-gate.md",
 		PromotionPlan:   "Preview status. Promotes to stable when calibration data confirms the conditional-gate variant preserves the intentional-skip true positives that a narrower predicate would drop.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAssertionFreeTest, ConstName: "SignalAssertionFreeTest",
@@ -458,6 +465,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal"},
 		RuleID:          "terrain/hygiene/orphaned-test",
 		RuleURI:         "docs/rules/hygiene/orphaned-test.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalDepsDriftRisk, ConstName: "SignalDepsDriftRisk",
@@ -485,6 +493,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/deps/drift-strict-pin",
 		RuleURI:         "docs/rules/deps/drift-strict-pin.md",
 		PromotionPlan:   "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when calibration data confirms regression-PR lift on deps-bump PRs.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalDepsDriftRiskCaretPolicy, ConstName: "SignalDepsDriftRiskCaretPolicy",
@@ -498,6 +507,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/deps/drift-caret-policy",
 		RuleURI:         "docs/rules/deps/drift-caret-policy.md",
 		PromotionPlan:   "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when calibration data confirms regression-PR lift on deps-bump PRs.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalConfigSchemaDrift, ConstName: "SignalConfigSchemaDrift",
@@ -592,6 +602,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/migration/dynamic-generation",
 		RuleURI:         "docs/rules/migration/dynamic-generation.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalCustomMatcherRisk, ConstName: "SignalCustomMatcherRisk",
@@ -604,6 +615,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/migration/custom-matcher",
 		RuleURI:         "docs/rules/migration/custom-matcher.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalUnsupportedSetup, ConstName: "SignalUnsupportedSetup",
@@ -616,6 +628,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/migration/unsupported-setup",
 		RuleURI:         "docs/rules/migration/unsupported-setup.md",
+		Tier:            TierObservability,
 	},
 
 	// ── Governance ─────────────────────────────────────────────
@@ -742,6 +755,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal"},
 		RuleID:          "terrain/structural/fixture-fragility",
 		RuleURI:         "docs/rules/structural/fixture-fragility.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAssertionFreeImport, ConstName: "SignalAssertionFreeImport",
@@ -798,6 +812,7 @@ var allSignalManifest = []ManifestEntry{
 		// detectors (hallucination-rate, cost-regression,
 		// retrieval-regression).
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalEvalRegression, ConstName: "SignalEvalRegression",
@@ -810,6 +825,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"eval-execution"},
 		RuleID:          "terrain/regression/eval-regression",
 		RuleURI:         "docs/rules/regression/eval-regression.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalAccuracyRegression, ConstName: "SignalAccuracyRegression",
@@ -819,6 +835,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/accuracy-regression", RuleURI: "docs/rules/ai/accuracy-regression.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalCitationMissing, ConstName: "SignalCitationMissing",
@@ -931,6 +948,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern", "runtime"},
 		RuleID:          "terrain/ai/context-overflow", RuleURI: "docs/rules/ai/context-overflow.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalWrongSourceSelected, ConstName: "SignalWrongSourceSelected",
@@ -940,6 +958,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/wrong-source", RuleURI: "docs/rules/ai/wrong-source.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalCitationMismatch, ConstName: "SignalCitationMismatch",
@@ -949,6 +968,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/citation-mismatch", RuleURI: "docs/rules/ai/citation-mismatch.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalStaleSourceRisk, ConstName: "SignalStaleSourceRisk",
@@ -958,6 +978,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/stale-source", RuleURI: "docs/rules/ai/stale-source.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalChunkingRegression, ConstName: "SignalChunkingRegression",
@@ -967,6 +988,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/chunking-regression", RuleURI: "docs/rules/ai/chunking-regression.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalRerankerRegression, ConstName: "SignalRerankerRegression",
@@ -976,6 +998,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/reranker-regression", RuleURI: "docs/rules/ai/reranker-regression.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalTopKRegression, ConstName: "SignalTopKRegression",
@@ -985,6 +1008,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/topk-regression", RuleURI: "docs/rules/ai/topk-regression.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalToolRoutingError, ConstName: "SignalToolRoutingError",
@@ -994,6 +1018,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/tool-routing-error", RuleURI: "docs/rules/ai/tool-routing-error.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalToolGuardrailViolation, ConstName: "SignalToolGuardrailViolation",
@@ -1003,6 +1028,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime", "policy"},
 		RuleID:          "terrain/ai/tool-guardrail", RuleURI: "docs/rules/ai/tool-guardrail.md",
 		PromotionPlan: "Planned. Reserved signal type for runtime tool-guardrail violations; the structural side ships as aiToolWithoutSandbox.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalToolBudgetExceeded, ConstName: "SignalToolBudgetExceeded",
@@ -1012,6 +1038,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime", "policy"},
 		RuleID:          "terrain/ai/tool-budget", RuleURI: "docs/rules/ai/tool-budget.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAgentFallbackTriggered, ConstName: "SignalAgentFallbackTriggered",
@@ -1021,6 +1048,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/agent-fallback", RuleURI: "docs/rules/ai/agent-fallback.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 
 	// ── 0.2 AI signals (planned in 0.2, detectors land before 0.2 close) ──
@@ -1103,6 +1131,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/ai/secret-scanner-coverage-degraded",
 		RuleURI:         "docs/rules/ai/secret-scanner-coverage-degraded.md",
 		PromotionPlan:   "Planned. Reserved signal type for the CI-integration gap that pairs with the in-repo key-shape detector.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAIToolWithoutSandbox, ConstName: "SignalAIToolWithoutSandbox",
@@ -1114,6 +1143,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/tool-without-sandbox", RuleURI: "docs/rules/ai/tool-without-sandbox.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalAINonDeterministicEval, ConstName: "SignalAINonDeterministicEval",
@@ -1125,6 +1155,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.9, ConfidenceMax: 0.98,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/non-deterministic-eval", RuleURI: "docs/rules/ai/non-deterministic-eval.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAIModelDeprecationRisk, ConstName: "SignalAIModelDeprecationRisk",
@@ -1136,6 +1167,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/model-deprecation-risk", RuleURI: "docs/rules/ai/model-deprecation-risk.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAICostRegression, ConstName: "SignalAICostRegression",
@@ -1147,6 +1179,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/cost-regression", RuleURI: "docs/rules/ai/cost-regression.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAIHallucinationRate, ConstName: "SignalAIHallucinationRate",
@@ -1170,6 +1203,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/hallucination-rate", RuleURI: "docs/rules/ai/hallucination-rate.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalAIFewShotContamination, ConstName: "SignalAIFewShotContamination",
@@ -1182,6 +1216,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/few-shot-contamination", RuleURI: "docs/rules/ai/few-shot-contamination.md",
 		PromotionPlan:   "Substring-overlap detector ships today; promotes to stable once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAIEmbeddingModelChange, ConstName: "SignalAIEmbeddingModelChange",
@@ -1206,6 +1241,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/retrieval-regression", RuleURI: "docs/rules/ai/retrieval-regression.md",
+		Tier:            TierGate,
 	},
 
 	// ── Engine self-diagnostic signals ──────────────────────────────
@@ -1223,6 +1259,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"static"},
 		RuleID:          "terrain/engine/detector-panic", RuleURI: "docs/rules/engine/detector-panic.md",
+		Tier:            TierObservability,
 	},
 	// Per-detector wall-clock timeout budgets. Emitted by the
 	// pipeline (safeDetectWithBudget) when a detector exceeds its
@@ -1240,6 +1277,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"static"},
 		RuleID:          "terrain/engine/detector-budget", RuleURI: "docs/rules/engine/detector-budget.md",
+		Tier:            TierObservability,
 	},
 	// Emitted by safeDetectChecked when a detector's declared input
 	// requirements (RequiresRuntime / RequiresBaseline /
@@ -1256,6 +1294,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"static"},
 		RuleID:          "terrain/engine/detector-missing-input", RuleURI: "docs/rules/engine/detector-missing-input.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalSuppressionExpired, ConstName: "SignalSuppressionExpired",
@@ -1267,6 +1306,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"policy"},
 		RuleID:          "terrain/engine/suppression-expired", RuleURI: "docs/rules/engine/suppression-expired.md",
+		Tier:            TierObservability,
 	},
 
 	// ── §9 Stable rules ──────────────────────────────────────────
@@ -1287,6 +1327,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern", "manifest"},
 		RuleID:          "terrain/reproducibility/version-floating",
 		RuleURI:         "docs/rules/reproducibility/version-floating.md",
+		Tier:            TierObservability,
 	},
 
 	// Remaining §9 stable rules — declared as Planned. Each gets its
@@ -1306,6 +1347,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/hygiene/secrets-in-prompt",
 		RuleURI:         "docs/rules/hygiene/secrets-in-prompt.md",
 		PromotionPlan:   "Stable — Go-native regex detector ships first; richer secret-vocabulary integration is a possible follow-up.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalNoTestsForCodeUnit, ConstName: "SignalNoTestsForCodeUnit",
@@ -1318,6 +1360,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal"},
 		RuleID:          "terrain/coverage/no-tests",
 		RuleURI:         "docs/rules/coverage/no-tests.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalNoEvalForAISurface, ConstName: "SignalNoEvalForAISurface",
@@ -1330,6 +1373,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal"},
 		RuleID:          "terrain/coverage/no-eval",
 		RuleURI:         "docs/rules/coverage/no-eval.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalModelFixtureUnpinned, ConstName: "SignalModelFixtureUnpinned",
@@ -1342,6 +1386,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/model-fixture-unpinned",
 		RuleURI:         "docs/rules/hygiene/model-fixture-unpinned.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalEvalNoAssertion, ConstName: "SignalEvalNoAssertion",
@@ -1354,6 +1399,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/hygiene/eval-no-assertion",
 		RuleURI:         "docs/rules/hygiene/eval-no-assertion.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalNoSeed, ConstName: "SignalNoSeed",
@@ -1366,6 +1412,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/reproducibility/no-seed",
 		RuleURI:         "docs/rules/reproducibility/no-seed.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalMissingEnvPinning, ConstName: "SignalMissingEnvPinning",
@@ -1378,6 +1425,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/reproducibility/missing-env-pinning",
 		RuleURI:         "docs/rules/reproducibility/missing-env-pinning.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalPIIInEval, ConstName: "SignalPIIInEval",
@@ -1390,6 +1438,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/security/pii-in-eval",
 		RuleURI:         "docs/rules/security/pii-in-eval.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalInsecureDeserialize, ConstName: "SignalInsecureDeserialize",
@@ -1402,6 +1451,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/security/insecure-deserialization",
 		RuleURI:         "docs/rules/security/insecure-deserialization.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalMissingPerfTest, ConstName: "SignalMissingPerfTest",
@@ -1414,6 +1464,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal"},
 		RuleID:          "terrain/performance/missing-perf-test",
 		RuleURI:         "docs/rules/performance/missing-perf-test.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalDataLeakageSuspected, ConstName: "SignalDataLeakageSuspected",
@@ -1426,6 +1477,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/data/leakage-suspected",
 		RuleURI:         "docs/rules/data/leakage-suspected.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalMissingTrainTestSplit, ConstName: "SignalMissingTrainTestSplit",
@@ -1438,6 +1490,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/data/missing-train-test-split",
 		RuleURI:         "docs/rules/data/missing-train-test-split.md",
+		Tier:            TierGate,
 	},
 
 	// ── Regression family (§9 stable) ────────────────────────────
@@ -1454,6 +1507,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"eval-execution"},
 		RuleID:          "terrain/regression/baseline-not-set",
 		RuleURI:         "docs/rules/regression/baseline-not-set.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalPassRateDrop, ConstName: "SignalPassRateDrop",
@@ -1466,6 +1520,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"eval-execution"},
 		RuleID:          "terrain/regression/pass-rate-drop",
 		RuleURI:         "docs/rules/regression/pass-rate-drop.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalSnapshotMismatch, ConstName: "SignalSnapshotMismatch",
@@ -1478,6 +1533,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"eval-execution"},
 		RuleID:          "terrain/regression/snapshot-mismatch",
 		RuleURI:         "docs/rules/regression/snapshot-mismatch.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalTestFailed, ConstName: "SignalTestFailed",
@@ -1490,6 +1546,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime", "graph-traversal"},
 		RuleID:          "terrain/regression/test-failed",
 		RuleURI:         "docs/rules/regression/test-failed.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalPerformanceRegression, ConstName: "SignalPerformanceRegression",
@@ -1502,6 +1559,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"eval-execution"},
 		RuleID:          "terrain/regression/performance-regression",
 		RuleURI:         "docs/rules/regression/performance-regression.md",
+		Tier:            TierGate,
 	},
 
 	// ── Coverage family (§9 stable) ──────────────────────────────
@@ -1516,6 +1574,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"static"},
 		RuleID:          "terrain/coverage/missing-baseline",
 		RuleURI:         "docs/rules/coverage/missing-baseline.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalNoIntegrationTest, ConstName: "SignalNoIntegrationTest",
@@ -1528,6 +1587,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal"},
 		RuleID:          "terrain/coverage/no-integration-test",
 		RuleURI:         "docs/rules/coverage/no-integration-test.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalNoDataValidation, ConstName: "SignalNoDataValidation",
@@ -1540,6 +1600,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/coverage/no-data-validation",
 		RuleURI:         "docs/rules/coverage/no-data-validation.md",
+		Tier:            TierObservability,
 	},
 
 	// ── §9 Preview rules ─────────────────────────────────────────
@@ -1559,6 +1620,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/prompt-quality/prompt-bloat", RuleURI: "docs/rules/prompt-quality/prompt-bloat.md",
 		PromotionPlan: "Fires when prompt token count exceeds the configured budget.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalPromptWithoutTemperature, ConstName: "SignalPromptWithoutTemperature",
@@ -1567,6 +1629,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/prompt-quality/prompt-without-temperature", RuleURI: "docs/rules/prompt-quality/prompt-without-temperature.md",
 		PromotionPlan: "Fires when an LLM SDK call has no temperature kwarg. Defaults differ across SDKs; an explicit value is reproducibility-critical.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalMissingPromptValidator, ConstName: "SignalMissingPromptValidator",
@@ -1575,6 +1638,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/prompt-quality/missing-validator", RuleURI: "docs/rules/prompt-quality/missing-validator.md",
 		PromotionPlan: "Fires when a prompt template has no output-validator schema attached.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalPromptVersionSkew, ConstName: "SignalPromptVersionSkew",
@@ -1583,6 +1647,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.75, ConfidenceMax: 0.9, EvidenceSources: []string{"graph-traversal"},
 		RuleID: "terrain/prompt-quality/version-skew", RuleURI: "docs/rules/prompt-quality/version-skew.md",
 		PromotionPlan: "Detects when the same prompt template is referenced by multiple eval scenarios under different version names.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalRetrievalWithoutRerank, ConstName: "SignalRetrievalWithoutRerank",
@@ -1591,6 +1656,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.65, ConfidenceMax: 0.8, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/retrieval-quality/no-rerank", RuleURI: "docs/rules/retrieval-quality/no-rerank.md",
 		PromotionPlan: "Flags retrieval pipelines with top_k > 5 and no reranker.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalColdVectorStore, ConstName: "SignalColdVectorStore",
@@ -1599,6 +1665,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/retrieval-quality/cold-store", RuleURI: "docs/rules/retrieval-quality/cold-store.md",
 		PromotionPlan: "Fires when a vector store is initialized but no index-population call exists in the same module.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAgentLoopRisk, ConstName: "SignalAgentLoopRisk",
@@ -1607,6 +1674,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/agent-quality/loop-risk", RuleURI: "docs/rules/agent-quality/loop-risk.md",
 		PromotionPlan: "Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; validated against documented public agent-loop incidents.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalToolWithoutBudget, ConstName: "SignalToolWithoutBudget",
@@ -1615,6 +1683,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.75, ConfidenceMax: 0.9, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/agent-quality/tool-no-budget", RuleURI: "docs/rules/agent-quality/tool-no-budget.md",
 		PromotionPlan: "Fires when a tool-call-enabled agent has no rate limit or cost ceiling configured.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalTargetLeakage, ConstName: "SignalTargetLeakage",
@@ -1623,6 +1692,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/data-quality/target-leakage", RuleURI: "docs/rules/data-quality/target-leakage.md",
 		PromotionPlan: "Fires when a feature column is derived from the target column (e.g., y_lag1 in features after target encoding).",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalDuplicateEvalRows, ConstName: "SignalDuplicateEvalRows",
@@ -1631,6 +1701,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.9, ConfidenceMax: 0.99, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/data-quality/duplicate-rows", RuleURI: "docs/rules/data-quality/duplicate-rows.md",
 		PromotionPlan: "Fires when an eval dataset has more than 5% duplicate input rows.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalSchemaDrift, ConstName: "SignalSchemaDrift",
@@ -1639,6 +1710,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/data-quality/schema-drift", RuleURI: "docs/rules/data-quality/schema-drift.md",
 		PromotionPlan: "Fires when the pipeline output schema has changed between baseline and current run.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalMissingEvalCategories, ConstName: "SignalMissingEvalCategories",
@@ -1647,6 +1719,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.65, ConfidenceMax: 0.8, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/coverage/missing-eval-categories", RuleURI: "docs/rules/coverage/missing-eval-categories.md",
 		PromotionPlan: "Fires when an eval suite has happy-path coverage but no adversarial or edge-case categories.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalOrphanedEval, ConstName: "SignalOrphanedEval",
@@ -1655,6 +1728,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.8, ConfidenceMax: 0.95, EvidenceSources: []string{"graph-traversal"},
 		RuleID: "terrain/coverage/orphaned-eval", RuleURI: "docs/rules/coverage/orphaned-eval.md",
 		PromotionPlan: "Fires when an eval has no CoveredSurfaceIDs (references no surface).",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalColdStartTime, ConstName: "SignalColdStartTime",
@@ -1663,6 +1737,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.8, ConfidenceMax: 0.95, EvidenceSources: []string{"runtime"},
 		RuleID: "terrain/performance/cold-start-time", RuleURI: "docs/rules/performance/cold-start-time.md",
 		PromotionPlan: "Fires when first-request latency exceeds the configured threshold (e.g., 2x P50).",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalTokenCostBudget, ConstName: "SignalTokenCostBudget",
@@ -1671,6 +1746,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.9, ConfidenceMax: 0.99, EvidenceSources: []string{"runtime"},
 		RuleID: "terrain/performance/token-cost-budget", RuleURI: "docs/rules/performance/token-cost-budget.md",
 		PromotionPlan: "Fires when per-run token cost exceeds the configured ceiling.",
+		Tier:            TierObservability,
 	},
 }
 

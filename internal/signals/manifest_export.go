@@ -21,12 +21,13 @@ type ManifestExportEntry struct {
 	ConstName       string                `json:"constName"`
 	Domain          models.SignalCategory `json:"domain"`
 	Status          SignalStatus          `json:"status"`
-	// Tier classifies the rule as gate-relevant (the JSON omits the
-	// field when empty, which means "gate" — the default) or
-	// "observability" (informational, never blocks `--fail-on=*`).
-	// External consumers reading this manifest can use Tier to predict
-	// whether a finding will count toward Terrain's gate decision.
-	Tier            SignalTier            `json:"tier,omitempty"`
+	// Tier classifies the rule as "gate" (counts toward
+	// `--fail-on=*` gate decisions) or "observability" (informational
+	// only). The field is always emitted — no default tier — so external
+	// consumers reading this manifest can deterministically predict
+	// whether a finding contributes to Terrain's gate decision.
+	Tier             SignalTier            `json:"tier"`
+	DisabledByDefault bool                  `json:"disabledByDefault,omitempty"`
 	Title           string                `json:"title"`
 	Description     string                `json:"description"`
 	Remediation     string                `json:"remediation,omitempty"`
@@ -51,10 +52,10 @@ type ManifestExport struct {
 // Bump the major if a field becomes required, the minor if a field is
 // added in an additive way.
 //
-// 1.1.0 added the additive field "tier" (omitempty); pre-1.1.0 consumers
-// continue to parse without that field, they just don't see whether a
-// rule is observability-tier.
-const CurrentManifestSchemaVersion = "1.1.0"
+// 1.2.0 made "tier" required (always emitted) and added "disabledByDefault"
+// (omitempty). Pre-1.2.0 consumers that ignored unknown fields keep working;
+// any consumer that defaulted missing "tier" to "gate" must update.
+const CurrentManifestSchemaVersion = "1.2.0"
 
 // BuildManifestExport projects the in-memory manifest into a stable wire
 // format suitable for marshaling to JSON. The result is deterministic:
@@ -67,12 +68,13 @@ func BuildManifestExport() ManifestExport {
 	}
 	for _, e := range allSignalManifest {
 		out.Entries = append(out.Entries, ManifestExportEntry{
-			Type:            e.Type,
-			ConstName:       e.ConstName,
-			Domain:          e.Domain,
-			Status:          e.Status,
-			Tier:            e.Tier,
-			Title:           e.Title,
+			Type:              e.Type,
+			ConstName:         e.ConstName,
+			Domain:            e.Domain,
+			Status:            e.Status,
+			Tier:              e.Tier,
+			DisabledByDefault: e.DisabledByDefault,
+			Title:             e.Title,
 			Description:     e.Description,
 			Remediation:     e.Remediation,
 			DefaultSeverity: e.DefaultSeverity,

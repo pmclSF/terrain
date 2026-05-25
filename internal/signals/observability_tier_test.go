@@ -6,10 +6,10 @@ import (
 	"github.com/pmclSF/terrain/internal/models"
 )
 
-// TestIsObservabilityTier pins the empty-tier-defaults-to-observability
-// contract: every detector with a manifest entry MUST opt in to
-// TierGate explicitly to block CI. Signals without a manifest entry
-// (runtime-derived, no static registration) keep the legacy
+// TestIsObservabilityTier pins the gate/observability split. Every
+// manifest entry has an explicit Tier (enforced by
+// TestManifest_AllEntriesHaveExplicitTier). Signals without a manifest
+// entry (runtime-derived, no static registration) keep the legacy
 // "treat as gate-relevant" behavior.
 func TestIsObservabilityTier(t *testing.T) {
 	cases := []struct {
@@ -29,9 +29,9 @@ func TestIsObservabilityTier(t *testing.T) {
 		{"safetyFailure is gate", SignalSafetyFailure, false},
 		{"hallucinationDetected is gate", SignalHallucinationDetected, false},
 
-		// Empty Tier — defaults to observability under the flipped rule.
-		{"slowTest (empty tier) is observability", SignalSlowTest, true},
-		{"flakyTest (empty tier) is observability", SignalFlakyTest, true},
+		// Explicit Tier: TierObservability on health-tier hygiene rules.
+		{"slowTest is observability", SignalSlowTest, true},
+		{"flakyTest is observability", SignalFlakyTest, true},
 
 		// Unknown type — runtime / ingestion derived; legacy gate-relevant.
 		{"unknown type is gate-relevant", models.SignalType("unknownRuntimeSignal"), false},
@@ -42,6 +42,24 @@ func TestIsObservabilityTier(t *testing.T) {
 				t.Errorf("IsObservabilityTier(%q) = %v, want %v", tc.t, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestManifest_AllEntriesHaveExplicitTier asserts that every manifest
+// entry sets Tier explicitly. Empty Tier would silently flow through
+// IsObservabilityTier (returns true) and silently demote any High/
+// Critical detector to capped-Medium observability. The contract is
+// "no implicit default": every entry chooses gate or observability at
+// declaration time.
+func TestManifest_AllEntriesHaveExplicitTier(t *testing.T) {
+	var missing []string
+	for _, e := range allSignalManifest {
+		if e.Tier == "" {
+			missing = append(missing, string(e.Type))
+		}
+	}
+	if len(missing) > 0 {
+		t.Fatalf("manifest entries missing explicit Tier (%d): %v", len(missing), missing)
 	}
 }
 
