@@ -108,7 +108,7 @@ func EmptyStateFor(kind EmptyStateKind) EmptyState {
 		return EmptyState{
 			Kind:     kind,
 			Header:   "First time here? Welcome.",
-			NextMove: "Try `terrain analyze` to map your test terrain — typical service repos finish in 5–15 seconds.",
+			NextMove: "Try `terrain analyze` to map your test terrain.",
 		}
 	case EmptyNoImpact:
 		return EmptyState{

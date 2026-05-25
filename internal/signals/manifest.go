@@ -135,23 +135,6 @@ type ManifestEntry struct {
 	// TierGate explicitly. See SignalTier comment.
 	Tier SignalTier
 
-	// Replaces lists prior SignalTypes that this entry supersedes. When
-	// set, downstream consumers (suppression migration, `terrain explain
-	// finding <id>`, snapshot upgrade) treat the listed legacy types as
-	// aliases that resolve to this entry. Provides a migration window so
-	// that existing user suppressions and CI gates don't break when a
-	// signal is split or renamed.
-	//
-	// Safety machinery — required before any rule split (e.g. the
-	// uncoveredAISurface 3-lane split into aiPrompt / aiModel /
-	// aiDataset sub-rules) can ship without orphaning existing
-	// suppressions.
-	//
-	// Example: SignalAIPromptUncovered.Replaces = []models.SignalType{
-	//   SignalUncoveredAISurface,
-	// }
-	Replaces []models.SignalType
-
 	// DisabledByDefault marks a detector as off in the default config.
 	// Used for detectors whose precision is below an actionable bar
 	// pending a structural redesign: the implementation stays in tree
@@ -173,23 +156,6 @@ func DefaultDisabledTypes() map[string]bool {
 		}
 	}
 	return out
-}
-
-// LegacyAliasFor returns the canonical (current) SignalType for a legacy
-// type that has been superseded by a Replaces entry. Returns the input
-// unchanged if no alias is registered. Used by suppression-migration,
-// finding-explain, and snapshot-upgrade paths.
-//
-// O(N) over the manifest; cache the result if calling in a hot loop.
-func LegacyAliasFor(legacy models.SignalType) (models.SignalType, bool) {
-	for _, entry := range allSignalManifest {
-		for _, replaces := range entry.Replaces {
-			if replaces == legacy {
-				return entry.Type, true
-			}
-		}
-	}
-	return legacy, false
 }
 
 // allSignalManifest is the canonical inventory. Order is significant for

@@ -190,11 +190,54 @@ func (d *StaticSkipDetector) fileHasGatePredicate(relPath string) bool {
 		// gate exists.
 		return false
 	}
-	text := string(data)
-	// Skip comment-only or quoted-only matches by stripping comments
-	// the cheap way before regex match.
-	text = strings.ReplaceAll(text, "// ", " ")
+	text := stripLineComments(string(data))
 	return gatePredicateRe.MatchString(text)
+}
+
+// stripLineComments removes line-comment content from the source text
+// before regex matching. Handles the three dialects this detector
+// targets:
+//   - C-style `// rest of line`
+//   - Python / shell / YAML `# rest of line` (Python files are the
+//     common case for static-skip false-positives, where a comment
+//     like `# os.getenv("FOO")` would otherwise count as a gate
+//     predicate and mis-classify an unconditional skip).
+//   - Block `/* ... */` comments collapsed to a single space.
+//
+// String-literal contents are left intact (a gate predicate that lives
+// inside a quoted string is rare and not worth the parsing cost to
+// disambiguate).
+func stripLineComments(text string) string {
+	if !strings.ContainsAny(text, "/#") {
+		return text
+	}
+	var b strings.Builder
+	b.Grow(len(text))
+	i := 0
+	for i < len(text) {
+		// Block comment.
+		if i+1 < len(text) && text[i] == '/' && text[i+1] == '*' {
+			end := strings.Index(text[i+2:], "*/")
+			if end < 0 {
+				break
+			}
+			b.WriteByte(' ')
+			i += end + 4
+			continue
+		}
+		// Line comment (// or #).
+		if (i+1 < len(text) && text[i] == '/' && text[i+1] == '/') || text[i] == '#' {
+			nl := strings.IndexByte(text[i:], '\n')
+			if nl < 0 {
+				break
+			}
+			i += nl // keep the newline so line numbers don't shift
+			continue
+		}
+		b.WriteByte(text[i])
+		i++
+	}
+	return b.String()
 }
 
 func staticSkipSeverity(ratio float64) models.SignalSeverity {

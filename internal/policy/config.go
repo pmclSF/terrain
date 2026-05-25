@@ -14,6 +14,8 @@
 // any single repository.
 package policy
 
+import "strings"
+
 // Config represents a local Terrain policy loaded from .terrain/policy.yaml.
 //
 // All fields are pointers or zero-value-safe so that a partial policy
@@ -170,7 +172,7 @@ func (c *Config) DisabledDetectorSet() map[string]bool {
 	}
 	out := make(map[string]bool, len(c.Rules.DisabledDetectors))
 	for _, d := range c.Rules.DisabledDetectors {
-		d = trimSpace(d)
+		d = strings.TrimSpace(d)
 		if d != "" {
 			out[d] = true
 		}
@@ -188,7 +190,7 @@ func (c *Config) EnabledDetectorSet() map[string]bool {
 	}
 	out := make(map[string]bool, len(c.Rules.EnabledDetectors))
 	for _, d := range c.Rules.EnabledDetectors {
-		d = trimSpace(d)
+		d = strings.TrimSpace(d)
 		if d != "" {
 			out[d] = true
 		}
@@ -196,19 +198,3 @@ func (c *Config) EnabledDetectorSet() map[string]bool {
 	return out
 }
 
-// trimSpace is a local trim helper to avoid pulling in strings/unicode
-// for one call site in a config-loading package.
-func trimSpace(s string) string {
-	start, end := 0, len(s)
-	for start < end && isSpace(s[start]) {
-		start++
-	}
-	for end > start && isSpace(s[end-1]) {
-		end--
-	}
-	return s[start:end]
-}
-
-func isSpace(b byte) bool {
-	return b == ' ' || b == '\t' || b == '\n' || b == '\r'
-}
