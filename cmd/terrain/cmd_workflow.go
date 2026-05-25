@@ -372,30 +372,36 @@ func runDoctor(root string, jsonOutput, verbose bool) (conv.MigrationDoctorResul
 func terrainInfraDoctorChecks(root string) []conv.MigrationDoctorCheck {
 	var checks []conv.MigrationDoctorCheck
 
-	// Mechanisms registry — load it; report counts by state.
+	// Detector registry — load it; surface only the load result. The
+	// per-state breakdown is internal and only meaningful with
+	// TERRAIN_DEV=1.
 	if reg, err := mechanisms.Load(); err != nil {
 		checks = append(checks, conv.MigrationDoctorCheck{
-			ID: "mechanisms.registry", Label: "Mechanisms registry",
+			ID: "mechanisms.registry", Label: "Detector registry",
 			Status: "FAIL",
 			Detail: fmt.Sprintf("could not load registry: %v", err),
 		})
 	} else {
 		all := reg.All()
-		var on, shadow, off int
-		for _, m := range all {
-			switch m.State {
-			case mechanisms.StateOn:
-				on++
-			case mechanisms.StateShadow:
-				shadow++
-			default:
-				off++
+		detail := fmt.Sprintf("%d detectors registered", len(all))
+		if os.Getenv("TERRAIN_DEV") != "" {
+			var on, shadow, off int
+			for _, m := range all {
+				switch m.State {
+				case mechanisms.StateOn:
+					on++
+				case mechanisms.StateShadow:
+					shadow++
+				default:
+					off++
+				}
 			}
+			detail = fmt.Sprintf("%d detectors registered (live=%d, shadow=%d, off=%d)", len(all), on, shadow, off)
 		}
 		checks = append(checks, conv.MigrationDoctorCheck{
-			ID: "mechanisms.registry", Label: "Mechanisms registry",
+			ID: "mechanisms.registry", Label: "Detector registry",
 			Status: "PASS",
-			Detail: fmt.Sprintf("%d mechanisms loaded (live=%d, shadow=%d, off=%d)", len(all), on, shadow, off),
+			Detail: detail,
 		})
 	}
 
@@ -414,23 +420,23 @@ func terrainInfraDoctorChecks(root string) []conv.MigrationDoctorCheck {
 		})
 	}
 
-	// Shadow sink — `.terrain/shadow-report.jsonl` is optional; if it
-	// exists, report its size so the user knows shadow data is being
-	// captured.
-	shadowPath := filepath.Join(root, ".terrain", "shadow-report.jsonl")
-	if info, err := os.Stat(shadowPath); err == nil {
-		checks = append(checks, conv.MigrationDoctorCheck{
-			ID: "shadow.sink", Label: "Shadow sink",
-			Status: "PASS",
-			Detail: fmt.Sprintf("%s present (%d bytes)", shadowPath, info.Size()),
-		})
-	} else {
-		checks = append(checks, conv.MigrationDoctorCheck{
-			ID: "shadow.sink", Label: "Shadow sink",
-			Status: "WARN",
-			Detail: "no shadow events captured yet (.terrain/shadow-report.jsonl absent)",
-			Remediation: "Run `terrain analyze` once with one or more mechanisms in shadow state to populate the sink.",
-		})
+	// Shadow sink — optional debug artifact; only reported under
+	// TERRAIN_DEV so end-user doctor output stays uncluttered.
+	if os.Getenv("TERRAIN_DEV") != "" {
+		shadowPath := filepath.Join(root, ".terrain", "shadow-report.jsonl")
+		if info, err := os.Stat(shadowPath); err == nil {
+			checks = append(checks, conv.MigrationDoctorCheck{
+				ID: "shadow.sink", Label: "Shadow sink",
+				Status: "PASS",
+				Detail: fmt.Sprintf("%s present (%d bytes)", shadowPath, info.Size()),
+			})
+		} else {
+			checks = append(checks, conv.MigrationDoctorCheck{
+				ID: "shadow.sink", Label: "Shadow sink",
+				Status: "WARN",
+				Detail: "no shadow events captured yet",
+			})
+		}
 	}
 
 	// .gitignore for .terrain/ — warn if .gitignore exists but doesn't

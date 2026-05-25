@@ -140,7 +140,7 @@ func runDiscover(root string) error {
 		fmt.Println("  Nothing AI-specific detected. Run `terrain analyze` for the full posture report.")
 	case hasAI:
 		fmt.Println("  terrain analyze                  # full posture: signals, coverage, fanout, drift")
-		fmt.Println("  terrain ai findings              # calibrated AI risks (no API key required)")
+		fmt.Println("  terrain ai findings              # AI eval-gap findings (no API key required)")
 		fmt.Println("  terrain report explain <finding> # drill into a specific finding")
 	default:
 		fmt.Println("  terrain analyze                  # full posture: signals, coverage, fanout, drift")

@@ -421,7 +421,7 @@ func runListConversions(jsonOutput bool) error {
 		}
 		fmt.Println()
 	}
-	fmt.Println("Tiers: Stable = conversion-corpus calibrated; Experimental = end-to-end but expect hand cleanup; Preview = next up for implementation; Cataloged = metadata only.")
+	fmt.Println("Tiers: Stable = validated; Experimental = end-to-end but expect hand cleanup; Preview = planned; Cataloged = metadata only.")
 	fmt.Println("Use `terrain convert <source> --from <framework> --to <framework>` to run a Go-native conversion, or add `--plan` to preview.")
 	return nil
 }
@@ -630,10 +630,10 @@ func humanizeGoNativeState(state conv.GoNativeState) string {
 // just the raw state name.
 //
 // The mapping:
-//   - implemented → "Stable"      (top-3 + conversion-corpus calibrated)
+//   - implemented → "Stable"       (validated)
 //   - experimental → "Experimental" (works end-to-end; hand cleanup expected)
-//   - prioritized → "Preview"     (next in line for implementation)
-//   - cataloged   → "Cataloged"    (metadata only; no converter today)
+//   - prioritized → "Preview"      (planned)
+//   - cataloged   → "Cataloged"     (metadata only; no converter today)
 //
 // Returned without surrounding brackets so callers can wrap as needed
 // (the list renderer adds `[ ]`; JSON consumers get the bare label).

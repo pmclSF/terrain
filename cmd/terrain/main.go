@@ -195,7 +195,7 @@ func main() {
 		timeoutFlag := analyzeCmd.Duration("timeout", 0, "abort the analysis after this duration (e.g. 5m); 0 means no timeout")
 		suppressionsFlag := analyzeCmd.String("suppressions", "", "path to .terrain/suppressions.yaml (default: $root/.terrain/suppressions.yaml; missing file is fine)")
 		newOnlyFlag := analyzeCmd.Bool("new-findings-only", false, "filter signals to those NOT present in --baseline (lets established repos with debt adopt --fail-on without bricking CI)")
-		previewFlag := analyzeCmd.Bool("preview", false, "enable preview-tier AI detectors (default off; not yet calibrated)")
+		previewFlag := analyzeCmd.Bool("preview", false, "enable preview-tier AI detectors (default off; behavior may change between releases)")
 		diagFlag := analyzeCmd.Bool("diag", false, "print per-step pipeline timing diagnostics to stderr (for performance investigation)")
 		_ = analyzeCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("analyze", analyzeCmd.Args(), rootFlag)
@@ -344,6 +344,13 @@ func main() {
 		os.Exit(runDoctorCLI(os.Args[2:]))
 
 	case "mechanisms":
+		// Maintainer-only inspection of detector internals. Hidden from
+		// --help and gated on TERRAIN_DEV so end-user CLI surfaces
+		// don't expose internal mechanism IDs.
+		if os.Getenv("TERRAIN_DEV") == "" {
+			fmt.Fprintln(os.Stderr, "error: unknown command \"mechanisms\"")
+			os.Exit(2)
+		}
 		if err := runMechanismsCLI(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
@@ -810,7 +817,7 @@ func main() {
 			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
 			jsonFlag := aiCmd.Bool("json", false, "output JSON")
 			postureFlag := aiCmd.String("posture", "observability",
-				"emission posture: observability (≥0.40) | gate (≥0.80)")
+				"emission posture: observability | gate")
 			ruleFlag := aiCmd.String("rule", "",
 				"rule to evaluate (default: ai.surface.missing_eval; see docs/rules/ai/)")
 			_ = aiCmd.Parse(os.Args[3:])
@@ -1037,7 +1044,7 @@ var knownCommands = []string{
 	"ai", "feedback", "telemetry",
 	"debug", "depgraph",
 	"version", "serve", "help", "--help", "-h",
-	"mechanisms", "mcp",
+	"mcp",
 	"suppress", "test", "describe", "accept-snapshot",
 	"report", "config",
 }
@@ -1227,7 +1234,6 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "                            baseline, replay")
 	fmt.Fprintln(os.Stderr, "  config <verb> [flags]     workspace prefs: feedback, telemetry")
 	fmt.Fprintln(os.Stderr, "  doctor [path]             diagnostics for current setup")
-	fmt.Fprintln(os.Stderr, "  mechanisms <verb>         list / show detector mechanisms (list, show)")
 	fmt.Fprintln(os.Stderr, "  mcp [--root <dir>]        start the MCP server on stdio for AI assistants")
 	fmt.Fprintln(os.Stderr, "  debug <verb> [flags]      dependency graph drill-downs:")
 	fmt.Fprintln(os.Stderr, "                            graph, coverage, fanout, duplicates, depgraph")
@@ -1247,9 +1253,6 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  --base REF                        git base ref for diff (impact / pr / select-tests)")
 	fmt.Fprintln(os.Stderr, "  --baseline PATH                   baseline snapshot for regression detectors")
 	fmt.Fprintln(os.Stderr, "  --log-level LEVEL                 diagnostic verbosity: quiet, debug (default: info)")
-	fmt.Fprintln(os.Stderr, "  --mechanisms.<name>=<state>       override one detector mechanism per run")
-	fmt.Fprintln(os.Stderr, "                                    states: on | off | shadow")
-	fmt.Fprintln(os.Stderr, "                                    list available names: terrain mechanisms list")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Legacy aliases (still work; scheduled for future removal — see CHANGELOG):")
 	fmt.Fprintln(os.Stderr, "  init [flags]             detect data paths and print recommended analyze command")
@@ -1332,8 +1335,8 @@ func printAIUsage() {
 	fmt.Fprintln(os.Stderr, "  baseline   manage eval baselines (show, compare, promote)")
 	fmt.Fprintln(os.Stderr, "  doctor     validate AI/eval setup and surface configuration issues")
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Calibrated verdicts (0.2+):")
-	fmt.Fprintln(os.Stderr, "  findings   emit calibrated AI eval-gap findings (verdict pipeline)")
+	fmt.Fprintln(os.Stderr, "Per-rule AI findings:")
+	fmt.Fprintln(os.Stderr, "  findings   emit AI eval-gap findings for the specified rule")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Categorical AI quality checks ship via 'terrain analyze'")
 	fmt.Fprintln(os.Stderr, "and 'terrain report pr'. Run 'terrain analyze --help' for the full")

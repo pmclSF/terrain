@@ -120,7 +120,7 @@ func renderFindingsText(findings []aipipeline.Finding, posture aipipeline.Postur
 			fmt.Printf("    cohort:     %s\n", f.Cohort)
 		}
 		if previewTag != "" {
-			fmt.Printf("    NOTE:       this rule is in preview — confidence number is not yet corpus-validated\n")
+			fmt.Printf("    NOTE:       this rule is in preview — behavior may change between releases\n")
 		}
 		if len(f.Atoms) > 0 {
 			fmt.Printf("    evidence:\n")
