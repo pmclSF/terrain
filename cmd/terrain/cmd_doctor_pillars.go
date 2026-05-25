@@ -12,10 +12,10 @@ import (
 // answer "is this repo set up to use Terrain end-to-end" at a glance,
 // without running analyze.
 type pillarStatus struct {
-	Name    string
-	Symbol  string // "✓", "⚠", "?"
-	Detail  string
-	Hint    string
+	Name   string
+	Symbol string // statusGlyph(...) result: "✓"/"[OK]", "⚠"/"[!]", "?"/"[?]"
+	Detail string
+	Hint   string
 }
 
 // assessPillars returns one status per pillar. Each check is local —
@@ -45,14 +45,14 @@ func assessUnderstand(root string) pillarStatus {
 		if fileExists(filepath.Join(root, ind)) {
 			return pillarStatus{
 				Name:   "Understand",
-				Symbol: "✓",
+				Symbol: statusGlyph("ok"),
 				Detail: fmt.Sprintf("test framework detected (%s)", ind),
 			}
 		}
 	}
 	return pillarStatus{
 		Name:   "Understand",
-		Symbol: "?",
+		Symbol: statusGlyph("info"),
 		Detail: "no recognized test framework config in repo root",
 		Hint:   "Add tests with your framework of choice, then re-run.",
 	}
@@ -65,13 +65,13 @@ func assessAlign(root string) pillarStatus {
 	if fileExists(filepath.Join(root, ".terrain", "repos.yaml")) {
 		return pillarStatus{
 			Name:   "Align",
-			Symbol: "✓",
+			Symbol: statusGlyph("ok"),
 			Detail: "multi-repo manifest present",
 		}
 	}
 	return pillarStatus{
 		Name:   "Align",
-		Symbol: "?",
+		Symbol: statusGlyph("info"),
 		Detail: "no multi-repo manifest (single-repo workflow assumed)",
 	}
 }
@@ -86,19 +86,19 @@ func assessGate(root string) pillarStatus {
 	case hasCI && hasSuppress:
 		return pillarStatus{
 			Name:   "Gate",
-			Symbol: "✓",
+			Symbol: statusGlyph("ok"),
 			Detail: "CI workflow + suppressions configured",
 		}
 	case hasCI:
 		return pillarStatus{
 			Name:   "Gate",
-			Symbol: "✓",
+			Symbol: statusGlyph("ok"),
 			Detail: "CI workflow detected",
 		}
 	default:
 		return pillarStatus{
 			Name:   "Gate",
-			Symbol: "⚠",
+			Symbol: statusGlyph("warn"),
 			Detail: "no CI workflow references terrain",
 			Hint:   "See docs/examples/gate/github-action.yml for the recommended template.",
 		}

@@ -308,17 +308,18 @@ var benignDestructiveObjects = regexp.MustCompile(
 	`(?i)\b(?:delete|destroy|remove|drop|truncate|purge)_(?:cache|caches|log|logs|tmp|temp|tempfile|tmpfile|session|sessions|cookie|cookies|buffer|history|local_state)\b`,
 )
 
-// destructiveVerbsAlwaysHigh matches verbs whose destructive intent
-// stands regardless of object: shell exec, code evaluation, payment
-// movement. These never get the benign-object downgrade because the
-// blast radius isn't bounded by the object noun.
+// contextDependentVerbs lists the destructive-verb families whose
+// danger depends on the object noun: deleting a `cache` is fine,
+// deleting a `database` is not. The benign-object downgrade
+// (benignDestructiveObjects) only applies to these. Every other
+// destructive verb (exec, eval, payment movement, file rewrite) is
+// always-high regardless of object.
 //
 // Trailing boundary is `(?:_|\b)` rather than `\b` alone — Go's `\b`
-// treats `_` as a word character, so `\bexec\b` does NOT match
-// `exec_command`. Allowing `_` lets the `verb_object` form match
-// (`exec_command`, `run_shell`, `send_payment`).
-var destructiveVerbsAlwaysHigh = regexp.MustCompile(
-	`(?i)\b(?:exec|execute|run_shell|run_command|spawn|eval|send_email|send_payment|charge|refund|transfer)(?:_|\b)`,
+// treats `_` as a word character, so `\bdelete\b` does NOT match
+// `delete_cache`. Allowing `_` lets the `verb_object` form match.
+var contextDependentVerbs = regexp.MustCompile(
+	`(?i)\b(?:delete|destroy|remove|drop|truncate|purge)(?:_|\b)`,
 )
 
 func looksDestructive(s string) bool {
@@ -331,15 +332,15 @@ func looksDestructive(s string) bool {
 }
 
 // classifyDestructive returns true if the matched destructive verb
-// should fire a finding (i.e. it's not the benign-object form). For
-// always-high verbs it always returns true; for delete-style verbs it
-// returns false when the object noun is in the benign whitelist
-// (cache, log, tmp, session, cookie, etc.).
+// should fire a finding (i.e. it's not the benign-object form). Only
+// the context-dependent verb family (delete / destroy / remove / drop
+// / truncate / purge) gets the benign-object downgrade; every other
+// destructive verb stays high regardless of object.
 func classifyDestructive(s string) bool {
 	if !looksDestructive(s) {
 		return false
 	}
-	if destructiveVerbsAlwaysHigh.MatchString(s) {
+	if !contextDependentVerbs.MatchString(s) {
 		return true
 	}
 	if benignDestructiveObjects.MatchString(s) {

@@ -76,6 +76,12 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		},
 		Detector: &quality.WeakAssertionDetector{},
 	})
+	// MockHeavyDetector emits both SignalMockHeavyTest (mocks outnumber
+	// assertions) and SignalTestsOnlyMocks (mocks present, zero
+	// assertions) from a single pass. Per-detector machinery
+	// (budget, panic, missing-input) affects both signal types
+	// together; per-signal-type machinery (manifest DisabledByDefault,
+	// suppressions) still operates independently.
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
 			ID:           "quality.mock-heavy",
