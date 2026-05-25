@@ -118,7 +118,6 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 				Type:        signals.SignalAIToolWithoutSandbox,
 				Category:    models.CategoryAI,
 				Severity:    models.SeverityHigh,
-				// Confidence held at 0.50 pending broader validation data.
 				Confidence:  0.50,
 				Location:    models.SignalLocation{File: relPath, Symbol: f.ToolName},
 				Explanation: f.Explanation,
@@ -132,10 +131,10 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 				RuleURI:         "docs/rules/ai/tool-without-sandbox.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{
-					Value:        0.78,
-					IntervalLow:  0.65,
-					IntervalHigh: 0.88,
-					Quality:      "heuristic",
+					Value:        0.50,
+					IntervalLow:  0.50,
+					IntervalHigh: 0.50,
+					Quality:      "estimate",
 					Sources:      []models.EvidenceSource{models.SourceStructuralPattern},
 				},
 				EvidenceSource:   models.SourceStructuralPattern,

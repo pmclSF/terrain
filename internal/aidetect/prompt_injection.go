@@ -105,9 +105,6 @@ func (d *PromptInjectionDetector) Detect(snap *models.TestSuiteSnapshot) []model
 				Type:        signals.SignalAIPromptInjectionRisk,
 				Category:    models.CategoryAI,
 				Severity:    models.SeverityHigh,
-				// Confidence demoted to 0.40 pending more data; the
-				// low natural firing volume makes the empirical floor
-				// unstable.
 				Confidence:  0.40,
 				Location:    models.SignalLocation{File: relPath, Line: h.Line},
 				Explanation: h.Explanation,
@@ -121,10 +118,10 @@ func (d *PromptInjectionDetector) Detect(snap *models.TestSuiteSnapshot) []model
 				RuleURI:         "docs/rules/ai/prompt-injection-risk.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{
-					Value:        0.7,
-					IntervalLow:  0.55,
-					IntervalHigh: 0.82,
-					Quality:      "heuristic",
+					Value:        0.40,
+					IntervalLow:  0.40,
+					IntervalHigh: 0.40,
+					Quality:      "estimate",
 					Sources:      []models.EvidenceSource{models.SourceStructuralPattern},
 				},
 				EvidenceSource:   models.SourceStructuralPattern,

@@ -62,6 +62,23 @@ func demoteSeverity(s models.SignalSeverity) models.SignalSeverity {
 	}
 }
 
+// severityClauseTier returns the canonical clause-set tier prefix
+// matching `s`. Detectors with severity-shift logic (deprecation
+// gates, ASCG demotes) must use this so SeverityClauses stays in
+// sync with the emitted Severity.
+func severityClauseTier(s models.SignalSeverity) string {
+	switch s {
+	case models.SeverityCritical:
+		return "sev-critical"
+	case models.SeverityHigh:
+		return "sev-high"
+	case models.SeverityMedium:
+		return "sev-medium"
+	default:
+		return "sev-low"
+	}
+}
+
 type deprecationRule struct {
 	Match       string
 	Category    string
@@ -200,7 +217,7 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 				Explanation: h.Rule.Explanation,
 				SuggestedAction: "Pin to a dated model variant or upgrade to a supported tier.",
 
-				SeverityClauses: []string{"sev-medium-005"},
+				SeverityClauses: []string{severityClauseTier(severity) + "-005"},
 				Actionability:   models.ActionabilityScheduled,
 				LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 				AIRelevance:     models.AIRelevanceHigh,

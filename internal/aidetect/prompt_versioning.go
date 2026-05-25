@@ -130,7 +130,6 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			Type:        signals.SignalAIPromptVersioning,
 			Category:    models.CategoryAI,
 			Severity:    models.SeverityMedium,
-			// Confidence held at 0.50 pending further validation.
 			Confidence:  0.50,
 			Location:    models.SignalLocation{File: surface.Path, Symbol: surface.Name},
 			Explanation: "Prompt file `" + surface.Path + "` has no recognizable version marker. Future content changes will silently drift; consumers can't detect the change.",
@@ -144,10 +143,10 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			RuleURI:         "docs/rules/ai/prompt-versioning.md",
 			DetectorVersion: "0.2.0",
 			ConfidenceDetail: &models.ConfidenceDetail{
-				Value:        0.85,
-				IntervalLow:  0.75,
-				IntervalHigh: 0.92,
-				Quality:      "heuristic",
+				Value:        0.50,
+				IntervalLow:  0.50,
+				IntervalHigh: 0.50,
+				Quality:      "estimate",
 				Sources:      []models.EvidenceSource{models.SourceStructuralPattern},
 			},
 			EvidenceSource:   models.SourceStructuralPattern,
