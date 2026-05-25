@@ -93,7 +93,7 @@ old key is forever in git history, so the only safe response is
   issue with the example so the marker list grows.
 - The provider's keys actually look this way intentionally and you've
   rotated already. Add an `expectedAbsent: aiHardcodedAPIKey` entry in
-  the calibration fixture so the false-positive rate gets measured.
+  a regression test so the false-positive rate gets measured.
 
 ## Known limitations (0.2)
 

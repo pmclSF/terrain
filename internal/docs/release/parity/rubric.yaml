@@ -306,7 +306,7 @@ uniformity_gates:
     name: "Detector shape uniformity"
     description: "Every detector has all 8 required fields: stable ID, title, summary, severity rationale, evidence sources, validation anchor, known false positives, suppression guidance."
     applies_to: "All shipping detectors (manifest)"
-    verified_by: "cmd/terrain-docs-gen manifest validator"
+    verified_by: "cmd/internal/terrain-docs-gen manifest validator"
     blocking: true
 
   - id: framework_depth

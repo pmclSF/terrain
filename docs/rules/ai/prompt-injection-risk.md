@@ -107,7 +107,7 @@ prompt = (
 
 - The "user input" variable is actually trusted (e.g. a hard-coded
   config value, or already-sanitized). Add an `expectedAbsent` entry
-  in the relevant calibration fixture.
+  in the relevant regression test.
 - The `prompt` variable name is reused for something that isn't
   actually a prompt (e.g. a CLI prompt string). Rename or add a
   fixture.

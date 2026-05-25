@@ -629,7 +629,7 @@ foundation.
   `package-lock.json` all bumped to `0.1.2`. Git-tag/package.json
   drift is now a release-gate failure.
 
-## 0.1.0 — Test System Intelligence Platform
+## [0.1.0] — Test System Intelligence Platform
 
 Terrain 0.1.0 is the first public release of the Terrain test intelligence
 platform. A ground-up rewrite of the analysis engine in Go, the legacy
@@ -810,7 +810,7 @@ Three features that use the dependency graph and surface model to produce recomm
 
 ---
 
-## 0.0.1 — Signal-First Foundation
+## [0.0.1] — Signal-First Foundation
 
 Internal milestone. Initial Go-native analysis engine with signal-first
 architecture, replacing the V2 JavaScript converter.
