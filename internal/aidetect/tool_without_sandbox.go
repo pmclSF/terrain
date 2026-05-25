@@ -37,7 +37,7 @@ type ToolWithoutSandboxDetector struct {
 // match `delete_user`. Allowing `_` as a boundary catches the common
 // `verb_object` snake-case form that almost every real-world tool
 // definition uses.
-// Calibration found two dominant false-positive failure modes:
+// Two dominant false-positive failure modes shape the tightened regex:
 //   (a) Bare "execute" / "exec" matches `execute_event_loop_cycle`
 //       (agent framework main loop) and `execute_tool $X` where the
 //       wrapped tool $X is benign (calculate, get_weather). The
@@ -99,10 +99,9 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 		if isAPIKeyFixturePath(relPath) {
 			continue
 		}
-		// Test-integration schema fixtures dominated the false-positive
-		// set in calibration. These paths are explicitly fixtures for
-		// integration tests against agent frameworks, not real tool
-		// definitions.
+		// Test-integration schema fixtures are a known false-positive
+		// source: these paths are explicitly fixtures for integration
+		// tests against agent frameworks, not real tool definitions.
 		lp := strings.ToLower(filepath.ToSlash(relPath))
 		if strings.Contains(lp, "test_integrations/") ||
 			strings.Contains(lp, "/schemas/") && strings.Contains(lp, "tests/") {
@@ -201,12 +200,11 @@ func analyseToolConfig(path string) []toolFinding {
 	tools := extractToolEntries(&node)
 	var out []toolFinding
 	for _, t := range tools {
-		// classifyDestructive (added in 0.2.0 final-polish) suppresses
-		// the well-known benign forms — `delete_cache`, `purge_logs`,
-		// `remove_session`, etc. — where the verb's blast radius is
-		// bounded by the object noun. Always-high verbs (`exec`,
-		// `transfer`, `send_payment`) stay flagged regardless of
-		// object.
+		// classifyDestructive suppresses the well-known benign forms —
+		// `delete_cache`, `purge_logs`, `remove_session`, etc. — where
+		// the verb's blast radius is bounded by the object noun.
+		// Always-high verbs (`exec`, `transfer`, `send_payment`) stay
+		// flagged regardless of object.
 		if !classifyDestructive(t.name + " " + t.description) {
 			continue
 		}

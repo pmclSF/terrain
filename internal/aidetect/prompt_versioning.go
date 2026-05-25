@@ -14,12 +14,12 @@ import (
 )
 
 // PromptVersioningDetector flags prompt-kind surfaces that ship
-// without a recognizable version marker. The round-4 plan called for
-// detecting "prompt content changed without version bump" via baseline
-// comparison; that variant lands when ContentHashes are persisted on
-// the snapshot. This 0.2 detector ships the simpler-but-actionable
-// static check: any prompt that doesn't declare a version is at risk
-// of silent drift the next time it changes.
+// without a recognizable version marker. A richer "prompt content
+// changed without version bump" check via baseline comparison can be
+// added once ContentHashes are persisted on the snapshot. This
+// detector ships the simpler-but-actionable static check: any prompt
+// that doesn't declare a version is at risk of silent drift the next
+// time it changes.
 //
 // Recognised version markers:
 //   - YAML key `version:` (with any value) at column 0
@@ -71,10 +71,10 @@ var filenameVersionPattern = regexp.MustCompile(`(?:[_\-.]v\d+)$`)
 // Requires a non-empty value matching digits / semver / calver / a
 // quoted token.
 //
-// Pre-0.2.x the pattern only required `version:` followed by anything
-// (or nothing). `version: TODO` and `version:` with no value satisfied
-// the check, defeating the detector's intent — silent prompt drift.
-// Now we require a recognizable version literal.
+// A looser pattern that merely required `version:` followed by
+// anything (or nothing) would let `version: TODO` and `version:` with
+// no value satisfy the check, defeating the detector's intent. The
+// pattern below requires a recognizable version literal.
 var inlineVersionPattern = regexp.MustCompile(
 	`(?i)(?:^|\s)(?:#|//|\*)?\s*"?version"?\s*[:=]\s*` +
 		`(?:` +
@@ -174,10 +174,10 @@ func filenameLooksVersioned(path string) bool {
 // huge prompt file doesn't trigger a full scan; versioning markers
 // virtually always appear at the top.
 //
-// 0.2.0 final-polish: even after `inlineVersionPattern` was tightened
-// to require a recognizable version literal, quoted-non-empty branch
-// still accepted `"TODO"`, `"tbd"`, `"xxx"`, `"?"`, `"unknown"` etc.
-// Reject those placeholder tokens explicitly so a comment like
+// Even after `inlineVersionPattern` was tightened to require a
+// recognizable version literal, the quoted-non-empty branch still
+// accepted `"TODO"`, `"tbd"`, `"xxx"`, `"?"`, `"unknown"` etc. Reject
+// those placeholder tokens explicitly so a comment like
 // `version: "TODO"` doesn't silence the detector.
 func fileHasInlineVersion(absPath string) bool {
 	f, err := os.Open(absPath)

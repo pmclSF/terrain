@@ -230,8 +230,8 @@ func TestLoadAll_SkipsUnderscoreFiles(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadAll on real dir: %v", err)
 	}
-	// Phase 1 baseline: 0 suites populated yet; the _README.md should be skipped.
+	// Baseline: 0 suites populated yet; the _README.md should be skipped.
 	if len(suites) != 0 {
-		t.Logf("note: %d suites present (Phase 1 baseline expected 0)", len(suites))
+		t.Logf("note: %d suites present (baseline expected 0)", len(suites))
 	}
 }

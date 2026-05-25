@@ -125,11 +125,10 @@ content: a
 	}
 }
 
-// TestPromptVersioning_RejectsPlaceholderTokens locks in the 0.2.0
-// final-polish fix: pre-fix the inline-version regex's quoted-token
-// branch accepted `version: "TODO"`, `version: "tbd"`, `version: ?`,
-// etc. — silencing the detector with placeholder text. Now those
-// placeholder tokens fall through and the detector fires.
+// TestPromptVersioning_RejectsPlaceholderTokens pins behavior that the
+// inline-version regex's quoted-token branch rejects `version: "TODO"`,
+// `version: "tbd"`, `version: ?`, etc. — placeholder text must not
+// silence the detector; those tokens fall through and the detector fires.
 func TestPromptVersioning_RejectsPlaceholderTokens(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

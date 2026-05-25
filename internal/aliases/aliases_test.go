@@ -14,11 +14,11 @@ func TestLoad_EmbeddedDefault(t *testing.T) {
 	if r.Version != 1 {
 		t.Errorf("expected schema version 1, got %d", r.Version)
 	}
-	// 0.2.0 baseline ships with no active aliases. When the first rule
-	// split lands in Phase 2, this test will start failing — that's the
-	// signal to add a corresponding alias-entry test.
+	// Baseline ships with no active aliases. When the first rule split
+	// lands, this test will start failing — that's the signal to add a
+	// corresponding alias-entry test.
 	if len(r.Aliases) != 0 {
-		t.Logf("alias registry has %d active entries (baseline expected 0; update test if Phase 2 added one)", len(r.Aliases))
+		t.Logf("alias registry has %d active entries (baseline expected 0; update test if a split added one)", len(r.Aliases))
 	}
 }
 

@@ -108,7 +108,7 @@ type PipelineOptions struct {
 	// SlowTestThresholdMs overrides the default slow test threshold.
 	SlowTestThresholdMs float64
 
-	// EnablePreviewRules turns on the §9 preview-tier detectors.
+	// EnablePreviewRules turns on the preview-tier detectors.
 	// Default off; surface via `terrain analyze --preview`.
 	EnablePreviewRules bool
 
@@ -155,8 +155,8 @@ type PipelineOptions struct {
 	// EnabledDetectorsOverride opts back IN to detectors marked
 	// DisabledByDefault in the manifest, in addition to any
 	// `enabled_detectors` specified in `.terrain/policy.yaml`. Useful
-	// for calibration / test harnesses that need to exercise detectors
-	// regardless of the shipped default-disabled set.
+	// for test harnesses that need to exercise detectors regardless
+	// of the shipped default-disabled set.
 	EnabledDetectorsOverride []string
 }
 
@@ -1419,11 +1419,11 @@ func ingestGauntletArtifacts(paths []string) ([]*gauntlet.Artifact, error) {
 // malformed — the user explicitly asked for the comparison via
 // --baseline, so a silent fallback would mask intent.
 func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
-	// 0.2.0 final-polish: stream-decode via json.NewDecoder rather
-	// than loading the whole file into memory. A 100MB historical
-	// snapshot is tractable; multi-repo / multi-month historical
-	// snapshots can run several hundred MB and used to spike RSS by
-	// the same amount under os.ReadFile + json.Unmarshal.
+	// Stream-decode via json.NewDecoder rather than loading the whole
+	// file into memory. A 100MB historical snapshot is tractable;
+	// multi-repo / multi-month historical snapshots can run several
+	// hundred MB and used to spike RSS by the same amount under
+	// os.ReadFile + json.Unmarshal.
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("read: %w", err)
@@ -1447,23 +1447,22 @@ func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
 		return nil, fmt.Errorf("baseline appears empty (no schemaVersion, signals, testFiles, or evalRuns)")
 	}
 	// Reject snapshots from a future major version we don't understand.
-	// Pre-0.2.x this check was missing, so a 2.0.0 baseline would
-	// silently decode into the v1 struct, losing fields.
+	// Without this check a 2.0.0 baseline would silently decode into
+	// the v1 struct, losing fields.
 	if err := models.ValidateSchemaVersion(snap.SnapshotMeta.SchemaVersion); err != nil {
 		return nil, fmt.Errorf("baseline schema: %w", err)
 	}
 	// Migrate older snapshots forward in place (idempotent for current).
-	// Pre-0.2.x this call was missing, so 0.1.x baselines decoded
-	// raw and were silently compared as-if same-schema. Migration runs
-	// the same code path as cmd_compare.go uses; returned notes are
-	// discarded here (the warn is structural, not actionable for the
-	// regression detectors).
+	// Without this call older baselines decoded raw and were silently
+	// compared as-if same-schema. Migration runs the same code path
+	// as cmd_compare.go uses; returned notes are discarded here (the
+	// warn is structural, not actionable for the regression detectors).
 	_ = models.MigrateSnapshotInPlace(&snap)
 	return &snap, nil
 }
 
 // relativeArtifactPath converts a CLI-provided path into a repo-
-// relative form when possible. 0.2.0 final-polish: pre-fix the
+// relative form when possible. Before this normalization, the
 // SourcePath stamped into EvalRunEnvelope was whatever the user
 // passed on the CLI — `--promptfoo-results <repo>/eval/...`
 // produced absolute paths in SARIF output, leaking developer home
@@ -1471,11 +1470,10 @@ func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
 // (different volume, error) we fall back to the original path.
 //
 // Result is always slash-separated. `filepath.Rel` returns native
-// separators (backslash on Windows); snapshot JSON, calibration
-// labels, and SARIF all expect forward slashes, so we normalize to
-// `/` as the final step. Without this, Windows builds produced
-// backslash-separated SourcePaths that mismatched forward-slash
-// labels in the calibration corpus.
+// separators (backslash on Windows); snapshot JSON and SARIF all
+// expect forward slashes, so we normalize to `/` as the final step.
+// Without this, Windows builds produced backslash-separated
+// SourcePaths that mismatched their forward-slash counterparts.
 func relativeArtifactPath(root, p string) string {
 	if root == "" || p == "" {
 		return filepath.ToSlash(p)

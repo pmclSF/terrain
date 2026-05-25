@@ -105,7 +105,7 @@ const (
 	SignalDetectorMissingInput   models.SignalType = "detectorMissingInput"
 	SignalSuppressionExpired     models.SignalType = "suppressionExpired"
 
-	// 0.2 §9 stable-rule signal types — detectors land in subsequent
+	// Stable-rule signal types — detectors land in subsequent
 	// commits; the constants and manifest entries reserve the names.
 	SignalVersionFloating       models.SignalType = "versionFloating"
 	SignalSecretsInPrompt       models.SignalType = "secretsInPrompt"
@@ -121,10 +121,8 @@ const (
 	SignalDataLeakageSuspected  models.SignalType = "dataLeakageSuspected"
 	SignalMissingTrainTestSplit models.SignalType = "missingTrainTestSplit"
 
-	// Tier 5.1 — dep-drift detector. Closes 35.2% of measured 0.2.0
-	// recall gap (bot-authored deps-bump PRs that regress at 5x
-	// baseline). Detects manifest files with a high share of moving-
-	// target version specs.
+	// Dep-drift detector. Detects manifest files with a high share of
+	// moving-target version specs.
 	SignalDepsDriftRisk models.SignalType = "depsDriftRisk"
 	// Structural split of depsDriftRisk. Strict-pin half flags
 	// bare-name / unversioned specs; caret-policy half flags
@@ -134,9 +132,9 @@ const (
 	SignalDepsDriftRiskStrictPin   models.SignalType = "depsDriftRisk-strict-pin"
 	SignalDepsDriftRiskCaretPolicy models.SignalType = "depsDriftRisk-caret-policy"
 
-	// Tier 5.2 — config-schema-drift detector. Closes 5.7% of measured
-	// 0.2.0 recall gap (config-only PRs that ship regressions: untagged
-	// images, mutable action refs, deprecated apiVersions).
+	// Config-schema-drift detector. Flags config-only changes that
+	// can ship regressions (untagged images, mutable action refs,
+	// deprecated apiVersions).
 	SignalConfigSchemaDrift models.SignalType = "configSchemaDrift"
 
 	// Boundary class — AI/ML surface with no eval coverage. The
@@ -145,7 +143,7 @@ const (
 	// by two orders of magnitude.
 	SignalPromptFileMissingEval models.SignalType = "promptFileMissingEval"
 
-	// Regression family — uses Tier 1 eval-adapter foundation.
+	// Regression family — uses the eval-adapter foundation.
 	SignalBaselineNotSet        models.SignalType = "baselineNotSet"
 	SignalPassRateDrop          models.SignalType = "passRateDrop"
 	SignalSnapshotMismatch      models.SignalType = "snapshotMismatch"
@@ -157,9 +155,8 @@ const (
 	SignalNoIntegrationTest  models.SignalType = "noIntegrationTest"
 	SignalNoDataValidation   models.SignalType = "noDataValidation"
 
-	// §9 preview rules — detection logic ships but rules are default-
-	// off pending LB-5 / LB-6 calibration on dogfood corpus before
-	// promotion to Stable.
+	// Preview rules — detection logic ships but rules are default-
+	// off pending broader validation before promotion to Stable.
 	SignalPromptBloat              models.SignalType = "promptBloat"
 	SignalPromptWithoutTemperature models.SignalType = "promptWithoutTemperature"
 	SignalMissingPromptValidator   models.SignalType = "missingPromptValidator"

@@ -158,7 +158,7 @@ func TestSignalV2_ForwardCompat_V1ReaderReadsV2(t *testing.T) {
 }
 
 // TestSignalV2_BackwardCompat_V2ReaderReadsV1 confirms that adding the new
-// fields didn't break decoding of historical (pre-0.2) signals.
+// fields didn't break decoding of historical v1 signals.
 func TestSignalV2_BackwardCompat_V2ReaderReadsV1(t *testing.T) {
 	t.Parallel()
 

@@ -60,21 +60,15 @@ func buildBaselineFile(t *testing.T, baselineDir, outDir string) string {
 }
 
 // TestCalibration_CorpusRunner runs the real engine pipeline against the
-// in-tree calibration corpus and confirms the runner reports sane
-// precision/recall numbers. This is the integration path that 0.2
-// promises: adding a labeled fixture under tests/calibration/ and
-// running `make calibrate` (which delegates to this code path).
+// in-tree fixture corpus and confirms the runner reports sane numbers.
 //
 // Each fixture's labels.yaml declares the signals the suite should fire.
 // New labels caught here trip the test until the corresponding detector
 // is updated, which is exactly the regression gate we want.
 //
-// As of 0.2 the corpus covers 24 fixtures and 30 distinct signal
-// types spanning AI, quality, health, migration, structural, and
-// runtime domains at 1.00 precision/recall, and the gate is now
-// LOAD-BEARING: any unmatched expected label fails the test. Adding
-// a new fixture with a label that doesn't fire is a regression that
-// blocks merge.
+// The gate is LOAD-BEARING: any unmatched expected label fails the test.
+// Adding a new fixture with a label that doesn't fire is a regression
+// that blocks merge.
 func TestCalibration_CorpusRunner(t *testing.T) {
 	t.Parallel()
 
@@ -83,21 +77,19 @@ func TestCalibration_CorpusRunner(t *testing.T) {
 	if err != nil {
 		t.Fatalf("FindFixtures: %v", err)
 	}
-	// Pre-0.2.x this called t.Skipf if the corpus dir was empty, so
-	// anyone who renamed or moved tests/calibration/ silently bypassed
-	// the load-bearing gate. Now hard-fail on missing corpus and
-	// require at least 25 fixtures (per docs/release/0.2.md).
+	// Hard-fail on missing corpus rather than skip, so a rename or
+	// move can't silently bypass the load-bearing gate.
 	if len(dirs) == 0 {
-		t.Fatalf("calibration corpus missing at %s — gate cannot be bypassed by deletion", corpusRoot)
+		t.Fatalf("fixture corpus missing at %s — gate cannot be bypassed by deletion", corpusRoot)
 	}
 	const minFixtures = 25
 	if len(dirs) < minFixtures {
-		t.Fatalf("calibration corpus has %d fixtures; require at least %d", len(dirs), minFixtures)
+		t.Fatalf("fixture corpus has %d fixtures; require at least %d", len(dirs), minFixtures)
 	}
 
 	analyze := func(fixturePath string) ([]models.Signal, error) {
 		opts := engine.PipelineOptions{
-			// Calibration corpus exercises every detector, including
+			// The fixture corpus exercises every detector, including
 			// those that ship disabled-by-default. The override opts
 			// them back in for the duration of the test.
 			EnabledDetectorsOverride: []string{
@@ -143,30 +135,27 @@ func TestCalibration_CorpusRunner(t *testing.T) {
 
 	corpus, err := calibration.Run(corpusRoot, analyze)
 	if err != nil {
-		t.Fatalf("calibration.Run: %v", err)
+		t.Fatalf("corpus run: %v", err)
 	}
 
-	// 0.2's gate is load-bearing: every labeled fixture must still
-	// fire its expected detector. We crossed the 25-fixture milestone
-	// from docs/release/0.2.md with 24 fixtures × 30 detector types
-	// at 100% precision/recall and zero misses — the corpus is now a
-	// regression gate. Any future detector change that drops a
-	// labeled signal trips this block.
+	// The gate is load-bearing: every labeled fixture must still
+	// fire its expected detector. Any future detector change that
+	// drops a labeled signal trips this block.
 	rec := corpus.RecallByType()
 	for _, ftr := range corpus.Fixtures {
 		for _, m := range ftr.Matches {
 			if m.Outcome == calibration.OutcomeFalseNegative {
 				t.Errorf(
-					"calibration regression: fixture %q expected %s on %s but detector did not fire (notes: %s)",
+					"regression: fixture %q expected %s on %s but detector did not fire (notes: %s)",
 					ftr.Fixture, m.Type, m.File, m.Notes,
 				)
 			}
 		}
 	}
 
-	// Surface the precision numbers in test output so reviewers can
-	// eyeball calibration health without re-running by hand.
-	t.Logf("calibration: %d fixtures, %d detector types observed",
+	// Surface counts in test output so reviewers can spot-check
+	// without re-running by hand.
+	t.Logf("manifest: %d fixtures, %d detector types observed",
 		len(corpus.Fixtures), len(corpus.SortedDetectorTypes()))
 	for _, typ := range corpus.SortedDetectorTypes() {
 		prec := corpus.PrecisionByType()[typ]
@@ -177,7 +166,7 @@ func TestCalibration_CorpusRunner(t *testing.T) {
 	}
 }
 
-// corpusPath resolves tests/calibration relative to this test file so
+// corpusPath resolves the fixture root relative to this test file so
 // the test runs the same whether `go test` is invoked from the repo
 // root or a subdirectory.
 func corpusPath(t *testing.T) string {

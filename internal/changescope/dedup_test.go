@@ -540,7 +540,7 @@ func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 		t.Errorf("expected advisory-finding framing for warnings; got:\n%s", output)
 	}
 	// Raw detector taxonomy should NOT appear as the bold headline.
-	// Confirm by looking for the pre-fix shape `[HIGH] **aiPromptInjectionRisk**:`.
+	// Confirm by looking for the raw shape `[HIGH] **aiPromptInjectionRisk**:`.
 	if strings.Contains(output, "**aiPromptInjectionRisk**:") {
 		t.Error("raw detector taxonomy leaked into headline; should be plain-language summary")
 	}

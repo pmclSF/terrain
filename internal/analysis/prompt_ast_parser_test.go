@@ -626,9 +626,9 @@ async function streamResponse(prompt: string) {
 
 func TestASTPython_InfraGate_NoAIContext_SkipsRequests(t *testing.T) {
 	t.Parallel()
-	// requests-based HTTP code with iter_lines streaming — pre-fix
-	// this emitted streaming_handler because iter_lines + for-loop
-	// matched py streaming pattern.
+	// requests-based HTTP code with iter_lines streaming — without
+	// the AI-context infra gate this would emit streaming_handler
+	// because iter_lines + for-loop matches the py streaming pattern.
 	src := `
 import requests
 

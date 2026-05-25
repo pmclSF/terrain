@@ -29,7 +29,7 @@ import (
 //                                     known SDK method names when an
 //                                     AI binding exists in scope.
 //
-// The Go SDK landscape at 0.2.0:
+// Go SDKs currently recognized:
 //   github.com/sashabaranov/go-openai (community)
 //   github.com/openai/openai-go (official)
 //

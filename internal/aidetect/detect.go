@@ -31,8 +31,7 @@ type DetectResult struct {
 	// SDK identity, method shape, model arg (when static), and
 	// confidence. Populated alongside ModelFiles during the source
 	// scan; the regex-based ModelFiles entry remains as a safety net
-	// until the AST detector reaches recall parity on the dogfood
-	// corpus (per PRODUCT.md §17 LB-6).
+	// until the AST detector reaches recall parity.
 	CallSites []AICallSite `json:"callSites,omitempty"`
 }
 
@@ -300,10 +299,10 @@ func detectFromSourceCtx(ctx context.Context, root string, result *DetectResult)
 		}
 		if d.IsDir() {
 			// Use the same canonical skip set as walkRepoForConfigs and
-			// internal/analysis/repository_scan.go. Pre-0.2.x this site
-			// only skipped 5 dirs and would descend into dist/, build/,
-			// .terrain/, vendor/, target/, etc. — a major contributor to
-			// multi-walk amplification on real repos.
+			// internal/analysis/repository_scan.go. A narrower skip set
+			// would descend into dist/, build/, .terrain/, vendor/,
+			// target/, etc. — a major contributor to multi-walk
+			// amplification on real repos.
 			if skipDirs[d.Name()] {
 				return filepath.SkipDir
 			}
@@ -373,8 +372,7 @@ func detectFromSourceCtx(ctx context.Context, root string, result *DetectResult)
 		// AST-based call-site extraction. The AST path adds structural
 		// detail (SDK identity, method shape, static model arg) that the
 		// regex modelCallPatterns can't surface. Both run for now;
-		// removing the regex path is gated on LB-6 recall parity on the
-		// dogfood corpus per PRODUCT.md §17.
+		// removing the regex path is gated on AST recall parity.
 		switch ext {
 		case ".py":
 			result.CallSites = append(result.CallSites, DetectPythonAISurfaces(data, rel)...)

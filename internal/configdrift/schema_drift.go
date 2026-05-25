@@ -1,10 +1,9 @@
 // Package configdrift implements Terrain's detector for brittle infra-
-// config patterns. See docs/PRODUCT.md §16 for product context.
+// config patterns.
 //
 // Empirical motivation: a meaningful share of unflagged regression-
-// introducing PRs in our internal calibration corpus are "config-only"
-// edits (YAML / TOML / JSON / INI / TF) that no existing detector
-// covers.
+// introducing PRs in observed validation data are "config-only" edits
+// (YAML / TOML / JSON / INI / TF) that no existing detector covers.
 //
 // v1 design — analyse-time, not PR-diff-time. Walks tracked-config
 // files and flags structural patterns that are forward-compat hazards:

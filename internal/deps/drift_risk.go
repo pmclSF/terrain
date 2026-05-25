@@ -1,11 +1,11 @@
 // Package deps implements Terrain detectors for dependency-manifest
-// drift risk. See docs/PRODUCT.md §16 for product context.
+// drift risk.
 //
 // Empirical motivation: bot-authored PRs (renovate / dependabot / etc.)
-// regress at multiples of the corpus baseline, and a meaningful share
-// of all unflagged regression-introducing PRs in our internal
-// calibration corpus are bot or deps-bump shaped — a class no other
-// detector in the roster targets.
+// regress at multiples of the validation baseline, and a meaningful
+// share of all unflagged regression-introducing PRs observed are bot
+// or deps-bump shaped — a class no other detector in the roster
+// targets.
 //
 // v1 design — analyze-time, not PR-diff-time:
 //

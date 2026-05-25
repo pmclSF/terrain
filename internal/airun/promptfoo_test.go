@@ -257,11 +257,10 @@ func TestEvalAggregates_SuccessRate(t *testing.T) {
 	}
 }
 
-// TestParsePromptfoo_RowDerivedFallback_RoutesErroredRowsToErrors
-// locks in the 0.2.0 final-polish fix: when stats are absent (Promptfoo
-// v3 small runs, or a raw row dump), the row-derived fallback used to
-// classify every non-success row as Failure. Rows where the provider
-// crashed (`error: "..."`) should land in Aggregates.Errors instead so
+// TestParsePromptfoo_RowDerivedFallback_RoutesErroredRowsToErrors pins
+// that when stats are absent (small runs, or a raw row dump), the
+// row-derived fallback routes rows where the provider crashed
+// (`error: "..."`) into Aggregates.Errors rather than Failures, so
 // aiHallucinationRate's `caseIsScoreable` denominator excludes them
 // rather than treating them as legitimate evaluation failures.
 func TestParsePromptfoo_RowDerivedFallback_RoutesErroredRowsToErrors(t *testing.T) {
@@ -288,11 +287,11 @@ func TestParsePromptfoo_RowDerivedFallback_RoutesErroredRowsToErrors(t *testing.
 	}
 }
 
-// TestParsePromptfoo_PerCaseCostFallback locks in the 0.2.0 fix where
-// per-case cost reads from `r.cost` when `r.response.tokenUsage.cost`
-// is absent. Modern Promptfoo writes the same value to both; the
-// adapter pre-fix only read response-level, so cost regressions
-// silently no-op'd when Promptfoo only populated the top-level field.
+// TestParsePromptfoo_PerCaseCostFallback pins that per-case cost reads
+// from `r.cost` when `r.response.tokenUsage.cost` is absent. Modern
+// Promptfoo writes the same value to both; reading only the response
+// level would cause cost regressions to no-op when Promptfoo only
+// populated the top-level field.
 func TestParsePromptfoo_PerCaseCostFallback(t *testing.T) {
 	t.Parallel()
 	body := `{"results":[

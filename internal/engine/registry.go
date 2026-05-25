@@ -37,11 +37,10 @@ type Config struct {
 	// Zero uses the default (5000ms).
 	SlowTestThresholdMs float64
 
-	// EnablePreviewRules registers the §9 preview-tier AI detectors
+	// EnablePreviewRules registers the preview-tier AI detectors
 	// alongside the stable batch. Default false — preview rules ship
-	// default-off per §9 spec, pending LB-5 / LB-6 calibration on the
-	// dogfood corpus. Set via `terrain analyze --preview` or
-	// terrain.yaml: rules.preview.enabled.
+	// default-off, pending broader validation. Set via
+	// `terrain analyze --preview` or terrain.yaml: rules.preview.enabled.
 	EnablePreviewRules bool
 }
 
@@ -242,7 +241,7 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		Detector: &framework_migration.FrameworkMigrationDetector{},
 	})
 
-	// Runtime health detectors (Phase 1: adapted from health.HealthDetector).
+	// Runtime health detectors (flat stage: adapted from health.HealthDetector).
 	// These are silent when no runtime data is provided.
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
@@ -310,7 +309,7 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		},
 	})
 
-	// Graph-powered structural detectors (Phase 2: require dependency graph).
+	// Graph-powered structural detectors (graph stage: require dependency graph).
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
 			ID:            "structural.assertion-free-import",
@@ -532,11 +531,10 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		Detector: &aidetect.EmbeddingModelChangeDetector{Root: cfg.RepoRoot},
 	})
 
-	// Preview-tier AI/ML detectors (§9). These ship default-off and
-	// are pending LB-5 / LB-6 calibration on the dogfood corpus before
-	// promotion to Stable. Each adapter wraps a thin detector in
-	// internal/preview that owns the rule semantics. Enabled via
-	// Config.EnablePreviewRules.
+	// Preview-tier AI/ML detectors. These ship default-off and are
+	// pending broader validation before promotion to Stable. Each
+	// adapter wraps a thin detector in internal/preview that owns
+	// the rule semantics. Enabled via Config.EnablePreviewRules.
 	previewRegs := []signals.DetectorRegistration{
 		{
 			Meta: signals.DetectorMeta{

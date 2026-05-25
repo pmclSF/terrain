@@ -10,8 +10,7 @@
 //             in findings.
 //
 // Every new mechanism ships first as state: shadow. Live activation
-// requires the mechanism's regression suite (internal/regressionsuite)
-// and per-mechanism recall report (internal/recallharness) both pass,
+// requires the mechanism's regression and recall checks both pass,
 // then an explicit flip in mechanisms.yaml.
 //
 // Mechanism state can also be overridden per-process via the

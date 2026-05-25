@@ -21,9 +21,7 @@ import (
 //   - a category: "deprecated" or "floating"
 //   - a one-line explanation surfaced in the signal
 //
-// The list is hand-curated and intentionally conservative. We expand it
-// as the calibration corpus grows. False positives are tracked under
-// `expectedAbsent: aiModelDeprecationRisk` in the corpus.
+// The list is hand-curated and intentionally conservative.
 var modelDeprecationList = []deprecationRule{
 	// Floating / undated tags.
 	{Match: "gpt-4", Category: "floating", Explanation: "model tag `gpt-4` resolves to whatever the provider currently maps it to; pin a dated variant (e.g. gpt-4-0613)"},
@@ -35,11 +33,11 @@ var modelDeprecationList = []deprecationRule{
 	// Sunset / deprecated lineage.
 	{Match: "text-davinci-003", Category: "deprecated", Explanation: "OpenAI text-davinci-003 reached EOL in early 2024; switch to gpt-4-* or gpt-3.5-turbo-*"},
 	{Match: "text-davinci-002", Category: "deprecated", Explanation: "OpenAI text-davinci-002 is sunset; switch to a current chat model"},
-	// code-davinci lineage: pre-0.2.x had a bare `code-davinci` rule, but
-	// the trailing boundary class excludes `-`, so neither `code-davinci-001`
-	// nor `code-davinci-002` (the actual identifiers in the wild) matched.
-	// Enumerate the dated variants explicitly. The bare `code-davinci`
-	// stays for the exact-string case.
+	// code-davinci lineage: a bare `code-davinci` rule misses
+	// `code-davinci-001` / `code-davinci-002` because the trailing
+	// boundary class excludes `-`. Enumerate the dated variants
+	// explicitly; the bare `code-davinci` stays for the exact-string
+	// case.
 	{Match: "code-davinci", Category: "deprecated", Explanation: "OpenAI code-davinci-* is sunset; use gpt-4 with code prompts"},
 	{Match: "code-davinci-001", Category: "deprecated", Explanation: "OpenAI code-davinci-001 is sunset (Codex deprecation, 2023-03); use gpt-4 with code prompts"},
 	{Match: "code-davinci-002", Category: "deprecated", Explanation: "OpenAI code-davinci-002 is sunset (Codex deprecation, 2023-03); use gpt-4 with code prompts"},
@@ -182,13 +180,11 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			if dec := surfacelit.Gate(mechanisms.Default(), h.Rule.Match, abs, "aiModelDeprecationRisk"); !dec.Keep {
 				continue
 			}
-			// 0.2.0 final-polish: severity now tracks the category.
-			// "deprecated" tags (text-davinci-003, code-davinci-002,
-			// claude-1) are sunset and the next API call WILL break;
-			// these are High. "floating" tags (gpt-4, claude-3-opus)
-			// merely drift over time as the provider remaps the alias;
-			// these stay Medium. Pre-fix every category was Medium,
-			// which under-prioritized the genuinely-broken cases.
+			// Severity tracks the category. "deprecated" tags
+			// (text-davinci-003, code-davinci-002, claude-1) are sunset
+			// and the next API call WILL break; these are High.
+			// "floating" tags (gpt-4, claude-3-opus) merely drift over
+			// time as the provider remaps the alias; these stay Medium.
 			severity := models.SeverityMedium
 			if h.Rule.Category == "deprecated" {
 				severity = models.SeverityHigh
@@ -306,13 +302,13 @@ func scanFileForModelTags(path string) []modelHit {
 // the whole point is to mention the deprecated tag — flagging that as
 // a finding would be inverted.
 //
-// Comment-prefix coverage: pre-0.2.x this only recognized `#`, `//`,
-// and `*` (block-comment continuation), missing the styles used by SQL
-// (`--`), Lua/Haskell (`--`), config (`;`), shell-doc (`#:`), Lisp
-// (`;;`), HTML/Markdown (`<!--`), reStructuredText (`..`), and
-// markdown bullet/header lines that prose-document deprecations
-// (`-`, `*`, `1.`, `>`, `#`). Source files quoting deprecated model
-// names inside CHANGELOG-shaped lines were producing false positives.
+// Comment-prefix coverage includes the styles used by SQL (`--`),
+// Lua/Haskell (`--`), config (`;`), shell-doc (`#:`), Lisp (`;;`),
+// HTML/Markdown (`<!--`), reStructuredText (`..`), and markdown
+// bullet/header lines that prose-document deprecations (`-`, `*`,
+// `1.`, `>`, `#`). Without this coverage, source files quoting
+// deprecated model names inside CHANGELOG-shaped lines produce false
+// positives.
 func commentLooksLikeChangeLog(text string) bool {
 	t := strings.TrimSpace(text)
 	if t == "" {

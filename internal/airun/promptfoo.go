@@ -18,8 +18,8 @@ import (
 //   v4+ (newer):  top-level { evalId, results: [...], stats: {...} }
 //
 // Anything we can't recognize is returned as an error rather than
-// silently producing an empty result; the calibration corpus catches
-// adapter regressions explicitly.
+// silently producing an empty result; adapter regressions are caught
+// explicitly by the validation set.
 func ParsePromptfooJSON(data []byte) (*EvalRunResult, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("empty payload")

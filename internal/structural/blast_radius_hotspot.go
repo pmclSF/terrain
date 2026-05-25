@@ -13,9 +13,9 @@ import (
 
 // Blast-radius thresholds.
 //
-// Calibration found the dominant false-positive class is "graph-
-// traversal inflation" — leaf modules with direct=0 and indirect>>0
-// pulled in via shared __init__.py / index.ts re-exports.
+// The dominant false-positive class is "graph-traversal inflation" —
+// leaf modules with direct=0 and indirect>>0 pulled in via shared
+// __init__.py / index.ts re-exports.
 //
 // A simple `direct >= 1` filter kills foundational base classes
 // whose entire signal is high indirect reach (canonical true
@@ -34,8 +34,8 @@ const (
 	blastRadiusTopPercentDivisor = 20
 
 	// blastRadiusHighThreshold is the test count above which a source file
-	// receives SeverityHigh. The 80-floor keeps the gate panel focused
-	// on high-fanout files.
+	// receives SeverityHigh. The 80-floor keeps the high-severity bucket
+	// focused on high-fanout files.
 	blastRadiusHighThreshold = 80
 
 	// blastRadiusMediumThreshold is the test count above which a source file
@@ -177,7 +177,7 @@ func (d *BlastRadiusHotspotDetector) DetectWithGraph(snap *models.TestSuiteSnaps
 			Type:             signals.SignalBlastRadiusHotspot,
 			Category:         models.CategoryStructure,
 			Severity:         severity,
-			Confidence:       0.85, // demoted from 0.90: per-corpus lift is mixed
+			Confidence:       0.85,
 			EvidenceStrength: models.EvidenceStrong,
 			EvidenceSource:   models.SourceGraphTraversal,
 			Location:         models.SignalLocation{File: e.path},

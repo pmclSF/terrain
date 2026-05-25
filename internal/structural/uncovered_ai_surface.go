@@ -27,14 +27,14 @@ type UncoveredAISurfaceDetector struct{}
 //
 // modelSyntheticStemRe: names like `token_management_L47`, `*_L\d+`
 //   are line-number-suffix synthesized identifiers from the AI surface
-//   extractor — they're not addressable named LLM surfaces. (~32 FPs)
+//   extractor — they're not addressable named LLM surfaces.
 //
 // modelTypeSchemaSuffix: PascalCase names ending in Schema/Props/Type/
 //   Config/Params/Request/Response — Zod/Pydantic/TS type aliases that
-//   look like model names. (~45 FPs combined Zod + Pydantic)
+//   look like model names.
 //
 // modelDecoratorPrefix: names with `*_tool`, `tool_decorated_*` shapes
-//   that capture @tool decorator labels (not LLM call sites). (~28 FPs)
+//   that capture @tool decorator labels (not LLM call sites).
 var (
 	modelSyntheticStemRe = regexp.MustCompile(`_L\d+$`)
 	modelDecoratorRe     = regexp.MustCompile(`(?i)(^tool_decorated_|_tool$|_decorator(_|$))`)
@@ -47,7 +47,7 @@ var (
 
 // isStructuralAIModelFP returns true when a NodeModel surface's name
 // matches one of the known non-model classes (Zod schemas, line-suffix
-// synthesized stems, decorator labels). Each class clears ≥5 FPs.
+// synthesized stems, decorator labels).
 //
 // Restricted to model lane only — aiPrompt and aiDataset lanes have
 // different FP shapes (covered separately if needed).
@@ -56,16 +56,16 @@ func isStructuralAIModelFP(name string) bool {
 		return false
 	}
 	if modelSyntheticStemRe.MatchString(name) {
-		return true // *_L\d+ synthesized stems (~32 FPs)
+		return true // *_L\d+ synthesized stems
 	}
 	if modelDecoratorRe.MatchString(name) {
-		return true // @tool decorator captures (~28 FPs)
+		return true // @tool decorator captures
 	}
 	// PascalCase + type/schema suffix (Zod, Pydantic, TS type aliases).
 	if len(name) > 0 && name[0] >= 'A' && name[0] <= 'Z' {
 		for _, suffix := range modelTypeSchemaSuffix {
 			if strings.HasSuffix(name, suffix) && len(name) > len(suffix) {
-				return true // PascalCase type/schema (~45 FPs combined)
+				return true // PascalCase type/schema
 			}
 		}
 	}
@@ -117,9 +117,9 @@ func (d *UncoveredAISurfaceDetector) DetectWithGraph(snap *models.TestSuiteSnaps
 			}
 
 			// Drop aiModel lane FPs whose symbol shape matches known
-			// non-model classes. Filter ONLY applies to NodeModel — prompt
-			// and dataset lanes have different FP shapes and stay
-			// unfiltered here. Class-rule (≥5 FPs each).
+			// non-model classes. Filter ONLY applies to NodeModel —
+			// prompt and dataset lanes have different FP shapes and stay
+			// unfiltered here.
 			if nt == depgraph.NodeModel && isStructuralAIModelFP(name) {
 				continue
 			}

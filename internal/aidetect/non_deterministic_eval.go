@@ -38,10 +38,9 @@ type NonDeterministicEvalDetector struct {
 // formats where determinism knobs are typically declared as data
 // (YAML / JSON / TOML). Source files would need full AST analysis,
 // which is out of scope for this detector.
-// 0.2.0 final-polish: docstring (above) named TOML as in-scope but
-// the actual map didn't include it. Promptfoo and DeepEval support
-// TOML config; without `.toml` here a Promptfoo TOML config never
-// reached the detector.
+// TOML is included alongside YAML/JSON: Promptfoo and DeepEval
+// support TOML config, and omitting `.toml` would silently drop those
+// files from the detector.
 var evalConfigExts = map[string]bool{
 	".yaml": true,
 	".yml":  true,
@@ -161,13 +160,13 @@ type evalFinding struct {
 // analyseEvalConfig parses the YAML/JSON file and returns one finding
 // per non-deterministic provider/test entry.
 //
-// Pre-0.2.x this scanned for the FIRST `temperature` anywhere in the
-// file and emitted one verdict total. Multi-provider configs where
-// one provider pins temperature and another doesn't got a single
-// binary verdict — the second provider's missing pin was silently
-// missed. Per-provider scoping fixes the multi-provider case while
-// retaining single-finding behavior for the common single-provider
-// shape.
+// Per-provider scoping: an earlier revision scanned for the FIRST
+// `temperature` anywhere in the file and emitted one verdict total.
+// Multi-provider configs where one provider pins temperature and
+// another doesn't would receive a single binary verdict — the second
+// provider's missing pin was silently missed. Per-provider scoping
+// fixes the multi-provider case while retaining single-finding
+// behavior for the common single-provider shape.
 func analyseEvalConfig(path string) []evalFinding {
 	raw, err := os.ReadFile(path)
 	if err != nil {

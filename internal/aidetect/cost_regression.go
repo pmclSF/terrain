@@ -32,8 +32,8 @@ type CostRegressionDetector struct {
 
 	// MinAbsDelta is the minimum absolute change in avg cost-per-case
 	// (in USD) required before the relative-percentage check fires.
-	// Pre-0.2.x this floor didn't exist, so a tiny absolute regression
-	// (e.g. $0.0001 → $0.0002 = +100%) paged at High severity. Default
+	// Without this floor a tiny absolute regression (e.g.
+	// $0.0001 → $0.0002 = +100%) would page at High severity. Default
 	// 0.0005 USD per case — large enough to ignore single-token
 	// fluctuations on cheap models, small enough to catch real shifts.
 	MinAbsDelta float64
@@ -82,14 +82,14 @@ func (d *CostRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []models
 		if curAvg-baseAvg < minAbs {
 			continue
 		}
-		// 0.2.0 final-polish: scale confidence by paired-case count.
-		// Pre-fix every regression fired at 0.9 regardless of whether
-		// the inference was over 1 paired case or 1000 — a single
-		// outlier hit the same alarm bell as a population-wide drift.
-		// New formula: confidence ramps 0.5 → 0.9 over the [1, 10]
-		// paired range, plateaus at 0.9 thereafter. Cost regressions
-		// over <5 paired cases are still emitted but with explicit
-		// low-confidence framing in ConfidenceDetail.
+		// Scale confidence by paired-case count. Without scaling, every
+		// regression fires at 0.9 regardless of whether the inference
+		// is over 1 paired case or 1000 — a single outlier hits the
+		// same alarm bell as a population-wide drift. Formula:
+		// confidence ramps 0.5 → 0.9 over the [1, 10] paired range,
+		// plateaus at 0.9 thereafter. Cost regressions over <5 paired
+		// cases are still emitted but with explicit low-confidence
+		// framing in ConfidenceDetail.
 		confidence := pairedConfidence(paired)
 		// Severity escalation: a 2× regression (delta >= 1.0) goes
 		// High; merely-above-threshold stays Medium. Lets CI gates

@@ -246,8 +246,8 @@ func TestLoadAll_SkipsReadme(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}
-	// Phase 1 baseline: 0 populated harnesses. _README.md must be skipped.
+	// Baseline: 0 populated harnesses. _README.md must be skipped.
 	if len(harnesses) != 0 {
-		t.Logf("note: %d harnesses present (Phase 1 baseline expected 0)", len(harnesses))
+		t.Logf("note: %d harnesses present (baseline expected 0)", len(harnesses))
 	}
 }

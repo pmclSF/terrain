@@ -5,10 +5,9 @@ import (
 	"testing"
 )
 
-// TestExtractPython_ParametrizeValues confirms the 0.2 work that
-// extracts literal parametrize values into ParameterizationInfo.Values.
-// Closes the round-4 finding "pytest parametrize value extraction
-// (currently estimates count only)".
+// TestExtractPython_ParametrizeValues confirms that literal parametrize
+// values are extracted into ParameterizationInfo.Values rather than just
+// counted.
 func TestExtractPython_ParametrizeValues(t *testing.T) {
 	t.Parallel()
 

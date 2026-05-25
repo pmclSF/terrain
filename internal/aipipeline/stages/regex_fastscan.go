@@ -143,7 +143,7 @@ func (s *RegexFastscan) Run(_ context.Context, c *aipipeline.Candidate) aipipeli
 	// frameworks are imported in the same file, this is almost
 	// certainly library code that supports many backends — not an
 	// application training pipeline that just happens to mix them.
-	// Empirical FP cluster on the labeled corpus.
+	// Empirical false-positive cluster.
 	if mlTrainingFrameworkCount(c.Src) >= 3 {
 		c.AddAtom(aipipeline.EvidenceAtom{
 			Kind:   aipipeline.EvidenceNegative,

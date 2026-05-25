@@ -17,7 +17,7 @@ import (
 // Java imports bind a class name (the last component of the qualified
 // path) to a package. We classify the package through classifyJavaPackage.
 //
-// SDKs at 0.2.0:
+// SDKs currently recognized:
 //   com.theokanning.openai.* (community OpenAI for Java)
 //   com.openai.* (official OpenAI Java SDK)
 //   com.anthropic.* (Anthropic Java)

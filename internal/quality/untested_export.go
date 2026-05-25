@@ -43,12 +43,10 @@ type UntestedExportDetector struct {
 
 // toolingPathPrefixes are repo-root-relative path prefixes that we
 // treat as build / CI / tooling code and exclude from untested-export
-// detection. Verified against the 30-repo non-AI OSS corpus: Angular
-// HEAD flagged `deployToFirebase`, `setupRedirect`, `getCredentialFilePath`
-// from `.github/actions/deploy-docs-site/` — deployment scripts that
-// don't need unit-test coverage. Same logic applies to repo-wide
-// helper scripts (`scripts/`), build tooling (`tools/`, `build-tools/`),
-// and shipped artifacts (`bin/`, `dist/`).
+// detection. Examples: deployment scripts under `.github/actions/`
+// that don't need unit-test coverage; repo-wide helper scripts
+// (`scripts/`); build tooling (`tools/`, `build-tools/`); and shipped
+// artifacts (`bin/`, `dist/`).
 //
 // Tested ANY path-component match, not just leading slash, because
 // monorepos commonly have `packages/foo/scripts/build.ts` etc.
@@ -75,7 +73,7 @@ var toolingPathPrefixes = []string{
 	"proto/",
 	"protobuf/",
 	"autogen/",
-	// Additional generated-code paths surfaced by labeled-sample review:
+	// Additional generated-code paths:
 	"tests-gen/",       // Kotlin/JetBrains auto-generated test stubs
 	"applyconfigurations/", // Kubernetes auto-generated SDK setters
 	"apps/playground/", // React/compiler playground demo
@@ -85,10 +83,9 @@ var toolingPathPrefixes = []string{
 
 // generatedFileRe matches generated-code suffixes that should be
 // excluded from untested-export detection regardless of directory.
-// Discovered on the post-fix corpus audit: 23% of remaining
-// untestedExport firings were on .pb.go / _pb2.py / .bundle.js /
-// _generated.* files — protobuf bindings, minified JS, and codegen
-// outputs that don't need direct unit tests.
+// Covers .pb.go / _pb2.py / .bundle.js / _generated.* files —
+// protobuf bindings, minified JS, and codegen outputs that don't need
+// direct unit tests.
 var generatedFileRe = regexp.MustCompile(
 	`(?i)(_pb2\.py$|\.pb\.go$|_pb\.go$|\.pb\.cc$|\.pb\.h$|` +
 		`\.min\.js$|\.bundle\.js$|\.bundle\.css$|` +
@@ -193,15 +190,12 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 		}
 		// Skip code units in CI / tooling / build paths. These are
 		// deploy scripts, build helpers, benchmarks, and examples —
-		// not the production exports the detector targets. Verified
-		// on the OSS corpus: this drops Angular's
-		// `.github/actions/deploy-docs-site/` firings (5 sample
-		// firings audited, 100% non-actionable for users).
+		// not the production exports the detector targets.
 		if isToolingPath(cu.Path) {
 			continue
 		}
 
-		// Calibration-driven filters:
+		// Test-infrastructure filters:
 		//
 		// (a) Filenames that self-declare as test infrastructure:
 		//     internal-for-testing.ts, test-helpers.*, *-fixture.*, etc.

@@ -78,12 +78,12 @@ func (d *SafetyEvalMissingDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 	//   1. Explicit: scenario.CoveredSurfaceIDs lists surface IDs.
 	//   2. Implicit: scenario sits in an eval directory with empty
 	//      CoveredSurfaceIDs (the common shape produced by
-	//      DeriveEvals). Pre-0.2.x this case caused the detector
-	//      to flood false positives on every safety-critical surface
-	//      in repos using auto-derived scenarios — the default path.
-	//      We now treat such scenarios as covering all
-	//      safety-critical surfaces under the same top-level path
-	//      directory as the scenario.
+	//      DeriveEvals). Without an implicit-coverage path, this case
+	//      floods false positives on every safety-critical surface in
+	//      repos using auto-derived scenarios — the default path. We
+	//      treat such scenarios as covering all safety-critical
+	//      surfaces under the same top-level path directory as the
+	//      scenario.
 	safelyCoveredSurfaces := map[string]bool{}
 	safelyCoveredDirs := map[string]bool{}
 	for _, sc := range snap.Evals {

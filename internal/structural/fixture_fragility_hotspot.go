@@ -10,9 +10,9 @@ import (
 
 // Fixture fragility thresholds.
 //
-// The pre-calibration thresholds fired on fixtures used by >=5 tests
-// in a single file — which is normal DRY test design, not fragility.
-// The current shape requires fan-out *across files* before flagging.
+// A naive threshold (>=5 tests in a single file) fires on what is
+// normal DRY test design, not fragility. The current shape requires
+// fan-out *across files* before flagging.
 const (
 	// minFixtureDependents is the minimum direct-test count before a
 	// fixture is even considered. Raised from 5 to 10 — fewer than 10

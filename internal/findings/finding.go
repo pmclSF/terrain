@@ -245,7 +245,7 @@ func validRuleID(id string) bool {
 // Lint returns non-fatal warnings about a finding's quality:
 //   - short_message > 280 chars (violates schema soft constraint)
 //   - cause_loc absent when cause_path is populated
-//   - reproduction empty (violates LB-4 local-reproduction-parity)
+//   - reproduction empty (every finding should be locally reproducible)
 func (f *Finding) Lint() []string {
 	var out []string
 	if len(f.ShortMessage) > 280 {
@@ -255,7 +255,7 @@ func (f *Finding) Lint() []string {
 		out = append(out, "cause_path is populated but cause_loc is not — set cause_loc to the chain's terminal node")
 	}
 	if f.Reproduction == "" {
-		out = append(out, "reproduction is empty (LB-4 requires every finding to be locally reproducible)")
+		out = append(out, "reproduction is empty — every finding should be locally reproducible")
 	}
 	return out
 }

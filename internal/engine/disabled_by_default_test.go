@@ -8,11 +8,10 @@ import (
 )
 
 // TestDefaultDisabledTypes_ContainsExpected pins the manifest contract
-// that the R3.7 baseline detectors (aiPromptInjectionRisk + the
-// aiHardcodedAPIKey back-compat shim) remain disabled by default.
-// A regression that removes the DisabledByDefault flag from either
-// entry would silently re-enable noisy detectors on every adopter's
-// first analyze.
+// that aiPromptInjectionRisk and the aiHardcodedAPIKey back-compat shim
+// remain disabled by default. A regression that removes the
+// DisabledByDefault flag from either entry would silently re-enable
+// noisy detectors on every adopter's first analyze.
 func TestDefaultDisabledTypes_ContainsExpected(t *testing.T) {
 	disabled := signals.DefaultDisabledTypes()
 	for _, expect := range []string{
@@ -40,7 +39,7 @@ func TestDefaultDisabledTypes_DoesNotIncludeWellValidated(t *testing.T) {
 		"blastRadiusHotspot",
 	} {
 		if disabled[wellValidated] {
-			t.Errorf("%q must NOT be DisabledByDefault — it is lift-validated and gate-tier", wellValidated)
+			t.Errorf("%q must NOT be DisabledByDefault — well-validated detectors stay on", wellValidated)
 		}
 	}
 }

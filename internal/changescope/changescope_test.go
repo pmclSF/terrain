@@ -525,9 +525,9 @@ func TestBuildAIValidationSummary_WithScenarios(t *testing.T) {
 // TestBuildAIValidationSummary_WithSignals locks in the contract that
 // the AI risk review summary in `terrain pr` output is impact-scoped:
 // only AI signals whose Location.File appears in the PR's changed-
-// files set are reported as Blocking / Warning. Pre-fix the loop
-// included every AI signal in the snapshot, so a doc-only PR
-// surfaced every calibration-corpus fixture as a "blocking" finding.
+// files set are reported as Blocking / Warning. Without that filter, a
+// doc-only PR would surface every in-repo AI signal as a "blocking"
+// finding.
 //
 // Fixture: three AI signals + one Quality signal. Two of the AI
 // signals are on a changed file ("src/prompt.ts"); one is on an
@@ -579,7 +579,7 @@ func TestBuildAIValidationSummary_WithSignals(t *testing.T) {
 
 // TestBuildAIValidationSummary_DropsSignalsOnUnchangedFiles is the
 // regression test for the noisy-AI-gate bug: a doc-only PR shouldn't
-// surface calibration-corpus fixture signals as merge blockers.
+// surface in-repo fixture signals as merge blockers.
 func TestBuildAIValidationSummary_DropsSignalsOnUnchangedFiles(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{
@@ -593,8 +593,8 @@ func TestBuildAIValidationSummary_DropsSignalsOnUnchangedFiles(t *testing.T) {
 	}
 	snap := &models.TestSuiteSnapshot{
 		Signals: []models.Signal{
-			// Calibration-fixture-shaped signal: pre-existing in repo,
-			// not introduced by this PR.
+			// Fixture-shaped signal: pre-existing in repo, not
+			// introduced by this PR.
 			{Type: "aiModelDeprecationRisk", Category: models.CategoryAI, Severity: models.SeverityHigh,
 				Explanation: "OpenAI text-davinci-003 reached EOL",
 				Location: models.SignalLocation{File: "tests/calibration/floating-model-tag/config.yaml"}},

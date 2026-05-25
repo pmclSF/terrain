@@ -87,10 +87,10 @@ func (d *RetrievalRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []m
 			if drop <= threshold {
 				continue
 			}
-			// 0.2.0 final-polish: scale confidence by paired-case count
-			// (shared helper). Single-paired-case retrieval drops are
-			// not the same evidence quality as 100-case drops; without
-			// scaling, both fired at 0.9.
+			// Scale confidence by paired-case count (shared helper).
+			// Single-paired-case retrieval drops are not the same
+			// evidence quality as 100-case drops; without scaling, both
+			// would fire at 0.9.
 			confidence := pairedConfidence(paired)
 			out = append(out, models.Signal{
 				Type:        signals.SignalAIRetrievalRegression,

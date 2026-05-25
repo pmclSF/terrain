@@ -37,19 +37,10 @@ pillars:
     external_framing: "Gate PR changes based on the system as a whole"
     priority: 1
 
-# Per-pillar floor requirements for the 0.2.0 release gate.
+# Per-pillar floor requirements for the release gate.
 #
-# Gate floor is 3 in 0.2.0: the pillar ships recall-anchored on a
-# synthetic calibration corpus (axes P2, E2 at level 3 = "calibrated
-# on synthetic fixtures"). The level-4/5 jump on those axes requires
-# a real-repo precision floor — the central deliverable of the 0.3
-# program. Setting Gate floor=4 in 0.2.0 would have been unsatisfiable
-# by construction; floor=3 is the honest contract for what 0.2.0
-# actually delivers, and the rubric continues to
-# measure the 4→5 trajectory cell-by-cell as the corpus work lands.
-#
-# Understand is workable for adopters (≥ 3). Align is soft (warn-only
-# at 3) because multi-repo aggregation is genuinely emerging.
+# Understand is workable for adopters. Align is soft (warn-only) because
+# multi-repo aggregation is genuinely emerging.
 pillar_floors:
   understand: 3
   align: 3
@@ -167,8 +158,8 @@ axes:
     description: "Can a senior engineer rely on the output without checking?"
     levels:
       "1": "Anecdotal / heuristic only"
-      "3": "Calibrated on synthetic fixtures (recall-anchored)"
-      "5": "Calibrated against a curated benchmark corpus with published precision/recall"
+      "3": "Anchored on synthetic fixtures (recall-anchored)"
+      "5": "Measured against a curated benchmark with published precision/recall"
 
   - id: P3
     name: "Documentation"
@@ -226,13 +217,13 @@ axes:
       "5": "Unit + integration + golden + property/fuzz"
 
   - id: E2
-    name: "Calibration"
+    name: "Validation"
     lens: engineering
     description: "Recall and precision evidence for detectors and parsers."
     levels:
       "1": "None"
       "3": "Recall-anchor fixtures"
-      "5": "Precision floor against real-repo corpus"
+      "5": "Precision floor against representative repositories"
 
   - id: E3
     name: "Observability"
@@ -292,10 +283,10 @@ axes:
   - id: V2
     name: "Information rhythm"
     lens: visual
-    description: "Output reads cleanly; signal-to-noise calibrated."
+    description: "Output reads cleanly; signal-to-noise tuned."
     levels:
       "1": "Wall-of-text or scattered output"
-      "3": "Sections are scanned in <5 seconds; signal-to-noise calibrated"
+      "3": "Sections are scanned in <5 seconds; signal-to-noise tuned"
       "5": "Output reads like a designed document; user knows where to look without instruction"
 
   - id: V3
@@ -313,7 +304,7 @@ axes:
 uniformity_gates:
   - id: detector_shape
     name: "Detector shape uniformity"
-    description: "Every detector has all 8 required fields: stable ID, title, summary, severity rationale, evidence sources, calibration anchor, known false positives, suppression guidance."
+    description: "Every detector has all 8 required fields: stable ID, title, summary, severity rationale, evidence sources, validation anchor, known false positives, suppression guidance."
     applies_to: "All shipping detectors (manifest)"
     verified_by: "cmd/terrain-docs-gen manifest validator"
     blocking: true
@@ -334,7 +325,7 @@ uniformity_gates:
 
   - id: doc_scaffold
     name: "Doc scaffold uniformity"
-    description: "Every per-detector / per-framework page follows the eight-section scaffold: title → status → summary → remediation → promotion plan → evidence sources → known false positives → suppression guidance → calibration status."
+    description: "Every per-detector / per-framework page follows the eight-section scaffold: title → status → summary → remediation → promotion plan → evidence sources → known false positives → suppression guidance → validation status."
     applies_to: "All docs/rules/* and docs/migration/* pages"
     verified_by: "make docs-verify (extended)"
     blocking: true

@@ -134,10 +134,6 @@ type MetricInterval struct {
 
 // PrecisionByTypeInterval returns Wilson 95% intervals for per-detector
 // precision. Detectors with zero TP+FP are omitted (no data to bracket).
-//
-// The interval narrows as the corpus grows: with 1 fixture per detector
-// the bounds will be wide, near-uninformative; at 25-50 fixtures (the
-// 0.2 corpus target) bounds become useful.
 func (c CorpusResult) PrecisionByTypeInterval() map[models.SignalType]MetricInterval {
 	out := map[models.SignalType]MetricInterval{}
 	for typ, tp := range c.TP {

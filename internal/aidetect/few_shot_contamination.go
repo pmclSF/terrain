@@ -15,16 +15,12 @@ import (
 // Contamination inflates eval scores because the model has effectively
 // memorised its own test set.
 //
-// 0.2 ships a narrow heuristic check: for each prompt surface, walk
+// This is a narrow heuristic check: for each prompt surface, walk
 // the scenarios that cover it and look for chunks of the scenario's
 // input text that appear verbatim in the prompt file. The detector is
 // marked experimental in the manifest because it's bound to under-
 // detect (paraphrased examples won't match) and to over-detect on
 // short inputs.
-//
-// More precise variants (token-level n-gram overlap, semantic
-// similarity scores, cross-suite leakage detection) land in 0.3 with
-// the calibration corpus calibrating the threshold.
 type FewShotContaminationDetector struct {
 	// Root is the absolute path of the repo. Snapshot paths are
 	// repo-relative.
@@ -101,12 +97,12 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 			continue
 		}
 		// Resolve which prompt surfaces this scenario should be checked
-		// against. Pre-0.2.x final-polish, this loop iterated only
-		// `sc.CoveredSurfaceIDs`; auto-derived scenarios (the dominant
-		// shape — empty CoveredSurfaceIDs) silenced the detector
-		// entirely. aiSafetyEvalMissing already shipped this same
-		// implicit-coverage fallback in 0.2; aligning here closes the
-		// gap so contamination fires on the default scenario shape too.
+		// against. An earlier revision iterated only `sc.CoveredSurfaceIDs`;
+		// auto-derived scenarios (the dominant shape — empty
+		// CoveredSurfaceIDs) silenced the detector entirely.
+		// aiSafetyEvalMissing already ships this same implicit-coverage
+		// fallback; aligning here closes the gap so contamination fires on
+		// the default scenario shape too.
 		surfaceIDs := sc.CoveredSurfaceIDs
 		if len(surfaceIDs) == 0 {
 			// Implicit coverage: check this scenario against every
@@ -177,13 +173,13 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 // distinct-word-count threshold and appears verbatim inside content
 // (case-insensitive).
 //
-// Pre-0.2.x this was a pure substring match with the 40-character
-// threshold. Adversarial review flagged that 40 chars of English
-// boilerplate ("Please describe the issue you're seeing") matches
-// every customer-support-style prompt by accident. The new check
-// requires the candidate to also have at least 5 distinct alphanumeric
-// tokens — short of a real n-gram overlap (planned for 0.3) but
-// substantially harder to trigger on shared boilerplate.
+// A pure substring match with the 40-character threshold is too loose:
+// 40 chars of English boilerplate ("Please describe the issue you're
+// seeing") matches every customer-support-style prompt by accident.
+// The current check requires the candidate to also have at least 5
+// distinct alphanumeric
+// tokens — short of a real n-gram overlap but substantially harder to
+// trigger on shared boilerplate.
 func findContaminationOverlap(content string, candidates []string, threshold int) (bool, string) {
 	const minDistinctWords = 5
 	for _, c := range candidates {

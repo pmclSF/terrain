@@ -105,6 +105,13 @@ func writeRuleDocs(root string) error {
 		if !strings.HasPrefix(entry.RuleURI, "docs/rules/") || !strings.HasSuffix(entry.RuleURI, ".md") {
 			continue
 		}
+		// Skip entries that are not yet shipping. They still appear in
+		// docs/signals/manifest.json (the catalog) but get no public
+		// rule doc — the doc would only describe a not-yet-implemented
+		// detector.
+		if entry.Status == signals.StatusPlanned {
+			continue
+		}
 		path := filepath.Join(root, filepath.FromSlash(entry.RuleURI))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return fmt.Errorf("create %s: %w", filepath.Dir(path), err)
@@ -149,9 +156,13 @@ func readPreservedTail(path string) string {
 func countDocsRulesEntries() int {
 	n := 0
 	for _, e := range signals.Manifest() {
-		if strings.HasPrefix(e.RuleURI, "docs/rules/") && strings.HasSuffix(e.RuleURI, ".md") {
-			n++
+		if !strings.HasPrefix(e.RuleURI, "docs/rules/") || !strings.HasSuffix(e.RuleURI, ".md") {
+			continue
 		}
+		if e.Status == signals.StatusPlanned {
+			continue
+		}
+		n++
 	}
 	return n
 }
@@ -185,7 +196,7 @@ func renderRuleStub(e signals.ManifestEntry) string {
 		b.WriteString("\n")
 	}
 	fmt.Fprintf(&b, "## Confidence range\n\n")
-	fmt.Fprintf(&b, "Detector confidence is bracketed at [%.2f, %.2f] (heuristic today; calibrated against a labeled corpus over time).\n", e.ConfidenceMin, e.ConfidenceMax)
+	fmt.Fprintf(&b, "Confidence interval: %.2f–%.2f.\n", e.ConfidenceMin, e.ConfidenceMax)
 
 	return b.String()
 }

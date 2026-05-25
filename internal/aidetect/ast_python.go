@@ -17,8 +17,8 @@ import (
 // AST-based detection (this type) replaces the regex modelCallPatterns
 // fallback over time. AST sees: imports, binding flow, the actual call
 // shape, and statically-resolvable string-literal arguments. The regex
-// path remains in detect.go as the safety net until LB-5/LB-6 prove the
-// AST detector reaches parity on the dogfood corpus.
+// path remains in detect.go as the safety net until the AST detector
+// reaches recall parity.
 type AICallSite struct {
 	// Path is the repo-relative file path.
 	Path string

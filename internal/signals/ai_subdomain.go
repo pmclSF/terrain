@@ -122,7 +122,7 @@ var aiSubdomainBySignal = map[models.SignalType]AISubdomain{
 	SignalToolSelectionError:     AISubdomainRegression,
 	SignalTopKRegression:         AISubdomainRegression,
 
-	// §9 stable-rule AI signals (Planned at this commit, detectors
+	// Stable-rule AI signals (Planned at this commit, detectors
 	// land in followups).
 	SignalSecretsInPrompt:       AISubdomainHygiene,
 	SignalNoEvalForAISurface:    AISubdomainInventory,
@@ -141,7 +141,7 @@ var aiSubdomainBySignal = map[models.SignalType]AISubdomain{
 	SignalPerformanceRegression: AISubdomainRegression,
 	SignalMissingBaseline:       AISubdomainInventory,
 
-	// §9 preview rules — most are hygiene-class structural patterns.
+	// Preview rules — most are hygiene-class structural patterns.
 	SignalPromptBloat:              AISubdomainHygiene,
 	SignalPromptWithoutTemperature: AISubdomainHygiene,
 	SignalMissingPromptValidator:   AISubdomainHygiene,

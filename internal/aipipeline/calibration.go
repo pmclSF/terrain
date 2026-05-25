@@ -25,11 +25,11 @@ type Calibration struct {
 	// Severities maps rule → declared severity.
 	Severities map[string]Severity
 
-	// Preview marks rules whose calibration ships in 0.2 but hasn't
-	// cleared the empirical bar for "stable" — typically because the
-	// labeled corpus doesn't yet contain enough TPs of that rule's
-	// shape to give a meaningful precision floor. Preview rules are
-	// not in the default rule set; users must opt in via --rule.
+	// Preview marks rules that ship but haven't cleared the empirical
+	// bar for "stable" — typically because validation hasn't yet
+	// observed enough TPs of that rule's shape to give a meaningful
+	// precision floor. Preview rules are not in the default rule set;
+	// users must opt in via --rule.
 	// The findings renderer surfaces a [preview] tag so the calling
 	// engineer knows the confidence number is not yet
 	// corpus-validated.
@@ -185,13 +185,13 @@ func DefaultCalibration() *Calibration {
 					"regex.model_registry_register":  0.0,
 				},
 				// Per-rule override for ai.train.missing_tracker. The
-				// training detector at face value has 2% precision on
-				// the labeled corpus — most training-anchored files
-				// are tutorials/kaggle exports/research scripts that
-				// don't *need* tracking. Production-context atoms are
-				// the signal that distinguishes "real production
-				// training that should track" from "early-dev that's
-				// expected to skip tracking."
+				// training detector at face value has very low precision
+				// — most training-anchored files are tutorials, kaggle
+				// exports, or research scripts that don't *need*
+				// tracking. Production-context atoms are the signal
+				// that distinguishes "real production training that
+				// should track" from "early-dev that's expected to
+				// skip tracking."
 				"ai.train.missing_tracker": {
 					"regex.production_ml_sdk":       +1.8,
 					"regex.scheduling_decorator":    +1.5,

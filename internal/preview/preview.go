@@ -1,8 +1,7 @@
-// Package preview implements the §9 preview-tier detectors. These
-// rules ship default-off and are pending LB-5 / LB-6 calibration on
-// the dogfood corpus before promotion to Stable. The detection logic
-// here is the minimum needed to surface the pattern; thresholds and
-// edge-case handling refine as calibration data arrives.
+// Package preview implements the preview-tier detectors. These rules
+// ship default-off and are pending broader validation before promotion
+// to Stable. The detection logic here is the minimum needed to surface
+// the pattern; thresholds and edge-case handling will refine over time.
 package preview
 
 import (

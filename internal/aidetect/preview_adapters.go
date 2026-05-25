@@ -190,8 +190,8 @@ func (d *DuplicateEvalRowsDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 // SchemaDriftDetector wires the structural pre-computed-column variant
 // of schemaDrift. Until the analyze pipeline computes column sets, this
 // adapter has no inputs and returns no signals — it's pre-registered
-// so the manifest entry is reachable, and so 0.3.0 can light it up
-// without a registry change.
+// so the manifest entry is reachable and a future revision can light
+// it up without a registry change.
 type SchemaDriftDetector struct{}
 
 func (d *SchemaDriftDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
@@ -199,8 +199,8 @@ func (d *SchemaDriftDetector) Detect(snap *models.TestSuiteSnapshot) []models.Si
 }
 
 // ColdStartTimeDetector consumes pre-computed latency observations.
-// Same lifecycle as SchemaDrift — registered, dormant until 0.3.0
-// runtime telemetry lands.
+// Same lifecycle as SchemaDrift — registered, dormant until runtime
+// telemetry inputs land.
 type ColdStartTimeDetector struct{}
 
 func (d *ColdStartTimeDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
