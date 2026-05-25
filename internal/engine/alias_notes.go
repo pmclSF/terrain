@@ -2,6 +2,7 @@ package engine
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"sort"
 	"sync"
@@ -11,7 +12,7 @@ import (
 
 // aliasNoteOnce de-duplicates migration NOTEs across calls within a single
 // process. The first time a given old rule_id triggers an alias expansion,
-// terrain emits a stderr NOTE pointing at the new IDs; subsequent hits stay
+// terrain emits a NOTE pointing at the new IDs; subsequent hits stay
 // silent. The user has one chance per session to see each migration prompt.
 var aliasNoteOnce sync.Map
 
@@ -20,6 +21,16 @@ var aliasNoteOnce sync.Map
 // surfaces the alias's `why` text (when present) and the new IDs the user
 // should update their config to reference.
 //
+// Production callers want the default (stderr) output. Tests use
+// emitAliasNotesTo so they can capture output without swapping
+// os.Stderr globally (which races with parallel test code paths that
+// also write to stderr).
+func emitAliasNotes(reg *aliases.Registry, hits map[string]bool) {
+	emitAliasNotesTo(os.Stderr, reg, hits)
+}
+
+// emitAliasNotesTo is the io.Writer-parameterized form for tests.
+//
 // Quiet when:
 //   - reg is nil
 //   - hits is empty (no aliases were exercised)
@@ -27,7 +38,7 @@ var aliasNoteOnce sync.Map
 //
 // The "once per session" gate is per-process. Tests can reset it via
 // ResetAliasNotesForTesting() to verify the emit-once behavior.
-func emitAliasNotes(reg *aliases.Registry, hits map[string]bool) {
+func emitAliasNotesTo(w io.Writer, reg *aliases.Registry, hits map[string]bool) {
 	if reg == nil || len(hits) == 0 {
 		return
 	}
@@ -47,16 +58,16 @@ func emitAliasNotes(reg *aliases.Registry, hits map[string]bool) {
 		if !ok {
 			continue
 		}
-		fmt.Fprintf(os.Stderr, "[NOTE] %q is a deprecated rule_id.\n", oldID)
-		fmt.Fprintf(os.Stderr, "       It now expands to: %v\n", entry.ReplacesWith)
+		fmt.Fprintf(w, "[NOTE] %q is a deprecated rule_id.\n", oldID)
+		fmt.Fprintf(w, "       It now expands to: %v\n", entry.ReplacesWith)
 		if entry.Why != "" {
-			fmt.Fprintf(os.Stderr, "       Why: %s\n", entry.Why)
+			fmt.Fprintf(w, "       Why: %s\n", entry.Why)
 		}
-		fmt.Fprintf(os.Stderr, "       To migrate, update `.terrain/policy.yaml` (or suppressions.yaml)\n")
-		fmt.Fprintf(os.Stderr, "       to reference the new IDs above. Run `terrain show rule <id>`\n")
-		fmt.Fprintf(os.Stderr, "       for severity, status, and remediation per new ID.\n")
-		fmt.Fprintf(os.Stderr, "       Silence this notice with TERRAIN_QUIET=1.\n")
-		fmt.Fprintln(os.Stderr)
+		fmt.Fprintf(w, "       To migrate, update `.terrain/policy.yaml` (or suppressions.yaml)\n")
+		fmt.Fprintf(w, "       to reference the new IDs above. Run `terrain show rule <id>`\n")
+		fmt.Fprintf(w, "       for severity, status, and remediation per new ID.\n")
+		fmt.Fprintf(w, "       Silence this notice with TERRAIN_QUIET=1.\n")
+		fmt.Fprintln(w)
 	}
 }
 

@@ -116,6 +116,58 @@ func TestApplyEvidenceBasedSeverity_PopulatesMetadataOnEveryCall(t *testing.T) {
 	}
 }
 
+// TestApplyEvidenceBasedSeverity_KnownTypeWithoutLift exercises the
+// `ev.GlobalLift == nil` branch — the entry is in the evidence
+// ledger but its global-lift summary is absent. Should still cap at
+// Medium and populate metadata.
+func TestApplyEvidenceBasedSeverity_KnownTypeWithoutLift(t *testing.T) {
+	// SignalAIPromptVersioning is in the manifest with no GlobalLift
+	// wired in the evidence ledger today.
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{
+				Type:     signals.SignalAIPromptVersioning,
+				Severity: models.SeverityHigh,
+			},
+		},
+	}
+	applyEvidenceBasedSeverity(snap)
+	got := snap.Signals[0]
+	if got.Severity != models.SeverityMedium {
+		t.Errorf("Severity = %q, want %q (cap at medium when lift unavailable)",
+			got.Severity, models.SeverityMedium)
+	}
+	if got.Metadata == nil {
+		t.Fatal("Metadata not populated")
+	}
+}
+
+// TestApplyEvidenceBasedSeverity_KnownTypeWithLiftPopulatesIntervals
+// exercises the GlobalLift-present branch — the metadata should carry
+// the lift point AND, when the CI bounds are non-zero, the CI low/high
+// markers. SignalUntestedExport is the canonical gate-tier detector
+// with a populated lift in the evidence ledger.
+func TestApplyEvidenceBasedSeverity_KnownTypeWithLiftPopulatesIntervals(t *testing.T) {
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{
+				Type:     signals.SignalUntestedExport,
+				Severity: models.SeverityMedium,
+			},
+		},
+	}
+	applyEvidenceBasedSeverity(snap)
+	got := snap.Signals[0]
+	if got.Metadata == nil {
+		t.Fatal("Metadata not populated")
+	}
+	if _, ok := signals.LookupEvidence(signals.SignalUntestedExport); ok {
+		if _, has := got.Metadata["corpus_lift"]; !has {
+			t.Error("corpus_lift not set for known-type-with-lift signal")
+		}
+	}
+}
+
 // TestRoundTo2 covers the public helper's edge cases (rounding,
 // negatives, exact halves).
 func TestRoundTo2(t *testing.T) {

@@ -2,42 +2,18 @@ package engine
 
 import (
 	"bytes"
-	"io"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/aliases"
 )
 
-// captureStderr swaps os.Stderr for a pipe for the duration of fn,
-// returning whatever fn wrote there. Used by the alias-notes tests
-// because emitAliasNotes writes directly to os.Stderr (matches the
-// CLI's existing logging style; isolates output without touching the
-// production code path).
-func captureStderr(t *testing.T, fn func()) string {
-	t.Helper()
-	old := os.Stderr
-	r, w, err := os.Pipe()
-	if err != nil {
-		t.Fatalf("os.Pipe: %v", err)
-	}
-	os.Stderr = w
-	done := make(chan struct{})
+// captureEmit runs emitAliasNotesTo against a local bytes.Buffer and
+// returns what would have been written. Avoids the global os.Stderr
+// swap that previously raced with other parallel engine tests.
+func captureEmit(reg *aliases.Registry, hits map[string]bool) string {
 	var buf bytes.Buffer
-	go func() {
-		_, _ = io.Copy(&buf, r)
-		close(done)
-	}()
-	defer func() {
-		os.Stderr = old
-		_ = w.Close()
-		<-done
-		_ = r.Close()
-	}()
-	fn()
-	_ = w.Close()
-	<-done
+	emitAliasNotesTo(&buf, reg, hits)
 	return buf.String()
 }
 
@@ -69,23 +45,14 @@ aliases:
 // unconditionally.
 func TestEmitAliasNotes_NilOrEmpty(t *testing.T) {
 	ResetAliasNotesForTesting()
-	out := captureStderr(t, func() {
-		emitAliasNotes(nil, map[string]bool{"oldRuleA": true})
-	})
-	if out != "" {
+	if out := captureEmit(nil, map[string]bool{"oldRuleA": true}); out != "" {
 		t.Errorf("nil registry produced output: %q", out)
 	}
 	reg := testRegistry(t)
-	out = captureStderr(t, func() {
-		emitAliasNotes(reg, nil)
-	})
-	if out != "" {
+	if out := captureEmit(reg, nil); out != "" {
 		t.Errorf("nil hits produced output: %q", out)
 	}
-	out = captureStderr(t, func() {
-		emitAliasNotes(reg, map[string]bool{})
-	})
-	if out != "" {
+	if out := captureEmit(reg, map[string]bool{}); out != "" {
 		t.Errorf("empty hits produced output: %q", out)
 	}
 }
@@ -97,10 +64,7 @@ func TestEmitAliasNotes_TerrainQuietSuppresses(t *testing.T) {
 	ResetAliasNotesForTesting()
 	t.Setenv("TERRAIN_QUIET", "1")
 	reg := testRegistry(t)
-	out := captureStderr(t, func() {
-		emitAliasNotes(reg, map[string]bool{"oldRuleA": true})
-	})
-	if out != "" {
+	if out := captureEmit(reg, map[string]bool{"oldRuleA": true}); out != "" {
 		t.Errorf("TERRAIN_QUIET=1 still emitted: %q", out)
 	}
 }
@@ -111,9 +75,7 @@ func TestEmitAliasNotes_FirstHitEmits(t *testing.T) {
 	ResetAliasNotesForTesting()
 	t.Setenv("TERRAIN_QUIET", "")
 	reg := testRegistry(t)
-	out := captureStderr(t, func() {
-		emitAliasNotes(reg, map[string]bool{"oldRuleA": true})
-	})
+	out := captureEmit(reg, map[string]bool{"oldRuleA": true})
 	if !strings.Contains(out, `"oldRuleA" is a deprecated rule_id`) {
 		t.Errorf("missing deprecated-rule-id line; got:\n%s", out)
 	}
@@ -135,15 +97,11 @@ func TestEmitAliasNotes_OncePerSession(t *testing.T) {
 	ResetAliasNotesForTesting()
 	t.Setenv("TERRAIN_QUIET", "")
 	reg := testRegistry(t)
-	first := captureStderr(t, func() {
-		emitAliasNotes(reg, map[string]bool{"oldRuleA": true})
-	})
+	first := captureEmit(reg, map[string]bool{"oldRuleA": true})
 	if first == "" {
 		t.Fatal("first call produced no output")
 	}
-	second := captureStderr(t, func() {
-		emitAliasNotes(reg, map[string]bool{"oldRuleA": true})
-	})
+	second := captureEmit(reg, map[string]bool{"oldRuleA": true})
 	if second != "" {
 		t.Errorf("second call on same rule_id emitted: %q", second)
 	}
@@ -156,16 +114,12 @@ func TestEmitAliasNotes_ResetForTestingClearsMemo(t *testing.T) {
 	ResetAliasNotesForTesting()
 	t.Setenv("TERRAIN_QUIET", "")
 	reg := testRegistry(t)
-	first := captureStderr(t, func() {
-		emitAliasNotes(reg, map[string]bool{"oldRuleB": true})
-	})
+	first := captureEmit(reg, map[string]bool{"oldRuleB": true})
 	if first == "" {
 		t.Fatal("first call produced no output")
 	}
 	ResetAliasNotesForTesting()
-	second := captureStderr(t, func() {
-		emitAliasNotes(reg, map[string]bool{"oldRuleB": true})
-	})
+	second := captureEmit(reg, map[string]bool{"oldRuleB": true})
 	if second == "" {
 		t.Error("after Reset, second call still suppressed")
 	}
@@ -178,12 +132,10 @@ func TestEmitAliasNotes_DeterministicOrder(t *testing.T) {
 	ResetAliasNotesForTesting()
 	t.Setenv("TERRAIN_QUIET", "")
 	reg := testRegistry(t)
-	out := captureStderr(t, func() {
-		emitAliasNotes(reg, map[string]bool{
-			"oldRuleC": true,
-			"oldRuleA": true,
-			"oldRuleB": true,
-		})
+	out := captureEmit(reg, map[string]bool{
+		"oldRuleC": true,
+		"oldRuleA": true,
+		"oldRuleB": true,
 	})
 	idxA := strings.Index(out, "oldRuleA")
 	idxB := strings.Index(out, "oldRuleB")
@@ -200,10 +152,7 @@ func TestEmitAliasNotes_OnlyKnownIDsEmit(t *testing.T) {
 	ResetAliasNotesForTesting()
 	t.Setenv("TERRAIN_QUIET", "")
 	reg := testRegistry(t)
-	out := captureStderr(t, func() {
-		emitAliasNotes(reg, map[string]bool{"notInRegistry": true})
-	})
-	if out != "" {
+	if out := captureEmit(reg, map[string]bool{"notInRegistry": true}); out != "" {
 		t.Errorf("unknown rule_id emitted: %q", out)
 	}
 }

@@ -204,9 +204,16 @@ func (d *StaticSkipDetector) fileHasGatePredicate(relPath string) bool {
 //     predicate and mis-classify an unconditional skip).
 //   - Block `/* ... */` comments collapsed to a single space.
 //
-// String-literal contents are left intact (a gate predicate that lives
-// inside a quoted string is rare and not worth the parsing cost to
-// disambiguate).
+// String-literal handling is NOT implemented: tokens that look like
+// comments inside quoted strings (e.g. a JS `"# in string"` literal
+// or a `#privateField` identifier) are still stripped. The
+// classification this feeds is conservative on false negatives — when
+// in doubt, the rule mis-classifies as "unconditional" rather than
+// silently passing — so the fail direction is safe.
+//
+// On an unterminated block comment, the remainder of the file is
+// preserved verbatim (rather than truncated) so a malformed source
+// file doesn't accidentally clear the gate-predicate check.
 func stripLineComments(text string) string {
 	if !strings.ContainsAny(text, "/#") {
 		return text
@@ -219,7 +226,11 @@ func stripLineComments(text string) string {
 		if i+1 < len(text) && text[i] == '/' && text[i+1] == '*' {
 			end := strings.Index(text[i+2:], "*/")
 			if end < 0 {
-				break
+				// Unterminated /* … */: preserve the rest of the file
+				// verbatim so the gate-predicate check still has the
+				// remaining source to work with.
+				b.WriteString(text[i:])
+				return b.String()
 			}
 			b.WriteByte(' ')
 			i += end + 4
@@ -229,7 +240,8 @@ func stripLineComments(text string) string {
 		if (i+1 < len(text) && text[i] == '/' && text[i+1] == '/') || text[i] == '#' {
 			nl := strings.IndexByte(text[i:], '\n')
 			if nl < 0 {
-				break
+				// Last line, no newline. Drop the comment tail.
+				return b.String()
 			}
 			i += nl // keep the newline so line numbers don't shift
 			continue

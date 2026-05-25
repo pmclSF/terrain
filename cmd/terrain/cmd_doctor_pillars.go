@@ -13,7 +13,7 @@ import (
 // without running analyze.
 type pillarStatus struct {
 	Name   string
-	Symbol string // statusGlyph(...) result: "✓"/"[OK]", "⚠"/"[!]", "?"/"[?]"
+	Symbol string // unwrapped statusGlyph(...) token: "✓"/"OK", "⚠"/"!", "?" (renderer adds `[%s]` brackets)
 	Detail string
 	Hint   string
 }

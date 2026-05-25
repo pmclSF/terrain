@@ -191,3 +191,27 @@ func TestCoverageThresholdDetector_SnapshotSummaryZeroCoverageIsFlagged(t *testi
 		t.Fatalf("severity = %q, want high", signals[0].Severity)
 	}
 }
+
+// TestFormatPct pins the percentage-formatting helper. The Phase 4
+// rewrite collapsed the hand-rolled truncating formatter into
+// fmt.Sprintf("%.1f", v) which rounds half-up — `20.55` is now "20.6"
+// (was "20.5"). Pin the new behavior so a future re-implementation
+// can't silently regress it.
+func TestFormatPct(t *testing.T) {
+	cases := []struct {
+		in   float64
+		want string
+	}{
+		{0, "0"},
+		{50, "50"},
+		{12.3, "12.3"},
+		{20.55, "20.6"}, // round-half-up at the tenths boundary
+		{0.05, "0.1"},   // tiny positive rounds up
+		{99.95, "100.0"},
+	}
+	for _, c := range cases {
+		if got := formatPct(c.in); got != c.want {
+			t.Errorf("formatPct(%v) = %q, want %q", c.in, got, c.want)
+		}
+	}
+}
