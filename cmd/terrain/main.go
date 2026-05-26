@@ -382,6 +382,42 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "webhook":
+		// Maintainer / self-host surface: receives GitHub webhook
+		// deliveries, parses slash commands, dispatches through a
+		// Dispatcher (default: informational, no GitHub write-back).
+		// Adopters override the dispatcher in their integration code.
+		// Gated behind TERRAIN_DEV so adopters don't accidentally run
+		// the no-write-back default in production.
+		if os.Getenv("TERRAIN_DEV") == "" {
+			fmt.Fprintln(os.Stderr, "error: unknown command \"webhook\"")
+			os.Exit(2)
+		}
+		addr := ":4242"
+		for i := 2; i < len(os.Args); i++ {
+			a := os.Args[i]
+			if a == "--addr" && i+1 < len(os.Args) {
+				addr = os.Args[i+1]
+				i++
+				continue
+			}
+			if len(a) > len("--addr=") && a[:len("--addr=")] == "--addr=" {
+				addr = a[len("--addr="):]
+				continue
+			}
+			if isHelpArg(a) {
+				fmt.Fprintln(os.Stderr, "Usage: terrain webhook [--addr=:4242]")
+				fmt.Fprintln(os.Stderr)
+				fmt.Fprintln(os.Stderr, "Start the GitHub webhook server.")
+				fmt.Fprintln(os.Stderr, "Requires TERRAIN_WEBHOOK_SECRET (same value GitHub uses).")
+				return
+			}
+		}
+		if err := runWebhook(addr); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
 	case "reset":
 		legacyDeprecationNotice("reset", "config reset")
 		if err := runResetCLI(os.Args[2:]); err != nil {
