@@ -42,6 +42,7 @@ var reportVerbs = []string{
 	"pr",
 	"posture",
 	"select-tests",
+	"check-runs",
 }
 
 // runReportNamespaceCLI dispatches `terrain report <verb> ...`.
@@ -75,6 +76,8 @@ func runReportNamespaceCLI(args []string) error {
 		return runReportPostureCLI(rest)
 	case "select-tests":
 		return runReportSelectTestsCLI(rest)
+	case "check-runs":
+		return runReportCheckRunsCLI(rest)
 	default:
 		printReportUsage()
 		return fmt.Errorf("unknown report verb %q (valid: %s)", verb, strings.Join(reportVerbs, ", "))
@@ -220,6 +223,28 @@ func runReportPRCLI(args []string) error {
 		return err
 	}
 	return runPR(*root, *baseRef, *jsonOut, *format, gate)
+}
+
+// runReportCheckRunsCLI emits structured JSON for two GitHub Checks-
+// API check runs: `terrain (gate)` (required) and
+// `terrain (observability)` (informational). Adopters' CI workflows
+// consume the JSON and POST each half to the Checks API. Terrain
+// itself does no network I/O; the binary writes JSON, the workflow
+// handles auth + HTTP.
+//
+// Default: writes the bundle to stdout. With --out=<path>, writes to
+// the file instead.
+func runReportCheckRunsCLI(args []string) error {
+	fs := flag.NewFlagSet("report check-runs", flag.ExitOnError)
+	root := fs.String("root", ".", "repository root to analyze")
+	headSHA := fs.String("head-sha", "", "HEAD commit SHA (required; the check runs target this commit)")
+	out := fs.String("out", "", "write the JSON bundle to this path instead of stdout")
+	_ = fs.Parse(args)
+	mountPositionalAsRoot("report check-runs", fs.Args(), root)
+	if *headSHA == "" {
+		return fmt.Errorf("--head-sha is required (the check-run target commit; typically $GITHUB_SHA)")
+	}
+	return runCheckRuns(*root, *headSHA, *out)
 }
 
 func runReportPostureCLI(args []string) error {
