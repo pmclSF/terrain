@@ -40,6 +40,44 @@ All notable changes to Terrain are documented here. The format follows
 - **`make regression-gate`** validates regression-suite and recall-harness
   YAML files under `harness/`. Wired into `make release-gate` so
   release verification fails on a malformed suite.
+- **PR-comment vocabulary:** the PR-surface labels are now
+  `BLOCK / GATE / WATCH / NOTE`, decoupling the user-visible badge
+  from the internal `CRIT / HIGH / MED / LOW` severity ladder. The
+  internal severity rubric is unchanged; the user-facing layer maps
+  through `uitokens.PRLabel(tier, severity)`.
+- **Per-detector visibility floor on PR comments.** Each detector
+  always gets at least one inline card per PR, even when changescope
+  dedup would have collapsed everything else. Extra findings collapse
+  into `+N more — see terrain explain <rule>`. Adopters never lose
+  visibility into a detector firing.
+- **PR-comment templates** (`internal/prtemplates`) provide a stable
+  Title / Summary / Action / SlashHints quartet per rule. The
+  renderer reads from this registry instead of inlining detector
+  prose, so future copy edits don't sprawl across the codebase.
+- **Suppressions schema v2** adds `scope` (instance / file /
+  directory / repo), `content_hash` (SHA-256 of a 5-line normalized
+  context window), and per-scope default expiry. v1 entries continue
+  to load; analyzer migrates them on first write.
+- **Alias-aware suppression matching:** `ApplyWithAliases` lets a
+  v1-era rule_id continue to suppress its post-split halves without
+  user action.
+- **Two GitHub Checks-API check runs** per PR:
+  `terrain (gate)` is required and fails when an undismissed
+  gate-tier finding fires; `terrain (observability)` is informational
+  and always neutral. Emit both from one analyze pass with
+  `terrain report check-runs --head-sha=<sha>`. The bundle is split
+  + posted via `gh api` by the workflow — terrain itself remains
+  network-free.
+- **Slash-command grammar** (`/dismiss`, `/terrain explain`,
+  `/terrain show`, `/terrain commands`, plus five reserved verbs)
+  with deterministic, LLM-free parsing. `terrain webhook` (gated
+  behind `TERRAIN_DEV=1`) serves the receiver; signature validation
+  uses HMAC-SHA256 against `TERRAIN_WEBHOOK_SECRET`.
+- **Per-repo finding-history learning.** After three un-dismissed
+  fires of the same (rule, file), the PR-comment renderer demotes
+  that card from `[GATE]` to `[WATCH]`. State lives in
+  `.terrain/finding-history.yaml`; `/dismiss` resets the counter
+  through the same store.
 
 ### Changed
 
