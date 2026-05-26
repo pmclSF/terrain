@@ -11,7 +11,7 @@ import (
 )
 
 // TestFindingHistory_PipelineWritesAndRendererReads is the end-to-end
-// contract test for the § P5.7 demote loop:
+// contract test for the chronic-firing demote loop:
 //
 //  1. Pipeline step 10e increments per-(rule, file) counters.
 //  2. After N=DefaultThreshold un-dismissed runs, ShouldDemote → true.

@@ -2,7 +2,7 @@
 // grammar for PR-comment interaction. No LLM parsing — every verb is
 // a literal string match with explicit positional + keyword args.
 //
-// The 10-verb canonical set (per § P5.2):
+// The 10-verb canonical set:
 //
 //	/terrain bench <id>            — run a benchmark suite by ID.
 //	/terrain commands              — re-print the pinned command list.

@@ -14,8 +14,9 @@
 //	           take TODAY. Imperative voice ("Wrap user input..."
 //	           rather than "It is recommended that...").
 //	SlashHints — Suggested slash-commands the PR author can run.
-//	           Phase-5e wires these up to the webhook receiver; until
-//	           then the labels appear as text in the PR comment.
+//	           The webhook receiver (cmd/terrain webhook) parses these
+//	           and dispatches; without the receiver they render as
+//	           plain text in the PR comment.
 //
 // All templates are static; no per-finding string interpolation. The
 // render layer adds the file/line context outside the template. This
@@ -36,11 +37,11 @@ var defaultYAML []byte
 // SlashHint is one suggested slash-command for a finding.
 type SlashHint struct {
 	// Label is the human-readable button text (e.g. "Dismiss this
-	// finding"). Phase-5e surfaces this as the user-visible action.
+	// finding") surfaced as the user-visible action.
 	Label string `yaml:"label"`
 	// Command is what gets typed / parsed (e.g.
-	// "/dismiss reason:<text>"). Phase-5e's grammar parses this verb
-	// and dispatches.
+	// "/dismiss reason:<text>"). The webhook receiver's grammar
+	// parses this verb and dispatches.
 	Command string `yaml:"command"`
 }
 

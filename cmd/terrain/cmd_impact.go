@@ -244,9 +244,9 @@ func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGa
 
 	// Load per-repo finding-history so the PR-comment renderer can
 	// demote chronically-firing-without-dismiss findings to the
-	// observability footer (§ P5.7). Missing file → empty store,
-	// the correct first-run behavior. Other errors are non-fatal:
-	// log + render without history rather than block the comment.
+	// observability footer. Missing file → empty store, the correct
+	// first-run behavior. Other errors are non-fatal: log + render
+	// without history rather than block the comment.
 	hist, histErr := engine.LoadFindingHistory(root)
 	if histErr != nil {
 		logging.L().Debug("finding history: load failed at render", "err", histErr)

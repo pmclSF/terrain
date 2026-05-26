@@ -15,9 +15,9 @@ import (
 // runSuppress) plus a GitHub-API client that posts the reply back
 // to the PR.
 //
-// The intent: ship a working webhook receiver in P5.2 so adopters
-// can validate the wiring end-to-end; the dispatch table they
-// override is the only piece they need to provide.
+// The intent: ship a working webhook receiver so adopters can
+// validate the wiring end-to-end; the dispatch table they override
+// is the only piece they need to provide.
 type DefaultDispatcher struct{}
 
 // Handle implements Dispatcher. Returns a markdown reply describing

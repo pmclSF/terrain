@@ -8,8 +8,8 @@ import "strings"
 // every PR-comment hook) so users always know which verbs are
 // available.
 //
-// Spec § P5.2: "First-time bot interaction pins a top-level
-// command-list comment."
+// Pinned at first-time bot interaction as a top-level command-list
+// comment so the verb surface is always discoverable.
 //
 // The output is stable across calls (no timestamps, no randomized
 // ordering) so a re-render produces byte-identical text — the

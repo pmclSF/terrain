@@ -192,10 +192,9 @@ func TestCoverageThresholdDetector_SnapshotSummaryZeroCoverageIsFlagged(t *testi
 	}
 }
 
-// TestFormatPct pins the percentage-formatting helper. The Phase 4
-// rewrite collapsed the hand-rolled truncating formatter into
-// fmt.Sprintf("%.1f", v) which rounds half-up — `20.55` is now "20.6"
-// (was "20.5"). Pin the new behavior so a future re-implementation
+// TestFormatPct pins the percentage-formatting helper. The current
+// implementation uses fmt.Sprintf("%.1f", v) which rounds half-up —
+// `20.55` is "20.6". Pin the behavior so a future re-implementation
 // can't silently regress it.
 func TestFormatPct(t *testing.T) {
 	cases := []struct {

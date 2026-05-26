@@ -430,7 +430,7 @@ func TestPRLabel(t *testing.T) {
 		{"observability+info → (drop)", "observability", "info", "", ""},
 
 		// Defensive: empty tier defaults to gate-shape (legacy callers
-		// pre-Phase-1 where tier wasn't threaded).
+		// that don't yet thread the tier through).
 		{"empty tier+critical → BLOCK", "", "critical", "BLOCK", "[BLOCK]"},
 		{"empty tier+medium → GATE", "", "medium", "GATE", "[GATE]"},
 		{"empty tier+low → NOTE", "", "low", "NOTE", "[NOTE]"},

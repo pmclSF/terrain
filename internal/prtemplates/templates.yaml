@@ -5,8 +5,8 @@
 # Summary (≤2 sentences), Action (1 imperative sentence), and at
 # least three slash hints (always include /dismiss + /terrain explain).
 #
-# Phase-5 spec § P5.1: "Real copy, real button labels, real
-# what-happens-on-click."
+# The intent is "real copy, real button labels, real
+# what-happens-on-click" — adopters never see a placeholder Title.
 
 version: 1
 
@@ -307,8 +307,8 @@ templates:
       - { label: "Dismiss as new assertion", command: "/dismiss reason:<text>" }
 
   # ── Observability tier — selected high-value detectors ──────────
-  # (Renders as WATCH labels under P5.5; included so the PR comment
-  # surface has consistent copy even for non-blocking signals.)
+  # (Renders as WATCH labels; included so the PR comment surface has
+  # consistent copy even for non-blocking signals.)
 
   - signal_type: aiSafetyEvalMissing
     title: Safety eval missing

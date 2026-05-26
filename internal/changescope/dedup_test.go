@@ -341,8 +341,8 @@ func TestRenderPRSummaryMarkdown_FindingTruncation(t *testing.T) {
 	// in the card-style render. Protection-gap findings keep the old
 	// N-cap render (each gap is a different file; per-detector
 	// collapse doesn't apply). The detector-bearing visibility floor
-	// from P5.4 lives in renderFindingsCardsByDetector for the
-	// slash-command surface.
+	// lives in renderFindingsCardsByDetector for the slash-command
+	// surface.
 	if !strings.Contains(output, "_...and 10 more") {
 		t.Errorf("expected truncation message for >10 findings; got:\n%s", output)
 	}
@@ -417,9 +417,9 @@ func TestRenderPRSummaryMarkdown_DirectVsIndirectSections(t *testing.T) {
 	if !strings.Contains(output, "### Coverage gaps in changed code") {
 		t.Errorf("expected 'Coverage gaps in changed code' heading; got:\n%s", output)
 	}
-	// PR-comment labels use the BLOCK/GATE/WATCH/NOTE vocabulary
-	// (P5.5) — protection-gap defaults to gate-tier; high severity
-	// + gate-tier = [GATE].
+	// PR-comment labels use the BLOCK/GATE/WATCH/NOTE vocabulary —
+	// protection-gap defaults to gate-tier; high severity + gate-tier
+	// = [GATE].
 	if !strings.Contains(output, "**`src/a.ts`** [GATE] — Direct gap") {
 		t.Errorf("expected card-shape direct finding with [GATE] label; got:\n%s", output)
 	}
@@ -644,8 +644,9 @@ func TestRenderPRSummaryMarkdown_AISection_Deterministic(t *testing.T) {
 }
 
 // TestRenderFindingsCardsByDetector_PerDetectorVisibilityFloor pins
-// the P5.4 contract: every detector that fired contributes at least
-// one card, and co-fires within a detector collapse to "↳ +N more".
+// the per-detector floor contract: every detector that fired
+// contributes at least one card, and co-fires within a detector
+// collapse to "↳ +N more".
 func TestRenderFindingsCardsByDetector_PerDetectorVisibilityFloor(t *testing.T) {
 	t.Parallel()
 

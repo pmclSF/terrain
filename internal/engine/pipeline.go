@@ -938,11 +938,11 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		applyNewFindingsOnly(snapshot)
 	}
 
-	// Step 10e: update per-repo finding history (§ P5.7). For each
-	// signal that survived suppressions, increment the (rule_id,
-	// file) counter. The PR-comment renderer consults the same
-	// store via ShouldDemote to fold chronically-firing-without-
-	// dismiss findings into the observability footer.
+	// Step 10e: update per-repo finding history. For each signal
+	// that survived suppressions, increment the (rule_id, file)
+	// counter. The PR-comment renderer consults the same store via
+	// ShouldDemote to fold chronically-firing-without-dismiss findings
+	// into the observability footer.
 	//
 	// Skip in baseline / readonly contexts: when the caller asks
 	// for --new-findings-only behavior, the snapshot has been

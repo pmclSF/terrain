@@ -10,7 +10,7 @@ import (
 )
 
 // TestRealDispatcher_DismissWritesSuppression is the end-to-end
-// integration test for the Phase 5 slash-receiver → CLI runner →
+// integration test for the slash-receiver → CLI runner →
 // suppression-file write chain.
 //
 // The contract: a /dismiss webhook delivery causes a real

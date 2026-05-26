@@ -52,7 +52,7 @@ func TestLoad_EveryTemplateHasRequiredFields(t *testing.T) {
 }
 
 // TestLoad_EveryTemplateHasDismissHint enforces a contract: every
-// template offers the user a /dismiss path. Phase 5e's slash-command
+// template offers the user a /dismiss path. The slash-command
 // surface treats /dismiss as the canonical "I've reviewed this" verb.
 func TestLoad_EveryTemplateHasDismissHint(t *testing.T) {
 	r, _ := Load()

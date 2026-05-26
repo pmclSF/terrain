@@ -203,8 +203,7 @@ func PRLabel(tier, severity string) string {
 		return "WATCH"
 	}
 	// Treat empty / unrecognized tier as gate (legacy callers that
-	// don't yet thread the tier through default to the gate label,
-	// matching the pre-Phase-1 behavior).
+	// don't yet thread the tier through default to the gate label).
 	switch severity {
 	case "critical":
 		return "BLOCK"
@@ -277,10 +276,6 @@ func VerdictBadge(verdict string) string {
 // is color-and-symbol via the same vocabulary as VerdictBadge so
 // callsites stay consistent. `headline` is one short sentence
 // describing the verdict in plain language.
-//
-// Pre-0.2 these decisions surfaced as a single buried "Decision:
-// BLOCKED — reason" line; the audit (ai_execution_gating.V2 +
-// pr_change_scoped.V2) called for a hero block. This is that block.
 func HeroVerdict(verdict, headline string) string {
 	badge := heroVerdictBadge(verdict)
 	rule := Rule()

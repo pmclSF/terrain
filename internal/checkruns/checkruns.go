@@ -12,10 +12,10 @@
 // contract intact: the binary writes JSON; the workflow handles
 // auth and HTTP.
 //
-// Spec § P5.3 — "Two GitHub check runs: terrain (gate) (required,
-// fails on undismissed gate finding) and terrain (observability)
-// (informational only). Observability findings live in one
-// collapsed <details> footer in the gate check's top-level summary."
+// The contract: terrain (gate) is required and fails on any
+// undismissed gate-tier finding; terrain (observability) is
+// informational only. Observability findings live in one collapsed
+// <details> footer in the gate check's top-level summary.
 package checkruns
 
 import (
@@ -109,7 +109,7 @@ type CheckRunsBundle struct {
 //     run it lands in. Tier is read from the manifest entry; signals
 //     without a manifest entry default to gate-tier (legacy CI gate
 //     relevance).
-//   - Within the gate check, the per-detector visibility floor (P5.4)
+//   - Within the gate check, the per-detector visibility floor
 //     applies: one headline annotation per detector that fired,
 //     co-fires collapse to "+N more" in the message.
 //   - The observability check carries every observability-tier
@@ -412,7 +412,7 @@ func severityRank(sev models.SignalSeverity) int {
 }
 
 // severityCounts buckets the gate signals into BLOCK/GATE/NOTE
-// labels per the PR-comment label scheme (P5.5).
+// labels per the PR-comment label scheme.
 func severityCounts(in []models.Signal) map[string]int {
 	out := map[string]int{}
 	for _, s := range in {

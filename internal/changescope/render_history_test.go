@@ -22,9 +22,9 @@ func (f *fakeHistoryStore) ShouldDemote(ruleID, file string) bool {
 }
 
 // TestRenderPRSummaryMarkdownWithHistory_DemotesChronicFiring is the
-// acceptance test for the § P5.7 demote path. When a (rule, file) pair
-// is reported as demote-worthy by the history store, the renderer
-// must drop its tier from BLOCK/GATE down to WATCH (observability),
+// acceptance test for the demote path. When a (rule, file) pair is
+// reported as demote-worthy by the history store, the renderer must
+// drop its tier from BLOCK/GATE down to WATCH (observability),
 // regardless of what the manifest says about the detector's tier.
 //
 // This is a renderer-only test — it doesn't exercise the on-disk

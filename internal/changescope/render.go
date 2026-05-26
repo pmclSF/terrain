@@ -105,8 +105,8 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 		// + overflow-summary behavior; co-fires across files don't
 		// collapse because each file is its own surface. Detector-
 		// bearing findings flow through renderFindingsCardsByDetector
-		// (added in P5.4) which is consumed by the slash-command PR
-		// surface.
+		// (the per-detector visibility floor) which is consumed by the
+		// slash-command PR surface.
 		renderFindingsCards(line, directRisk, 10)
 	}
 
@@ -122,11 +122,11 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 	// --- Pre-existing gaps touched by this change ---
 	//
 	// existingDebt contains existing_signal findings (SignalType-bearing,
-	// detector-emitted). Apply the per-detector visibility floor
-	// (§ P5.4): every detector that fired gets at least one card; co-
-	// fires within a detector collapse to "↳ +N more". Small lists
-	// (≤3) skip the <details> wrap so the reader doesn't have to
-	// click through trivial findings.
+	// detector-emitted). Apply the per-detector visibility floor:
+	// every detector that fired gets at least one card; co-fires within
+	// a detector collapse to "↳ +N more". Small lists (≤3) skip the
+	// <details> wrap so the reader doesn't have to click through
+	// trivial findings.
 	if len(existingDebt) > 0 {
 		if len(existingDebt) <= 3 {
 			hr()
@@ -203,7 +203,7 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 //
 // Detector-bearing findings (with SignalType) should use
 // renderFindingsCardsByDetector instead, which implements the
-// per-detector visibility floor from § P5.4.
+// per-detector visibility floor.
 //
 // Trails a blank line so the next section header has breathing room.
 func renderFindingsCards(line func(string, ...any), findings []ChangeScopedFinding, limit int) {
@@ -228,19 +228,18 @@ func renderFindingsCards(line func(string, ...any), findings []ChangeScopedFindi
 // is highest-severity-of-group first, then alphabetical by detector
 // key.
 //
-// Spec § P5.4 — per-detector visibility floor: "At least one finding
-// from every detector that fired must appear in the surface.
-// Severity ordering can collapse co-firings within a detector; never
-// across detectors."
+// Per-detector visibility floor: at least one finding from every
+// detector that fired must appear in the surface. Severity ordering
+// can collapse co-firings within a detector; never across detectors.
 //
 // `cardsPerGroup` is the per-group cap (no group renders more than
 // `cardsPerGroup` individual cards before the +N collapse). Passing
-// 0 or negative defaults to 1 (the spec's "headline + +N" shape).
+// 0 or negative defaults to 1 (the "headline + +N" shape).
 // Trails a blank line so the next section header has breathing room.
 //
-// Consumed by the slash-command PR-comment surface (built in P5.2 /
-// P5.3); protection-gap findings keep the older renderFindingsCards
-// path because each gap is a different file.
+// Consumed by the slash-command PR-comment surface; protection-gap
+// findings keep the older renderFindingsCards path because each gap
+// is a different file.
 func renderFindingsCardsByDetector(line func(string, ...any), findings []ChangeScopedFinding, cardsPerGroup int) {
 	if len(findings) == 0 {
 		line("")
@@ -364,8 +363,8 @@ func findingSeverityRank(s string) int {
 //
 // Suggested action is omitted when the finding doesn't carry one.
 // Info-tier findings (PRLabel == "") render with no badge — they
-// drop from the PR surface entirely per § P5.5, but the rendering
-// helpers don't filter at this level; the caller (renderFindingsCards,
+// drop from the PR surface entirely, but the rendering helpers don't
+// filter at this level; the caller (renderFindingsCards,
 // renderFindingsCardsByDetector) decides whether to emit the card
 // at all.
 //
@@ -381,8 +380,9 @@ func renderFindingCard(line func(string, ...any), f ChangeScopedFinding) {
 // comment top-level renderer loads a findinghistory.Store once and
 // passes it through; tests + non-PR render paths pass nil. When the
 // store reports ShouldDemote(SignalType, File), the badge renders
-// as the observability label regardless of the manifest tier
-// (§ P5.7).
+// as the observability label regardless of the manifest tier —
+// chronically-firing-without-dismiss findings fade to the
+// observability footer.
 func renderFindingCardWithHistory(line func(string, ...any), f ChangeScopedFinding, historyStore HistoryStore) {
 	badge := prLabelBadgeWithHistory(f, historyStore)
 	summary, action := summaryAndActionForFinding(f)
@@ -408,17 +408,18 @@ type HistoryStore interface {
 // parameters that would churn every call site.
 //
 // Not thread-safe across concurrent renders. RenderPRSummaryMarkdown
-// is documented as single-invocation per process (CLI commands run
-// once and exit); the webhook handler serializes incoming dispatch
-// so concurrent slash commands don't overlap renders either.
+// is the CLI's `terrain pr` entry point — invoked once per process
+// — so there is no in-process renderer concurrency today. A future
+// long-running server that renders for multiple PRs in parallel
+// must thread the store through call arguments instead.
 var activeHistoryStore HistoryStore
 
 // RenderPRSummaryMarkdownWithHistory is the history-aware form of
 // RenderPRSummaryMarkdown. When `hist` is non-nil, every
 // SignalType-bearing card that the store reports as ShouldDemote
-// (§ P5.7) renders as the observability (WATCH) label regardless
-// of the manifest tier — chronically-firing-without-dismiss findings
-// fade to the observability footer.
+// renders as the observability (WATCH) label regardless of the
+// manifest tier — chronically-firing-without-dismiss findings fade
+// to the observability footer.
 //
 // Pass nil for `hist` to get the legacy behavior (or call
 // RenderPRSummaryMarkdown directly).
@@ -430,10 +431,10 @@ func RenderPRSummaryMarkdownWithHistory(w io.Writer, pr *PRAnalysis, hist Histor
 }
 
 // summaryAndActionForFinding looks up a curated template for the
-// finding's SignalType in prtemplates (§ P5.1) and returns the
-// template's Summary + Action. Falls back to the detector-emitted
-// Explanation / SuggestedAction when no template is registered —
-// protection-gap findings (no SignalType) always fall through.
+// finding's SignalType in prtemplates and returns the template's
+// Summary + Action. Falls back to the detector-emitted Explanation
+// / SuggestedAction when no template is registered — protection-gap
+// findings (no SignalType) always fall through.
 //
 // The trailing newline a YAML block-scalar leaves on Summary is
 // stripped — render output should be a single line.

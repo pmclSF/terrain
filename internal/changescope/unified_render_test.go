@@ -123,7 +123,7 @@ func TestRenderPRSummaryMarkdown_UnifiedShape(t *testing.T) {
 	// "advisory finding") rather than per bullet, which is a
 	// deliberate UX choice — section-level grouping is documented in
 	// `docs/product/unified-pr-comment.md`.
-	// Post-P5.5 vocabulary: coverage cards carry BLOCK/GATE/WATCH/NOTE
+	// PR-comment vocabulary: coverage cards carry BLOCK/GATE/WATCH/NOTE
 	// labels; the header posture badge still uses PASS/WARN/RISK/FAIL/INFO.
 	bracketBadge := regexp.MustCompile(`\[(PASS|WARN|RISK|FAIL|INFO|BLOCK|GATE|WATCH|NOTE|----?)\]`)
 	matches := bracketBadge.FindAllString(output, -1)
@@ -152,8 +152,8 @@ func TestRenderPRSummaryMarkdown_UnifiedShape(t *testing.T) {
 	// --- Gate 2: file-path locator format is unified ---
 	// Both coverage cards and AI bullets should bold + mono the path.
 	// Coverage card shape: `- **`src/auth/login.ts`** [GATE] — ...`
-	// (post-P5.5: PR-comment labels are BLOCK/GATE/WATCH/NOTE, not
-	// the internal CRIT/HIGH/MED/LOW/INFO ladder).
+	// PR-comment labels are BLOCK/GATE/WATCH/NOTE, not the internal
+	// CRIT/HIGH/MED/LOW/INFO severity ladder.
 	if !regexp.MustCompile("(?m)^- \\*\\*`src/auth/login\\.ts`\\*\\* \\[GATE\\]").MatchString(output) {
 		t.Errorf("gate 2 (coverage locator): expected card-shape `- **\\`path\\`** [GATE]`; got:\n%s", output)
 	}

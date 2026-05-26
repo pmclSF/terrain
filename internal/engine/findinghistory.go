@@ -15,7 +15,7 @@ import (
 //
 // Skips when the snapshot has no signals (nothing to count).
 //
-// Spec § P5.7: when (rule_id, file_path) fires ≥3 times without a
+// Contract: when (rule_id, file_path) fires ≥3 times without a
 // dismiss, the renderer demotes that pair from inline to
 // observability footer. This function provides the data the
 // renderer consults via findinghistory.Store.ShouldDemote.
