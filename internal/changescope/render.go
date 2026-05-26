@@ -374,12 +374,59 @@ func findingSeverityRank(s string) int {
 // (no SignalType) default to gate-tier — they're coverage issues
 // meant to block.
 func renderFindingCard(line func(string, ...any), f ChangeScopedFinding) {
-	badge := prLabelBadge(f)
+	renderFindingCardWithHistory(line, f, activeHistoryStore)
+}
+
+// renderFindingCardWithHistory is the history-aware form. The PR-
+// comment top-level renderer loads a findinghistory.Store once and
+// passes it through; tests + non-PR render paths pass nil. When the
+// store reports ShouldDemote(SignalType, File), the badge renders
+// as the observability label regardless of the manifest tier
+// (§ P5.7).
+func renderFindingCardWithHistory(line func(string, ...any), f ChangeScopedFinding, historyStore HistoryStore) {
+	badge := prLabelBadgeWithHistory(f, historyStore)
 	summary, action := summaryAndActionForFinding(f)
 	line("- **`%s`** %s — %s", f.Path, badge, summary)
 	if action != "" {
 		line("  → %s", action)
 	}
+}
+
+// HistoryStore is the minimal interface the renderer needs from
+// internal/findinghistory.Store. Declared locally so the
+// changescope package doesn't import internal/findinghistory
+// directly — callers in cmd/terrain pass the concrete store
+// through.
+type HistoryStore interface {
+	ShouldDemote(ruleID, file string) bool
+}
+
+// activeHistoryStore is the per-invocation history store the
+// top-level renderer (RenderPRSummaryMarkdownWithHistory) sets and
+// unsets. Subordinate helpers (renderFindingCard,
+// renderFindingsCardsByDetector) consult it without needing extra
+// parameters that would churn every call site.
+//
+// Not thread-safe across concurrent renders. RenderPRSummaryMarkdown
+// is documented as single-invocation per process (CLI commands run
+// once and exit); the webhook handler serializes incoming dispatch
+// so concurrent slash commands don't overlap renders either.
+var activeHistoryStore HistoryStore
+
+// RenderPRSummaryMarkdownWithHistory is the history-aware form of
+// RenderPRSummaryMarkdown. When `hist` is non-nil, every
+// SignalType-bearing card that the store reports as ShouldDemote
+// (§ P5.7) renders as the observability (WATCH) label regardless
+// of the manifest tier — chronically-firing-without-dismiss findings
+// fade to the observability footer.
+//
+// Pass nil for `hist` to get the legacy behavior (or call
+// RenderPRSummaryMarkdown directly).
+func RenderPRSummaryMarkdownWithHistory(w io.Writer, pr *PRAnalysis, hist HistoryStore) {
+	prev := activeHistoryStore
+	activeHistoryStore = hist
+	defer func() { activeHistoryStore = prev }()
+	RenderPRSummaryMarkdown(w, pr)
 }
 
 // summaryAndActionForFinding looks up a curated template for the
@@ -413,7 +460,19 @@ func summaryAndActionForFinding(f ChangeScopedFinding) (summary, action string) 
 // (BLOCK / GATE / WATCH / NOTE) for a finding. Empty string when the
 // finding should drop from the PR surface (info-tier).
 func prLabelBadge(f ChangeScopedFinding) string {
+	return prLabelBadgeWithHistory(f, nil)
+}
+
+// prLabelBadgeWithHistory is the history-aware form. When the store
+// reports the (SignalType, File) pair as ShouldDemote, the badge
+// renders as observability (WATCH) regardless of the manifest tier.
+func prLabelBadgeWithHistory(f ChangeScopedFinding, historyStore HistoryStore) string {
 	tier := tierForFinding(f)
+	if historyStore != nil && f.SignalType != "" && f.Path != "" {
+		if historyStore.ShouldDemote(f.SignalType, f.Path) {
+			tier = "observability"
+		}
+	}
 	return uitokens.BracketedPRLabel(tier, f.Severity)
 }
 

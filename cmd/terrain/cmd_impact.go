@@ -12,6 +12,7 @@ import (
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/explain"
 	"github.com/pmclSF/terrain/internal/impact"
+	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/metrics"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/reporting"
@@ -241,9 +242,24 @@ func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGa
 		return gateErr()
 	}
 
+	// Load per-repo finding-history so the PR-comment renderer can
+	// demote chronically-firing-without-dismiss findings to the
+	// observability footer (§ P5.7). Missing file → empty store,
+	// the correct first-run behavior. Other errors are non-fatal:
+	// log + render without history rather than block the comment.
+	hist, histErr := engine.LoadFindingHistory(root)
+	if histErr != nil {
+		logging.L().Debug("finding history: load failed at render", "err", histErr)
+		hist = nil
+	}
+
 	switch format {
 	case "markdown", "md":
-		changescope.RenderPRSummaryMarkdown(os.Stdout, pr)
+		if hist != nil {
+			changescope.RenderPRSummaryMarkdownWithHistory(os.Stdout, pr, hist)
+		} else {
+			changescope.RenderPRSummaryMarkdown(os.Stdout, pr)
+		}
 	case "comment":
 		changescope.RenderPRCommentConcise(os.Stdout, pr)
 	case "annotation", "ci":

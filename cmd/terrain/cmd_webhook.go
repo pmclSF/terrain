@@ -34,7 +34,7 @@ func runWebhook(addr string) error {
 	}
 
 	mux := http.NewServeMux()
-	mux.Handle("/webhook", slash.NewHandler(secret, slash.DefaultDispatcher{}))
+	mux.Handle("/webhook", slash.NewHandler(secret, newRealDispatcher(resolveRepoRoot())))
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("ok"))
 	})
