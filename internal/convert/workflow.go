@@ -475,7 +475,7 @@ func MigrateProject(root, from, to string, options MigrationRunOptions) (Migrati
 		case "skipped":
 			state.MarkSkipped(candidate.RelPath, candidate.Type, record.SkipReason)
 		default:
-			state.MarkFailed(candidate.RelPath, candidate.Type, record.OutputPath, fmt.Errorf(record.Error))
+			state.MarkFailed(candidate.RelPath, candidate.Type, record.OutputPath, fmt.Errorf("%s", record.Error))
 		}
 		if saveErr := state.Save(); saveErr != nil {
 			return MigrationResult{}, saveErr
