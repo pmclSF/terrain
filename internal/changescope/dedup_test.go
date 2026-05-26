@@ -417,16 +417,19 @@ func TestRenderPRSummaryMarkdown_DirectVsIndirectSections(t *testing.T) {
 	if !strings.Contains(output, "### Coverage gaps in changed code") {
 		t.Errorf("expected 'Coverage gaps in changed code' heading; got:\n%s", output)
 	}
-	if !strings.Contains(output, "**`src/a.ts`** [HIGH] — Direct gap") {
-		t.Errorf("expected card-shape direct finding; got:\n%s", output)
+	// PR-comment labels use the BLOCK/GATE/WATCH/NOTE vocabulary
+	// (P5.5) — protection-gap defaults to gate-tier; high severity
+	// + gate-tier = [GATE].
+	if !strings.Contains(output, "**`src/a.ts`** [GATE] — Direct gap") {
+		t.Errorf("expected card-shape direct finding with [GATE] label; got:\n%s", output)
 	}
 
 	// Indirect risks in collapsed section — singular "gap" for count=1.
 	if !strings.Contains(output, "1 indirectly impacted protection gap") {
 		t.Errorf("expected indirect section with count; got:\n%s", output)
 	}
-	if !strings.Contains(output, "**`src/b.ts`** [MED] — Indirect gap") {
-		t.Errorf("expected card-shape indirect finding; got:\n%s", output)
+	if !strings.Contains(output, "**`src/b.ts`** [GATE] — Indirect gap") {
+		t.Errorf("expected card-shape indirect finding with [GATE] label; got:\n%s", output)
 	}
 }
 

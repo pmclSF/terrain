@@ -6,6 +6,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/prtemplates"
+	"github.com/pmclSF/terrain/internal/signals"
 	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
@@ -117,28 +120,23 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 	}
 
 	// --- Pre-existing gaps touched by this change ---
+	//
+	// existingDebt contains existing_signal findings (SignalType-bearing,
+	// detector-emitted). Apply the per-detector visibility floor
+	// (§ P5.4): every detector that fired gets at least one card; co-
+	// fires within a detector collapse to "↳ +N more". Small lists
+	// (≤3) skip the <details> wrap so the reader doesn't have to
+	// click through trivial findings.
 	if len(existingDebt) > 0 {
 		if len(existingDebt) <= 3 {
 			hr()
 			line("### Pre-existing issues (%d)", len(existingDebt))
 			line("")
-			for _, f := range existingDebt {
-				renderFindingCard(line, f)
-			}
+			renderFindingsCardsByDetector(line, existingDebt, 1)
 		} else {
 			line("<details><summary><b>%d pre-existing %s on changed files</b></summary>", len(existingDebt), pluralize(len(existingDebt), "issue", "issues"))
 			line("")
-			limit := 5
-			if len(existingDebt) < limit {
-				limit = len(existingDebt)
-			}
-			for _, f := range existingDebt[:limit] {
-				renderFindingCard(line, f)
-			}
-			if len(existingDebt) > limit {
-				line("- _...and %d more_", len(existingDebt)-limit)
-				line("")
-			}
+			renderFindingsCardsByDetector(line, existingDebt, 1)
 			line("</details>")
 			line("")
 		}
@@ -361,16 +359,75 @@ func findingSeverityRank(s string) int {
 
 // renderFindingCard emits one finding as a card-style bullet:
 //
-//	- **`path/to/file.go`** [HIGH] — <explanation>
+//	- **`path/to/file.go`** [BLOCK|GATE|WATCH|NOTE] — <explanation>
 //	  → <suggested action>
 //
 // Suggested action is omitted when the finding doesn't carry one.
+// Info-tier findings (PRLabel == "") render with no badge — they
+// drop from the PR surface entirely per § P5.5, but the rendering
+// helpers don't filter at this level; the caller (renderFindingsCards,
+// renderFindingsCardsByDetector) decides whether to emit the card
+// at all.
+//
+// The tier is looked up from the finding's SignalType via the
+// manifest (signals.IsObservabilityTier). Protection-gap findings
+// (no SignalType) default to gate-tier — they're coverage issues
+// meant to block.
 func renderFindingCard(line func(string, ...any), f ChangeScopedFinding) {
-	badge := severityIcon(f.Severity)
-	line("- **`%s`** %s — %s", f.Path, badge, f.Explanation)
-	if f.SuggestedAction != "" {
-		line("  → %s", f.SuggestedAction)
+	badge := prLabelBadge(f)
+	summary, action := summaryAndActionForFinding(f)
+	line("- **`%s`** %s — %s", f.Path, badge, summary)
+	if action != "" {
+		line("  → %s", action)
 	}
+}
+
+// summaryAndActionForFinding looks up a curated template for the
+// finding's SignalType in prtemplates (§ P5.1) and returns the
+// template's Summary + Action. Falls back to the detector-emitted
+// Explanation / SuggestedAction when no template is registered —
+// protection-gap findings (no SignalType) always fall through.
+//
+// The trailing newline a YAML block-scalar leaves on Summary is
+// stripped — render output should be a single line.
+func summaryAndActionForFinding(f ChangeScopedFinding) (summary, action string) {
+	summary = f.Explanation
+	action = f.SuggestedAction
+	if f.SignalType == "" {
+		return
+	}
+	reg, err := prtemplates.Default()
+	if err != nil || reg == nil {
+		return
+	}
+	tpl, ok := reg.Get(f.SignalType)
+	if !ok {
+		return
+	}
+	summary = strings.TrimSpace(tpl.Summary)
+	action = strings.TrimSpace(tpl.Action)
+	return
+}
+
+// prLabelBadge returns the bracketed user-visible PR-comment label
+// (BLOCK / GATE / WATCH / NOTE) for a finding. Empty string when the
+// finding should drop from the PR surface (info-tier).
+func prLabelBadge(f ChangeScopedFinding) string {
+	tier := tierForFinding(f)
+	return uitokens.BracketedPRLabel(tier, f.Severity)
+}
+
+// tierForFinding returns "gate" or "observability" for a finding.
+// SignalType-bearing findings consult the manifest; protection-gap
+// findings (no SignalType) default to gate.
+func tierForFinding(f ChangeScopedFinding) string {
+	if f.SignalType == "" {
+		return "gate"
+	}
+	if signals.IsObservabilityTier(models.SignalType(f.SignalType)) {
+		return "observability"
+	}
+	return "gate"
 }
 
 // pluralize returns "finding" or "findings" based on count. Used to

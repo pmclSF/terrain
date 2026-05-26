@@ -123,7 +123,9 @@ func TestRenderPRSummaryMarkdown_UnifiedShape(t *testing.T) {
 	// "advisory finding") rather than per bullet, which is a
 	// deliberate UX choice — section-level grouping is documented in
 	// `docs/product/unified-pr-comment.md`.
-	bracketBadge := regexp.MustCompile(`\[(PASS|WARN|RISK|FAIL|INFO|HIGH|MED|LOW|----?)\]`)
+	// Post-P5.5 vocabulary: coverage cards carry BLOCK/GATE/WATCH/NOTE
+	// labels; the header posture badge still uses PASS/WARN/RISK/FAIL/INFO.
+	bracketBadge := regexp.MustCompile(`\[(PASS|WARN|RISK|FAIL|INFO|BLOCK|GATE|WATCH|NOTE|----?)\]`)
 	matches := bracketBadge.FindAllString(output, -1)
 	if len(matches) < 3 {
 		t.Errorf("gate 1 (unified badge shape): expected at least 3 [LABEL] badges (header + per-coverage-gap), got %d:\n%s", len(matches), output)
@@ -134,9 +136,10 @@ func TestRenderPRSummaryMarkdown_UnifiedShape(t *testing.T) {
 		t.Errorf("gate 1 (header badge): header verdict should use [LABEL] shape; got:\n%s", firstNLines(output, 3))
 	}
 
-	// Coverage-gap cards should carry [HIGH] / [MED] / [LOW] inline.
-	if !strings.Contains(output, "[HIGH]") || !strings.Contains(output, "[MED]") {
-		t.Errorf("gate 1 (severity badges): coverage cards should carry [HIGH] and [MED]; got:\n%s", output)
+	// Coverage-gap cards should carry [GATE] (gate-tier finding,
+	// any severity above low) inline.
+	if !strings.Contains(output, "[GATE]") {
+		t.Errorf("gate 1 (PR labels): coverage cards should carry [GATE]; got:\n%s", output)
 	}
 
 	// AI section's severity grouping should appear at the section-
@@ -148,9 +151,11 @@ func TestRenderPRSummaryMarkdown_UnifiedShape(t *testing.T) {
 
 	// --- Gate 2: file-path locator format is unified ---
 	// Both coverage cards and AI bullets should bold + mono the path.
-	// Coverage card shape: `- **`src/auth/login.ts`** [HIGH] — ...`
-	if !regexp.MustCompile("(?m)^- \\*\\*`src/auth/login\\.ts`\\*\\* \\[HIGH\\]").MatchString(output) {
-		t.Errorf("gate 2 (coverage locator): expected card-shape `- **\\`path\\`** [SEV]`; got:\n%s", output)
+	// Coverage card shape: `- **`src/auth/login.ts`** [GATE] — ...`
+	// (post-P5.5: PR-comment labels are BLOCK/GATE/WATCH/NOTE, not
+	// the internal CRIT/HIGH/MED/LOW/INFO ladder).
+	if !regexp.MustCompile("(?m)^- \\*\\*`src/auth/login\\.ts`\\*\\* \\[GATE\\]").MatchString(output) {
+		t.Errorf("gate 2 (coverage locator): expected card-shape `- **\\`path\\`** [GATE]`; got:\n%s", output)
 	}
 	// AI bullet shape: `- **`src/agent/prompt.ts:88`** ...`
 	if !regexp.MustCompile("(?m)^- \\*\\*`src/agent/prompt\\.ts:88`\\*\\*").MatchString(output) {
