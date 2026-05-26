@@ -397,3 +397,59 @@ func TestColorComposition_BoldOnTopOfColor(t *testing.T) {
 		}
 	})
 }
+
+// ── PRLabel: BLOCK / GATE / WATCH / NOTE ──────────────────────────
+
+// TestPRLabel pins the four-rung user-visible PR-comment label
+// mapping. The four labels (plus the "drop from PR" empty case for
+// info-tier) compress the (tier, severity) cross-product into the
+// vocabulary actual humans use when reading a PR comment.
+func TestPRLabel(t *testing.T) {
+	cases := []struct {
+		name             string
+		tier, severity   string
+		want, wantBracket string
+	}{
+		// Gate-tier rungs.
+		{"gate+critical → BLOCK", "gate", "critical", "BLOCK", "[BLOCK]"},
+		{"gate+high → GATE", "gate", "high", "GATE", "[GATE]"},
+		{"gate+medium → GATE", "gate", "medium", "GATE", "[GATE]"},
+
+		// Observability-tier: capped at Medium per EffectiveSeverity,
+		// but the renderer must handle declared-higher values defensively.
+		{"observability+medium → WATCH", "observability", "medium", "WATCH", "[WATCH]"},
+		{"observability+high → WATCH", "observability", "high", "WATCH", "[WATCH]"},
+		{"observability+critical → WATCH", "observability", "critical", "WATCH", "[WATCH]"},
+
+		// Low severity collapses to NOTE regardless of tier.
+		{"gate+low → NOTE", "gate", "low", "NOTE", "[NOTE]"},
+		{"observability+low → NOTE", "observability", "low", "NOTE", "[NOTE]"},
+
+		// Info-tier drops entirely from the PR surface.
+		{"gate+info → (drop)", "gate", "info", "", ""},
+		{"observability+info → (drop)", "observability", "info", "", ""},
+
+		// Defensive: empty tier defaults to gate-shape (legacy callers
+		// pre-Phase-1 where tier wasn't threaded).
+		{"empty tier+critical → BLOCK", "", "critical", "BLOCK", "[BLOCK]"},
+		{"empty tier+medium → GATE", "", "medium", "GATE", "[GATE]"},
+		{"empty tier+low → NOTE", "", "low", "NOTE", "[NOTE]"},
+
+		// Case-insensitive, whitespace-tolerant.
+		{"casing: GATE/Critical", "GATE", "Critical", "BLOCK", "[BLOCK]"},
+		{"whitespace: ' gate '/ medium ", " gate ", " medium ", "GATE", "[GATE]"},
+
+		// Unknown severity: empty (defensive — caller bug).
+		{"unknown severity drops", "gate", "bogus", "", ""},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			if got := PRLabel(c.tier, c.severity); got != c.want {
+				t.Errorf("PRLabel(%q, %q) = %q, want %q", c.tier, c.severity, got, c.want)
+			}
+			if got := BracketedPRLabel(c.tier, c.severity); got != c.wantBracket {
+				t.Errorf("BracketedPRLabel(%q, %q) = %q, want %q", c.tier, c.severity, got, c.wantBracket)
+			}
+		})
+	}
+}

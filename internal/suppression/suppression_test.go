@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pmclSF/terrain/internal/aliases"
 	"github.com/pmclSF/terrain/internal/identity"
 	"github.com/pmclSF/terrain/internal/models"
 )
@@ -318,4 +319,170 @@ func writeTemp(t *testing.T, body string) string {
 		t.Fatal(err)
 	}
 	return path
+}
+
+// ── ApplyWithAliases (alias-aware suppression) ────────────────────
+
+// TestApplyWithAliases_NilRegistryEquivalentToApply confirms the
+// no-registry path matches literal SignalType only (same as Apply).
+func TestApplyWithAliases_NilRegistryEquivalentToApply(t *testing.T) {
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{Type: "ruleA", Location: models.SignalLocation{File: "a.go"}},
+			{Type: "ruleB", Location: models.SignalLocation{File: "b.go"}},
+		},
+	}
+	entries := []Entry{
+		{SignalType: "ruleA", File: "**", Reason: "test"},
+	}
+	matched, expired := ApplyWithAliases(snap, entries, nil, time.Now())
+	if len(matched) != 1 {
+		t.Errorf("matched = %d, want 1", len(matched))
+	}
+	if len(expired) != 0 {
+		t.Errorf("expired = %d, want 0", len(expired))
+	}
+	if len(snap.Signals) != 1 || snap.Signals[0].Type != "ruleB" {
+		t.Errorf("post-Apply signals = %+v, want only ruleB", snap.Signals)
+	}
+}
+
+// TestApplyWithAliases_OldIDSuppressesNew validates the deprecation-
+// window contract: a suppression on the old rule_id continues to
+// suppress findings emitted under any new rule_id from the alias's
+// ReplacesWith list.
+func TestApplyWithAliases_OldIDSuppressesNew(t *testing.T) {
+	yamlBody := []byte(`
+version: 1
+aliases:
+  oldRule:
+    replaces_with: [newRuleA, newRuleB]
+    why: "split for clarity"
+`)
+	reg, err := aliases.LoadFromBytes(yamlBody)
+	if err != nil {
+		t.Fatalf("LoadFromBytes: %v", err)
+	}
+
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{Type: "newRuleA", Location: models.SignalLocation{File: "a.go"}},
+			{Type: "newRuleB", Location: models.SignalLocation{File: "b.go"}},
+			{Type: "oldRule", Location: models.SignalLocation{File: "c.go"}},
+			{Type: "unrelated", Location: models.SignalLocation{File: "d.go"}},
+		},
+	}
+	entries := []Entry{
+		{SignalType: "oldRule", File: "**", Reason: "deprecation window"},
+	}
+	matched, _ := ApplyWithAliases(snap, entries, reg, time.Now())
+
+	// The single entry should match (counted once, not three times).
+	if len(matched) != 1 {
+		t.Errorf("matched = %d, want 1 (single entry hit)", len(matched))
+	}
+	// Only the unrelated signal should remain.
+	if len(snap.Signals) != 1 || snap.Signals[0].Type != "unrelated" {
+		got := []string{}
+		for _, s := range snap.Signals {
+			got = append(got, string(s.Type))
+		}
+		t.Errorf("post-Apply types = %v, want [\"unrelated\"]", got)
+	}
+}
+
+// TestApplyWithAliases_NewIDSuppressionDoesNotMatchOld is the
+// one-way-contract test: a suppression written against a NEW id does
+// not auto-suppress findings still emitted under the OLD id. Adopters
+// who write suppressions against new IDs are post-migration; the OLD
+// id will have stopped firing.
+func TestApplyWithAliases_NewIDSuppressionDoesNotMatchOld(t *testing.T) {
+	yamlBody := []byte(`
+version: 1
+aliases:
+  oldRule:
+    replaces_with: [newRule]
+`)
+	reg, err := aliases.LoadFromBytes(yamlBody)
+	if err != nil {
+		t.Fatalf("LoadFromBytes: %v", err)
+	}
+
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{Type: "oldRule", Location: models.SignalLocation{File: "a.go"}},
+		},
+	}
+	entries := []Entry{
+		{SignalType: "newRule", File: "**", Reason: "post-migration"},
+	}
+	matched, _ := ApplyWithAliases(snap, entries, reg, time.Now())
+
+	if len(matched) != 0 {
+		t.Errorf("matched = %d, want 0 (new ID suppression does not match old)", len(matched))
+	}
+	if len(snap.Signals) != 1 {
+		t.Errorf("post-Apply signals = %d, want 1 (old ID retained)", len(snap.Signals))
+	}
+}
+
+// TestApplyWithAliases_FindingIDPathUnaffected: alias expansion only
+// applies to SignalType matching. FindingID-based suppressions
+// continue to require exact match (no alias rewriting).
+func TestApplyWithAliases_FindingIDPathUnaffected(t *testing.T) {
+	yamlBody := []byte(`
+version: 1
+aliases:
+  oldRule:
+    replaces_with: [newRule]
+`)
+	reg, _ := aliases.LoadFromBytes(yamlBody)
+
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{Type: "newRule", FindingID: "newRule@a.go:Sym#abc12345", Location: models.SignalLocation{File: "a.go"}},
+		},
+	}
+	entries := []Entry{
+		// FindingID-only entry against a different id — must not match
+		// even though "oldRule" is an alias for "newRule".
+		{FindingID: "oldRule@a.go:Sym#abc12345", Reason: "stale pin"},
+	}
+	matched, _ := ApplyWithAliases(snap, entries, reg, time.Now())
+	if len(matched) != 0 {
+		t.Errorf("matched = %d, want 0 (FindingID requires exact match)", len(matched))
+	}
+}
+
+// TestApplyWithAliases_ExpiryRespected confirms that expired entries
+// are partitioned out before the alias-aware match runs.
+func TestApplyWithAliases_ExpiryRespected(t *testing.T) {
+	yamlBody := []byte(`
+version: 1
+aliases:
+  oldRule:
+    replaces_with: [newRule]
+`)
+	reg, _ := aliases.LoadFromBytes(yamlBody)
+
+	expiredEntry := Entry{SignalType: "oldRule", File: "**", Reason: "x"}
+	expiredEntry.Expires = "2020-01-01"
+	expiredEntry.expiresAt, _ = time.Parse("2006-01-02", expiredEntry.Expires)
+
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{Type: "newRule", Location: models.SignalLocation{File: "a.go"}},
+		},
+	}
+	now := time.Now()
+	matched, expired := ApplyWithAliases(snap, []Entry{expiredEntry}, reg, now)
+	if len(matched) != 0 {
+		t.Errorf("matched = %d, want 0 (entry expired)", len(matched))
+	}
+	if len(expired) != 1 {
+		t.Errorf("expired = %d, want 1", len(expired))
+	}
+	if len(snap.Signals) != 1 {
+		t.Errorf("post-Apply signals = %d, want 1 (suppression expired)", len(snap.Signals))
+	}
 }

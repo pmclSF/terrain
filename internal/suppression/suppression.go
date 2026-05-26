@@ -52,6 +52,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/pmclSF/terrain/internal/aliases"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -163,7 +164,25 @@ func Load(path string) (*LoadResult, error) {
 //  3. Rewrite the signal slices without matched signals.
 //
 // `now` is injected so tests can drive expiry deterministically.
+//
+// Calls ApplyWithAliases with a nil registry — `signal_type` matches
+// require literal-string equality. Callers that want a renamed-rule
+// suppression to also suppress the new ID during the deprecation
+// window should use ApplyWithAliases.
 func Apply(snapshot *models.TestSuiteSnapshot, entries []Entry, now time.Time) (matched []Entry, expired []Entry) {
+	return ApplyWithAliases(snapshot, entries, nil, now)
+}
+
+// ApplyWithAliases is the alias-aware form of Apply. When `reg` is
+// non-nil, `signal_type` entries match any signal whose Type is in
+// `reg.ExpandOldID(e.SignalType)`. The expansion is one-way: a
+// suppression on the OLD rule_id continues to suppress findings
+// emitted under the NEW rule_id(s) during the deprecation window.
+// The reverse (suppression on new ID auto-suppresses findings still
+// labeled old) is deliberately NOT supported — adopters who write
+// suppressions against new IDs are post-migration; the OLD ID will
+// stop firing before the alias entry is removed.
+func ApplyWithAliases(snapshot *models.TestSuiteSnapshot, entries []Entry, reg *aliases.Registry, now time.Time) (matched []Entry, expired []Entry) {
 	if snapshot == nil {
 		return nil, nil
 	}
@@ -185,12 +204,28 @@ func Apply(snapshot *models.TestSuiteSnapshot, entries []Entry, now time.Time) (
 		return nil, expired
 	}
 
+	// Pre-expand each entry's SignalType into a set so the inner loop
+	// is O(1) per signal-type compare instead of O(n_aliases).
+	expanded := make([]map[string]bool, len(active))
+	for i, e := range active {
+		if e.SignalType == "" {
+			continue
+		}
+		set := map[string]bool{e.SignalType: true}
+		if reg != nil {
+			for _, id := range reg.ExpandOldID(e.SignalType) {
+				set[id] = true
+			}
+		}
+		expanded[i] = set
+	}
+
 	matchedIdx := make(map[int]bool, len(active))
 
-	snapshot.Signals = filterSignals(snapshot.Signals, active, matchedIdx)
+	snapshot.Signals = filterSignals(snapshot.Signals, active, expanded, matchedIdx)
 	for fi := range snapshot.TestFiles {
 		tf := &snapshot.TestFiles[fi]
-		tf.Signals = filterSignals(tf.Signals, active, matchedIdx)
+		tf.Signals = filterSignals(tf.Signals, active, expanded, matchedIdx)
 	}
 
 	for i, e := range active {
@@ -201,7 +236,7 @@ func Apply(snapshot *models.TestSuiteSnapshot, entries []Entry, now time.Time) (
 	return matched, expired
 }
 
-func filterSignals(signals []models.Signal, active []Entry, matchedIdx map[int]bool) []models.Signal {
+func filterSignals(signals []models.Signal, active []Entry, expanded []map[string]bool, matchedIdx map[int]bool) []models.Signal {
 	if len(signals) == 0 {
 		return signals
 	}
@@ -209,7 +244,7 @@ func filterSignals(signals []models.Signal, active []Entry, matchedIdx map[int]b
 	for _, s := range signals {
 		hitIdx := -1
 		for i, e := range active {
-			if matches(e, s) {
+			if matches(e, s, expanded[i]) {
 				hitIdx = i
 				break
 			}
@@ -223,16 +258,24 @@ func filterSignals(signals []models.Signal, active []Entry, matchedIdx map[int]b
 	return kept
 }
 
-// matches returns true if entry e suppresses signal s.
-func matches(e Entry, s models.Signal) bool {
+// matches returns true if entry e suppresses signal s. `expandedTypes`
+// is the pre-computed set of signal-type strings that count as a hit
+// for e (the literal e.SignalType plus any new IDs from the alias
+// registry). Nil/empty set falls back to literal-equality on
+// e.SignalType.
+func matches(e Entry, s models.Signal, expandedTypes map[string]bool) bool {
 	if e.FindingID != "" {
 		return e.FindingID == s.FindingID
 	}
 	// signal_type + file path match.
-	if string(s.Type) != e.SignalType {
+	if e.File == "" {
 		return false
 	}
-	if e.File == "" {
+	if expandedTypes != nil {
+		if !expandedTypes[string(s.Type)] {
+			return false
+		}
+	} else if string(s.Type) != e.SignalType {
 		return false
 	}
 	matched, err := pathMatch(e.File, s.Location.File)
