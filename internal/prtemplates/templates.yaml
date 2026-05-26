@@ -1,0 +1,463 @@
+# PR-comment templates — one entry per gate-tier or notable
+# observability-tier detector. Authoring guide in templates.go.
+#
+# Adding a template: pick a signal_type, write Title (≤5 words),
+# Summary (≤2 sentences), Action (1 imperative sentence), and at
+# least three slash hints (always include /dismiss + /terrain explain).
+#
+# Phase-5 spec § P5.1: "Real copy, real button labels, real
+# what-happens-on-click."
+
+version: 1
+
+templates:
+  # ── Gate-tier: security + safety ────────────────────────────────
+  - signal_type: aiPromptInjectionRisk
+    title: Prompt injection risk
+    summary: |
+      User input flows into a prompt without visible escaping or
+      boundary tokens. A malicious caller can override the system
+      instruction by writing instructions inside their input.
+    action: Wrap user input through a sanitizer, or use a prompt template with explicit user-content boundaries.
+    slash_hints:
+      - { label: "Show the matched pattern", command: "/terrain show <finding-id>" }
+      - { label: "Explain prompt-injection-risk", command: "/terrain explain aiPromptInjectionRisk" }
+      - { label: "Dismiss as false positive", command: "/dismiss reason:<text>" }
+
+  - signal_type: aiToolWithoutSandbox
+    title: Destructive tool, no approval
+    summary: |
+      An agent tool definition can perform an irreversible operation
+      (delete / drop / exec / send_payment / transfer_funds) without
+      an approval gate, sandbox, or dry-run mode.
+    action: "Add `requires_approval: true`, route through a sandbox, or restrict the tool to dry-run."
+    slash_hints:
+      - { label: "Show the tool definition", command: "/terrain show <finding-id>" }
+      - { label: "Explain tool-without-sandbox", command: "/terrain explain aiToolWithoutSandbox" }
+      - { label: "Dismiss as benign verb", command: "/dismiss reason:<text>" }
+
+  - signal_type: secretsInPrompt
+    title: Secret in prompt body
+    summary: |
+      A prompt template contains a value matching a secret-like
+      shape (API key / token / password) inline. Anything the prompt
+      sees, the model sees — and potentially logs.
+    action: Move the secret to an env var or your secrets manager and reference it from the template.
+    slash_hints:
+      - { label: "Show the prompt line", command: "/terrain show <finding-id>" }
+      - { label: "Explain secrets-in-prompt", command: "/terrain explain secretsInPrompt" }
+      - { label: "Dismiss as test fixture", command: "/dismiss reason:<text>" }
+
+  - signal_type: insecureDeserialize
+    title: Insecure deserialization
+    summary: |
+      A deserialization call (pickle.loads, yaml.load without safe
+      loader, etc.) consumes data that could be attacker-controlled.
+      Arbitrary code execution risk.
+    action: Switch to a safe loader (yaml.safe_load, json.loads) or a typed schema (Pydantic, Marshmallow).
+    slash_hints:
+      - { label: "Show the call site", command: "/terrain show <finding-id>" }
+      - { label: "Explain insecure-deserialize", command: "/terrain explain insecureDeserialize" }
+      - { label: "Dismiss as trusted input", command: "/dismiss reason:<text>" }
+
+  - signal_type: piiInEval
+    title: PII in eval input
+    summary: |
+      An eval scenario carries personally identifiable information
+      (email / phone / SSN-shape) as a test input. PII in evals leaks
+      into logs, fixtures, and downstream eval-result stores.
+    action: Replace with synthetic test data; add a PII scrubber to your eval-config loader.
+    slash_hints:
+      - { label: "Show the eval scenario", command: "/terrain show <finding-id>" }
+      - { label: "Explain pii-in-eval", command: "/terrain explain piiInEval" }
+      - { label: "Dismiss as already redacted", command: "/dismiss reason:<text>" }
+
+  # ── Gate-tier: regression detectors ─────────────────────────────
+  - signal_type: testFailed
+    title: Test failed
+    summary: |
+      Runtime data shows this test failed on the changed branch.
+      Either the change introduced a regression or the test needs
+      to be updated to reflect new intended behavior.
+    action: Reproduce locally; fix the regression or update the test (and document the intended-behavior change in the PR).
+    slash_hints:
+      - { label: "Show the test output", command: "/terrain show <finding-id>" }
+      - { label: "Explain test-failed", command: "/terrain explain testFailed" }
+      - { label: "Dismiss as flaky retry", command: "/dismiss reason:<text>" }
+
+  - signal_type: performanceRegression
+    title: Performance regression
+    summary: |
+      A benchmark or runtime measurement shows this test's runtime
+      grew beyond the configured threshold compared to baseline.
+    action: Profile the change; revert or optimize. Bump the baseline only with documented justification.
+    slash_hints:
+      - { label: "Show the bench delta", command: "/terrain show <finding-id>" }
+      - { label: "Explain performance-regression", command: "/terrain explain performanceRegression" }
+      - { label: "Dismiss as expected cost", command: "/dismiss reason:<text>" }
+
+  - signal_type: evalRegression
+    title: Eval regression
+    summary: |
+      An AI eval scenario's score (faithfulness / accuracy / nDCG /
+      pass rate) dropped vs baseline beyond the configured tolerance.
+    action: Investigate the regression — revert the offending change or re-tune retrieval / prompt before merging.
+    slash_hints:
+      - { label: "Show the failing scenarios", command: "/terrain show <finding-id>" }
+      - { label: "Explain eval-regression", command: "/terrain explain evalRegression" }
+      - { label: "Dismiss as new baseline", command: "/dismiss reason:<text>" }
+
+  - signal_type: accuracyRegression
+    title: Accuracy regression
+    summary: |
+      Model accuracy on the eval set dropped vs baseline. The next
+      production deploy will ship the lower-quality model.
+    action: Revert the model / prompt change, or update the baseline if the regression is the intended trade-off.
+    slash_hints:
+      - { label: "Show the accuracy delta", command: "/terrain show <finding-id>" }
+      - { label: "Explain accuracy-regression", command: "/terrain explain accuracyRegression" }
+      - { label: "Dismiss as intentional", command: "/dismiss reason:<text>" }
+
+  - signal_type: passRateDrop
+    title: Pass-rate drop
+    summary: |
+      The eval-suite pass rate dropped beyond the configured threshold.
+      The next production deploy will fail more inputs than the baseline.
+    action: Investigate the failing inputs; revert or re-tune before merging.
+    slash_hints:
+      - { label: "Show the failing inputs", command: "/terrain show <finding-id>" }
+      - { label: "Explain pass-rate-drop", command: "/terrain explain passRateDrop" }
+      - { label: "Dismiss as new baseline", command: "/dismiss reason:<text>" }
+
+  # ── Gate-tier: AI runtime + safety ──────────────────────────────
+  - signal_type: aiHallucinationRate
+    title: Hallucination rate threshold breach
+    summary: |
+      The hallucination-shaped failure rate on the eval set exceeds
+      the project threshold. Production users will see ungrounded
+      answers at this rate.
+    action: Tighten retrieval / grounding before merging; raise the threshold only with documented justification.
+    slash_hints:
+      - { label: "Show the hallucinated examples", command: "/terrain show <finding-id>" }
+      - { label: "Explain hallucination-rate", command: "/terrain explain aiHallucinationRate" }
+      - { label: "Dismiss as accepted bar", command: "/dismiss reason:<text>" }
+
+  - signal_type: aiRetrievalRegression
+    title: Retrieval regression
+    summary: |
+      Retrieval-quality score (faithfulness / context precision / nDCG)
+      dropped vs baseline. The downstream model sees worse context.
+    action: Investigate the regression — revert the offending change or re-tune retrieval before merging.
+    slash_hints:
+      - { label: "Show the retrieval delta", command: "/terrain show <finding-id>" }
+      - { label: "Explain retrieval-regression", command: "/terrain explain aiRetrievalRegression" }
+      - { label: "Dismiss as new baseline", command: "/dismiss reason:<text>" }
+
+  - signal_type: agentLoopRisk
+    title: Agent loop risk
+    summary: |
+      An agent invocation lacks an obvious iteration cap. A bad
+      tool-call cycle can run unbounded, burning tokens / cost.
+    action: Add a `max_iterations` (or equivalent) cap on the agent loop.
+    slash_hints:
+      - { label: "Show the agent definition", command: "/terrain show <finding-id>" }
+      - { label: "Explain agent-loop-risk", command: "/terrain explain agentLoopRisk" }
+      - { label: "Dismiss as bounded externally", command: "/dismiss reason:<text>" }
+
+  - signal_type: targetLeakage
+    title: Target leakage in eval
+    summary: |
+      An eval scenario's input shares structure (or actual content)
+      with its expected output. Scores will be inflated; the eval
+      is measuring leakage, not capability.
+    action: Hold the target features out of the input, or rewrite the eval to avoid the overlap.
+    slash_hints:
+      - { label: "Show the overlap", command: "/terrain show <finding-id>" }
+      - { label: "Explain target-leakage", command: "/terrain explain targetLeakage" }
+      - { label: "Dismiss as expected", command: "/dismiss reason:<text>" }
+
+  - signal_type: missingTrainTestSplit
+    title: Missing train/test split
+    summary: |
+      A training script or eval pipeline doesn't visibly separate
+      train and test data. Risk of training on what you measure
+      against.
+    action: Add an explicit train/test split (sklearn.model_selection.train_test_split, or equivalent for your framework).
+    slash_hints:
+      - { label: "Show the data load", command: "/terrain show <finding-id>" }
+      - { label: "Explain missing-train-test-split", command: "/terrain explain missingTrainTestSplit" }
+      - { label: "Dismiss as inference-only", command: "/dismiss reason:<text>" }
+
+  - signal_type: dataLeakageSuspected
+    title: Data leakage suspected
+    summary: |
+      A test fixture or eval scenario shares values with production
+      training data. The eval may overstate real-world capability.
+    action: Audit the overlap; regenerate the eval set from held-out data.
+    slash_hints:
+      - { label: "Show the matching rows", command: "/terrain show <finding-id>" }
+      - { label: "Explain data-leakage", command: "/terrain explain dataLeakageSuspected" }
+      - { label: "Dismiss as known synthetic", command: "/dismiss reason:<text>" }
+
+  - signal_type: modelFixtureUnpinned
+    title: Model fixture unpinned
+    summary: |
+      A model reference (`model: claude-3-opus`, `gpt-4`, etc.) uses
+      a floating tag that the provider can remap silently. The next
+      production run could behave differently than CI.
+    action: Pin to a dated variant (e.g. `claude-3-opus-20240229`, `gpt-4-0613`).
+    slash_hints:
+      - { label: "Show the model reference", command: "/terrain show <finding-id>" }
+      - { label: "Explain model-fixture-unpinned", command: "/terrain explain modelFixtureUnpinned" }
+      - { label: "Dismiss as deliberate latest", command: "/dismiss reason:<text>" }
+
+  - signal_type: evalNoAssertion
+    title: Eval without assertion
+    summary: |
+      An eval scenario runs the model but has no assertion gate on
+      the response. The scenario can never fail, so it's measuring
+      nothing.
+    action: Add an assertion (rubric, contains, regex match, or judge model) so the eval can actually fail.
+    slash_hints:
+      - { label: "Show the eval scenario", command: "/terrain show <finding-id>" }
+      - { label: "Explain eval-no-assertion", command: "/terrain explain evalNoAssertion" }
+      - { label: "Dismiss as smoke-test", command: "/dismiss reason:<text>" }
+
+  - signal_type: noEvalForAISurface
+    title: AI surface without eval
+    summary: |
+      An AI surface (prompt / agent / tool / retriever) has no eval
+      scenario covering it. Changes here can ship without measurable
+      quality verification.
+    action: Add an eval scenario that exercises this surface (Promptfoo / DeepEval / Ragas / your in-tree harness).
+    slash_hints:
+      - { label: "Show the uncovered surface", command: "/terrain show <finding-id>" }
+      - { label: "Explain no-eval-for-ai-surface", command: "/terrain explain noEvalForAISurface" }
+      - { label: "Dismiss as design-time-only", command: "/dismiss reason:<text>" }
+
+  # ── Gate-tier: tool / agent routing ─────────────────────────────
+  - signal_type: toolRoutingError
+    title: Tool routing error
+    summary: |
+      An agent's tool router selected the wrong tool for an input
+      (compared to the labeled-correct tool). The wrong tool gets
+      invoked in production for analogous inputs.
+    action: Fix the routing logic (system prompt, tool selection heuristic, or fine-tune).
+    slash_hints:
+      - { label: "Show the misrouted inputs", command: "/terrain show <finding-id>" }
+      - { label: "Explain tool-routing-error", command: "/terrain explain toolRoutingError" }
+      - { label: "Dismiss as edge case", command: "/dismiss reason:<text>" }
+
+  - signal_type: toolGuardrailViolation
+    title: Tool guardrail violation
+    summary: |
+      An agent invocation triggered a tool the policy marked as
+      gated, without the required approval / human-in-the-loop.
+    action: Tighten the agent's policy or wrap the tool call in an explicit confirmation step.
+    slash_hints:
+      - { label: "Show the invocation", command: "/terrain show <finding-id>" }
+      - { label: "Explain tool-guardrail-violation", command: "/terrain explain toolGuardrailViolation" }
+      - { label: "Dismiss as policy update", command: "/dismiss reason:<text>" }
+
+  - signal_type: rerankerRegression
+    title: Reranker regression
+    summary: |
+      Reranker-quality score (nDCG / MRR / hit@k) dropped vs baseline.
+      The downstream LLM receives lower-ranked context.
+    action: Investigate the regression — revert the reranker change or re-tune before merging.
+    slash_hints:
+      - { label: "Show the rank delta", command: "/terrain show <finding-id>" }
+      - { label: "Explain reranker-regression", command: "/terrain explain rerankerRegression" }
+      - { label: "Dismiss as new baseline", command: "/dismiss reason:<text>" }
+
+  - signal_type: citationMismatch
+    title: Citation mismatch
+    summary: |
+      A RAG response cites a source that doesn't contain the cited
+      claim. The model is misattributing — a quiet form of
+      hallucination.
+    action: Tighten the prompt's citation requirements; consider adding a citation-verification gate to the eval suite.
+    slash_hints:
+      - { label: "Show the mismatched citation", command: "/terrain show <finding-id>" }
+      - { label: "Explain citation-mismatch", command: "/terrain explain citationMismatch" }
+      - { label: "Dismiss as known-bad-source", command: "/dismiss reason:<text>" }
+
+  - signal_type: schemaDrift
+    title: Schema drift
+    summary: |
+      A schema definition (Pydantic / Zod / JSON Schema / protobuf)
+      changed without the consuming prompt / retriever / eval
+      template being updated. Downstream parses may silently fail.
+    action: Audit every consumer of the changed schema; update prompt templates that reference renamed fields.
+    slash_hints:
+      - { label: "Show the schema diff", command: "/terrain show <finding-id>" }
+      - { label: "Explain schema-drift", command: "/terrain explain schemaDrift" }
+      - { label: "Dismiss as already covered", command: "/dismiss reason:<text>" }
+
+  - signal_type: evalFailure
+    title: Eval failure
+    summary: |
+      An eval scenario failed: the model's response didn't satisfy
+      the scenario's assertions. The behavior the eval was protecting
+      has regressed.
+    action: Reproduce the failure locally; fix the regression or update the assertion if the eval expected obsolete behavior.
+    slash_hints:
+      - { label: "Show the failure", command: "/terrain show <finding-id>" }
+      - { label: "Explain eval-failure", command: "/terrain explain evalFailure" }
+      - { label: "Dismiss as new assertion", command: "/dismiss reason:<text>" }
+
+  # ── Observability tier — selected high-value detectors ──────────
+  # (Renders as WATCH labels under P5.5; included so the PR comment
+  # surface has consistent copy even for non-blocking signals.)
+
+  - signal_type: aiSafetyEvalMissing
+    title: Safety eval missing
+    summary: |
+      An AI surface ships without an eval scenario covering
+      jailbreak / harm / PII-leak. Production users can trigger
+      these without your CI noticing.
+    action: "Add an eval scenario tagged `category: safety` covering this surface."
+    slash_hints:
+      - { label: "Show the surface", command: "/terrain show <finding-id>" }
+      - { label: "Explain safety-eval-missing", command: "/terrain explain aiSafetyEvalMissing" }
+      - { label: "Dismiss as covered elsewhere", command: "/dismiss reason:<text>" }
+
+  - signal_type: aiNonDeterministicEval
+    title: Non-deterministic eval
+    summary: |
+      An eval config declares a model without pinning
+      `temperature: 0` (or a seed). CI runs will produce different
+      results across retries.
+    action: "Pin `temperature: 0` and a seed in the eval config."
+    slash_hints:
+      - { label: "Show the eval config", command: "/terrain show <finding-id>" }
+      - { label: "Explain non-deterministic-eval", command: "/terrain explain aiNonDeterministicEval" }
+      - { label: "Dismiss as deliberate sampling", command: "/dismiss reason:<text>" }
+
+  - signal_type: aiModelDeprecationRisk
+    title: Model deprecation risk
+    summary: |
+      A model tag is sunset or floats — the next API call could
+      break or silently re-resolve to a different model.
+    action: Pin to a dated model variant (e.g. `gpt-4-0613`) or upgrade to a current tier.
+    slash_hints:
+      - { label: "Show the model reference", command: "/terrain show <finding-id>" }
+      - { label: "Explain model-deprecation", command: "/terrain explain aiModelDeprecationRisk" }
+      - { label: "Dismiss as already migrating", command: "/dismiss reason:<text>" }
+
+  - signal_type: aiPromptVersioning
+    title: Prompt without version marker
+    summary: |
+      A prompt file has no recognizable version marker. Content
+      changes will silently drift past consumers that pinned an
+      older version.
+    action: "Add a `version:` field, a `_v<N>` filename suffix, or a `# version: ...` comment."
+    slash_hints:
+      - { label: "Show the prompt", command: "/terrain show <finding-id>" }
+      - { label: "Explain prompt-versioning", command: "/terrain explain aiPromptVersioning" }
+      - { label: "Dismiss as one-off", command: "/dismiss reason:<text>" }
+
+  - signal_type: aiCostRegression
+    title: Cost regression
+    summary: |
+      Per-case cost rose vs baseline beyond the configured
+      threshold. The next production deploy will burn more tokens
+      per request.
+    action: Investigate the prompt or model change for unintended bloat. Bump the baseline if intentional.
+    slash_hints:
+      - { label: "Show the cost delta", command: "/terrain show <finding-id>" }
+      - { label: "Explain cost-regression", command: "/terrain explain aiCostRegression" }
+      - { label: "Dismiss as expected cost", command: "/dismiss reason:<text>" }
+
+  - signal_type: aiEmbeddingModelChange
+    title: Embedding model swap
+    summary: |
+      The repo references a different embedding model than the
+      retrieval index was built with. Document encodings and
+      query encodings diverge — quality silently degrades.
+    action: Either rebuild the index with the new model, or revert the embedding-model reference.
+    slash_hints:
+      - { label: "Show the reference", command: "/terrain show <finding-id>" }
+      - { label: "Explain embedding-model-change", command: "/terrain explain aiEmbeddingModelChange" }
+      - { label: "Dismiss as in-flight reindex", command: "/dismiss reason:<text>" }
+
+  - signal_type: aiFewShotContamination
+    title: Few-shot contamination
+    summary: |
+      A few-shot example overlaps verbatim with an eval scenario's
+      input. Eval scores are inflated — the model is memorizing,
+      not generalizing.
+    action: Hold the matching example out of the few-shot block, or rewrite the eval input.
+    slash_hints:
+      - { label: "Show the overlap", command: "/terrain show <finding-id>" }
+      - { label: "Explain few-shot-contamination", command: "/terrain explain aiFewShotContamination" }
+      - { label: "Dismiss as deliberate fixture", command: "/dismiss reason:<text>" }
+
+  # ── Coverage / structural ───────────────────────────────────────
+  - signal_type: untestedExport
+    title: Untested public export
+    summary: |
+      A public function / type is exported but no test imports it.
+      Refactors here can change behavior without CI noticing.
+    action: Add a test that imports and exercises the export.
+    slash_hints:
+      - { label: "Show the export", command: "/terrain show <finding-id>" }
+      - { label: "Explain untested-export", command: "/terrain explain untestedExport" }
+      - { label: "Dismiss as internal-by-convention", command: "/dismiss reason:<text>" }
+
+  - signal_type: uncoveredAISurface
+    title: Uncovered AI surface
+    summary: |
+      An AI surface (prompt / tool / retriever / model) has zero
+      test or scenario coverage.
+    action: Add an eval scenario or test that exercises this surface.
+    slash_hints:
+      - { label: "Show the surface", command: "/terrain show <finding-id>" }
+      - { label: "Explain uncovered-ai-surface", command: "/terrain explain uncoveredAISurface" }
+      - { label: "Dismiss as design-time-only", command: "/dismiss reason:<text>" }
+
+  - signal_type: capabilityValidationGap
+    title: Capability without validation
+    summary: |
+      A declared capability has no scenario validating it. The
+      capability claim is unverified — adopters cannot trust it.
+    action: Add a scenario validating the declared capability, or remove the declaration.
+    slash_hints:
+      - { label: "Show the declaration", command: "/terrain show <finding-id>" }
+      - { label: "Explain capability-validation-gap", command: "/terrain explain capabilityValidationGap" }
+      - { label: "Dismiss as out-of-scope", command: "/dismiss reason:<text>" }
+
+  - signal_type: phantomEvalScenario
+    title: Phantom eval scenario
+    summary: |
+      An eval scenario references a surface that doesn't exist
+      (renamed / deleted / typo). The scenario will fail mysteriously
+      or silently skip.
+    action: Fix the surface ID reference, or remove the orphan scenario.
+    slash_hints:
+      - { label: "Show the orphan reference", command: "/terrain show <finding-id>" }
+      - { label: "Explain phantom-eval-scenario", command: "/terrain explain phantomEvalScenario" }
+      - { label: "Dismiss as in-flight refactor", command: "/dismiss reason:<text>" }
+
+  - signal_type: untestedPromptFlow
+    title: Untested prompt flow
+    summary: |
+      A prompt invocation path has no covering test or scenario.
+      Changes to the prompt or the calling code go unmeasured.
+    action: Add a test or eval scenario that hits this prompt invocation path.
+    slash_hints:
+      - { label: "Show the flow", command: "/terrain show <finding-id>" }
+      - { label: "Explain untested-prompt-flow", command: "/terrain explain untestedPromptFlow" }
+      - { label: "Dismiss as covered indirectly", command: "/dismiss reason:<text>" }
+
+  - signal_type: aiHardcodedAPIKey
+    title: Hardcoded API key
+    summary: |
+      A config file contains a value matching a provider API key
+      shape. Anything checked into source is permanently in the
+      commit history — rotation is the only fix.
+    action: Move the secret to an env var (or your secrets manager) and reference it from there.
+    slash_hints:
+      - { label: "Show the line", command: "/terrain show <finding-id>" }
+      - { label: "Explain hardcoded-api-key", command: "/terrain explain aiHardcodedAPIKey" }
+      - { label: "Dismiss as test fixture", command: "/dismiss reason:<text>" }

@@ -2,6 +2,7 @@ package changescope
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -337,7 +338,11 @@ func TestRenderPRSummaryMarkdown_FindingTruncation(t *testing.T) {
 	output := buf.String()
 
 	// Truncation message — italicized "...and N more (severity counts)"
-	// in the new card-style render.
+	// in the card-style render. Protection-gap findings keep the old
+	// N-cap render (each gap is a different file; per-detector
+	// collapse doesn't apply). The detector-bearing visibility floor
+	// from P5.4 lives in renderFindingsCardsByDetector for the
+	// slash-command surface.
 	if !strings.Contains(output, "_...and 10 more") {
 		t.Errorf("expected truncation message for >10 findings; got:\n%s", output)
 	}
@@ -633,4 +638,83 @@ func TestRenderPRSummaryMarkdown_AISection_Deterministic(t *testing.T) {
 	if buf1.String() != buf2.String() {
 		t.Error("AI section rendering is not deterministic")
 	}
+}
+
+// TestRenderFindingsCardsByDetector_PerDetectorVisibilityFloor pins
+// the P5.4 contract: every detector that fired contributes at least
+// one card, and co-fires within a detector collapse to "↳ +N more".
+func TestRenderFindingsCardsByDetector_PerDetectorVisibilityFloor(t *testing.T) {
+	t.Parallel()
+
+	findings := []ChangeScopedFinding{
+		// 3 findings of the same detector (aiPromptInjection)
+		{Type: "existing_signal", SignalType: "aiPromptInjectionRisk", Path: "a.ts", Severity: "high", Explanation: "1"},
+		{Type: "existing_signal", SignalType: "aiPromptInjectionRisk", Path: "b.ts", Severity: "medium", Explanation: "2"},
+		{Type: "existing_signal", SignalType: "aiPromptInjectionRisk", Path: "c.ts", Severity: "low", Explanation: "3"},
+		// 1 finding of a different detector
+		{Type: "existing_signal", SignalType: "aiNonDeterministicEval", Path: "d.yaml", Severity: "medium", Explanation: "4"},
+	}
+
+	var lines []string
+	line := func(format string, args ...any) {
+		lines = append(lines, testFmtSprintf(format, args...))
+	}
+	renderFindingsCardsByDetector(line, findings, 1)
+
+	output := strings.Join(lines, "\n")
+
+	// Each detector contributes exactly one card.
+	if !strings.Contains(output, "aiPromptInjectionRisk") && !strings.Contains(output, "a.ts") {
+		t.Errorf("expected aiPromptInjectionRisk card; got:\n%s", output)
+	}
+	if !strings.Contains(output, "d.yaml") {
+		t.Errorf("expected aiNonDeterministicEval card; got:\n%s", output)
+	}
+	// Co-fires within prompt-injection group collapse to +2.
+	if !strings.Contains(output, "+2 more in this detector") {
+		t.Errorf("expected +2 collapse footer for prompt-injection; got:\n%s", output)
+	}
+	// Highest-severity-first ordering: high (aiPromptInjectionRisk)
+	// should appear before medium (aiNonDeterministicEval).
+	promptIdx := strings.Index(output, "a.ts")
+	nondetIdx := strings.Index(output, "d.yaml")
+	if !(promptIdx >= 0 && nondetIdx >= 0 && promptIdx < nondetIdx) {
+		t.Errorf("expected high-severity detector first; got promptIdx=%d nondetIdx=%d:\n%s", promptIdx, nondetIdx, output)
+	}
+}
+
+// TestRenderFindingsCardsByDetector_HighestSeverityIsHeadline confirms
+// that within a co-firing detector group, the displayed card is the
+// worst-severity finding.
+func TestRenderFindingsCardsByDetector_HighestSeverityIsHeadline(t *testing.T) {
+	t.Parallel()
+
+	findings := []ChangeScopedFinding{
+		{Type: "existing_signal", SignalType: "ruleA", Path: "low.ts", Severity: "low", Explanation: "low"},
+		{Type: "existing_signal", SignalType: "ruleA", Path: "critical.ts", Severity: "critical", Explanation: "critical"},
+		{Type: "existing_signal", SignalType: "ruleA", Path: "medium.ts", Severity: "medium", Explanation: "medium"},
+	}
+
+	var lines []string
+	line := func(format string, args ...any) {
+		lines = append(lines, testFmtSprintf(format, args...))
+	}
+	renderFindingsCardsByDetector(line, findings, 1)
+	output := strings.Join(lines, "\n")
+
+	// Headline card should reference critical.ts (the worst severity).
+	if !strings.Contains(output, "critical.ts") {
+		t.Errorf("expected critical-severity finding as headline; got:\n%s", output)
+	}
+	// +2 collapse for the other two.
+	if !strings.Contains(output, "+2 more in this detector") {
+		t.Errorf("expected +2 collapse; got:\n%s", output)
+	}
+}
+
+// testFmtSprintf wraps fmt.Sprintf so the renderFindingsCardsByDetector
+// tests can capture line() calls without leaking fmt usage into the
+// test file's top-level imports.
+func testFmtSprintf(format string, args ...any) string {
+	return fmt.Sprintf(format, args...)
 }
