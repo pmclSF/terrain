@@ -99,6 +99,7 @@ func printReportUsage() {
 	fmt.Println("  pr            PR-level summary (--format=markdown|comment|annotation)")
 	fmt.Println("  posture       release readiness posture")
 	fmt.Println("  select-tests  protective test selection for a change")
+	fmt.Println("  check-runs    emit two GitHub Checks-API check-run bodies (gate + observability)")
 	fmt.Println()
 	fmt.Println("Common flags (all verbs):")
 	fmt.Println("  --root <path>       repository root (default .)")
