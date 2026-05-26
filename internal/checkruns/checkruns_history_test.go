@@ -1,6 +1,7 @@
 package checkruns
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/models"
@@ -91,6 +92,41 @@ func TestBuildBundleWithHistory_EmptyTypeOrFileIgnoresHistory(t *testing.T) {
 	// file) or (rule, empty) entry without the missing half.
 	if bundle.Gate.Conclusion != "failure" {
 		t.Errorf("expected gate=failure (manifest tier still rules); got %q", bundle.Gate.Conclusion)
+	}
+}
+
+// TestBuildBundleWithHistory_DemotedObsBlockLabelsAsWATCH closes a
+// follow-up gap surfaced in adversarial review: when a manifest-gate
+// signal is demoted into the obs set, the obs check's markdown body
+// must render its per-detector block with the [WATCH] label — NOT
+// the [GATE]/[BLOCK] label the manifest tier would otherwise produce.
+// Otherwise the obs check disagrees with the PR comment on the same
+// finding even though the gate conclusion is correct.
+func TestBuildBundleWithHistory_DemotedObsBlockLabelsAsWATCH(t *testing.T) {
+	t.Parallel()
+
+	const ruleID = string(signals.SignalUntestedExport)
+	const path = "src/auth/login.ts"
+
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{
+				Type:     models.SignalType(ruleID),
+				Severity: models.SeverityHigh,
+				Location: models.SignalLocation{File: path},
+			},
+		},
+	}
+	bundle := BuildBundleWithHistory(snap, "sha", &fakeHistoryStore{
+		demote: map[string]bool{ruleID + "|" + path: true},
+	})
+
+	body := bundle.Observability.Output.Text
+	if !strings.Contains(body, "[WATCH]") {
+		t.Errorf("observability body should label demoted finding as [WATCH]; got:\n%s", body)
+	}
+	if strings.Contains(body, "[GATE]") || strings.Contains(body, "[BLOCK]") {
+		t.Errorf("observability body must NOT contain [GATE]/[BLOCK] for demoted finding; got:\n%s", body)
 	}
 }
 

@@ -145,8 +145,15 @@ func BuildBundleWithHistory(snap *models.TestSuiteSnapshot, headSHA string, hist
 	}
 	gateSignals, obsSignals := splitByTierWithHistory(snap.Signals, hist)
 
+	// The gate set is what survived demotion — every signal here is
+	// gate-tier per the manifest AND not demoted by history. Its
+	// effective tier is "gate".
 	gateOut := buildGateOutput(gateSignals)
-	obsOut := buildObservabilityOutput(obsSignals)
+	// The obs set is the union of manifest-observability signals AND
+	// demoted gate signals. We need to know per-signal which is which
+	// so the per-detector block renders the right [WATCH] vs [BLOCK]
+	// label — matching the PR-comment renderer's behavior.
+	obsOut := buildObservabilityOutputWithHistory(obsSignals, hist)
 
 	gateConclusion := "success"
 	if hasBlockingFinding(gateSignals) {
@@ -271,6 +278,16 @@ func buildGateOutput(gate []models.Signal) Output {
 // section in the Text, plus one notice-level annotation per finding
 // so they still appear inline on the diff.
 func buildObservabilityOutput(obs []models.Signal) Output {
+	return buildObservabilityOutputWithHistory(obs, nil)
+}
+
+// buildObservabilityOutputWithHistory is the history-aware form. When
+// the partition step moved a manifest-gate-tier finding into the obs
+// set (because the store reports ShouldDemote), this renderer needs
+// to label that finding as observability — otherwise the obs check's
+// markdown body would show [GATE]/[BLOCK] for a finding the PR
+// comment renders as [WATCH], breaking cross-surface consistency.
+func buildObservabilityOutputWithHistory(obs []models.Signal, hist HistoryStore) Output {
 	if len(obs) == 0 {
 		return Output{
 			Title:   "No observability findings",
@@ -290,7 +307,7 @@ func buildObservabilityOutput(obs []models.Signal) Output {
 
 	groups := groupByDetector(obs)
 	for _, g := range groups {
-		text.WriteString(renderDetectorBlock(g))
+		text.WriteString(renderDetectorBlockWithHistory(g, hist))
 		text.WriteString("\n")
 	}
 	text.WriteString("</details>\n")
@@ -353,6 +370,15 @@ func groupByDetector(in []models.Signal) []detectorGroup {
 // renderDetectorBlock emits one detector's section: title from
 // prtemplates, headline card, "+N more" collapse if applicable.
 func renderDetectorBlock(g detectorGroup) string {
+	return renderDetectorBlockWithHistory(g, nil)
+}
+
+// renderDetectorBlockWithHistory mirrors renderDetectorBlock but
+// downgrades the displayed tier to observability when the history
+// store reports the head signal's (Type, File) as ShouldDemote.
+// This keeps the obs check's markdown body label-consistent with
+// the PR-comment renderer.
+func renderDetectorBlockWithHistory(g detectorGroup, hist HistoryStore) string {
 	if len(g.signals) == 0 {
 		return ""
 	}
@@ -371,7 +397,12 @@ func renderDetectorBlock(g detectorGroup) string {
 		}
 	}
 
-	label := uitokens.BracketedPRLabel(tierFor(head.Type), string(head.Severity))
+	tier := tierFor(head.Type)
+	if hist != nil && head.Type != "" && head.Location.File != "" &&
+		hist.ShouldDemote(string(head.Type), head.Location.File) {
+		tier = "observability"
+	}
+	label := uitokens.BracketedPRLabel(tier, string(head.Severity))
 	loc := head.Location.File
 	if head.Location.Line > 0 {
 		loc = fmt.Sprintf("%s:%d", loc, head.Location.Line)

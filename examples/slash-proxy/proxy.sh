@@ -39,7 +39,15 @@ if [ -n "$REPO" ] && [ -n "$IN_REPLY_TO" ]; then
     -H "Accept: application/vnd.github+json" \
     "https://api.github.com/repos/$REPO/pulls/comments/$IN_REPLY_TO" \
     | jq -r '.body // empty')"
-  FINDING_ID="$(echo "$PARENT" | grep -oE 'terrain:finding=[^ \-]+' | head -1 | sed 's/^terrain:finding=//')"
+  # Match the full finding-id token. IDs can contain `-` (kebab-case
+  # path segments are common in TS/JS/Go repos) and `.` and `/` —
+  # the only terminator is whitespace or the closing `-->` of the
+  # HTML comment. Trim a trailing `-` left from the `-->` boundary
+  # since grep can't lookahead.
+  FINDING_ID="$(echo "$PARENT" \
+    | grep -oE 'terrain:finding=[A-Za-z0-9_/@:#.+\-]+' \
+    | head -1 \
+    | sed -e 's/^terrain:finding=//' -e 's/-*$//')"
 fi
 
 # Forward to terrain. The receiver validates the signature itself.
