@@ -25,11 +25,29 @@ BODY="$(cat)"
 SIG="${HTTP_X_HUB_SIGNATURE_256:-}"
 EVENT="${HTTP_X_GITHUB_EVENT:-}"
 
+# Resolve the finding-id from the parent comment when the user replied
+# to a Terrain inline comment. Terrain renders each finding card with a
+# hidden `<!-- terrain:finding=<id> -->` marker; this proxy fetches the
+# parent comment via the GitHub API (terrain itself does no outbound
+# HTTP) and forwards the id in a header.
+REPO="$(echo "$BODY" | jq -r '.repository.full_name // empty')"
+IN_REPLY_TO="$(echo "$BODY" | jq -r '.comment.in_reply_to_id // empty')"
+FINDING_ID=""
+if [ -n "$REPO" ] && [ -n "$IN_REPLY_TO" ]; then
+  PARENT="$(curl -sf \
+    -H "Authorization: Bearer $GITHUB_TOKEN" \
+    -H "Accept: application/vnd.github+json" \
+    "https://api.github.com/repos/$REPO/pulls/comments/$IN_REPLY_TO" \
+    | jq -r '.body // empty')"
+  FINDING_ID="$(echo "$PARENT" | grep -oE 'terrain:finding=[^ \-]+' | head -1 | sed 's/^terrain:finding=//')"
+fi
+
 # Forward to terrain. The receiver validates the signature itself.
 REPLY="$(curl -sf -X POST "$TERRAIN_RECEIVER_URL" \
   -H "Content-Type: application/json" \
   -H "X-Hub-Signature-256: $SIG" \
   -H "X-GitHub-Event: $EVENT" \
+  -H "X-Terrain-Finding-Id: $FINDING_ID" \
   --data "$BODY")"
 
 # Empty reply (e.g. an unrelated webhook) → noop, return 200.

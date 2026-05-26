@@ -60,8 +60,17 @@ func (d *realDispatcher) Handle(ev slash.WebhookEvent, cmd *slash.Command) (stri
 		if reason == "" {
 			return "", fmt.Errorf("/dismiss requires reason:<text>")
 		}
-		if ev.FindingID == "" {
-			return "Cannot dismiss: this command must be a reply to a Terrain finding's inline comment (the finding-id is read from the comment thread).", nil
+		// Finding-id resolution order:
+		//   1. The X-Terrain-Finding-Id header (proxy-injected from
+		//      the parent comment's hidden marker).
+		//   2. `finding:<id>` keyword on the slash command itself
+		//      (user-typed fallback when the proxy is not configured).
+		findingID := ev.FindingID
+		if findingID == "" {
+			findingID = cmd.Keyword["finding"]
+		}
+		if findingID == "" {
+			return "Cannot dismiss: this command must be a reply to a Terrain finding's inline comment, or include `finding:<id>` (copy the ID from the finding card).", nil
 		}
 		// Default scope=instance with auto content-hash; default
 		// expiry per scope. Owner is the comment author.
@@ -69,10 +78,10 @@ func (d *realDispatcher) Handle(ev slash.WebhookEvent, cmd *slash.Command) (stri
 		if ev.Sender != "" {
 			owner = "@" + ev.Sender
 		}
-		if err := runSuppress(ev.FindingID, reason, "", owner, "instance", d.repoRoot); err != nil {
+		if err := runSuppress(findingID, reason, "", owner, "instance", d.repoRoot); err != nil {
 			return "", fmt.Errorf("runSuppress: %w", err)
 		}
-		return fmt.Sprintf("Dismissed %s (scope=instance). Reason: %q.", ev.FindingID, reason), nil
+		return fmt.Sprintf("Dismissed %s (scope=instance). Reason: %q.", findingID, reason), nil
 
 	case slash.VerbExplain, slash.VerbWhy:
 		if len(cmd.Positional) == 0 {

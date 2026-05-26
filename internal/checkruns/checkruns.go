@@ -118,10 +118,32 @@ type CheckRunsBundle struct {
 //     still render inline on the diff, just without a required-check
 //     conclusion.
 func BuildBundle(snap *models.TestSuiteSnapshot, headSHA string) CheckRunsBundle {
+	return BuildBundleWithHistory(snap, headSHA, nil)
+}
+
+// HistoryStore is the minimal interface the check-runs bundler
+// needs from internal/findinghistory.Store. Declared locally so the
+// checkruns package doesn't import findinghistory directly — callers
+// in cmd/terrain pass the concrete store through.
+type HistoryStore interface {
+	ShouldDemote(ruleID, file string) bool
+}
+
+// BuildBundleWithHistory is the history-aware form of BuildBundle.
+// When `hist` is non-nil, gate-tier findings whose (rule_id, file)
+// pair the store reports as ShouldDemote are routed to the
+// observability check instead of the gate check — matching the
+// PR-comment renderer's behavior so the two surfaces don't disagree.
+//
+// Without this routing, a chronically-firing finding that the PR
+// comment demotes to [WATCH] would still appear in the gate check
+// and fail the required CI check. That contradiction is the symptom
+// this function exists to prevent.
+func BuildBundleWithHistory(snap *models.TestSuiteSnapshot, headSHA string, hist HistoryStore) CheckRunsBundle {
 	if snap == nil {
 		return CheckRunsBundle{}
 	}
-	gateSignals, obsSignals := splitByTier(snap.Signals)
+	gateSignals, obsSignals := splitByTierWithHistory(snap.Signals, hist)
 
 	gateOut := buildGateOutput(gateSignals)
 	obsOut := buildObservabilityOutput(obsSignals)
@@ -154,12 +176,26 @@ func BuildBundle(snap *models.TestSuiteSnapshot, headSHA string) CheckRunsBundle
 // gate-relevant (legacy behavior; runtime/ingestion-derived signals
 // keep the previous "treat as gate" semantics).
 func splitByTier(in []models.Signal) (gate, obs []models.Signal) {
+	return splitByTierWithHistory(in, nil)
+}
+
+// splitByTierWithHistory is the history-aware partition. When `hist`
+// is non-nil, any gate-tier signal whose (Type, Location.File) pair
+// the store reports as ShouldDemote is moved to the observability
+// set. Empty Type or empty File pairs cannot match a history entry,
+// so they always follow the manifest tier.
+func splitByTierWithHistory(in []models.Signal, hist HistoryStore) (gate, obs []models.Signal) {
 	for _, s := range in {
 		if signals.IsObservabilityTier(s.Type) {
 			obs = append(obs, s)
-		} else {
-			gate = append(gate, s)
+			continue
 		}
+		if hist != nil && s.Type != "" && s.Location.File != "" &&
+			hist.ShouldDemote(string(s.Type), s.Location.File) {
+			obs = append(obs, s)
+			continue
+		}
+		gate = append(gate, s)
 	}
 	return gate, obs
 }

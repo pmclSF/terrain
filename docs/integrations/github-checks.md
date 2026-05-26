@@ -126,8 +126,33 @@ The receiver replies in the HTTP response body. To surface the reply
 back on the PR thread, run it behind a thin proxy that re-posts the
 body through `gh api repos/:owner/:repo/issues/:n/comments`. The
 proxy is not part of terrain — it's deployment glue. A minimal
-example lives in `docs/integrations/slash-proxy-example.sh` (also
-shipped under `examples/slash-proxy/`).
+example lives under `examples/slash-proxy/`.
+
+### Finding-id resolution
+
+Every Terrain PR-comment finding card embeds a hidden HTML marker
+the proxy reads to resolve `/dismiss` replies:
+
+```
+- **`src/auth/login.ts`** [GATE] — Untested export...
+  → Add a unit test covering the success and 401 branches.
+  <!-- terrain:finding=untestedExport@src/auth/login.ts:loginUser#abc -->
+```
+
+The proxy walks the comment thread's `in_reply_to_id` to the parent
+comment via `GET /repos/:owner/:repo/pulls/comments/:id`, greps the
+parent body for `terrain:finding=`, and forwards the id to the
+receiver via the `X-Terrain-Finding-Id` header. The receiver never
+makes that API call itself — auth + transport stay in the proxy
+layer.
+
+Users can also bypass the proxy by typing the id directly:
+
+```
+/dismiss reason:"sanitizer added upstream" finding:untestedExport@src/auth/login.ts:loginUser#abc
+```
+
+Either path lands the same suppression entry.
 
 ## Why no built-in HTTP client?
 

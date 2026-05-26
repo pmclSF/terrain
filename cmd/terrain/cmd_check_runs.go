@@ -38,7 +38,13 @@ func runCheckRuns(root, headSHA, outPath string) error {
 	if result == nil || result.Snapshot == nil {
 		return fmt.Errorf("analyze produced no snapshot")
 	}
-	bundle := checkruns.BuildBundle(result.Snapshot, headSHA)
+	// Consult per-repo finding-history so chronically-firing-without-
+	// dismiss findings get routed to the observability check, matching
+	// the PR-comment renderer's demote behavior. Without this, the two
+	// surfaces would disagree: PR comment says [WATCH], required check
+	// says failure on the same finding.
+	hist, _ := engine.LoadFindingHistory(abs)
+	bundle := checkruns.BuildBundleWithHistory(result.Snapshot, headSHA, hist)
 	data, err := json.MarshalIndent(bundle, "", "  ")
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)

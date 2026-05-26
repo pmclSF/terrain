@@ -191,6 +191,7 @@ func buildChangeScopedFindings(result *impact.ImpactResult, snap *models.TestSui
 			Path:        sig.Location.File,
 			Severity:    string(sig.Severity),
 			SignalType:  string(sig.Type),
+			FindingID:   sig.FindingID,
 			Explanation: fmt.Sprintf("[%s] %s", sig.Type, sig.Explanation),
 		})
 	}

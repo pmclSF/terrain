@@ -83,6 +83,31 @@ func TestRealDispatcher_DismissOutsideThreadDeclines(t *testing.T) {
 	}
 }
 
+// TestRealDispatcher_DismissAcceptsFindingKeywordFallback proves the
+// user-typed `finding:<id>` keyword bypasses the proxy-injected header.
+// This is the manual escape hatch for adopters who haven't deployed
+// the X-Terrain-Finding-Id-injecting proxy yet — the conversation
+// loop still closes by typing the id directly.
+func TestRealDispatcher_DismissAcceptsFindingKeywordFallback(t *testing.T) {
+	root := t.TempDir()
+	d := newRealDispatcher(root)
+	ev := slash.WebhookEvent{Sender: "octocat"} // intentionally no FindingID
+	cmd := &slash.Command{
+		Verb: slash.VerbDismiss,
+		Keyword: map[string]string{
+			"reason":  "false positive",
+			"finding": "weakAssertion@src/x_test.go:TestX#abc",
+		},
+	}
+	reply, err := d.Handle(ev, cmd)
+	if err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	if !strings.Contains(reply, "Dismissed weakAssertion@src/x_test.go:TestX#abc") {
+		t.Errorf("reply should confirm dismissal of the keyword-supplied id; got: %q", reply)
+	}
+}
+
 // TestRealDispatcher_DeferredVerbsReturnPlaceholderText proves the
 // five "acknowledged, deferred to future release" verbs return a
 // stable user-visible message rather than crashing. Adopters wiring

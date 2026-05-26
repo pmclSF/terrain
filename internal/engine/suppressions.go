@@ -163,11 +163,15 @@ func applySuppressions(snap *models.TestSuiteSnapshot, root, override string, no
 	// Expand aliases so suppressions on pre-split rule_ids continue to
 	// suppress every replacement. Reads the alias registry once per
 	// pipeline; failure to load the registry (rare; embedded YAML)
-	// degrades gracefully to no expansion.
+	// degrades gracefully to no expansion — but logs at Warn so the
+	// silent breakage is at least visible in CI output. An operator
+	// who renamed a rule and wrote a suppression against the OLD id
+	// would otherwise have no signal that the suppression stopped
+	// firing.
 	if aliasReg, err := aliases.Load(); err == nil {
 		result.Entries = expandSuppressionAliases(result.Entries, aliasReg)
 	} else {
-		logging.L().Debug("alias registry unavailable for suppression expansion", "err", err)
+		logging.L().Warn("alias registry unavailable for suppression expansion; entries against pre-split rule_ids will not be expanded", "err", err)
 	}
 
 	matched, expired := suppression.Apply(snap, result.Entries, now)

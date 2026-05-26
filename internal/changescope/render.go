@@ -390,6 +390,18 @@ func renderFindingCardWithHistory(line func(string, ...any), f ChangeScopedFindi
 	if action != "" {
 		line("  → %s", action)
 	}
+	// Hidden marker for the slash-receiver proxy to resolve /dismiss
+	// replies. GitHub renders HTML comments as invisible, so adopters
+	// reading the PR see no extra noise; the proxy grep's the parent
+	// comment for `terrain:finding=` and injects the id into the
+	// X-Terrain-Finding-Id header before terrain sees the event.
+	//
+	// Omitted for protection-gap and legacy detectors that don't yet
+	// populate FindingID — the user-facing `finding:<id>` keyword
+	// fallback covers those.
+	if f.FindingID != "" {
+		line("  <!-- terrain:finding=%s -->", f.FindingID)
+	}
 }
 
 // HistoryStore is the minimal interface the renderer needs from

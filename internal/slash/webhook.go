@@ -106,6 +106,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "parse event: "+err.Error(), http.StatusBadRequest)
 		return
 	}
+	// Terrain itself does no outbound HTTP, so it cannot fetch the
+	// parent comment to read its finding-id marker. The proxy layer
+	// (examples/slash-proxy/) is responsible for resolving the parent
+	// and forwarding the id in this header. As a fallback the user
+	// can include `finding:<id>` directly in their slash command (see
+	// dispatcher handling).
+	if hdr := r.Header.Get("X-Terrain-Finding-Id"); hdr != "" {
+		ev.FindingID = hdr
+	}
 
 	// Skip Terrain's own comments to avoid feedback loops.
 	if strings.HasSuffix(strings.ToLower(ev.Sender), "[bot]") {
