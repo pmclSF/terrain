@@ -67,23 +67,91 @@ func pathPkgMatch(pattern, name string) (bool, error) {
 // Default location for the suppression file, relative to the repo root.
 const DefaultPath = ".terrain/suppressions.yaml"
 
+// Scope classifies the breadth of a suppression entry. The scope
+// label is documentary on the file (the user declares intent) and
+// drives the default-expiry policy in the suppress CLI:
+//
+//	ScopeInstance  — rule_id + file + content_hash. One specific
+//	                 finding. Default expiry: +90 days. The hash
+//	                 invalidates on edits to the suppressed line so
+//	                 the suppression doesn't outlive its rationale.
+//	ScopeFile      — rule_id + file (exact). Every finding of the
+//	                 rule in that file is suppressed. Default expiry:
+//	                 +180 days.
+//	ScopeDirectory — rule_id + file (glob). Every finding of the rule
+//	                 across the matched paths is suppressed. Default
+//	                 expiry: +180 days.
+//	ScopeRepo      — rule_id only (no file). Disable the rule for the
+//	                 whole repository. Default expiry: +365 days.
+//
+// A FindingID-based entry has no explicit scope; its match shape is
+// equivalent to ScopeInstance (one specific finding).
+type Scope string
+
+const (
+	ScopeInstance  Scope = "instance"
+	ScopeFile      Scope = "file"
+	ScopeDirectory Scope = "directory"
+	ScopeRepo      Scope = "repo"
+)
+
 // Entry is one suppression rule. Either FindingID (exact match) or
-// SignalType + File (class match) must be set; the loader rejects
-// entries that satisfy neither.
+// SignalType (+ optional File / ContentHash) must be set; the loader
+// rejects entries that satisfy neither.
+//
+// Schema v1 (legacy): `finding_id` OR (`signal_type` AND `file`).
+// Schema v2 (current): adds `scope` (documentary; default-expiry
+// hint) and `content_hash` (SHA-256 of the 5-line normalized context
+// window — when set, the matcher recomputes the current hash and
+// requires equality, so the suppression invalidates when the line
+// changes).
+//
+// Loading is backwards-compatible: a v1 file loads as v2 entries with
+// empty `Scope` and `ContentHash`. The match-time semantics are
+// unchanged for the unset case.
 type Entry struct {
-	FindingID  string    `yaml:"finding_id,omitempty"`
-	SignalType string    `yaml:"signal_type,omitempty"`
-	File       string    `yaml:"file,omitempty"` // glob pattern
-	Reason     string    `yaml:"reason"`
-	Expires    string    `yaml:"expires,omitempty"` // ISO 8601 date
-	Owner      string    `yaml:"owner,omitempty"`
-	expiresAt  time.Time // parsed during load; zero for "no expiry"
+	FindingID   string    `yaml:"finding_id,omitempty"`
+	SignalType  string    `yaml:"signal_type,omitempty"`
+	File        string    `yaml:"file,omitempty"`         // glob pattern
+	Scope       Scope     `yaml:"scope,omitempty"`        // optional; documentary + drives default-expiry
+	ContentHash string    `yaml:"content_hash,omitempty"` // SHA-256 of 5-line normalized context
+	Reason      string    `yaml:"reason"`
+	Expires     string    `yaml:"expires,omitempty"` // ISO 8601 date
+	Owner       string    `yaml:"owner,omitempty"`
+	expiresAt   time.Time // parsed during load; zero for "no expiry"
 }
 
-// File is the YAML envelope.
+// File is the YAML envelope. SchemaVersion is "1" (legacy) or "2"
+// (current); both load through the same path.
 type File struct {
 	SchemaVersion string  `yaml:"schema_version"`
 	Suppressions  []Entry `yaml:"suppressions"`
+}
+
+// CurrentSchemaVersion is what new files should declare. Reader
+// accepts "1" and "2" (and empty, treated as "2").
+const CurrentSchemaVersion = "2"
+
+// DefaultExpiryForScope returns the recommended default expiry
+// duration for a scope. The suppress CLI uses this when the user
+// doesn't pass an explicit --expires. The schema does not enforce
+// these — adopters can override per-entry.
+//
+//	instance  → 90 days
+//	file      → 180 days
+//	directory → 180 days
+//	repo      → 365 days
+//	(unknown) → 90 days (conservative)
+func DefaultExpiryForScope(s Scope) time.Duration {
+	switch s {
+	case ScopeRepo:
+		return 365 * 24 * time.Hour
+	case ScopeFile, ScopeDirectory:
+		return 180 * 24 * time.Hour
+	case ScopeInstance:
+		return 90 * 24 * time.Hour
+	}
+	return 90 * 24 * time.Hour
 }
 
 // LoadResult is what callers actually use: validated entries + per-
@@ -109,8 +177,11 @@ func Load(path string) (*LoadResult, error) {
 	if err := yaml.Unmarshal(body, &raw); err != nil {
 		return nil, fmt.Errorf("parse %q: %w", path, err)
 	}
-	if raw.SchemaVersion != "" && raw.SchemaVersion != "1" {
-		return nil, fmt.Errorf("unsupported suppressions schema_version %q (expected \"1\")", raw.SchemaVersion)
+	switch raw.SchemaVersion {
+	case "", "1", "2":
+		// supported
+	default:
+		return nil, fmt.Errorf("unsupported suppressions schema_version %q (expected \"1\" or \"2\")", raw.SchemaVersion)
 	}
 
 	result := &LoadResult{}
@@ -119,11 +190,29 @@ func Load(path string) (*LoadResult, error) {
 		hasID := strings.TrimSpace(e.FindingID) != ""
 		hasType := strings.TrimSpace(e.SignalType) != ""
 		hasFile := strings.TrimSpace(e.File) != ""
+		isRepoScope := e.Scope == ScopeRepo
 		switch {
 		case hasID && (hasType || hasFile):
 			return nil, fmt.Errorf("suppressions[%d]: cannot combine finding_id with signal_type/file — use one or the other", i)
-		case !hasID && !(hasType && hasFile):
-			return nil, fmt.Errorf("suppressions[%d]: must set either finding_id, or both signal_type and file", i)
+		case !hasID && !hasType:
+			return nil, fmt.Errorf("suppressions[%d]: must set either finding_id, or signal_type (plus file unless scope=repo)", i)
+		case !hasID && hasType && !hasFile && !isRepoScope:
+			return nil, fmt.Errorf("suppressions[%d]: signal_type entries require either a file pattern or scope: repo", i)
+		}
+		// Validate Scope value (when provided).
+		if e.Scope != "" {
+			switch e.Scope {
+			case ScopeInstance, ScopeFile, ScopeDirectory, ScopeRepo:
+				// ok
+			default:
+				return nil, fmt.Errorf("suppressions[%d]: unknown scope %q (expected: instance, file, directory, repo)", i, e.Scope)
+			}
+		}
+		// ContentHash validation: requires SignalType + File.
+		if strings.TrimSpace(e.ContentHash) != "" {
+			if !hasType || !hasFile {
+				return nil, fmt.Errorf("suppressions[%d]: content_hash requires signal_type and file", i)
+			}
 		}
 
 		// reason is required — every suppression must justify itself.
@@ -236,15 +325,46 @@ func ApplyWithAliases(snapshot *models.TestSuiteSnapshot, entries []Entry, reg *
 	return matched, expired
 }
 
+// hashCache memoizes ContextHash computations across a single
+// filterSignals invocation. Signals with the same (file, line) share
+// a single hash compute. Built per-call so it doesn't leak across
+// snapshots or test runs.
+type hashCache struct {
+	cache map[string]string
+}
+
+func newHashCache() *hashCache { return &hashCache{cache: map[string]string{}} }
+
+// Get returns the cached ContextHash for (file, line), computing once
+// on the first request. Errors propagate from the underlying
+// ContextHash call (file I/O errors); a non-existent file returns the
+// sentinel empty string with nil error.
+func (c *hashCache) Get(file string, line int) (string, error) {
+	if file == "" || line <= 0 {
+		return "", nil
+	}
+	key := fmt.Sprintf("%s:%d", file, line)
+	if h, ok := c.cache[key]; ok {
+		return h, nil
+	}
+	h, err := ContextHash(file, line)
+	if err != nil {
+		return "", err
+	}
+	c.cache[key] = h
+	return h, nil
+}
+
 func filterSignals(signals []models.Signal, active []Entry, expanded []map[string]bool, matchedIdx map[int]bool) []models.Signal {
 	if len(signals) == 0 {
 		return signals
 	}
+	cache := newHashCache()
 	kept := signals[:0]
 	for _, s := range signals {
 		hitIdx := -1
 		for i, e := range active {
-			if matches(e, s, expanded[i]) {
+			if matches(e, s, expanded[i], cache) {
 				hitIdx = i
 				break
 			}
@@ -258,19 +378,27 @@ func filterSignals(signals []models.Signal, active []Entry, expanded []map[strin
 	return kept
 }
 
-// matches returns true if entry e suppresses signal s. `expandedTypes`
-// is the pre-computed set of signal-type strings that count as a hit
-// for e (the literal e.SignalType plus any new IDs from the alias
-// registry). Nil/empty set falls back to literal-equality on
-// e.SignalType.
-func matches(e Entry, s models.Signal, expandedTypes map[string]bool) bool {
+// matches returns true if entry e suppresses signal s.
+//
+//   - `expandedTypes` is the pre-computed set of signal-type strings
+//     that count as a hit for e (the literal e.SignalType plus any
+//     new IDs from the alias registry). Nil/empty set falls back to
+//     literal-equality on e.SignalType.
+//   - `cache` memoizes ContextHash computations across the
+//     filterSignals invocation. Required only when one or more
+//     entries set ContentHash; passed unconditionally to keep the
+//     signature stable.
+//
+// When the entry sets ContentHash, the matcher recomputes the
+// current context hash at (s.Location.File, s.Location.Line) and
+// requires equality. A non-existent file silently fails the hash
+// check (returns "" sentinel) so the suppression doesn't fire on a
+// finding for a file that no longer exists.
+func matches(e Entry, s models.Signal, expandedTypes map[string]bool, cache *hashCache) bool {
 	if e.FindingID != "" {
 		return e.FindingID == s.FindingID
 	}
-	// signal_type + file path match.
-	if e.File == "" {
-		return false
-	}
+	// SignalType match (with alias expansion if provided).
 	if expandedTypes != nil {
 		if !expandedTypes[string(s.Type)] {
 			return false
@@ -278,11 +406,33 @@ func matches(e Entry, s models.Signal, expandedTypes map[string]bool) bool {
 	} else if string(s.Type) != e.SignalType {
 		return false
 	}
-	matched, err := pathMatch(e.File, s.Location.File)
-	if err != nil {
-		return false
+	// File match: required unless scope is repo-wide.
+	if e.File == "" {
+		// scope=repo: rule_id only, applies everywhere. Schema v1
+		// rejected this shape; v2 allows it via explicit scope.
+		if e.Scope != ScopeRepo {
+			return false
+		}
+	} else {
+		matched, err := pathMatch(e.File, s.Location.File)
+		if err != nil || !matched {
+			return false
+		}
 	}
-	return matched
+	// Content-hash check (when the entry pins one).
+	if e.ContentHash != "" {
+		if cache == nil {
+			return false
+		}
+		current, err := cache.Get(s.Location.File, s.Location.Line)
+		if err != nil || current == "" {
+			return false
+		}
+		if current != e.ContentHash {
+			return false
+		}
+	}
+	return true
 }
 
 // pathMatch is a glob match that supports `**` (recursive) on top of

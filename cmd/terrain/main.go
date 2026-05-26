@@ -502,18 +502,19 @@ func main() {
 		suppressCmd := flag.NewFlagSet("suppress", flag.ExitOnError)
 		rootFlag := suppressCmd.String("root", ".", "repository root")
 		reasonFlag := suppressCmd.String("reason", "", "why this finding is being suppressed (required)")
-		expiresFlag := suppressCmd.String("expires", "", "ISO date YYYY-MM-DD when the suppression should expire (optional but recommended)")
+		expiresFlag := suppressCmd.String("expires", "", "ISO date YYYY-MM-DD when the suppression should expire (default: per-scope; instance=+90d, file=+180d, directory=+180d, repo=+365d)")
 		ownerFlag := suppressCmd.String("owner", "", "owner pointer for review (optional)")
+		scopeFlag := suppressCmd.String("scope", "", "instance | file | directory | repo (default: instance for FindingID, file otherwise)")
 		_ = suppressCmd.Parse(os.Args[2:])
 		args := suppressCmd.Args()
 		if len(args) < 1 {
-			fmt.Fprintln(os.Stderr, "Usage: terrain suppress <finding-id> --reason \"why\" [--expires YYYY-MM-DD] [--owner @who]")
+			fmt.Fprintln(os.Stderr, "Usage: terrain suppress <finding-id> --reason \"why\" [--expires YYYY-MM-DD] [--owner @who] [--scope instance|file|directory|repo]")
 			fmt.Fprintln(os.Stderr)
 			fmt.Fprintln(os.Stderr, "Find a finding's ID with: terrain explain <finding-id>")
 			os.Exit(exitUsageError)
 		}
 		findingID := args[0]
-		if err := runSuppress(findingID, *reasonFlag, *expiresFlag, *ownerFlag, *rootFlag); err != nil {
+		if err := runSuppress(findingID, *reasonFlag, *expiresFlag, *ownerFlag, *scopeFlag, *rootFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}

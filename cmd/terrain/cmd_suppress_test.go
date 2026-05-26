@@ -23,7 +23,7 @@ func TestRunSuppress_CreatesNewFile(t *testing.T) {
 	id := identity.BuildFindingID("weakAssertion", "internal/auth/login_test.go", "TestLogin", 42)
 
 	if err := runCaptured(func() error {
-		return runSuppress(id, "false positive — sanitized upstream", "2099-08-01", "@platform", root)
+		return runSuppress(id, "false positive — sanitized upstream", "2099-08-01", "@platform", "", root)
 	}); err != nil {
 		t.Fatalf("runSuppress: %v", err)
 	}
@@ -51,10 +51,10 @@ func TestRunSuppress_AppendsToExisting(t *testing.T) {
 	idA := identity.BuildFindingID("weakAssertion", "a.go", "X", 1)
 	idB := identity.BuildFindingID("mockHeavyTest", "b.go", "Y", 2)
 
-	if err := runCaptured(func() error { return runSuppress(idA, "first", "", "", root) }); err != nil {
+	if err := runCaptured(func() error { return runSuppress(idA, "first", "", "", "", root) }); err != nil {
 		t.Fatal(err)
 	}
-	if err := runCaptured(func() error { return runSuppress(idB, "second", "", "", root) }); err != nil {
+	if err := runCaptured(func() error { return runSuppress(idB, "second", "", "", "", root) }); err != nil {
 		t.Fatal(err)
 	}
 
@@ -75,11 +75,11 @@ func TestRunSuppress_RejectsDuplicate(t *testing.T) {
 	root := t.TempDir()
 	id := identity.BuildFindingID("weakAssertion", "a.go", "X", 1)
 
-	if err := runCaptured(func() error { return runSuppress(id, "first", "", "", root) }); err != nil {
+	if err := runCaptured(func() error { return runSuppress(id, "first", "", "", "", root) }); err != nil {
 		t.Fatal(err)
 	}
 	var err error
-	_, err = captureRun(func() error { return runSuppress(id, "second", "", "", root) })
+	_, err = captureRun(func() error { return runSuppress(id, "second", "", "", "", root) })
 	if err == nil || !strings.Contains(err.Error(), "already suppressed") {
 		t.Errorf("expected 'already suppressed' error, got %v", err)
 	}
@@ -91,7 +91,7 @@ func TestRunSuppress_RejectsBadID(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 
-	_, err := captureRun(func() error { return runSuppress("not-a-finding-id", "ok", "", "", root) })
+	_, err := captureRun(func() error { return runSuppress("not-a-finding-id", "ok", "", "", "", root) })
 	if err == nil || !strings.Contains(err.Error(), "invalid finding ID") {
 		t.Errorf("expected invalid-ID error, got %v", err)
 	}
@@ -105,7 +105,7 @@ func TestRunSuppress_RejectsBadID(t *testing.T) {
 func TestRunSuppress_RequiresReason(t *testing.T) {
 	t.Parallel()
 	id := identity.BuildFindingID("weakAssertion", "a.go", "X", 1)
-	_, err := captureRun(func() error { return runSuppress(id, "", "", "", t.TempDir()) })
+	_, err := captureRun(func() error { return runSuppress(id, "", "", "", "", t.TempDir()) })
 	if err == nil || !strings.Contains(err.Error(), "--reason is required") {
 		t.Errorf("expected reason-required error, got %v", err)
 	}
@@ -116,7 +116,7 @@ func TestRunSuppress_RequiresReason(t *testing.T) {
 func TestRunSuppress_RejectsBadExpiryShape(t *testing.T) {
 	t.Parallel()
 	id := identity.BuildFindingID("weakAssertion", "a.go", "X", 1)
-	_, err := captureRun(func() error { return runSuppress(id, "ok", "next-month", "", t.TempDir()) })
+	_, err := captureRun(func() error { return runSuppress(id, "ok", "next-month", "", "", t.TempDir()) })
 	if err == nil || !strings.Contains(err.Error(), "YYYY-MM-DD") {
 		t.Errorf("expected YYYY-MM-DD error, got %v", err)
 	}
