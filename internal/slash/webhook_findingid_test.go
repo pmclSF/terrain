@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -40,6 +41,9 @@ func TestWebhook_XTerrainFindingIdHeaderPopulatesEvent(t *testing.T) {
 	secret := []byte("test-secret")
 	dispatcher := &captureDispatcher{}
 	handler := NewHandler(string(secret), dispatcher)
+	// /dismiss is gated by DismissPolicy. Allow the test sender so the
+	// dispatcher gets the event and we can assert FindingID populated.
+	handler.DismissPolicy = DismissPolicy{AllowAuthors: []string{"octocat"}}
 
 	body := []byte(`{
 		"action": "created",
@@ -69,6 +73,63 @@ func TestWebhook_XTerrainFindingIdHeaderPopulatesEvent(t *testing.T) {
 // *only* source of finding-id in the webhook layer. The dispatcher's
 // fallback (parsing `finding:<id>` from the slash command keyword)
 // is tested separately in cmd/terrain/cmd_slash_dispatcher_test.go.
+func TestWebhook_DismissDeniedWhenSenderNotInAllowlist(t *testing.T) {
+	secret := []byte("test-secret")
+	dispatcher := &captureDispatcher{}
+	handler := NewHandler(string(secret), dispatcher)
+	// Allowlist excludes the comment author.
+	handler.DismissPolicy = DismissPolicy{AllowAuthors: []string{"alice"}}
+
+	body := []byte(`{
+		"action": "created",
+		"comment": {"id": 1, "body": "/dismiss reason:foo", "user": {"login": "mallory"}},
+		"issue": {"number": 1},
+		"repository": {"full_name": "acme/widget"},
+		"sender": {"login": "mallory"}
+	}`)
+	req := httptest.NewRequest("POST", "/webhook", bytes.NewReader(body))
+	req.Header.Set("X-Hub-Signature-256", signRequest(t, body, secret))
+	req.Header.Set("X-GitHub-Event", "issue_comment")
+
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status = %d, body = %q", rr.Code, rr.Body.String())
+	}
+	if !strings.Contains(rr.Body.String(), "not authorized") {
+		t.Errorf("reply should explain auth denial; got %q", rr.Body.String())
+	}
+	if dispatcher.gotCommand != nil {
+		t.Errorf("dispatcher should not have run on unauthorized /dismiss, got %+v", dispatcher.gotCommand)
+	}
+}
+
+func TestWebhook_DismissAllowedWithAnyoneFlag(t *testing.T) {
+	secret := []byte("test-secret")
+	dispatcher := &captureDispatcher{}
+	handler := NewHandler(string(secret), dispatcher)
+	handler.DismissPolicy = DismissPolicy{AllowAnyoneWithCommentAccess: true}
+
+	body := []byte(`{
+		"action": "created",
+		"comment": {"id": 1, "body": "/dismiss reason:foo", "user": {"login": "anyone"}},
+		"issue": {"number": 1},
+		"repository": {"full_name": "acme/widget"},
+		"sender": {"login": "anyone"}
+	}`)
+	req := httptest.NewRequest("POST", "/webhook", bytes.NewReader(body))
+	req.Header.Set("X-Hub-Signature-256", signRequest(t, body, secret))
+	req.Header.Set("X-GitHub-Event", "issue_comment")
+
+	rr := httptest.NewRecorder()
+	handler.ServeHTTP(rr, req)
+
+	if dispatcher.gotCommand == nil {
+		t.Errorf("dispatcher should have run with allow_anyone=true")
+	}
+}
+
 func TestWebhook_NoHeaderLeavesFindingIDEmpty(t *testing.T) {
 	secret := []byte("test-secret")
 	dispatcher := &captureDispatcher{}

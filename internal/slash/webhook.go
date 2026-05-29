@@ -48,17 +48,65 @@ type Dispatcher interface {
 	Handle(ev WebhookEvent, cmd *Command) (replyMarkdown string, err error)
 }
 
+// DismissPolicy controls who may invoke /dismiss via the webhook.
+// Default (zero value) is deny-all: webhook /dismiss replies with a
+// "not authorized" notice rather than writing to .terrain/suppressions.yaml.
+// The handler still echoes the parsed command back so the user knows
+// it was received.
+//
+// The deny-by-default posture exists because the webhook receives an
+// HMAC-signed payload that establishes "this came from GitHub" but
+// not "this user is authorized to suppress a finding." Without an
+// explicit policy, Terrain refuses to act on the implicit assumption.
+//
+// Adopters opt in by configuring terrain.yaml:
+//
+//	slash:
+//	  dismiss:
+//	    allow_authors: ["alice", "bob"]   # explicit allowlist
+//	    # or:
+//	    allow_anyone_with_comment_access: true   # accept any commenter
+type DismissPolicy struct {
+	// AllowAuthors is the explicit allowlist of GitHub logins permitted
+	// to invoke /dismiss. Empty by default.
+	AllowAuthors []string
+
+	// AllowAnyoneWithCommentAccess removes the allowlist gate. Set
+	// this only when adopters trust their PR comment access to imply
+	// dismiss authority (typical for a small private team).
+	AllowAnyoneWithCommentAccess bool
+}
+
+// AllowsDismiss reports whether sender (a GitHub login) is permitted
+// to invoke /dismiss under this policy.
+func (p DismissPolicy) AllowsDismiss(sender string) bool {
+	if p.AllowAnyoneWithCommentAccess {
+		return true
+	}
+	for _, a := range p.AllowAuthors {
+		if a == sender {
+			return true
+		}
+	}
+	return false
+}
+
 // Handler is the HTTP handler for GitHub webhook deliveries.
 // Construct with NewHandler(secret, dispatcher). Wire to a server
 // (`internal/server`, terrain serve --webhook) or any net/http
 // server.
 type Handler struct {
-	Secret     string
-	Dispatcher Dispatcher
+	Secret        string
+	Dispatcher    Dispatcher
+	DismissPolicy DismissPolicy
 }
 
 // NewHandler builds a webhook handler. Returns nil when secret is
 // empty — the package refuses to accept unsigned webhooks.
+//
+// The returned Handler has a zero DismissPolicy (deny-all). Adopters
+// who want /dismiss to do anything in production must set
+// h.DismissPolicy explicitly. See DismissPolicy for the contract.
 func NewHandler(secret string, dispatcher Dispatcher) *Handler {
 	if secret == "" {
 		return nil
@@ -136,6 +184,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		replyLines = append(replyLines, "**Parse error**: "+pe.Error())
 	}
 	for _, cmd := range cmds {
+		// Authorize destructive commands before dispatch. /dismiss
+		// writes to the repo's suppressions file; without a policy
+		// check, any PR commenter would be able to suppress arbitrary
+		// findings.
+		if cmd.Verb == VerbDismiss && !h.DismissPolicy.AllowsDismiss(ev.Sender) {
+			replyLines = append(replyLines,
+				fmt.Sprintf("`/dismiss` not authorized for `@%s` under this repo's slash policy. "+
+					"A maintainer must add the login to `slash.dismiss.allow_authors` in "+
+					"`terrain.yaml`, or set `allow_anyone_with_comment_access: true`.", ev.Sender))
+			continue
+		}
 		reply, derr := h.Dispatcher.Handle(ev, cmd)
 		if derr != nil {
 			replyLines = append(replyLines, fmt.Sprintf("**Error running `%s`**: %v", cmd.Verb, derr))

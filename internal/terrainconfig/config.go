@@ -53,6 +53,25 @@ type Config struct {
 
 	// Explain configures CLI LLM enrichment (never read in CI).
 	Explain *ExplainSection `yaml:"explain,omitempty" json:"explain,omitempty"`
+
+	// Slash configures the slash-command webhook receiver's authorization
+	// policy. Default zero value (deny-all on destructive verbs).
+	Slash *SlashSection `yaml:"slash,omitempty" json:"slash,omitempty"`
+}
+
+// SlashSection groups slash-command webhook policies.
+type SlashSection struct {
+	// Dismiss configures who may invoke /dismiss via the webhook.
+	Dismiss *SlashDismissSection `yaml:"dismiss,omitempty" json:"dismiss,omitempty"`
+}
+
+// SlashDismissSection mirrors slash.DismissPolicy.
+type SlashDismissSection struct {
+	// AllowAuthors is the explicit allowlist of GitHub logins.
+	AllowAuthors []string `yaml:"allow_authors,omitempty" json:"allow_authors,omitempty"`
+
+	// AllowAnyoneWithCommentAccess removes the allowlist gate.
+	AllowAnyoneWithCommentAccess bool `yaml:"allow_anyone_with_comment_access,omitempty" json:"allow_anyone_with_comment_access,omitempty"`
 }
 
 // RuleSpec carries either a bare severity string ("error", "warning",
