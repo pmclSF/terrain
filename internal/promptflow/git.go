@@ -2,9 +2,12 @@ package promptflow
 
 import (
 	"bytes"
+	"context"
 	"fmt"
+	"io"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 // DiscoverFromGit walks the working tree at root for after-state
@@ -22,8 +25,15 @@ import (
 //
 // Returns the after-state Discoveries and the before-state schema
 // content map ready to pass to Analyze.
-func DiscoverFromGit(root, baseRef string) (Discoveries, map[string][]byte, error) {
-	if err := validateGitRef(root, baseRef); err != nil {
+//
+// Cancellation: the context is honoured for the git subprocesses, so
+// a SIGINT or analyze --timeout can interrupt the per-schema fetch
+// loop. A nil context falls back to context.Background.
+func DiscoverFromGit(ctx context.Context, root, baseRef string) (Discoveries, map[string][]byte, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	if err := validateGitRef(ctx, root, baseRef); err != nil {
 		return Discoveries{}, nil, err
 	}
 	after, err := Discover(root)
@@ -32,7 +42,10 @@ func DiscoverFromGit(root, baseRef string) (Discoveries, map[string][]byte, erro
 	}
 	before := map[string][]byte{}
 	for _, schema := range after.Schemas {
-		body, ok := gitShow(root, baseRef, filepath.ToSlash(schema.Path))
+		if err := ctx.Err(); err != nil {
+			return Discoveries{}, nil, err
+		}
+		body, ok := gitShow(ctx, root, baseRef, filepath.ToSlash(schema.Path))
 		if ok {
 			before[schema.Path] = body
 		}
@@ -42,11 +55,14 @@ func DiscoverFromGit(root, baseRef string) (Discoveries, map[string][]byte, erro
 
 // validateGitRef checks that baseRef is resolvable in the repo at
 // root. Returns a clear error pointing at the offending ref when not.
-func validateGitRef(root, baseRef string) error {
+func validateGitRef(ctx context.Context, root, baseRef string) error {
 	if baseRef == "" {
 		return fmt.Errorf("promptflow: empty git base-ref")
 	}
-	cmd := exec.Command("git", "rev-parse", "--verify", baseRef+"^{commit}")
+	if strings.HasPrefix(baseRef, "-") {
+		return fmt.Errorf("promptflow: git base-ref %q must not start with %q", baseRef, "-")
+	}
+	cmd := exec.CommandContext(ctx, "git", "rev-parse", "--verify", baseRef+"^{commit}")
 	cmd.Dir = root
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
@@ -60,17 +76,30 @@ func validateGitRef(root, baseRef string) error {
 // gitShow returns the file content at path as of baseRef. Returns
 // (nil, false) when git exits non-zero (file didn't exist in baseRef,
 // or baseRef isn't valid). All other paths return (body, true).
-func gitShow(repoRoot, baseRef, path string) ([]byte, bool) {
+//
+// gitShow caps reads at MaxFileBytes to match Discover — a 5 GB
+// historical file cannot OOM the analyze run.
+func gitShow(ctx context.Context, repoRoot, baseRef, path string) ([]byte, bool) {
 	if baseRef == "" || path == "" {
 		return nil, false
 	}
-	cmd := exec.Command("git", "show", fmt.Sprintf("%s:%s", baseRef, path))
-	cmd.Dir = repoRoot
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
-	if err := cmd.Run(); err != nil {
+	if strings.HasPrefix(baseRef, "-") || strings.HasPrefix(path, "-") {
 		return nil, false
 	}
-	return stdout.Bytes(), true
+	cmd := exec.CommandContext(ctx, "git", "show", fmt.Sprintf("%s:%s", baseRef, path))
+	cmd.Dir = repoRoot
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, false
+	}
+	if err := cmd.Start(); err != nil {
+		return nil, false
+	}
+	body, _ := io.ReadAll(io.LimitReader(stdout, MaxFileBytes))
+	// Drain any remainder so the subprocess can exit cleanly.
+	_, _ = io.Copy(io.Discard, stdout)
+	if err := cmd.Wait(); err != nil {
+		return nil, false
+	}
+	return body, true
 }

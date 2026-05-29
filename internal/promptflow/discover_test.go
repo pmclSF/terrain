@@ -194,6 +194,70 @@ func TestDiscover_SkipsMalformedJSON(t *testing.T) {
 	}
 }
 
+func TestDiscover_SymlinkSkipped(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "real.md"), "Hello {{name}}")
+	link := filepath.Join(root, "linked.md")
+	if err := os.Symlink(filepath.Join(root, "real.md"), link); err != nil {
+		t.Skipf("symlink unsupported on this platform: %v", err)
+	}
+	got, err := Discover(root)
+	if err != nil {
+		t.Fatalf("Discover error: %v", err)
+	}
+	if len(got.Templates) != 1 {
+		t.Errorf("expected exactly 1 template (only the real file, not the symlink), got %d: %+v",
+			len(got.Templates), got.Templates)
+	}
+	for _, tf := range got.Templates {
+		if tf.Path == "linked.md" {
+			t.Errorf("symlink should have been skipped, found: %s", tf.Path)
+		}
+	}
+}
+
+func TestDiscover_FilesAboveMaxBytesSkipped(t *testing.T) {
+	root := t.TempDir()
+	tiny := filepath.Join(root, "tiny.md")
+	mustWrite(t, tiny, "Hello {{x}}")
+	huge := filepath.Join(root, "huge.md")
+	if err := os.WriteFile(huge, make([]byte, MaxFileBytes+1024), 0o644); err != nil {
+		t.Fatalf("write huge: %v", err)
+	}
+	got, err := Discover(root)
+	if err != nil {
+		t.Fatalf("Discover error: %v", err)
+	}
+	if len(got.Templates) != 1 {
+		t.Errorf("expected exactly 1 template (huge.md skipped), got %d: %+v",
+			len(got.Templates), got.Templates)
+	}
+	if got.Templates[0].Path != "tiny.md" {
+		t.Errorf("kept the wrong file: %s", got.Templates[0].Path)
+	}
+}
+
+func TestDiscover_BinaryExtensionsNotRead(t *testing.T) {
+	root := t.TempDir()
+	// A multi-MiB binary file with no extension we recognize.
+	if err := os.WriteFile(filepath.Join(root, "data.bin"),
+		make([]byte, 5*1024*1024), 0o644); err != nil {
+		t.Fatalf("write bin: %v", err)
+	}
+	// And a real template alongside.
+	mustWrite(t, filepath.Join(root, "p.md"), "{{x}}")
+	got, err := Discover(root)
+	if err != nil {
+		t.Fatalf("Discover error: %v", err)
+	}
+	if len(got.Templates) != 1 || got.Templates[0].Path != "p.md" {
+		t.Errorf("expected the markdown template only, got %+v", got.Templates)
+	}
+	if len(got.Schemas) != 0 {
+		t.Errorf("expected zero schemas, got %+v", got.Schemas)
+	}
+}
+
 func mustWrite(t *testing.T, path, body string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {

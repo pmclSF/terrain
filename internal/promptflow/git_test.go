@@ -1,6 +1,7 @@
 package promptflow
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -55,7 +56,7 @@ func TestDiscoverFromGit_PullsBaseSchema(t *testing.T) {
 		t.Fatalf("write modified schema: %v", err)
 	}
 
-	after, before, err := DiscoverFromGit(dir, "main")
+	after, before, err := DiscoverFromGit(context.Background(), dir, "main")
 	if err != nil {
 		t.Fatalf("DiscoverFromGit error: %v", err)
 	}
@@ -78,7 +79,7 @@ func TestDiscoverFromGit_InvalidBaseRefReturnsError(t *testing.T) {
 	dir := t.TempDir()
 	gitInit(t, dir)
 	gitCommit(t, dir, "init")
-	_, _, err := DiscoverFromGit(dir, "definitely-not-a-real-ref-1234")
+	_, _, err := DiscoverFromGit(context.Background(), dir, "definitely-not-a-real-ref-1234")
 	if err == nil {
 		t.Fatalf("expected error for invalid base-ref, got nil")
 	}
@@ -89,9 +90,36 @@ func TestDiscoverFromGit_InvalidBaseRefReturnsError(t *testing.T) {
 
 func TestDiscoverFromGit_EmptyBaseRefReturnsError(t *testing.T) {
 	dir := t.TempDir()
-	_, _, err := DiscoverFromGit(dir, "")
+	_, _, err := DiscoverFromGit(context.Background(), dir, "")
 	if err == nil {
 		t.Errorf("expected error for empty base-ref, got nil")
+	}
+}
+
+func TestDiscoverFromGit_RejectsDashPrefixedBaseRef(t *testing.T) {
+	dir := t.TempDir()
+	_, _, err := DiscoverFromGit(context.Background(), dir, "--upload-pack=evil")
+	if err == nil {
+		t.Fatalf("expected error for dash-prefixed base-ref, got nil")
+	}
+	if !contains([]byte(err.Error()), "--upload-pack=evil") {
+		t.Errorf("error should name the bad ref: %v", err)
+	}
+}
+
+func TestDiscoverFromGit_CancelledContextReturnsImmediately(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	dir := t.TempDir()
+	gitInit(t, dir)
+	gitCommit(t, dir, "init")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel() // cancel up front
+	_, _, err := DiscoverFromGit(ctx, dir, "main")
+	if err == nil {
+		t.Errorf("expected error from cancelled context, got nil")
 	}
 }
 
@@ -107,7 +135,7 @@ func TestDiscoverFromGit_NewSchemaAbsentFromBefore(t *testing.T) {
 	mustWrite(t, filepath.Join(dir, "schemas", "new.json"),
 		`{"type": "object", "properties": {"x": {"type": "string"}}}`)
 
-	_, before, err := DiscoverFromGit(dir, "main")
+	_, before, err := DiscoverFromGit(context.Background(), dir, "main")
 	if err != nil {
 		t.Fatalf("DiscoverFromGit error: %v", err)
 	}

@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/pmclSF/terrain/internal/analysis"
@@ -307,11 +309,15 @@ func runAnalyze(o analyzeRunOpts) error {
 	// — surfacing that with a clear message is better than silently
 	// emitting zero findings, which would look like "all clean."
 	if o.BaseRef != "" {
-		after, before, err := promptflow.DiscoverFromGit(root, o.BaseRef)
+		s2ctx, s2cancel := signal.NotifyContext(context.Background(),
+			os.Interrupt, syscall.SIGTERM)
+		after, before, err := promptflow.DiscoverFromGit(s2ctx, root, o.BaseRef)
 		if err != nil {
+			s2cancel()
 			return fmt.Errorf("aiPromptSchemaDrift: %w", err)
 		}
 		findings, err := promptflow.Analyze(after, before)
+		s2cancel()
 		if err != nil {
 			return fmt.Errorf("aiPromptSchemaDrift: %w", err)
 		}
