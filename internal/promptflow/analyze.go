@@ -32,6 +32,13 @@ type Finding struct {
 // reference — its variables haven't existed before).
 func Analyze(after Discoveries, before map[string][]byte) ([]Finding, error) {
 	var findings []Finding
+	// Precompute each template's Vars() once, not once per schema in
+	// the inner loop. Vars() walks the body; without hoisting, the
+	// cost is O(schemas × templates × body_length).
+	templateVars := make([][]string, len(after.Templates))
+	for i, tf := range after.Templates {
+		templateVars[i] = tf.Tpl.Vars()
+	}
 	for _, schema := range after.Schemas {
 		beforeBody, ok := before[schema.Path]
 		if !ok {
@@ -44,13 +51,18 @@ func Analyze(after Discoveries, before map[string][]byte) ([]Finding, error) {
 		if len(changes) == 0 {
 			continue
 		}
-		beforeProps := parsePropertyTypes(beforeBody)
-		afterProps := parsePropertyTypes(schema.Body)
-		for _, tf := range after.Templates {
-			vars := tf.Tpl.Vars()
+		var beforeProps, afterProps map[string]string
+		for i, tf := range after.Templates {
+			vars := templateVars[i]
 			risks := CorrelateVars(vars, changes)
 			if len(risks) == 0 {
 				continue
+			}
+			// Lazy-parse property types only when we have a finding to
+			// emit — most (schema, template) pairs intersect empty.
+			if beforeProps == nil {
+				beforeProps = parsePropertyTypes(beforeBody)
+				afterProps = parsePropertyTypes(schema.Body)
 			}
 			beforeVars := makeVars(vars, beforeProps)
 			afterVars := makeVars(vars, afterProps)

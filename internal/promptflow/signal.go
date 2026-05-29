@@ -20,7 +20,15 @@ func (f Finding) ToSignal() models.Signal {
 		Type:        signals.SignalAIPromptSchemaDrift,
 		Category:    models.CategoryAI,
 		Severity:    models.SeverityHigh,
-		Confidence:  0.9,
+		// Confidence is set to the structural-evidence floor — the
+		// detector identifies a (template, schema, field) join via
+		// AST/JSON parsing with no heuristics, so false positives
+		// require either a malformed schema or a template that names
+		// the field by coincidence. The number is the floor of the
+		// manifest's declared confidence range; raise it (with
+		// rationale in the commit body) once adopter-corpus precision
+		// data confirms the practical FP rate.
+		Confidence:  0.85,
 		Location:    models.SignalLocation{File: f.TemplatePath},
 		Explanation: explanationFor(f),
 		SuggestedAction: "Update the template to use the new schema field, " +
