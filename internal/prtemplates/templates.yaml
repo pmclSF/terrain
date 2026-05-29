@@ -462,6 +462,84 @@ templates:
       - { label: "Explain hardcoded-api-key", command: "/terrain explain aiHardcodedAPIKey" }
       - { label: "Dismiss as test fixture", command: "/dismiss reason:<text>" }
 
+  - signal_type: aiHardcodedAPIKey-literal-shape
+    title: API-key-shaped value in source
+    summary: |
+      A value in an eval, prompt, or agent definition file matches a
+      known provider API key shape. The literal-shape detector catches
+      the most common leak: a key copy-pasted into config and pushed
+      to history.
+    action: Rotate the key now, then move it to an env var or your secrets manager and reference it from there.
+    slash_hints:
+      - { label: "Show the line", command: "/terrain show <finding-id>" }
+      - { label: "Explain literal-shape detection", command: "/terrain explain aiHardcodedAPIKey-literal-shape" }
+      - { label: "Dismiss as test fixture", command: "/dismiss reason:<text>" }
+
+  - signal_type: secretScannerCoverageDegraded
+    title: Secret-scanner coverage gap
+    summary: |
+      The repository references AI surfaces that should be guarded by
+      a secret scanner (GitGuardian, GitHub secret scanning, gitleaks,
+      trufflehog), but no CI-level secret scanner is configured. A
+      future hardcoded key would go undetected at PR time.
+    action: Enable a secret scanner in CI. See `docs/rules/security/no-secret-scanner.md` for setup walkthroughs.
+    slash_hints:
+      - { label: "Show the AI surfaces this guards", command: "/terrain show <finding-id>" }
+      - { label: "Explain coverage-degraded", command: "/terrain explain secretScannerCoverageDegraded" }
+      - { label: "Dismiss as deliberate posture", command: "/dismiss reason:<text>" }
+
+  - signal_type: staticSkippedTest-unconditional
+    title: Test unconditionally skipped
+    summary: |
+      A test is skipped at every run, with no environment or gate
+      predicate controlling the skip. Unconditional skips silently
+      retire coverage; future code changes will not catch behavior
+      regressions in the skipped path.
+    action: Either delete the test (if obsolete) or re-enable it (if still relevant). If the skip is intentional, gate it on an explicit predicate.
+    slash_hints:
+      - { label: "Show the skip", command: "/terrain show <finding-id>" }
+      - { label: "Explain unconditional-skip", command: "/terrain explain staticSkippedTest-unconditional" }
+      - { label: "Dismiss as quarantined", command: "/dismiss reason:<text>" }
+
+  - signal_type: staticSkippedTest-conditional-gate
+    title: Test skipped via a conditional gate
+    summary: |
+      A test is skipped when an environment or version predicate matches
+      (e.g. `if os.getenv("CI")`). The gate is structurally legitimate
+      but worth confirming: gated skips can drift into "skip everywhere"
+      when the gate's environment changes.
+    action: Confirm the gate still corresponds to a real run profile. If the predicate is permanently true, treat as an unconditional skip.
+    slash_hints:
+      - { label: "Show the gate predicate", command: "/terrain show <finding-id>" }
+      - { label: "Explain conditional-gate", command: "/terrain explain staticSkippedTest-conditional-gate" }
+      - { label: "Dismiss as deliberate", command: "/dismiss reason:<text>" }
+
+  - signal_type: depsDriftRisk-strict-pin
+    title: Dependency declared without a version pin
+    summary: |
+      A dependency is declared bare (no version specifier) or with an
+      unbounded constraint. Bare names resolve to whatever the registry
+      ships at install time, so two installs minutes apart can produce
+      different builds.
+    action: Pin the dependency to an explicit version (`^1.2.3`, `~=1.2.3`, `==1.2.3`) per your ecosystem's convention.
+    slash_hints:
+      - { label: "Show the manifest entry", command: "/terrain show <finding-id>" }
+      - { label: "Explain strict-pin", command: "/terrain explain depsDriftRisk-strict-pin" }
+      - { label: "Dismiss as intentional", command: "/dismiss reason:<text>" }
+
+  - signal_type: depsDriftRisk-caret-policy
+    title: Caret range may admit unwanted version drift
+    summary: |
+      The dependency uses a caret (`^`) range. Ecosystem semantics vary:
+      in npm `^1.2.3` admits 1.x; in Poetry it pins major; in Cargo it
+      admits minor. The detector flags caret ranges so the team can
+      confirm the intent matches the ecosystem's interpretation.
+    action: Replace `^` with a more explicit range if the default ecosystem semantics aren't the team's policy. See the rule doc for per-ecosystem guidance.
+    slash_hints:
+      - { label: "Show the manifest entry", command: "/terrain show <finding-id>" }
+      - { label: "Explain caret-policy", command: "/terrain explain depsDriftRisk-caret-policy" }
+      - { label: "Dismiss as deliberate policy", command: "/dismiss reason:<text>" }
+
   - signal_type: aiPromptSchemaDrift
     title: Prompt template references a changed schema field
     summary: |

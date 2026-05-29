@@ -1,8 +1,11 @@
 package prtemplates
 
 import (
+	"os"
 	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 // TestLoad_EmbeddedYAML confirms the bundled templates.yaml parses
@@ -183,6 +186,54 @@ func TestSignalTypes_Sorted(t *testing.T) {
 			t.Errorf("not sorted: %q before %q", types[i-1], types[i])
 		}
 	}
+}
+
+// TestEveryAliasReplacementHasTemplate enforces the cross-package
+// contract: every replacement rule_id registered in the alias YAML
+// must have a corresponding entry in templates.yaml. Without this,
+// findings from split detectors would render with the prtemplates
+// fallback voice (terse Explanation + SuggestedAction) instead of
+// the curated Title / Summary / Action / SlashHints.
+func TestEveryAliasReplacementHasTemplate(t *testing.T) {
+	r, err := Default()
+	if err != nil {
+		t.Fatalf("Default: %v", err)
+	}
+	have := map[string]bool{}
+	for _, st := range r.SignalTypes() {
+		have[st] = true
+	}
+	for _, repl := range aliasReplacementIDs(t) {
+		if !have[repl] {
+			t.Errorf("alias replacement %q has no entry in prtemplates/templates.yaml — "+
+				"findings will render with the fallback voice", repl)
+		}
+	}
+}
+
+// aliasReplacementIDs is a minimal YAML reader over the alias file —
+// we don't import internal/aliases to keep the test fast and avoid
+// circular dep risk via signals.
+func aliasReplacementIDs(t *testing.T) []string {
+	t.Helper()
+	data, err := os.ReadFile("../aliases/signal_type_aliases.yaml")
+	if err != nil {
+		t.Skipf("alias file unavailable: %v", err)
+		return nil
+	}
+	var doc struct {
+		Aliases map[string]struct {
+			ReplacesWith []string `yaml:"replaces_with"`
+		} `yaml:"aliases"`
+	}
+	if err := yaml.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("parse aliases: %v", err)
+	}
+	var ids []string
+	for _, a := range doc.Aliases {
+		ids = append(ids, a.ReplacesWith...)
+	}
+	return ids
 }
 
 // TestDefault_Singleton confirms Default returns the same registry
