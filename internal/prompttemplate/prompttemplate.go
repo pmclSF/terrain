@@ -17,6 +17,9 @@ const (
 	KindUnknown Kind = iota
 	// KindMustache uses double-brace placeholders: {{name}}.
 	KindMustache
+	// KindFString uses single-brace placeholders: {name}.
+	// `{{` and `}}` are literal braces.
+	KindFString
 )
 
 // Template is a parsed prompt template ready to render.
@@ -32,9 +35,114 @@ func (t Template) Render(vars map[string]string) (string, error) {
 	switch t.Kind {
 	case KindMustache:
 		return renderMustache(t.Body, vars)
+	case KindFString:
+		return renderFString(t.Body, vars)
 	default:
 		return t.Body, nil
 	}
+}
+
+// Vars returns the placeholder names referenced in t.Body, in source
+// order with duplicates removed.
+func (t Template) Vars() []string {
+	switch t.Kind {
+	case KindMustache:
+		return varsMustache(t.Body)
+	case KindFString:
+		return varsFString(t.Body)
+	default:
+		return nil
+	}
+}
+
+func renderFString(body string, vars map[string]string) (string, error) {
+	var out strings.Builder
+	out.Grow(len(body))
+	i := 0
+	for i < len(body) {
+		if i+1 < len(body) && body[i] == '{' && body[i+1] == '{' {
+			out.WriteByte('{')
+			i += 2
+			continue
+		}
+		if i+1 < len(body) && body[i] == '}' && body[i+1] == '}' {
+			out.WriteByte('}')
+			i += 2
+			continue
+		}
+		if body[i] == '{' {
+			rel := strings.IndexByte(body[i+1:], '}')
+			if rel < 0 {
+				out.WriteString(body[i:])
+				return out.String(), nil
+			}
+			name := strings.TrimSpace(body[i+1 : i+1+rel])
+			v, ok := vars[name]
+			if !ok {
+				return "", &MissingVarError{Name: name}
+			}
+			out.WriteString(v)
+			i = i + 1 + rel + 1
+			continue
+		}
+		out.WriteByte(body[i])
+		i++
+	}
+	return out.String(), nil
+}
+
+func varsFString(body string) []string {
+	var out []string
+	seen := map[string]struct{}{}
+	i := 0
+	for i < len(body) {
+		if i+1 < len(body) && body[i] == '{' && body[i+1] == '{' {
+			i += 2
+			continue
+		}
+		if i+1 < len(body) && body[i] == '}' && body[i+1] == '}' {
+			i += 2
+			continue
+		}
+		if body[i] == '{' {
+			rel := strings.IndexByte(body[i+1:], '}')
+			if rel < 0 {
+				return out
+			}
+			name := strings.TrimSpace(body[i+1 : i+1+rel])
+			if _, dup := seen[name]; !dup {
+				seen[name] = struct{}{}
+				out = append(out, name)
+			}
+			i = i + 1 + rel + 1
+			continue
+		}
+		i++
+	}
+	return out
+}
+
+func varsMustache(body string) []string {
+	var out []string
+	seen := map[string]struct{}{}
+	i := 0
+	for i < len(body) {
+		if i+1 < len(body) && body[i] == '{' && body[i+1] == '{' {
+			rel := strings.Index(body[i+2:], "}}")
+			if rel < 0 {
+				return out
+			}
+			name := strings.TrimSpace(body[i+2 : i+2+rel])
+			if _, dup := seen[name]; !dup {
+				seen[name] = struct{}{}
+				out = append(out, name)
+			}
+			i = i + 2 + rel + 2
+			continue
+		}
+		i++
+	}
+	return out
 }
 
 // MissingVarError is returned when Render finds a placeholder whose
