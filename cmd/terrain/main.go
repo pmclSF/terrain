@@ -161,20 +161,6 @@ func main() {
 
 	switch os.Args[1] {
 	case "analyze":
-		// Helpful redirect: --base belongs on `report pr` / `report
-		// impact`. The Go stdlib flag package's default response is
-		// to dump every flag the command supports — overwhelming and
-		// unhelpful when the user just reached for the wrong command.
-		// Detect this case before flag parsing and point at the right
-		// command instead.
-		if argHasFlag(os.Args[2:], "base") {
-			fmt.Fprintln(os.Stderr, "error: --base is not a flag of `terrain analyze`.")
-			fmt.Fprintln(os.Stderr, "       Did you mean one of:")
-			fmt.Fprintln(os.Stderr, "         terrain report pr --base <ref>      gate a PR diff")
-			fmt.Fprintln(os.Stderr, "         terrain report impact --base <ref>  see what a diff impacts")
-			fmt.Fprintln(os.Stderr, "       For analyze, use --baseline <path-to-snapshot.json>.")
-			os.Exit(exitUsageError)
-		}
 		analyzeCmd := flag.NewFlagSet("analyze", flag.ExitOnError)
 		rootFlag := analyzeCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := analyzeCmd.Bool("json", false, "output JSON snapshot")
