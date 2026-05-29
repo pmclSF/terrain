@@ -71,6 +71,30 @@ func TestDiscoverFromGit_PullsBaseSchema(t *testing.T) {
 	}
 }
 
+func TestDiscoverFromGit_InvalidBaseRefReturnsError(t *testing.T) {
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("git not available")
+	}
+	dir := t.TempDir()
+	gitInit(t, dir)
+	gitCommit(t, dir, "init")
+	_, _, err := DiscoverFromGit(dir, "definitely-not-a-real-ref-1234")
+	if err == nil {
+		t.Fatalf("expected error for invalid base-ref, got nil")
+	}
+	if !contains([]byte(err.Error()), "definitely-not-a-real-ref-1234") {
+		t.Errorf("error should mention the bad ref by name: %v", err)
+	}
+}
+
+func TestDiscoverFromGit_EmptyBaseRefReturnsError(t *testing.T) {
+	dir := t.TempDir()
+	_, _, err := DiscoverFromGit(dir, "")
+	if err == nil {
+		t.Errorf("expected error for empty base-ref, got nil")
+	}
+}
+
 func TestDiscoverFromGit_NewSchemaAbsentFromBefore(t *testing.T) {
 	if _, err := exec.LookPath("git"); err != nil {
 		t.Skip("git not available")

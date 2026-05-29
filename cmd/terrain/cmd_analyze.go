@@ -303,19 +303,21 @@ func runAnalyze(o analyzeRunOpts) error {
 	// Schemas in HEAD are diffed against schemas at baseRef via
 	// `git show`; prompt templates referencing removed or
 	// type-changed fields produce signals appended to the snapshot.
+	//
+	// An invalid baseRef returns an error from the user-typed flag
+	// — surfacing that with a clear message is better than silently
+	// emitting zero S2 findings, which would look like "all clean."
 	if o.BaseRef != "" {
 		after, before, err := promptflow.DiscoverFromGit(root, o.BaseRef)
 		if err != nil {
-			logging.L().Warn("promptflow.DiscoverFromGit failed; skipping aiPromptSchemaDrift",
-				"err", err, "baseRef", o.BaseRef)
-		} else {
-			findings, err := promptflow.Analyze(after, before)
-			if err != nil {
-				logging.L().Warn("promptflow.Analyze failed; skipping aiPromptSchemaDrift",
-					"err", err)
-			} else if len(findings) > 0 {
-				result.Snapshot.Signals = append(result.Snapshot.Signals, promptflow.ToSignals(findings)...)
-			}
+			return fmt.Errorf("aiPromptSchemaDrift: %w", err)
+		}
+		findings, err := promptflow.Analyze(after, before)
+		if err != nil {
+			return fmt.Errorf("aiPromptSchemaDrift: %w", err)
+		}
+		if len(findings) > 0 {
+			result.Snapshot.Signals = append(result.Snapshot.Signals, promptflow.ToSignals(findings)...)
 		}
 	}
 
