@@ -75,11 +75,15 @@ Terrain maps the dependency graph, coverage landscape, duplication clusters, fan
 Terrain is organized around four questions. Everything else is a supporting view.
 
 ```
-terrain analyze     "What is the state of our test system?"
-terrain insights    "What should we fix in our test system?"
-terrain impact      "What validations matter for this change?"
-terrain explain     "Why did Terrain make this decision?"
+terrain analyze              "What is the state of our test system?"
+terrain report insights      "What should we fix in our test system?"
+terrain report impact        "What validations matter for this change?"
+terrain report explain       "Why did Terrain make this decision?"
 ```
+
+The bare forms `terrain insights`, `terrain impact`, `terrain explain` are
+preserved as aliases of the `terrain report <verb>` forms. New documentation
+uses the namespaced shape.
 
 > **About the example outputs below.** The CLI dumps in this section illustrate the *shape* of Terrain's reports on a large pandas-style repository — they are not literal output from a single live run. A few specific signals shown (`xfailAccumulation` age, statistical flaky-test failure rates, the `0.91+` duplicate similarity threshold) are marked `[experimental]` or `[planned]` in 0.2.0; see [docs/release/feature-status.md](docs/release/feature-status.md) for what's stable, what's experimental, and what's planned. The headline "30 seconds" promise refers to small-to-medium repos (≤ 1,000 test files) on commodity hardware; expect 5–15 seconds on a typical service repo and longer on monorepos.
 

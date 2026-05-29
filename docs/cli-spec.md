@@ -87,7 +87,7 @@ Must support:
 Flags:
 - `--root PATH` — repository root to analyze (default: current directory)
 - `--json` — output JSON snapshot
-- `--format FORMAT` — output format: json, text, sarif, annotation, html (default: text)
+- `--format FORMAT` — output format: `json`, `text`, `sarif`, `annotation` (default: `text`). SARIF and annotation formats target their respective consumers; HTML output ships from `terrain serve`.
 - `--verbose` — show all findings in analyze output
 - `--write-snapshot` — persist snapshot to .terrain/snapshots/latest.json
 - `--coverage PATH` — ingest coverage data (LCOV, Istanbul JSON)

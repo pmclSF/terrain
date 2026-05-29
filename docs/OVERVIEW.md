@@ -59,7 +59,7 @@ See `docs/LIMITATIONS.md` for the comprehensive list. The major items:
 |---|---|
 | Install Terrain (Homebrew / npm / `go install`) | Minutes |
 | Run `terrain init` to scaffold `terrain.yaml` | Minutes |
-| Run `terrain describe --setup` to populate surface descriptions (optional; can skip and write by hand) | 10–30 min one-time, depending on surface count |
+| Run `terrain describe --write` to populate surface descriptions (optional; can skip and write by hand) | 10–30 min one-time, depending on surface count |
 | Wire `terrain test` into CI (GitHub Actions or GitLab CI workflow snippet provided) | 10–30 min |
 | Make `terrain/tests` a required branch-protection check (optional, recommended) | Minutes |
 | Per stable rule that fires unexpectedly: triage as TP or FP, suppress via path-level ignore or severity downgrade in `terrain.yaml` | 60–120 sec per finding (target) |
