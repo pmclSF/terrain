@@ -1221,6 +1221,19 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/ai/retrieval-regression", RuleURI: "docs/rules/ai/retrieval-regression.md",
 		Tier:            TierGate,
 	},
+	{
+		Type: SignalAIPromptSchemaDrift, ConstName: "SignalAIPromptSchemaDrift",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Prompt Template References Changed Schema Field",
+		Description:     "A prompt template references a schema field that this PR removed or whose declared type changed. The template will render with a missing value (or wrong type) once merged.",
+		Remediation:     "Update the template to use the new schema field, restore the old field, or remove the variable reference.",
+		DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
+		EvidenceSources: []string{"static"},
+		RuleID:          "terrain/ai/prompt-schema-drift", RuleURI: "docs/rules/ai/prompt-schema-drift.md",
+		Tier:            TierObservability,
+		PromotionPlan:   "Observability at 0.2.0. Promote to gate once an adopter corpus measurement (n>=100 PRs across >=5 repos) shows precision >=80% with no class of false positive larger than 10% of fires.",
+	},
 
 	// ── Engine self-diagnostic signals ──────────────────────────────
 	// Emitted by the pipeline itself (safeDetect's panic-recovery path)

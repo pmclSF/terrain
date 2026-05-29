@@ -461,3 +461,16 @@ templates:
       - { label: "Show the line", command: "/terrain show <finding-id>" }
       - { label: "Explain hardcoded-api-key", command: "/terrain explain aiHardcodedAPIKey" }
       - { label: "Dismiss as test fixture", command: "/dismiss reason:<text>" }
+
+  - signal_type: aiPromptSchemaDrift
+    title: Prompt template references a changed schema field
+    summary: |
+      A prompt template in this repo names a field that this PR
+      removed from the schema, or whose declared type changed. The
+      template will render with a missing value (or wrong type) on
+      every call after merge.
+    action: Update the template to use the new field name, restore the field in the schema, or remove the variable reference.
+    slash_hints:
+      - { label: "Show rendered before/after", command: "/terrain show <finding-id>" }
+      - { label: "Explain prompt-schema-drift", command: "/terrain explain aiPromptSchemaDrift" }
+      - { label: "Dismiss as intentional", command: "/dismiss reason:<text>" }

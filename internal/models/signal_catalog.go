@@ -110,6 +110,7 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	"aiFewShotContamination": {Source: SignalSourceStatic},
 	"aiEmbeddingModelChange": {Source: SignalSourceStatic},
 	"aiRetrievalRegression":  {Source: SignalSourceGauntlet},
+	"aiPromptSchemaDrift":    {Source: SignalSourceStatic},
 
 	// Engine self-diagnostic signals — emitted by the pipeline itself
 	// (not by detectors), surfaced in the snapshot so users see when

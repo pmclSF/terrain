@@ -97,6 +97,7 @@ const (
 	SignalAIFewShotContamination   models.SignalType = "aiFewShotContamination"
 	SignalAIEmbeddingModelChange   models.SignalType = "aiEmbeddingModelChange"
 	SignalAIRetrievalRegression    models.SignalType = "aiRetrievalRegression"
+	SignalAIPromptSchemaDrift      models.SignalType = "aiPromptSchemaDrift"
 
 	// Engine self-diagnostic signals — emitted by the pipeline itself,
 	// not by registered detectors.
@@ -347,6 +348,10 @@ var typeInfoBySignal = map[models.SignalType]TypeInfo{
 	SignalCapabilityValidationGap: {
 		Description: "Inferred AI capabilities have no eval scenarios validating them.",
 		Remediation: "Add eval scenarios that exercise this capability to ensure behavioral regression detection.",
+	},
+	SignalAIPromptSchemaDrift: {
+		Description: "A prompt template references a schema field that this PR removed or whose declared type changed. The template will render incorrectly (or fail) once merged.",
+		Remediation: "Update the template to reference the new schema field name, restore the field in the schema, or remove the template variable.",
 	},
 }
 

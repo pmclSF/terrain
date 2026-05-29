@@ -77,6 +77,7 @@ var aiSubdomainBySignal = map[models.SignalType]AISubdomain{
 	// and flags shapes. Medium trust; false-positive guidance per
 	// detector lives in docs/rules/ai/.
 	SignalAIPromptInjectionRisk:           AISubdomainHygiene,
+	SignalAIPromptSchemaDrift:             AISubdomainHygiene,
 	SignalAIHardcodedAPIKey:               AISubdomainHygiene,
 	SignalAIHardcodedAPIKeyLiteralShape:   AISubdomainHygiene,
 	SignalSecretScannerCoverageDegraded:   AISubdomainHygiene,
