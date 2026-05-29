@@ -2,128 +2,63 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
-	"sort"
 
-	"github.com/pmclSF/terrain/internal/aidetect"
-	"github.com/pmclSF/terrain/internal/analysis"
-	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/terrainconfig"
 )
 
-// runPrintNetwork prints the unified detection network for a repo:
-// frameworks, surfaces, evals (when present), and the surface→eval
-// coverage edges. This is the "what did Terrain see" diagnostic that
-// adopters reach for when surface inference looks wrong.
+// runPrintNetwork audits Terrain's outbound network surface. Anchors the
+// "verifiable zero outbound network calls" trust claim that the README,
+// DESIGN, OVERVIEW, PRODUCT, and SECURITY-DATA-HANDLING.md all cite as
+// the way adopters confirm Terrain is local-first.
+//
+// What it prints:
+//   - The current network policy (default: zero outbound calls).
+//   - Every external endpoint that would be contacted under the current
+//     terrain.yaml (e.g., a plugin manifest URL once plugins ship).
+//   - Default configuration: prints "(none)" and exits 0.
+//
+// What it does NOT do:
+//   - It does NOT scan the repo for the AI surfaces Terrain detects.
+//     That's `terrain` (no-args) or `terrain analyze`. The two concepts
+//     were originally conflated; the trust-audit semantics here are
+//     what the docs promised.
 func runPrintNetwork(root string) error {
 	abs, err := filepath.Abs(root)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("Terrain — network for %s\n\n", abs)
+	fmt.Printf("Terrain — outbound network audit\n")
+	fmt.Printf("Root: %s\n\n", abs)
 
-	det := aidetect.Detect(abs)
+	endpoints := collectOutboundEndpoints(abs)
 
-	// Frameworks.
-	fmt.Println("Frameworks:")
-	if len(det.Frameworks) == 0 {
+	fmt.Println("Outbound endpoints Terrain would contact under the current config:")
+	if len(endpoints) == 0 {
 		fmt.Println("  (none)")
-	} else {
-		seen := map[string]string{}
-		for _, fw := range det.Frameworks {
-			if _, ok := seen[fw.Name]; !ok {
-				seen[fw.Name] = fw.Source
-			}
-		}
-		names := make([]string, 0, len(seen))
-		for n := range seen {
-			names = append(names, n)
-		}
-		sort.Strings(names)
-		for _, n := range names {
-			fmt.Printf("  - %s (via %s)\n", n, seen[n])
-		}
-	}
-	fmt.Println()
-
-	// Source-file walk + AI surface inference.
-	var sourceFiles []string
-	_ = filepath.Walk(abs, func(path string, info os.FileInfo, walkErr error) error {
-		if walkErr != nil {
-			return nil
-		}
-		if info.IsDir() {
-			base := filepath.Base(path)
-			if base == ".git" || base == "node_modules" || base == "vendor" ||
-				base == ".venv" || base == "venv" || base == "dist" ||
-				base == "build" || base == ".terrain" {
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		rel, _ := filepath.Rel(abs, path)
-		sourceFiles = append(sourceFiles, rel)
-		return nil
-	})
-
-	surfaces := analysis.DetectExtraAISurfaces(abs, nil, nil, sourceFiles)
-
-	fmt.Printf("Detected surfaces (%d):\n", len(surfaces))
-	byKind := map[models.CodeSurfaceKind][]models.CodeSurface{}
-	for _, s := range surfaces {
-		byKind[s.Kind] = append(byKind[s.Kind], s)
-	}
-	kinds := make([]models.CodeSurfaceKind, 0, len(byKind))
-	for k := range byKind {
-		kinds = append(kinds, k)
-	}
-	sort.Slice(kinds, func(i, j int) bool { return kinds[i] < kinds[j] })
-	for _, k := range kinds {
-		fmt.Printf("  %s:\n", k)
-		for _, s := range byKind[k] {
-			fmt.Printf("    %s — %s\n", s.Name, s.Path)
-		}
-	}
-	fmt.Println()
-
-	// Call-site detection summary.
-	if len(det.CallSites) > 0 {
-		fmt.Printf("AST-resolved AI call sites (%d):\n", len(det.CallSites))
-		bySDK := map[string]int{}
-		for _, cs := range det.CallSites {
-			bySDK[cs.SDK]++
-		}
-		sdks := make([]string, 0, len(bySDK))
-		for s := range bySDK {
-			sdks = append(sdks, s)
-		}
-		sort.Strings(sdks)
-		for _, s := range sdks {
-			fmt.Printf("  %s: %d\n", s, bySDK[s])
-		}
 		fmt.Println()
+		fmt.Println("Terrain runs entirely local in this configuration. No telemetry,")
+		fmt.Println("no LLM API calls, no remote analytics, no update checks. The")
+		fmt.Println("binary writes only to .terrain/ under the repo root.")
+		return nil
 	}
-
-	if len(det.PromptFiles) > 0 {
-		fmt.Printf("Prompt files (%d): %v\n\n", len(det.PromptFiles), summarizeList(det.PromptFiles, 5))
+	for _, e := range endpoints {
+		fmt.Printf("  - %s\n", e)
 	}
-	if len(det.DatasetFiles) > 0 {
-		fmt.Printf("Dataset files (%d): %v\n\n", len(det.DatasetFiles), summarizeList(det.DatasetFiles, 5))
-	}
-	if len(det.ModelFiles) > 0 {
-		fmt.Printf("Model invocation files (%d): %v\n\n", len(det.ModelFiles), summarizeList(det.ModelFiles, 5))
-	}
-	if len(det.EvalConfigs) > 0 {
-		fmt.Printf("Eval config files (%d): %v\n", len(det.EvalConfigs), summarizeList(det.EvalConfigs, 5))
-	}
-
 	return nil
 }
 
-func summarizeList(items []string, max int) []string {
-	if len(items) <= max {
-		return items
+// collectOutboundEndpoints enumerates every external endpoint Terrain
+// would contact under the configuration at root. Default: empty slice.
+// Adopter-opt-in features (a future plugin manifest URL, an OpenTelemetry
+// exporter endpoint, etc.) are listed here as they're wired.
+func collectOutboundEndpoints(root string) []string {
+	var endpoints []string
+	if cfg, err := terrainconfig.Load(filepath.Join(root, "terrain.yaml")); err == nil && cfg != nil {
+		// Reserved for future opt-in fields. The fact that there are
+		// no fields today is itself the trust claim.
+		_ = cfg
 	}
-	return append(items[:max], fmt.Sprintf("…and %d more", len(items)-max))
+	return endpoints
 }
