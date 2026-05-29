@@ -2,10 +2,10 @@
 // with schema-diff changes. Used to surface "your prompt template
 // references a schema field that changed in this PR" findings.
 //
-// Slice 3 ships single-hop correlation: a variable matches a
-// changed field iff their names are equal. Future slices add
-// transformation-function tracing (variable goes through a function
-// before reaching the template) and rename-detection.
+// Today the correlation is single-hop: a variable matches a
+// changed field iff their names are equal. Renames manifest as
+// remove+add — downstream consumers can treat them as one event
+// or two.
 package promptflow
 
 import (

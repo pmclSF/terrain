@@ -17,7 +17,7 @@ Add a `version:` field, a `_v<N>` filename suffix, or a `# version: ...` comment
 
 ## Promotion plan
 
-Stays at observability tier until a labeled-sample baseline confirms the detector's precision. Any subsequent precision lift must be structurally motivated; the rule stays at observability otherwise.
+Stays at observability tier until adopter-corpus precision confirms gate-readiness.
 
 ## Evidence sources
 

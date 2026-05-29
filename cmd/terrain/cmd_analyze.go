@@ -299,14 +299,14 @@ func runAnalyze(o analyzeRunOpts) error {
 		result.Diagnostics.Render(os.Stderr)
 	}
 
-	// aiPromptSchemaDrift — runs only when `--base` provided.
-	// Schemas in HEAD are diffed against schemas at baseRef via
-	// `git show`; prompt templates referencing removed or
+	// aiPromptSchemaDrift — runs only when `--base` is provided.
+	// Schemas at HEAD are diffed against schemas at baseRef via
+	// `git show`; prompt templates that reference removed or
 	// type-changed fields produce signals appended to the snapshot.
 	//
 	// An invalid baseRef returns an error from the user-typed flag
 	// — surfacing that with a clear message is better than silently
-	// emitting zero S2 findings, which would look like "all clean."
+	// emitting zero findings, which would look like "all clean."
 	if o.BaseRef != "" {
 		after, before, err := promptflow.DiscoverFromGit(root, o.BaseRef)
 		if err != nil {

@@ -85,9 +85,9 @@ All notable changes to Terrain are documented here. The format follows
   a side-by-side rendering of the template before and after, with
   values synthesised from each schema's property types and a
   `MISSING(<name>)` marker where a referenced field is no longer
-  present. LLM-free, deterministic, no network. Observability tier
-  at first release; promotion to gate gated on an adopter corpus
-  measurement (precision >=80% at n>=100 PRs).
+  present. LLM-free, deterministic, no network. Ships at observability
+  tier; stays at observability until adopter-corpus precision
+  confirms gate-readiness.
 - **Prompt-template renderer** (`internal/prompttemplate`). Pure
   substitution with two flavors: mustache (`{{name}}`, used in
   `.md`/`.markdown` template files) and Python f-string (`{name}`,

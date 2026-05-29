@@ -1,10 +1,9 @@
 // Package schemadiff reports field-level changes between two schema
-// documents. Slice 2 of the S2 surface — used downstream to surface
-// "this PR renames a schema field your prompt template references"
-// findings.
+// documents. Used downstream to surface "this PR renames a schema
+// field your prompt template references" findings.
 //
-// JSON Schema only at this slice. Pydantic models, TypeScript
-// interfaces, protobuf, GraphQL SDL are follow-up slices.
+// Today the package supports JSON Schema documents whose top-level
+// shape includes a `properties` map.
 package schemadiff
 
 import (

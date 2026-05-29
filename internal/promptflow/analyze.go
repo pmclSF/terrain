@@ -126,9 +126,8 @@ func synthesize(typ string) string {
 
 // RenderFinding produces a markdown block describing one finding for
 // inclusion in a PR comment. The format is intentionally simple and
-// self-contained — slice 5 wires this directly; future slices can
-// compose with the prtemplates registry for label + slash-hint
-// vocabulary.
+// self-contained; callers that prefer the curated label / slash-hint
+// vocabulary route through the prtemplates registry instead.
 func RenderFinding(f Finding) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "### %s — prompt template at risk\n\n", labelFor(f.Risk.Change.Kind))

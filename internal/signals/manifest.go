@@ -1053,7 +1053,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/prompt-versioning", RuleURI: "docs/rules/ai/prompt-versioning.md",
 		Tier:            TierObservability,
-		PromotionPlan:   "Stays at observability tier until a labeled-sample baseline confirms the detector's precision. Any subsequent precision lift must be structurally motivated; the rule stays at observability otherwise.",
+		PromotionPlan:   "Stays at observability tier until adopter-corpus precision confirms gate-readiness.",
 	},
 	{
 		Type: SignalAIPromptInjectionRisk, ConstName: "SignalAIPromptInjectionRisk",
@@ -1232,7 +1232,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"static"},
 		RuleID:          "terrain/ai/prompt-schema-drift", RuleURI: "docs/rules/ai/prompt-schema-drift.md",
 		Tier:            TierObservability,
-		PromotionPlan:   "Observability at 0.2.0. Promote to gate once an adopter corpus measurement (n>=100 PRs across >=5 repos) shows precision >=80% with no class of false positive larger than 10% of fires.",
+		PromotionPlan:   "Ships at observability tier. Stays at observability until adopter-corpus measurement confirms gate-readiness.",
 	},
 
 	// ── Engine self-diagnostic signals ──────────────────────────────

@@ -13,7 +13,7 @@ import (
 //
 // baseRef is validated via `git rev-parse` before any schema lookup;
 // an invalid ref returns an error rather than silently producing
-// zero before-content (which would look like "no S2 findings — all
+// zero before-content (which would look like "no findings — all
 // clean" rather than "your base-ref is wrong").
 //
 // Schemas absent in baseRef (new files) are omitted from the before

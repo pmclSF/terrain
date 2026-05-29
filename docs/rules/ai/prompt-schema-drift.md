@@ -17,7 +17,7 @@ Update the template to use the new schema field, restore the old field, or remov
 
 ## Promotion plan
 
-Observability at 0.2.0. Promote to gate once an adopter corpus measurement (n>=100 PRs across >=5 repos) shows precision >=80% with no class of false positive larger than 10% of fires.
+Ships at observability tier. Stays at observability until adopter-corpus measurement confirms gate-readiness.
 
 ## Evidence sources
 

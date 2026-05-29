@@ -6,9 +6,9 @@ import (
 	"testing"
 )
 
-// TestE2E_FixtureRepo exercises the full S2 pipeline against a temp
-// directory laid out like a real repo with multiple templates and
-// schemas, demonstrating the end-to-end demo flow.
+// TestE2E_FixtureRepo exercises the full Discover → Analyze →
+// RenderFinding pipeline against a temp directory laid out like a
+// real repo with multiple templates and schemas.
 func TestE2E_FixtureRepo(t *testing.T) {
 	root := t.TempDir()
 

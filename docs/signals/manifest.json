@@ -1179,7 +1179,7 @@
       ],
       "ruleId": "terrain/ai/prompt-versioning",
       "ruleUri": "docs/rules/ai/prompt-versioning.md",
-      "promotionPlan": "Stays at observability tier until a labeled-sample baseline confirms the detector's precision. Any subsequent precision lift must be structurally motivated; the rule stays at observability otherwise."
+      "promotionPlan": "Stays at observability tier until adopter-corpus precision confirms gate-readiness."
     },
     {
       "type": "aiPromptInjectionRisk",
