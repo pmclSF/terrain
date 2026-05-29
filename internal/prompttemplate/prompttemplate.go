@@ -7,7 +7,10 @@
 // — the caller supplies the body and a vars map.
 package prompttemplate
 
-import "strings"
+import (
+	"path/filepath"
+	"strings"
+)
 
 // Kind identifies a template substitution syntax.
 type Kind int
@@ -21,6 +24,33 @@ const (
 	// `{{` and `}}` are literal braces.
 	KindFString
 )
+
+// String returns a short lower-case label for k. Useful in test
+// failure messages and shadow-event records.
+func (k Kind) String() string {
+	switch k {
+	case KindMustache:
+		return "mustache"
+	case KindFString:
+		return "fstring"
+	default:
+		return "unknown"
+	}
+}
+
+// Detect infers the template Kind from a file path. The body parameter
+// is reserved for future body-sniff detection (e.g., recognising a
+// Python source file that contains an f-string prompt literal); it is
+// unused today.
+func Detect(path string, _ []byte) Kind {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".md", ".markdown":
+		return KindMustache
+	default:
+		return KindUnknown
+	}
+}
 
 // Template is a parsed prompt template ready to render.
 type Template struct {
@@ -127,6 +157,10 @@ func varsMustache(body string) []string {
 	seen := map[string]struct{}{}
 	i := 0
 	for i < len(body) {
+		if hasQuad(body, i, '{') || hasQuad(body, i, '}') {
+			i += 4
+			continue
+		}
 		if i+1 < len(body) && body[i] == '{' && body[i+1] == '{' {
 			rel := strings.Index(body[i+2:], "}}")
 			if rel < 0 {
@@ -160,6 +194,16 @@ func renderMustache(body string, vars map[string]string) (string, error) {
 	out.Grow(len(body))
 	i := 0
 	for i < len(body) {
+		if hasQuad(body, i, '{') {
+			out.WriteString("{{")
+			i += 4
+			continue
+		}
+		if hasQuad(body, i, '}') {
+			out.WriteString("}}")
+			i += 4
+			continue
+		}
 		if i+1 < len(body) && body[i] == '{' && body[i+1] == '{' {
 			rel := strings.Index(body[i+2:], "}}")
 			if rel < 0 {
@@ -179,4 +223,8 @@ func renderMustache(body string, vars map[string]string) (string, error) {
 		i++
 	}
 	return out.String(), nil
+}
+
+func hasQuad(body string, i int, b byte) bool {
+	return i+3 < len(body) && body[i] == b && body[i+1] == b && body[i+2] == b && body[i+3] == b
 }
