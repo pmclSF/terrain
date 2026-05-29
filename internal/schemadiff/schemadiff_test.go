@@ -107,6 +107,68 @@ func TestChangeKind_String(t *testing.T) {
 	}
 }
 
+func TestDiffJSONSchema_NullableTypeArrayHandled(t *testing.T) {
+	// type as an array form (nullable field). Both schemas have the
+	// field with the same type; no change should be reported.
+	doc := []byte(`{
+		"properties": {
+			"score": {"type": ["string", "null"]}
+		}
+	}`)
+	got, err := DiffJSONSchema(doc, doc)
+	if err != nil {
+		t.Fatalf("DiffJSONSchema error: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("got %d changes for identical nullable schemas, want 0: %+v", len(got), got)
+	}
+}
+
+func TestDiffJSONSchema_NullableTypeArrayOrderInsensitive(t *testing.T) {
+	oldDoc := []byte(`{"properties": {"x": {"type": ["string", "null"]}}}`)
+	newDoc := []byte(`{"properties": {"x": {"type": ["null", "string"]}}}`)
+	got, err := DiffJSONSchema(oldDoc, newDoc)
+	if err != nil {
+		t.Fatalf("DiffJSONSchema error: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("reordered nullable shouldn't be a type change; got %+v", got)
+	}
+}
+
+func TestDiffJSONSchema_NullableTypeArrayChangeDetected(t *testing.T) {
+	// Going from `["string", "null"]` to `["integer", "null"]` IS a
+	// real type change and should fire.
+	oldDoc := []byte(`{"properties": {"x": {"type": ["string", "null"]}}}`)
+	newDoc := []byte(`{"properties": {"x": {"type": ["integer", "null"]}}}`)
+	got, err := DiffJSONSchema(oldDoc, newDoc)
+	if err != nil {
+		t.Fatalf("DiffJSONSchema error: %v", err)
+	}
+	if len(got) != 1 || got[0].Kind != ChangeTypeChanged {
+		t.Fatalf("expected one type-changed entry, got %+v", got)
+	}
+	if got[0].OldType != "null|string" {
+		t.Errorf("OldType = %q, want %q", got[0].OldType, "null|string")
+	}
+	if got[0].NewType != "integer|null" {
+		t.Errorf("NewType = %q, want %q", got[0].NewType, "integer|null")
+	}
+}
+
+func TestDiffJSONSchema_TypeAbsentTreatedAsEmpty(t *testing.T) {
+	// A field without an explicit `type` (only `description`) used to
+	// crash on unmarshal. Now it normalizes to empty.
+	doc := []byte(`{"properties": {"x": {"description": "no type field here"}}}`)
+	got, err := DiffJSONSchema(doc, doc)
+	if err != nil {
+		t.Fatalf("DiffJSONSchema error: %v", err)
+	}
+	if len(got) != 0 {
+		t.Errorf("identical schemas without type produced changes: %+v", got)
+	}
+}
+
 func TestDiffJSONSchema_FieldRemoved(t *testing.T) {
 	oldDoc := []byte(`{
 		"properties": {

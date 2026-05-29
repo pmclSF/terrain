@@ -9,6 +9,7 @@ package schemadiff
 import (
 	"encoding/json"
 	"sort"
+	"strings"
 )
 
 // ChangeKind classifies one field-level schema change.
@@ -41,7 +42,10 @@ func (k ChangeKind) String() string {
 	}
 }
 
-// Change is a single field-level schema difference.
+// Change is a single field-level schema difference. OldType / NewType
+// are normalized: a single `type: "string"` renders as `string`; a
+// `type: ["string", "null"]` array renders as `string|null` (sorted
+// for stable comparison).
 type Change struct {
 	Kind    ChangeKind
 	Field   string
@@ -53,13 +57,42 @@ type jsonSchema struct {
 	Properties map[string]jsonProperty `json:"properties"`
 }
 
+// jsonProperty captures Type as a RawMessage so we can accept either
+// the string form (`"type": "object"`) or the array form
+// (`"type": ["string", "null"]`) without rejecting nullable schemas.
 type jsonProperty struct {
-	Type string `json:"type"`
+	Type json.RawMessage `json:"type"`
+}
+
+// normalizeType renders the value of `properties.<field>.type` as a
+// stable string. Accepts:
+//   - a single string ("string")
+//   - an array of strings (["string", "null"]) → "string|null" with
+//     the array sorted so reorderings don't show as type changes
+//   - absent / null / unparseable → "" (the type is unknown and the
+//     diff falls back to "different OR not")
+func normalizeType(raw json.RawMessage) string {
+	if len(raw) == 0 || string(raw) == "null" {
+		return ""
+	}
+	var single string
+	if err := json.Unmarshal(raw, &single); err == nil {
+		return single
+	}
+	var list []string
+	if err := json.Unmarshal(raw, &list); err == nil {
+		// Sort for stable comparison so ["null","string"] and
+		// ["string","null"] are the same type.
+		sort.Strings(list)
+		return strings.Join(list, "|")
+	}
+	return ""
 }
 
 // DiffJSONSchema returns the field-level changes between oldDoc and
 // newDoc. Both must be JSON Schema documents whose top-level shape
-// includes a `properties` map.
+// includes a `properties` map. Results are sorted by Field for stable
+// downstream consumers.
 func DiffJSONSchema(oldDoc, newDoc []byte) ([]Change, error) {
 	var o, n jsonSchema
 	if err := json.Unmarshal(oldDoc, &o); err != nil {
@@ -70,21 +103,23 @@ func DiffJSONSchema(oldDoc, newDoc []byte) ([]Change, error) {
 	}
 	var changes []Change
 	for name, newProp := range n.Properties {
+		newType := normalizeType(newProp.Type)
 		oldProp, ok := o.Properties[name]
 		if !ok {
 			changes = append(changes, Change{
 				Kind:    ChangeAdded,
 				Field:   name,
-				NewType: newProp.Type,
+				NewType: newType,
 			})
 			continue
 		}
-		if oldProp.Type != newProp.Type {
+		oldType := normalizeType(oldProp.Type)
+		if oldType != newType {
 			changes = append(changes, Change{
 				Kind:    ChangeTypeChanged,
 				Field:   name,
-				OldType: oldProp.Type,
-				NewType: newProp.Type,
+				OldType: oldType,
+				NewType: newType,
 			})
 		}
 	}
@@ -93,7 +128,7 @@ func DiffJSONSchema(oldDoc, newDoc []byte) ([]Change, error) {
 			changes = append(changes, Change{
 				Kind:    ChangeRemoved,
 				Field:   name,
-				OldType: oldProp.Type,
+				OldType: normalizeType(oldProp.Type),
 			})
 		}
 	}
