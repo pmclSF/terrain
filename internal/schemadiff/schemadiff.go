@@ -7,7 +7,10 @@
 // interfaces, protobuf, GraphQL SDL are follow-up slices.
 package schemadiff
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"sort"
+)
 
 // ChangeKind classifies one field-level schema change.
 type ChangeKind int
@@ -23,6 +26,21 @@ const (
 	// declared type differs.
 	ChangeTypeChanged
 )
+
+// String returns a short label for k, used in diagnostics and test
+// output.
+func (k ChangeKind) String() string {
+	switch k {
+	case ChangeAdded:
+		return "added"
+	case ChangeRemoved:
+		return "removed"
+	case ChangeTypeChanged:
+		return "type-changed"
+	default:
+		return "unknown"
+	}
+}
 
 // Change is a single field-level schema difference.
 type Change struct {
@@ -80,5 +98,8 @@ func DiffJSONSchema(oldDoc, newDoc []byte) ([]Change, error) {
 			})
 		}
 	}
+	sort.Slice(changes, func(i, j int) bool {
+		return changes[i].Field < changes[j].Field
+	})
 	return changes, nil
 }

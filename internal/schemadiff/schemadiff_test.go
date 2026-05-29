@@ -38,6 +38,75 @@ func TestDiffJSONSchema_NoChanges(t *testing.T) {
 	}
 }
 
+func TestDiffJSONSchema_MultipleChangesAreOrderedByField(t *testing.T) {
+	oldDoc := []byte(`{"properties": {
+		"name":     {"type": "string"},
+		"age":      {"type": "integer"},
+		"old_only": {"type": "boolean"}
+	}}`)
+	newDoc := []byte(`{"properties": {
+		"name":     {"type": "string"},
+		"age":      {"type": "string"},
+		"new_only": {"type": "number"}
+	}}`)
+	got, err := DiffJSONSchema(oldDoc, newDoc)
+	if err != nil {
+		t.Fatalf("DiffJSONSchema error: %v", err)
+	}
+	if len(got) != 3 {
+		t.Fatalf("got %d changes, want 3: %+v", len(got), got)
+	}
+	// Expect alphabetical by Field: age, new_only, old_only.
+	wantFields := []string{"age", "new_only", "old_only"}
+	wantKinds := []ChangeKind{ChangeTypeChanged, ChangeAdded, ChangeRemoved}
+	for i, c := range got {
+		if c.Field != wantFields[i] {
+			t.Errorf("got[%d].Field = %q, want %q", i, c.Field, wantFields[i])
+		}
+		if c.Kind != wantKinds[i] {
+			t.Errorf("got[%d].Kind = %v, want %v", i, c.Kind, wantKinds[i])
+		}
+	}
+}
+
+func TestDiffJSONSchema_InvalidJSONReturnsError(t *testing.T) {
+	cases := []struct {
+		name           string
+		oldDoc, newDoc []byte
+	}{
+		{"old is garbage", []byte(`not json at all`), []byte(`{"properties":{}}`)},
+		{"new is garbage", []byte(`{"properties":{}}`), []byte(`not json at all`)},
+		{"both empty", []byte(``), []byte(``)},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			_, err := DiffJSONSchema(c.oldDoc, c.newDoc)
+			if err == nil {
+				t.Errorf("expected error, got nil")
+			}
+		})
+	}
+}
+
+func TestChangeKind_String(t *testing.T) {
+	cases := []struct {
+		k    ChangeKind
+		want string
+	}{
+		{ChangeUnknown, "unknown"},
+		{ChangeAdded, "added"},
+		{ChangeRemoved, "removed"},
+		{ChangeTypeChanged, "type-changed"},
+	}
+	for _, c := range cases {
+		t.Run(c.want, func(t *testing.T) {
+			if got := c.k.String(); got != c.want {
+				t.Errorf("ChangeKind(%d).String() = %q, want %q", int(c.k), got, c.want)
+			}
+		})
+	}
+}
+
 func TestDiffJSONSchema_FieldRemoved(t *testing.T) {
 	oldDoc := []byte(`{
 		"properties": {
