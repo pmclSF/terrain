@@ -82,6 +82,15 @@ func (d *realDispatcher) Handle(ev slash.WebhookEvent, cmd *slash.Command) (stri
 			owner = "@" + ev.Sender
 		}
 		if err := runSuppress(findingID, reason, "", owner, "instance", d.repoRoot); err != nil {
+			// User-input errors (malformed finding-id, missing reason)
+			// must NOT bubble up as a dispatcher error — that turns
+			// into a 500 from the webhook handler, and GitHub's
+			// delivery retry storms a misclick into many duplicate
+			// retries. Surface the cause as a polite markdown reply
+			// so the user can fix and re-post.
+			if isUserInputError(err) {
+				return fmt.Sprintf("Cannot dismiss: %s", err.Error()), nil
+			}
 			return "", fmt.Errorf("runSuppress: %w", err)
 		}
 		// Reset the per-repo finding-history demote state so the
@@ -180,6 +189,30 @@ func resolveRepoRoot() string {
 		return cwd
 	}
 	return "."
+}
+
+// isUserInputError reports whether err looks like a malformed-input
+// failure that the user can fix in a follow-up comment, rather than
+// a transient or internal failure that should retry. The classifier
+// is intentionally pattern-based on the suppression package's known
+// error messages — there's no error sentinel to match against.
+func isUserInputError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	for _, marker := range []string{
+		"invalid finding ID format",
+		"missing finding ID",
+		"--reason is required",
+		"invalid --scope",
+		"does not look like YYYY-MM-DD",
+	} {
+		if strings.Contains(msg, marker) {
+			return true
+		}
+	}
+	return false
 }
 
 // recordDismissInHistory writes the user's dismissal to the per-repo

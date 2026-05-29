@@ -399,7 +399,14 @@ func renderFindingCardWithHistory(line func(string, ...any), f ChangeScopedFindi
 	// populate FindingID — the user-facing `finding:<id>` keyword
 	// fallback covers those.
 	if f.FindingID != "" {
-		line("  <!-- terrain:finding=%s -->", f.FindingID)
+		// Sanitize embedded "--" inside the id. HTML comments forbid
+		// "--" inside the comment body; an id like
+		// `staticSkippedTest-unconditional@src/foo--bar.ts:L10#abc`
+		// would prematurely close the comment, leaking markup into the
+		// PR rendering. Replace "--" with "__" — the proxy reverses
+		// before posting to the dispatcher.
+		safeID := strings.ReplaceAll(f.FindingID, "--", "__")
+		line("  <!-- terrain:finding=%s -->", safeID)
 	}
 }
 

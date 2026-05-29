@@ -261,7 +261,35 @@ func (s *Store) Save(path string) error {
 		"# Used to demote chronically-firing-but-not-dismissed (rule_id, file)\n" +
 		"# pairs from inline PR comments to the observability footer. Safe to\n" +
 		"# commit; safe to delete (deleting resets the per-pair counter).\n\n"
-	return os.WriteFile(path, append([]byte(header), data...), 0o644)
+	body := append([]byte(header), data...)
+	// Atomic write: tmp + rename. Two concurrent analyze runs racing
+	// the save (e.g., a CI runner racing a local pre-commit hook)
+	// would otherwise truncate-and-overwrite, and a crash between
+	// truncate and write would leave the file partially written so
+	// the next loader's yaml.Unmarshal silently fails.
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".finding-history-*.tmp")
+	if err != nil {
+		return fmt.Errorf("findinghistory: tempfile: %w", err)
+	}
+	tmpPath := tmp.Name()
+	if _, err := tmp.Write(body); err != nil {
+		_ = tmp.Close()
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("findinghistory: write tmp: %w", err)
+	}
+	if err := tmp.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("findinghistory: close tmp: %w", err)
+	}
+	if err := os.Chmod(tmpPath, 0o644); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("findinghistory: chmod tmp: %w", err)
+	}
+	if err := os.Rename(tmpPath, path); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("findinghistory: rename: %w", err)
+	}
+	return nil
 }
 
 // All returns every entry, sorted by (rule_id, file). Used by the

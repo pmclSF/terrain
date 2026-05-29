@@ -48,6 +48,11 @@ if [ -n "$REPO" ] && [ -n "$IN_REPLY_TO" ]; then
     | grep -oE 'terrain:finding=[A-Za-z0-9_/@:#.+\-]+' \
     | head -1 \
     | sed -e 's/^terrain:finding=//' -e 's/-*$//')"
+  # The renderer rewrites "--" → "__" inside the marker because HTML
+  # comments forbid "--" in the body. Reverse the substitution before
+  # forwarding so the receiver sees the original finding-id and the
+  # suppression file gets the right key.
+  FINDING_ID="$(echo "$FINDING_ID" | sed 's/__/--/g')"
 fi
 
 # Forward to terrain. The receiver validates the signature itself.
