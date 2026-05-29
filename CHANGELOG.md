@@ -78,9 +78,47 @@ All notable changes to Terrain are documented here. The format follows
   that card from `[GATE]` to `[WATCH]`. State lives in
   `.terrain/finding-history.yaml`; `/dismiss` resets the counter
   through the same store.
+- **`aiPromptSchemaDrift` detector.** When `terrain analyze --base
+  <ref>` runs, Terrain compares JSON Schemas at HEAD against the
+  same files at `<ref>` and flags prompt templates that reference
+  fields the PR removed or whose type changed. The finding includes
+  a side-by-side rendering of the template before and after, with
+  values synthesised from each schema's property types and a
+  `MISSING(<name>)` marker where a referenced field is no longer
+  present. LLM-free, deterministic, no network. Observability tier
+  at first release; promotion to gate gated on an adopter corpus
+  measurement (precision >=80% at n>=100 PRs).
+- **Prompt-template renderer** (`internal/prompttemplate`). Pure
+  substitution with two flavors: mustache (`{{name}}`, used in
+  `.md`/`.markdown` template files) and Python f-string (`{name}`,
+  used inline in Python sources — caller extracts the literal).
+  Both honour escape sequences (`{{{{x}}}}` → literal `{{x}}` for
+  mustache; `{{` / `}}` → literal braces for f-string) and trim
+  whitespace inside placeholders. Returns a typed `MissingVarError`
+  with the template path when a referenced variable is absent.
+- **JSON Schema diff** (`internal/schemadiff`).
+  `DiffJSONSchema(oldDoc, newDoc)` returns field-level changes
+  (added / removed / type-changed) for flat JSON Schemas. Results
+  sorted by field name for deterministic downstream consumers.
+- **Prompt-template / schema discovery** (`internal/promptflow`).
+  Walks a repository for prompt templates (mustache `.md`/
+  `.markdown`) and JSON Schema files (positive signal: `$schema`
+  URI matching json-schema.org, or `"type": "object"` alongside
+  `properties`). Skips noise directories (`node_modules`,
+  `vendor`, `.git`, `dist`, `build`, `.terrain`). Includes a git
+  helper `DiscoverFromGit(root, baseRef)` that uses `git show
+  <baseRef>:<path>` to retrieve schema content at the base ref.
 
 ### Changed
 
+- **`terrain analyze --base <ref>`** is now a real flag (was
+  previously redirected to `terrain report pr` / `terrain report
+  impact`). With it, analyze runs the prompt-template / schema
+  drift detector against the provided git ref. Without it, that
+  detector simply doesn't fire — analyze is unchanged otherwise.
+- **`prompttemplate.Template` gains a `Path` field.** Optional; when
+  set, it's surfaced in `MissingVarError.Error()` so render failures
+  name the template that produced them.
 - **`Report.GateRelevantSummary`** (new field on the analyze report)
   drives `--fail-on=<severity>` decisions. Mirrors `SignalSummary` but
   excludes findings from detectors that ship at observability tier, so
