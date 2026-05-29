@@ -56,6 +56,10 @@ func Detect(path string, _ []byte) Kind {
 type Template struct {
 	Kind Kind
 	Body string
+	// Path is the optional repo-relative file path of the template,
+	// used in diagnostic messages (e.g. MissingVarError). May be empty
+	// for in-memory templates.
+	Path string
 }
 
 // Render substitutes placeholders in t.Body using vars and returns the
@@ -64,9 +68,9 @@ type Template struct {
 func (t Template) Render(vars map[string]string) (string, error) {
 	switch t.Kind {
 	case KindMustache:
-		return renderMustache(t.Body, vars)
+		return renderMustache(t.Body, t.Path, vars)
 	case KindFString:
-		return renderFString(t.Body, vars)
+		return renderFString(t.Body, t.Path, vars)
 	default:
 		return t.Body, nil
 	}
@@ -85,7 +89,7 @@ func (t Template) Vars() []string {
 	}
 }
 
-func renderFString(body string, vars map[string]string) (string, error) {
+func renderFString(body, path string, vars map[string]string) (string, error) {
 	var out strings.Builder
 	out.Grow(len(body))
 	i := 0
@@ -109,7 +113,7 @@ func renderFString(body string, vars map[string]string) (string, error) {
 			name := strings.TrimSpace(body[i+1 : i+1+rel])
 			v, ok := vars[name]
 			if !ok {
-				return "", &MissingVarError{Name: name}
+				return "", &MissingVarError{Name: name, Path: path}
 			}
 			out.WriteString(v)
 			i = i + 1 + rel + 1
@@ -183,13 +187,19 @@ func varsMustache(body string) []string {
 // name is not present in the vars map.
 type MissingVarError struct {
 	Name string
+	// Path is the template's optional repo-relative file path, copied
+	// from Template.Path at render time. Empty for in-memory templates.
+	Path string
 }
 
 func (e *MissingVarError) Error() string {
+	if e.Path != "" {
+		return "prompttemplate: missing variable " + e.Name + " (in " + e.Path + ")"
+	}
 	return "prompttemplate: missing variable " + e.Name
 }
 
-func renderMustache(body string, vars map[string]string) (string, error) {
+func renderMustache(body, path string, vars map[string]string) (string, error) {
 	var out strings.Builder
 	out.Grow(len(body))
 	i := 0
@@ -213,7 +223,7 @@ func renderMustache(body string, vars map[string]string) (string, error) {
 			name := strings.TrimSpace(body[i+2 : i+2+rel])
 			v, ok := vars[name]
 			if !ok {
-				return "", &MissingVarError{Name: name}
+				return "", &MissingVarError{Name: name, Path: path}
 			}
 			out.WriteString(v)
 			i = i + 2 + rel + 2

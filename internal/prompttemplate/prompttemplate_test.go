@@ -2,6 +2,7 @@ package prompttemplate
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -29,6 +30,25 @@ func TestRender_Mustache_MissingVarReturnsError(t *testing.T) {
 	}
 	if mv.Name != "name" {
 		t.Errorf("MissingVarError.Name = %q, want %q", mv.Name, "name")
+	}
+}
+
+func TestRender_MissingVarError_CarriesTemplatePath(t *testing.T) {
+	tpl := Template{
+		Kind: KindMustache,
+		Body: "Hello, {{name}}!",
+		Path: "prompts/welcome.md",
+	}
+	_, err := tpl.Render(map[string]string{})
+	var mv *MissingVarError
+	if !errors.As(err, &mv) {
+		t.Fatalf("expected *MissingVarError, got %T: %v", err, err)
+	}
+	if mv.Path != "prompts/welcome.md" {
+		t.Errorf("MissingVarError.Path = %q, want %q", mv.Path, "prompts/welcome.md")
+	}
+	if !strings.Contains(mv.Error(), "prompts/welcome.md") {
+		t.Errorf("Error() should mention path; got %q", mv.Error())
 	}
 }
 

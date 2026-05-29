@@ -20,9 +20,9 @@ func TestE2E_FixtureRepo(t *testing.T) {
 	mustWrite(t, filepath.Join(root, "prompts", "unaffected.md"),
 		"This template references {{nothing_changed}}.")
 	mustWrite(t, filepath.Join(root, "schemas", "user.json"),
-		`{"properties": {"userId": {"type": "string"}, "balance": {"type": "number"}}}`)
+		`{"type": "object", "properties": {"userId": {"type": "string"}, "balance": {"type": "number"}}}`)
 	mustWrite(t, filepath.Join(root, "schemas", "result.json"),
-		`{"properties": {"userId": {"type": "string"}, "score": {"type": "string"}}}`)
+		`{"type": "object", "properties": {"userId": {"type": "string"}, "score": {"type": "string"}}}`)
 	mustWrite(t, filepath.Join(root, "package.json"),
 		`{"name": "demo"}`) // non-schema; must be ignored
 

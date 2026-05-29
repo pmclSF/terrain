@@ -46,6 +46,21 @@ func TestDiscover_FindsJSONSchema(t *testing.T) {
 	}
 }
 
+func TestDiscover_TemplatePathPropagatesToTemplate(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "p.md"), "Hello {{missing_var}}")
+	got, err := Discover(dir)
+	if err != nil {
+		t.Fatalf("Discover error: %v", err)
+	}
+	if len(got.Templates) != 1 {
+		t.Fatalf("got %d templates, want 1", len(got.Templates))
+	}
+	if got.Templates[0].Tpl.Path != "p.md" {
+		t.Errorf("Template.Path = %q, want %q", got.Templates[0].Tpl.Path, "p.md")
+	}
+}
+
 func TestDiscover_IgnoresNonMatchingFiles(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "README.txt"), "hello {{world}}")
@@ -85,11 +100,90 @@ func TestDiscover_MissingDirectoryReturnsError(t *testing.T) {
 	}
 }
 
+func TestDiscover_NonSchemaJSONWithPropertiesKeyIgnored(t *testing.T) {
+	// A real-world config that uses "properties" as an organizing
+	// key but isn't a JSON Schema.
+	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "stub.json"),
+		`{"properties": {"foo": "bar", "name": "demo"}}`)
+	got, err := Discover(dir)
+	if err != nil {
+		t.Fatalf("Discover error: %v", err)
+	}
+	if len(got.Schemas) != 0 {
+		t.Errorf("expected 0 schemas (no $schema or type:object), got %d: %+v", len(got.Schemas), got.Schemas)
+	}
+}
+
+func TestDiscover_DollarSchemaURIDetectsSchema(t *testing.T) {
+	cases := []struct {
+		name string
+		body string
+	}{
+		{"http json-schema.org draft 7",
+			`{"$schema": "http://json-schema.org/draft-07/schema#",
+			  "properties": {"x": {"type": "string"}}}`},
+		{"https json-schema.org draft 2020-12",
+			`{"$schema": "https://json-schema.org/draft/2020-12/schema",
+			  "properties": {"x": {"type": "string"}}}`},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			dir := t.TempDir()
+			mustWrite(t, filepath.Join(dir, "s.json"), c.body)
+			got, err := Discover(dir)
+			if err != nil {
+				t.Fatalf("Discover error: %v", err)
+			}
+			if len(got.Schemas) != 1 {
+				t.Errorf("expected 1 schema, got %d: %+v", len(got.Schemas), got.Schemas)
+			}
+		})
+	}
+}
+
+func TestDiscover_TypeObjectWithPropertiesDetectsSchema(t *testing.T) {
+	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "s.json"),
+		`{"type": "object", "properties": {"x": {"type": "string"}}}`)
+	got, err := Discover(dir)
+	if err != nil {
+		t.Fatalf("Discover error: %v", err)
+	}
+	if len(got.Schemas) != 1 {
+		t.Errorf("expected 1 schema, got %d: %+v", len(got.Schemas), got.Schemas)
+	}
+}
+
+func TestDiscover_SkipsNoiseDirectories(t *testing.T) {
+	dir := t.TempDir()
+	// Drop a real schema + template at the root.
+	mustWrite(t, filepath.Join(dir, "schemas", "user.json"),
+		`{"type": "object", "properties": {"name": {"type": "string"}}}`)
+	mustWrite(t, filepath.Join(dir, "welcome.md"), "{{name}}")
+	// Drop noise content inside each skipped directory.
+	for _, sub := range []string{"node_modules", "vendor", ".git", "dist", "build", ".terrain"} {
+		mustWrite(t, filepath.Join(dir, sub, "noise.md"), "{{trash}}")
+		mustWrite(t, filepath.Join(dir, sub, "noise.json"),
+			`{"type": "object", "properties": {"bad": {"type": "string"}}}`)
+	}
+	got, err := Discover(dir)
+	if err != nil {
+		t.Fatalf("Discover error: %v", err)
+	}
+	if len(got.Templates) != 1 {
+		t.Errorf("expected 1 template (noise dirs ignored), got %d: %+v", len(got.Templates), got.Templates)
+	}
+	if len(got.Schemas) != 1 {
+		t.Errorf("expected 1 schema (noise dirs ignored), got %d: %+v", len(got.Schemas), got.Schemas)
+	}
+}
+
 func TestDiscover_SkipsMalformedJSON(t *testing.T) {
 	dir := t.TempDir()
 	mustWrite(t, filepath.Join(dir, "broken.json"), `{not valid json}`)
 	mustWrite(t, filepath.Join(dir, "valid.json"),
-		`{"properties": {"x": {"type": "string"}}}`)
+		`{"type": "object", "properties": {"x": {"type": "string"}}}`)
 
 	got, err := Discover(dir)
 	if err != nil {
