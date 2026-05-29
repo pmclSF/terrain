@@ -5,7 +5,8 @@
 **Type:** `frameworkMigration`  
 **Domain:** migration  
 **Default severity:** info  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** gate
 
 ## Summary
 

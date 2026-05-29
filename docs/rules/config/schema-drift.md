@@ -5,7 +5,8 @@
 **Type:** `configSchemaDrift`  
 **Domain:** quality  
 **Default severity:** medium  
-**Status:** experimental
+**Lifecycle status:** experimental  
+**Gating tier:** gate
 
 ## Summary
 

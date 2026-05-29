@@ -5,7 +5,8 @@
 **Type:** `promptFileMissingEval`  
 **Domain:** ai  
 **Default severity:** medium  
-**Status:** experimental
+**Lifecycle status:** experimental  
+**Gating tier:** observability
 
 ## Summary
 

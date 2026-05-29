@@ -52,7 +52,8 @@ These will not be added to Terrain. Adopters needing them should look elsewhere.
 | **Signal** | Atomic observation emitted by a detector (e.g., "test file imports framework X"). |
 | **Finding** | A signal raised to merge-gate visibility, with severity + cause path + reproduction command. |
 | **Rule** | Configurable detection capability with stable ID (`terrain/<category>/<rule>`), severity default, and doc page. |
-| **Tier** | Stable or preview. Stable rules ship default-on at measured quality; preview rules ship default-off as scope-under-evaluation. |
+| **Lifecycle status** | `stable`, `experimental`, or `planned`. Stable rules have shipped detectors with adopter-tested precision; experimental rules ship default-off as scope-under-evaluation; planned rules reserve the rule_id ahead of the detector landing. |
+| **Gating tier** | `gate` or `observability`. Gate-tier findings count toward `--fail-on=*` exit codes and gate CI; observability-tier findings always emit but never block CI. Tier is mandatory on every detector — no implicit default. |
 | **Surface** | A code or AI target: prompt, agent, tool, context, scenario, code unit, test file. |
 | **Cause path** | Chain of graph nodes from a finding's primary location back to the change in the PR that caused it. |
 | **Unified graph** | Dependency graph spanning code, tests, surfaces, evals, data, and cross-language edges. |

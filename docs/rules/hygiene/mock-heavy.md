@@ -5,7 +5,8 @@
 **Type:** `mockHeavyTest`  
 **Domain:** quality  
 **Default severity:** low  
-**Status:** experimental
+**Lifecycle status:** experimental  
+**Gating tier:** observability
 
 ## Summary
 

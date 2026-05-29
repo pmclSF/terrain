@@ -5,7 +5,8 @@
 **Type:** `coldVectorStore`  
 **Domain:** ai  
 **Default severity:** low  
-**Status:** experimental
+**Lifecycle status:** experimental  
+**Gating tier:** observability
 
 ## Promotion plan
 

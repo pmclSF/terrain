@@ -5,7 +5,8 @@
 **Type:** `passRateDrop`  
 **Domain:** ai  
 **Default severity:** high  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** gate
 
 ## Summary
 

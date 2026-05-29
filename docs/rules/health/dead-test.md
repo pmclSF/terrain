@@ -5,7 +5,8 @@
 **Type:** `deadTest`  
 **Domain:** health  
 **Default severity:** low  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** observability
 
 ## Summary
 

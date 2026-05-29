@@ -5,7 +5,8 @@
 **Type:** `secretsInPrompt`  
 **Domain:** ai  
 **Default severity:** critical  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** gate
 
 ## Summary
 

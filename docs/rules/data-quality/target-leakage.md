@@ -5,7 +5,8 @@
 **Type:** `targetLeakage`  
 **Domain:** ai  
 **Default severity:** high  
-**Status:** experimental
+**Lifecycle status:** experimental  
+**Gating tier:** gate
 
 ## Promotion plan
 

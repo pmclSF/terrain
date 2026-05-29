@@ -177,7 +177,8 @@ func renderRuleStub(e signals.ManifestEntry) string {
 	fmt.Fprintf(&b, "**Type:** `%s`  \n", e.Type)
 	fmt.Fprintf(&b, "**Domain:** %s  \n", e.Domain)
 	fmt.Fprintf(&b, "**Default severity:** %s  \n", e.DefaultSeverity)
-	fmt.Fprintf(&b, "**Status:** %s\n\n", e.Status)
+	fmt.Fprintf(&b, "**Lifecycle status:** %s  \n", e.Status)
+	fmt.Fprintf(&b, "**Gating tier:** %s\n\n", e.Tier)
 
 	if e.Description != "" {
 		fmt.Fprintf(&b, "## Summary\n\n%s\n\n", e.Description)

@@ -5,7 +5,8 @@
 **Type:** `fixtureFragilityHotspot`  
 **Domain:** structure  
 **Default severity:** medium  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** observability
 
 ## Summary
 

@@ -5,7 +5,8 @@
 **Type:** `staticSkippedTest`  
 **Domain:** quality  
 **Default severity:** low  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** gate
 
 ## Summary
 

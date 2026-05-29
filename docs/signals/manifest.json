@@ -1404,6 +1404,25 @@
       "ruleUri": "docs/rules/ai/retrieval-regression.md"
     },
     {
+      "type": "aiPromptSchemaDrift",
+      "constName": "SignalAIPromptSchemaDrift",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "observability",
+      "title": "Prompt Template References Changed Schema Field",
+      "description": "A prompt template references a schema field that this PR removed or whose declared type changed. The template will render with a missing value (or wrong type) once merged.",
+      "remediation": "Update the template to use the new schema field, restore the old field, or remove the variable reference.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "static"
+      ],
+      "ruleId": "terrain/ai/prompt-schema-drift",
+      "ruleUri": "docs/rules/ai/prompt-schema-drift.md",
+      "promotionPlan": "Ships at observability tier. Stays at observability until adopter-corpus measurement confirms gate-readiness."
+    },
+    {
       "type": "detectorPanic",
       "constName": "SignalDetectorPanic",
       "domain": "quality",

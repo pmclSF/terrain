@@ -5,7 +5,8 @@
 **Type:** `uncoveredAISurface`  
 **Domain:** ai  
 **Default severity:** high  
-**Status:** experimental
+**Lifecycle status:** experimental  
+**Gating tier:** observability
 
 ## Summary
 

@@ -5,7 +5,8 @@
 **Type:** `slowTest`  
 **Domain:** health  
 **Default severity:** medium  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** observability
 
 ## Summary
 

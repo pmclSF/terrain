@@ -5,7 +5,8 @@
 **Type:** `detectorBudgetExceeded`  
 **Domain:** quality  
 **Default severity:** critical  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** observability
 
 ## Summary
 

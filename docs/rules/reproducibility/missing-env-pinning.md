@@ -5,7 +5,8 @@
 **Type:** `missingEnvPinning`  
 **Domain:** quality  
 **Default severity:** medium  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** observability
 
 ## Summary
 

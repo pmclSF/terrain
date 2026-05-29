@@ -5,7 +5,8 @@
 **Type:** `aiHardcodedAPIKey`  
 **Domain:** ai  
 **Default severity:** critical  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** observability
 
 ## Summary
 

@@ -5,7 +5,8 @@
 **Type:** `unsupportedSetup`  
 **Domain:** migration  
 **Default severity:** low  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** observability
 
 ## Summary
 
