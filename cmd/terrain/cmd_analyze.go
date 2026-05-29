@@ -300,30 +300,8 @@ func runAnalyze(o analyzeRunOpts) error {
 		result.Diagnostics.Render(os.Stderr)
 	}
 
-	// aiPromptSchemaDrift — runs only when `--base` is provided.
-	// Schemas at HEAD are diffed against schemas at baseRef via
-	// `git show`; prompt templates that reference removed or
-	// type-changed fields produce signals appended to the snapshot.
-	//
-	// An invalid baseRef returns an error from the user-typed flag
-	// — surfacing that with a clear message is better than silently
-	// emitting zero findings, which would look like "all clean."
-	if o.BaseRef != "" {
-		s2ctx, s2cancel := signal.NotifyContext(context.Background(),
-			os.Interrupt, syscall.SIGTERM)
-		after, before, err := promptflow.DiscoverFromGit(s2ctx, root, o.BaseRef)
-		if err != nil {
-			s2cancel()
-			return fmt.Errorf("aiPromptSchemaDrift: %w", err)
-		}
-		findings, err := promptflow.Analyze(after, before)
-		s2cancel()
-		if err != nil {
-			return fmt.Errorf("aiPromptSchemaDrift: %w", err)
-		}
-		if len(findings) > 0 {
-			result.Snapshot.Signals = append(result.Snapshot.Signals, promptflow.ToSignals(findings)...)
-		}
+	if err := appendPromptSchemaDriftSignals(result.Snapshot, root, o.BaseRef); err != nil {
+		return err
 	}
 
 	// Per-rule findings budget. terrain.yaml `rules.<key>.max_findings`
@@ -451,6 +429,36 @@ func runAnalyze(o analyzeRunOpts) error {
 	// gateErr() the other branches use, so the gate decision applies
 	// uniformly across every output format.
 	return gateErr()
+}
+
+// appendPromptSchemaDriftSignals runs the prompt-template / schema
+// drift detector against the working tree at root, with the schemas
+// at baseRef as the comparison point. Findings are appended to
+// snap.Signals so every downstream surface (JSON, text, PR-comment,
+// SARIF) consumes them through the same path.
+//
+// No-op when baseRef is empty. Returns an error (rather than logging
+// a warning and continuing) when baseRef is invalid — silent failures
+// look like "all clean" runs and erode trust in the gate.
+func appendPromptSchemaDriftSignals(snap *models.TestSuiteSnapshot, root, baseRef string) error {
+	if baseRef == "" || snap == nil {
+		return nil
+	}
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	after, before, err := promptflow.DiscoverFromGit(ctx, root, baseRef)
+	if err != nil {
+		return fmt.Errorf("aiPromptSchemaDrift: %w", err)
+	}
+	findings, err := promptflow.Analyze(after, before)
+	if err != nil {
+		return fmt.Errorf("aiPromptSchemaDrift: %w", err)
+	}
+	if len(findings) > 0 {
+		snap.Signals = append(snap.Signals, promptflow.ToSignals(findings)...)
+	}
+	return nil
 }
 
 // applyFindingsBudget caps each rule's findings at terrain.yaml's

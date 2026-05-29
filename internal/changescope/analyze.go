@@ -176,7 +176,8 @@ func buildChangeScopedFindings(result *impact.ImpactResult, snap *models.TestSui
 	}
 
 	for _, sig := range snap.Signals {
-		if !directPaths[sig.Location.File] {
+		scope, ok := signalScope(sig, directPaths)
+		if !ok {
 			continue
 		}
 		if sig.Type == "untestedExport" && gapPaths[sig.Location.File] {
@@ -187,7 +188,7 @@ func buildChangeScopedFindings(result *impact.ImpactResult, snap *models.TestSui
 		// stays as declared so the user sees the original framing.
 		findings = append(findings, ChangeScopedFinding{
 			Type:        "existing_signal",
-			Scope:       "direct",
+			Scope:       scope,
 			Path:        sig.Location.File,
 			Severity:    string(sig.Severity),
 			SignalType:  string(sig.Type),
@@ -197,6 +198,37 @@ func buildChangeScopedFindings(result *impact.ImpactResult, snap *models.TestSui
 	}
 
 	return findings
+}
+
+// signalScope reports whether sig belongs in the PR view, and at what
+// scope. Direct: the signal's own location is a changed file. Indirect:
+// the signal's metadata references a changed file via a cross-file key
+// (e.g. aiPromptSchemaDrift's `schemaPath` is the schema whose change
+// affects the prompt template at Location.File). Returns (_, false)
+// when sig has no link to the changed set.
+func signalScope(sig models.Signal, directPaths map[string]bool) (string, bool) {
+	if directPaths[sig.Location.File] {
+		return "direct", true
+	}
+	for _, key := range crossFileMetadataKeys {
+		v, ok := sig.Metadata[key]
+		if !ok {
+			continue
+		}
+		if path, ok := v.(string); ok && directPaths[path] {
+			return "indirect", true
+		}
+	}
+	return "", false
+}
+
+// crossFileMetadataKeys lists the Signal.Metadata keys we treat as
+// "this signal is about a file other than Location.File." Detectors
+// that span multiple files (a schema change breaking a template, a
+// dependency bump breaking a consumer) add their metadata key here so
+// the PR view picks them up at indirect scope.
+var crossFileMetadataKeys = []string{
+	"schemaPath",
 }
 
 func buildPostureDelta(result *impact.ImpactResult) *PostureDelta {

@@ -131,6 +131,49 @@ func TestAnalyzePR_UntestedExport(t *testing.T) {
 	}
 }
 
+func TestAnalyzePR_CrossFileSignalSurfacesAsIndirect(t *testing.T) {
+	t.Parallel()
+	// Simulate a PR that changes a schema file. A signal on a TEMPLATE
+	// file (different path) references the schema via metadata. The
+	// signal should appear at indirect scope so the PR view doesn't
+	// silently drop the headline detector finding when the template
+	// path itself isn't in the changed set.
+	snap := testSnapshot()
+	snap.Signals = append(snap.Signals, models.Signal{
+		Type:     models.SignalType("aiPromptSchemaDrift"),
+		Category: models.CategoryAI,
+		Severity: models.SeverityHigh,
+		Location: models.SignalLocation{File: "prompts/welcome.md"},
+		Metadata: map[string]any{
+			"schemaPath":     "schemas/user.json",
+			"variable":       "user_id",
+			"renderedBefore": "Hello example_string!",
+			"renderedAfter":  "Hello MISSING(user_id)!",
+		},
+		Explanation: "Template references removed field user_id",
+	})
+	// PR only touched the schema.
+	scope := impact.ChangeScopeFromPaths([]string{"schemas/user.json"}, impact.ChangeModified)
+
+	pr := AnalyzePR(scope, snap)
+	var matched *ChangeScopedFinding
+	for i, f := range pr.NewFindings {
+		if f.SignalType == "aiPromptSchemaDrift" {
+			matched = &pr.NewFindings[i]
+			break
+		}
+	}
+	if matched == nil {
+		t.Fatalf("expected aiPromptSchemaDrift finding in PR view, got %+v", pr.NewFindings)
+	}
+	if matched.Scope != "indirect" {
+		t.Errorf("Scope = %q, want %q", matched.Scope, "indirect")
+	}
+	if matched.Path != "prompts/welcome.md" {
+		t.Errorf("Path = %q, want %q", matched.Path, "prompts/welcome.md")
+	}
+}
+
 func TestAnalyzeChangedPaths(t *testing.T) {
 	t.Parallel()
 	snap := testSnapshot()

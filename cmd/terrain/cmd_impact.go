@@ -177,6 +177,11 @@ func applyImpactPolicy(impactResult *impact.ImpactResult, result *engine.Pipelin
 
 func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGate) error {
 	impactResult, result, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
+	if err == nil && result != nil && result.Snapshot != nil {
+		if appendErr := appendPromptSchemaDriftSignals(result.Snapshot, root, baseRef); appendErr != nil {
+			err = appendErr
+		}
+	}
 	if err != nil {
 		// The impact pipeline can fail for half a dozen
 		// different reasons —
