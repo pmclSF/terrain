@@ -371,14 +371,19 @@ func main() {
 		}
 
 	case "webhook":
-		// Maintainer / self-host surface: receives GitHub webhook
-		// deliveries, parses slash commands, dispatches through a
-		// Dispatcher (default: informational, no GitHub write-back).
-		// Adopters override the dispatcher in their integration code.
+		// Self-host surface: receives GitHub webhook deliveries,
+		// parses slash commands, dispatches through a Dispatcher
+		// (default: informational, no GitHub write-back). Adopters
+		// override the dispatcher in their integration code.
 		// Gated behind TERRAIN_DEV so adopters don't accidentally run
-		// the no-write-back default in production.
+		// the no-write-back default in production. The error below
+		// names the gate explicitly so an adopter who's following
+		// docs/integrations/github-checks.md sees the right cause.
 		if os.Getenv("TERRAIN_DEV") == "" {
-			fmt.Fprintln(os.Stderr, "error: unknown command \"webhook\"")
+			fmt.Fprintln(os.Stderr, "error: `terrain webhook` is opt-in. Re-run with TERRAIN_DEV=1.")
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "See docs/integrations/github-checks.md for the production deploy guide,")
+			fmt.Fprintln(os.Stderr, "including the Dockerfile that sets TERRAIN_DEV=1 by default.")
 			os.Exit(2)
 		}
 		addr := ":4242"
