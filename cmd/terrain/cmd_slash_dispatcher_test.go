@@ -136,6 +136,48 @@ func TestRealDispatcher_DeferredVerbsReturnPlaceholderText(t *testing.T) {
 	}
 }
 
+// TestRealDispatcher_ExplainWithMissingArgErrors covers the
+// VerbExplain path's argument validation. Without a positional rule-id
+// the dispatcher must return a clear error rather than running a
+// full analyze pipeline that ends in "entity not found." This
+// guards the captureRun stdout-swap path with a fast-failing case.
+func TestRealDispatcher_ExplainWithMissingArgErrors(t *testing.T) {
+	d := newRealDispatcher(t.TempDir())
+	cmd := &slash.Command{Verb: slash.VerbExplain}
+	_, err := d.Handle(slash.WebhookEvent{}, cmd)
+	if err == nil {
+		t.Fatalf("expected error for missing rule-id, got nil")
+	}
+	if !strings.Contains(err.Error(), "rule-id") {
+		t.Errorf("error should mention 'rule-id'; got: %v", err)
+	}
+}
+
+// TestRealDispatcher_WhyWithMissingArgErrors mirrors ExplainWithMissingArg
+// for the VerbWhy alias.
+func TestRealDispatcher_WhyWithMissingArgErrors(t *testing.T) {
+	d := newRealDispatcher(t.TempDir())
+	cmd := &slash.Command{Verb: slash.VerbWhy}
+	_, err := d.Handle(slash.WebhookEvent{}, cmd)
+	if err == nil {
+		t.Fatalf("expected error for missing rule-id, got nil")
+	}
+}
+
+// TestRealDispatcher_ShowWithMissingArgErrors covers VerbShow's
+// argument validation path.
+func TestRealDispatcher_ShowWithMissingArgErrors(t *testing.T) {
+	d := newRealDispatcher(t.TempDir())
+	cmd := &slash.Command{Verb: slash.VerbShow}
+	_, err := d.Handle(slash.WebhookEvent{}, cmd)
+	if err == nil {
+		t.Fatalf("expected error for missing id, got nil")
+	}
+	if !strings.Contains(err.Error(), "id") {
+		t.Errorf("error should mention 'id'; got: %v", err)
+	}
+}
+
 // TestRealDispatcher_CommandsListIsRendered guards the /terrain
 // commands surface. Adopters use this to discover what the bot can
 // do. If the list ever drifts to empty / panic, /terrain commands

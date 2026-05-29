@@ -24,6 +24,11 @@ import (
 func TestLLMFreeContract(t *testing.T) {
 	t.Parallel()
 
+	// Every gate-path package must appear here. The list is reviewed
+	// at every release; adding a new package to the analyze /
+	// PR-comment / check-runs / slash paths without listing it below
+	// would let a regression slip through. See cmd_llm_free_guard_test
+	// commit history for prior expansions and the rationale.
 	llmFreePackages := []string{
 		"github.com/pmclSF/terrain/internal/engine",
 		"github.com/pmclSF/terrain/internal/changescope",
@@ -32,6 +37,9 @@ func TestLLMFreeContract(t *testing.T) {
 		"github.com/pmclSF/terrain/internal/findinghistory",
 		"github.com/pmclSF/terrain/internal/suppression",
 		"github.com/pmclSF/terrain/internal/prtemplates",
+		"github.com/pmclSF/terrain/internal/promptflow",
+		"github.com/pmclSF/terrain/internal/prompttemplate",
+		"github.com/pmclSF/terrain/internal/schemadiff",
 	}
 
 	const forbidden = "github.com/pmclSF/terrain/internal/llmprovider"
