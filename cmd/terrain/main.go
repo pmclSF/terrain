@@ -197,6 +197,7 @@ func main() {
 		newOnlyFlag := analyzeCmd.Bool("new-findings-only", false, "filter signals to those NOT present in --baseline (lets established repos with debt adopt --fail-on without bricking CI)")
 		previewFlag := analyzeCmd.Bool("preview", false, "enable preview-tier AI detectors (default off; behavior may change between releases)")
 		diagFlag := analyzeCmd.Bool("diag", false, "print per-step pipeline timing diagnostics to stderr (for performance investigation)")
+		baseRefFlag := analyzeCmd.String("base", "", "git base ref enabling aiPromptSchemaDrift (e.g. main, origin/main); compares schemas at HEAD against this ref")
 		_ = analyzeCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("analyze", analyzeCmd.Args(), rootFlag)
 		gate, gateErr := parseSeverityGate(*failOnFlag)
@@ -237,6 +238,7 @@ func main() {
 			NewFindingsOnly:  *newOnlyFlag,
 			EnablePreview:    *previewFlag,
 			Diag:             *diagFlag,
+			BaseRef:          *baseRefFlag,
 		}
 		if err := runAnalyze(analyzeOpts); err != nil {
 			if errors.Is(err, errSeverityGateBlocked) {

@@ -18,6 +18,7 @@ import (
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/policy"
+	"github.com/pmclSF/terrain/internal/promptflow"
 	"github.com/pmclSF/terrain/internal/reporting"
 	"github.com/pmclSF/terrain/internal/sarif"
 	"github.com/pmclSF/terrain/internal/terrainconfig"
@@ -171,6 +172,11 @@ type analyzeRunOpts struct {
 	NewFindingsOnly  bool
 	EnablePreview    bool
 	Diag             bool
+	// BaseRef, when set, enables the prompt-template/schema drift
+	// detector (aiPromptSchemaDrift). The detector compares schemas
+	// at HEAD against schemas at this ref via `git show <ref>:<path>`.
+	// Empty disables the detector.
+	BaseRef string
 }
 
 func runAnalyze(o analyzeRunOpts) error {
@@ -291,6 +297,26 @@ func runAnalyze(o analyzeRunOpts) error {
 	// JSON / SARIF stdout but are visible during interactive runs.
 	if o.Diag && result.Diagnostics != nil {
 		result.Diagnostics.Render(os.Stderr)
+	}
+
+	// aiPromptSchemaDrift — runs only when `--base` provided.
+	// Schemas in HEAD are diffed against schemas at baseRef via
+	// `git show`; prompt templates referencing removed or
+	// type-changed fields produce signals appended to the snapshot.
+	if o.BaseRef != "" {
+		after, before, err := promptflow.DiscoverFromGit(root, o.BaseRef)
+		if err != nil {
+			logging.L().Warn("promptflow.DiscoverFromGit failed; skipping aiPromptSchemaDrift",
+				"err", err, "baseRef", o.BaseRef)
+		} else {
+			findings, err := promptflow.Analyze(after, before)
+			if err != nil {
+				logging.L().Warn("promptflow.Analyze failed; skipping aiPromptSchemaDrift",
+					"err", err)
+			} else if len(findings) > 0 {
+				result.Snapshot.Signals = append(result.Snapshot.Signals, promptflow.ToSignals(findings)...)
+			}
+		}
 	}
 
 	// Per-rule findings budget. terrain.yaml `rules.<key>.max_findings`
