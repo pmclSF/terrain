@@ -109,4 +109,12 @@ func TestFindingHistory_PipelineSkipsEmptyTypeOrFile(t *testing.T) {
 	if len(loaded.All()) != 0 {
 		t.Errorf("empty type or file rows must not create entries; got %+v", loaded.All())
 	}
+	// Same privacy contract as TestFindingHistory_PipelineSkipsOnEmptySnapshot:
+	// when no signal was countable, the file must NOT be created on
+	// disk — otherwise an empty .terrain/finding-history.yaml ends up
+	// committed by adopters and leaks "terrain ran here" via the diff.
+	path := filepath.Join(tmp, findinghistory.DefaultPath)
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("uncountable signals must not create %q (err: %v)", path, err)
+	}
 }

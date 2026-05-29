@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/engine"
+	"github.com/pmclSF/terrain/internal/findinghistory"
+	"github.com/pmclSF/terrain/internal/identity"
 	"github.com/pmclSF/terrain/internal/slash"
 )
 
@@ -80,6 +83,16 @@ func (d *realDispatcher) Handle(ev slash.WebhookEvent, cmd *slash.Command) (stri
 		}
 		if err := runSuppress(findingID, reason, "", owner, "instance", d.repoRoot); err != nil {
 			return "", fmt.Errorf("runSuppress: %w", err)
+		}
+		// Reset the per-repo finding-history demote state so the
+		// next fire of this (rule, file) doesn't render with a stale
+		// "demoted to footer" badge. Failure here is non-fatal —
+		// the suppression has already been written and the user
+		// gets the visible dismissal.
+		if err := recordDismissInHistory(findingID, d.repoRoot); err != nil {
+			// Log to stderr only; don't surface as a slash reply
+			// since the suppress already succeeded.
+			fmt.Fprintf(os.Stderr, "warn: finding-history dismiss failed: %v\n", err)
 		}
 		return fmt.Sprintf("Dismissed %s (scope=instance). Reason: %q.", findingID, reason), nil
 
@@ -167,4 +180,27 @@ func resolveRepoRoot() string {
 		return cwd
 	}
 	return "."
+}
+
+// recordDismissInHistory writes the user's dismissal to the per-repo
+// finding-history store so the renderer's demote machinery treats this
+// as an active user signal (LastDismiss). Without this, the
+// dismiss-overrides-fatigue-demotion contract — documented on
+// findinghistory.Store.ShouldDemote — never fires in production,
+// because nothing else in the CLI writes LastDismiss.
+//
+// Returns nil when the finding-id can't be parsed (the suppression
+// path uses a different format, e.g. file-scope) or when the history
+// store can't be loaded; in both cases the suppression still happened.
+func recordDismissInHistory(findingID, repoRoot string) error {
+	ruleID, filePath, _, _, ok := identity.ParseFindingID(findingID)
+	if !ok || ruleID == "" || filePath == "" {
+		return nil
+	}
+	store, err := engine.LoadFindingHistory(repoRoot)
+	if err != nil {
+		return err
+	}
+	store.Dismiss(ruleID, filePath)
+	return store.Save(filepath.Join(repoRoot, findinghistory.DefaultPath))
 }

@@ -928,7 +928,21 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	// in 0.2.0.
 	applySuppressions(snapshot, root, opt.SuppressionsPath, time.Now())
 
-	// Step 10d: optional --new-findings-only filter. When the user
+	// Step 10d: update per-repo finding history. Runs BEFORE the
+	// --new-findings-only filter so chronic (repeating-across-PRs)
+	// findings actually accumulate counts under the recommended CI
+	// shape `--baseline old.json --new-findings-only`. With the
+	// filter-first ordering, chronic findings were dropped before
+	// they could be incremented, so the demote-from-inline-to-footer
+	// behavior the renderer relies on never fired for the dominant
+	// CI pattern.
+	//
+	// The PR-comment renderer consults the same store via
+	// ShouldDemote to fold chronically-firing-without-dismiss
+	// findings into the observability footer.
+	updateFindingHistory(snapshot, root)
+
+	// Step 10e: optional --new-findings-only filter. When the user
 	// supplied both --baseline and --new-findings-only, drop every
 	// signal whose FindingID already existed in the baseline so the
 	// gate fires only on net-new findings. Established repos with
@@ -937,18 +951,6 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	if opt.NewFindingsOnly {
 		applyNewFindingsOnly(snapshot)
 	}
-
-	// Step 10e: update per-repo finding history. For each signal
-	// that survived suppressions, increment the (rule_id, file)
-	// counter. The PR-comment renderer consults the same store via
-	// ShouldDemote to fold chronically-firing-without-dismiss findings
-	// into the observability footer.
-	//
-	// Skip in baseline / readonly contexts: when the caller asks
-	// for --new-findings-only behavior, the snapshot has been
-	// filtered to net-new findings so incrementing reflects fresh
-	// observations rather than the full re-run noise.
-	updateFindingHistory(snapshot, root)
 
 	if err := models.ValidateSnapshot(snapshot); err != nil {
 		return nil, fmt.Errorf("invalid snapshot produced by pipeline: %w", err)

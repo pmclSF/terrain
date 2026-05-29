@@ -29,6 +29,7 @@ func updateFindingHistory(snap *models.TestSuiteSnapshot, root string) {
 		logging.L().Debug("finding history: load failed", "path", path, "err", err)
 		return
 	}
+	incremented := 0
 	for _, s := range snap.Signals {
 		// Skip signals without a usable (type, file) pair. The
 		// counter is meaningless if we can't identify which
@@ -37,6 +38,15 @@ func updateFindingHistory(snap *models.TestSuiteSnapshot, root string) {
 			continue
 		}
 		store.Increment(string(s.Type), s.Location.File)
+		incremented++
+	}
+	// No usable signals → no Save. Otherwise an analyze on a no-AI
+	// repo (or on signals that are global-scope advisories without a
+	// Location.File) would create an empty .terrain/finding-history.yaml
+	// that the adopter accidentally commits, leaking "terrain ran here"
+	// into the diff.
+	if incremented == 0 {
+		return
 	}
 	if err := store.Save(path); err != nil {
 		logging.L().Debug("finding history: save failed", "path", path, "err", err)
