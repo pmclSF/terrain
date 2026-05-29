@@ -302,8 +302,7 @@ func TestIsEvalPath_Negative(t *testing.T) {
 
 // TestEvaluateAIRunDecision_GovernanceBlock locks the precedence
 // rule: an AI policy violation (governance signal with rule=block_*)
-// triggers BLOCK even when no AI severity is critical. Audit-named
-// gap (ai_execution_gating.E1): more decision-logic test coverage.
+// triggers BLOCK even when no AI severity is critical.
 func TestEvaluateAIRunDecision_GovernanceBlock(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{

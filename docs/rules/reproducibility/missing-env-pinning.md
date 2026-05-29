@@ -34,7 +34,7 @@ An environment-variable read in eval / inference code lacks a default value. The
 - **Tier:** stable
 - **Default severity:** medium
 - **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — see §7
+- **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
 
 ## 3. What this catches
 

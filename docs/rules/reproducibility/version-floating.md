@@ -35,7 +35,7 @@ A declared dependency has no exact version pin, so subsequent installs may resol
 - **Tier:** stable
 - **Default severity:** medium (high for unpinned runtime deps; one severity step lower for dev / build / optional deps)
 - **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — see §7
+- **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
 
 ## 3. What this catches
 
@@ -145,7 +145,7 @@ terrain test --selector reproducibility/version-floating --path requirements.txt
 
 ## 10. Stability commitment
 
-This rule's ID, default severity, pinning ladder, and section step-down behavior are stable from v0.2.0. Per `docs/PRODUCT.md` §14 (Versioning):
+This rule's ID, default severity, pinning ladder, and section step-down behavior are stable from v0.2.0. Per the deprecation contract:
 
 - **Default severity changes** — breaking; one-cycle deprecation.
 - **Pinning-ladder changes** (e.g., promoting PinningPath from low to medium) — breaking; deprecation-cycled.

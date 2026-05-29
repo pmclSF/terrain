@@ -19,10 +19,10 @@ type Result struct {
 	Pass       bool
 
 	// Diagnostics records, per active rule, what was checked and
-	// what was found — even when the rule passed. Audit-named gap
-	// (policy_governance.E3): adopters needed visibility into which
-	// rules ran, what they evaluated against, and why they did or
-	// didn't fire. Empty when no policy is configured.
+	// what was found — even when the rule passed. Adopters need
+	// visibility into which rules ran, what they evaluated
+	// against, and why they did or didn't fire. Empty when no
+	// policy is configured.
 	Diagnostics []RuleDiagnostic
 }
 

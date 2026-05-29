@@ -34,7 +34,7 @@ A code unit exists in the codebase but no test in the snapshot's dependency grap
 - **Tier:** stable
 - **Default severity:** warning
 - **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — severity adjustment and per-path ignores supported (see §7)
+- **Configurable via `terrain.yaml`:** yes — severity adjustment and per-path ignores supported (see [configuration.md](../../configuration.md))
 
 ## 3. What this catches
 
@@ -158,7 +158,7 @@ terrain test --selector coverage/no-tests --base $(git merge-base HEAD main) --h
 
 ## 10. Stability commitment
 
-This rule's ID, default severity (warning), and behavior are stable from v0.2.0. Per `docs/PRODUCT.md` §14 (Versioning):
+This rule's ID, default severity (warning), and behavior are stable from v0.2.0. Per the deprecation contract:
 
 - **Severity default change from warning to error** would be breaking; deprecation-cycled. None planned.
 - **What counts as a "test"** is governed by `internal/testtype/`'s classification; expanding this (e.g., adding a new test-type taxonomy) is additive and reduces findings — not a breaking change.

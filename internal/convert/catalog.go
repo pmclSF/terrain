@@ -11,8 +11,8 @@ const (
 	// GoNativeStateExperimental marks a direction whose Go-native converter
 	// runs end-to-end on the smoke fixture but has incomplete coverage of
 	// real-world test patterns (assertion variants, custom matchers, lifecycle
-	// hooks, framework-specific config). Round 3 review classified these as
-	// C-grade. Use with caution; expect manual cleanup post-conversion.
+	// hooks, framework-specific config). Use with caution; expect manual
+	// cleanup post-conversion.
 	GoNativeStateExperimental GoNativeState = "experimental"
 	GoNativeStateImplemented  GoNativeState = "implemented"
 
@@ -142,9 +142,9 @@ var prioritizedDirections = map[string]struct{}{
 }
 
 // experimentalDirections names directions that run end-to-end on the smoke
-// fixture but were rated C-grade (<70% coverage of real-world conversion
-// patterns) by the round 3 review. They remain available behind the same
-// CLI surface; users are warned via `terrain convert list`.
+// fixture but have incomplete coverage of real-world conversion patterns.
+// They remain available behind the same CLI surface; users are warned via
+// `terrain convert list`.
 //
 // Tagging policy: any direction calling out to runtime that the round 3 audit
 // flagged as <70% complete on a representative real-world fixture. Promoting

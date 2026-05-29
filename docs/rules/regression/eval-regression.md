@@ -34,7 +34,7 @@ An eval metric (rubric score, accuracy, F1, AUC, RMSE, calibration error, etc.) 
 - **Tier:** stable
 - **Default severity:** error
 - **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — threshold, sample count, seed strategy, base-comparison strategy all tunable (see §7)
+- **Configurable via `terrain.yaml`:** yes — threshold, sample count, seed strategy, base-comparison strategy all tunable (see [configuration.md](../../configuration.md))
 
 ## 3. What this catches
 
@@ -50,7 +50,7 @@ LLM and ML eval results are the only objective evidence of an AI system's behavi
 
 Without this rule, eval regressions get caught (if at all) by the next adopter who runs evals manually, often days or weeks after the change shipped. The rule moves the discovery point to the PR — before merge, before deploy, before adopters experience the regression.
 
-The rule's hardest case is *stochastic* evals: LLM-driven evals whose results vary across runs even with fixed inputs. The plan addresses this via the `samples_per_run` / `seed_strategy` / `confidence_alpha` knobs (see §7); without these, a stochastic eval would trip the rule flakily and adopters would either disable it or set the threshold so wide it's a no-op. Statistical aggregation is built into the rule's mechanism, not punted to the adopter.
+The rule's hardest case is *stochastic* evals: LLM-driven evals whose results vary across runs even with fixed inputs. The plan addresses this via the `samples_per_run` / `seed_strategy` / `confidence_alpha` knobs (see [configuration.md](../../configuration.md)); without these, a stochastic eval would trip the rule flakily and adopters would either disable it or set the threshold so wide it's a no-op. Statistical aggregation is built into the rule's mechanism, not punted to the adopter.
 
 ## 5. Detection mechanism
 
@@ -160,7 +160,7 @@ The local diagnostic output is byte-equivalent to the CI surface (local-CI parit
 
 ## 10. Stability commitment
 
-This rule's ID, default severity, behavior, and tunable-config schema are stable from v0.2.0. Per `docs/PRODUCT.md` §14 (Versioning):
+This rule's ID, default severity, behavior, and tunable-config schema are stable from v0.2.0. Per the deprecation contract:
 
 - **Renames:** one-cycle deprecation. None planned.
 - **Default threshold change** (currently 5%): treated as breaking; deprecation-cycled.

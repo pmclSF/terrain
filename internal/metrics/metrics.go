@@ -136,9 +136,8 @@ func Derive(snap *models.TestSuiteSnapshot) *Snapshot {
 	// nil snapshots can arise when an upstream pipeline failure short-circuits
 	// before producing one. Returning a benign empty Snapshot lets callers in
 	// `terrain compare`, the metrics dashboard, and the AI baseline path keep
-	// going instead of crashing. Round 3 review caught a test that was
-	// silently swallowing the resulting panic; the strict adversarial test
-	// in internal/testdata/adversarial_test.go enforces this contract.
+	// going instead of crashing. The strict adversarial test in
+	// internal/testdata/adversarial_test.go enforces this contract.
 	if snap == nil {
 		return &Snapshot{
 			GeneratedAt:     time.Now().UTC(),

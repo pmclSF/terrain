@@ -1,10 +1,6 @@
-# Local-only research and harness directories. The parity YAMLs the
-# terrain-parity-gate binary reads are un-ignored so the binary still
-# builds and tests from a fresh clone.
+# Local-only research and harness directories.
 internal/docs/
 !internal/docs/release/
-!internal/docs/release/parity/
-!internal/docs/release/parity/**
 
 cmd/internal/terrain-corpus/
 cmd/internal/terrain-precision/
@@ -79,7 +75,6 @@ Thumbs.db
 /terrain-bench
 /terrain-truthcheck
 /terrain-voice-lint
-/terrain-parity-gate
 /terrain-docs-gen
 
 # === SBOM artifacts (generated locally via `make sbom`) ===
@@ -133,7 +128,6 @@ PR_DESCRIPTION.md
 *.tmp
 tmp/
 temp/
-terrain-parity-gate
 
 # === Local agent / build scratch ===
 .claude/

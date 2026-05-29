@@ -8,8 +8,8 @@ import (
 
 // BenchmarkRenderPRSummaryMarkdown_Small benchmarks the PR markdown
 // renderer against a small, realistic PR (5 findings, 3 selections,
-// 2 owners). Audit-named gap (pr_change_scoped.E5): published
-// performance evidence for the PR pipeline's render stage.
+// 2 owners). Provides published performance evidence for the PR
+// pipeline's render stage.
 //
 // Run with: go test -bench=BenchmarkRenderPR -benchmem ./internal/changescope/
 //

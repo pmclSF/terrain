@@ -1,4 +1,4 @@
-// Package reproducibility implements the §9 reproducibility/* stable
+// Package reproducibility implements the reproducibility/* stable
 // rules. These flag patterns that introduce non-determinism into a
 // test or eval run — version drift in dependencies, missing seeds in
 // stochastic code, environment values that aren't pinned.

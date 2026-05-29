@@ -2,8 +2,8 @@
 
 - **Status:** Accepted
 - **Author:** @pmclSF
-- **Created:** 2099-05-10
-- **Decided:** 2099-05-10
+- **Created:** see git log
+- **Decided:** see git log
 - **Discussion:** N/A (foundational RFC; project genesis pre-dates the formal RFC process)
 
 ---
@@ -17,7 +17,7 @@ This RFC ratifies the Terrain 0.2.0 product plan documented in `docs/PRODUCT.md`
 This is the first RFC the project files. The RFC process documented in `docs/CONTRIBUTING.md` requires significant changes to go through this directory. The product plan itself is the most significant change in the project's history; filing it as RFC 0000 establishes:
 
 1. **Process self-consistency.** The project commits to RFCs for significant changes; the plan is significant; therefore it has an RFC.
-2. **Public record.** Future contributors who want to know "why does Terrain do X?" can read RFC 0000 and see the answer is "by design, ratified on 2099-05-10."
+2. **Public record.** Future contributors who want to know "why does Terrain do X?" can read RFC 0000 and see the answer is "by design, ratified in this RFC."
 3. **Reference shape.** Subsequent RFCs use this RFC as the shape they're amending.
 
 ## Detailed design
@@ -58,7 +58,7 @@ All operational opens are tracked in `docs/PRODUCT.md` §19. Three remain at RFC
 
 These do not block RFC acceptance; they block specific Tier 4 work items.
 
-Four prior opens resolved via web research and committed in `bffd818`:
+Four prior opens resolved via web research:
 - MCP spec version 2025-11-25 confirmed latest stable
 - Gauntlet reframed (Apache-2.0; tightly coupled to MosaicML stack)
 - Provider matrix updated (Anthropic native preferred; Ollama tool-calling first-class; vLLM strict caveat)
@@ -66,18 +66,18 @@ Four prior opens resolved via web research and committed in `bffd818`:
 
 ## Migration / rollout plan
 
-This RFC ships with Terrain 0.2.0. The plan itself (`docs/PRODUCT.md`) is committed as `d27ef16`. Adopters consume the product plan via the README's "What is Terrain" pointer to `docs/OVERVIEW.md`.
+This RFC ships with Terrain 0.2.0. Adopters consume the product plan via the README's "What is Terrain" pointer to `docs/OVERVIEW.md`.
 
 There is no pre-0.2.0 migration path; 0.2.0 is the first stable release per `docs/PRODUCT.md`.
 
 ## Validation
 
-This RFC's "did the change work?" question is whether `docs/PRODUCT.md` clears adversarial review passes plus codebase audits plus a verifier-confirmed redesign. All review iterations completed and confirmed findings are closed.
+This RFC's "did the change work?" question is whether `docs/PRODUCT.md` clears its review process. All review iterations completed and confirmed findings are closed.
 
 Senior-decision-maker validation of `docs/OVERVIEW.md` is a release-tag gate, not an RFC-acceptance gate.
 
 ## Decision
 
-**Accepted on 2099-05-10.** The plan is the binding scope of Terrain 0.2.0.
+**Accepted.** The plan is the binding scope of Terrain 0.2.0.
 
 Subsequent RFCs may amend specific sections of `docs/PRODUCT.md` per the one-cycle deprecation contract; the plan itself stays a living document referenced by RFC 0000. When `docs/PRODUCT.md` is materially edited, the change is documented either via a new amendment RFC or via `CHANGELOG.md` if the change is non-significant.

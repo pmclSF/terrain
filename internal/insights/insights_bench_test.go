@@ -9,9 +9,8 @@ import (
 )
 
 // BenchmarkBuild_Healthy benchmarks insights.Build against a
-// healthy balanced snapshot fixture. Audit-named gap
-// (insights_impact_explain.E5): published performance evidence
-// for the Build path.
+// healthy balanced snapshot fixture. Provides published
+// performance evidence for the Build path.
 //
 // Run with: go test -bench=BenchmarkBuild -benchmem ./internal/insights/
 //

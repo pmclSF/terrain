@@ -427,9 +427,8 @@ func gitInfo(root string) (sha, branch string) {
 // is set, in which case it returns the parsed epoch. SOURCE_DATE_EPOCH
 // is the Reproducible Builds standard (https://reproducible-builds.org)
 // — when set, every wall-clock reference in build artefacts must use
-// it instead of real time. Round-4 review flagged the snapshot's
-// generatedAt as the one place determinism leaked; this honours the
-// standard so CI snapshots can be byte-compared.
+// it instead of real time. Honouring it makes CI snapshots
+// byte-comparable.
 func deterministicNowUTC() time.Time {
 	if v := os.Getenv("SOURCE_DATE_EPOCH"); v != "" {
 		if secs, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64); err == nil {

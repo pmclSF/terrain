@@ -23,7 +23,7 @@ One-line description of what this rule catches. Plain English, no jargon.
 - **Tier:** stable
 - **Default severity:** error | warning
 - **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — see §7
+- **Configurable via `terrain.yaml`:** yes — see [docs/configuration.md](../configuration.md)
 
 ## 3. What this catches
 
@@ -134,7 +134,7 @@ The local diagnostic output is byte-equivalent to the CI surface for this rule (
 
 ## 10. Stability commitment
 
-This rule's ID and behavior are stable from v0.2.0. The one-cycle deprecation contract per `docs/PRODUCT.md` §14 (Versioning) applies:
+This rule's ID and behavior are stable from v0.2.0. The one-cycle deprecation contract applies:
 
 - **Renames:** alias the old ID for one minor version; deprecation message written to stderr; document in `CHANGELOG.md`.
 - **Severity default changes:** treated as a breaking change to the default behavior; same deprecation cycle.

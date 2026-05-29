@@ -2,7 +2,7 @@
 
 > *Honest public list. Adopters should read this before deciding to adopt. Updated per release.*
 
-This document is part of the §3 *auditable quality* product goal. The plan commits to publishing what the project doesn't do, not just what it does. When something on this list is addressed in a later release, it's removed from the list and added to the release's changelog.
+This document is part of the *auditable quality* product goal: publish what the project doesn't do, not just what it does. When something on this list is addressed in a later release, it's removed from the list and added to the release's changelog.
 
 ## Categorically out-of-scope (not in the roadmap)
 

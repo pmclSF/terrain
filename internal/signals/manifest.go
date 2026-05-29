@@ -1321,7 +1321,7 @@ var allSignalManifest = []ManifestEntry{
 		Tier:            TierObservability,
 	},
 
-	// Remaining §9 stable rules — declared as Planned. Each gets its
+	// Remaining stable rules — declared as Planned. Each gets its
 	// detector + doc page in subsequent commits as the implementations
 	// land. The manifest-parity test requires every Signal* constant
 	// to have an entry here.
@@ -1484,7 +1484,7 @@ var allSignalManifest = []ManifestEntry{
 		Tier:            TierGate,
 	},
 
-	// ── Regression family (§9 stable) ────────────────────────────
+	// ── Regression family (stable) ────────────────────────────────
 	// Consume the Tier 1 eval-adapter foundation to compare baseline
 	// and current runs.
 	{
@@ -1553,7 +1553,7 @@ var allSignalManifest = []ManifestEntry{
 		Tier:            TierGate,
 	},
 
-	// ── Coverage family (§9 stable) ──────────────────────────────
+	// ── Coverage family (stable) ──────────────────────────────────
 	{
 		Type: SignalMissingBaseline, ConstName: "SignalMissingBaseline",
 		Domain: models.CategoryAI, Status: StatusStable,

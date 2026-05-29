@@ -160,8 +160,7 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 	// measurable impact), the markdown above is just header +
 	// metrics. Add a small designed "all clear" callout so the
 	// reader sees that this is the *deliberate* shape of a clean
-	// PR, not a malfunction. Audit-named gap (pr_change_scoped.V3
-	// fun-to-use polish).
+	// PR, not a malfunction.
 	if isEmptyPR(pr) {
 		hr()
 		line("> ✓ **All clear.** No new findings introduced; no protection gaps identified in changed code.")
@@ -1055,8 +1054,8 @@ func isEmptyPR(pr *PRAnalysis) bool {
 // Format example:
 //   **Confidence:** 12 exact · 4 inferred · 1 weak (17 tests selected)
 //
-// Audit-named gap (pr_change_scoped.E3): observability into how
-// the test set was assembled, not just which tests were chosen.
+// Provides observability into how the test set was assembled,
+// not just which tests were chosen.
 func buildConfidenceHistogram(selections []TestSelection) string {
 	if len(selections) == 0 {
 		return ""

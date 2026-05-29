@@ -1,4 +1,4 @@
-// Package regression implements the §9 regression/* stable rules.
+// Package regression implements the regression/* stable rules.
 // Each detector takes a baseline run + current run and emits a
 // Signal when the current run regressed past the configured threshold.
 package regression

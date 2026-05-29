@@ -34,7 +34,7 @@ An eval test function runs to completion without any assertion / score / metric 
 - **Tier:** stable
 - **Default severity:** high
 - **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — severity downgrade and path-level ignores supported (see §7)
+- **Configurable via `terrain.yaml`:** yes — severity downgrade and path-level ignores supported (see [configuration.md](../../configuration.md))
 
 ## 3. What this catches
 

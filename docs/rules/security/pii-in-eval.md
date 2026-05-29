@@ -34,7 +34,7 @@ An eval-directory file contains PII-shaped values — emails, phone numbers, SSN
 - **Tier:** stable
 - **Default severity:** critical
 - **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — see §7
+- **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
 
 ## 3. What this catches
 

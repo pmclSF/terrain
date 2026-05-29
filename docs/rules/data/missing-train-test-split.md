@@ -34,7 +34,7 @@ A training call (`.fit()` / `.train()` / `.partial_fit()`) appears in a training
 - **Tier:** stable
 - **Default severity:** high
 - **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — see §7
+- **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
 
 ## 3. What this catches
 

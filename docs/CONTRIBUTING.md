@@ -120,7 +120,7 @@ Deprecation follows the one-cycle process:
 
 ## Issue triage and response
 
-Documented per `docs/PRODUCT.md` §14 (Versioning). Targets at 0.2.0:
+Targets:
 
 | Issue type | Acknowledgment target | Fix target |
 |---|---|---|

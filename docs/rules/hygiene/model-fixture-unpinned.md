@@ -34,7 +34,7 @@ A model-loading call uses a path or revision that isn't content-addressed. The u
 - **Tier:** stable
 - **Default severity:** high
 - **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — see §7
+- **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
 
 ## 3. What this catches
 

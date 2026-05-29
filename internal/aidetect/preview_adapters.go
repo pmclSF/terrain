@@ -8,7 +8,7 @@ import (
 	"github.com/pmclSF/terrain/internal/preview"
 )
 
-// preview_adapters.go wires the §9 preview-tier detectors in
+// preview_adapters.go wires the preview-tier detectors in
 // internal/preview into the Detector interface that the engine
 // registry consumes. The wrapper here owns the filesystem dance
 // (walk + slurp); the preview package owns the rule semantics.

@@ -1,4 +1,4 @@
-// Package coverage implements the §9 coverage/* stable rules. Each
+// Package coverage implements the coverage/* stable rules. Each
 // detector consumes the typed ImpactGraph (Tier 0) and emits Signals
 // for surfaces or units with no covering test / eval.
 package coverage
@@ -23,7 +23,7 @@ import (
 //     terrain.yaml via include_private)
 //   - trivial-name units (`init`, `main`) excluded
 //
-// Severity defaults to medium (the §9 spec for this rule).
+// Severity defaults to medium per the rule's catalog entry.
 func DetectNoTestsForCodeUnit(snap *models.TestSuiteSnapshot, graph *impact.ImpactGraph) []models.Signal {
 	if snap == nil || graph == nil {
 		return nil

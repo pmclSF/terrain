@@ -152,23 +152,6 @@ docs-gen:
 docs-verify:
 	@scripts/docs-verify.sh
 
-# ── Parity gate ────────────────────────────────────────────
-# Reads docs/release/parity/{rubric,scores}.yaml and emits the
-# pillar-parity matrix + verdict. Exits non-zero when any pillar
-# is below its hard-gate floor (Gate ≥ 4, Understand ≥ 3 in 0.2.0).
-# Soft gates (Align in 0.2.0) print a WARN banner but do not fail.
-# Source-of-truth doc is `docs/release/0.2.x-maturity-audit.md`.
-pillar-parity:
-	@go run ./cmd/internal/terrain-parity-gate
-
-# JSON form for CI integration / external tooling.
-pillar-parity-json:
-	@go run ./cmd/internal/terrain-parity-gate --json
-
-# Compact form: per-area + per-pillar floor map only.
-pillar-parity-floor:
-	@go run ./cmd/internal/terrain-parity-gate --floor-map
-
 # `docs-linkcheck` walks docs/ and verifies that every intra-repo
 # markdown link resolves to a real file. Skips docs/internal/ and
 # docs/legacy/ by default; run with -include-internal to also scan

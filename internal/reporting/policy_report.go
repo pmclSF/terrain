@@ -13,7 +13,7 @@ import (
 
 // RenderPolicyReport writes a human-readable policy check report to w.
 //
-// Layout (0.2 redesign — audit lift on policy_governance.V2):
+// Layout:
 //
 //	──────────────────────────────────────────────────────────────
 //	  [PASS|BLOCKED]  N violations against <policy-file>

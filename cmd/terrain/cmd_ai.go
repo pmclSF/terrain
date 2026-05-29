@@ -459,11 +459,10 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	var evalRun *airun.EvalRunResult
 	if !dryRun && execErr == nil && evalOutputPath != "" {
 		if loaded, err := loadEvalRunByFramework(framework, evalOutputPath); err != nil {
-			// Audit-named gap (ai_execution_gating.P5,
-			// ai_eval_ingestion.P5): designed remediation
-			// instead of a bare "Warning: failed to parse" line.
-			// Adopters seeing the parse error need to know which
-			// adapter expected which shape and where to look.
+			// Designed remediation instead of a bare
+			// "Warning: failed to parse" line. Adopters seeing
+			// the parse error need to know which adapter
+			// expected which shape and where to look.
 			fmt.Fprintf(os.Stderr, "Warning: failed to parse %s output: %v\n", framework, err)
 			fmt.Fprintln(os.Stderr)
 			fmt.Fprintf(os.Stderr, "The %s adapter couldn't parse the output at %s.\n", framework, evalOutputPath)
@@ -627,8 +626,7 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 
 	// Per-input ingestion diagnostics — when the gating decision
 	// rests on adapter-defaulted or computed fields, surface them so
-	// the adopter can audit data lineage. Audit (ai_eval_ingestion.E3
-	// + ai_execution_gating.E3) called for this surface.
+	// the adopter can audit data lineage.
 	if evalRun != nil && len(evalRun.Diagnostics) > 0 {
 		fmt.Printf("Ingestion diagnostics (%d):\n", len(evalRun.Diagnostics))
 		for _, d := range evalRun.Diagnostics {

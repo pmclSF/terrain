@@ -47,8 +47,7 @@ func runImpactPipeline(root, baseRef string, opts engine.PipelineOptions) (*impa
 func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string, explainSelection bool) error {
 	impactResult, _, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
-		// Audit-named gap (insights_impact_explain.P5):
-		// designed remediation for impact-pipeline failures.
+		// Designed remediation for impact-pipeline failures.
 		// Same shape as runPR's remediation since the
 		// underlying failure modes are identical (missing
 		// base ref, shallow clone, empty diff).
@@ -179,8 +178,8 @@ func applyImpactPolicy(impactResult *impact.ImpactResult, result *engine.Pipelin
 func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGate) error {
 	impactResult, result, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
-		// Audit-named gap (pr_change_scoped.P5): the impact
-		// pipeline can fail for half a dozen different reasons —
+		// The impact pipeline can fail for half a dozen
+		// different reasons —
 		// missing git history, no base ref, unparseable diff,
 		// analysis crash. Wrap with a hint about the most
 		// adopter-actionable cause.

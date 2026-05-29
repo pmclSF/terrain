@@ -140,9 +140,8 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	// AND this signal surfaces so silent rot doesn't accumulate.
 	"suppressionExpired": {Source: SignalSourceStatic},
 
-	// §9 stable-rule signals — sourced from static analysis of
-	// manifests, AI surfaces, code units, and graph state. Detectors
-	// land in subsequent commits.
+	// Stable-rule signals — sourced from static analysis of
+	// manifests, AI surfaces, code units, and graph state.
 	"versionFloating":       {Source: SignalSourceStatic},
 	"secretsInPrompt":       {Source: SignalSourceStatic},
 	"noTestsForCodeUnit":    {Source: SignalSourceGraph},
@@ -169,7 +168,7 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	"noIntegrationTest": {Source: SignalSourceGraph},
 	"noDataValidation":  {Source: SignalSourceStatic},
 
-	// §9 preview rules.
+	// Preview-tier rules.
 	"promptBloat":              {Source: SignalSourceStatic},
 	"promptWithoutTemperature": {Source: SignalSourceStatic},
 	"missingPromptValidator":   {Source: SignalSourceStatic},

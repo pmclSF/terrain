@@ -1,4 +1,4 @@
-// Package hygiene implements the §9 hygiene/* stable rules — pattern-
+// Package hygiene implements the hygiene/* stable rules — pattern-
 // based code-quality checks that don't depend on runtime artifacts.
 package hygiene
 

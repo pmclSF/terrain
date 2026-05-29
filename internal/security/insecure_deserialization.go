@@ -1,4 +1,4 @@
-// Package security implements the §9 security/* stable rules.
+// Package security implements the security/* stable rules.
 package security
 
 import (

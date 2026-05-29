@@ -34,7 +34,7 @@ A call into an unsafe deserialization primitive — `pickle.load`, `torch.load` 
 - **Tier:** stable
 - **Default severity:** critical
 - **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — see §7
+- **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
 
 ## 3. What this catches
 

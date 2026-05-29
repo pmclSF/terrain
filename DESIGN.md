@@ -53,7 +53,6 @@ cmd/internal/                 Maintainer-only tooling (not in adopter binary sur
   terrain-convert-bench/      Conversion benchmark vs legacy reference
   terrain-docs-gen/           Doc stub generation from signal manifest
   terrain-docs-linkcheck/     Intra-repo markdown link check
-  terrain-parity-gate/        Per-pillar parity gate
   terrain-regression-gate/    Recall-regression gate
   terrain-truth-verify/       Manifest vs feature-status consistency check
   terrain-truthcheck/         Ground-truth fixture verifier

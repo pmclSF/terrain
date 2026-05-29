@@ -1,4 +1,4 @@
-// Package data implements the §9 data/* stable rules.
+// Package data implements the data/* stable rules.
 package data
 
 import (

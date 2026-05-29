@@ -576,9 +576,6 @@ func resolveHistoryRoot(source string) string {
 // regardless of leading dashes, matching the POSIX convention. A nil
 // flagsWithValue is supported for callers that don't accept value-flags
 // (e.g. `terrain detect`).
-//
-// Round 1 review noted this helper as undocumented; this comment is the
-// canonical explanation.
 func reorderCLIArgs(args []string, flagsWithValue map[string]bool) []string {
 	if len(args) == 0 {
 		return nil

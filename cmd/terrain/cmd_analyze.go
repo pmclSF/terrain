@@ -278,10 +278,9 @@ func runAnalyze(o analyzeRunOpts) error {
 		if o.Diag && result != nil && result.Diagnostics != nil {
 			result.Diagnostics.Render(os.Stderr)
 		}
-		// Audit-named gap (core_analyze.P5): designed remediation
-		// when analysis fails. Distinguishes context cancellation
-		// (timeout / Ctrl-C) from other failure modes so adopters
-		// see the right next step.
+		// Designed remediation when analysis fails. Distinguishes
+		// context cancellation (timeout / Ctrl-C) from other
+		// failure modes so adopters see the right next step.
 		if !jsonOutput {
 			analyzeFailureRemediation(err, root, timeout)
 		}
@@ -497,10 +496,10 @@ func runPolicyCheck(root string, jsonOutput bool, coveragePath, coverageRunLabel
 	// Load policy
 	policyResult, err := policy.Load(root)
 	if err != nil {
-		// Audit-named gap (policy_governance.P5): surface a
-		// designed remediation pointer instead of dumping the bare
-		// yaml error. Adopters seeing "yaml: line 5: did not find
-		// expected key" don't know that's policy.yaml's fault.
+		// Surface a designed remediation pointer instead of
+		// dumping the bare yaml error. Adopters seeing
+		// "yaml: line 5: did not find expected key" don't know
+		// that's policy.yaml's fault.
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Policy file failed to load. Common causes:")
@@ -648,8 +647,6 @@ func policyStatusMessage(pass bool) string {
 //   - context cancelled (--timeout fired or Ctrl-C)
 //   - filesystem / parse error
 //   - everything else (generic remediation)
-//
-// Audit-named gap (core_analyze.P5).
 func analyzeFailureRemediation(err error, root string, timeout time.Duration) {
 	fmt.Fprintln(os.Stderr)
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {

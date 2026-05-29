@@ -36,8 +36,3 @@ npm run package
 
 The packaged `.vsix` can be installed locally or published with `vsce publish`.
 
-## Roadmap
-
-- 0.3.0: live snapshot streaming from `terrain serve`.
-- 0.3.0: quick-fix code actions for select rules.
-- 0.4.0: inline annotations for cause-path nodes.

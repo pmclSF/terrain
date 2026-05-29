@@ -1,4 +1,4 @@
-// Package performance implements the §9 performance/* stable rules.
+// Package performance implements the performance/* stable rules.
 package performance
 
 import (
