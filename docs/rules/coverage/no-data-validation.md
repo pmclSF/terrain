@@ -5,7 +5,7 @@
 **Type:** `noDataValidation`  
 **Domain:** quality  
 **Default severity:** medium  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** observability
 
 ## Summary
@@ -15,6 +15,10 @@ A data pipeline file (ETL / dbt model / training data loader) has no data-valida
 ## Remediation
 
 Add data validation (GE expectations, pandera schemas, dbt-expectations tests) on the pipeline's output. Run the validation in CI on a fixed sample.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/coverage/no_data_validation.go (DetectNoDataValidation). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

@@ -5,7 +5,7 @@
 **Type:** `piiInEval`  
 **Domain:** ai  
 **Default severity:** critical  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** gate
 
 ## Summary
@@ -15,6 +15,10 @@ An eval-directory file contains PII-shaped values (emails, phone numbers, SSNs, 
 ## Remediation
 
 Replace PII in the eval dataset with synthetic equivalents (Faker, Mimesis, mockaroo) or apply a redaction pass before committing.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/security/pii_in_eval.go (DetectPIIInEval). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

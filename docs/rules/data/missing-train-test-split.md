@@ -5,7 +5,7 @@
 **Type:** `missingTrainTestSplit`  
 **Domain:** ai  
 **Default severity:** high  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** gate
 
 ## Summary
@@ -15,6 +15,10 @@ A training call (.fit() / .train() / .partial_fit()) appears in a training file 
 ## Remediation
 
 Split the dataset before training (sklearn.model_selection.train_test_split, KFold for general use, TimeSeriesSplit for temporal data).
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/data/missing_train_test_split.go (DetectMissingTrainTestSplit). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

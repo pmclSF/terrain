@@ -5,7 +5,7 @@
 **Type:** `evalRegression`  
 **Domain:** ai  
 **Default severity:** high  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** gate
 
 ## Summary
@@ -15,6 +15,10 @@ An eval case's primary Score dropped from baseline to current past the configure
 ## Remediation
 
 Inspect the diff for prompt / model / retrieval changes that affect the regressing case(s). If intentional, update the baseline with `terrain ai record`.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/regression/eval_regression.go (DetectEvalRegression). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

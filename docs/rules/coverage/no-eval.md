@@ -5,7 +5,7 @@
 **Type:** `noEvalForAISurface`  
 **Domain:** ai  
 **Default severity:** high  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** gate
 
 ## Summary
@@ -15,6 +15,10 @@ An AI-typed CodeSurface (prompt / context / dataset / tool / retrieval / agent /
 ## Remediation
 
 Add an eval scenario that exercises the surface and asserts on its output / metric / shape.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/coverage/no_eval.go (DetectNoEvalForAISurface). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

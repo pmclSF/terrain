@@ -5,7 +5,7 @@
 **Type:** `missingEnvPinning`  
 **Domain:** quality  
 **Default severity:** medium  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** observability
 
 ## Summary
@@ -15,6 +15,10 @@ An environment-variable read in eval / inference code lacks a default value. The
 ## Remediation
 
 Supply a default — os.environ.get(KEY, "<pinned-value>") — or fail fast with a clear error message when the variable is absent.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/reproducibility/missing_env_pinning.go (DetectMissingEnvPinning). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

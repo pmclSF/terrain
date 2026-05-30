@@ -5,7 +5,7 @@
 **Type:** `passRateDrop`  
 **Domain:** ai  
 **Default severity:** high  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** gate
 
 ## Summary
@@ -15,6 +15,10 @@ The success / total ratio across eval cases dropped past the configured threshol
 ## Remediation
 
 Inspect per-case eval-regression findings for cases that flipped from pass to fail. If intentional, update the baseline.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/regression/pass_rate_drop.go (DetectPassRateDrop). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

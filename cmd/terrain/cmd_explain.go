@@ -757,6 +757,8 @@ func renderRuleExplanation(entry signals.ManifestEntry, root string, jsonOutput 
 			fmt.Println("Rule documentation")
 			fmt.Println(strings.Repeat("─", 18))
 			fmt.Println(strings.TrimSpace(string(body)))
+		} else if entry.Status == signals.StatusPlanned {
+			fmt.Println("Rule documentation: deferred (this rule is planned; the detector hasn't landed yet, so no doc is shipped).")
 		} else {
 			fmt.Printf("Rule documentation: %s (not on disk at this checkout)\n", entry.RuleURI)
 		}

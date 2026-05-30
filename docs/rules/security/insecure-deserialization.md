@@ -5,7 +5,7 @@
 **Type:** `insecureDeserialization`  
 **Domain:** ai  
 **Default severity:** critical  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** gate
 
 ## Summary
@@ -15,6 +15,10 @@ A call into an unsafe deserialization primitive (pickle.load, torch.load without
 ## Remediation
 
 Switch to a safe format (JSON, msgpack, safetensors, ONNX). When the primitive is unavoidable, declare the explicit safe option (weights_only=True for torch.load, Loader=SafeLoader for yaml.load).
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/security/insecure_deserialization.go (DetectInsecureDeserialization). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

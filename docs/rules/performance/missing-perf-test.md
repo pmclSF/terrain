@@ -5,7 +5,7 @@
 **Type:** `missingPerfTest`  
 **Domain:** quality  
 **Default severity:** low  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** observability
 
 ## Summary
@@ -15,6 +15,10 @@ A latency-critical AI surface (prompt / retrieval / agent / model / handler / ro
 ## Remediation
 
 Add a benchmark under benchmarks/ or perf/ that records P50 / P95 latency for the surface.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/performance/missing_perf_test.go (DetectMissingPerfTest). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

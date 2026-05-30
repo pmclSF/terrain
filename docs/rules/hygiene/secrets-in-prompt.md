@@ -5,7 +5,7 @@
 **Type:** `secretsInPrompt`  
 **Domain:** ai  
 **Default severity:** critical  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** gate
 
 ## Summary
@@ -18,7 +18,7 @@ Rotate the leaked credential immediately, then move it to an environment variabl
 
 ## Promotion plan
 
-Stable — Go-native regex detector ships first; richer secret-vocabulary integration is a possible follow-up.
+Off by default. Detector function exists at internal/hygiene/secrets_in_prompt.go (DetectSecretsInPrompt). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 
