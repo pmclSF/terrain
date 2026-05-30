@@ -40,6 +40,9 @@ func TestLLMFreeContract(t *testing.T) {
 		"github.com/pmclSF/terrain/internal/promptflow",
 		"github.com/pmclSF/terrain/internal/prompttemplate",
 		"github.com/pmclSF/terrain/internal/schemadiff",
+		"github.com/pmclSF/terrain/internal/injection",
+		"github.com/pmclSF/terrain/internal/scaffold",
+		"github.com/pmclSF/terrain/internal/plugin",
 	}
 
 	const forbidden = "github.com/pmclSF/terrain/internal/llmprovider"

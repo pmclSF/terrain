@@ -354,3 +354,43 @@ func TestDefaultDispatcher_CommandsRendersList(t *testing.T) {
 		t.Errorf("expected command-list header in reply; got:\n%s", r)
 	}
 }
+
+// /terrain scaffold accept should give a useful, actionable reply.
+// Without keyword args, it documents the usage. With schema:<path>,
+// it surfaces the equivalent CLI invocation an adopter can run.
+func TestDefaultDispatcher_ScaffoldWithoutSchemaShowsUsage(t *testing.T) {
+	cmd, err := Parse(`/terrain scaffold accept`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	r, err := (DefaultDispatcher{}).Handle(WebhookEvent{}, cmd)
+	if err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if !strings.Contains(r, "schema:<path>") {
+		t.Errorf("expected usage hint to mention schema:<path>; got:\n%s", r)
+	}
+	if !strings.Contains(r, "terrain scaffold --schema") {
+		t.Errorf("expected reply to surface CLI command; got:\n%s", r)
+	}
+}
+
+func TestDefaultDispatcher_ScaffoldWithSchemaShowsCLICommand(t *testing.T) {
+	cmd, err := Parse(`/terrain scaffold accept schema:schemas/input.json prompt:prompts/main.md`)
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	r, err := (DefaultDispatcher{}).Handle(WebhookEvent{}, cmd)
+	if err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	if !strings.Contains(r, "schemas/input.json") {
+		t.Errorf("expected schema path echoed in reply; got:\n%s", r)
+	}
+	if !strings.Contains(r, "prompts/main.md") {
+		t.Errorf("expected prompt path echoed in reply; got:\n%s", r)
+	}
+	if !strings.Contains(r, "terrain scaffold --schema schemas/input.json --prompt prompts/main.md --lang python") {
+		t.Errorf("expected full CLI invocation in reply; got:\n%s", r)
+	}
+}

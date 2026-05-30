@@ -7,6 +7,28 @@ All notable changes to Terrain are documented here. The format follows
 
 ### Added
 
+- **`terrain scaffold --schema <path>`** generates a runnable mutation-test
+  scaffold from a JSON Schema. Each declared property produces a
+  parametrized test exercising boundary cases (empty, max-length,
+  unicode-edge, SQL/XSS/path-traversal shapes, null-byte, INT32 bounds,
+  near-double-limits, etc.). Emits `python`, `typescript`, or `json`;
+  default Python output parses cleanly. The `/terrain scaffold accept`
+  slash verb now points adopters at the equivalent CLI invocation
+  (production deployments override `DefaultDispatcher` to execute the
+  generator and post the scaffold inline).
+- **`terrain inject --prompt <path>`** matches a prompt body against a
+  cataloged set of jailbreak/injection patterns (DAN-style, instruction
+  leak, system-prompt fishing, role confusion, indirect-via-retrieval)
+  and emits a runnable test scaffold so adopters can assert their
+  prompt pipeline degrades safely. LLM-free: the assertion is the
+  adopter's; terrain never invokes the model.
+- **`terrain plugins manifest <path>`** validates third-party plugin
+  manifests against `schema_version: 1`. Plugins must declare an
+  allowed `mechanism_class` (structural-ast | import-graph |
+  receiver-type | manifest-schema); literal-string and regex
+  primitives are explicitly forbidden, so every plugin rule clears a
+  class, not a cell. `terrain plugins add/remove` is reserved for
+  a future release once the runtime ships.
 - **`terrain` (no-args) discovery report.** A friendly first-touch summary —
   detected frameworks, AI surfaces, schema files, trace logs — followed by
   three copy-pasteable next-step commands. Strictly read-only: no
