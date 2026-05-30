@@ -151,6 +151,7 @@ docs-gen:
 
 docs-verify:
 	@scripts/docs-verify.sh
+	@docs/scripts/verify_doc_consistency.sh
 
 # `docs-linkcheck` walks docs/ and verifies that every intra-repo
 # markdown link resolves to a real file. Skips docs/internal/ and
