@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -109,18 +110,15 @@ func TestRealDispatcher_DismissAcceptsFindingKeywordFallback(t *testing.T) {
 }
 
 // TestRealDispatcher_DeferredVerbsReturnPlaceholderText proves the
-// five "acknowledged, deferred to future release" verbs return a
-// stable user-visible message rather than crashing. Adopters wiring
-// up the receiver shouldn't see a 500 just because they invoked a
-// not-yet-implemented verb.
+// "acknowledged, deferred" verbs return a stable user-visible message
+// rather than crashing. Adopters wiring up the receiver shouldn't see
+// a 500 just because they invoked a not-yet-implemented verb.
 func TestRealDispatcher_DeferredVerbsReturnPlaceholderText(t *testing.T) {
 	d := newRealDispatcher(t.TempDir())
 	cases := []slash.Verb{
 		slash.VerbRefresh,
 		slash.VerbExpand,
 		slash.VerbEscalate,
-		slash.VerbScaffold,
-		slash.VerbBench,
 	}
 	for _, v := range cases {
 		t.Run(string(v), func(t *testing.T) {
@@ -134,6 +132,95 @@ func TestRealDispatcher_DeferredVerbsReturnPlaceholderText(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestRealDispatcher_ScaffoldGeneratesFromRealSchema is the end-to-end
+// proof that /terrain scaffold accept actually materializes a test
+// scaffold from a schema sitting in the repo, not a placeholder reply.
+func TestRealDispatcher_ScaffoldGeneratesFromRealSchema(t *testing.T) {
+	root := t.TempDir()
+	schemaPath := filepath.Join(root, "schemas", "input.json")
+	if err := os.MkdirAll(filepath.Dir(schemaPath), 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	schema := []byte(`{"properties": {"query": {"type": "string"}}}`)
+	if err := os.WriteFile(schemaPath, schema, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	d := newRealDispatcher(root)
+	cmd := &slash.Command{
+		Verb:       slash.VerbScaffold,
+		Positional: []string{"accept"},
+		Keyword:    map[string]string{"schema": "schemas/input.json", "lang": "python"},
+	}
+	reply, err := d.Handle(slash.WebhookEvent{}, cmd)
+	if err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	if !strings.Contains(reply, "boundary cases") {
+		t.Errorf("reply should mention boundary cases; got: %q", reply)
+	}
+	if !strings.Contains(reply, "import pytest") {
+		t.Errorf("reply should contain generated pytest scaffold; got: %q", reply)
+	}
+}
+
+// TestRealDispatcher_ScaffoldWithoutSchemaShowsUsage covers the
+// missing-keyword path — the reply should tell the user what to pass.
+func TestRealDispatcher_ScaffoldWithoutSchemaShowsUsage(t *testing.T) {
+	d := newRealDispatcher(t.TempDir())
+	cmd := &slash.Command{Verb: slash.VerbScaffold, Keyword: map[string]string{}}
+	reply, err := d.Handle(slash.WebhookEvent{}, cmd)
+	if err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	if !strings.Contains(reply, "schema:<path>") {
+		t.Errorf("reply should document schema:<path>; got: %q", reply)
+	}
+}
+
+// TestRealDispatcher_ScaffoldRejectsPathEscape proves the safeJoin
+// guard prevents a hostile slash comment from asking the server to
+// read files outside the repo root.
+func TestRealDispatcher_ScaffoldRejectsPathEscape(t *testing.T) {
+	d := newRealDispatcher(t.TempDir())
+	cmd := &slash.Command{
+		Verb:    slash.VerbScaffold,
+		Keyword: map[string]string{"schema": "../../etc/passwd"},
+	}
+	reply, err := d.Handle(slash.WebhookEvent{}, cmd)
+	if err != nil {
+		t.Fatalf("Handle: %v", err)
+	}
+	if !strings.Contains(reply, "escapes") {
+		t.Errorf("reply should reject path escape; got: %q", reply)
+	}
+}
+
+// TestRealDispatcher_BenchWithoutIDShowsUsage and with-id documents
+// the bench placeholder is stable.
+func TestRealDispatcher_BenchReplies(t *testing.T) {
+	d := newRealDispatcher(t.TempDir())
+	t.Run("without id", func(t *testing.T) {
+		cmd := &slash.Command{Verb: slash.VerbBench}
+		reply, err := d.Handle(slash.WebhookEvent{}, cmd)
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		if !strings.Contains(reply, "requires a benchmark id") {
+			t.Errorf("reply should document usage; got: %q", reply)
+		}
+	})
+	t.Run("with id", func(t *testing.T) {
+		cmd := &slash.Command{Verb: slash.VerbBench, Positional: []string{"latency-001"}}
+		reply, err := d.Handle(slash.WebhookEvent{}, cmd)
+		if err != nil {
+			t.Fatalf("Handle: %v", err)
+		}
+		if !strings.Contains(reply, "latency-001") {
+			t.Errorf("reply should echo the bench id; got: %q", reply)
+		}
+	})
 }
 
 // TestRealDispatcher_ExplainWithMissingArgErrors covers the

@@ -28,8 +28,8 @@ func TestSafeDetectChecked_RunsWhenInputsPresent(t *testing.T) {
 	t.Parallel()
 	reg := DetectorRegistration{
 		Meta: DetectorMeta{
-			ID:              "test.no-required-inputs",
-			Domain:          DomainQuality,
+			ID:     "test.no-required-inputs",
+			Domain: DomainQuality,
 		},
 		Detector: noopDetector{},
 	}

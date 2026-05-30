@@ -160,9 +160,9 @@ func TestIsToolingPath(t *testing.T) {
 		{"lib/api.g.dart", true},
 		{"models/user.freezed.dart", true},
 		// Not generated despite similar-looking names (kept).
-		{"src/userPb.go", false},  // not _pb.go suffix
-		{"src/protobuf-helper.go", false},  // "protobuf" prefix isn't a tooling dir
-		{"src/generator.ts", false},  // not _generated.* suffix
+		{"src/userPb.go", false},          // not _pb.go suffix
+		{"src/protobuf-helper.go", false}, // "protobuf" prefix isn't a tooling dir
+		{"src/generator.ts", false},       // not _generated.* suffix
 	}
 	for _, c := range cases {
 		got := isToolingPath(c.path)

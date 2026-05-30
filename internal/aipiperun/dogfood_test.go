@@ -23,7 +23,9 @@ func TestRunRepo_TrainingDetectorTimebounded(t *testing.T) {
 	}()
 	select {
 	case <-done:
-		if err != nil { t.Fatalf("RunRepo error: %v", err) }
+		if err != nil {
+			t.Fatalf("RunRepo error: %v", err)
+		}
 		t.Logf("got %d findings", len(findings))
 		for _, f := range findings {
 			t.Logf("  %s conf=%.3f atoms=%d", f.Path, f.Confidence, len(f.Atoms))

@@ -197,7 +197,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleURI:         "docs/rules/health/flaky-test.md",
 		PromotionPlan: "Today's detector is retry-based, not statistical failure-rate. " +
 			"Statistical detection lands in a future release.",
-		Tier:            TierObservability,
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalSkippedTest, ConstName: "SignalSkippedTest",
@@ -270,7 +270,7 @@ var allSignalManifest = []ManifestEntry{
 		// in reviewer persona. Capability preserved at observability;
 		// not appropriate for CI gating without an explicit policy
 		// threshold from the user.
-		Tier: TierObservability,
+		Tier:          TierObservability,
 		PromotionPlan: "Observability-tier. Gate-tier promotion requires an explicit user-declared policy threshold and framing-stable evaluation.",
 	},
 	{
@@ -294,7 +294,7 @@ var allSignalManifest = []ManifestEntry{
 		// stylistic and framing-unstable. Capability preserved at
 		// observability; rebuild path requires distinguishing
 		// module-boundary mocks from callback-spy stubs.
-		Tier: TierObservability,
+		Tier:          TierObservability,
 		PromotionPlan: "Observability-tier. Rebuild requires a mock-classifier distinguishing module vs callback mocks.",
 	},
 	{
@@ -312,7 +312,7 @@ var allSignalManifest = []ManifestEntry{
 		// the per-file signal is structurally near-silent. Re-frame as
 		// a repo-aggregate posture metric rather than a per-file
 		// finding.
-		Tier: TierObservability,
+		Tier:          TierObservability,
 		PromotionPlan: "Observability tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting.",
 	},
 	{
@@ -330,7 +330,7 @@ var allSignalManifest = []ManifestEntry{
 		// validation showed it is framing-unstable. Capability preserved
 		// at observability. Gate-tier promotion requires broader corpus
 		// diversity AND a framing-stable threshold conjunction.
-		Tier: TierObservability,
+		Tier:          TierObservability,
 		PromotionPlan: "Observability-tier. Gate-tier promotion requires a broader corpus and a framing-stable threshold (e.g. snap>=2 AND ratio>=0.3) plus an explicit user-facing policy declaration.",
 	},
 	{
@@ -359,7 +359,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleURI:         "docs/rules/quality/coverage-threshold.md",
 		PromotionPlan: "Severity flips at hard 100%-gap boundary; a smooth gradient lands in a future release " +
 			"per docs/scoring-rubric.md.",
-		Tier:            TierGate,
+		Tier: TierGate,
 	},
 	{
 		Type: SignalStaticSkippedTest, ConstName: "SignalStaticSkippedTest",
@@ -423,7 +423,7 @@ var allSignalManifest = []ManifestEntry{
 		// dialects (self.assertX, np.testing.*, mock.assert_called_*),
 		// which leaves a ceiling on precision until a multi-dialect
 		// oracle plus a path-role gate are in place.
-		Tier: TierObservability,
+		Tier:          TierObservability,
 		PromotionPlan: "Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role gate that excludes conftest/fixtures/commented-out tests, and framing-stable evaluation.",
 	},
 	{
@@ -546,7 +546,7 @@ var allSignalManifest = []ManifestEntry{
 		// target is historical. Capability preserved by refreshing the
 		// trigger set to living migration patterns (mocha->jest,
 		// jasmine->jest, unittest->pytest).
-		Tier: TierObservability,
+		Tier:          TierObservability,
 		PromotionPlan: "Observability-tier. Refresh the trigger set to living migration patterns and drop the enzyme sub-rule once base rates are confirmed.",
 	},
 	{
@@ -566,7 +566,7 @@ var allSignalManifest = []ManifestEntry{
 		//   - setTimeout-in-test needs a scope/binding gate to
 		//     distinguish jest.setTimeout config from bare setTimeout
 		//     in a test body
-		Tier: TierObservability,
+		Tier:          TierObservability,
 		PromotionPlan: "Observability-tier. Drop the enzyme sub-rule, refresh the trigger set, and add a scope gate distinguishing jest.setTimeout from bare setTimeout in a test body.",
 	},
 	{
@@ -690,8 +690,8 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal"},
 		RuleID:          "terrain/structural/phantom-eval",
 		RuleURI:         "docs/rules/structural/phantom-eval.md",
-		PromotionPlan: "Stable. Ships at observability tier because a silent eval-coverage gap is informational, not gate-blocking. Severity is High because the failure mode (eval reports passing while running zero tests) silently degrades trust in CI signal.",
-		Tier: TierObservability,
+		PromotionPlan:   "Stable. Ships at observability tier because a silent eval-coverage gap is informational, not gate-blocking. Severity is High because the failure mode (eval reports passing while running zero tests) silently degrades trust in CI signal.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalUntestedPromptFlow, ConstName: "SignalUntestedPromptFlow",
@@ -750,7 +750,7 @@ var allSignalManifest = []ManifestEntry{
 		// assertion detectors — misses self.assertX, np.testing,
 		// mock.assert_called_*, and fluent helpers. Inherited-base-class
 		// assertions also require cross-file resolution to fully fix.
-		Tier: TierObservability,
+		Tier:          TierObservability,
 		PromotionPlan: "Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role test gate, cross-file inherited-assertion resolution, and framing-stable evaluation.",
 	},
 	{
@@ -764,8 +764,8 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"graph-traversal", "structural-pattern"},
 		RuleID:          "terrain/structural/capability-gap",
 		RuleURI:         "docs/rules/structural/capability-gap.md",
-		PromotionPlan: "Capability inference is heuristic; will be promoted once the AI taxonomy supports explicit capability tags and precision is validated.",
-		Tier: TierObservability,
+		PromotionPlan:   "Capability inference is heuristic; will be promoted once the AI taxonomy supports explicit capability tags and precision is validated.",
+		Tier:            TierObservability,
 	},
 
 	// ── AI / Eval (planned in 0.1.2; ship in 0.2) ──────────────
@@ -790,7 +790,7 @@ var allSignalManifest = []ManifestEntry{
 		// detectors (hallucination-rate, cost-regression,
 		// retrieval-regression).
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalEvalRegression, ConstName: "SignalEvalRegression",
@@ -800,12 +800,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Inspect the diff for prompt / model / retrieval changes that affect the regressing case(s). If intentional, update the baseline with `terrain ai record`.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.85, ConfidenceMax: 0.99,
-		EvidenceSources: []string{"eval-execution"},
-		RuleID:          "terrain/regression/eval-regression",
-		RuleURI:         "docs/rules/regression/eval-regression.md",
-		Tier:            TierGate,
+		EvidenceSources:   []string{"eval-execution"},
+		RuleID:            "terrain/regression/eval-regression",
+		RuleURI:           "docs/rules/regression/eval-regression.md",
+		Tier:              TierGate,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/regression/eval_regression.go (DetectEvalRegression). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/regression/eval_regression.go (DetectEvalRegression). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalAccuracyRegression, ConstName: "SignalAccuracyRegression",
@@ -815,7 +815,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/accuracy-regression", RuleURI: "docs/rules/ai/accuracy-regression.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalCitationMissing, ConstName: "SignalCitationMissing",
@@ -825,7 +825,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/citation-missing", RuleURI: "docs/rules/ai/citation-missing.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalRetrievalMiss, ConstName: "SignalRetrievalMiss",
@@ -835,7 +835,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/retrieval-miss", RuleURI: "docs/rules/ai/retrieval-miss.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalAnswerGroundingFailure, ConstName: "SignalAnswerGroundingFailure",
@@ -845,7 +845,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/grounding-failure", RuleURI: "docs/rules/ai/grounding-failure.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalToolSelectionError, ConstName: "SignalToolSelectionError",
@@ -855,7 +855,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/tool-selection-error", RuleURI: "docs/rules/ai/tool-selection-error.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalSchemaParseFailure, ConstName: "SignalSchemaParseFailure",
@@ -865,7 +865,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/schema-parse-failure", RuleURI: "docs/rules/ai/schema-parse-failure.md",
 		PromotionPlan: "Planned. Reserved signal type — runtime detector not yet wired.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalSafetyFailure, ConstName: "SignalSafetyFailure",
@@ -878,7 +878,7 @@ var allSignalManifest = []ManifestEntry{
 		// ships; this runtime variant fires when an eval framework
 		// explicitly grades a case as a safety violation.
 		PromotionPlan: "Planned. Reserved signal type — runtime detector not yet wired.",
-		Tier:           TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalAIPolicyViolation, ConstName: "SignalAIPolicyViolation",
@@ -888,7 +888,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"policy"},
 		RuleID:          "terrain/ai/ai-policy-violation", RuleURI: "docs/rules/ai/ai-policy-violation.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:           TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalHallucinationDetected, ConstName: "SignalHallucinationDetected",
@@ -898,7 +898,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/hallucination", RuleURI: "docs/rules/ai/hallucination.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:           TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalLatencyRegression, ConstName: "SignalLatencyRegression",
@@ -908,7 +908,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/latency-regression", RuleURI: "docs/rules/ai/latency-regression.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:           TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalCostRegression, ConstName: "SignalCostRegression",
@@ -918,7 +918,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/cost-regression-umbrella", RuleURI: "docs/rules/ai/cost-regression-umbrella.md",
 		PromotionPlan: "Planned. Reserved signal type — generic cost-regression umbrella; not yet wired.",
-		Tier:           TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalContextOverflowRisk, ConstName: "SignalContextOverflowRisk",
@@ -928,7 +928,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern", "runtime"},
 		RuleID:          "terrain/ai/context-overflow", RuleURI: "docs/rules/ai/context-overflow.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalWrongSourceSelected, ConstName: "SignalWrongSourceSelected",
@@ -938,7 +938,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/wrong-source", RuleURI: "docs/rules/ai/wrong-source.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalCitationMismatch, ConstName: "SignalCitationMismatch",
@@ -948,7 +948,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/citation-mismatch", RuleURI: "docs/rules/ai/citation-mismatch.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalStaleSourceRisk, ConstName: "SignalStaleSourceRisk",
@@ -958,7 +958,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/stale-source", RuleURI: "docs/rules/ai/stale-source.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalChunkingRegression, ConstName: "SignalChunkingRegression",
@@ -968,7 +968,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/chunking-regression", RuleURI: "docs/rules/ai/chunking-regression.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalRerankerRegression, ConstName: "SignalRerankerRegression",
@@ -978,7 +978,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/reranker-regression", RuleURI: "docs/rules/ai/reranker-regression.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalTopKRegression, ConstName: "SignalTopKRegression",
@@ -988,7 +988,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/topk-regression", RuleURI: "docs/rules/ai/topk-regression.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalToolRoutingError, ConstName: "SignalToolRoutingError",
@@ -998,7 +998,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/tool-routing-error", RuleURI: "docs/rules/ai/tool-routing-error.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalToolGuardrailViolation, ConstName: "SignalToolGuardrailViolation",
@@ -1008,7 +1008,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime", "policy"},
 		RuleID:          "terrain/ai/tool-guardrail", RuleURI: "docs/rules/ai/tool-guardrail.md",
 		PromotionPlan: "Planned. Reserved signal type for runtime tool-guardrail violations; the structural side ships as aiToolWithoutSandbox.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalToolBudgetExceeded, ConstName: "SignalToolBudgetExceeded",
@@ -1018,7 +1018,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime", "policy"},
 		RuleID:          "terrain/ai/tool-budget", RuleURI: "docs/rules/ai/tool-budget.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalAgentFallbackTriggered, ConstName: "SignalAgentFallbackTriggered",
@@ -1028,7 +1028,7 @@ var allSignalManifest = []ManifestEntry{
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/agent-fallback", RuleURI: "docs/rules/ai/agent-fallback.md",
 		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 
 	// ── 0.2 AI signals (planned in 0.2, detectors land before 0.2 close) ──
@@ -1054,8 +1054,8 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.75, ConfidenceMax: 0.92,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/prompt-versioning", RuleURI: "docs/rules/ai/prompt-versioning.md",
-		Tier:            TierObservability,
-		PromotionPlan:   "Stays at observability tier until adopter-corpus precision confirms gate-readiness.",
+		Tier:          TierObservability,
+		PromotionPlan: "Stays at observability tier until adopter-corpus precision confirms gate-readiness.",
 	},
 	{
 		Type: SignalAIPromptInjectionRisk, ConstName: "SignalAIPromptInjectionRisk",
@@ -1067,8 +1067,8 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/prompt-injection-risk", RuleURI: "docs/rules/ai/prompt-injection-risk.md",
-		Tier:            TierObservability,
-		PromotionPlan:   "Off by default. The current pattern-matching predicate over-fires on non-injection prompt templates; the rule will be re-enabled when a structurally precise taint-flow predicate replaces it. Opt in via .terrain/policy.yaml only when an adopter has confirmed the local signal is useful.",
+		Tier:              TierObservability,
+		PromotionPlan:     "Off by default. The current pattern-matching predicate over-fires on non-injection prompt templates; the rule will be re-enabled when a structurally precise taint-flow predicate replaces it. Opt in via .terrain/policy.yaml only when an adopter has confirmed the local signal is useful.",
 		DisabledByDefault: true,
 	},
 	{
@@ -1081,8 +1081,8 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/hardcoded-api-key", RuleURI: "docs/rules/ai/hardcoded-api-key.md",
-		Tier:            TierObservability,
-		PromotionPlan:   "Off by default. The current literal-shape predicate is too narrow to fire reliably across typical adopter codebases; capability is preserved via the planned split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded. Opt in via .terrain/policy.yaml when the local repo shape matches the predicate.",
+		Tier:              TierObservability,
+		PromotionPlan:     "Off by default. The current literal-shape predicate is too narrow to fire reliably across typical adopter codebases; capability is preserved via the planned split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded. Opt in via .terrain/policy.yaml when the local repo shape matches the predicate.",
 		DisabledByDefault: true,
 	},
 	{
@@ -1123,7 +1123,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/tool-without-sandbox", RuleURI: "docs/rules/ai/tool-without-sandbox.md",
-		Tier:            TierGate,
+		Tier: TierGate,
 	},
 	{
 		Type: SignalAINonDeterministicEval, ConstName: "SignalAINonDeterministicEval",
@@ -1135,7 +1135,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.9, ConfidenceMax: 0.98,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/non-deterministic-eval", RuleURI: "docs/rules/ai/non-deterministic-eval.md",
-		Tier:            TierObservability,
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalAIModelDeprecationRisk, ConstName: "SignalAIModelDeprecationRisk",
@@ -1147,7 +1147,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/model-deprecation-risk", RuleURI: "docs/rules/ai/model-deprecation-risk.md",
-		Tier:            TierObservability,
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalAICostRegression, ConstName: "SignalAICostRegression",
@@ -1159,7 +1159,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/cost-regression", RuleURI: "docs/rules/ai/cost-regression.md",
-		Tier:            TierObservability,
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalAIHallucinationRate, ConstName: "SignalAIHallucinationRate",
@@ -1176,14 +1176,14 @@ var allSignalManifest = []ManifestEntry{
 		// (deprecation alias, then removal); the current name is kept
 		// for back-compat while the description / remediation carry
 		// the correct trust framing.
-		Title:       "Eval-Flagged Hallucination Share",
-		Description: "The eval framework's own hallucination metadata reports a share of cases above the project-configured threshold (default 5%). Terrain reads this from the framework output (Promptfoo / DeepEval / Ragas) — Terrain does not judge hallucinations directly.",
-		Remediation: "Investigate the underlying eval-flagged cases; tighten retrieval or grounding before merging. If you disagree with the eval framework's classification, fix the eval scenario or raise the threshold (with a documented justification).",
+		Title:           "Eval-Flagged Hallucination Share",
+		Description:     "The eval framework's own hallucination metadata reports a share of cases above the project-configured threshold (default 5%). Terrain reads this from the framework output (Promptfoo / DeepEval / Ragas) — Terrain does not judge hallucinations directly.",
+		Remediation:     "Investigate the underlying eval-flagged cases; tighten retrieval or grounding before merging. If you disagree with the eval framework's classification, fix the eval scenario or raise the threshold (with a documented justification).",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/hallucination-rate", RuleURI: "docs/rules/ai/hallucination-rate.md",
-		Tier:            TierGate,
+		Tier: TierGate,
 	},
 	{
 		Type: SignalAIFewShotContamination, ConstName: "SignalAIFewShotContamination",
@@ -1195,8 +1195,8 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.55, ConfidenceMax: 0.83,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/few-shot-contamination", RuleURI: "docs/rules/ai/few-shot-contamination.md",
-		PromotionPlan:   "Substring-overlap detector ships today; promotes to stable once broader validation tunes the threshold and adds token-level n-gram + semantic-similarity passes.",
-		Tier:            TierObservability,
+		PromotionPlan: "Substring-overlap detector ships today; promotes to stable once broader validation tunes the threshold and adds token-level n-gram + semantic-similarity passes.",
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalAIEmbeddingModelChange, ConstName: "SignalAIEmbeddingModelChange",
@@ -1208,8 +1208,8 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.7, ConfidenceMax: 0.88,
 		EvidenceSources: []string{"structural-pattern"},
 		RuleID:          "terrain/ai/embedding-model-change", RuleURI: "docs/rules/ai/embedding-model-change.md",
-		PromotionPlan:   "Ships the static precondition (embedding referenced + no retrieval coverage) today. The cross-snapshot content-hash diff variant lands once snapshot fingerprints are recorded.",
-		Tier:            TierObservability,
+		PromotionPlan: "Ships the static precondition (embedding referenced + no retrieval coverage) today. The cross-snapshot content-hash diff variant lands once snapshot fingerprints are recorded.",
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalAIRetrievalRegression, ConstName: "SignalAIRetrievalRegression",
@@ -1221,7 +1221,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
 		RuleID:          "terrain/ai/retrieval-regression", RuleURI: "docs/rules/ai/retrieval-regression.md",
-		Tier:            TierGate,
+		Tier: TierGate,
 	},
 	{
 		Type: SignalAIPromptSchemaDrift, ConstName: "SignalAIPromptSchemaDrift",
@@ -1233,8 +1233,8 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"static"},
 		RuleID:          "terrain/ai/prompt-schema-drift", RuleURI: "docs/rules/ai/prompt-schema-drift.md",
-		Tier:            TierObservability,
-		PromotionPlan:   "Ships at observability tier. Stays at observability until adopter-corpus measurement confirms gate-readiness.",
+		Tier:          TierObservability,
+		PromotionPlan: "Ships at observability tier. Stays at observability until adopter-corpus measurement confirms gate-readiness.",
 	},
 
 	// ── Engine self-diagnostic signals ──────────────────────────────
@@ -1252,7 +1252,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"static"},
 		RuleID:          "terrain/engine/detector-panic", RuleURI: "docs/rules/engine/detector-panic.md",
-		Tier:            TierObservability,
+		Tier: TierObservability,
 	},
 	// Per-detector wall-clock timeout budgets. Emitted by the
 	// pipeline (safeDetectWithBudget) when a detector exceeds its
@@ -1270,7 +1270,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"static"},
 		RuleID:          "terrain/engine/detector-budget", RuleURI: "docs/rules/engine/detector-budget.md",
-		Tier:            TierObservability,
+		Tier: TierObservability,
 	},
 	// Emitted by safeDetectChecked when a detector's declared input
 	// requirements (RequiresRuntime / RequiresBaseline /
@@ -1287,7 +1287,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"static"},
 		RuleID:          "terrain/engine/detector-missing-input", RuleURI: "docs/rules/engine/detector-missing-input.md",
-		Tier:            TierObservability,
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalSuppressionExpired, ConstName: "SignalSuppressionExpired",
@@ -1299,7 +1299,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"policy"},
 		RuleID:          "terrain/engine/suppression-expired", RuleURI: "docs/rules/engine/suppression-expired.md",
-		Tier:            TierObservability,
+		Tier: TierObservability,
 	},
 
 	// ── Stable rules ─────────────────────────────────────────────
@@ -1317,12 +1317,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Pin the dependency to an exact version, commit a lockfile that records the resolved set, or use a content-addressed git SHA reference.",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.85, ConfidenceMax: 0.99,
-		EvidenceSources: []string{"structural-pattern", "manifest"},
-		RuleID:          "terrain/reproducibility/version-floating",
-		RuleURI:         "docs/rules/reproducibility/version-floating.md",
-		Tier:            TierObservability,
+		EvidenceSources:   []string{"structural-pattern", "manifest"},
+		RuleID:            "terrain/reproducibility/version-floating",
+		RuleURI:           "docs/rules/reproducibility/version-floating.md",
+		Tier:              TierObservability,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/reproducibility/version_floating.go (DetectVersionFloating). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/reproducibility/version_floating.go (DetectVersionFloating). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 
 	// Remaining stable rules — declared as Planned. Each gets its
@@ -1338,12 +1338,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Rotate the leaked credential immediately, then move it to an environment variable or secret manager.",
 		DefaultSeverity: models.SeverityCritical,
 		ConfidenceMin:   0.95, ConfidenceMax: 0.99,
-		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "terrain/hygiene/secrets-in-prompt",
-		RuleURI:         "docs/rules/hygiene/secrets-in-prompt.md",
-		Tier:            TierGate,
+		EvidenceSources:   []string{"structural-pattern"},
+		RuleID:            "terrain/hygiene/secrets-in-prompt",
+		RuleURI:           "docs/rules/hygiene/secrets-in-prompt.md",
+		Tier:              TierGate,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/hygiene/secrets_in_prompt.go (DetectSecretsInPrompt). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/hygiene/secrets_in_prompt.go (DetectSecretsInPrompt). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalNoTestsForCodeUnit, ConstName: "SignalNoTestsForCodeUnit",
@@ -1353,12 +1353,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Add a test that imports the code unit and exercises its observable behavior. The rule defaults to exported symbols only; configure `include_private: true` to widen coverage.",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
-		EvidenceSources: []string{"graph-traversal"},
-		RuleID:          "terrain/coverage/no-tests",
-		RuleURI:         "docs/rules/coverage/no-tests.md",
-		Tier:            TierObservability,
+		EvidenceSources:   []string{"graph-traversal"},
+		RuleID:            "terrain/coverage/no-tests",
+		RuleURI:           "docs/rules/coverage/no-tests.md",
+		Tier:              TierObservability,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/coverage/no_tests.go (DetectNoTestsForCodeUnit). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/coverage/no_tests.go (DetectNoTestsForCodeUnit). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalNoEvalForAISurface, ConstName: "SignalNoEvalForAISurface",
@@ -1368,12 +1368,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Add an eval scenario that exercises the surface and asserts on its output / metric / shape.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
-		EvidenceSources: []string{"graph-traversal"},
-		RuleID:          "terrain/coverage/no-eval",
-		RuleURI:         "docs/rules/coverage/no-eval.md",
-		Tier:            TierGate,
+		EvidenceSources:   []string{"graph-traversal"},
+		RuleID:            "terrain/coverage/no-eval",
+		RuleURI:           "docs/rules/coverage/no-eval.md",
+		Tier:              TierGate,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/coverage/no_eval.go (DetectNoEvalForAISurface). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/coverage/no_eval.go (DetectNoEvalForAISurface). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalModelFixtureUnpinned, ConstName: "SignalModelFixtureUnpinned",
@@ -1383,12 +1383,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Pin the load to a commit SHA (revision=\"<sha>\" for HuggingFace), a version-suffixed filename (model_v3.0.pt), or a .safetensors-with-checksum format.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
-		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "terrain/hygiene/model-fixture-unpinned",
-		RuleURI:         "docs/rules/hygiene/model-fixture-unpinned.md",
-		Tier:            TierGate,
+		EvidenceSources:   []string{"structural-pattern"},
+		RuleID:            "terrain/hygiene/model-fixture-unpinned",
+		RuleURI:           "docs/rules/hygiene/model-fixture-unpinned.md",
+		Tier:              TierGate,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/hygiene/model_fixture_unpinned.go (DetectModelFixtureUnpinned). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/hygiene/model_fixture_unpinned.go (DetectModelFixtureUnpinned). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalEvalNoAssertion, ConstName: "SignalEvalNoAssertion",
@@ -1398,12 +1398,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Add an assert / score check that fails when the eval output deviates from expectations.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
-		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "terrain/hygiene/eval-no-assertion",
-		RuleURI:         "docs/rules/hygiene/eval-no-assertion.md",
-		Tier:            TierGate,
+		EvidenceSources:   []string{"structural-pattern"},
+		RuleID:            "terrain/hygiene/eval-no-assertion",
+		RuleURI:           "docs/rules/hygiene/eval-no-assertion.md",
+		Tier:              TierGate,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/hygiene/eval_no_assertion.go (DetectEvalNoAssertion). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/hygiene/eval_no_assertion.go (DetectEvalNoAssertion). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalNoSeed, ConstName: "SignalNoSeed",
@@ -1413,12 +1413,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Add a seed call at module scope or in a pytest fixture (np.random.seed(42), torch.manual_seed(42), or transformers.set_seed(42)).",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
-		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "terrain/reproducibility/no-seed",
-		RuleURI:         "docs/rules/reproducibility/no-seed.md",
-		Tier:            TierObservability,
+		EvidenceSources:   []string{"structural-pattern"},
+		RuleID:            "terrain/reproducibility/no-seed",
+		RuleURI:           "docs/rules/reproducibility/no-seed.md",
+		Tier:              TierObservability,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/reproducibility/no_seed.go (DetectNoSeed). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/reproducibility/no_seed.go (DetectNoSeed). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalMissingEnvPinning, ConstName: "SignalMissingEnvPinning",
@@ -1428,12 +1428,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Supply a default — os.environ.get(KEY, \"<pinned-value>\") — or fail fast with a clear error message when the variable is absent.",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
-		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "terrain/reproducibility/missing-env-pinning",
-		RuleURI:         "docs/rules/reproducibility/missing-env-pinning.md",
-		Tier:            TierObservability,
+		EvidenceSources:   []string{"structural-pattern"},
+		RuleID:            "terrain/reproducibility/missing-env-pinning",
+		RuleURI:           "docs/rules/reproducibility/missing-env-pinning.md",
+		Tier:              TierObservability,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/reproducibility/missing_env_pinning.go (DetectMissingEnvPinning). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/reproducibility/missing_env_pinning.go (DetectMissingEnvPinning). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalPIIInEval, ConstName: "SignalPIIInEval",
@@ -1443,12 +1443,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Replace PII in the eval dataset with synthetic equivalents (Faker, Mimesis, mockaroo) or apply a redaction pass before committing.",
 		DefaultSeverity: models.SeverityCritical,
 		ConfidenceMin:   0.75, ConfidenceMax: 0.95,
-		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "terrain/security/pii-in-eval",
-		RuleURI:         "docs/rules/security/pii-in-eval.md",
-		Tier:            TierGate,
+		EvidenceSources:   []string{"structural-pattern"},
+		RuleID:            "terrain/security/pii-in-eval",
+		RuleURI:           "docs/rules/security/pii-in-eval.md",
+		Tier:              TierGate,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/security/pii_in_eval.go (DetectPIIInEval). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/security/pii_in_eval.go (DetectPIIInEval). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalInsecureDeserialize, ConstName: "SignalInsecureDeserialize",
@@ -1458,12 +1458,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Switch to a safe format (JSON, msgpack, safetensors, ONNX). When the primitive is unavoidable, declare the explicit safe option (weights_only=True for torch.load, Loader=SafeLoader for yaml.load).",
 		DefaultSeverity: models.SeverityCritical,
 		ConfidenceMin:   0.9, ConfidenceMax: 0.99,
-		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "terrain/security/insecure-deserialization",
-		RuleURI:         "docs/rules/security/insecure-deserialization.md",
-		Tier:            TierGate,
+		EvidenceSources:   []string{"structural-pattern"},
+		RuleID:            "terrain/security/insecure-deserialization",
+		RuleURI:           "docs/rules/security/insecure-deserialization.md",
+		Tier:              TierGate,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/security/insecure_deserialization.go (DetectInsecureDeserialization). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/security/insecure_deserialization.go (DetectInsecureDeserialization). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalMissingPerfTest, ConstName: "SignalMissingPerfTest",
@@ -1473,12 +1473,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Add a benchmark under benchmarks/ or perf/ that records P50 / P95 latency for the surface.",
 		DefaultSeverity: models.SeverityLow,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.85,
-		EvidenceSources: []string{"graph-traversal"},
-		RuleID:          "terrain/performance/missing-perf-test",
-		RuleURI:         "docs/rules/performance/missing-perf-test.md",
-		Tier:            TierObservability,
+		EvidenceSources:   []string{"graph-traversal"},
+		RuleID:            "terrain/performance/missing-perf-test",
+		RuleURI:           "docs/rules/performance/missing-perf-test.md",
+		Tier:              TierObservability,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/performance/missing_perf_test.go (DetectMissingPerfTest). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/performance/missing_perf_test.go (DetectMissingPerfTest). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalDataLeakageSuspected, ConstName: "SignalDataLeakageSuspected",
@@ -1488,12 +1488,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Move scaler/encoder fits to AFTER the split. For time-series, use TimeSeriesSplit or a manual time-based cutoff.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
-		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "terrain/data/leakage-suspected",
-		RuleURI:         "docs/rules/data/leakage-suspected.md",
-		Tier:            TierGate,
+		EvidenceSources:   []string{"structural-pattern"},
+		RuleID:            "terrain/data/leakage-suspected",
+		RuleURI:           "docs/rules/data/leakage-suspected.md",
+		Tier:              TierGate,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/data/leakage_suspected.go (DetectLeakageSuspected). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/data/leakage_suspected.go (DetectLeakageSuspected). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalMissingTrainTestSplit, ConstName: "SignalMissingTrainTestSplit",
@@ -1503,12 +1503,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Split the dataset before training (sklearn.model_selection.train_test_split, KFold for general use, TimeSeriesSplit for temporal data).",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
-		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "terrain/data/missing-train-test-split",
-		RuleURI:         "docs/rules/data/missing-train-test-split.md",
-		Tier:            TierGate,
+		EvidenceSources:   []string{"structural-pattern"},
+		RuleID:            "terrain/data/missing-train-test-split",
+		RuleURI:           "docs/rules/data/missing-train-test-split.md",
+		Tier:              TierGate,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/data/missing_train_test_split.go (DetectMissingTrainTestSplit). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/data/missing_train_test_split.go (DetectMissingTrainTestSplit). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 
 	// ── Regression family (stable) ────────────────────────────────
@@ -1522,12 +1522,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Run `terrain ai record` on the current main-branch state to lock the baseline. Subsequent PRs will be compared against it.",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.99, ConfidenceMax: 0.99,
-		EvidenceSources: []string{"eval-execution"},
-		RuleID:          "terrain/regression/baseline-not-set",
-		RuleURI:         "docs/rules/regression/baseline-not-set.md",
-		Tier:            TierObservability,
+		EvidenceSources:   []string{"eval-execution"},
+		RuleID:            "terrain/regression/baseline-not-set",
+		RuleURI:           "docs/rules/regression/baseline-not-set.md",
+		Tier:              TierObservability,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/regression/baseline_not_set.go (DetectBaselineNotSet). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/regression/baseline_not_set.go (DetectBaselineNotSet). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalPassRateDrop, ConstName: "SignalPassRateDrop",
@@ -1537,12 +1537,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Inspect per-case eval-regression findings for cases that flipped from pass to fail. If intentional, update the baseline.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.9, ConfidenceMax: 0.99,
-		EvidenceSources: []string{"eval-execution"},
-		RuleID:          "terrain/regression/pass-rate-drop",
-		RuleURI:         "docs/rules/regression/pass-rate-drop.md",
-		Tier:            TierGate,
+		EvidenceSources:   []string{"eval-execution"},
+		RuleID:            "terrain/regression/pass-rate-drop",
+		RuleURI:           "docs/rules/regression/pass-rate-drop.md",
+		Tier:              TierGate,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/regression/pass_rate_drop.go (DetectPassRateDrop). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/regression/pass_rate_drop.go (DetectPassRateDrop). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalSnapshotMismatch, ConstName: "SignalSnapshotMismatch",
@@ -1552,12 +1552,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Inspect the diff for prompt / model / retrieval changes affecting the case. If the new output is correct, accept it via `terrain ai record`.",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
-		EvidenceSources: []string{"eval-execution"},
-		RuleID:          "terrain/regression/snapshot-mismatch",
-		RuleURI:         "docs/rules/regression/snapshot-mismatch.md",
-		Tier:            TierObservability,
+		EvidenceSources:   []string{"eval-execution"},
+		RuleID:            "terrain/regression/snapshot-mismatch",
+		RuleURI:           "docs/rules/regression/snapshot-mismatch.md",
+		Tier:              TierObservability,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/regression/snapshot_mismatch.go (DetectSnapshotMismatch). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/regression/snapshot_mismatch.go (DetectSnapshotMismatch). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalTestFailed, ConstName: "SignalTestFailed",
@@ -1567,12 +1567,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Reproduce locally with `terrain test --selector regression/test-failed`. Fix the failure or, if the test is stale, update it deliberately.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
-		EvidenceSources: []string{"runtime", "graph-traversal"},
-		RuleID:          "terrain/regression/test-failed",
-		RuleURI:         "docs/rules/regression/test-failed.md",
-		Tier:            TierGate,
+		EvidenceSources:   []string{"runtime", "graph-traversal"},
+		RuleID:            "terrain/regression/test-failed",
+		RuleURI:           "docs/rules/regression/test-failed.md",
+		Tier:              TierGate,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/regression/test_failed.go (DetectTestFailed). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/regression/test_failed.go (DetectTestFailed). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalPerformanceRegression, ConstName: "SignalPerformanceRegression",
@@ -1582,12 +1582,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Inspect the diff for training data / hyperparameter / feature changes. If the regression is intentional, update the baseline.",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.9, ConfidenceMax: 0.99,
-		EvidenceSources: []string{"eval-execution"},
-		RuleID:          "terrain/regression/performance-regression",
-		RuleURI:         "docs/rules/regression/performance-regression.md",
-		Tier:            TierGate,
+		EvidenceSources:   []string{"eval-execution"},
+		RuleID:            "terrain/regression/performance-regression",
+		RuleURI:           "docs/rules/regression/performance-regression.md",
+		Tier:              TierGate,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/regression/performance_regression.go (DetectPerformanceRegression). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/regression/performance_regression.go (DetectPerformanceRegression). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 
 	// ── Coverage family (stable) ──────────────────────────────────
@@ -1599,12 +1599,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Run `terrain ai record` to create the baseline directory. Commit `.terrain/baselines/latest.json` so subsequent PRs compare against it.",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
-		EvidenceSources: []string{"static"},
-		RuleID:          "terrain/coverage/missing-baseline",
-		RuleURI:         "docs/rules/coverage/missing-baseline.md",
-		Tier:            TierObservability,
+		EvidenceSources:   []string{"static"},
+		RuleID:            "terrain/coverage/missing-baseline",
+		RuleURI:           "docs/rules/coverage/missing-baseline.md",
+		Tier:              TierObservability,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/coverage/missing_baseline.go (DetectMissingBaseline). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/coverage/missing_baseline.go (DetectMissingBaseline). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalNoIntegrationTest, ConstName: "SignalNoIntegrationTest",
@@ -1614,12 +1614,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Add an integration test that exercises the handler / route end-to-end. The unit test stays as a fast inner-loop check; the integration test ensures the cross-stack contract holds.",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
-		EvidenceSources: []string{"graph-traversal"},
-		RuleID:          "terrain/coverage/no-integration-test",
-		RuleURI:         "docs/rules/coverage/no-integration-test.md",
-		Tier:            TierObservability,
+		EvidenceSources:   []string{"graph-traversal"},
+		RuleID:            "terrain/coverage/no-integration-test",
+		RuleURI:           "docs/rules/coverage/no-integration-test.md",
+		Tier:              TierObservability,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/coverage/no_integration_test.go (DetectNoIntegrationTest). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/coverage/no_integration_test.go (DetectNoIntegrationTest). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 	{
 		Type: SignalNoDataValidation, ConstName: "SignalNoDataValidation",
@@ -1629,12 +1629,12 @@ var allSignalManifest = []ManifestEntry{
 		Remediation:     "Add data validation (GE expectations, pandera schemas, dbt-expectations tests) on the pipeline's output. Run the validation in CI on a fixed sample.",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
-		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "terrain/coverage/no-data-validation",
-		RuleURI:         "docs/rules/coverage/no-data-validation.md",
-		Tier:            TierObservability,
+		EvidenceSources:   []string{"structural-pattern"},
+		RuleID:            "terrain/coverage/no-data-validation",
+		RuleURI:           "docs/rules/coverage/no-data-validation.md",
+		Tier:              TierObservability,
 		DisabledByDefault: true,
-		PromotionPlan: "Off by default. Detector function exists at internal/coverage/no_data_validation.go (DetectNoDataValidation). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
+		PromotionPlan:     "Off by default. Detector function exists at internal/coverage/no_data_validation.go (DetectNoDataValidation). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.",
 	},
 
 	// ── Preview rules ────────────────────────────────────────────
@@ -1653,7 +1653,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/prompt-quality/prompt-bloat", RuleURI: "docs/rules/prompt-quality/prompt-bloat.md",
 		PromotionPlan: "Fires when prompt token count exceeds the configured budget.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalPromptWithoutTemperature, ConstName: "SignalPromptWithoutTemperature",
@@ -1662,7 +1662,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/prompt-quality/prompt-without-temperature", RuleURI: "docs/rules/prompt-quality/prompt-without-temperature.md",
 		PromotionPlan: "Fires when an LLM SDK call has no temperature kwarg. Defaults differ across SDKs; an explicit value is reproducibility-critical.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalMissingPromptValidator, ConstName: "SignalMissingPromptValidator",
@@ -1671,7 +1671,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/prompt-quality/missing-validator", RuleURI: "docs/rules/prompt-quality/missing-validator.md",
 		PromotionPlan: "Fires when a prompt template has no output-validator schema attached.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalPromptVersionSkew, ConstName: "SignalPromptVersionSkew",
@@ -1680,7 +1680,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.75, ConfidenceMax: 0.9, EvidenceSources: []string{"graph-traversal"},
 		RuleID: "terrain/prompt-quality/version-skew", RuleURI: "docs/rules/prompt-quality/version-skew.md",
 		PromotionPlan: "Detects when the same prompt template is referenced by multiple eval scenarios under different version names.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalRetrievalWithoutRerank, ConstName: "SignalRetrievalWithoutRerank",
@@ -1689,7 +1689,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.65, ConfidenceMax: 0.8, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/retrieval-quality/no-rerank", RuleURI: "docs/rules/retrieval-quality/no-rerank.md",
 		PromotionPlan: "Flags retrieval pipelines with top_k > 5 and no reranker.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalColdVectorStore, ConstName: "SignalColdVectorStore",
@@ -1698,7 +1698,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/retrieval-quality/cold-store", RuleURI: "docs/rules/retrieval-quality/cold-store.md",
 		PromotionPlan: "Fires when a vector store is initialized but no index-population call exists in the same module.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalAgentLoopRisk, ConstName: "SignalAgentLoopRisk",
@@ -1707,7 +1707,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/agent-quality/loop-risk", RuleURI: "docs/rules/agent-quality/loop-risk.md",
 		PromotionPlan: "Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; validated against documented public agent-loop incidents.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalToolWithoutBudget, ConstName: "SignalToolWithoutBudget",
@@ -1716,7 +1716,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.75, ConfidenceMax: 0.9, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/agent-quality/tool-no-budget", RuleURI: "docs/rules/agent-quality/tool-no-budget.md",
 		PromotionPlan: "Fires when a tool-call-enabled agent has no rate limit or cost ceiling configured.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalTargetLeakage, ConstName: "SignalTargetLeakage",
@@ -1725,7 +1725,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/data-quality/target-leakage", RuleURI: "docs/rules/data-quality/target-leakage.md",
 		PromotionPlan: "Fires when a feature column is derived from the target column (e.g., y_lag1 in features after target encoding).",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalDuplicateEvalRows, ConstName: "SignalDuplicateEvalRows",
@@ -1734,7 +1734,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.9, ConfidenceMax: 0.99, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/data-quality/duplicate-rows", RuleURI: "docs/rules/data-quality/duplicate-rows.md",
 		PromotionPlan: "Fires when an eval dataset has more than 5% duplicate input rows.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalSchemaDrift, ConstName: "SignalSchemaDrift",
@@ -1743,7 +1743,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/data-quality/schema-drift", RuleURI: "docs/rules/data-quality/schema-drift.md",
 		PromotionPlan: "Fires when the pipeline output schema has changed between baseline and current run.",
-		Tier:            TierGate,
+		Tier:          TierGate,
 	},
 	{
 		Type: SignalMissingEvalCategories, ConstName: "SignalMissingEvalCategories",
@@ -1752,7 +1752,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.65, ConfidenceMax: 0.8, EvidenceSources: []string{"structural-pattern"},
 		RuleID: "terrain/coverage/missing-eval-categories", RuleURI: "docs/rules/coverage/missing-eval-categories.md",
 		PromotionPlan: "Fires when an eval suite has happy-path coverage but no adversarial or edge-case categories.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalOrphanedEval, ConstName: "SignalOrphanedEval",
@@ -1761,7 +1761,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.8, ConfidenceMax: 0.95, EvidenceSources: []string{"graph-traversal"},
 		RuleID: "terrain/coverage/orphaned-eval", RuleURI: "docs/rules/coverage/orphaned-eval.md",
 		PromotionPlan: "Fires when an eval has no CoveredSurfaceIDs (references no surface).",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalColdStartTime, ConstName: "SignalColdStartTime",
@@ -1770,7 +1770,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.8, ConfidenceMax: 0.95, EvidenceSources: []string{"runtime"},
 		RuleID: "terrain/performance/cold-start-time", RuleURI: "docs/rules/performance/cold-start-time.md",
 		PromotionPlan: "Fires when first-request latency exceeds the configured threshold (e.g., 2x P50).",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 	{
 		Type: SignalTokenCostBudget, ConstName: "SignalTokenCostBudget",
@@ -1779,7 +1779,7 @@ var allSignalManifest = []ManifestEntry{
 		ConfidenceMin: 0.9, ConfidenceMax: 0.99, EvidenceSources: []string{"runtime"},
 		RuleID: "terrain/performance/token-cost-budget", RuleURI: "docs/rules/performance/token-cost-budget.md",
 		PromotionPlan: "Fires when per-run token cost exceeds the configured ceiling.",
-		Tier:            TierObservability,
+		Tier:          TierObservability,
 	},
 }
 

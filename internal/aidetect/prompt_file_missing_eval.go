@@ -19,11 +19,11 @@ import (
 // treating this signal as a primary boundary-class detector.
 //
 // Detection logic mirrors safety_eval_missing's structure:
-//   1. Walk every CodeSurface whose Kind is an AI/ML surface kind.
-//   2. For each surface, check whether ANY eval (regardless of category)
-//      covers it — explicitly (CoveredSurfaceIDs) or implicitly (same
-//      top-level directory).
-//   3. Emit one signal per surface that has no covering eval.
+//  1. Walk every CodeSurface whose Kind is an AI/ML surface kind.
+//  2. For each surface, check whether ANY eval (regardless of category)
+//     covers it — explicitly (CoveredSurfaceIDs) or implicitly (same
+//     top-level directory).
+//  3. Emit one signal per surface that has no covering eval.
 //
 // Severity ladder:
 //   - LLM call sites + Agent + ToolDef: High (most exposure)

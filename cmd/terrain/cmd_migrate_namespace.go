@@ -186,4 +186,3 @@ func runMigrationLegacySubcommand(subCmd string, args []string) error {
 	}
 	return fmt.Errorf("unknown migrate subcommand: %q", subCmd)
 }
-

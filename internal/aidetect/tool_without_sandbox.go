@@ -38,12 +38,13 @@ type ToolWithoutSandboxDetector struct {
 // `verb_object` snake-case form that almost every real-world tool
 // definition uses.
 // Two dominant false-positive failure modes shape the tightened regex:
-//   (a) Bare "execute" / "exec" matches `execute_event_loop_cycle`
-//       (agent framework main loop) and `execute_tool $X` where the
-//       wrapped tool $X is benign (calculate, get_weather). The
-//       framework boilerplate verb doesn't make the tool destructive.
-//   (b) Bare "transfer" matches `transfer_to_spanish_agent` (agent
-//       handoff between assistants), not financial transfer.
+//
+//	(a) Bare "execute" / "exec" matches `execute_event_loop_cycle`
+//	    (agent framework main loop) and `execute_tool $X` where the
+//	    wrapped tool $X is benign (calculate, get_weather). The
+//	    framework boilerplate verb doesn't make the tool destructive.
+//	(b) Bare "transfer" matches `transfer_to_spanish_agent` (agent
+//	    handoff between assistants), not financial transfer.
 //
 // Tightened regex:
 //   - exec / execute now require explicit destructive context:
@@ -115,12 +116,12 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 				continue
 			}
 			out = append(out, models.Signal{
-				Type:        signals.SignalAIToolWithoutSandbox,
-				Category:    models.CategoryAI,
-				Severity:    models.SeverityHigh,
-				Confidence:  0.50,
-				Location:    models.SignalLocation{File: relPath, Symbol: f.ToolName},
-				Explanation: f.Explanation,
+				Type:            signals.SignalAIToolWithoutSandbox,
+				Category:        models.CategoryAI,
+				Severity:        models.SeverityHigh,
+				Confidence:      0.50,
+				Location:        models.SignalLocation{File: relPath, Symbol: f.ToolName},
+				Explanation:     f.Explanation,
 				SuggestedAction: "Wrap the tool in an approval gate, or restrict its capability surface to a sandbox / dry-run mode.",
 
 				SeverityClauses: []string{"sev-high-005"},

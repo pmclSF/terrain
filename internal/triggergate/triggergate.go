@@ -151,7 +151,7 @@ type scopeKind int
 
 const (
 	scopeFile scopeKind = iota
-	scopeTest             // inside an it/test/describe body
+	scopeTest           // inside an it/test/describe body
 )
 
 type scopeFrame struct {

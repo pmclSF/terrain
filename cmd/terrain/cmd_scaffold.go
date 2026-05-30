@@ -14,10 +14,11 @@ import (
 // unicode-edge, injection-shaped, etc.) for every field.
 //
 // Usage:
-//   terrain scaffold --schema schemas/prompt-input.json
-//   terrain scaffold --schema schemas/prompt-input.json --lang typescript
-//   terrain scaffold --schema schemas/prompt-input.json --json
-//   terrain scaffold --schema schemas/prompt-input.json --prompt prompts/main.md
+//
+//	terrain scaffold --schema schemas/prompt-input.json
+//	terrain scaffold --schema schemas/prompt-input.json --lang typescript
+//	terrain scaffold --schema schemas/prompt-input.json --json
+//	terrain scaffold --schema schemas/prompt-input.json --prompt prompts/main.md
 //
 // The scaffold is emitted to stdout; redirect to a test file.
 // Terrain never calls the model; the assertion is the adopter's.

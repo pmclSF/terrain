@@ -74,11 +74,11 @@ var toolingPathPrefixes = []string{
 	"protobuf/",
 	"autogen/",
 	// Additional generated-code paths:
-	"tests-gen/",       // Kotlin/JetBrains auto-generated test stubs
+	"tests-gen/",           // Kotlin/JetBrains auto-generated test stubs
 	"applyconfigurations/", // Kubernetes auto-generated SDK setters
-	"apps/playground/", // React/compiler playground demo
-	"playground/",      // generic playground apps
-	"docs/",            // documentation snippets
+	"apps/playground/",     // React/compiler playground demo
+	"playground/",          // generic playground apps
+	"docs/",                // documentation snippets
 }
 
 // generatedFileRe matches generated-code suffixes that should be

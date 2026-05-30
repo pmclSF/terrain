@@ -182,33 +182,33 @@ func (d *HardcodedAPIKeyDetector) Detect(snap *models.TestSuiteSnapshot) []model
 			// roundtripping.
 			if h.ScanError {
 				out = append(out, models.Signal{
-					Type:        signals.SignalAIHardcodedAPIKey,
-					Category:    models.CategoryAI,
-					Severity:    models.SeverityMedium,
-					Confidence:  0.5,
-					Location:    models.SignalLocation{File: relPath, Line: h.Line},
-					Explanation: "Secret-scan coverage degraded: scanner failed mid-file (" + strings.TrimPrefix(h.Provider, "scan-error:") + "). The remainder of the file was not scanned for hardcoded API keys.",
-					SuggestedAction: "Investigate why the file is unreadable (oversized line, encoding issue, truncated upload). Re-run after addressing.",
-					SeverityClauses: []string{"sev-medium-005"},
-					Actionability:   models.ActionabilityScheduled,
-					LifecycleStages: []models.LifecycleStage{models.StageMaintenance},
-					AIRelevance:     models.AIRelevanceMedium,
-					RuleID:          "terrain/ai/hardcoded-api-key",
-					RuleURI:         "docs/rules/ai/hardcoded-api-key.md",
-					DetectorVersion: "0.2.0",
+					Type:             signals.SignalAIHardcodedAPIKey,
+					Category:         models.CategoryAI,
+					Severity:         models.SeverityMedium,
+					Confidence:       0.5,
+					Location:         models.SignalLocation{File: relPath, Line: h.Line},
+					Explanation:      "Secret-scan coverage degraded: scanner failed mid-file (" + strings.TrimPrefix(h.Provider, "scan-error:") + "). The remainder of the file was not scanned for hardcoded API keys.",
+					SuggestedAction:  "Investigate why the file is unreadable (oversized line, encoding issue, truncated upload). Re-run after addressing.",
+					SeverityClauses:  []string{"sev-medium-005"},
+					Actionability:    models.ActionabilityScheduled,
+					LifecycleStages:  []models.LifecycleStage{models.StageMaintenance},
+					AIRelevance:      models.AIRelevanceMedium,
+					RuleID:           "terrain/ai/hardcoded-api-key",
+					RuleURI:          "docs/rules/ai/hardcoded-api-key.md",
+					DetectorVersion:  "0.2.0",
 					EvidenceSource:   models.SourceStructuralPattern,
 					EvidenceStrength: models.EvidenceWeak,
-					Metadata: map[string]any{"scanError": true},
+					Metadata:         map[string]any{"scanError": true},
 				})
 				continue
 			}
 			out = append(out, models.Signal{
-				Type:        signals.SignalAIHardcodedAPIKey,
-				Category:    models.CategoryAI,
-				Severity:    models.SeverityCritical,
-				Confidence:  0.92,
-				Location:    models.SignalLocation{File: relPath, Line: h.Line},
-				Explanation: "Hard-coded " + h.Provider + " API key detected in configuration.",
+				Type:            signals.SignalAIHardcodedAPIKey,
+				Category:        models.CategoryAI,
+				Severity:        models.SeverityCritical,
+				Confidence:      0.92,
+				Location:        models.SignalLocation{File: relPath, Line: h.Line},
+				Explanation:     "Hard-coded " + h.Provider + " API key detected in configuration.",
 				SuggestedAction: "Move the secret to an environment variable or secrets store and reference it through the runner's secret-resolution path.",
 
 				// SignalV2 fields.
@@ -237,8 +237,8 @@ func (d *HardcodedAPIKeyDetector) Detect(snap *models.TestSuiteSnapshot) []model
 // gatherConfigPaths returns every config-extension file we should scan.
 // Combines two sources:
 //
-//   1. files already in the snapshot (TestFiles, Scenarios)
-//   2. a fresh walk of d.Root for files matching the extension allowlist
+//  1. files already in the snapshot (TestFiles, Scenarios)
+//  2. a fresh walk of d.Root for files matching the extension allowlist
 //
 // Source #2 is what catches eval YAMLs / agent JSONs that aren't tests
 // per se and so don't appear in TestFiles. Without it, a repo with no

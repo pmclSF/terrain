@@ -44,17 +44,17 @@ type HallucinationRateDetector struct {
 // "off-topic from passage". All stems are unambiguous so expanding the
 // list is pure data without precision cost.
 var hallucinationKeywords = []string{
-	"fabricat",                                // fabricated, fabrication
-	"hallucinat",                              // hallucinated, hallucination
-	"grounding",                               // grounding failure
-	"made up", "ungrounded",                   // older phrasing
-	"not in source", "not in the source",      // common eval phrasing
-	"not in context", "not in the context",    // RAG-shaped
-	"no evidence",                             // citation-quality eval phrasing
-	"no citation",                             // citation-quality eval phrasing
-	"unsupported",                             // "answer is unsupported by passages"
-	"outside scope", "outside the scope",      // out-of-domain
-	"off-topic", "off topic",                  // off-topic
+	"fabricat",              // fabricated, fabrication
+	"hallucinat",            // hallucinated, hallucination
+	"grounding",             // grounding failure
+	"made up", "ungrounded", // older phrasing
+	"not in source", "not in the source", // common eval phrasing
+	"not in context", "not in the context", // RAG-shaped
+	"no evidence",                        // citation-quality eval phrasing
+	"no citation",                        // citation-quality eval phrasing
+	"unsupported",                        // "answer is unsupported by passages"
+	"outside scope", "outside the scope", // out-of-domain
+	"off-topic", "off topic", // off-topic
 	"contradicts source", "contradicts the source", // grounding contradiction
 }
 
@@ -106,11 +106,11 @@ func (d *HallucinationRateDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 			continue
 		}
 		out = append(out, models.Signal{
-			Type:        signals.SignalAIHallucinationRate,
-			Category:    models.CategoryAI,
-			Severity:    models.SeverityHigh,
-			Confidence:  0.9,
-			Location:    models.SignalLocation{File: env.SourcePath, ScenarioID: env.RunID},
+			Type:       signals.SignalAIHallucinationRate,
+			Category:   models.CategoryAI,
+			Severity:   models.SeverityHigh,
+			Confidence: 0.9,
+			Location:   models.SignalLocation{File: env.SourcePath, ScenarioID: env.RunID},
 			Explanation: fmt.Sprintf("Eval run reports a hallucination-shaped failure rate of %.1f%% (%d of %d cases), above the threshold of %.1f%%.",
 				rate*100, hallucinated, total, threshold*100),
 			SuggestedAction: "Investigate the failing cases; tighten retrieval or grounding before merging. Bump the threshold only with documented justification.",
@@ -132,12 +132,12 @@ func (d *HallucinationRateDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 			EvidenceSource:   models.SourceRuntime,
 			EvidenceStrength: models.EvidenceStrong,
 			Metadata: map[string]any{
-				"framework":        env.Framework,
-				"runId":            env.RunID,
-				"hallucinated":     hallucinated,
-				"totalCases":       total,
+				"framework":         env.Framework,
+				"runId":             env.RunID,
+				"hallucinated":      hallucinated,
+				"totalCases":        total,
 				"hallucinationRate": rate,
-				"threshold":        threshold,
+				"threshold":         threshold,
 			},
 		})
 	}

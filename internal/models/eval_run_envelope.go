@@ -34,10 +34,10 @@ type EvalRunEnvelope struct {
 // level. Duplicated so that models can render a top-level summary
 // without importing airun.
 type EvalRunAggregates struct {
-	Successes int                  `json:"successes"`
-	Failures  int                  `json:"failures"`
-	Errors    int                  `json:"errors"`
-	Tokens    EvalRunTokenUsage    `json:"tokens,omitempty"`
+	Successes int               `json:"successes"`
+	Failures  int               `json:"failures"`
+	Errors    int               `json:"errors"`
+	Tokens    EvalRunTokenUsage `json:"tokens,omitempty"`
 }
 
 type EvalRunTokenUsage struct {

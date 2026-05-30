@@ -763,7 +763,7 @@ func aiCoverageFindings(input *BuildInput) []Finding {
 			return fmt.Sprintf("%d AI surfaces have no eval scenario coverage", uncovered)
 		}(),
 		Description: fmt.Sprintf(
-			"Changes to uncovered AI surfaces (prompts, contexts, datasets, tool definitions) "+
+			"Changes to uncovered AI surfaces (prompts, contexts, datasets, tool definitions) " +
 				"cannot be validated automatically. Add eval scenarios to catch behavioral regressions."),
 		Category: CategoryCoverageDebt,
 		Severity: sev,
@@ -958,8 +958,8 @@ func testNextFindings(input *BuildInput) []Finding {
 	findings = append(findings, Finding{
 		Title: fmt.Sprintf("%d untested source %s — start with %s", len(candidates), plural(len(candidates), "file"), topDesc),
 		Description: fmt.Sprintf(
-			"These source files have exported code units with no covering tests. "+
-				"Prioritized by dependency count: files with more dependents create larger blind spots "+
+			"These source files have exported code units with no covering tests. " +
+				"Prioritized by dependency count: files with more dependents create larger blind spots " +
 				"for change-scoped test selection."),
 		Category: CategoryCoverageDebt,
 		Severity: sev,

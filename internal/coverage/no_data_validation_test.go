@@ -41,7 +41,7 @@ func TestDetectNoDataValidation_SuppressedByPandera(t *testing.T) {
 	t.Parallel()
 	files := []DataValidationInput{
 		{
-			Path:    "etl/transform.py",
+			Path: "etl/transform.py",
 			Content: []byte(`import pandera as pa
 schema = pa.DataFrameSchema({...})
 `),

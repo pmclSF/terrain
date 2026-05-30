@@ -136,9 +136,9 @@ func classifyDeserializationCall(text string) (deserializationCall, bool) {
 
 // isExplicitlySafe checks for suppression patterns:
 //
-//   torch.load(path, weights_only=True)            → safe at PyTorch ≥2.0
-//   yaml.load(stream, Loader=yaml.SafeLoader)      → safe
-//   yaml.load(stream, Loader=SafeLoader)           → safe
+//	torch.load(path, weights_only=True)            → safe at PyTorch ≥2.0
+//	yaml.load(stream, Loader=yaml.SafeLoader)      → safe
+//	yaml.load(stream, Loader=SafeLoader)           → safe
 //
 // Returns true when the call site declares the safe option.
 func isExplicitlySafe(call deserializationCall, argsNode *sitter.Node, src []byte) bool {

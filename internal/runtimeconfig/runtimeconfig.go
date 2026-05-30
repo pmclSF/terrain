@@ -10,14 +10,14 @@
 // the rule is not retired.
 //
 // What the recognizer does today:
-//   1. RecognizeFile: parses a YAML or .properties file and reports
-//      the model-config-shaped keys it carries (temperature, model,
-//      seed, embedding, retry, etc.).
-//   2. HasLoader: scans repo source for files that consume the config
-//      file via a known loader pattern (yaml.safe_load, dotenv,
-//      Config.from_yaml, etc.).
-//   3. Both together → the file is plausibly a runtime config; the
-//      consumer detector demotes its finding to observability tier.
+//  1. RecognizeFile: parses a YAML or .properties file and reports
+//     the model-config-shaped keys it carries (temperature, model,
+//     seed, embedding, retry, etc.).
+//  2. HasLoader: scans repo source for files that consume the config
+//     file via a known loader pattern (yaml.safe_load, dotenv,
+//     Config.from_yaml, etc.).
+//  3. Both together → the file is plausibly a runtime config; the
+//     consumer detector demotes its finding to observability tier.
 //
 // The recognizer is mechanism-gated by `runtime_config_recognizer`.
 package runtimeconfig
@@ -42,30 +42,30 @@ const MechanismName = "runtime_config_recognizer"
 // list intentionally avoids vendor-specific keys; it captures the
 // dimensions every model-driving config shares.
 var modelConfigKeys = map[string]bool{
-	"temperature":    true,
-	"top_p":          true,
-	"top_k":          true,
-	"max_tokens":     true,
-	"seed":           true,
-	"model":          true,
-	"model_name":     true,
-	"embedding":      true,
-	"embedding_model": true,
-	"retry":          true,
-	"retries":        true,
-	"timeout":        true,
+	"temperature":       true,
+	"top_p":             true,
+	"top_k":             true,
+	"max_tokens":        true,
+	"seed":              true,
+	"model":             true,
+	"model_name":        true,
+	"embedding":         true,
+	"embedding_model":   true,
+	"retry":             true,
+	"retries":           true,
+	"timeout":           true,
 	"frequency_penalty": true,
 	"presence_penalty":  true,
-	"stop":           true,
-	"system_prompt":  true,
+	"stop":              true,
+	"system_prompt":     true,
 }
 
 // Report is the recognizer's output for one config file.
 type Report struct {
-	Path           string   `json:"path"`
-	Format         string   `json:"format"` // "yaml" | "properties" | "unknown"
-	ConfigKeysHit  []string `json:"config_keys_hit"`
-	HasLoaderInRepo bool    `json:"has_loader_in_repo"`
+	Path            string   `json:"path"`
+	Format          string   `json:"format"` // "yaml" | "properties" | "unknown"
+	ConfigKeysHit   []string `json:"config_keys_hit"`
+	HasLoaderInRepo bool     `json:"has_loader_in_repo"`
 }
 
 // IsRuntimeConfig reports the recognizer's verdict.

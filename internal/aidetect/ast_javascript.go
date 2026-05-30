@@ -308,7 +308,7 @@ func classifyJSCall(method string, bindings map[string]aiImportBinding) *AICallS
 // The JS SDK convention is `{ model: "gpt-4o", messages: [...] }` as
 // the single options object. We search the first argument's
 // object_expression for a `model` property whose value is a string
-// literal. Template strings without interpolation (`` `gpt-4o` ``) are
+// literal. Template strings without interpolation (“ `gpt-4o` “) are
 // accepted; interpolated templates and references resolve to empty.
 func extractJSModelArg(argsNode *sitter.Node, src []byte) string {
 	if argsNode == nil || argsNode.NamedChildCount() == 0 {

@@ -11,6 +11,7 @@ import (
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/findinghistory"
 	"github.com/pmclSF/terrain/internal/identity"
+	"github.com/pmclSF/terrain/internal/scaffold"
 	"github.com/pmclSF/terrain/internal/slash"
 )
 
@@ -32,7 +33,7 @@ import (
 //	/terrain expand       → noop placeholder (depends on the comment-
 //	                         ID that posted the collapsed block)
 //	/terrain escalate     → noop placeholder (needs PR-state machinery)
-//	/terrain scaffold     → noop placeholder (needs scaffold engine)
+//	/terrain scaffold     → scaffold.GenerateFromSchema + scaffold.Emit
 //	/terrain bench        → noop placeholder (needs bench-by-id wiring)
 //
 // The repo root that runners need defaults to ".". A future deployment
@@ -134,11 +135,14 @@ func (d *realDispatcher) Handle(ev slash.WebhookEvent, cmd *slash.Command) (stri
 		return "_/terrain escalate acknowledged — per-PR tier override is deferred to a future release._", nil
 
 	case slash.VerbScaffold:
-		return "_/terrain scaffold accept acknowledged — test-scaffold materialization is deferred (the underlying scaffold engine lands in a later phase)._", nil
+		return d.handleScaffold(cmd)
 
 	case slash.VerbBench:
 		id := strings.Join(cmd.Positional, " ")
-		return fmt.Sprintf("_/terrain bench %s acknowledged — benchmark dispatch lands in a later phase._", id), nil
+		if id == "" {
+			return "_/terrain bench requires a benchmark id (usage: /terrain bench <id>)._", nil
+		}
+		return fmt.Sprintf("_/terrain bench %s acknowledged — run benchmarks locally with `terrain ai run <scenario>`; PR-side benchmark dispatch is reserved for a future release._", id), nil
 	}
 	return fmt.Sprintf("Unhandled verb `%s`.", cmd.Verb), nil
 }
@@ -213,6 +217,78 @@ func isUserInputError(err error) bool {
 		}
 	}
 	return false
+}
+
+// handleScaffold runs the mutation-test scaffold generator from a
+// slash invocation. Keyword args:
+//
+//	schema:<path>   required — JSON Schema relative to repo root
+//	prompt:<path>   optional — prompt under test (header comment)
+//	lang:python|typescript|json   optional — default python
+//
+// The schema path is resolved under repoRoot and rejected if it
+// escapes (so a hostile slash comment can't ask the server to read
+// arbitrary files). Returns the rendered scaffold inside a markdown
+// fenced block; adopters copy-paste into their tests/ tree.
+func (d *realDispatcher) handleScaffold(cmd *slash.Command) (string, error) {
+	schemaArg := cmd.Keyword["schema"]
+	if schemaArg == "" {
+		return "_/terrain scaffold accept needs `schema:<path>`. Example: `/terrain scaffold accept schema:schemas/input.json prompt:prompts/main.md lang:python`._", nil
+	}
+	resolved, err := safeJoin(d.repoRoot, schemaArg)
+	if err != nil {
+		return fmt.Sprintf("_Cannot read `%s`: %s._", schemaArg, err.Error()), nil
+	}
+	body, err := os.ReadFile(resolved)
+	if err != nil {
+		return fmt.Sprintf("_Cannot read schema `%s`: %s._", schemaArg, err.Error()), nil
+	}
+	cases, err := scaffold.GenerateFromSchema(body)
+	if err != nil {
+		return fmt.Sprintf("_Schema `%s` did not parse: %s._", schemaArg, err.Error()), nil
+	}
+	if len(cases) == 0 {
+		return fmt.Sprintf("_Schema `%s` declared no `properties` — nothing to scaffold._", schemaArg), nil
+	}
+	lang := cmd.Keyword["lang"]
+	if lang == "" {
+		lang = "python"
+	}
+	out := scaffold.Emit(cases, scaffold.EmitOptions{
+		SchemaPath: schemaArg,
+		PromptPath: cmd.Keyword["prompt"],
+		Language:   lang,
+	})
+	fence := "```python"
+	switch lang {
+	case "typescript", "ts":
+		fence = "```typescript"
+	case "json":
+		fence = "```json"
+	}
+	return fmt.Sprintf("Generated mutation-test scaffold for `%s` (%d boundary cases). Drop into your tests/ tree:\n\n%s\n%s\n```", schemaArg, len(cases), fence, strings.TrimRight(out, "\n")), nil
+}
+
+// safeJoin resolves a relative path under root, rejecting anything
+// that escapes root via "..". Used to prevent webhook callers from
+// asking the server to read arbitrary files.
+func safeJoin(root, rel string) (string, error) {
+	if filepath.IsAbs(rel) {
+		return "", fmt.Errorf("absolute paths not allowed")
+	}
+	resolved := filepath.Join(root, rel)
+	rootAbs, err := filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+	resolvedAbs, err := filepath.Abs(resolved)
+	if err != nil {
+		return "", err
+	}
+	if !strings.HasPrefix(resolvedAbs+string(filepath.Separator), rootAbs+string(filepath.Separator)) && resolvedAbs != rootAbs {
+		return "", fmt.Errorf("path escapes repo root")
+	}
+	return resolvedAbs, nil
 }
 
 // recordDismissInHistory writes the user's dismissal to the per-repo

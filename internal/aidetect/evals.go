@@ -87,7 +87,7 @@ func deriveFromEvalTests(root string, testFiles []models.TestFile, surfacesByPat
 		category := classifyScenarioCategory(tf.Path, src)
 
 		scenarios = append(scenarios, models.Eval{
-			EvalID:        scenarioID(tf.Framework, tf.Path),
+			EvalID:            scenarioID(tf.Framework, tf.Path),
 			Name:              scenarioNameFromPath(tf.Path),
 			Category:          category,
 			Path:              tf.Path,
@@ -171,7 +171,7 @@ func deriveFromAIImports(root string, testFiles []models.TestFile, detection *De
 		}
 
 		scenarios = append(scenarios, models.Eval{
-			EvalID:        scenarioID(framework, tf.Path),
+			EvalID:            scenarioID(framework, tf.Path),
 			Name:              scenarioNameFromPath(tf.Path),
 			Category:          category,
 			Path:              tf.Path,
@@ -214,7 +214,7 @@ func deriveFromPromptfooConfig(root, configPath string, prompts map[string]strin
 			sort.Strings(surfaces)
 
 			scenarios = append(scenarios, models.Eval{
-				EvalID:        fmt.Sprintf("scenario:promptfoo:%s:%d", configPath, testIdx),
+				EvalID:            fmt.Sprintf("scenario:promptfoo:%s:%d", configPath, testIdx),
 				Name:              desc,
 				Category:          "eval",
 				Path:              configPath,

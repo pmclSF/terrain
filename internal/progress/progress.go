@@ -42,13 +42,13 @@ var spinnerFrames = []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "�
 // NewSpinner; only emits glyphs when stderr is a TTY and the
 // caller didn't pass quiet=true.
 type Spinner struct {
-	out      io.Writer
-	enabled  bool
-	mu       sync.Mutex
-	stop     chan struct{}
-	done     chan struct{}
-	label    string
-	stopped  bool
+	out     io.Writer
+	enabled bool
+	mu      sync.Mutex
+	stop    chan struct{}
+	done    chan struct{}
+	label   string
+	stopped bool
 }
 
 // NewSpinner returns a Spinner that emits to stderr. quiet=true

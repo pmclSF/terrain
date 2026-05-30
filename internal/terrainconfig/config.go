@@ -364,9 +364,10 @@ func pathMatches(patterns []string, path string) bool {
 }
 
 // matchGlob implements a minimal glob matcher supporting:
-//   * within a path segment
-//   ** across path segments
-//   ? single char
+//   - within a path segment
+//     ** across path segments
+//     ? single char
+//
 // No character classes — kept narrow on purpose.
 func matchGlob(pattern, name string) bool {
 	return globRecursive([]byte(pattern), []byte(name))

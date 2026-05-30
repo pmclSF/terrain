@@ -322,17 +322,17 @@ func TestBuild_ScenarioDuplication(t *testing.T) {
 	snap := &models.TestSuiteSnapshot{
 		Evals: []models.Eval{
 			{
-				EvalID:        "scenario:safety",
+				EvalID:            "scenario:safety",
 				Name:              "safety-check",
 				CoveredSurfaceIDs: []string{"surface:prompts.ts:system", "surface:prompts.ts:user"},
 			},
 			{
-				EvalID:        "scenario:accuracy",
+				EvalID:            "scenario:accuracy",
 				Name:              "accuracy-check",
 				CoveredSurfaceIDs: []string{"surface:prompts.ts:system", "surface:prompts.ts:user"},
 			},
 			{
-				EvalID:        "scenario:latency",
+				EvalID:            "scenario:latency",
 				Name:              "latency-check",
 				CoveredSurfaceIDs: []string{"surface:api.ts:predict"},
 			},

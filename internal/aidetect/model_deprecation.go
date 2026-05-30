@@ -209,12 +209,12 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 			// Model deprecations in `examples/` are still real findings
 			// because the example is meant to be copied.
 			out = append(out, models.Signal{
-				Type:        signals.SignalAIModelDeprecationRisk,
-				Category:    models.CategoryAI,
-				Severity:    severity,
-				Confidence:  0.88,
-				Location:    models.SignalLocation{File: relPath, Line: h.Line},
-				Explanation: h.Rule.Explanation,
+				Type:            signals.SignalAIModelDeprecationRisk,
+				Category:        models.CategoryAI,
+				Severity:        severity,
+				Confidence:      0.88,
+				Location:        models.SignalLocation{File: relPath, Line: h.Line},
+				Explanation:     h.Rule.Explanation,
 				SuggestedAction: "Pin to a dated model variant or upgrade to a supported tier.",
 
 				SeverityClauses: []string{severityClauseTier(severity) + "-005"},

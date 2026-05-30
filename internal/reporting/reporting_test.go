@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/pmclSF/terrain/internal/comparison"
+	"github.com/pmclSF/terrain/internal/framework_migration"
 	"github.com/pmclSF/terrain/internal/heatmap"
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/measurement"
 	"github.com/pmclSF/terrain/internal/metrics"
-	"github.com/pmclSF/terrain/internal/framework_migration"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/scoring"
 	"github.com/pmclSF/terrain/internal/testdata"

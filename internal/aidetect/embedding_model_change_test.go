@@ -94,9 +94,9 @@ client.embeddings.create(model="text-embedding-3-small", input=text)
 		},
 		Evals: []models.Eval{
 			{
-				EvalID: "scenario:1",
-				Name:       "rag baseline",
-				Category:   "retrieval",
+				EvalID:   "scenario:1",
+				Name:     "rag baseline",
+				Category: "retrieval",
 			},
 		},
 	}
@@ -118,7 +118,7 @@ client.embeddings.create(model="text-embedding-ada-002", input=text)
 		},
 		Evals: []models.Eval{
 			{
-				EvalID:        "scenario:1",
+				EvalID:            "scenario:1",
 				Name:              "happy path",
 				Category:          "smoke",
 				CoveredSurfaceIDs: []string{"s1"},

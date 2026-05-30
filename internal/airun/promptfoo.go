@@ -14,8 +14,8 @@ import (
 // Promptfoo's JSON format has shifted across major versions (v3 / v4
 // most commonly seen in the wild). This adapter handles both shapes:
 //
-//   v3 (current): top-level { evalId, results: { results: [...], stats: {...} } }
-//   v4+ (newer):  top-level { evalId, results: [...], stats: {...} }
+//	v3 (current): top-level { evalId, results: { results: [...], stats: {...} } }
+//	v4+ (newer):  top-level { evalId, results: [...], stats: {...} }
 //
 // Anything we can't recognize is returned as an error rather than
 // silently producing an empty result; adapter regressions are caught

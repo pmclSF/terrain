@@ -36,8 +36,8 @@ const (
 	SignalStaticSkippedTestUnconditional   models.SignalType = "staticSkippedTest-unconditional"
 	SignalStaticSkippedTestConditionalGate models.SignalType = "staticSkippedTest-conditional-gate"
 
-	SignalAssertionFreeTest      models.SignalType = "assertionFreeTest"
-	SignalOrphanedTestFile       models.SignalType = "orphanedTestFile"
+	SignalAssertionFreeTest models.SignalType = "assertionFreeTest"
+	SignalOrphanedTestFile  models.SignalType = "orphanedTestFile"
 
 	// Graph-powered structural signal types.
 	SignalUncoveredAISurface      models.SignalType = "uncoveredAISurface"
@@ -78,26 +78,26 @@ const (
 	// Detectors land in subsequent commits; the constants and manifest
 	// entries reserve the names and shape so policy rules and tests can
 	// reference them now.
-	SignalAISafetyEvalMissing      models.SignalType = "aiSafetyEvalMissing"
-	SignalAIPromptVersioning       models.SignalType = "aiPromptVersioning"
-	SignalAIPromptInjectionRisk    models.SignalType = "aiPromptInjectionRisk"
-	SignalAIHardcodedAPIKey        models.SignalType = "aiHardcodedAPIKey"
+	SignalAISafetyEvalMissing   models.SignalType = "aiSafetyEvalMissing"
+	SignalAIPromptVersioning    models.SignalType = "aiPromptVersioning"
+	SignalAIPromptInjectionRisk models.SignalType = "aiPromptInjectionRisk"
+	SignalAIHardcodedAPIKey     models.SignalType = "aiHardcodedAPIKey"
 	// Structural split of aiHardcodedAPIKey. Literal-shape retains
 	// the regex-derived "API-key-shaped string in config" capability
 	// at observability tier. The coverage-degraded half flags the
 	// secret-scanner CI-integration gap. The underlying capability is
 	// preserved across the split.
-	SignalAIHardcodedAPIKeyLiteralShape       models.SignalType = "aiHardcodedAPIKey-literal-shape"
-	SignalSecretScannerCoverageDegraded       models.SignalType = "secretScannerCoverageDegraded"
-	SignalAIToolWithoutSandbox     models.SignalType = "aiToolWithoutSandbox"
-	SignalAINonDeterministicEval   models.SignalType = "aiNonDeterministicEval"
-	SignalAIModelDeprecationRisk   models.SignalType = "aiModelDeprecationRisk"
-	SignalAICostRegression         models.SignalType = "aiCostRegression"
-	SignalAIHallucinationRate      models.SignalType = "aiHallucinationRate"
-	SignalAIFewShotContamination   models.SignalType = "aiFewShotContamination"
-	SignalAIEmbeddingModelChange   models.SignalType = "aiEmbeddingModelChange"
-	SignalAIRetrievalRegression    models.SignalType = "aiRetrievalRegression"
-	SignalAIPromptSchemaDrift      models.SignalType = "aiPromptSchemaDrift"
+	SignalAIHardcodedAPIKeyLiteralShape models.SignalType = "aiHardcodedAPIKey-literal-shape"
+	SignalSecretScannerCoverageDegraded models.SignalType = "secretScannerCoverageDegraded"
+	SignalAIToolWithoutSandbox          models.SignalType = "aiToolWithoutSandbox"
+	SignalAINonDeterministicEval        models.SignalType = "aiNonDeterministicEval"
+	SignalAIModelDeprecationRisk        models.SignalType = "aiModelDeprecationRisk"
+	SignalAICostRegression              models.SignalType = "aiCostRegression"
+	SignalAIHallucinationRate           models.SignalType = "aiHallucinationRate"
+	SignalAIFewShotContamination        models.SignalType = "aiFewShotContamination"
+	SignalAIEmbeddingModelChange        models.SignalType = "aiEmbeddingModelChange"
+	SignalAIRetrievalRegression         models.SignalType = "aiRetrievalRegression"
+	SignalAIPromptSchemaDrift           models.SignalType = "aiPromptSchemaDrift"
 
 	// Engine self-diagnostic signals — emitted by the pipeline itself,
 	// not by registered detectors.
@@ -152,9 +152,9 @@ const (
 	SignalPerformanceRegression models.SignalType = "performanceRegression"
 
 	// Coverage family — graph + filesystem checks.
-	SignalMissingBaseline    models.SignalType = "missingBaseline"
-	SignalNoIntegrationTest  models.SignalType = "noIntegrationTest"
-	SignalNoDataValidation   models.SignalType = "noDataValidation"
+	SignalMissingBaseline   models.SignalType = "missingBaseline"
+	SignalNoIntegrationTest models.SignalType = "noIntegrationTest"
+	SignalNoDataValidation  models.SignalType = "noDataValidation"
 
 	// Preview rules — detection logic ships but rules are default-
 	// off pending broader validation before promotion to Stable.

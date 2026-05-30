@@ -70,8 +70,8 @@ var stochasticPathMarkers = []string{
 // random / tf), whether the call is a seed setter, and whether it's
 // a stochastic source.
 type seedCall struct {
-	library    string
-	isSeed     bool
+	library      string
+	isSeed       bool
 	isStochastic bool
 }
 

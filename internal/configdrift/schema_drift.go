@@ -257,12 +257,12 @@ func scanDockerCompose(data []byte) []string {
 var apiVersionLine = regexp.MustCompile(`(?m)^\s*apiVersion:\s*([^\s#]+)`)
 
 var deprecatedAPIs = map[string]bool{
-	"extensions/v1beta1":     true,
-	"apps/v1beta1":           true,
-	"apps/v1beta2":           true,
-	"batch/v1beta1":          true,
-	"policy/v1beta1":         true,
-	"networking.k8s.io/v1beta1": true,
+	"extensions/v1beta1":                true,
+	"apps/v1beta1":                      true,
+	"apps/v1beta2":                      true,
+	"batch/v1beta1":                     true,
+	"policy/v1beta1":                    true,
+	"networking.k8s.io/v1beta1":         true,
 	"rbac.authorization.k8s.io/v1beta1": true,
 }
 

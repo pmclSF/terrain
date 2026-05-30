@@ -425,7 +425,9 @@ func isGoVersionPseudoOrLatest(v string) bool {
 }
 
 // goPseudoVersion matches the standard Go pseudo-version form:
-//   v<major>.<minor>.<patch>(-pre)?-<14-digit-utc>-<12-hex-hash>
+//
+//	v<major>.<minor>.<patch>(-pre)?-<14-digit-utc>-<12-hex-hash>
+//
 // e.g. v0.0.0-20240101120000-abcdef123456
 var goPseudoVersion = regexp.MustCompile(`^v?\d+\.\d+\.\d+(?:-[\w.]+)?-\d{14}-[0-9a-f]{12}$`)
 

@@ -14,7 +14,7 @@ The repository or package appears suitable for migration to a target framework.
 
 ## Remediation
 
-Evaluate candidates with `terrain migration readiness` and plan staged framework_migration.
+Evaluate candidates with `terrain migration readiness` and plan staged migration.
 
 ## Evidence sources
 

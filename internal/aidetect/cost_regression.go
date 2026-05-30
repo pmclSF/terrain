@@ -15,13 +15,13 @@ import (
 //
 // Detection model:
 //
-//   For each EvalRun in snap.EvalRuns:
-//     1. Find a same-framework EvalRun in snap.Baseline.EvalRuns.
-//        Match by (framework, runId) when both have RunIDs; fall back
-//        to the first run of the matching framework.
-//     2. Compute avg-token-cost-per-case for both.
-//     3. If current / baseline - 1 > threshold (default 0.25),
-//        emit a signal with the percentage increase.
+//	For each EvalRun in snap.EvalRuns:
+//	  1. Find a same-framework EvalRun in snap.Baseline.EvalRuns.
+//	     Match by (framework, runId) when both have RunIDs; fall back
+//	     to the first run of the matching framework.
+//	  2. Compute avg-token-cost-per-case for both.
+//	  3. If current / baseline - 1 > threshold (default 0.25),
+//	     emit a signal with the percentage increase.
 //
 // The detector only looks at cases that ran in BOTH runs (matched on
 // CaseID). This avoids spurious increases when the eval suite grows.
@@ -101,11 +101,11 @@ func (d *CostRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []models
 			severityClauses = []string{"sev-high-008"}
 		}
 		out = append(out, models.Signal{
-			Type:        signals.SignalAICostRegression,
-			Category:    models.CategoryAI,
-			Severity:    severity,
-			Confidence:  confidence,
-			Location:    models.SignalLocation{File: env.SourcePath, ScenarioID: env.RunID},
+			Type:       signals.SignalAICostRegression,
+			Category:   models.CategoryAI,
+			Severity:   severity,
+			Confidence: confidence,
+			Location:   models.SignalLocation{File: env.SourcePath, ScenarioID: env.RunID},
 			Explanation: fmt.Sprintf("Average cost-per-case rose %.1f%% versus the baseline run (%.4f → %.4f over %d paired cases). Threshold: %.0f%%.",
 				delta*100, baseAvg, curAvg, paired, threshold*100),
 			SuggestedAction: "Investigate the prompt or model change for unintended bloat. Bump the baseline if the increase is intentional.",

@@ -17,10 +17,10 @@ import (
 //
 // Detection logic:
 //
-//   1. Walk every CodeSurface whose Kind is in safetyCriticalSurfaceKinds.
-//   2. For each surface, check whether ANY scenario in the snapshot
-//      covers it AND has a safety-shaped category or name.
-//   3. Emit one signal per surface that lacks safety coverage.
+//  1. Walk every CodeSurface whose Kind is in safetyCriticalSurfaceKinds.
+//  2. For each surface, check whether ANY scenario in the snapshot
+//     covers it AND has a safety-shaped category or name.
+//  3. Emit one signal per surface that lacks safety coverage.
 //
 // "Safety-shaped" is matched against the scenario's Category, Name,
 // and Description to allow projects that don't standardise on a
@@ -49,10 +49,10 @@ func ehrKindFor(k models.CodeSurfaceKind) ehr.SurfaceKind {
 }
 
 var safetyCriticalSurfaceKinds = map[models.CodeSurfaceKind]bool{
-	models.SurfacePrompt:   true,
-	models.SurfaceAgent:    true,
-	models.SurfaceToolDef:  true,
-	models.SurfaceContext:  true,
+	models.SurfacePrompt:  true,
+	models.SurfaceAgent:   true,
+	models.SurfaceToolDef: true,
+	models.SurfaceContext: true,
 }
 
 // safetyCategoryMarkers are case-insensitive substrings that indicate
@@ -170,12 +170,12 @@ func (d *SafetyEvalMissingDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 			}
 		}
 		out = append(out, models.Signal{
-			Type:        signals.SignalAISafetyEvalMissing,
-			Category:    models.CategoryAI,
-			Severity:    models.SeverityHigh,
-			Confidence:  0.82,
-			Location:    models.SignalLocation{File: surface.Path, Symbol: surface.Name},
-			Explanation: "Surface `" + surface.Name + "` (kind=" + string(surface.Kind) + ") has no eval scenario covering a safety category (jailbreak / harm / injection / leak / pii).",
+			Type:            signals.SignalAISafetyEvalMissing,
+			Category:        models.CategoryAI,
+			Severity:        models.SeverityHigh,
+			Confidence:      0.82,
+			Location:        models.SignalLocation{File: surface.Path, Symbol: surface.Name},
+			Explanation:     "Surface `" + surface.Name + "` (kind=" + string(surface.Kind) + ") has no eval scenario covering a safety category (jailbreak / harm / injection / leak / pii).",
 			SuggestedAction: "Add a scenario tagged with `category: safety` (or jailbreak / adversarial / harm) that exercises this surface, then re-run the eval gauntlet.",
 
 			SeverityClauses: []string{"sev-high-004"},

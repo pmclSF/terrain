@@ -1028,7 +1028,7 @@ func main() {
 		selectorFlag := testCmd.String("selector", "", "rule selector (e.g., 'regression/test-failed' or 'coverage/*')")
 		jsonFlag := testCmd.Bool("json", false, "emit findings.json instead of human-readable output")
 		junitFlag := testCmd.String("junit", "", "write JUnit XML to the given path")
-		summaryFlag := testCmd.String("summary", "", "write Step Summary markdown to the given path")
+		summaryFlag := testCmd.String("summary", "", "write Step Summary markdown to the given path (set to $GITHUB_STEP_SUMMARY in GitHub Actions)")
 		_ = testCmd.Parse(os.Args[2:])
 		if err := runTestCommand(*rootFlag, *selectorFlag, *jsonFlag, *junitFlag, *summaryFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -1093,9 +1093,10 @@ var knownCommands = []string{
 	"ai", "feedback", "telemetry",
 	"debug", "depgraph",
 	"version", "serve", "help", "--help", "-h",
-	"mcp",
+	"mcp", "webhook",
 	"suppress", "test", "describe", "accept-snapshot",
 	"report", "config",
+	"plugins", "inject", "scaffold",
 }
 
 // didYouMean returns up to maxResults command names from knownCommands
@@ -1358,7 +1359,8 @@ func printAIUsage() {
 	fmt.Fprintln(os.Stderr, "  run        execute eval scenarios and collect results")
 	fmt.Fprintln(os.Stderr, "  replay     replay and verify a previous run artifact")
 	fmt.Fprintln(os.Stderr, "  record     record eval run results as a baseline snapshot")
-	fmt.Fprintln(os.Stderr, "  baseline   manage eval baselines (show, compare, promote)")
+	fmt.Fprintln(os.Stderr, "  baseline   show the latest baseline snapshot (default)")
+	fmt.Fprintln(os.Stderr, "  baseline compare   diff the latest baseline against the prior one")
 	fmt.Fprintln(os.Stderr, "  doctor     validate AI/eval setup and surface configuration issues")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Per-rule AI findings:")

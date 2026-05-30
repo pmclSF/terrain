@@ -826,7 +826,7 @@ func runAIRecord(root string, jsonOutput bool) error {
 	}
 
 	type baseline struct {
-		RecordedAt string            `json:"recordedAt"`
+		RecordedAt string        `json:"recordedAt"`
 		Scenarios  []models.Eval `json:"scenarios"`
 		Surfaces   struct {
 			Prompts  int `json:"prompts"`

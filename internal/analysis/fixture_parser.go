@@ -397,22 +397,22 @@ var pyDefSignaturePattern = regexp.MustCompile(`^(?:async\s+)?def\s+\w+\s*\(([^)
 //     monkeypatch,
 //     capsys,
 //     caplog            — pytest built-ins; reporting them as deps
-//                         would inflate the graph with infrastructure
+//     would inflate the graph with infrastructure
 var pyFixtureDepDenylist = map[string]bool{
 	"self": true, "cls": true,
-	"request":         true,
-	"tmp_path":        true,
+	"request":          true,
+	"tmp_path":         true,
 	"tmp_path_factory": true,
-	"tmpdir":          true,
-	"tmpdir_factory":  true,
-	"monkeypatch":     true,
-	"capsys":          true,
-	"capsysbinary":    true,
-	"capfd":           true,
-	"capfdbinary":     true,
-	"caplog":          true,
-	"recwarn":         true,
-	"pytestconfig":    true,
+	"tmpdir":           true,
+	"tmpdir_factory":   true,
+	"monkeypatch":      true,
+	"capsys":           true,
+	"capsysbinary":     true,
+	"capfd":            true,
+	"capfdbinary":      true,
+	"caplog":           true,
+	"recwarn":          true,
+	"pytestconfig":     true,
 }
 
 // extractPyFixtureDeps parses the parameter list of a Python `def`

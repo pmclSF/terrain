@@ -73,10 +73,10 @@ func TestIsInteractive_DumbTerminalSuppresses(t *testing.T) {
 
 func TestIsCIEnvironment(t *testing.T) {
 	cases := []struct {
-		name    string
-		envKey  string
-		envVal  string
-		wantCI  bool
+		name   string
+		envKey string
+		envVal string
+		wantCI bool
 	}{
 		{"CI=true", "CI", "true", true},
 		{"GitHub Actions", "GITHUB_ACTIONS", "true", true},

@@ -209,7 +209,7 @@ func deepEvalFailureReason(tc deepEvalTestCase) string {
 // ── DeepEval wire shapes (the subset we consume) ────────────────────
 
 type deepEvalEnvelope struct {
-	TestRunID string             `json:"testRunId,omitempty"`
+	TestRunID string `json:"testRunId,omitempty"`
 	// RunID is the newer DeepEval (1.x) field name for the same value.
 	RunID     string             `json:"runId,omitempty"`
 	CreatedAt string             `json:"createdAt,omitempty"`

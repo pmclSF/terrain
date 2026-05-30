@@ -34,8 +34,8 @@ func TestExtractDocSignalNames_HappyPath(t *testing.T) {
 `
 	got := extractDocSignalNames(doc)
 	want := map[string]bool{
-		"weakAssertion":    true,
-		"untestedExport":   true,
+		"weakAssertion":     true,
+		"untestedExport":    true,
 		"aiHardcodedAPIKey": true,
 	}
 	if !reflect.DeepEqual(got, want) {

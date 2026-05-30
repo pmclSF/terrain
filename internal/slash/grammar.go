@@ -43,16 +43,16 @@ import (
 type Verb string
 
 const (
-	VerbBench         Verb = "bench"
-	VerbCommands      Verb = "commands"
-	VerbDismiss       Verb = "dismiss"
-	VerbEscalate      Verb = "escalate"
-	VerbExplain       Verb = "explain"
-	VerbExpand        Verb = "expand"
-	VerbRefresh       Verb = "refresh"
-	VerbScaffold      Verb = "scaffold"
-	VerbShow          Verb = "show"
-	VerbWhy           Verb = "why"
+	VerbBench    Verb = "bench"
+	VerbCommands Verb = "commands"
+	VerbDismiss  Verb = "dismiss"
+	VerbEscalate Verb = "escalate"
+	VerbExplain  Verb = "explain"
+	VerbExpand   Verb = "expand"
+	VerbRefresh  Verb = "refresh"
+	VerbScaffold Verb = "scaffold"
+	VerbShow     Verb = "show"
+	VerbWhy      Verb = "why"
 )
 
 // AllVerbs lists every canonical verb. Used by the grammar parser

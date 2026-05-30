@@ -7,10 +7,10 @@ import (
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/benchmark"
+	"github.com/pmclSF/terrain/internal/framework_migration"
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/measurement"
 	"github.com/pmclSF/terrain/internal/metrics"
-	"github.com/pmclSF/terrain/internal/framework_migration"
 	"github.com/pmclSF/terrain/internal/portfolio"
 	"github.com/pmclSF/terrain/internal/reporting"
 	"github.com/pmclSF/terrain/internal/scoring"

@@ -16,6 +16,7 @@ import (
 	"github.com/pmclSF/terrain/internal/analyze"
 	"github.com/pmclSF/terrain/internal/budget"
 	"github.com/pmclSF/terrain/internal/engine"
+	"github.com/pmclSF/terrain/internal/findings"
 	"github.com/pmclSF/terrain/internal/governance"
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/models"
@@ -23,6 +24,7 @@ import (
 	"github.com/pmclSF/terrain/internal/promptflow"
 	"github.com/pmclSF/terrain/internal/reporting"
 	"github.com/pmclSF/terrain/internal/sarif"
+	"github.com/pmclSF/terrain/internal/signals"
 	"github.com/pmclSF/terrain/internal/terrainconfig"
 )
 
@@ -87,6 +89,10 @@ func runInit(root string, jsonOutput bool) error {
 		fmt.Println("           Governance rules (all commented out — edit to enable)")
 	} else if result.HasPolicyFile {
 		fmt.Println("  Exists:  .terrain/policy.yaml")
+	}
+	if result.PolicyExamplePath != "" {
+		fmt.Printf("  Written: %s\n", relativeToRoot(result.PolicyExamplePath, result.Root))
+		fmt.Println("           Annotated reference covering every supported policy knob")
 	}
 
 	if result.ConfigPath != "" {
@@ -210,10 +216,10 @@ func runAnalyze(o analyzeRunOpts) error {
 	}
 
 	parsedRuntime := parseRuntimePaths(runtimePaths)
-	parsedGauntlet := parseRuntimePaths(gauntletPaths)        // same comma-split logic
-	parsedPromptfoo := parseRuntimePaths(promptfooPaths)      // same comma-split logic
-	parsedDeepEval := parseRuntimePaths(deepevalPaths)        // same comma-split logic
-	parsedRagas := parseRuntimePaths(ragasPaths)              // same comma-split logic
+	parsedGauntlet := parseRuntimePaths(gauntletPaths)   // same comma-split logic
+	parsedPromptfoo := parseRuntimePaths(promptfooPaths) // same comma-split logic
+	parsedDeepEval := parseRuntimePaths(deepevalPaths)   // same comma-split logic
+	parsedRagas := parseRuntimePaths(ragasPaths)         // same comma-split logic
 	if err := validateCommandInputs(root, coveragePath, parsedRuntime, parsedGauntlet); err != nil {
 		return err
 	}
@@ -391,6 +397,15 @@ func runAnalyze(o analyzeRunOpts) error {
 		}
 	}
 
+	// Always write .terrain/findings.json so downstream consumers
+	// (terrain mcp, IDE plugins, CI tooling) have a stable artifact
+	// to read after every analyze. The file is small and gitignored;
+	// emission failure is non-fatal so a read-only filesystem doesn't
+	// break the user-facing report.
+	if err := writeFindingsJSON(root, result.Snapshot.Signals); err != nil {
+		logging.L().Warn("terrain analyze: writing .terrain/findings.json", "err", err)
+	}
+
 	if strings.EqualFold(strings.TrimSpace(format), "html") {
 		if err := reporting.RenderAnalyzeHTML(os.Stdout, report); err != nil {
 			return err
@@ -429,6 +444,46 @@ func runAnalyze(o analyzeRunOpts) error {
 	// gateErr() the other branches use, so the gate decision applies
 	// uniformly across every output format.
 	return gateErr()
+}
+
+// writeFindingsJSON serializes the canonical Finding artifact to
+// .terrain/findings.json. Used by `terrain analyze` so downstream
+// consumers (terrain mcp, IDE plugins, third-party SARIF uploaders)
+// have a stable shape to read from after every run.
+//
+// Maps Signal → Finding via the manifest's signal-type → rule_id
+// lookup. Signals whose type is unmapped (e.g. an experimental
+// detector ahead of its manifest entry) are dropped — the canonical
+// Finding shape requires a rule_id.
+func writeFindingsJSON(root string, sigs []models.Signal) error {
+	typeToRuleID := map[models.SignalType]string{}
+	for _, entry := range signals.Manifest() {
+		if entry.RuleID != "" {
+			typeToRuleID[entry.Type] = entry.RuleID
+		}
+	}
+	filtered := make([]models.Signal, 0, len(sigs))
+	for _, s := range sigs {
+		if _, ok := typeToRuleID[s.Type]; ok {
+			filtered = append(filtered, s)
+		}
+	}
+	fxs := findings.FromSignals(filtered, func(t models.SignalType) string {
+		return typeToRuleID[t]
+	})
+	art := findings.NewArtifact(fxs)
+
+	terrainDir := filepath.Join(root, ".terrain")
+	if err := os.MkdirAll(terrainDir, 0o755); err != nil {
+		return fmt.Errorf("create .terrain/: %w", err)
+	}
+	path := filepath.Join(terrainDir, "findings.json")
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", path, err)
+	}
+	defer f.Close()
+	return art.WriteJSON(f)
 }
 
 // appendPromptSchemaDriftSignals runs the prompt-template / schema

@@ -228,20 +228,20 @@ func plural(n int, singular string) string {
 // fall through to the bare measurement-id suffix.
 var measurementShortLabels = map[string]string{
 	// Health.
-	"health.flaky_share":      "flaky",
-	"health.skip_density":     "skipped",
-	"health.dead_test_share":  "dead",
-	"health.slow_test_share":  "slow",
+	"health.flaky_share":     "flaky",
+	"health.skip_density":    "skipped",
+	"health.dead_test_share": "dead",
+	"health.slow_test_share": "slow",
 	// Coverage depth.
 	"coverage_depth.uncovered_exports":     "uncovered exports",
 	"coverage_depth.weak_assertion_share":  "weak assertions",
 	"coverage_depth.coverage_breach_share": "coverage breaches",
 	// Coverage diversity.
-	"coverage_diversity.mock_heavy_share":          "mock-heavy",
-	"coverage_diversity.framework_fragmentation":   "frameworks",
-	"coverage_diversity.e2e_concentration":         "e2e-concentrated",
-	"coverage_diversity.e2e_only_units":            "e2e-only units",
-	"coverage_diversity.unit_test_coverage":        "unit-test covered",
+	"coverage_diversity.mock_heavy_share":        "mock-heavy",
+	"coverage_diversity.framework_fragmentation": "frameworks",
+	"coverage_diversity.e2e_concentration":       "e2e-concentrated",
+	"coverage_diversity.e2e_only_units":          "e2e-only units",
+	"coverage_diversity.unit_test_coverage":      "unit-test covered",
 	// Structural risk.
 	"structural_risk.migration_blocker_density": "migration blockers",
 	"structural_risk.deprecated_pattern_share":  "deprecated patterns",

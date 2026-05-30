@@ -197,4 +197,3 @@ func (c *Config) EnabledDetectorSet() map[string]bool {
 	}
 	return out
 }
-

@@ -195,27 +195,27 @@ func LoadRagasFile(path string) (*EvalRunResult, error) {
 // axis here, plus a few more (faithfulness, answer_correctness, etc.)
 // that aren't retrieval-shaped but still belong to the quality vote.
 var ragasQualityKeys = map[string]bool{
-	"context_precision":      true,
-	"context_recall":         true,
-	"context_entity_recall":  true,
-	"context_relevance":      true,
-	"faithfulness":           true,
-	"answer_relevancy":       true,
-	"answer_relevance":       true,
-	"answer_correctness":     true,
-	"answer_similarity":      true,
-	"semantic_similarity":    true,
-	"factuality":             true,
-	"groundedness":           true,
-	"helpfulness":            true,
-	"harmfulness":            true, // inverse polarity, but still 0-1
-	"coherence":              true,
-	"conciseness":            true,
-	"relevance":              true,
-	"relevance_score":        true,
-	"retrieval_score":        true,
-	"ndcg":                   true,
-	"coverage":               true,
+	"context_precision":     true,
+	"context_recall":        true,
+	"context_entity_recall": true,
+	"context_relevance":     true,
+	"faithfulness":          true,
+	"answer_relevancy":      true,
+	"answer_relevance":      true,
+	"answer_correctness":    true,
+	"answer_similarity":     true,
+	"semantic_similarity":   true,
+	"factuality":            true,
+	"groundedness":          true,
+	"helpfulness":           true,
+	"harmfulness":           true, // inverse polarity, but still 0-1
+	"coherence":             true,
+	"conciseness":           true,
+	"relevance":             true,
+	"relevance_score":       true,
+	"retrieval_score":       true,
+	"ndcg":                  true,
+	"coverage":              true,
 	// Ragas modern metrics — kept aligned with retrievalScoreKeys in
 	// aiRetrievalRegression.
 	"context_utilization": true,
@@ -277,15 +277,15 @@ func stringField(row map[string]any, key string) string {
 }
 
 type ragasEnvelope struct {
-	RunID     string           `json:"run_id,omitempty"`
-	CreatedAt string           `json:"created_at,omitempty"`
+	RunID     string `json:"run_id,omitempty"`
+	CreatedAt string `json:"created_at,omitempty"`
 	// Modern Ragas (≥0.1.0) emits `evaluation_results` instead of
 	// `results`; some users export via DataFrame.to_json which produces
 	// just `scores`. We accept any of the three field names and merge
 	// them in the parser.
-	Results            []map[string]any `json:"results"`
-	EvaluationResults  []map[string]any `json:"evaluation_results"`
-	Scores             []map[string]any `json:"scores"`
+	Results           []map[string]any `json:"results"`
+	EvaluationResults []map[string]any `json:"evaluation_results"`
+	Scores            []map[string]any `json:"scores"`
 }
 
 // rowsForParsing returns the populated row list, preferring

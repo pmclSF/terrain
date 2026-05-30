@@ -190,4 +190,3 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	line("  terrain export benchmark   privacy-safe export")
 	blank()
 }
-

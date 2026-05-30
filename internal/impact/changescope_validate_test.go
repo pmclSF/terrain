@@ -27,17 +27,17 @@ func TestValidateBaseRef(t *testing.T) {
 	}
 
 	bad := []string{
-		"; rm -rf /",          // shell injection
-		"main && echo pwned",  // chained command
-		"main | cat",          // pipe
-		"main`echo`",          // backticks
-		"main$(echo)",         // command substitution
-		"main\nchaining",      // newline injection
-		"main with spaces",    // whitespace
-		"@{-1}",               // reflog selector
-		"main:secret/path",    // ref:path form
-		"--upload-pack=evil",  // option injection
-		">file",               // redirect
+		"; rm -rf /",         // shell injection
+		"main && echo pwned", // chained command
+		"main | cat",         // pipe
+		"main`echo`",         // backticks
+		"main$(echo)",        // command substitution
+		"main\nchaining",     // newline injection
+		"main with spaces",   // whitespace
+		"@{-1}",              // reflog selector
+		"main:secret/path",   // ref:path form
+		"--upload-pack=evil", // option injection
+		">file",              // redirect
 	}
 	for _, ref := range bad {
 		if err := ValidateBaseRef(ref); err == nil {

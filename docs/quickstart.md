@@ -140,6 +140,21 @@ pytest --junitxml=junit.xml
 terrain analyze --runtime junit.xml
 ```
 
+### Wire into CI
+
+`terrain test` is the CI-mode wrapper. It runs analyze and emits two artifacts: JUnit XML (so your CI's test reporter renders Terrain findings as test cases) and a markdown step-summary (so reviewers see findings on the workflow run page).
+
+```yaml
+# GitHub Actions
+- name: Terrain pre-flight
+  run: |
+    terrain test \
+      --junit terrain-results.xml \
+      --summary "$GITHUB_STEP_SUMMARY"
+```
+
+The `--summary` value is the path Terrain writes to; `$GITHUB_STEP_SUMMARY` is the file GitHub Actions reads from. Setting them equal makes the findings appear on the run page automatically. Outside GitHub Actions, point `--summary` at any file your CI exposes.
+
 ### See what your change affects
 
 ```bash

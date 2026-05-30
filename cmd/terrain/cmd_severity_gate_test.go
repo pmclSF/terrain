@@ -3,6 +3,8 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -95,6 +97,51 @@ func TestSeverityGateBlocked(t *testing.T) {
 //  3. The report renders to stdout *before* the error returns — i.e.,
 //     stdout is non-empty when the gate fires (the gate decision is the
 //     last thing that happens, not the first).
+//
+// TestRunAnalyze_WritesFindingsJSON locks in the contract that every
+// analyze run drops a canonical findings artifact at
+// .terrain/findings.json. Downstream consumers (`terrain mcp`, IDE
+// plugins, third-party SARIF uploaders) depend on this file being
+// present after analyze, without requiring --write-snapshot.
+//
+// Uses a tempdir scratch repo (NOT the shared fixture) because analyze
+// writes runtime artifacts into the root's .terrain/ — running against
+// the committed fixture would pollute it.
+func TestRunAnalyze_WritesFindingsJSON(t *testing.T) {
+	root := t.TempDir()
+	// A trivial test file so analyze has something structural to look
+	// at. The findings.json contract isn't conditional on findings
+	// being non-empty — even a clean repo gets an artifact.
+	if err := os.WriteFile(filepath.Join(root, "main.py"),
+		[]byte("def add(a, b):\n    return a + b\n"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	_, _ = captureRun(func() error {
+		_ = runAnalyze(analyzeRunOpts{
+			Root:          root,
+			SlowThreshold: defaultSlowThresholdMs,
+		})
+		return nil
+	})
+
+	path := filepath.Join(root, ".terrain", "findings.json")
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("findings.json should exist after analyze: %v", err)
+	}
+	var doc struct {
+		Version  int              `json:"version"`
+		Findings []map[string]any `json:"findings"`
+	}
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("findings.json should be parseable JSON: %v\n%s", err, data)
+	}
+	if doc.Version != 1 {
+		t.Errorf("findings.json version = %d, want 1", doc.Version)
+	}
+}
+
 func TestRunAnalyze_GateBlocksOnFixture(t *testing.T) {
 	root := fixtureRoot(t)
 

@@ -17,12 +17,12 @@ import (
 //
 // Detection model:
 //
-//   For each EvalRun in snap.EvalRuns:
-//     1. Match a same-framework EvalRun in snap.Baseline.EvalRuns.
-//     2. For each retrievalScoreKeys entry, compute paired-case
-//        average across cases that ran in BOTH runs.
-//     3. If avg dropped by more than threshold (default 0.05 / 5
-//        percentage points absolute), emit a signal naming the axis.
+//	For each EvalRun in snap.EvalRuns:
+//	  1. Match a same-framework EvalRun in snap.Baseline.EvalRuns.
+//	  2. For each retrievalScoreKeys entry, compute paired-case
+//	     average across cases that ran in BOTH runs.
+//	  3. If avg dropped by more than threshold (default 0.05 / 5
+//	     percentage points absolute), emit a signal naming the axis.
 type RetrievalRegressionDetector struct {
 	// Threshold is the maximum acceptable absolute drop in a
 	// retrieval-quality score (e.g. 0.05 = 5 percentage points).
@@ -93,11 +93,11 @@ func (d *RetrievalRegressionDetector) Detect(snap *models.TestSuiteSnapshot) []m
 			// would fire at 0.9.
 			confidence := pairedConfidence(paired)
 			out = append(out, models.Signal{
-				Type:        signals.SignalAIRetrievalRegression,
-				Category:    models.CategoryAI,
-				Severity:    models.SeverityHigh,
-				Confidence:  confidence,
-				Location:    models.SignalLocation{File: env.SourcePath, ScenarioID: env.RunID},
+				Type:       signals.SignalAIRetrievalRegression,
+				Category:   models.CategoryAI,
+				Severity:   models.SeverityHigh,
+				Confidence: confidence,
+				Location:   models.SignalLocation{File: env.SourcePath, ScenarioID: env.RunID},
 				Explanation: fmt.Sprintf("Retrieval score `%s` dropped %.3f → %.3f (Δ %.3f) across %d paired cases. Threshold: %.3f.",
 					key, baseAvg, curAvg, drop, paired, threshold),
 				SuggestedAction: "Investigate the regression; revert the offending change or re-tune retrieval before merging.",

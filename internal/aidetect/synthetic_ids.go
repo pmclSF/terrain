@@ -81,4 +81,3 @@ func IsSyntheticIdentifier(id string) bool {
 	}
 	return false
 }
-

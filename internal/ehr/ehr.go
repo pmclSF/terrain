@@ -61,9 +61,9 @@ type Surface struct {
 
 // Report is the recognizer's output for one eval-config file.
 type Report struct {
-	ConfigPath       string    `json:"config_path"`
-	Format           string    `json:"format"`
-	SurfacesCovered  []Surface `json:"surfaces_covered"`
+	ConfigPath      string    `json:"config_path"`
+	Format          string    `json:"format"`
+	SurfacesCovered []Surface `json:"surfaces_covered"`
 }
 
 // Recognize parses the eval-config at path and returns the surfaces it

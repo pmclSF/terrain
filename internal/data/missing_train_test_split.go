@@ -82,11 +82,11 @@ var splitPrimitives = []string{
 
 // fitMethodNames is the set of fit-shaped methods we treat as training.
 var fitMethodNames = map[string]bool{
-	"fit":             true,
-	"fit_transform":   true,
-	"partial_fit":     true,
-	"train":           true,
-	"fit_one_cycle":   true,
+	"fit":           true,
+	"fit_transform": true,
+	"partial_fit":   true,
+	"train":         true,
+	"fit_one_cycle": true,
 }
 
 func analyzeSplitFile(root *sitter.Node, src []byte, relPath string, out *[]models.Signal) {

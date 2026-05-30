@@ -85,7 +85,7 @@ func TestApplyNewFindingsOnly_PerFileSignals(t *testing.T) {
 			{
 				Path: "a.go",
 				Signals: []models.Signal{
-					{Type: "weakAssertion", FindingID: id},   // existing → drop
+					{Type: "weakAssertion", FindingID: id},    // existing → drop
 					{Type: "mockHeavyTest", FindingID: idNew}, // new → keep
 				},
 			},

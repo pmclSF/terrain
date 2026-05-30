@@ -41,6 +41,11 @@ type InitResult struct {
 
 	// PolicyPath is the path to the generated policy, if any.
 	PolicyPath string `json:"policyPath,omitempty"`
+
+	// PolicyExamplePath is the path to the annotated policy.yaml.example
+	// reference (always written, even when policy.yaml already exists,
+	// so the latest schema is documented for adopters).
+	PolicyExamplePath string `json:"policyExamplePath,omitempty"`
 }
 
 // DetectedFramework captures a framework found during init scanning.
@@ -150,6 +155,7 @@ func WriteInitConfig(result *InitResult) error {
 	if err := generatePolicyYAMLExample(examplePath); err != nil {
 		return fmt.Errorf("generate policy.yaml.example: %w", err)
 	}
+	result.PolicyExamplePath = examplePath
 
 	if !result.HasTerrainYAML && (len(result.Frameworks) > 0 || result.TestFileCount > 0) {
 		configPath := filepath.Join(terrainDir, "terrain.yaml")
@@ -181,6 +187,8 @@ const defaultTerrainGitignore = `# .terrain/ — runtime artifacts excluded, con
 
 # Runtime artifacts — regenerated each analyze run.
 shadow-report.jsonl
+findings.json
+snapshots/
 *.cache
 findings-cache/
 

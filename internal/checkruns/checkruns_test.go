@@ -45,9 +45,9 @@ func TestBuildBundle_GateFinding_FailsConclusion(t *testing.T) {
 	snap := &models.TestSuiteSnapshot{
 		Signals: []models.Signal{
 			{
-				Type:     signals.SignalUntestedExport, // TierGate per manifest
-				Severity: models.SeverityHigh,
-				Location: models.SignalLocation{File: "src/exported.go", Line: 42},
+				Type:        signals.SignalUntestedExport, // TierGate per manifest
+				Severity:    models.SeverityHigh,
+				Location:    models.SignalLocation{File: "src/exported.go", Line: 42},
 				Explanation: "exported function has no covering test",
 			},
 		},
@@ -71,9 +71,9 @@ func TestBuildBundle_ObservabilityFinding_NeutralOnly(t *testing.T) {
 	snap := &models.TestSuiteSnapshot{
 		Signals: []models.Signal{
 			{
-				Type:     signals.SignalMockHeavyTest, // TierObservability
-				Severity: models.SeverityMedium,
-				Location: models.SignalLocation{File: "tests/mocks_test.go", Line: 10},
+				Type:        signals.SignalMockHeavyTest, // TierObservability
+				Severity:    models.SeverityMedium,
+				Location:    models.SignalLocation{File: "tests/mocks_test.go", Line: 10},
 				Explanation: "test relies on mocks heavily",
 			},
 		},
@@ -100,9 +100,9 @@ func TestBuildBundle_PerDetectorCollapse(t *testing.T) {
 	snap := &models.TestSuiteSnapshot{}
 	for i := 0; i < 5; i++ {
 		snap.Signals = append(snap.Signals, models.Signal{
-			Type:     signals.SignalUntestedExport,
-			Severity: models.SeverityMedium,
-			Location: models.SignalLocation{File: "src/file.go", Line: 10 + i},
+			Type:        signals.SignalUntestedExport,
+			Severity:    models.SeverityMedium,
+			Location:    models.SignalLocation{File: "src/file.go", Line: 10 + i},
 			Explanation: "exported function has no covering test",
 		})
 	}

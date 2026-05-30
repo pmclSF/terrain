@@ -38,7 +38,7 @@ const SpecVersion = "2025-11-25"
 const ServerName = "terrain-mcp"
 
 // ServerVersion is the Terrain binary version (overridden at build).
-var ServerVersion = "0.2.0"
+var ServerVersion = "0.3.0"
 
 // Server is an MCP server that reads JSON-RPC messages from a reader
 // and writes responses to a writer. The default transport is stdio.
@@ -223,10 +223,10 @@ type jsonRPCRequest struct {
 }
 
 type jsonRPCResponse struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      any             `json:"id,omitempty"`
-	Result  any             `json:"result,omitempty"`
-	Error   *jsonRPCError   `json:"error,omitempty"`
+	JSONRPC string        `json:"jsonrpc"`
+	ID      any           `json:"id,omitempty"`
+	Result  any           `json:"result,omitempty"`
+	Error   *jsonRPCError `json:"error,omitempty"`
 }
 
 type jsonRPCError struct {

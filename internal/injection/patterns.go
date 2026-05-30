@@ -3,9 +3,9 @@
 // surfaces that surface "here are 6-12 injection inputs that may
 // break this prompt — drop them into your test suite."
 //
-// Pattern source: the curated set named in the cycle-2 product plan
-// (DAN-style, instruction-leak, system-prompt-fishing, role-confusion,
-// indirect-injection-via-retrieval). Each pattern carries:
+// Pattern source: a curated set covering DAN-style, instruction-leak,
+// system-prompt-fishing, role-confusion, and indirect-injection-via-
+// retrieval. Each pattern carries:
 //   - A structural matcher that identifies vulnerable prompt shapes
 //   - A list of reference adversarial inputs that exercise the
 //     vulnerability

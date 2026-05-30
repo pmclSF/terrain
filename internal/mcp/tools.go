@@ -151,10 +151,10 @@ func handleListFindings(a *Artifacts, args json.RawMessage) (any, error) {
 			continue
 		}
 		out = append(out, map[string]any{
-			"id":           findingID(f),
-			"rule_id":      f.RuleID,
-			"severity":     f.Severity,
-			"primary_loc":  f.PrimaryLoc,
+			"id":            findingID(f),
+			"rule_id":       f.RuleID,
+			"severity":      f.Severity,
+			"primary_loc":   f.PrimaryLoc,
 			"short_message": f.ShortMessage,
 		})
 	}

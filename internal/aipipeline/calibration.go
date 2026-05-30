@@ -57,10 +57,10 @@ func DefaultCalibration() *Calibration {
 		// below for how training rule scopes these.
 		BaseRates: map[string]map[string]float64{
 			"unknown": {
-				"ai.surface.missing_eval":       -3.5,
-				"ai.train.missing_tracker":      -3.5,
-				"ai.prompt_file_missing_eval":   -3.0,
-				"ai.uncovered_surface":          -3.5,
+				"ai.surface.missing_eval":     -3.5,
+				"ai.train.missing_tracker":    -3.5,
+				"ai.prompt_file_missing_eval": -3.0,
+				"ai.uncovered_surface":        -3.5,
 			},
 			"rag-app": {
 				"ai.surface.missing_eval":     -2.5,
@@ -68,8 +68,8 @@ func DefaultCalibration() *Calibration {
 				"ai.uncovered_surface":        -2.5,
 			},
 			"agent-app": {
-				"ai.surface.missing_eval":     -2.5,
-				"ai.uncovered_surface":        -2.0,
+				"ai.surface.missing_eval": -2.5,
+				"ai.uncovered_surface":    -2.0,
 			},
 			"ml-pipeline": {
 				"ai.train.missing_tracker": -2.0,
@@ -88,10 +88,10 @@ func DefaultCalibration() *Calibration {
 				"*": {
 					// Lexical positives — weights calibrated for the 0.40
 					// observability threshold.
-					"regex.openai.import":            +0.8,
-					"regex.openai.call":              +1.6,
-					"regex.anthropic.import":         +0.6,
-					"regex.anthropic.call":           +1.4,
+					"regex.openai.import":    +0.8,
+					"regex.openai.call":      +1.6,
+					"regex.anthropic.import": +0.6,
+					"regex.anthropic.call":   +1.4,
 					// langchain/llama_index/langgraph atoms are corpus-
 					// misaligned: marginal lift is below 1.0 (often
 					// near 0). The labeler sees one file at a time
@@ -101,33 +101,33 @@ func DefaultCalibration() *Calibration {
 					// in production; for now, hold these atoms below
 					// neutral so they don't push files over the
 					// emission threshold on their own.
-					"regex.langchain.import":         -0.8,
-					"regex.langchain.call":           -0.3,
-					"regex.langgraph.import":         -0.6,
-					"regex.langgraph.call":           -0.3,
-					"regex.llama_index.import":       -0.5,
-					"regex.llama_index.call":         -0.1,
-					"regex.huggingface.import":       +0.3,
-					"regex.huggingface.call":         +0.8,
-					"regex.google_genai.import":      +0.4,
-					"regex.google_genai.call":        +1.0,
-					"regex.openai_compat.import":     +0.4,
-					"regex.openai_compat.call":       +1.0,
-					"regex.generic_sdk.import":       -0.2,
-					"regex.generic_sdk.call":         +0.4,
+					"regex.langchain.import":     -0.8,
+					"regex.langchain.call":       -0.3,
+					"regex.langgraph.import":     -0.6,
+					"regex.langgraph.call":       -0.3,
+					"regex.llama_index.import":   -0.5,
+					"regex.llama_index.call":     -0.1,
+					"regex.huggingface.import":   +0.3,
+					"regex.huggingface.call":     +0.8,
+					"regex.google_genai.import":  +0.4,
+					"regex.google_genai.call":    +1.0,
+					"regex.openai_compat.import": +0.4,
+					"regex.openai_compat.call":   +1.0,
+					"regex.generic_sdk.import":   -0.2,
+					"regex.generic_sdk.call":     +0.4,
 					// Training-detector atoms — calibration keys now
 					// match the emitted atom IDs (previous keys were
 					// `regex.sklearn.train` etc., which never resolved).
-					"regex.sklearn_train.import":       +0.4,
-					"regex.sklearn_train.call":         +1.2,
-					"regex.xgb_lgb_cat_train.import":   +0.4,
-					"regex.xgb_lgb_cat_train.call":     +1.4,
-					"regex.keras_train.import":         +0.6,
-					"regex.keras_train.call":           +0.8,
-					"regex.pytorch_train.import":       +0.3,
-					"regex.pytorch_train.call":         +1.0,
-					"regex.transformers_train.import":  +0.4,
-					"regex.transformers_train.call":    +1.4,
+					"regex.sklearn_train.import":      +0.4,
+					"regex.sklearn_train.call":        +1.2,
+					"regex.xgb_lgb_cat_train.import":  +0.4,
+					"regex.xgb_lgb_cat_train.call":    +1.4,
+					"regex.keras_train.import":        +0.6,
+					"regex.keras_train.call":          +0.8,
+					"regex.pytorch_train.import":      +0.3,
+					"regex.pytorch_train.call":        +1.0,
+					"regex.transformers_train.import": +0.4,
+					"regex.transformers_train.call":   +1.4,
 
 					// Structural positives — AST confirmed.
 					// The fit found ast.bound_call's marginal lift is
@@ -138,41 +138,41 @@ func DefaultCalibration() *Calibration {
 					// emit bar. Documented honestly: the +2.0 number
 					// reflects threshold-coupled tuning, not the fit's
 					// pure conditional estimate.
-					"ast.bound_call":                 +2.0,
-					"ast.module_level_call":          +1.0,
-					"ast.real_training_call":         +2.0,
+					"ast.bound_call":         +2.0,
+					"ast.module_level_call":  +1.0,
+					"ast.real_training_call": +2.0,
 
 					// Topological positives
-					"topo.exported_from_package":     +0.4,
-					"topo.imported_by_app_module":    +0.6,
+					"topo.exported_from_package":  +0.4,
+					"topo.imported_by_app_module": +0.6,
 
 					// Scope (per-PR)
-					"scope.diff_touched_file":        +0.8,
-					"scope.diff_touched_line":        +1.4,
-					"scope.diff_added_pr_evidence":   -1.5, // PR added the missing artifact
+					"scope.diff_touched_file":      +0.8,
+					"scope.diff_touched_line":      +1.4,
+					"scope.diff_added_pr_evidence": -1.5, // PR added the missing artifact
 
 					// Cross-file scope — eval present in a sibling or
 					// package mate strongly opposes "missing eval".
-					"scope.sibling_has_eval":         -1.8,
-					"scope.package_has_eval":         -1.4,
+					"scope.sibling_has_eval": -1.8,
+					"scope.package_has_eval": -1.4,
 
 					// Repo-shape
-					"shape.is_application":           +0.4,
-					"shape.is_library":               -0.9,
+					"shape.is_application": +0.4,
+					"shape.is_library":     -0.9,
 
 					// Negative atoms — strong suppression
-					"wrapper.class.match":            -2.0,
-					"ast.no_call_despite_regex":      -2.1,
-					"regex.import_without_call":      -1.6, // regex-only version of the above
-					"path.examples":                  -3.0,
-					"path.tests":                     -2.5,
-					"path.providers":                 -2.0,
-					"path.framework_integration":     -2.5,
-					"regex.multi_framework":          -2.0,
-					"path.snake_suffix_wrapper":      -1.5,
-					"path.exact_name_utility":        -1.2,
-					"path.llms_subdir_base":          -2.0,
-					"path.factory_filename":          -1.5,
+					"wrapper.class.match":        -2.0,
+					"ast.no_call_despite_regex":  -2.1,
+					"regex.import_without_call":  -1.6, // regex-only version of the above
+					"path.examples":              -3.0,
+					"path.tests":                 -2.5,
+					"path.providers":             -2.0,
+					"path.framework_integration": -2.5,
+					"regex.multi_framework":      -2.0,
+					"path.snake_suffix_wrapper":  -1.5,
+					"path.exact_name_utility":    -1.2,
+					"path.llms_subdir_base":      -2.0,
+					"path.factory_filename":      -1.5,
 
 					// Production-context atoms — neutral by default
 					// (per-rule overrides below give them weight for
@@ -180,9 +180,9 @@ func DefaultCalibration() *Calibration {
 					// these whenever it sees production-ML signals;
 					// the surface rule shouldn't be influenced by
 					// them, so the universal entry is 0.0.
-					"regex.production_ml_sdk":        0.0,
-					"regex.scheduling_decorator":     0.0,
-					"regex.model_registry_register":  0.0,
+					"regex.production_ml_sdk":       0.0,
+					"regex.scheduling_decorator":    0.0,
+					"regex.model_registry_register": 0.0,
 				},
 				// Per-rule override for ai.train.missing_tracker. The
 				// training detector at face value has very low precision

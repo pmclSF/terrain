@@ -5,19 +5,6 @@
 Every signal Terrain emits assigns a severity (Critical / High / Medium / Low / Info).
 This rubric is the source of truth for what each level means.
 
-**Two-vocabulary mapping.** The internal severity above is mapped to a user-visible
-PR-comment label by `internal/uitokens`:
-
-| Internal severity | PR-comment label (BLOCK/GATE/WATCH/NOTE) | When the label fires |
-|---|---|---|
-| `critical` + gate-tier | `[BLOCK]` | A critical finding from a gate-tier detector — the PR check fails |
-| `high` + gate-tier | `[GATE]` | A high finding from a gate-tier detector — the PR check fails |
-| `medium` + gate-tier OR any severity + observability-tier | `[WATCH]` | Visible inline but doesn't fail the PR check |
-| `low` / `info` | `[NOTE]` | Collapsed into the observability footer |
-
-The `--fail-on=<severity>` flag operates on the internal severity. The PR
-comment surface renders the corresponding user-visible label.
-
 Detectors cite one or more clause IDs in the `severityClauses` field of every
 `Signal` they emit (SignalV2, schema 1.1.0+). The IDs are stable forever — once
 published, a number is never reused. Retired clauses are marked, not removed.

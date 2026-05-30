@@ -17,7 +17,7 @@ import (
 // avoids re-indexing the repo for every file. Counter.Count is now
 // mutex-guarded internally.
 var (
-	defFollowingMu     sync.Mutex
+	defFollowingMu      sync.Mutex
 	defFollowingCounter = map[string]*deffollowing.Counter{}
 )
 
@@ -87,7 +87,7 @@ var (
 	// gomega.Expect, ginkgo.By. False positives here are acceptable —
 	// our concern is missed assertions becoming false-negative weak-
 	// assertion flags.
-	goTestPattern = regexp.MustCompile(`func\s+Test\w+\s*\(`)
+	goTestPattern   = regexp.MustCompile(`func\s+Test\w+\s*\(`)
 	goAssertPattern = regexp.MustCompile(
 		`\b(?:t\.Error|t\.Errorf|t\.Fatal|t\.Fatalf|` +
 			`assert\.|require\.|` +
@@ -102,7 +102,7 @@ var (
 	// Python patterns. Expanded for ML/scientific Python:
 	// numpy/torch/jax testing modules, pandas tm.assert_*,
 	// pyspark chispa, pytest plugins.
-	pyTestPattern = regexp.MustCompile(`\bdef\s+test_\w+`)
+	pyTestPattern   = regexp.MustCompile(`\bdef\s+test_\w+`)
 	pyAssertPattern = regexp.MustCompile(
 		`\b(?:` +
 			`assert\s|self\.assert|pytest\.raises|` +
@@ -149,7 +149,7 @@ var (
 	//   - Mockito verify() — semantically an assertion on call shape
 	//   - Hamcrest fluent matchers (assertThat is already caught)
 	//   - RxJava TestObserver.assert*
-	javaTestPattern = regexp.MustCompile(`@Test\b`)
+	javaTestPattern   = regexp.MustCompile(`@Test\b`)
 	javaAssertPattern = regexp.MustCompile(
 		`\b(?:` +
 			`assert\w+\s*\(|assertThat\s*\(|` +

@@ -90,8 +90,8 @@ func (d *WeakAssertionDetector) Detect(snap *models.TestSuiteSnapshot) []models.
 				EvidenceStrength: models.EvidenceModerate,
 				EvidenceSource:   models.SourceStructuralPattern,
 				Location:         models.SignalLocation{File: tf.Path},
-				Explanation: fmt.Sprintf("No assertions detected in file with %d test(s). Tests execute code but do not verify behavior.", tf.TestCount),
-				SuggestedAction: "Add assertions on returned values, state transitions, or side effects.",
+				Explanation:      fmt.Sprintf("No assertions detected in file with %d test(s). Tests execute code but do not verify behavior.", tf.TestCount),
+				SuggestedAction:  "Add assertions on returned values, state transitions, or side effects.",
 			})
 		} else {
 			// E2E threshold: 0.5 assertions/test (implicit checks provide coverage).
@@ -128,4 +128,3 @@ func (d *WeakAssertionDetector) Detect(snap *models.TestSuiteSnapshot) []models.
 
 	return signals
 }
-

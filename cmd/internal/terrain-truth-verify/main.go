@@ -21,20 +21,20 @@
 //
 // Out of scope today (0.3+):
 //
-//  - README command list ⊆ dispatcher: requires a registry refactor;
-//    without it, parsing main.go for the truth is brittle.
-//  - CHANGELOG promotion-claim cross-check: useful but lower
-//    priority; the manifest already drives the per-signal status,
-//    so any "promoted to stable" claim that's wrong is already
-//    visible in `make docs-verify`.
-//  - CI matrix ⊆ compatibility tier doc: useful but distinct
-//    failure mode; lives in workflow YAML rather than markdown.
+//   - README command list ⊆ dispatcher: requires a registry refactor;
+//     without it, parsing main.go for the truth is brittle.
+//   - CHANGELOG promotion-claim cross-check: useful but lower
+//     priority; the manifest already drives the per-signal status,
+//     so any "promoted to stable" claim that's wrong is already
+//     visible in `make docs-verify`.
+//   - CI matrix ⊆ compatibility tier doc: useful but distinct
+//     failure mode; lives in workflow YAML rather than markdown.
 //
 // Exit codes:
 //
-//  0 — every documented signal resolves; no orphan stable signals
-//  1 — one or more drifts (output names every offender)
-//  2 — invocation error (missing files, parse failures)
+//	0 — every documented signal resolves; no orphan stable signals
+//	1 — one or more drifts (output names every offender)
+//	2 — invocation error (missing files, parse failures)
 //
 // Wired into the release-readiness pipeline via `make truth-verify`.
 package main
@@ -97,7 +97,7 @@ func main() {
 		manifestByType[e.Type] = e
 	}
 
-	var brokenRefs []string  // doc names a signal that doesn't exist
+	var brokenRefs []string   // doc names a signal that doesn't exist
 	var orphanStable []string // stable signal not mentioned in doc
 
 	for name := range docSignals {

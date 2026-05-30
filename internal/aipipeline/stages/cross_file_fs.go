@@ -150,12 +150,12 @@ func (r *FSResolver) scanPackageForMarkers(pkgDir, selfBase string) bool {
 // marker (package.json for JS/TS, __init__.py-terminated chain for
 // Python). The walk is bounded by:
 //
-//   1. The repo root r.root — escaping it would scan unrelated
-//      filesystem regions (this caused a hard hang on synthetic
-//      single-file repos where the walk reached `/` and then scanned
-//      the entire filesystem).
-//   2. A fixed depth of 6 levels — repos with deeper packages get the
-//      6th ancestor, still bounded by r.root.
+//  1. The repo root r.root — escaping it would scan unrelated
+//     filesystem regions (this caused a hard hang on synthetic
+//     single-file repos where the walk reached `/` and then scanned
+//     the entire filesystem).
+//  2. A fixed depth of 6 levels — repos with deeper packages get the
+//     6th ancestor, still bounded by r.root.
 //
 // Returns the candidate's own directory when no marker is found and
 // the bound is reached — the safe default scans only the immediate
@@ -251,22 +251,22 @@ func looksLikeEvalConfigFile(name string) bool {
 }
 
 var evalConfigFilenames = []string{
-	"promptfooconfig.",         // promptfoo
-	"promptfoo.config.",        // promptfoo alt
-	"deepeval.config.",         // deepeval
+	"promptfooconfig.",  // promptfoo
+	"promptfoo.config.", // promptfoo alt
+	"deepeval.config.",  // deepeval
 	"deepeval.yaml",
 	"deepeval.json",
-	"ragas.config.",            // ragas
-	"langsmith.config.",        // langsmith
-	"trulens.config.",          // trulens
+	"ragas.config.",     // ragas
+	"langsmith.config.", // langsmith
+	"trulens.config.",   // trulens
 	"evals.yaml",
 	"evals.yml",
 	"eval.config.",
-	"mlflow.yaml",              // mlflow
+	"mlflow.yaml", // mlflow
 	"mlflow.yml",
-	"wandb.yaml",               // wandb
+	"wandb.yaml", // wandb
 	"wandb.yml",
-	".env.test",                // generic test env file present
+	".env.test", // generic test env file present
 }
 
 func shouldSkipDir(name string) bool {

@@ -3,11 +3,11 @@
 //
 //   - off:    the mechanism is not active; the legacy detector runs.
 //   - shadow: the mechanism runs alongside the legacy code path and
-//             emits would-have-suppressed / would-have-added events to
-//             .terrain/shadow-report.jsonl, but does NOT change the
-//             user-visible findings.
+//     emits would-have-suppressed / would-have-added events to
+//     .terrain/shadow-report.jsonl, but does NOT change the
+//     user-visible findings.
 //   - on:     the mechanism is live — its behavior change is observable
-//             in findings.
+//     in findings.
 //
 // Every new mechanism ships first as state: shadow. Live activation
 // requires the mechanism's regression and recall checks both pass,
@@ -91,8 +91,8 @@ type Mechanism struct {
 // raw mirrors the YAML structure for unmarshalling — the public Mechanism
 // type exposes State as the parsed enum, but YAML stores it as a string.
 type raw struct {
-	SchemaVersion int                 `yaml:"schema_version"`
-	Mechanisms    []rawMechanism      `yaml:"mechanisms"`
+	SchemaVersion int            `yaml:"schema_version"`
+	Mechanisms    []rawMechanism `yaml:"mechanisms"`
 }
 
 type rawMechanism struct {

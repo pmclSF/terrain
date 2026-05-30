@@ -15,10 +15,11 @@ import (
 // emit a runnable test scaffold or a JSON dump for downstream tooling.
 //
 // Usage:
-//   terrain inject --prompt prompts/system.md          # python scaffold to stdout
-//   terrain inject --prompt prompts/system.md --lang ts
-//   terrain inject --prompt prompts/system.md --json
-//   terrain inject --prompt prompts/system.md --list   # just list matched patterns
+//
+//	terrain inject --prompt prompts/system.md          # python scaffold to stdout
+//	terrain inject --prompt prompts/system.md --lang ts
+//	terrain inject --prompt prompts/system.md --json
+//	terrain inject --prompt prompts/system.md --list   # just list matched patterns
 //
 // The scaffold is emitted to stdout; adopters redirect to a file
 // (`> tests/test_prompt_security.py`) and drop into their test suite.

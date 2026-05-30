@@ -254,13 +254,13 @@ var (
 // hasSchedulingDecorator reports whether the source carries a
 // scheduling-framework decorator. Two ways it fires:
 //
-//	1. Namespaced decorator (@airflow.task, @prefect.flow, ...) — always
-//	   confirms scheduling intent.
-//	2. Bare decorator (@task, @flow, @asset, ...) accompanied by an
-//	   import of the relevant framework. The bare form is idiomatic
-//	   for airflow's `from airflow.decorators import task` pattern and
-//	   prefect's `from prefect import flow`; we require the framework
-//	   import so @task on an unrelated class method doesn't false-fire.
+//  1. Namespaced decorator (@airflow.task, @prefect.flow, ...) — always
+//     confirms scheduling intent.
+//  2. Bare decorator (@task, @flow, @asset, ...) accompanied by an
+//     import of the relevant framework. The bare form is idiomatic
+//     for airflow's `from airflow.decorators import task` pattern and
+//     prefect's `from prefect import flow`; we require the framework
+//     import so @task on an unrelated class method doesn't false-fire.
 func hasSchedulingDecorator(src []byte) bool {
 	if schedulingDecoratorPrefixedRE.Match(src) {
 		return true
@@ -370,13 +370,13 @@ var ctxPairs = []ctxPair{
 		// Python: `import openai`, `from openai import X`
 		// JS/TS:  `import OpenAI from 'openai'`, `require('openai')`, `from 'openai'`
 		// Go:     `_ "github.com/sashabaranov/go-openai"` (matched via repo-broad regex)
-		name:   "openai",
+		name: "openai",
 		anchor: regexp.MustCompile(`(?m)^\s*(?:from|import)\s+openai\b` +
 			`|require\(["']openai["']\)` +
 			`|from\s+["']openai["']` +
 			`|from\s+["']@openai/[^"']+["']` +
 			`|"github\.com/sashabaranov/go-openai"`),
-		verb:   regexp.MustCompile(`(?:\.|\b)chat\.completions\.create\s*\(` +
+		verb: regexp.MustCompile(`(?:\.|\b)chat\.completions\.create\s*\(` +
 			`|(?:\.|\b)completions\.create\s*\(` +
 			`|(?:\.|\b)embeddings\.create\s*\(` +
 			`|(?:\.|\b)responses\.create\s*\(` +
@@ -387,13 +387,13 @@ var ctxPairs = []ctxPair{
 		// JS/TS:  `import Anthropic from '@anthropic-ai/sdk'`
 		// Go:     `"github.com/anthropics/anthropic-sdk-go"`
 		// Java/Kotlin: `import com.anthropic.client.*`
-		name:   "anthropic",
+		name: "anthropic",
 		anchor: regexp.MustCompile(`(?m)^\s*(?:from|import)\s+anthropic\b` +
 			`|@anthropic-ai/sdk` +
 			`|import\s+Anthropic\b` +
 			`|"github\.com/anthropics/anthropic-sdk-go"` +
 			`|import\s+com\.anthropic\.`),
-		verb:   regexp.MustCompile(`\.messages\.create\s*\(` +
+		verb: regexp.MustCompile(`\.messages\.create\s*\(` +
 			`|\.messages\.stream\s*\(` +
 			`|Messages\.create\s*\(`),
 	},
@@ -401,57 +401,57 @@ var ctxPairs = []ctxPair{
 		// Python: `from langchain[_core|_openai|...] import X`
 		//         `from langchain.X.Y import Z` (legacy submodule layout)
 		// JS/TS:  `import { ... } from '@langchain/X'` or `from "langchain"`
-		name:   "langchain",
+		name: "langchain",
 		anchor: regexp.MustCompile(`(?m)^\s*(?:from|import)\s+langchain(?:_\w+|\.\w+(?:\.\w+)*)?(?:\s+import|\b)` +
 			`|@langchain/` +
 			`|import\s+\{[^}]*\}\s+from\s+["']langchain["']`),
-		verb:   regexp.MustCompile(`(?:\b\w+)\.(?:invoke|ainvoke|stream|astream|batch|abatch)\s*\(`),
+		verb: regexp.MustCompile(`(?:\b\w+)\.(?:invoke|ainvoke|stream|astream|batch|abatch)\s*\(`),
 	},
 	{
 		// Python: `import llama_index` / `from llama_index import X`
 		// JS/TS:  `import { ... } from 'llamaindex'`
-		name:   "llama_index",
+		name: "llama_index",
 		anchor: regexp.MustCompile(`(?m)^\s*(?:from|import)\s+llama_index\b` +
 			`|from\s+["']llamaindex["']` +
 			`|require\(["']llamaindex["']\)`),
-		verb:   regexp.MustCompile(`\b\w+\.(?:query|chat|complete|achat|astream)\s*\(`),
+		verb: regexp.MustCompile(`\b\w+\.(?:query|chat|complete|achat|astream)\s*\(`),
 	},
 	{
 		// Multi-provider OpenAI-compatible: Replicate, Cohere, Mistral,
 		// Groq, Together, Fireworks, Perplexity. Multi-language coverage
 		// via SDK package name.
-		name:   "openai_compat",
+		name: "openai_compat",
 		anchor: regexp.MustCompile(`(?m)^\s*(?:from|import)\s+(?:replicate|cohere|mistralai|groq|together|fireworks)\b` +
 			`|from\s+(?:groq|cohere|together|fireworks)\b` +
 			`|require\(["'](?:replicate|cohere-ai|@mistralai/mistralai|groq-sdk|together-ai|@fireworks-ai/sdk)["']\)` +
 			`|from\s+["'](?:replicate|cohere-ai|@mistralai/mistralai|groq-sdk|together-ai|@fireworks-ai/sdk)["']`),
-		verb:   regexp.MustCompile(`(?:\breplicate\.run|\.chat\.completions\.create|\b(?:co|client|cohere)\.(?:generate|chat|embed|rerank))\s*\(`),
+		verb: regexp.MustCompile(`(?:\breplicate\.run|\.chat\.completions\.create|\b(?:co|client|cohere)\.(?:generate|chat|embed|rerank))\s*\(`),
 	},
 	{
 		// Google Generative AI / Gemini — Python + JS/TS.
-		name:   "google_genai",
+		name: "google_genai",
 		anchor: regexp.MustCompile(`(?m)^\s*(?:from|import)\s+google\.(?:generativeai|genai)\b` +
 			`|@google/generative-ai` +
 			`|@google-cloud/vertexai`),
-		verb:   regexp.MustCompile(`\b\w+\.generate_content\s*\(` +
+		verb: regexp.MustCompile(`\b\w+\.generate_content\s*\(` +
 			`|getGenerativeModel\s*\(` +
 			`|\.generateContent\s*\(`),
 	},
 	{
 		// HuggingFace Inference — Python + JS/TS.
-		name:   "huggingface",
+		name: "huggingface",
 		anchor: regexp.MustCompile(`(?m)^\s*from\s+huggingface_hub\s+import` +
 			`|@huggingface/inference`),
-		verb:   regexp.MustCompile(`\bInferenceClient\s*\(` +
+		verb: regexp.MustCompile(`\bInferenceClient\s*\(` +
 			`|HfInference\s*\(` +
 			`|\.text_generation\s*\(`),
 	},
 	{
 		// LangGraph — Python + JS/TS.
-		name:   "langgraph",
+		name: "langgraph",
 		anchor: regexp.MustCompile(`(?m)^\s*from\s+langgraph\b` +
 			`|@langchain/langgraph`),
-		verb:   regexp.MustCompile(`\bcreate_react_agent\s*\(` +
+		verb: regexp.MustCompile(`\bcreate_react_agent\s*\(` +
 			`|StateGraph\s*\(` +
 			`|\b\w+\.(?:invoke|ainvoke|stream|astream)\s*\(`),
 	},

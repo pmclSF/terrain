@@ -28,12 +28,12 @@ type EventContext struct {
 // suppression-gate consumer:
 //
 //   - state=off    → caller's keepLegacy verdict wins, predicate is
-//                    NOT invoked.
+//     NOT invoked.
 //   - state=shadow → caller's keepLegacy verdict wins, predicate IS
-//                    invoked, and a would-suppress shadow event is
-//                    emitted when the predicate fired.
+//     invoked, and a would-suppress shadow event is
+//     emitted when the predicate fired.
 //   - state=on     → predicate IS invoked, and Keep=false when fired
-//                    (the caller drops the finding).
+//     (the caller drops the finding).
 //
 // keepLegacy is what the legacy code path would do absent the gate.
 // Typically `true` (keep the finding by default; the gate may suppress).
@@ -71,10 +71,10 @@ func GateSuppress(reg *Registry, name string, ctx EventContext, keepLegacy bool,
 //
 //   - state=off    → demote=false, predicate NOT invoked.
 //   - state=shadow → demote=false (no user-visible change), predicate IS
-//                    invoked, and a would-demote-severity event is
-//                    emitted when the predicate fired.
+//     invoked, and a would-demote-severity event is
+//     emitted when the predicate fired.
 //   - state=on     → predicate IS invoked, and demote=true when fired
-//                    (the caller demotes the finding's severity).
+//     (the caller demotes the finding's severity).
 //
 // Mirror of GateSuppress for the demote path. Used by consumer
 // detectors that demote findings (e.g. ASCG catalog/example role,

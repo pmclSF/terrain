@@ -4,8 +4,6 @@
 #
 # Run in CI alongside `make test`. Exits non-zero on any drift.
 # Fast: pure-shell + grep; no Go build required.
-#
-# Adopted from cycle-2 plan P7.11.
 
 set -euo pipefail
 

@@ -27,10 +27,10 @@ var updateEmptyStateGoldens = flag.Bool("update-empty-state-goldens", false,
 // Locking the goldens in CI surfaces the drift immediately.
 //
 // To intentionally change a message:
-//   1. Edit the string in EmptyStateFor (empty_states.go).
-//   2. Run: go test ./internal/reporting/... -update-empty-state-goldens
-//   3. Inspect the diff in the golden file.
-//   4. Commit both the source change and the golden update together.
+//  1. Edit the string in EmptyStateFor (empty_states.go).
+//  2. Run: go test ./internal/reporting/... -update-empty-state-goldens
+//  3. Inspect the diff in the golden file.
+//  4. Commit both the source change and the golden update together.
 func TestEmptyState_Goldens(t *testing.T) {
 	cases := []struct {
 		name string

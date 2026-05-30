@@ -217,7 +217,7 @@ func TestPhantomEvalScenario_ReachableSurfaceNotFlagged(t *testing.T) {
 	snap := &models.TestSuiteSnapshot{
 		Evals: []models.Eval{
 			{
-				EvalID:        "accuracy",
+				EvalID:            "accuracy",
 				Name:              "accuracy",
 				Path:              "tests/eval/accuracy.test.ts",
 				CoveredSurfaceIDs: []string{"surface:sys"},
@@ -248,7 +248,7 @@ func TestPhantomEvalScenario_UnreachableSurfaceFlagged(t *testing.T) {
 	snap := &models.TestSuiteSnapshot{
 		Evals: []models.Eval{
 			{
-				EvalID:        "accuracy",
+				EvalID:            "accuracy",
 				Name:              "accuracy",
 				Path:              "tests/eval/accuracy.test.ts",
 				CoveredSurfaceIDs: []string{"surface:sys"},
@@ -287,7 +287,7 @@ func TestPhantomEvalScenario_ExecutableSeverityIsHigh(t *testing.T) {
 	snap := &models.TestSuiteSnapshot{
 		Evals: []models.Eval{
 			{
-				EvalID:        "safety",
+				EvalID:            "safety",
 				Name:              "safety",
 				Path:              "tests/eval/safety.test.ts",
 				CoveredSurfaceIDs: []string{"surface:guard"},

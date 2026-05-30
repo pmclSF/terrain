@@ -177,9 +177,9 @@ func TestRenderPRSummaryMarkdown_UnifiedShape(t *testing.T) {
 	}
 	// All three test types should appear in the same table.
 	for _, path := range []string{
-		"src/auth/__tests__/login.test.ts",   // unit
-		"test/api/auth.integration.test.ts",  // integration
-		"e2e/auth/login.spec.ts",             // e2e
+		"src/auth/__tests__/login.test.ts",  // unit
+		"test/api/auth.integration.test.ts", // integration
+		"e2e/auth/login.spec.ts",            // e2e
 	} {
 		if !strings.Contains(output, path) {
 			t.Errorf("gate 4 (unified stanza): expected %q in recommended-tests table; got:\n%s", path, output)

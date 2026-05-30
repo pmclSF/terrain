@@ -31,12 +31,12 @@ func TestThing(t *testing.T) {
 	}
 
 	want := map[string][]string{
-		"TestThing": nil,                                       // top-level: empty hierarchy
-		"group":     {"TestThing"},                             // child of TestThing
-		"sibling":   {"TestThing"},                             // sibling of "group"
-		"inner-a":   {"TestThing", "group"},                    // inside "group"
-		"inner-b":   {"TestThing", "group"},                    // sibling of inner-a
-		"deepest":   {"TestThing", "group", "inner-b"},         // deepest case
+		"TestThing": nil,                               // top-level: empty hierarchy
+		"group":     {"TestThing"},                     // child of TestThing
+		"sibling":   {"TestThing"},                     // sibling of "group"
+		"inner-a":   {"TestThing", "group"},            // inside "group"
+		"inner-b":   {"TestThing", "group"},            // sibling of inner-a
+		"deepest":   {"TestThing", "group", "inner-b"}, // deepest case
 	}
 
 	for name, wantStack := range want {

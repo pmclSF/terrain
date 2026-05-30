@@ -109,13 +109,16 @@ def f(p): return json.load(open(p))
 
 func TestLooksLikePinnedPath(t *testing.T) {
 	t.Parallel()
-	cases := []struct{ in string; want bool }{
+	cases := []struct {
+		in   string
+		want bool
+	}{
 		{"model.pt", false},
 		{"model_v3.pt", false},
 		{"model_v3.0.pt", true},
 		{"model_v1.2.3.pt", true},
 		{"weights_abcdef12.pt", true},
-		{"weights_12345.pt", false},  // too short
+		{"weights_12345.pt", false}, // too short
 		{"weights.safetensors", true},
 		{"foo/bar/baz_a1b2c3d4.bin", true},
 	}

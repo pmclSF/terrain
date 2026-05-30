@@ -207,7 +207,7 @@ func buildLargeSnapshot(testFiles, sourcesPerTest, testsPerFile, scenarios int) 
 
 	for i := 0; i < scenarios; i++ {
 		sc := models.Eval{
-			EvalID:   fmt.Sprintf("scenario:%d", i), Name: fmt.Sprintf("scenario_%d", i),
+			EvalID: fmt.Sprintf("scenario:%d", i), Name: fmt.Sprintf("scenario_%d", i),
 			Category: "accuracy", Capability: fmt.Sprintf("cap_%d", i%10),
 		}
 		for j := 0; j < 3; j++ {

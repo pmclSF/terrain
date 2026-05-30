@@ -28,8 +28,9 @@ import (
 //  4. Fail when any count drifts >tolerance from the baseline
 //
 // Updating the baseline (when a fix intentionally changes behavior):
-//  TERRAIN_UPDATE_DRIFT_BASELINE=1 go test ./internal/engine/ \
-//      -run TestDetectorDrift_ReferenceFixture
+//
+//	TERRAIN_UPDATE_DRIFT_BASELINE=1 go test ./internal/engine/ \
+//	    -run TestDetectorDrift_ReferenceFixture
 //
 // Tolerance: ±15% per detector OR ±2 absolute, whichever is larger.
 // Wider than ideal but accommodates the natural variance from small-N

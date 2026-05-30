@@ -18,26 +18,29 @@ type UncoveredAISurfaceDetector struct{}
 // different precision profiles:
 //   - aiPrompt: strongest lane, kept gate-eligible
 //   - aiModel: weakest lane, dominated by name-shape false positives
-//              (Zod schemas, synthesized line-suffix stems, decorator-
-//              injected stems)
+//     (Zod schemas, synthesized line-suffix stems, decorator-
+//     injected stems)
 //   - aiDataset: moderate
 //
 // The filters below target the dominant false-positive classes in the
 // aiModel lane:
 //
 // modelSyntheticStemRe: names like `token_management_L47`, `*_L\d+`
-//   are line-number-suffix synthesized identifiers from the AI surface
-//   extractor — they're not addressable named LLM surfaces.
+//
+//	are line-number-suffix synthesized identifiers from the AI surface
+//	extractor — they're not addressable named LLM surfaces.
 //
 // modelTypeSchemaSuffix: PascalCase names ending in Schema/Props/Type/
-//   Config/Params/Request/Response — Zod/Pydantic/TS type aliases that
-//   look like model names.
+//
+//	Config/Params/Request/Response — Zod/Pydantic/TS type aliases that
+//	look like model names.
 //
 // modelDecoratorPrefix: names with `*_tool`, `tool_decorated_*` shapes
-//   that capture @tool decorator labels (not LLM call sites).
+//
+//	that capture @tool decorator labels (not LLM call sites).
 var (
-	modelSyntheticStemRe = regexp.MustCompile(`_L\d+$`)
-	modelDecoratorRe     = regexp.MustCompile(`(?i)(^tool_decorated_|_tool$|_decorator(_|$))`)
+	modelSyntheticStemRe  = regexp.MustCompile(`_L\d+$`)
+	modelDecoratorRe      = regexp.MustCompile(`(?i)(^tool_decorated_|_tool$|_decorator(_|$))`)
 	modelTypeSchemaSuffix = []string{
 		"Schema", "Props", "Type", "Config", "Params", "Request",
 		"Response", "Options", "Settings", "Args", "Input", "Output",

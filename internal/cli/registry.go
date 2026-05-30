@@ -4,7 +4,7 @@
 // feeding `terrain --help`, `terrain doctor`, and the truth-verify
 // gate.
 //
-// Status in 0.2.0
+// # Status in 0.2.0
 //
 // This is the foundation: the Command type, Pillar enum, and a
 // thread-safe Register/All API. The existing dispatcher in
@@ -14,7 +14,7 @@
 // from it today without forcing the dispatcher to become
 // registry-driven.
 //
-// Why a separate package
+// # Why a separate package
 //
 // Putting the registry under cmd/terrain/ would couple it to the
 // CLI binary's package and make it un-importable from

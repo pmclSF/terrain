@@ -99,7 +99,7 @@ type DetectorSpec struct {
 
 	// Tier is `gate` or `observability`. Plugins ship at observability
 	// by default; promotion to gate requires terrain's per-plugin
-	// validation flow (cycle-3).
+	// validation flow (reserved for a future release).
 	Tier string `yaml:"tier,omitempty" json:"tier,omitempty"`
 
 	// Description is the user-facing one-liner shown in

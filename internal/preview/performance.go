@@ -9,9 +9,9 @@ import (
 
 // LatencyObservation is one runtime sample.
 type LatencyObservation struct {
-	Surface  string
-	IsFirst  bool // first request of a fresh process
-	Millis   float64
+	Surface string
+	IsFirst bool // first request of a fresh process
+	Millis  float64
 }
 
 // DetectColdStartTime fires when the first-request latency exceeds

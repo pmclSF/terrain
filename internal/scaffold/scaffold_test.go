@@ -143,12 +143,12 @@ func TestEmit_DefaultsToPython(t *testing.T) {
 
 func TestSafePythonIdent(t *testing.T) {
 	cases := map[string]string{
-		"prompt":      "prompt",
-		"user-input":  "user_input",
-		"User.Email":  "user_email",
-		"2nd_choice":  "_2nd_choice",
-		"!!!":         "___",
-		"":            "field",
+		"prompt":     "prompt",
+		"user-input": "user_input",
+		"User.Email": "user_email",
+		"2nd_choice": "_2nd_choice",
+		"!!!":        "___",
+		"":           "field",
 	}
 	for in, want := range cases {
 		if got := safePythonIdent(in); got != want {

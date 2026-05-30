@@ -21,12 +21,12 @@ import (
 // should treat missing lineage as "no information" rather than an
 // error to surface.
 type FindingLineage struct {
-	CommitSHA   string    // 40-char SHA introducing the line
-	ShortSHA    string    // 8-char prefix for display
-	Author      string    // committer name
-	AuthorEmail string    // committer email
-	AuthoredAt  time.Time // commit timestamp
-	CommitsSince int      // number of commits to this file since AuthoredAt (HEAD-relative)
+	CommitSHA    string    // 40-char SHA introducing the line
+	ShortSHA     string    // 8-char prefix for display
+	Author       string    // committer name
+	AuthorEmail  string    // committer email
+	AuthoredAt   time.Time // commit timestamp
+	CommitsSince int       // number of commits to this file since AuthoredAt (HEAD-relative)
 }
 
 // LookupLineage runs `git blame` against (file, line) and parses the

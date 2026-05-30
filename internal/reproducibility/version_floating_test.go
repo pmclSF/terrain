@@ -109,8 +109,8 @@ func TestHasGitCommitSHA(t *testing.T) {
 		{"git+https://github.com/x/y.git@main", false},
 		{"git+https://github.com/x/y.git@v1.0.0", false},
 		{"git+https://github.com/x/y.git@abc1234", true},
-		{"git+https://github.com/x/y.git@abc123", false},                          // too short
-		{"git+https://github.com/x/y.git@abcdef1#egg=pkg", true},                  // strips egg fragment
+		{"git+https://github.com/x/y.git@abc123", false},         // too short
+		{"git+https://github.com/x/y.git@abcdef1#egg=pkg", true}, // strips egg fragment
 		{"git+https://github.com/x/y.git@a1b2c3d4e5f6#egg=pkg", true},
 		{"no-at-symbol", false},
 	}

@@ -111,8 +111,8 @@ func (d *DeprecatedPatternDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 	// noisy duplicates on large repos. The per-file signal is now
 	// `deprecatedTestPattern` (per-file, actionable) and the
 	// project-wide migrationBlocker carries the file list in metadata.
-	blockerFiles := map[string][]string{}      // pattern -> file list
-	blockerOwners := map[string]string{}       // pattern -> first owner seen
+	blockerFiles := map[string][]string{} // pattern -> file list
+	blockerOwners := map[string]string{}  // pattern -> first owner seen
 
 	for _, tf := range snap.TestFiles {
 		lang := frameworkLanguage(tf.Framework)
@@ -226,12 +226,12 @@ func rolledUpMigrationBlockers(
 			),
 			SuggestedAction: "Address this blocker (across all affected files) before attempting framework migration.",
 			Metadata: map[string]any{
-				"pattern":       pattern,
-				"blockerType":   blockerType,
-				"blockerTier":   TierHardBlocker,
-				"file_count":    len(files),
-				"files":         files,
-				"sample_files":  sample,
+				"pattern":      pattern,
+				"blockerType":  blockerType,
+				"blockerTier":  TierHardBlocker,
+				"file_count":   len(files),
+				"files":        files,
+				"sample_files": sample,
 			},
 		})
 	}

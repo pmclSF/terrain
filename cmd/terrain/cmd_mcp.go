@@ -18,10 +18,11 @@ import (
 // JSON-RPC requests from stdin and writes responses to stdout —
 // this is the standard MCP transport.
 //
-// Wiring artifacts: 0.2.0 starts with an empty Artifacts struct.
-// Loading findings.json / surface inventory / baselines from the
-// repo's last analyze run is followup work (the server is operational
-// for the agent-runtime handshake either way).
+// Wiring artifacts: reads `.terrain/findings.json` (emitted by every
+// `terrain analyze` run) plus terrain.yaml surfaces and any
+// `.terrain/baselines/*.json` files. Each load step degrades
+// gracefully — a missing file just leaves that field empty so the
+// server stays usable on a fresh repo.
 func runMCPCommand(root string) error {
 	fmt.Fprintf(os.Stderr, "terrain-mcp: starting on stdio, spec version %s\n", mcp.SpecVersion)
 	fmt.Fprintf(os.Stderr, "terrain-mcp: serving from %s\n", root)

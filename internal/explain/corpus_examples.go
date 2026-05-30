@@ -35,9 +35,9 @@ type CorpusExamplesBundle struct {
 }
 
 var (
-	corpusOnce     sync.Once
-	corpusLoaded   *CorpusExamplesBundle
-	corpusLoadErr  error
+	corpusOnce    sync.Once
+	corpusLoaded  *CorpusExamplesBundle
+	corpusLoadErr error
 )
 
 func loadCorpusExamples() (*CorpusExamplesBundle, error) {

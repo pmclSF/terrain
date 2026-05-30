@@ -33,7 +33,7 @@ type AliasEntry struct {
 	DeprecatedIn string `yaml:"deprecated_in,omitempty"`
 
 	// RemovalTarget is the semver release after which the alias may stop
-	// expanding. Allows a future cycle to drop the alias cleanly.
+	// expanding. Allows a future release to drop the alias cleanly.
 	// Documentary only — the registry honors all aliases regardless until
 	// the entry is deleted from the YAML.
 	RemovalTarget string `yaml:"removal_target,omitempty"`

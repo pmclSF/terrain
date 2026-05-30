@@ -12,21 +12,21 @@
 //
 // Scope:
 //
-//  - User-visible string literals in internal/signals/manifest.go
-//    (Description, Remediation, PromotionPlan fields).
-//  - User-visible string literals in internal/signals/signal_types.go
-//    (typeInfoBySignal map values).
-//  - User-visible literals in cmd/terrain/*.go that go to stdout
-//    or stderr via fmt.Println / fmt.Fprintf.
+//   - User-visible string literals in internal/signals/manifest.go
+//     (Description, Remediation, PromotionPlan fields).
+//   - User-visible string literals in internal/signals/signal_types.go
+//     (typeInfoBySignal map values).
+//   - User-visible literals in cmd/terrain/*.go that go to stdout
+//     or stderr via fmt.Println / fmt.Fprintf.
 //
 // Out of scope: doc files (already covered by docs-linkcheck +
 // truth-verify); Go comments (developer-facing); test files.
 //
 // Exit codes:
 //
-//  0 — clean
-//  1 — violations found (per-line offender output)
-//  2 — invocation error (cannot read filesystem)
+//	0 — clean
+//	1 — violations found (per-line offender output)
+//	2 — invocation error (cannot read filesystem)
 //
 // Wired into the release-readiness pipeline as `make voice-lint`.
 package main

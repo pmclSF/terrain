@@ -13,8 +13,8 @@ import (
 //	manifest <path>   validate a plugin manifest file
 //	list              list registered plugins (today: empty stub)
 //
-// `add` and `remove` are reserved for cycle-3 when the runtime
-// (subprocess spawn + signed-binary verification + per-plugin
+// `add` and `remove` are reserved for a future release once the
+// runtime (subprocess spawn + signed-binary verification + per-plugin
 // directory layout) lands. The verb dispatch is wired so adding the
 // runtime later doesn't need a CLI surface change.
 func runPlugins(args []string) error {
@@ -98,10 +98,10 @@ func runPluginsList(args []string) error {
 			jsonOut = true
 		}
 	}
-	// The runtime registry lands in cycle-3. Today the list is always
-	// empty — terrain ships zero installed plugins. Returning the
-	// shape adopters will see at scale so their tooling doesn't need
-	// to change later.
+	// The runtime registry lands in a future release. Today the list
+	// is always empty — terrain ships zero installed plugins. Returning
+	// the shape adopters will see at scale so their tooling doesn't
+	// need to change later.
 	out := map[string]any{
 		"schema_version": plugin.SchemaVersion,
 		"plugins":        []any{},

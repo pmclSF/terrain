@@ -127,12 +127,12 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 		}
 
 		out = append(out, models.Signal{
-			Type:        signals.SignalAIPromptVersioning,
-			Category:    models.CategoryAI,
-			Severity:    models.SeverityMedium,
-			Confidence:  0.50,
-			Location:    models.SignalLocation{File: surface.Path, Symbol: surface.Name},
-			Explanation: "Prompt file `" + surface.Path + "` has no recognizable version marker. Future content changes will silently drift; consumers can't detect the change.",
+			Type:            signals.SignalAIPromptVersioning,
+			Category:        models.CategoryAI,
+			Severity:        models.SeverityMedium,
+			Confidence:      0.50,
+			Location:        models.SignalLocation{File: surface.Path, Symbol: surface.Name},
+			Explanation:     "Prompt file `" + surface.Path + "` has no recognizable version marker. Future content changes will silently drift; consumers can't detect the change.",
 			SuggestedAction: "Add a `version:` field, a `_v<N>` suffix to the filename, or a `# version: ...` comment so downstream consumers can detect content drift.",
 
 			SeverityClauses: []string{"sev-medium-007"},

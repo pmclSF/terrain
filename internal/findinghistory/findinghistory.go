@@ -80,10 +80,10 @@ type Store struct {
 	threshold int
 	// now is the clock used to stamp LastFire / LastDismiss.
 	// Defaulted to time.Now; tests inject a fixed clock.
-	now       func() time.Time
-	mu        sync.Mutex
-	entries   map[string]*Entry // keyed by ruleID + "::" + file
-	loadedAt  time.Time         // documentary
+	now      func() time.Time
+	mu       sync.Mutex
+	entries  map[string]*Entry // keyed by ruleID + "::" + file
+	loadedAt time.Time         // documentary
 }
 
 // New returns an empty Store with the default threshold.
