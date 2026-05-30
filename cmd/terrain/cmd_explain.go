@@ -14,6 +14,7 @@ import (
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/reporting"
+	"github.com/pmclSF/terrain/internal/signals"
 )
 
 // jsonOut writes v to stdout as indented JSON.
@@ -33,6 +34,17 @@ func printShowUsage() {
 }
 
 func runExplain(target, root, baseRef string, jsonOutput, verbose bool) error {
+	// Rule-id / signal-type fast path: when the target matches a
+	// manifest entry, render the manifest + rule doc without running
+	// the analyze pipeline. Covers `/terrain explain aiPromptSchemaDrift`,
+	// `terrain explain terrain/ai/prompt-schema-drift`, and the bare
+	// `terrain explain ai/prompt-schema-drift` shape. Without this,
+	// the slash hint emitted by every prtemplates entry fell through
+	// to the entity lookup and errored with "entity not found."
+	if entry, ok := lookupManifestEntry(target); ok {
+		return renderRuleExplanation(entry, root, jsonOutput)
+	}
+
 	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		return fmt.Errorf("analysis failed: %w", err)
@@ -664,4 +676,77 @@ func isUniqueCodeUnitName(snap *models.TestSuiteSnapshot, name string) bool {
 		}
 	}
 	return count == 1
+}
+
+// lookupManifestEntry resolves a target string to a manifest entry. The
+// target may be a SignalType (`aiPromptSchemaDrift`), a full RuleID
+// (`terrain/ai/prompt-schema-drift`), or a bare path (`ai/prompt-schema-drift`).
+// Returns the matching entry and true on success.
+func lookupManifestEntry(target string) (signals.ManifestEntry, bool) {
+	target = strings.TrimSpace(target)
+	if target == "" {
+		return signals.ManifestEntry{}, false
+	}
+	normalized := strings.TrimPrefix(target, "terrain/")
+	for _, entry := range signals.Manifest() {
+		if string(entry.Type) == target {
+			return entry, true
+		}
+		if entry.RuleID == target {
+			return entry, true
+		}
+		if strings.TrimPrefix(entry.RuleID, "terrain/") == normalized {
+			return entry, true
+		}
+	}
+	return signals.ManifestEntry{}, false
+}
+
+// renderRuleExplanation prints the manifest entry's metadata plus the
+// hand-authored rule doc (when present on disk). Output is intentionally
+// plain text so the slash-dispatcher captureRun path forwards it as a
+// PR-comment reply without HTML conversion.
+func renderRuleExplanation(entry signals.ManifestEntry, root string, jsonOutput bool) error {
+	if jsonOutput {
+		return jsonOut(entry)
+	}
+	fmt.Println(entry.RuleID)
+	fmt.Println(strings.Repeat("─", len(entry.RuleID)))
+	fmt.Println()
+	fmt.Printf("Title:    %s\n", entry.Title)
+	fmt.Printf("Type:     %s\n", entry.Type)
+	fmt.Printf("Domain:   %s\n", entry.Domain)
+	fmt.Printf("Severity: %s (default)\n", entry.DefaultSeverity)
+	fmt.Printf("Status:   %s\n", entry.Status)
+	fmt.Printf("Tier:     %s\n", entry.Tier)
+	if entry.DisabledByDefault {
+		fmt.Println("          (disabled by default — opt in via .terrain/policy.yaml)")
+	}
+	fmt.Println()
+	if entry.Description != "" {
+		fmt.Println("Description")
+		fmt.Println(entry.Description)
+		fmt.Println()
+	}
+	if entry.Remediation != "" {
+		fmt.Println("Remediation")
+		fmt.Println(entry.Remediation)
+		fmt.Println()
+	}
+	if entry.PromotionPlan != "" {
+		fmt.Println("Promotion plan")
+		fmt.Println(entry.PromotionPlan)
+		fmt.Println()
+	}
+	if entry.RuleURI != "" {
+		docPath := filepath.Join(root, entry.RuleURI)
+		if body, err := os.ReadFile(docPath); err == nil && len(body) > 0 {
+			fmt.Println("Rule documentation")
+			fmt.Println(strings.Repeat("─", 18))
+			fmt.Println(strings.TrimSpace(string(body)))
+		} else {
+			fmt.Printf("Rule documentation: %s (not on disk at this checkout)\n", entry.RuleURI)
+		}
+	}
+	return nil
 }
