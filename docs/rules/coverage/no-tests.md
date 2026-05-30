@@ -158,7 +158,7 @@ terrain test --selector coverage/no-tests
 The rule fires on the entire repo's code units, not just changed ones. To scope to changes only:
 
 ```bash
-terrain test --selector coverage/no-tests --base $(git merge-base HEAD main) --head HEAD
+terrain test --selector coverage/no-tests
 ```
 
 ## 10. Stability commitment

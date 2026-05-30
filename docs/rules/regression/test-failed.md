@@ -80,7 +80,7 @@ rules:
 ## 9. Reproducibility
 
 ```bash
-terrain test --selector regression/test-failed --base $(git merge-base HEAD main) --head HEAD
+terrain test --selector regression/test-failed
 ```
 
 ## 10. Stability commitment

@@ -629,9 +629,10 @@ func main() {
 		rootFlag := stCmd.String("root", ".", "repository root to analyze")
 		baseRef := stCmd.String("base", "", "git base ref for diff (default: HEAD~1)")
 		jsonFlag := stCmd.Bool("json", false, "output JSON protective test set")
+		formatFlag := stCmd.String("format", "", "output format: paths (one test path per line), json, or text")
 		_ = stCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("select-tests", stCmd.Args(), rootFlag)
-		if err := runSelectTests(*rootFlag, *baseRef, *jsonFlag); err != nil {
+		if err := runSelectTests(*rootFlag, *baseRef, *jsonFlag, *formatFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}

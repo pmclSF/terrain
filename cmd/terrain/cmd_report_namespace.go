@@ -263,7 +263,8 @@ func runReportSelectTestsCLI(args []string) error {
 	root := fs.String("root", ".", "repository root to analyze")
 	baseRef := fs.String("base", "", "git base ref for diff (default: HEAD~1)")
 	jsonOut := fs.Bool("json", false, "output JSON protective test set")
+	format := fs.String("format", "", "output format: paths (one test path per line, for xargs), json, or text (default)")
 	_ = fs.Parse(args)
 	mountPositionalAsRoot("report select-tests", fs.Args(), root)
-	return runSelectTests(*root, *baseRef, *jsonOut)
+	return runSelectTests(*root, *baseRef, *jsonOut, *format)
 }

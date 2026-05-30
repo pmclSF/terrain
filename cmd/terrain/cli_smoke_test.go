@@ -105,7 +105,7 @@ func TestCLISmoke_SelectTestsCommand(t *testing.T) {
 	root := fixtureRoot(t)
 
 	out, err := captureRun(func() error {
-		return runSelectTests(root, "HEAD~1", true)
+		return runSelectTests(root, "HEAD~1", true, "")
 	})
 	if err != nil {
 		t.Errorf("select-tests failed: %v", err)

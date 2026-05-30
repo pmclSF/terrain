@@ -48,7 +48,7 @@ templates:
       - { label: "Explain secrets-in-prompt", command: "/terrain explain secretsInPrompt" }
       - { label: "Dismiss as test fixture", command: "/dismiss reason:<text>" }
 
-  - signal_type: insecureDeserialize
+  - signal_type: insecureDeserialization
     title: Insecure deserialization
     summary: |
       A deserialization call (pickle.loads, yaml.load without safe

@@ -145,7 +145,7 @@ terrain test --selector reproducibility/version-floating
 To scope to a specific path:
 
 ```bash
-terrain test --selector reproducibility/version-floating --path requirements.txt
+terrain test --selector reproducibility/version-floating
 ```
 
 ## 10. Stability commitment
