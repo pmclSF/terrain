@@ -41,7 +41,22 @@ func TestDetectorDrift_ReferenceFixture(t *testing.T) {
 
 	abs, _ := filepath.Abs(fixtureDir)
 	if _, err := os.Stat(abs); err != nil {
-		t.Skipf("reference fixture missing at %s: %v", abs, err)
+		// In CI we want this to fail loudly — a missing fixture
+		// silently disables the drift gate, which is the exact
+		// posture this test was added to prevent. CI sets
+		// CI=true (GitHub Actions default); locally devs can run
+		// without the fixture and get the historical skip behavior.
+		if os.Getenv("CI") != "" {
+			t.Fatalf("reference fixture missing at %s and CI=true; "+
+				"add tests/fixtures/terrain-world/ or set "+
+				"TERRAIN_SKIP_DRIFT_GATE=1 to bypass deliberately: %v", abs, err)
+		}
+		if os.Getenv("TERRAIN_SKIP_DRIFT_GATE") != "" {
+			t.Skipf("reference fixture missing; skipping due to "+
+				"TERRAIN_SKIP_DRIFT_GATE=1: %v", err)
+		}
+		t.Skipf("reference fixture missing at %s (set TERRAIN_SKIP_DRIFT_GATE=1 "+
+			"or CI=true to control behavior): %v", abs, err)
 	}
 
 	result, err := RunPipeline(abs, PipelineOptions{
