@@ -25,7 +25,7 @@ func jsonOut(v any) error {
 }
 
 func printShowUsage() {
-	fmt.Fprintln(os.Stderr, "Usage: terrain show <test|unit|codeunit|owner|finding> <id-or-path> [--root PATH] [--json]")
+	fmt.Fprintln(os.Stderr, "Usage: terrain show <test|unit|codeunit|owner|finding|rule> <id-or-path> [--root PATH] [--json]")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Examples:")
 	fmt.Fprintln(os.Stderr, "  terrain show test src/auth/login.test.js")
@@ -467,8 +467,21 @@ func runShow(entity, id, root string, jsonOutput bool) error {
 	id = strings.TrimSpace(id)
 	switch entity {
 	case "test", "unit", "codeunit", "owner", "finding":
+	case "rule":
+		// Rule lookup goes through the manifest, not the snapshot.
+		// The deprecation hint emitted on every aliased rule_id tells
+		// users to "Run `terrain show rule <id>`" — without this case
+		// the suggestion errored with "unknown entity type."
+		if id == "" {
+			return fmt.Errorf("missing rule id for show rule")
+		}
+		entry, ok := lookupManifestEntry(id)
+		if !ok {
+			return fmt.Errorf("rule %q not found in manifest (try the bare SignalType, the full RuleID, or `<category>/<rule>` form)", id)
+		}
+		return renderRuleExplanation(entry, root, jsonOutput)
 	default:
-		return fmt.Errorf("unknown entity type: %q (valid: test, unit, codeunit, owner, finding)", entity)
+		return fmt.Errorf("unknown entity type: %q (valid: test, unit, codeunit, owner, finding, rule)", entity)
 	}
 	if id == "" {
 		return fmt.Errorf("missing ID for show %q", entity)
