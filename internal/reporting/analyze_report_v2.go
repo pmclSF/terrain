@@ -47,9 +47,9 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		blank()
 	}
 
-	// Next actions — up to 3 prioritized things to do.
+	// Recommended actions — up to 3 prioritized things to do.
 	if len(r.NextActions) > 0 {
-		line("What to do next:")
+		line("Recommended actions:")
 		for i, a := range r.NextActions {
 			line("  %d. %s", i+1, a.Title)
 			line("     $ %s", a.Command)
@@ -78,6 +78,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	if r.RepoProfile.ManualCoveragePresence != "" && r.RepoProfile.ManualCoveragePresence != "none" {
 		line("  Manual coverage:      %s", r.RepoProfile.ManualCoveragePresence)
 	}
+	line("  (scale: tiny / small / medium / large / very-large for volume; low / moderate / high for *burden* dimensions, where lower is better)")
 	blank()
 
 	// Validation inventory
@@ -359,7 +360,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		line("Edge Cases")
 		line(strings.Repeat("-", 60))
 		for _, ec := range r.EdgeCases {
-			line("  [%s] %s", ec.Severity, ec.Description)
+			line("  %s %s", uitokens.BracketedSeverity(string(ec.Severity)), ec.Description)
 		}
 		blank()
 	}

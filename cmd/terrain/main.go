@@ -865,12 +865,13 @@ func main() {
 			aiCmd := flag.NewFlagSet("ai findings", flag.ExitOnError)
 			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
 			jsonFlag := aiCmd.Bool("json", false, "output JSON")
+			verboseFlag := aiCmd.Bool("verbose", false, "show per-evidence-atom weight scores")
 			postureFlag := aiCmd.String("posture", "observability",
 				"emission posture: observability | gate")
 			ruleFlag := aiCmd.String("rule", "",
 				"rule to evaluate (default: ai.surface.missing_eval; see docs/rules/ai/)")
 			_ = aiCmd.Parse(os.Args[3:])
-			if err := runAIFindings(*rootFlag, *jsonFlag, *postureFlag, *ruleFlag); err != nil {
+			if err := runAIFindings(*rootFlag, *jsonFlag, *verboseFlag, *postureFlag, *ruleFlag); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}
@@ -1072,9 +1073,9 @@ func main() {
 			for _, s := range suggestions {
 				fmt.Fprintf(os.Stderr, "  terrain %s\n", s)
 			}
+			fmt.Fprintln(os.Stderr)
 		}
-		fmt.Fprintln(os.Stderr)
-		printUsage()
+		fmt.Fprintln(os.Stderr, "Run `terrain --help` for the full command surface.")
 		os.Exit(exitUsageError)
 	}
 }

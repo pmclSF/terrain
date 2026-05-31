@@ -752,6 +752,11 @@ func renderRuleExplanation(entry signals.ManifestEntry, root string, jsonOutput 
 		fmt.Println()
 	}
 	if entry.RuleURI != "" {
+		// First try to load the doc from the adopter's repo (works
+		// when terrain is invoked from a checkout of the terrain repo
+		// itself — e.g. during development). Otherwise just print the
+		// canonical doc URL; adopters don't have terrain's rule docs
+		// on their disk, so a missing-file warning would be noise.
 		docPath := filepath.Join(root, entry.RuleURI)
 		if body, err := os.ReadFile(docPath); err == nil && len(body) > 0 {
 			fmt.Println("Rule documentation")
@@ -760,7 +765,7 @@ func renderRuleExplanation(entry signals.ManifestEntry, root string, jsonOutput 
 		} else if entry.Status == signals.StatusPlanned {
 			fmt.Println("Rule documentation: deferred (this rule is planned; the detector hasn't landed yet, so no doc is shipped).")
 		} else {
-			fmt.Printf("Rule documentation: %s (not on disk at this checkout)\n", entry.RuleURI)
+			fmt.Printf("Rule documentation: https://github.com/pmclSF/terrain/blob/main/%s\n", entry.RuleURI)
 		}
 	}
 	return nil

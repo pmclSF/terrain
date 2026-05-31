@@ -1293,10 +1293,10 @@ func runAIDoctor(root string, jsonOutput bool) error {
 		icon := "  "
 		switch c.Status {
 		case "pass":
-			icon = "  [pass]"
+			icon = "  [PASS]"
 			passCount++
 		case "warn":
-			icon = "  [warn]"
+			icon = "  [WARN]"
 			warnCount++
 		case "fail":
 			icon = "  [FAIL]"

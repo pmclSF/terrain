@@ -53,10 +53,11 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 		line("  (no risk surfaces computed)")
 	} else {
 		line("  Dimension meaning:")
-		line("    reliability: runtime stability and determinism")
-		line("    change: test confidence for safe refactoring and delivery")
-		line("    speed: execution efficiency and feedback-loop latency")
-		line("    governance: policy adherence and operational control")
+		line("    Health:             test-system reliability and signal cleanliness")
+		line("    Coverage depth:     how thoroughly tests cover the source surface")
+		line("    Coverage diversity: how many test layers (unit / integration / e2e) participate")
+		line("    Structural risk:    blind-spots in the dependency graph (high fanout, weak coverage)")
+		line("    Operational risk:   skip / flake / slow-test burden eroding signal")
 	}
 	blank()
 

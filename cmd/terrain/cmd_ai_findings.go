@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/pmclSF/terrain/internal/aipipeline"
 	"github.com/pmclSF/terrain/internal/aipiperun"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // runAIFindings is the user-facing entry point for the AI eval-gap
@@ -19,7 +21,7 @@ import (
 // Posture defaults to "observability" — emit anything that clears the
 // observability confidence threshold. Pass --posture=gate for the
 // stricter CI-gate cut.
-func runAIFindings(root string, jsonOutput bool, posture string, rule string) error {
+func runAIFindings(root string, jsonOutput, verbose bool, posture string, rule string) error {
 	rules := []string{"ai.surface.missing_eval"}
 	if rule != "" {
 		rules = []string{rule}
@@ -46,7 +48,7 @@ func runAIFindings(root string, jsonOutput bool, posture string, rule string) er
 	if jsonOutput {
 		return renderFindingsJSON(findings)
 	}
-	return renderFindingsText(findings, post)
+	return renderFindingsText(findings, post, verbose)
 }
 
 type findingJSON struct {
@@ -99,7 +101,10 @@ func renderFindingsJSON(findings []aipipeline.Finding) error {
 	return enc.Encode(out)
 }
 
-func renderFindingsText(findings []aipipeline.Finding, posture aipipeline.Posture) error {
+func renderFindingsText(findings []aipipeline.Finding, posture aipipeline.Posture, verbose bool) error {
+	fmt.Println("Terrain — AI Eval-Gap Findings")
+	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println()
 	if len(findings) == 0 {
 		fmt.Printf("No findings at %s posture.\n", posture)
 		return nil
@@ -112,17 +117,19 @@ func renderFindingsText(findings []aipipeline.Finding, posture aipipeline.Postur
 		if cal.IsPreview(f.RuleID) {
 			previewTag = " [preview]"
 		}
-		fmt.Printf("  %s%s\n", f.Path, previewTag)
+		fmt.Printf("  %s %s%s\n", uitokens.BracketedSeverity(string(f.Severity)), f.Path, previewTag)
 		fmt.Printf("    rule:       %s\n", f.RuleID)
-		fmt.Printf("    severity:   %s\n", f.Severity)
 		fmt.Printf("    confidence: %.2f\n", f.Confidence)
 		if f.Cohort != "" {
 			fmt.Printf("    cohort:     %s\n", f.Cohort)
 		}
 		if previewTag != "" {
-			fmt.Printf("    NOTE:       this rule is in preview — behavior may change between releases\n")
+			fmt.Printf("    note:       preview rule — behavior may change between releases\n")
 		}
-		if len(f.Atoms) > 0 {
+		if f.FixScaffold != "" {
+			fmt.Printf("    fix-scaffold available\n")
+		}
+		if verbose && len(f.Atoms) > 0 {
 			fmt.Printf("    evidence:\n")
 			for _, a := range f.Atoms {
 				line := ""
@@ -133,10 +140,10 @@ func renderFindingsText(findings []aipipeline.Finding, posture aipipeline.Postur
 					a.Kind, a.RuleID, line, a.Weight)
 			}
 		}
-		if f.FixScaffold != "" {
-			fmt.Printf("    fix-scaffold available\n")
-		}
 		fmt.Println()
+	}
+	if !verbose && len(findings) > 0 {
+		fmt.Println("Run with --verbose to see per-evidence-atom scoring detail.")
 	}
 	return nil
 }

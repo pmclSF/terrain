@@ -205,6 +205,41 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 // per-detector visibility floor.
 //
 // Trails a blank line so the next section header has breathing room.
+// renderFindingsByPath groups findings by file path and renders one
+// header per path followed by indented [SEV] explanation lines. Keeps
+// the wall-of-same-path effect from drowning multi-rule files (a
+// repo with three AI surfaces × three AI rules previously printed the
+// same path nine times; now it prints once with nine indented bullets).
+func renderFindingsByPath(line func(string, ...any), findings []ChangeScopedFinding) {
+	// Group preserving first-seen path order so the output is stable.
+	type group struct {
+		path  string
+		items []ChangeScopedFinding
+	}
+	var groups []*group
+	idx := map[string]*group{}
+	for _, f := range findings {
+		g, ok := idx[f.Path]
+		if !ok {
+			g = &group{path: f.Path}
+			idx[f.Path] = g
+			groups = append(groups, g)
+		}
+		g.items = append(g.items, f)
+	}
+	for _, g := range groups {
+		if len(g.items) == 1 {
+			f := g.items[0]
+			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
+			continue
+		}
+		line("  %s", g.path)
+		for _, f := range g.items {
+			line("    %s %s", uitokens.BracketedSeverity(f.Severity), f.Explanation)
+		}
+	}
+}
+
 func renderFindingsCards(line func(string, ...any), findings []ChangeScopedFinding, limit int) {
 	if len(findings) < limit {
 		limit = len(findings)
@@ -658,27 +693,21 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 	if len(directRisk) > 0 {
 		line("New Risks (directly changed)")
 		line(strings.Repeat("-", 40))
-		for _, f := range directRisk {
-			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
-		}
+		renderFindingsByPath(line, directRisk)
 		blank()
 	}
 
 	if len(indirectRisk) > 0 {
 		line("Indirectly Impacted Gaps (%d)", len(indirectRisk))
 		line(strings.Repeat("-", 40))
-		for _, f := range indirectRisk {
-			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
-		}
+		renderFindingsByPath(line, indirectRisk)
 		blank()
 	}
 
 	if len(existingDebt) > 0 {
 		line("Pre-Existing Issues")
 		line(strings.Repeat("-", 40))
-		for _, f := range existingDebt {
-			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
-		}
+		renderFindingsByPath(line, existingDebt)
 		blank()
 	}
 

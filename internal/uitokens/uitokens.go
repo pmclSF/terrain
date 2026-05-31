@@ -165,6 +165,13 @@ func BracketedSeverity(severity string) string {
 		return "[LOW]"
 	case "info":
 		return "[INFO]"
+	// Advisory vocabulary used by EdgeCases (depgraph) — distinct
+	// from the Critical/High/Medium/Low/Info severity ladder but
+	// rendered consistently to keep the visual scan uniform.
+	case "warning":
+		return "[WARN]"
+	case "caution":
+		return "[CAUT]"
 	default:
 		return "[---]"
 	}

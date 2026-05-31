@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/impact"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderImpactReport writes a human-readable impact analysis report.
@@ -29,11 +30,18 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	line("Summary: %s", result.Summary)
 	blank()
 
-	// Changed areas
+	// Changed areas — dedupe by (area, path, change-kind) so a file
+	// with multiple impacted code units doesn't print once per unit.
 	if len(result.ChangedAreas) > 0 {
 		line("Changed areas:")
+		seen := map[string]bool{}
 		for _, area := range result.ChangedAreas {
 			for _, s := range area.Surfaces {
+				key := area.Area + "\x00" + s.Path + "\x00" + string(s.ChangeKind)
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
 				line("  %-22s %s (%s)", area.Area, s.Path, s.ChangeKind)
 			}
 		}
@@ -171,7 +179,7 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 		line("Protection Gaps")
 		line(strings.Repeat("-", 60))
 		for _, gap := range result.ProtectionGaps {
-			line("  [%s] %s", gap.Severity, gap.Explanation)
+			line("  %s %s", uitokens.BracketedSeverity(gap.Severity), gap.Explanation)
 			if gap.SuggestedAction != "" {
 				line("    Action: %s", gap.SuggestedAction)
 			}

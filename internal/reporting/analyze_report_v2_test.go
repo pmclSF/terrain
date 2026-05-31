@@ -234,7 +234,7 @@ func TestRenderAnalyzeReportV2_AllSections(t *testing.T) {
 		"Your test suite has 2 issues",
 		"Auto-detected runtime",
 		"Key Findings",
-		"What to do next:",
+		"Recommended actions:",
 		"Repository Profile",
 		"Validation Inventory",
 		"Coverage Confidence",
