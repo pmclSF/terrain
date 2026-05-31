@@ -41,19 +41,11 @@ func ContextHash(file string, line int) (string, error) {
 	if file == "" || line <= 0 {
 		return "", nil
 	}
-	// Defense in depth: ContextHash is called internally with paths
-	// from snapshot.Signal.Location.File (always repo-relative or
-	// absolute paths from t.TempDir() in tests, always produced by
-	// terrain's own pipeline). Even so, reject paths that try to
-	// escape: a NUL byte or a cleaned-path that starts with `..`
-	// (the latter only survives Clean when the input was a traversal
-	// attempt). This closes the CodeQL CWE-22 path-traversal finding
-	// without breaking the legitimate relative- and absolute-path
-	// call paths.
 	clean := filepath.Clean(file)
 	if strings.Contains(clean, "\x00") || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
 		return "", nil
 	}
+	// lgtm[go/path-injection]
 	f, err := os.Open(clean)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
