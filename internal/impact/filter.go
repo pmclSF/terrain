@@ -8,6 +8,7 @@ func FilterByOwner(result *ImpactResult, owner string) *ImpactResult {
 	ownerLower := strings.ToLower(owner)
 
 	filtered := &ImpactResult{
+		SchemaVersion:      result.SchemaVersion,
 		ChangeSet:          result.ChangeSet,
 		Scope:              result.Scope,
 		ChangedAreas:       result.ChangedAreas,

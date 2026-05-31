@@ -30,6 +30,21 @@ type migrateCommandOptions struct {
 	OnError        string
 }
 
+// colorizeStatus renders a doctor / ai-doctor check status as a
+// colored bracket token. PASS green, WARN yellow, FAIL red.
+func colorizeStatus(status string) string {
+	switch strings.ToUpper(strings.TrimSpace(status)) {
+	case "PASS":
+		return uitokens.Ok("[PASS]")
+	case "WARN":
+		return uitokens.Warn("[WARN]")
+	case "FAIL":
+		return uitokens.Alert(uitokens.Bold("[FAIL]"))
+	default:
+		return "[" + status + "]"
+	}
+}
+
 func runMigrateCLI(args []string) error {
 	fs := flag.NewFlagSet("migrate", flag.ContinueOnError)
 	fs.SetOutput(io.Discard)
@@ -353,7 +368,7 @@ func runDoctor(root string, jsonOutput, verbose bool) (conv.MigrationDoctorResul
 	fmt.Println()
 	renderPillarStatuses(os.Stdout, pillars)
 	for _, check := range result.Checks {
-		fmt.Printf("  [%s] %s: %s\n", check.Status, check.Label, check.Detail)
+		fmt.Printf("  %s %s: %s\n", colorizeStatus(check.Status), check.Label, check.Detail)
 		if verbose && strings.TrimSpace(check.Verbose) != "" {
 			fmt.Printf("         %s\n", check.Verbose)
 		}

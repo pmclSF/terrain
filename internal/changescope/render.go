@@ -230,12 +230,12 @@ func renderFindingsByPath(line func(string, ...any), findings []ChangeScopedFind
 	for _, g := range groups {
 		if len(g.items) == 1 {
 			f := g.items[0]
-			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
+			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, collapseLinebreaks(f.Explanation))
 			continue
 		}
 		line("  %s", g.path)
 		for _, f := range g.items {
-			line("    %s %s", uitokens.BracketedSeverity(f.Severity), f.Explanation)
+			line("    %s %s", uitokens.BracketedSeverity(f.Severity), collapseLinebreaks(f.Explanation))
 		}
 	}
 }
@@ -489,14 +489,19 @@ func RenderPRSummaryMarkdownWithHistory(w io.Writer, pr *PRAnalysis, hist Histor
 // / SuggestedAction when no template is registered — protection-gap
 // findings (no SignalType) always fall through.
 //
-// The trailing newline a YAML block-scalar leaves on Summary is
-// stripped — render output should be a single line.
+// Hard-wraps from YAML block scalars or detector source strings are
+// collapsed to a single line so the markdown bullet doesn't break
+// across paragraphs on GitHub. Leading `[signalType]` prefixes are
+// stripped — the same id is already embedded in the hidden
+// `terrain:finding=` marker and the PR-comment badge.
 func summaryAndActionForFinding(f ChangeScopedFinding) (summary, action string) {
-	summary = f.Explanation
-	action = f.SuggestedAction
+	summary = collapseLinebreaks(f.Explanation)
+	action = collapseLinebreaks(f.SuggestedAction)
 	if f.SignalType == "" {
 		return
 	}
+	// Strip a redundant `[signalType]` prefix some detectors include.
+	summary = stripSignalTypePrefix(summary, f.SignalType)
 	reg, err := prtemplates.Default()
 	if err != nil || reg == nil {
 		return
@@ -505,8 +510,8 @@ func summaryAndActionForFinding(f ChangeScopedFinding) (summary, action string) 
 	if !ok {
 		return
 	}
-	summary = strings.TrimSpace(tpl.Summary)
-	action = strings.TrimSpace(tpl.Action)
+	summary = collapseLinebreaks(strings.TrimSpace(tpl.Summary))
+	action = collapseLinebreaks(strings.TrimSpace(tpl.Action))
 	return
 }
 
@@ -793,6 +798,41 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 		}
 		blank()
 	}
+}
+
+// collapseLinebreaks joins multi-line strings into one line so that
+// detector explanations with hard-wrap source formatting don't break
+// markdown list items on the PR-comment surface. Single-line input
+// returns unchanged; multi-line input collapses to a single
+// space-separated line.
+func collapseLinebreaks(s string) string {
+	if !strings.Contains(s, "\n") {
+		return s
+	}
+	var b strings.Builder
+	for _, line := range strings.Split(s, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteString(" ")
+		}
+		b.WriteString(trimmed)
+	}
+	return b.String()
+}
+
+// stripSignalTypePrefix removes a leading `[signalType]` token from
+// an explanation string. Some detectors emit `[fooBar] explanation
+// text`; the same id is already in the hidden `terrain:finding=`
+// marker, so duplicating it inline is just noise.
+func stripSignalTypePrefix(s, signalType string) string {
+	if signalType == "" {
+		return s
+	}
+	prefix := "[" + signalType + "] "
+	return strings.TrimPrefix(s, prefix)
 }
 
 // filterDiffScopedLimitations strips full-repo advisories ("too few

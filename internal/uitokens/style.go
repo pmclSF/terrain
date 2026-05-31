@@ -51,8 +51,11 @@ const (
 // Uses U+00B7 middle-dot rather than em-dash to keep the gap between
 // "Terrain" and the subtitle visually balanced (em-dash adds too much
 // horizontal weight at the top of every report).
+//
+// When ColorEnabled, the title (but not the separator) renders bold
+// so it stands out at the top of multi-screen reports.
 func Header(subtitle string) string {
-	return "Terrain · " + subtitle + "\n" + H1Sep
+	return Bold("Terrain · "+subtitle) + "\n" + H1Sep
 }
 
 // Section returns a canonical in-report section header:

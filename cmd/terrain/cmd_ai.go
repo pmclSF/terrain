@@ -1290,13 +1290,13 @@ func runAIDoctor(root string, jsonOutput bool) error {
 		icon := "  "
 		switch c.Status {
 		case "pass":
-			icon = "  [PASS]"
+			icon = "  " + colorizeStatus("PASS")
 			passCount++
 		case "warn":
-			icon = "  [WARN]"
+			icon = "  " + colorizeStatus("WARN")
 			warnCount++
 		case "fail":
-			icon = "  [FAIL]"
+			icon = "  " + colorizeStatus("FAIL")
 		}
 		fmt.Printf("%s %-16s %s\n", icon, c.Name, c.Message)
 	}

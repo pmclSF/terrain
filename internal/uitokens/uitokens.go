@@ -156,24 +156,24 @@ func SeverityBadge(s Severity) string {
 func BracketedSeverity(severity string) string {
 	switch severity {
 	case "critical":
-		return "[CRIT]"
+		return Alert(Bold("[CRIT]"))
 	case "high":
-		return "[HIGH]"
+		return Alert(Bold("[HIGH]"))
 	case "medium":
-		return "[MED]"
+		return Warn("[MED]")
 	case "low":
-		return "[LOW]"
+		return Muted("[LOW]")
 	case "info":
-		return "[INFO]"
+		return Muted("[INFO]")
 	// Advisory vocabulary used by EdgeCases (depgraph) — distinct
 	// from the Critical/High/Medium/Low/Info severity ladder but
 	// rendered consistently to keep the visual scan uniform.
 	case "warning":
-		return "[WARN]"
+		return Warn("[WARN]")
 	case "caution":
-		return "[CAUT]"
+		return Warn("[CAUT]")
 	default:
-		return "[---]"
+		return Muted("[---]")
 	}
 }
 

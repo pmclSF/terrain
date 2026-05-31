@@ -386,9 +386,9 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	line("Data Completeness")
 	line(uitokens.H2Sep)
 	for _, ds := range r.DataCompleteness {
-		mark := "✗"
+		mark := uitokens.Muted("✗")
 		if ds.Available {
-			mark = "✓"
+			mark = uitokens.Ok("✓")
 		}
 		line("  %s %s", mark, ds.Name)
 	}

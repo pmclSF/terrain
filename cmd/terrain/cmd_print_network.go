@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/pmclSF/terrain/internal/terrainconfig"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // runPrintNetwork audits Terrain's outbound network surface. Anchors the
@@ -29,7 +30,7 @@ func runPrintNetwork(root string) error {
 		return err
 	}
 
-	fmt.Printf("Terrain — outbound network audit\n")
+	fmt.Println(uitokens.Header("Outbound Network Audit"))
 	fmt.Printf("Root: %s\n\n", abs)
 
 	endpoints := collectOutboundEndpoints(abs)
@@ -44,7 +45,7 @@ func runPrintNetwork(root string) error {
 		return nil
 	}
 	for _, e := range endpoints {
-		fmt.Printf("  - %s\n", e)
+		fmt.Printf("  %s %s\n", uitokens.Bullet, e)
 	}
 	return nil
 }
