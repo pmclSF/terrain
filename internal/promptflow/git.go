@@ -45,9 +45,15 @@ func DiscoverFromGit(ctx context.Context, root, baseRef string) (Discoveries, ma
 		if err := ctx.Err(); err != nil {
 			return Discoveries{}, nil, err
 		}
-		body, ok := gitShow(ctx, root, baseRef, filepath.ToSlash(schema.Path))
+		// Normalize the path to forward slashes for both the git
+		// argument (git always uses /) and the map key. Otherwise
+		// callers on Windows looking up by "schemas/user.json"
+		// would miss the OS-separator key "schemas\user.json"
+		// produced by filepath.Walk.
+		key := filepath.ToSlash(schema.Path)
+		body, ok := gitShow(ctx, root, baseRef, key)
 		if ok {
-			before[schema.Path] = body
+			before[key] = body
 		}
 	}
 	return after, before, nil
