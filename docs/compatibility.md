@@ -18,10 +18,9 @@ installer) ship for:
 Tier 1 means a pre-built binary ships for that OS/arch and `go test
 ./...` runs in CI on every PR before merge. Extended gates (race
 detector, byte-identical determinism check, post-release smoke) run on
-Linux only today; macOS and Windows are unit-test parity. The
-linux/amd64 release archive is the only platform smoke-tested
-post-publish — extending to darwin/arm64 and windows/amd64 is on the
-0.2.x release-workflow list.
+Linux; macOS and Windows are unit-test parity. The linux/amd64 release
+archive is the smoke-tested platform post-publish; extending the smoke
+to darwin/arm64 and windows/amd64 is planned.
 
 Source builds work on any platform Go 1.23+ supports.
 
@@ -80,6 +79,32 @@ and feed `aiCostRegression` / `aiHallucinationRate` /
 
 Terrain's PR analysis works on any CI that can run a binary and
 read git history. GitHub Actions templates are documented in [`README.md`](../README.md). Per-provider integration guides for GitLab CI, CircleCI, Jenkins, and pre-commit hooks are future work.
+
+### Schemas + ORMs understood
+
+The cross-language graph models edges through these schema sources so
+prompt / RAG / API references resolve across language boundaries:
+
+| Source | Notes |
+|--------|-------|
+| Postgres | DDL + `CREATE TABLE` extraction |
+| MySQL | DDL extraction |
+| Pydantic | Python model classes |
+| TypeScript types | `type` and `interface` |
+| sqlc | Go from-SQL codegen |
+| gorm | Go struct tags |
+| Prisma | `schema.prisma` |
+| sqlalchemy | Python declarative + classical mappings |
+
+### Data + ML pipelines understood
+
+| Tool | Use |
+|------|-----|
+| dbt | model + source graph |
+| Airflow | DAG + task graph |
+| Prefect | flow + task graph |
+| MLflow | experiment + run + model registry |
+| Weights & Biases | run + artifact registry |
 
 ## Snapshot schema compatibility
 

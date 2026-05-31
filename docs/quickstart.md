@@ -213,9 +213,32 @@ terrain ai run --base main --dry-run
 
 # Validate AI setup
 terrain ai doctor
+
+# Emit AI eval-gap findings (CI-consumable)
+terrain ai findings --json
 ```
 
-Terrain starts giving AI surfaces CI-visible structure: inventory, impact-scoped eval selection where configured, protection-gap detection, and reviewable risk signals. Suppression workflows and labeled-repo precision floors are future work.
+Terrain gives AI surfaces the same CI-visible structure as regular tests: inventory, impact-scoped eval selection, protection-gap detection, and reviewable eval-gap findings with evidence chains.
+
+### Hardening a prompt before deployment
+
+Two generators help adopters build a test suite around a prompt before shipping it:
+
+```bash
+# Boundary-case mutation tests from a JSON Schema input shape
+terrain scaffold --schema schemas/prompt-input.json --prompt prompts/main.md \
+  > tests/test_prompt_boundaries.py
+
+# Jailbreak-shaped inputs matched against the prompt body
+terrain inject --prompt prompts/main.md \
+  > tests/test_prompt_injection.py
+```
+
+Both emit runnable pytest scaffolds (use `--lang typescript` for vitest). Terrain never calls the model; the assertion belongs to the adopter.
+
+### Reading findings from another tool
+
+Every `terrain analyze` run writes a canonical `.terrain/findings.json` artifact (schema version 1). It's the stable handoff to downstream tooling — `terrain mcp` reads it, IDE plugins consume it, and third-party SARIF uploaders can transform it.
 
 ## The four primary questions
 

@@ -3,6 +3,12 @@
 # Validate this file:
 #   terrain plugins manifest examples/plugins/example-manifest.yaml
 #
+# The manifest contract (this shape, the allowed mechanism classes,
+# the rule_id namespace) is stable. The runtime that loads and
+# executes plugins is reserved for a future release — adopters can
+# author + publish manifests today and they'll be loadable when the
+# runtime ships, without re-authoring.
+#
 # Adopters publish plugins as packages (Go binary, npm, Python wheel)
 # that ship with a plugin-manifest.yaml in this shape.
 

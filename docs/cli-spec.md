@@ -11,22 +11,27 @@ It must be:
 - readable
 - machine-friendly
 
-## Surface — canonical 11 + legacy aliases
+## Surface — canonical 14 + legacy aliases
 
-0.2.0 introduces namespace dispatchers (`terrain report`,
+0.2.0 introduced namespace dispatchers (`terrain report`,
 `terrain migrate`, `terrain config`, `terrain debug`,
-`terrain ai`). The canonical surface is **11 top-level commands**:
+`terrain ai`). The canonical surface is:
 
 | Canonical | What it does |
 |---|---|
-| `terrain analyze` | Full snapshot pipeline; the headline command |
-| `terrain init [path]` | First-run scaffolder — runs analyze + emits a starter `.terrain/` layout |
+| `terrain analyze` | Full snapshot pipeline; the headline command. Writes `.terrain/findings.json` after every run. |
+| `terrain test` | CI-mode wrapper around analyze: emits JUnit XML and a markdown step-summary (point `--summary` at `$GITHUB_STEP_SUMMARY` for GitHub Actions). |
+| `terrain init [path]` | First-run scaffolder — runs analyze + emits a starter `.terrain/` layout including an annotated `policy.yaml.example`. |
 | `terrain report <verb>` | Read-side views: `summary`, `insights`, `metrics`, `explain`, `show`, `impact`, `pr`, `posture`, `select-tests` |
 | `terrain migrate <verb>` | Framework migration: `run`, `config`, `list`, `detect`, `shorthands`, `estimate`, `status`, `checklist`, `readiness`, `blockers`, `preview` |
-| `terrain ai <verb>` | AI inventory + eval orchestration: `list`, `run`, `replay`, `record`, `baseline`, `doctor` |
+| `terrain ai <verb>` | AI inventory + eval orchestration: `list`, `run`, `replay`, `record`, `baseline`, `baseline compare`, `doctor`, `findings` |
+| `terrain inject --prompt <path>` | Generate jailbreak-shaped test inputs from a prompt template. Emits pytest / vitest / JSON. |
+| `terrain scaffold --schema <path>` | Generate boundary-case mutation tests from a JSON Schema. Emits pytest / vitest / JSON. |
+| `terrain plugins <verb>` | Third-party detector plugins: `manifest <path>` validates a plugin manifest (`list`, `add`, `remove` reserved for a future release). |
 | `terrain debug <verb>` | Dependency-graph drill-downs: `graph`, `coverage`, `fanout`, `duplicates`, `depgraph` |
 | `terrain config <verb>` | Workspace prefs: `feedback`, `telemetry` |
-| `terrain doctor [path]` | Diagnostics for current setup |
+| `terrain doctor [path]` | Diagnostics for current setup. Surfaces registry, alias-registry, gitignore, and per-rule policy-override state. |
+| `terrain mcp [--root <dir>]` | Start the [Model Context Protocol](https://modelcontextprotocol.io) server on stdio for AI coding assistants. Reads `.terrain/findings.json` from the last analyze run. |
 | `terrain portfolio` | Single-repo (stable) and multi-repo manifest (experimental) portfolio analysis |
 | `terrain serve` | Local HTTP server with HTML report + JSON API (default port 8421, 127.0.0.1 only) |
 | `terrain version` | Version, commit, build date, snapshot schema version |
@@ -95,6 +100,11 @@ Flags:
 - `--runtime PATH` — path to runtime artifact (JUnit XML or Jest JSON); comma-separated for multiple
 - `--gauntlet PATH` — path to Gauntlet AI eval result artifact (JSON); comma-separated for multiple
 - `--slow-threshold MS` — slow test threshold in milliseconds (default: 5000)
+
+Artifacts written:
+- `.terrain/findings.json` — canonical Finding artifact (schema version 1), written after every run. Stable shape; downstream consumers (`terrain mcp`, IDE plugins, third-party SARIF uploaders) read from this file. Gitignored by the template `terrain init` writes.
+- `.terrain/snapshots/latest.json` — full TestSuiteSnapshot, written only when `--write-snapshot` is set. Used by `terrain compare` for trend tracking.
+- `.terrain/shadow-report.jsonl` — append-only log of mechanisms running in shadow state (created only if any mechanism is non-off).
 
 ### `terrain impact`
 Purpose:
@@ -374,15 +384,17 @@ Flags:
 
 ### `terrain ai`
 Purpose:
-AI/eval validation namespace. List detected scenarios, run evals, manage baselines, and validate setup.
+AI/eval validation namespace. List detected scenarios, run evals, manage baselines, validate setup, and emit AI eval-gap findings.
 
 Subcommands:
 - `terrain ai list` — list detected AI/eval scenarios, prompt surfaces, dataset surfaces, and eval files
 - `terrain ai run` — execute eval scenarios and collect results
 - `terrain ai replay` — replay and verify a previous eval run artifact
 - `terrain ai record` — record eval run results as a baseline snapshot
-- `terrain ai baseline` — manage eval baselines: show, compare
+- `terrain ai baseline` — show the latest baseline snapshot
+- `terrain ai baseline compare` — diff the latest baseline against the prior one
 - `terrain ai doctor` — validate AI/eval setup: scenarios, prompts, datasets, eval files, graph wiring
+- `terrain ai findings` — emit AI eval-gap findings with confidence + severity + evidence
 
 Common flags (all subcommands):
 - `--root PATH` — repository root (default: current directory)
@@ -393,6 +405,55 @@ Additional flags:
 - `terrain ai run --base REF` — git base ref for impact-based scenario selection
 - `terrain ai run --full` — run all scenarios (skip impact selection)
 - `terrain ai run --dry-run` — show what would run without executing
+- `terrain ai findings --posture=gate` — gate-tier filter (default: observability)
+
+---
+
+### `terrain inject`
+Purpose:
+Read a prompt template, match it against a curated set of jailbreak / injection patterns (DAN-style, instruction leak, system-prompt fishing, role confusion, indirect-via-retrieval), and emit a runnable test scaffold so adopters can assert their prompt pipeline degrades safely.
+
+Usage: `terrain inject --prompt <path> [--lang python|typescript|json] [--json] [--list]`
+
+Flags:
+- `--prompt PATH` — prompt template to scan (required).
+- `--lang LANG` — scaffold language: `python` (default, pytest), `typescript` (vitest), or `json` (raw).
+- `--json` — shortcut for `--lang=json`.
+- `--list` — only list matched patterns; don't emit a scaffold.
+
+LLM-free: terrain never invokes the model. The assertion is the adopter's.
+
+---
+
+### `terrain scaffold`
+Purpose:
+Read a JSON Schema describing a prompt's expected input shape and emit a runnable mutation-test scaffold. Each declared property produces a parametrized test exercising boundary cases (empty / whitespace / max-length / unicode-edge / SQL-injection-shaped / XSS-shaped / path-traversal-shaped / null-byte / INT32 bounds / near-double-limits).
+
+Usage: `terrain scaffold --schema <path> [--prompt <path>] [--lang python|typescript|json] [--json]`
+
+Flags:
+- `--schema PATH` — JSON Schema describing the prompt's input shape (required).
+- `--prompt PATH` — optional path to the prompt under test (printed as a header comment).
+- `--lang LANG` — scaffold language: `python` (default, pytest), `typescript` (vitest), or `json` (raw cases).
+- `--json` — shortcut for `--lang=json`.
+
+LLM-free; deterministic output.
+
+---
+
+### `terrain plugins`
+Purpose:
+Validate third-party plugin manifests and (in a future release) install + run plugins.
+
+Subcommands:
+- `terrain plugins manifest <path>` — validate a plugin manifest against schema v1.
+- `terrain plugins list` — list registered plugins (today: always empty; the runtime ships in a future release).
+- `terrain plugins add <plugin-id>` / `terrain plugins remove <plugin-id>` — reserved; returns an explicit "not yet implemented" error.
+
+Flags:
+- `--json` — output JSON.
+
+Plugin rules must declare an allowed `mechanism_class` (`structural-ast`, `import-graph`, `receiver-type`, or `manifest-schema`). Literal-string and regex primitives are explicitly forbidden: every rule must clear a class, not a cell.
 
 ---
 
@@ -455,9 +516,8 @@ Usage: `terrain estimate <dir> --from <framework> --to <framework> [flags]`
 Purpose:
 Run a local HTTP server that renders the analysis report at `/` and exposes
 a JSON API at `/api/analyze` and `/api/health`. The HTML view auto-refreshes
-every 30 seconds. Intended for single-developer local exploration; the
-"dashboard with embedded charts" framing in older docs is **planned for 0.2**
-and not yet shipped.
+every 30 seconds. Intended for single-developer local exploration; a richer
+dashboard with embedded charts is reserved for a future release.
 
 Usage: `terrain serve [--root PATH] [--port N] [--host HOST] [--read-only]`
 

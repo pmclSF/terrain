@@ -36,15 +36,31 @@ go build -o terrain ./cmd/terrain
 # Test all Go packages
 go test ./cmd/... ./internal/...
 
-# Verify formatting
-gofmt -l cmd/ internal/
+# Format (release-gate runs gofmt -l first and fails if any file needs reformatting)
+gofmt -w .
 
 # Run vet
 go vet ./...
 
-# Full release verification (Go + npm + VS Code extension)
+# Verify generated docs are in sync with the manifest
+make docs-verify
+
+# Full release verification: gofmt check → vet → tests → snapshot tests → regression gate
+make release-gate
+
+# Broader release verification (Go + npm + VS Code extension)
 make release-verify
 ```
+
+`make release-gate` is the single command CI runs to validate a PR. It exits 0 only when:
+
+1. `gofmt -l .` produces no output (run `gofmt -w .` to fix).
+2. `go vet ./cmd/... ./internal/...` is clean.
+3. `go test ./cmd/... ./internal/...` passes.
+4. The CLI snapshot tests (`-run TestSnapshot`) pass.
+5. The regression-suite + recall-harness loaders validate every YAML file under `harness/`.
+
+If `make release-gate` fails, fix the underlying issue rather than skipping the gate.
 
 ## Adding a New Command
 

@@ -1,13 +1,13 @@
 # Terrain — JSON Schemas
 
-Canonical JSON Schema definitions for stable public-API artifacts. Each schema is versioned in its filename; new versions adopt one-cycle deprecation per `docs/PRODUCT.md` §18.
+Canonical JSON Schema definitions for stable public-API artifacts. Each schema is versioned in its filename; new versions adopt one-cycle deprecation per the versioning section in `docs/PRODUCT.md`.
 
 ## Schemas
 
 | File | What it specifies | Stable from |
 |---|---|---|
-| `finding.v1.json` | The `Finding` object emitted by Terrain (the structured artifact behind all four diagnostic renderers + `findings.json`). See `docs/PRODUCT.md` §8. | v0.2.0 |
-| `terrain.yaml.v1.json` | The adopter-facing `terrain.yaml` configuration schema. See `docs/PRODUCT.md` §10. | v0.2.0 |
+| `finding.v1.json` | The `Finding` object emitted by Terrain (the structured artifact behind all four diagnostic renderers + `findings.json`). See the diagnostic-format section in `docs/PRODUCT.md`. | v0.2.0 |
+| `terrain.yaml.v1.json` | The adopter-facing `terrain.yaml` configuration schema. See the configuration section in `docs/PRODUCT.md`. | v0.2.0 |
 
 ## Validation
 

@@ -33,7 +33,7 @@ The dependency graph is the integration boundary for adding detection capabiliti
 
 ## Three-surface model
 
-Per `docs/PRODUCT.md` §7 (Architecture — three-surface model), Terrain has three consumer surfaces. All three consume the same artifact (JUnit XML + `findings.json` + the source repo state at the failing commit):
+Per the three-surface model in [`docs/PRODUCT.md`](docs/PRODUCT.md), Terrain has three consumer surfaces. All three consume the same artifact (JUnit XML + `findings.json` + the source repo state at the failing commit):
 
 | Surface | Renderers | Interactivity | LLM |
 |---|---|---|---|
@@ -74,6 +74,9 @@ internal/                     Core libraries (see internal/README.md for full li
   runtime/                    Test runtime artifact ingestion (JUnit, Jest/Vitest JSON)
   severity/                   Severity rubric and clause references
   signals/                    Signal manifest (rule registry; per-rule status: stable | experimental | planned)
+  injection/                  Prompt-injection pattern library and test-input emitter
+  scaffold/                   Mutation-test scaffold generator from JSON Schema
+  plugin/                     Third-party plugin manifest schema and validator
   structural/                 Structural detectors (graph + AST joins)
   testcase/                   Per-language test extraction (AST + regex fallback)
   testtype/                   Test classification (unit / integration / e2e / component / smoke)
@@ -83,21 +86,24 @@ harness/                      Validation harness (corpora, runner, validators, r
 rfcs/                         RFCs for significant changes (governance per docs/CONTRIBUTING.md)
 ```
 
-## CLI surface (0.2.0)
+## CLI surface
 
 The complete adopter-facing CLI is documented in [`docs/cli-spec.md`](docs/cli-spec.md). Summary:
 
 | Command | Purpose |
 |---|---|
-| `terrain analyze [path]` | What is the state of our test system? Primary entry point. |
-| `terrain test [flags]` | CI-mode wrapper around analyze (emits JUnit XML + GH annotations). |
-| `terrain report <verb>` | Read-side queries: `insights`, `impact`, `explain`, `summary`, `metrics`, `status`, `checklist`, `readiness`, `blockers`, `preview`. |
+| `terrain analyze [path]` | What is the state of our test system? Primary entry point. Writes `.terrain/findings.json` after every run. |
+| `terrain test [flags]` | CI-mode wrapper around analyze. Emits JUnit XML and a markdown step-summary (point `--summary` at `$GITHUB_STEP_SUMMARY` for GitHub Actions). |
+| `terrain report <verb>` | Read-side queries: `insights`, `impact`, `explain`, `summary`, `metrics`, `pr`, `posture`, `select-tests`. |
 | `terrain migrate <verb>` | Framework conversion + migration workflow. |
-| `terrain ai <verb>` | Eval scenarios: `list`, `run`, `doctor`, `record`, `baseline`, `replay`, `findings`. |
+| `terrain ai <verb>` | Eval scenarios: `list`, `run`, `doctor`, `record`, `baseline`, `baseline compare`, `replay`, `findings`. |
+| `terrain inject --prompt <path>` | Generate jailbreak-shaped test inputs from a prompt template. |
+| `terrain scaffold --schema <path>` | Generate boundary-case mutation tests from a JSON Schema. |
+| `terrain plugins manifest <path>` | Validate a third-party plugin manifest. |
 | `terrain config <verb>` | Workspace prefs: `feedback`, `telemetry`. |
-| `terrain init [path]` | Set up Terrain in a repository. |
-| `terrain doctor [path]` | Diagnostics for current setup. |
-| `terrain mcp [--root <dir>]` | Start the MCP server on stdio for AI assistants. |
+| `terrain init [path]` | Set up Terrain in a repository. Writes `.terrain/policy.yaml` + an annotated `.terrain/policy.yaml.example`. |
+| `terrain doctor [path]` | Diagnostics for current setup (registry, aliases, gitignore, per-rule policy overrides). |
+| `terrain mcp [--root <dir>]` | Start the MCP server on stdio for AI assistants. Reads `.terrain/findings.json` from the last analyze run. |
 | `terrain serve [flags]` | Local HTTP server with HTML report + JSON API. |
 | `terrain portfolio [flags]` | Multi-repo workspace intelligence. |
 | `terrain --print-network` | Audit: list every external call Terrain would make under current config. |
@@ -131,9 +137,9 @@ Canonical terms used in this doc and across `docs/PRODUCT.md`:
 - **Cause path** — chain of graph nodes from a finding's primary location back to the change in the PR that caused it
 - **Unified graph** — dependency graph spanning code, tests, surfaces, evals, data, and cross-language edges (bidirectional cause attribution)
 
-## What's stable at 0.2.0
+## What's stable
 
-Per `docs/PRODUCT.md` §11 (Stability commitments):
+Stable from 0.2.0 forward (see [`docs/PRODUCT.md`](docs/PRODUCT.md) Stability commitments):
 
 - Rule IDs (`terrain/<category>/<rule>` namespace)
 - JSON output schema (`version: 1` on `terrain report pr --json` and `findings.json`)
@@ -142,7 +148,7 @@ Per `docs/PRODUCT.md` §11 (Stability commitments):
 - Artifact format (JUnit XML structure, SARIF for security rules, `findings.json` shape)
 - Documented quality bars
 
-All follow the one-cycle deprecation contract per `docs/PRODUCT.md` §14 (Versioning).
+All follow the one-cycle deprecation contract documented in [`docs/PRODUCT.md`](docs/PRODUCT.md) (Versioning).
 
 ## Migration context
 

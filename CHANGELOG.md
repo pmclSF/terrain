@@ -412,7 +412,7 @@ weight, span). JSON mode is structured for CI consumption.
 
 `terrain ai list` (inventory), `terrain ai findings` (verdict engine), and the AI catalog detectors (via `terrain analyze` / `terrain report pr`) emit different shapes and answer different questions — run all three in CI.
 
-### CLI restructure — phase A (canonical 11 + 33 legacy aliases)
+### CLI restructure — canonical 11 commands + 33 legacy aliases
 
 The canonical 11-command surface ships as non-breaking namespace
 dispatchers (`terrain report`, `terrain migrate`, `terrain config`)
