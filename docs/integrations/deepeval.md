@@ -72,7 +72,7 @@ implicit baseline, or pass `--baseline path/to/old.json` explicitly.
 
 ## Calibration fixtures
 
-DeepEval-shaped fixtures haven't shipped in the 0.2 corpus and are future work. If you can contribute one, the format is:
+DeepEval-shaped calibration fixtures live in `tests/calibration/`. To contribute a new one, the format is:
 
 ```
 tests/calibration/<your-fixture>/
@@ -89,5 +89,5 @@ tests/calibration/<your-fixture>/
 | Symptom | Cause |
 |---------|-------|
 | `deepeval payload has no testCases` | File missing the `testCases` array; check DeepEval version |
-| Detectors don't see metric scores | Metric name has internal space and isn't in the lowercase+underscore form — adapter handles this since 0.2 |
+| Detectors don't see metric scores | Metric name has internal space and isn't in the lowercase+underscore form — adapter normalizes this automatically |
 | Wrong run cross-attributed | RunID empty; populate `testRunId` or `runId` in the DeepEval config |

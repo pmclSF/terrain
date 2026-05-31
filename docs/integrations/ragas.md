@@ -72,16 +72,13 @@ quality axes do). They feed `aiCostRegression` via
 
 ## Calibration fixtures
 
-Ragas-shaped fixtures haven't shipped in the 0.2 corpus. The 0.3
-corpus expansion adds at least one Ragas + one DeepEval fixture
-to lock in adapter behavior. Contribute via the format described
-in [`promptfoo.md`](promptfoo.md#calibration-fixtures).
+Ragas-shaped calibration fixtures live alongside Promptfoo and DeepEval ones under `tests/calibration/`. Contribute a new one via the format described in [`promptfoo.md`](promptfoo.md#calibration-fixtures).
 
 ## Troubleshooting
 
 | Symptom | Cause |
 |---------|-------|
 | `ragas payload has no results, evaluation_results, or scores` | File doesn't have any of the three accepted top-level keys |
-| Score with internal space is dropped | Pre-0.2 the normaliser only stripped hyphens; updated since |
+| Score with internal space is dropped | Confirm the metric name normalizes to lowercase + underscores; the adapter handles spaces and hyphens |
 | `aiCostRegression` doesn't fire | Confirm `total_cost` is present per-row in the DataFrame export |
 | Quality-only rows treated as Successes despite zero score | Ragas rows that contain only ancillary numerics (cost, tokens) but no quality axes don't count toward success votes |
