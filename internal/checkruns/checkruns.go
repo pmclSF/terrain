@@ -256,14 +256,21 @@ func buildGateOutput(gate []models.Signal) Output {
 	}
 
 	// Annotations: one per detector group (the headline finding).
+	// Filter empty-path signals (repo-level findings without a file
+	// location can't render inline on the diff) and cap at 50 per the
+	// GitHub Checks API limit per request.
 	var ann []Annotation
 	for _, g := range groups {
 		if len(g.signals) == 0 {
 			continue
 		}
 		head := g.signals[0]
+		if head.Location.File == "" {
+			continue
+		}
 		ann = append(ann, signalToAnnotation(head, len(g.signals)-1))
 	}
+	ann = capAnnotations(ann)
 
 	return Output{
 		Title:       title,
@@ -313,11 +320,16 @@ func buildObservabilityOutputWithHistory(obs []models.Signal, hist HistoryStore)
 	text.WriteString("</details>\n")
 
 	// Annotations: every observability finding gets a notice-level
-	// callout so the inline diff still shows them.
+	// callout so the inline diff still shows them. Filter empty-path
+	// signals + cap at the 50-per-request GitHub Checks API limit.
 	var ann []Annotation
 	for _, s := range obs {
+		if s.Location.File == "" {
+			continue
+		}
 		ann = append(ann, signalToAnnotationNotice(s))
 	}
+	ann = capAnnotations(ann)
 
 	return Output{
 		Title:       title,
@@ -325,6 +337,20 @@ func buildObservabilityOutputWithHistory(obs []models.Signal, hist HistoryStore)
 		Text:        text.String(),
 		Annotations: ann,
 	}
+}
+
+// capAnnotations enforces GitHub's Checks API limit of 50 annotations
+// per check-run-update request. Returning a request with more than 50
+// annotations triggers HTTP 422 Validation Failed on the annotations
+// field. Adopters with > 50 findings see the first 50 inline plus the
+// full list in the check's `Text` body — better than the whole upload
+// failing.
+func capAnnotations(ann []Annotation) []Annotation {
+	const maxPerRequest = 50
+	if len(ann) <= maxPerRequest {
+		return ann
+	}
+	return ann[:maxPerRequest]
 }
 
 // detectorGroup is a per-detector cluster used by the gate render.
