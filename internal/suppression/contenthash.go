@@ -45,7 +45,6 @@ func ContextHash(file string, line int) (string, error) {
 	if strings.Contains(clean, "\x00") || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
 		return "", nil
 	}
-	// lgtm[go/path-injection]
 	f, err := os.Open(clean)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
