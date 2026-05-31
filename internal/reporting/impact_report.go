@@ -72,7 +72,7 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	line("Coverage confidence:     %s", capitalizeFirst(result.CoverageConfidence))
 
 	// PR risk
-	line("PR risk:                 %s", strings.ToUpper(result.Posture.Band))
+	line("PR risk:                 %s", capitalizeFirst(result.Posture.Band))
 	blank()
 
 	// Reason categories
@@ -95,11 +95,11 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	}
 
 	// Change-risk posture dimensions
-	line("Change-Risk Posture: %s", strings.ToUpper(result.Posture.Band))
+	line("Change-Risk Posture: %s", capitalizeFirst(result.Posture.Band))
 	line("  %s", result.Posture.Explanation)
 	if len(result.Posture.Dimensions) > 0 {
 		for _, d := range result.Posture.Dimensions {
-			line("  %-20s %s", d.Name+":", d.Band)
+			line("  %-20s %s", d.Name+":", capitalizeFirst(d.Band))
 		}
 	}
 	blank()

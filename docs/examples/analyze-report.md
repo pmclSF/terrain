@@ -5,11 +5,11 @@
 ## Terminal Output
 
 ```
-Terrain — Test Suite Analysis
-============================================================
+Terrain · Test Suite Analysis
+────────────────────────────────────────────────────────────
 
 Repository Profile
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Test volume:          large
   CI pressure:          high
   Coverage confidence:  medium
@@ -17,7 +17,7 @@ Repository Profile
   Fanout burden:        high
 
 Validation Inventory
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Test files:     1847
   Test cases:     18204
   Code units:     3612
@@ -28,65 +28,65 @@ Validation Inventory
     playwright            259 files [e2e]
 
 Coverage Confidence
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   High:    981 files (54%)
   Medium:  563 files (31%)
   Low:     272 files (15%)
 
 Duplicate Clusters
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Clusters:        12
   Redundant tests: 340
   Max similarity:  92%
 
 High-Fanout Nodes
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Flagged: 3 (threshold: 10)
     fixtures/authSession.js  (helper, 2400 dependents)
     fixtures/dbSetup.js      (helper, 890 dependents)
     utils/testFactory.js     (helper, 650 dependents)
 
 Skipped Test Burden
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Skipped: 187 / 18204 tests (1%)
 
 Weak Coverage Areas
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   billing-core                               no structural coverage
   checkout/core                              no structural coverage
   legacy/payments                            2 test(s)
 
 CI Optimization Potential
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Duplicate tests removable:  340
   Skipped tests reviewable:   187
   High-fanout nodes:          3
   340 duplicate tests could be consolidated; 3 high-fanout nodes could be refactored to reduce blast radius; 187 skipped tests should be reviewed or removed.
 
 Top Insight
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   fixtures/authSession.js fans out to 2400 transitive dependents — changes here trigger wide test impact. Consider splitting or isolating.
 
 Risk Posture
-------------------------------------------------------------
-  health:                  STRONG
-  coverage_depth:          WEAK
-  coverage_diversity:      MODERATE
-  structural_risk:         MODERATE
-  operational_risk:        STRONG
+────────────────────────────────────────────────────────────
+  health:                  Strong
+  coverage_depth:          Weak
+  coverage_diversity:      Moderate
+  structural_risk:         Moderate
+  operational_risk:        Strong
 
 Signals: 847 total
   42 critical, 156 high, 312 medium, 337 low
 
 Data Completeness
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   [available ] source
   [available ] coverage
   [missing   ] runtime
   [available ] policy
 
 Limitations
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   * No runtime data provided; skip/flaky/slow test detection unavailable.
 
 Next steps:

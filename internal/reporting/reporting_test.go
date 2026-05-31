@@ -477,7 +477,7 @@ func TestRenderImpactReport_WithGaps(t *testing.T) {
 
 	checks := []string{
 		"Terrain · Impact Analysis",
-		"Change-Risk Posture: CRITICAL",
+		"Change-Risk Posture: Critical",
 		"Coverage confidence:",
 		"PR risk:",
 		"Protection Gaps",

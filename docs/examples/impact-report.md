@@ -9,8 +9,8 @@
 ## Terminal Output
 
 ```
-Terrain Impact Analysis
-============================================================
+Terrain · Impact Analysis
+────────────────────────────────────────────────────────────
 
 Summary: 2 file(s) changed, 4 code unit(s) impacted, 2 test(s) relevant. Posture: partially_protected.
 
@@ -33,19 +33,19 @@ Change-Risk Posture: PARTIALLY_PROTECTED
   ownership_spread:      single_owner
 
 Recommended Tests (2)
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   tests/auth/login.spec.ts [high]
     imports src/auth/token_validation.ts
   tests/integration/auth-flow.spec.ts [medium]
     uses fixture that depends on src/auth/session_manager.ts
 
 Protection Gaps
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   [medium] src/auth/session_manager.ts:refreshSession has no direct test coverage
     Action: Add unit test for refreshSession
 
 Limitations
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   * No ownership data available; coordination risk may be underestimated.
 
 Next steps:
@@ -111,8 +111,8 @@ When a prompt or dataset file is changed, Terrain identifies impacted eval scena
 ### Terminal Output
 
 ```
-Terrain Impact Analysis
-============================================================
+Terrain · Impact Analysis
+────────────────────────────────────────────────────────────
 
 Summary: 1 file(s) changed, 2 code unit(s) impacted, 1 test(s) relevant, 2 scenario(s) impacted. Posture: partially_protected.
 
@@ -137,24 +137,24 @@ Change-Risk Posture: PARTIALLY_PROTECTED
   instability:         well_protected
 
 Recommended Tests (1)
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   tests/ai/prompts.test.ts [inferred]
     in same directory tree as changed code
 
 Impacted Scenarios (2)
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   safety-check (safety) [exact]
     covers 1 changed surface(s)
   accuracy-check (accuracy) [exact]
     covers 2 changed surface(s)
 
 Protection Gaps
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   [high] Exported function systemPrompt has no observed test coverage.
     Action: Add unit tests for exported function systemPrompt — this is public API surface.
 
 Limitations
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   * No per-test coverage lineage available; test selection uses structural heuristics.
 
 Next steps:

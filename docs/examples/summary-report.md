@@ -5,11 +5,11 @@ This document shows representative output from `terrain summary` run against a m
 ## Terminal Output
 
 ```
-Terrain Executive Summary
-==================================================
+Terrain · Executive Summary
+────────────────────────────────────────────────────────────
 
 Overall Posture
---------------------------------------------------
+────────────────────────────────────────────────────────────
   Health:              strong
   Coverage Depth:      weak
   Coverage Diversity:  moderate
@@ -17,35 +17,35 @@ Overall Posture
   Operational Risk:    strong
 
 Key Numbers
---------------------------------------------------
+────────────────────────────────────────────────────────────
   Test files:          53
   Frameworks:          2
   Total signals:       18
   High-risk areas:     2
 
 Top Risk Areas
---------------------------------------------------
+────────────────────────────────────────────────────────────
   src/api/                    weak coverage_depth risk
   src/payments/               moderate health risk
 
 Trend Highlights
---------------------------------------------------
+────────────────────────────────────────────────────────────
   No prior snapshots available.
   Run `terrain analyze --write-snapshot` to begin tracking trends.
 
 Dominant Drivers
---------------------------------------------------
+────────────────────────────────────────────────────────────
   untestedExport (7 signals)
   weakAssertion (5 signals)
   skippedTest (3 signals)
 
 Recommended Focus
---------------------------------------------------
+────────────────────────────────────────────────────────────
   Address untested exports in src/api/ — 7 exported functions have no linked
   tests. Coverage depth is the weakest dimension and the most actionable.
 
 Prioritized Recommendations
---------------------------------------------------
+────────────────────────────────────────────────────────────
   1. Add unit tests for untested exports in src/api/
      Why:      7 exported code units have no linked tests, leaving core API
                surface unverified.
@@ -63,7 +63,7 @@ Prioritized Recommendations
      Evidence: strong
 
 Known Blind Spots
---------------------------------------------------
+────────────────────────────────────────────────────────────
   Runtime health: No runtime artifacts provided. Flaky and slow test detection
     is based on code-level heuristics only.
     → Provide --runtime with JUnit XML or Jest JSON for runtime-backed signals.
@@ -72,7 +72,7 @@ Known Blind Spots
     → Provide --coverage with LCOV or Istanbul JSON for precise coverage data.
 
 Benchmark Readiness
---------------------------------------------------
+────────────────────────────────────────────────────────────
   Ready:
     Health
     Coverage Diversity

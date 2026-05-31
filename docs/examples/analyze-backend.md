@@ -5,11 +5,11 @@
 ## Terminal Output
 
 ```
-Terrain — Test Suite Analysis
-============================================================
+Terrain · Test Suite Analysis
+────────────────────────────────────────────────────────────
 
 Repository Profile
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Test volume:          small
   CI pressure:          low
   Coverage confidence:  high
@@ -17,7 +17,7 @@ Repository Profile
   Fanout burden:        low
 
 Validation Inventory
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Test files:     4
   Test cases:     11
   Code units:     14
@@ -26,31 +26,31 @@ Validation Inventory
     go-testing              4 files [unit]
 
 Coverage Confidence
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   High:    3 files (60%)
   Medium:  2 files (40%)
   Low:     0 files (0%)
 
 CI Optimization Potential
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Graph has 34 nodes and 57 edges — confidence-based test selection available via `terrain impact`.
 
 Top Insight
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   No major issues detected. Consider adding coverage or runtime data to unlock deeper analysis.
 
 Risk Posture
-------------------------------------------------------------
-  health:                  STRONG
-  coverage_depth:          STRONG
-  coverage_diversity:      STRONG
-  structural_risk:         STRONG
-  operational_risk:        STRONG
+────────────────────────────────────────────────────────────
+  health:                  Strong
+  coverage_depth:          Strong
+  coverage_diversity:      Strong
+  structural_risk:         Strong
+  operational_risk:        Strong
 
 Signals: 0 total
 
 Behavior Redundancy
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Redundant tests:  11 across 2 clusters
   [wasteful] 9 tests, 8 shared surfaces (100% confidence) [go-testing]
          Tests in the same framework exercise 8 identical behavior surfaces (100% overlap). Consolidation would reduce CI cost without losing coverage.
@@ -58,27 +58,27 @@ Behavior Redundancy
          Tests in the same framework exercise 6 identical behavior surfaces (100% overlap). Consolidation would reduce CI cost without losing coverage.
 
 Stability
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   No runtime data provided. Provide --runtime (JUnit XML or Jest JSON)
   to unlock: flaky test detection, slow test flagging, stability clustering.
 
 Edge Cases
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   [warning] CI is already fast — optimization may yield minimal benefit.
 
 Policy Recommendations
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   • CI is already fast. Test selection would yield minimal time savings.
 
 Data Completeness
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   [available] source
   [missing  ] coverage
   [missing  ] runtime
   [missing  ] policy
 
 Limitations
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   * No coverage data provided; coverage confidence is structural (import-based) only.
   * No policy file found; governance checks skipped.
   * No runtime data provided; skip/flaky/slow test detection unavailable.

@@ -5,14 +5,14 @@
 ## Terminal Output
 
 ```
-Terrain — Test System Health Report
-============================================================
+Terrain · Test System Health Report
+────────────────────────────────────────────────────────────
 
 Health Grade: C
 Headline: 1 critical-severity signals require attention
 
 Repository Profile
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Test volume:          large
   CI pressure:          high
   Coverage confidence:  medium
@@ -22,31 +22,31 @@ Repository Profile
   Flake burden:         medium
 
 Reliability Problems (3)
-------------------------------------------------------------
-  [CRITICAL] 1 critical-severity signals require attention
+────────────────────────────────────────────────────────────
+  [CRIT] 1 critical-severity signals require attention
          Critical signals indicate issues that are likely to cause test failures or missed regressions.
   [HIGH] 12 flaky/unstable test signals detected
          Flaky tests erode developer trust and waste CI cycles on retries. Stabilize or quarantine these tests.
-  [MEDIUM] 187 skipped tests consuming CI resources
+  [MED] 187 skipped tests consuming CI resources
          Skipped tests still occupy CI queue slots and mask coverage gaps. Review whether each skip is still justified or should be removed.
 
 Architecture Debt (1)
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   [HIGH] 3 high-fanout nodes exceed threshold of 10
          Highest: fixtures/authSession.js with 2400 transitive dependents. Changes to high-fanout nodes trigger disproportionate test impact.
 
 Coverage Debt (1)
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   [HIGH] 272 source files (15%) have low structural coverage
          Files with no test coverage are blind spots for change-scoped test selection. They will not be protected by `terrain impact`.
 
 Optimization Opportunities (1)
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   [HIGH] 340 redundant tests across 12 clusters
          Largest cluster has 6 tests with 86% similarity. Consolidating duplicates reduces CI runtime and maintenance burden.
 
 Recommended Actions
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   1. [reliability] 1 critical-severity signals require attention
      why: Critical signals indicate issues that are likely to cause test failures or missed regressions.
      impact: reduced risk of missed regressions
@@ -63,24 +63,24 @@ Recommended Actions
      impact: ~340 fewer tests to maintain
 
 Edge Cases
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   [caution] High test duplication detected — consider consolidating redundant tests before optimizing.
   [caution] 43% of nodes have excessive fanout — fragile test architecture.
 
 Policy Recommendations
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   • High test duplication detected. Consider consolidating redundant tests to reduce CI noise.
   • High-fanout fixtures create fragile dependencies. Consider breaking down shared fixtures.
 
 Data Completeness
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   [available ] source
   [available ] coverage
   [missing   ] runtime
   [available ] policy
 
 Limitations
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   * No runtime data; flaky/slow test detection relies on structural signals only.
 
 Next steps:

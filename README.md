@@ -47,23 +47,24 @@ Each finding carries a stable rule ID, severity, confidence, evidence, and docum
 ## What it looks like
 
 ```
-Terrain — Test Suite Analysis
-============================================================
+Terrain · Test Suite Analysis
+────────────────────────────────────────────────────────────
 
   conftest.py fixture fans out to 3,100 tests — any change retriggers the frame/ suite.
 
 Key Findings
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   1. [HIGH] 23 source files (18%) have low structural coverage
   2. [HIGH] 8 duplicate test clusters with 0.91+ similarity
-  3. [MEDIUM] 34 xfail markers older than 180 days
+  3. [MED]  34 xfail markers older than 180 days
 
 Risk Posture
-------------------------------------------------------------
-  health:              MODERATE
-  coverage_depth:      ELEVATED
-  coverage_diversity:  STRONG
-  structural_risk:     STRONG
+────────────────────────────────────────────────────────────
+  health:                  Moderate
+  coverage_depth:          Elevated
+  coverage_diversity:      Strong
+  structural_risk:         Strong
+  Signals:                 65 (8 high, 34 medium, 23 low)
 ```
 
 > Representative output from a large pandas-style repository. Format and labels are stable across runs; the specific numbers vary by repo. Full sample reports for `analyze`, `insights`, `impact`, and `explain` are in [docs/examples/](docs/examples/).

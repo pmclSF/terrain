@@ -43,11 +43,11 @@ This section shows representative output from `terrain posture` (the detailed po
 ### Terminal Output
 
 ```
-Terrain Posture Report
-============================================================
+Terrain · Posture Report
+────────────────────────────────────────────────────────────
 
 HEALTH
-  Posture: STRONG
+  Posture: Strong
   All health measurements are within acceptable thresholds.
 
   Driving measurements: health.skip_density
@@ -68,10 +68,10 @@ HEALTH
       0 of 38 test file(s) flagged as slow (0%).
       * No runtime artifacts provided; slow test detection is heuristic-only.
 
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
 
 COVERAGE DEPTH
-  Posture: WEAK
+  Posture: Weak
   Multiple exported code units have no linked tests.
 
   Driving measurements: coverage_depth.uncovered_exports
@@ -89,10 +89,10 @@ COVERAGE DEPTH
       No coverage threshold breaches detected.
       * No coverage data available; result may improve with coverage artifacts.
 
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
 
 COVERAGE DIVERSITY
-  Posture: MODERATE
+  Posture: Moderate
   E2E tests account for a large share of the test suite.
 
   Driving measurements: coverage_diversity.e2e_concentration
@@ -116,10 +116,10 @@ COVERAGE DIVERSITY
       No coverage data available.
       * Provide labeled coverage artifacts for coverage-by-type analysis.
 
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
 
 STRUCTURAL RISK
-  Posture: STRONG
+  Posture: Strong
   No significant migration blockers or deprecated patterns detected.
 
   Measurements:
@@ -133,10 +133,10 @@ STRUCTURAL RISK
       Evidence: strong
       0 of 38 test file(s) use dynamic test generation (0%).
 
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
 
 OPERATIONAL RISK
-  Posture: STRONG
+  Posture: Strong
   No policy violations or legacy framework usage detected.
 
   Measurements:
@@ -151,7 +151,7 @@ OPERATIONAL RISK
       0 of 38 test file(s) exceed runtime budgets (0%).
       * No runtime artifacts provided; runtime budget detection is heuristic-only.
 
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
 
 Next steps:
   terrain summary       leadership-ready overview
