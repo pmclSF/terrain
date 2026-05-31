@@ -1,10 +1,10 @@
 # Terrain — Architecture Overview
 
-> **Pre-flight checks for AI/ML systems and the tests around them. Locally, no API key required.**
+> **Pre-flight checks for AI/ML systems and the tests around them. Runs locally. No API key required.**
 
-Terrain is a static analyzer that treats unit tests, integration tests, e2e tests, and AI/ML evals as one dependency graph. It catches prompt-schema drift, train/test leakage, eval coverage gaps, model deprecations, framework-migration blockers, untested exports, and the cross-language cause chains general-purpose tools miss — locally, deterministically, on every PR.
+Terrain is a static analyzer that treats tests, evals, prompts, and schemas as one dependency graph — and catches the drift that crosses their boundaries before it reaches production.
 
-The product story lives in [`docs/PRODUCT.md`](docs/PRODUCT.md). This document is the technical companion: what packages exist, what artifacts they produce, and where the integration boundaries sit.
+The product story lives in [`docs/PRODUCT.md`](docs/PRODUCT.md). This document is the technical companion: what packages exist, what artifacts they produce, where the integration boundaries sit.
 
 ## Core principles
 
@@ -152,9 +152,9 @@ All follow the one-cycle deprecation contract documented in [`docs/PRODUCT.md`](
 
 ## Migration context
 
-Terrain originated as a multi-framework test converter. That migration surface lives in `internal/convert/` and the conversion-subsystem CLI (`migrate`, `convert`, `detect`, etc.). It ships in the same binary as the AI/ML CI gate at 0.2.0 and is stable from the 0.2.0 release tag, but is positioned as a parallel product capability with its own narrative.
+Terrain originated as a multi-framework test converter. That migration surface lives in `internal/convert/` and the conversion-subsystem CLI (`migrate`, `convert`, `detect`, etc.). It ships in the same binary as the AI/ML CI gate, stable from 0.2.0 forward, positioned as a parallel product capability with its own narrative.
 
-Pre-0.2.0 was unstable by design; 0.2.0 is the first release with stability commitments. Adopters using pre-0.2.0 versions treat 0.2.0 as a fresh install.
+Pre-0.2.0 was unstable by design; 0.2.0 is the first release with stability commitments. Adopters on earlier versions treat 0.2.0 as a fresh install.
 
 ## Extension architecture
 

@@ -1,17 +1,10 @@
 # Glossary
 
-A single page for the Terrain-specific vocabulary the rest of the
-docs assume you've absorbed. Each term gets a one-sentence
-definition plus a "see also" pointer for the longer form.
+Terrain-specific vocabulary the rest of the docs assume. One sentence + a pointer.
 
 ## Snapshot
 
-The canonical serialised artifact Terrain produces from a repo: a
-JSON document conforming to the schema in
-[`docs/schema/COMPAT.md`](schema/COMPAT.md). A snapshot captures
-test files, scenarios, signals, surfaces, eval runs, risk surfaces,
-and metadata at one point in time. Two snapshots can be compared
-(`terrain compare`) to surface trends.
+The canonical serialized artifact Terrain produces from a repo: a JSON document conforming to the schema in [`docs/schema/COMPAT.md`](schema/COMPAT.md). Captures test files, scenarios, signals, surfaces, eval runs, risk surfaces, and metadata at one point in time. Compare two with `terrain compare` to see trends.
 
 ## Signal
 
