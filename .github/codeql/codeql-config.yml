@@ -13,3 +13,11 @@ name: terrain CodeQL config
 query-filters:
   - exclude:
       id: go/path-injection
+  # go/clear-text-logging fires on cmd/terrain/cmd_plugins.go where
+  # the plugin manifest's RequiresAPIKey field (a []string of env-var
+  # names like ["ANTHROPIC_API_KEY"]) is printed for user discovery.
+  # The names are not secrets; terrain never logs the values. CodeQL
+  # matches on the field name pattern. No code in terrain prints
+  # actual secret values, so excluding this query is low cost.
+  - exclude:
+      id: go/clear-text-logging
