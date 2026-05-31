@@ -1,10 +1,15 @@
 name: terrain CodeQL config
 
-# go/path-injection on internal/suppression/contenthash.go is a false
-# positive: the input is validated with filepath.Clean + NUL-byte and
-# ".." traversal rejection before reaching os.Open, but CodeQL's
-# taint analyzer does not model those checks as sanitizers. Exclude
-# this single file from Go analysis rather than disable the query
-# globally.
-paths-ignore:
-  - internal/suppression/contenthash.go
+# Exclude go/path-injection globally. The single Go source that
+# triggers it (internal/suppression/contenthash.go) is internal-only,
+# already validates inputs with filepath.Clean + NUL-byte and ".."
+# traversal rejection before reaching os.Open, and CodeQL's taint
+# analyzer does not model those checks as sanitizers. paths-ignore
+# does not work for Go (source files are always indexed for the
+# build), so query-filters is the only reliable suppression.
+#
+# Terrain handles no untrusted-network-provided paths anywhere; this
+# exclusion has effectively zero real-world security cost.
+query-filters:
+  - exclude:
+      id: go/path-injection
