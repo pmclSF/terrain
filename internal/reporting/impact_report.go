@@ -193,11 +193,14 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 		blank()
 	}
 
-	// Limitations
-	if len(result.Limitations) > 0 {
+	// Limitations — filter to caveats that affect the *change-scoped*
+	// view. "Too few tests for meaningful optimization" / "CI is
+	// already fast" are full-repo edge cases that don't belong in a
+	// diff-scoped report.
+	if filtered := filterDiffScopedLimitations(result.Limitations); len(filtered) > 0 {
 		line("Limitations")
 		line(strings.Repeat("-", 60))
-		for _, lim := range result.Limitations {
+		for _, lim := range filtered {
 			line("  * %s", lim)
 		}
 		blank()
@@ -218,6 +221,42 @@ func capitalizeFirst(s string) string {
 		return s
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// filterDiffScopedLimitations drops full-repo edge-case messaging
+// (e.g. "Too few tests for meaningful optimization", "CI is already
+// fast") from the limitations list rendered under change-scoped
+// reports like `terrain report impact` and `terrain report pr`.
+// Those advisories belong in the analyze report's Edge Cases section;
+// they confuse adopters when they appear under a PR's diff view.
+func filterDiffScopedLimitations(lims []string) []string {
+	if len(lims) == 0 {
+		return nil
+	}
+	dropPrefixes := []string{
+		"too few tests",
+		"ci is already fast",
+		"ci is fast",
+		"high test duplication",
+		"high proportion of skipped",
+		"high proportion of flaky",
+		"low graph visibility",
+	}
+	out := make([]string, 0, len(lims))
+	for _, lim := range lims {
+		lower := strings.ToLower(strings.TrimLeft(lim, " *•"))
+		drop := false
+		for _, p := range dropPrefixes {
+			if strings.HasPrefix(lower, p) {
+				drop = true
+				break
+			}
+		}
+		if !drop {
+			out = append(out, lim)
+		}
+	}
+	return out
 }
 
 // isImpactEmpty reports whether an ImpactResult has nothing

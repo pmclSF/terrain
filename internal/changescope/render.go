@@ -783,14 +783,51 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 		blank()
 	}
 
-	if len(pr.Limitations) > 0 {
+	// Drop full-repo edge-case advisories from the PR view; they
+	// confuse adopters when they appear under a diff-scoped report.
+	if filtered := filterDiffScopedLimitations(pr.Limitations); len(filtered) > 0 {
 		line("Limitations")
 		line(strings.Repeat("-", 40))
-		for _, l := range pr.Limitations {
+		for _, l := range filtered {
 			line("  %s", l)
 		}
 		blank()
 	}
+}
+
+// filterDiffScopedLimitations strips full-repo advisories ("too few
+// tests", "CI is already fast", etc.) from the PR-scoped limitations
+// list. Mirrors internal/reporting.filterDiffScopedLimitations —
+// duplicated here to keep changescope independent of reporting in
+// the package graph.
+func filterDiffScopedLimitations(lims []string) []string {
+	if len(lims) == 0 {
+		return nil
+	}
+	dropPrefixes := []string{
+		"too few tests",
+		"ci is already fast",
+		"ci is fast",
+		"high test duplication",
+		"high proportion of skipped",
+		"high proportion of flaky",
+		"low graph visibility",
+	}
+	out := make([]string, 0, len(lims))
+	for _, lim := range lims {
+		lower := strings.ToLower(strings.TrimLeft(lim, " *•"))
+		drop := false
+		for _, p := range dropPrefixes {
+			if strings.HasPrefix(lower, p) {
+				drop = true
+				break
+			}
+		}
+		if !drop {
+			out = append(out, lim)
+		}
+	}
+	return out
 }
 
 // renderAISection renders the AI risk review summary in markdown.

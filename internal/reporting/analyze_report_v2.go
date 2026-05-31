@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/analyze"
+	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
@@ -106,7 +107,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 			if fw.Type != "" && fw.Type != "unknown" {
 				typeBadge = fmt.Sprintf(" [%s]", fw.Type)
 			}
-			line("    %-20s %4d files%s", fw.Name, fw.FileCount, typeBadge)
+			line("    %-20s %4d %s%s", fw.Name, fw.FileCount, Plural(fw.FileCount, "file"), typeBadge)
 		}
 	}
 	blank()
@@ -116,9 +117,9 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		line("Coverage Confidence")
 		line(strings.Repeat("-", 60))
 		total := r.CoverageConfidence.TotalFiles
-		line("  High:    %d files (%d%%)", r.CoverageConfidence.HighCount, pct(r.CoverageConfidence.HighCount, total))
-		line("  Medium:  %d files (%d%%)", r.CoverageConfidence.MediumCount, pct(r.CoverageConfidence.MediumCount, total))
-		line("  Low:     %d files (%d%%)", r.CoverageConfidence.LowCount, pct(r.CoverageConfidence.LowCount, total))
+		line("  High:    %d (%d%%)", r.CoverageConfidence.HighCount, pct(r.CoverageConfidence.HighCount, total))
+		line("  Medium:  %d (%d%%)", r.CoverageConfidence.MediumCount, pct(r.CoverageConfidence.MediumCount, total))
+		line("  Low:     %d (%d%%)", r.CoverageConfidence.LowCount, pct(r.CoverageConfidence.LowCount, total))
 		blank()
 	}
 
@@ -195,37 +196,36 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		blank()
 	}
 
-	// Risk posture
-	if len(r.RiskPosture) > 0 {
+	// Risk posture + signal tally — one section so the headline
+	// numbers sit next to their backing detail.
+	if len(r.RiskPosture) > 0 || r.SignalSummary.Total > 0 {
 		line("Risk Posture")
 		line(strings.Repeat("-", 60))
 		for _, d := range r.RiskPosture {
-			line("  %-24s %s", d.Dimension+":", strings.ToUpper(d.Band))
+			line("  %-24s %s", d.Dimension+":", titleCase(d.Band))
+		}
+		if r.SignalSummary.Total > 0 {
+			parts := []string{}
+			if r.SignalSummary.Critical > 0 {
+				parts = append(parts, fmt.Sprintf("%d critical", r.SignalSummary.Critical))
+			}
+			if r.SignalSummary.High > 0 {
+				parts = append(parts, fmt.Sprintf("%d high", r.SignalSummary.High))
+			}
+			if r.SignalSummary.Medium > 0 {
+				parts = append(parts, fmt.Sprintf("%d medium", r.SignalSummary.Medium))
+			}
+			if r.SignalSummary.Low > 0 {
+				parts = append(parts, fmt.Sprintf("%d low", r.SignalSummary.Low))
+			}
+			breakdown := ""
+			if len(parts) > 0 {
+				breakdown = " (" + strings.Join(parts, ", ") + ")"
+			}
+			line("  %-24s %d%s", "Signals:", r.SignalSummary.Total, breakdown)
 		}
 		blank()
 	}
-
-	// Signals
-	line("Signals: %d total", r.SignalSummary.Total)
-	if r.SignalSummary.Total > 0 {
-		parts := []string{}
-		if r.SignalSummary.Critical > 0 {
-			parts = append(parts, fmt.Sprintf("%d critical", r.SignalSummary.Critical))
-		}
-		if r.SignalSummary.High > 0 {
-			parts = append(parts, fmt.Sprintf("%d high", r.SignalSummary.High))
-		}
-		if r.SignalSummary.Medium > 0 {
-			parts = append(parts, fmt.Sprintf("%d medium", r.SignalSummary.Medium))
-		}
-		if r.SignalSummary.Low > 0 {
-			parts = append(parts, fmt.Sprintf("%d low", r.SignalSummary.Low))
-		}
-		if len(parts) > 0 {
-			line("  %s", strings.Join(parts, ", "))
-		}
-	}
-	blank()
 
 	// Behavior redundancy
 	if r.BehaviorRedundancy != nil && len(r.BehaviorRedundancy.Clusters) > 0 {
@@ -365,8 +365,10 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		blank()
 	}
 
-	// Policy
-	if r.Policy != nil && len(r.Policy.Recommendations) > 0 {
+	// Policy recommendations — only emit when they're not just
+	// restating what Edge Cases already covered (avoids the analyze
+	// report saying "too few tests" three times in adjacent sections).
+	if r.Policy != nil && len(r.Policy.Recommendations) > 0 && !policyDuplicatesEdgeCases(r.Policy.Recommendations, r.EdgeCases) {
 		line("Policy Recommendations")
 		line(strings.Repeat("-", 60))
 		for _, pr := range r.Policy.Recommendations {
@@ -375,11 +377,16 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		blank()
 	}
 
-	// Data completeness
+	// Data completeness — ✓ / ✗ markers scan faster than
+	// [available] / [missing  ] with padded spaces inside the brackets.
 	line("Data Completeness")
 	line(strings.Repeat("-", 60))
 	for _, ds := range r.DataCompleteness {
-		line("  [%-9s] %s", completenessBadge(ds.Available), ds.Name)
+		mark := "✗"
+		if ds.Available {
+			mark = "✓"
+		}
+		line("  %s %s", mark, ds.Name)
 	}
 	blank()
 
@@ -404,6 +411,28 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	line("  terrain explain <test-path>         why was a test selected?")
 	line("  terrain analyze --verbose           show full signal detail")
 	blank()
+}
+
+// policyDuplicatesEdgeCases reports whether the Policy recommendations
+// are 1:1 derived from Edge Cases (each edge case emits a parallel
+// recommendation in depgraph/edgecase.go). When that's true the
+// Recommendations section is just paraphrasing what Edge Cases said a
+// few lines above; suppressing the duplicate keeps the report tight.
+// Recommendations the adopter wrote in `.terrain/policy.yaml` still
+// flow through the Policy.Recommendations field via a different code
+// path and would exceed the count, so they keep rendering.
+func policyDuplicatesEdgeCases(recs []string, edgeCases []depgraph.EdgeCase) bool {
+	return len(edgeCases) > 0 && len(recs) <= len(edgeCases)
+}
+
+// titleCase converts a single lowercase word ("strong") to Title
+// case ("Strong"). Used for posture-band rendering so reports don't
+// shout in ALL CAPS.
+func titleCase(s string) string {
+	if s == "" {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + strings.ToLower(s[1:])
 }
 
 func pct(n, total int) int {

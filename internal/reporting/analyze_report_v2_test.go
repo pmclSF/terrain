@@ -243,7 +243,7 @@ func TestRenderAnalyzeReportV2_AllSections(t *testing.T) {
 		"Weak Coverage Areas",
 		"CI Optimization Potential",
 		"Risk Posture",
-		"Signals: 25 total",
+		"Signals:",
 		"Data Completeness",
 		"Limitations",
 		"Next steps:",
@@ -261,8 +261,8 @@ func TestRenderAnalyzeReportV2_AllSections(t *testing.T) {
 	if !strings.Contains(output, "playwright") {
 		t.Error("expected playwright framework in output")
 	}
-	if !strings.Contains(output, "STRONG") {
-		t.Error("expected STRONG in risk posture")
+	if !strings.Contains(output, "Strong") {
+		t.Error("expected Strong (title case) in risk posture")
 	}
 	if !strings.Contains(output, "src/legacy/") {
 		t.Error("expected weak coverage area path")
