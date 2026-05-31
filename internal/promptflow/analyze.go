@@ -3,6 +3,7 @@ package promptflow
 import (
 	"encoding/json"
 	"fmt"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -40,7 +41,10 @@ func Analyze(after Discoveries, before map[string][]byte) ([]Finding, error) {
 		templateVars[i] = tf.Tpl.Vars()
 	}
 	for _, schema := range after.Schemas {
-		beforeBody, ok := before[schema.Path]
+		// The before map is keyed by forward-slash path so lookups
+		// work cross-platform. schema.Path may have OS separators
+		// (backslashes on Windows) — normalize before the lookup.
+		beforeBody, ok := before[filepath.ToSlash(schema.Path)]
 		if !ok {
 			continue
 		}
