@@ -16,6 +16,9 @@ scripts/
 !scripts/verify_copy_policy.py
 !scripts/_checkpoint.py
 !scripts/_checkpoint_test.py
+# docs/scripts/ ships verify_doc_consistency.sh, run by make docs-verify.
+!docs/scripts/
+!docs/scripts/**
 
 .terrain/
 

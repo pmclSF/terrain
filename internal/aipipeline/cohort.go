@@ -28,76 +28,76 @@ const (
 // Multi-language: manifests for Python, Node, Go, Java, Rust, Ruby.
 type RepoShape struct {
 	// Python manifests
-	HasSetupPy        bool
-	HasPyproject      bool
-	HasPyprojectName  bool // [project] name= declared
+	HasSetupPy       bool
+	HasPyproject     bool
+	HasPyprojectName bool // [project] name= declared
 
 	// Node manifests
-	HasPackageJson      bool
-	HasPackageJsonName  bool // top-level "name" present
-	HasPackageJsonPriv  bool // "private": true → application-shaped
+	HasPackageJson     bool
+	HasPackageJsonName bool // top-level "name" present
+	HasPackageJsonPriv bool // "private": true → application-shaped
 
 	// Go manifests
-	HasGoMod          bool // go.mod present
-	HasGoModule       bool // module path declared
+	HasGoMod    bool // go.mod present
+	HasGoModule bool // module path declared
 
 	// Java / Kotlin manifests
-	HasPomXML         bool
-	HasBuildGradle    bool
+	HasPomXML      bool
+	HasBuildGradle bool
 
 	// Rust manifests
-	HasCargoToml      bool
+	HasCargoToml bool
 
 	// Ruby manifests
-	HasGemfile        bool
-	HasGemspec        bool
+	HasGemfile bool
+	HasGemspec bool
 
 	// .NET manifests
-	HasCsproj         bool
+	HasCsproj bool
 
 	// Generic release-workflow signal (any language)
-	HasReleaseWf      bool
+	HasReleaseWf bool
 
 	// App-shape signals — multi-language
-	HasDockerfile     bool
-	HasCompose        bool
-	HasFlyToml        bool
-	HasVercelJson     bool
-	HasNetlifyToml    bool
-	HasRailwayToml    bool
-	HasProcfile       bool
+	HasDockerfile  bool
+	HasCompose     bool
+	HasFlyToml     bool
+	HasVercelJson  bool
+	HasNetlifyToml bool
+	HasRailwayToml bool
+	HasProcfile    bool
 
 	// Entry-point signals — Python
-	HasMainPy         bool
-	HasAppPy          bool
-	HasServerPy       bool
-	HasManagePy       bool // Django
+	HasMainPy   bool
+	HasAppPy    bool
+	HasServerPy bool
+	HasManagePy bool // Django
 
 	// Entry-point signals — Node
-	HasIndexJS        bool
-	HasIndexTS        bool
-	HasServerJS       bool
-	HasServerTS       bool
+	HasIndexJS  bool
+	HasIndexTS  bool
+	HasServerJS bool
+	HasServerTS bool
 
 	// Entry-point signals — Go
-	HasMainGo         bool
+	HasMainGo bool
 
 	// Directory signals
-	HasPromptsDir     bool
-	HasEvalsDir       bool
-	HasAgentsDir      bool
-	HasChainsDir      bool
-	HasNotebooksDir   bool
-	HasPipelinesDir   bool
-	HasSrcDir         bool
-	HasAppDir         bool
-	HasApiDir         bool
-	HasFrontendDir    bool
-	HasBackendDir     bool
+	HasPromptsDir   bool
+	HasEvalsDir     bool
+	HasAgentsDir    bool
+	HasChainsDir    bool
+	HasNotebooksDir bool
+	HasPipelinesDir bool
+	HasSrcDir       bool
+	HasAppDir       bool
+	HasApiDir       bool
+	HasFrontendDir  bool
+	HasBackendDir   bool
 
 	// Topic / language signals (free-form; cohort detector may consume)
-	Topics            []string
-	Languages         []string
+	Topics    []string
+	Languages []string
 }
 
 // IsLibraryShape reports whether the repo's manifest signals suggest

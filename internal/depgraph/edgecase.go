@@ -6,18 +6,18 @@ import "fmt"
 type EdgeCaseType string
 
 const (
-	EdgeCaseFewTests             EdgeCaseType = "FEW_TESTS"
-	EdgeCaseFastCIAlready        EdgeCaseType = "FAST_CI_ALREADY"
-	EdgeCaseRedundantSuite       EdgeCaseType = "REDUNDANT_TEST_SUITE"
-	EdgeCaseHighSkipBurden       EdgeCaseType = "HIGH_SKIP_BURDEN"
-	EdgeCaseHighFlakeBurden      EdgeCaseType = "HIGH_FLAKE_BURDEN"
-	EdgeCaseHighFanoutFixture    EdgeCaseType = "HIGH_FANOUT_FIXTURE"
-	EdgeCaseLowGraphVisibility   EdgeCaseType = "LOW_GRAPH_VISIBILITY"
-	EdgeCaseMigrationOverlap     EdgeCaseType = "MIGRATION_OVERLAP"
-	EdgeCaseSnapshotHeavy        EdgeCaseType = "SNAPSHOT_HEAVY_SUITE"
-	EdgeCaseLegacyZone           EdgeCaseType = "LEGACY_ZONE"
-	EdgeCaseMixedTestCultures    EdgeCaseType = "MIXED_TEST_CULTURES"
-	EdgeCaseLargeManualSuite     EdgeCaseType = "LARGE_MANUAL_SUITE"
+	EdgeCaseFewTests           EdgeCaseType = "FEW_TESTS"
+	EdgeCaseFastCIAlready      EdgeCaseType = "FAST_CI_ALREADY"
+	EdgeCaseRedundantSuite     EdgeCaseType = "REDUNDANT_TEST_SUITE"
+	EdgeCaseHighSkipBurden     EdgeCaseType = "HIGH_SKIP_BURDEN"
+	EdgeCaseHighFlakeBurden    EdgeCaseType = "HIGH_FLAKE_BURDEN"
+	EdgeCaseHighFanoutFixture  EdgeCaseType = "HIGH_FANOUT_FIXTURE"
+	EdgeCaseLowGraphVisibility EdgeCaseType = "LOW_GRAPH_VISIBILITY"
+	EdgeCaseMigrationOverlap   EdgeCaseType = "MIGRATION_OVERLAP"
+	EdgeCaseSnapshotHeavy      EdgeCaseType = "SNAPSHOT_HEAVY_SUITE"
+	EdgeCaseLegacyZone         EdgeCaseType = "LEGACY_ZONE"
+	EdgeCaseMixedTestCultures  EdgeCaseType = "MIXED_TEST_CULTURES"
+	EdgeCaseLargeManualSuite   EdgeCaseType = "LARGE_MANUAL_SUITE"
 )
 
 // EdgeCase represents a detected edge case condition.

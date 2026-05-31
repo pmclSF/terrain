@@ -102,12 +102,12 @@ func (d *PromptInjectionDetector) Detect(snap *models.TestSuiteSnapshot) []model
 		hits := scanFileForPromptInjection(abs)
 		for _, h := range hits {
 			out = append(out, models.Signal{
-				Type:        signals.SignalAIPromptInjectionRisk,
-				Category:    models.CategoryAI,
-				Severity:    models.SeverityHigh,
-				Confidence:  0.40,
-				Location:    models.SignalLocation{File: relPath, Line: h.Line},
-				Explanation: h.Explanation,
+				Type:            signals.SignalAIPromptInjectionRisk,
+				Category:        models.CategoryAI,
+				Severity:        models.SeverityHigh,
+				Confidence:      0.40,
+				Location:        models.SignalLocation{File: relPath, Line: h.Line},
+				Explanation:     h.Explanation,
 				SuggestedAction: "Use a prompt template with explicit user-content boundaries, or run user input through a sanitizer before concatenation.",
 
 				SeverityClauses: []string{"sev-high-003"},

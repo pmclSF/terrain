@@ -602,7 +602,7 @@ func TestBuildAIValidationSummary_WithSignals(t *testing.T) {
 				Explanation: "cost increased 20%", Location: models.SignalLocation{File: "src/prompt.ts"}},
 			{Type: "aiModelDeprecationRisk", Category: models.CategoryAI, Severity: models.SeverityHigh,
 				Explanation: "pre-existing on a file the PR didn't touch",
-				Location: models.SignalLocation{File: "internal/aidetect/foo.go"}},
+				Location:    models.SignalLocation{File: "internal/aidetect/foo.go"}},
 			{Type: "weakAssertion", Category: models.CategoryQuality, Severity: models.SeverityMedium,
 				Explanation: "not AI", Location: models.SignalLocation{File: "src/prompt.ts"}},
 		},
@@ -640,15 +640,15 @@ func TestBuildAIValidationSummary_DropsSignalsOnUnchangedFiles(t *testing.T) {
 			// introduced by this PR.
 			{Type: "aiModelDeprecationRisk", Category: models.CategoryAI, Severity: models.SeverityHigh,
 				Explanation: "OpenAI text-davinci-003 reached EOL",
-				Location: models.SignalLocation{File: "tests/calibration/floating-model-tag/config.yaml"}},
+				Location:    models.SignalLocation{File: "tests/calibration/floating-model-tag/config.yaml"}},
 			{Type: "aiToolWithoutSandbox", Category: models.CategoryAI, Severity: models.SeverityHigh,
 				Explanation: "Tool delete_user matches a destructive-verb pattern",
-				Location: models.SignalLocation{File: "tests/calibration/agent-without-safety-eval/agent.yaml"}},
+				Location:    models.SignalLocation{File: "tests/calibration/agent-without-safety-eval/agent.yaml"}},
 			// Whole-repo emergent signal with no Location.File — also
 			// shouldn't appear in PR-scoped output.
 			{Type: "uncoveredAISurface", Category: models.CategoryAI, Severity: models.SeverityHigh,
 				Explanation: "emergent — no Location.File",
-				Location: models.SignalLocation{}},
+				Location:    models.SignalLocation{}},
 		},
 	}
 

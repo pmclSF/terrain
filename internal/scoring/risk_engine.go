@@ -61,14 +61,14 @@ var severityWeight = map[models.SignalSeverity]float64{
 // preserved for back-compat. See docs/scoring-rubric.md for the full
 // methodology.
 const (
-	riskBandLowUpper      = 4.0  // score < 4 → Low
-	riskBandMediumUpper   = 9.0  // 4 ≤ score < 9 → Medium
-	riskBandHighUpper     = 16.0 // 9 ≤ score < 16 → High; ≥16 → Critical
-	riskBandHysteresis    = 0.5  // deadband around each boundary
-	governanceFloorScore  = 4.0  // governance violations don't drop below Medium
-	densityScoreScale     = 10.0 // density score = (weight / files) × this
-	absoluteWeightScale   = 1.2  // log-scaled weight component multiplier
-	absoluteCountScale    = 0.8  // log-scaled count component multiplier
+	riskBandLowUpper     = 4.0  // score < 4 → Low
+	riskBandMediumUpper  = 9.0  // 4 ≤ score < 9 → Medium
+	riskBandHighUpper    = 16.0 // 9 ≤ score < 16 → High; ≥16 → Critical
+	riskBandHysteresis   = 0.5  // deadband around each boundary
+	governanceFloorScore = 4.0  // governance violations don't drop below Medium
+	densityScoreScale    = 10.0 // density score = (weight / files) × this
+	absoluteWeightScale  = 1.2  // log-scaled weight component multiplier
+	absoluteCountScale   = 0.8  // log-scaled count component multiplier
 )
 
 // Signal types that feed each risk dimension.

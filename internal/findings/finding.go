@@ -103,9 +103,9 @@ type Location struct {
 
 // Evidence is concrete proof of the finding.
 type Evidence struct {
-	IOExamples   []IOExample  `json:"io_examples,omitempty"`
-	MetricDelta  *MetricDelta `json:"metric_delta,omitempty"`
-	CodeExcerpt  string       `json:"code_excerpt,omitempty"`
+	IOExamples  []IOExample  `json:"io_examples,omitempty"`
+	MetricDelta *MetricDelta `json:"metric_delta,omitempty"`
+	CodeExcerpt string       `json:"code_excerpt,omitempty"`
 }
 
 // IOExample is one input/expected/actual triple.

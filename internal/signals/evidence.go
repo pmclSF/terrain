@@ -12,7 +12,7 @@ import (
 // Mirrors the structure of `internal/explain/data/detector-evidence.json`
 // but with only the fields severity-from-lift actually consumes.
 type Evidence struct {
-	HandPrecision *EvidenceCI `json:"heuristic_precision,omitempty"`
+	HandPrecision *EvidenceCI    `json:"heuristic_precision,omitempty"`
 	HandValidated *HandValidated `json:"hand_validated,omitempty"`
 	GlobalLift    *EvidenceCI    `json:"global_lift,omitempty"`
 }

@@ -17,9 +17,9 @@ import (
 // reproduce the side-by-side block without re-running the pipeline.
 func (f Finding) ToSignal() models.Signal {
 	return models.Signal{
-		Type:        signals.SignalAIPromptSchemaDrift,
-		Category:    models.CategoryAI,
-		Severity:    models.SeverityHigh,
+		Type:     signals.SignalAIPromptSchemaDrift,
+		Category: models.CategoryAI,
+		Severity: models.SeverityHigh,
 		// Confidence is set to the structural-evidence floor — the
 		// detector identifies a (template, schema, field) join via
 		// AST/JSON parsing with no heuristics, so false positives

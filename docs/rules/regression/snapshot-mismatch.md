@@ -5,7 +5,7 @@
 **Type:** `snapshotMismatch`  
 **Domain:** ai  
 **Default severity:** medium  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** observability
 
 ## Summary
@@ -15,6 +15,10 @@ An eval case's recorded output snapshot diverged from baseline to current. Catch
 ## Remediation
 
 Inspect the diff for prompt / model / retrieval changes affecting the case. If the new output is correct, accept it via `terrain ai record`.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/regression/snapshot_mismatch.go (DetectSnapshotMismatch). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

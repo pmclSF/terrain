@@ -5,7 +5,7 @@
 **Type:** `noSeed`  
 **Domain:** ai  
 **Default severity:** medium  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** observability
 
 ## Summary
@@ -15,6 +15,10 @@ Stochastic library call (np.random / torch / random / tf.random) in an eval or t
 ## Remediation
 
 Add a seed call at module scope or in a pytest fixture (np.random.seed(42), torch.manual_seed(42), or transformers.set_seed(42)).
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/reproducibility/no_seed.go (DetectNoSeed). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

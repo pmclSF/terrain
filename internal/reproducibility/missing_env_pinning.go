@@ -21,11 +21,11 @@ import (
 //
 // Recognized read shapes:
 //
-//   os.environ["MODEL"]                    → flagged (raises if unset)
-//   os.environ.get("MODEL")                → flagged (returns None silently)
-//   os.environ.get("MODEL", "default")     → suppressed (has fallback)
-//   os.getenv("MODEL")                     → flagged
-//   os.getenv("MODEL", "default")          → suppressed
+//	os.environ["MODEL"]                    → flagged (raises if unset)
+//	os.environ.get("MODEL")                → flagged (returns None silently)
+//	os.environ.get("MODEL", "default")     → suppressed (has fallback)
+//	os.getenv("MODEL")                     → flagged
+//	os.getenv("MODEL", "default")          → suppressed
 //
 // Fires only in eval/inference paths to avoid noise on application
 // config code where unset envs are intentionally configurable.

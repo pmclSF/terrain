@@ -20,8 +20,8 @@ import (
 // To support both that array-of-records shape and the older object
 // shape (when present), the adapter accepts:
 //
-//   1. A top-level array: [{question, answer, faithfulness, ...}, ...]
-//   2. A wrapper object: {"results": [...], "metrics": {...}}
+//  1. A top-level array: [{question, answer, faithfulness, ...}, ...]
+//  2. A wrapper object: {"results": [...], "metrics": {...}}
 //
 // Either form is parsed by attempting both shapes during Ingest.
 type RagasAdapter struct{}

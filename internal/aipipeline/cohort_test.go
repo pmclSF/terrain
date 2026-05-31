@@ -66,9 +66,9 @@ func TestDetectCohort_FromShape(t *testing.T) {
 			want: CohortAIFeatureInApp,
 		},
 		{
-			name: "ai-feature-in-app — go entry",
+			name:  "ai-feature-in-app — go entry",
 			shape: RepoShape{HasMainGo: true, HasDockerfile: true},
-			want: CohortAIFeatureInApp,
+			want:  CohortAIFeatureInApp,
 		},
 		{
 			name:  "unknown when no signals",

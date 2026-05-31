@@ -71,11 +71,11 @@ type Mechanism struct {
 // recall denominators). When empty, the TP counts toward the union recall
 // only — useful for TPs that genuinely need multi-mechanism coverage.
 type GoldenTP struct {
-	Repo           string `yaml:"repo"`
-	File           string `yaml:"file"`
-	Line           int    `yaml:"line,omitempty"`
-	MechanismHint  string `yaml:"mechanism_hint,omitempty"`
-	Note           string `yaml:"note,omitempty"`
+	Repo          string `yaml:"repo"`
+	File          string `yaml:"file"`
+	Line          int    `yaml:"line,omitempty"`
+	MechanismHint string `yaml:"mechanism_hint,omitempty"`
+	Note          string `yaml:"note,omitempty"`
 }
 
 // Finding is the runtime shape the harness compares against. Callers convert

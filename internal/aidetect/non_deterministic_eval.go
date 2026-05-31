@@ -87,12 +87,12 @@ func (d *NonDeterministicEvalDetector) Detect(snap *models.TestSuiteSnapshot) []
 				severity = demoteSeverity(severity)
 			}
 			out = append(out, models.Signal{
-				Type:        signals.SignalAINonDeterministicEval,
-				Category:    models.CategoryAI,
-				Severity:    severity,
-				Confidence:  0.50,
-				Location:    models.SignalLocation{File: relPath},
-				Explanation: f.Explanation,
+				Type:            signals.SignalAINonDeterministicEval,
+				Category:        models.CategoryAI,
+				Severity:        severity,
+				Confidence:      0.50,
+				Location:        models.SignalLocation{File: relPath},
+				Explanation:     f.Explanation,
 				SuggestedAction: "Pin temperature: 0 and a seed in the eval config, or document the non-determinism budget alongside the scenario.",
 
 				SeverityClauses: []string{severityClauseTier(severity) + "-003"},

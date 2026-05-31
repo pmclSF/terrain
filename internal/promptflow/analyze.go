@@ -190,4 +190,3 @@ func changeDetail(c schemadiff.Change) string {
 		return "changed"
 	}
 }
-

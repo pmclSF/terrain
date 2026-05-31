@@ -1358,21 +1358,21 @@ func TestAnalyze_PromptChangeImpactsScenarios(t *testing.T) {
 		},
 		Evals: []models.Eval{
 			{
-				EvalID:        "scenario:eval:safety",
+				EvalID:            "scenario:eval:safety",
 				Name:              "safety-check",
 				Category:          "safety",
 				Framework:         "promptfoo",
 				CoveredSurfaceIDs: []string{"surface:src/ai/prompts.ts:systemPrompt"},
 			},
 			{
-				EvalID:        "scenario:eval:accuracy",
+				EvalID:            "scenario:eval:accuracy",
 				Name:              "accuracy-check",
 				Category:          "accuracy",
 				Framework:         "deepeval",
 				CoveredSurfaceIDs: []string{"surface:src/ai/prompts.ts:systemPrompt", "surface:src/ai/prompts.ts:userTemplate"},
 			},
 			{
-				EvalID:        "scenario:eval:unrelated",
+				EvalID:            "scenario:eval:unrelated",
 				Name:              "unrelated-check",
 				Category:          "regression",
 				CoveredSurfaceIDs: []string{"surface:src/utils/helper.ts:formatDate"},
@@ -1451,7 +1451,7 @@ func TestAnalyze_DatasetChangeImpactsScenarios(t *testing.T) {
 		},
 		Evals: []models.Eval{
 			{
-				EvalID:        "scenario:eval:data-quality",
+				EvalID:            "scenario:eval:data-quality",
 				Name:              "data-quality",
 				Category:          "quality",
 				Framework:         "custom",
@@ -1761,7 +1761,7 @@ func TestAnalyze_ToolSchemaChangeImpactsAgentScenario(t *testing.T) {
 		},
 		Evals: []models.Eval{
 			{
-				EvalID:        "sc:agent-tool-use",
+				EvalID:            "sc:agent-tool-use",
 				Name:              "agent-tool-use",
 				Category:          "accuracy",
 				CoveredSurfaceIDs: []string{"s:tool", "s:agent"},
@@ -1788,7 +1788,7 @@ func TestAnalyze_ParserChangeImpactsStructuredOutput(t *testing.T) {
 		},
 		Evals: []models.Eval{
 			{
-				EvalID:        "sc:structured-output",
+				EvalID:            "sc:structured-output",
 				Name:              "structured-output-validation",
 				Category:          "accuracy",
 				CoveredSurfaceIDs: []string{"s:parser"},
@@ -1816,7 +1816,7 @@ func TestAnalyze_FallbackChangeImpactsResilience(t *testing.T) {
 		},
 		Evals: []models.Eval{
 			{
-				EvalID:        "sc:resilience",
+				EvalID:            "sc:resilience",
 				Name:              "agent-resilience",
 				Category:          "reliability",
 				CoveredSurfaceIDs: []string{"s:fallback", "s:retry"},
@@ -1871,7 +1871,7 @@ func TestAnalyze_ContextChangeTriggersScenario(t *testing.T) {
 		},
 		Evals: []models.Eval{
 			{
-				EvalID:        "scenario:custom:guardrail",
+				EvalID:            "scenario:custom:guardrail",
 				Name:              "refund-escalation-guardrail",
 				Category:          "safety",
 				CoveredSurfaceIDs: []string{"surface:src/context.ts:systemPrompt", "surface:src/context.ts:safetyOverlay"},
@@ -1906,7 +1906,7 @@ func TestAnalyze_NonAIChangeDoesNotTriggerScenarios(t *testing.T) {
 		},
 		Evals: []models.Eval{
 			{
-				EvalID:        "scenario:custom:qa-accuracy",
+				EvalID:            "scenario:custom:qa-accuracy",
 				Name:              "qa-accuracy",
 				CoveredSurfaceIDs: []string{"surface:src/ai/prompt.ts:buildPrompt"},
 			},
@@ -1933,7 +1933,7 @@ func TestAnalyze_MultipleAISurfaceChangesMerge(t *testing.T) {
 		Evals: []models.Eval{
 			{
 				EvalID: "scenario:custom:enterprise-search",
-				Name:       "enterprise-search-citations",
+				Name:   "enterprise-search-citations",
 				CoveredSurfaceIDs: []string{
 					"surface:src/rag/chunking.ts:chunkConfig",
 					"surface:src/ai/prompt.ts:searchPrompt",
@@ -1971,13 +1971,13 @@ func TestAnalyze_RAGSurfaceChangeImpactsScenarios(t *testing.T) {
 		},
 		Evals: []models.Eval{
 			{
-				EvalID:        "scenario:custom:retrieval-quality",
+				EvalID:            "scenario:custom:retrieval-quality",
 				Name:              "retrieval-quality",
 				Category:          "accuracy",
 				CoveredSurfaceIDs: []string{"surface:src/rag/chunking.ts:chunkConfig", "surface:src/rag/reranker.ts:rerankerConfig"},
 			},
 			{
-				EvalID:        "scenario:custom:citation-completeness",
+				EvalID:            "scenario:custom:citation-completeness",
 				Name:              "citation-completeness",
 				Category:          "accuracy",
 				CoveredSurfaceIDs: []string{"surface:src/rag/reranker.ts:rerankerConfig"},
@@ -2012,7 +2012,7 @@ func TestAnalyze_ContextSurfaceChangeImpactsScenarios(t *testing.T) {
 		},
 		Evals: []models.Eval{
 			{
-				EvalID:        "scenario:custom:safety",
+				EvalID:            "scenario:custom:safety",
 				Name:              "safety",
 				Category:          "safety",
 				CoveredSurfaceIDs: []string{"surface:src/prompts.ts:systemPrompt"},

@@ -137,12 +137,12 @@ func TestParseFindingID_RejectsMalformed(t *testing.T) {
 		"",
 		"detector",
 		"detector@path",
-		"detector@path:anchor",         // no #hash
-		"@path:anchor#hash",            // empty detector
-		"detector@:anchor#hash",        // empty path
-		"detector@path:#hash",          // empty anchor
-		"detector@path:anchor#",        // empty hash
-		"detectorpath:anchor#hash",     // missing @
+		"detector@path:anchor",     // no #hash
+		"@path:anchor#hash",        // empty detector
+		"detector@:anchor#hash",    // empty path
+		"detector@path:#hash",      // empty anchor
+		"detector@path:anchor#",    // empty hash
+		"detectorpath:anchor#hash", // missing @
 	}
 	for _, b := range bad {
 		_, _, _, _, ok := ParseFindingID(b)

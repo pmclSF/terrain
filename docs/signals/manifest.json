@@ -751,8 +751,9 @@
       "type": "evalRegression",
       "constName": "SignalEvalRegression",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "gate",
+      "disabledByDefault": true,
       "title": "Eval Regression",
       "description": "An eval case's primary Score dropped from baseline to current past the configured threshold, OR the run's PrimaryMetric dropped across all matched cases. Identifies regressions before merge.",
       "remediation": "Inspect the diff for prompt / model / retrieval changes that affect the regressing case(s). If intentional, update the baseline with `terrain ai record`.",
@@ -763,7 +764,8 @@
         "eval-execution"
       ],
       "ruleId": "terrain/regression/eval-regression",
-      "ruleUri": "docs/rules/regression/eval-regression.md"
+      "ruleUri": "docs/rules/regression/eval-regression.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/regression/eval_regression.go (DetectEvalRegression). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "accuracyRegression",
@@ -1498,8 +1500,9 @@
       "type": "versionFloating",
       "constName": "SignalVersionFloating",
       "domain": "quality",
-      "status": "stable",
+      "status": "experimental",
       "tier": "observability",
+      "disabledByDefault": true,
       "title": "Floating Dependency Version",
       "description": "A dependency is declared without a version pin (unpinned, range-only, or moving git/url reference). Subsequent installs may resolve to different versions, introducing non-determinism in test and eval runs.",
       "remediation": "Pin the dependency to an exact version, commit a lockfile that records the resolved set, or use a content-addressed git SHA reference.",
@@ -1511,14 +1514,16 @@
         "manifest"
       ],
       "ruleId": "terrain/reproducibility/version-floating",
-      "ruleUri": "docs/rules/reproducibility/version-floating.md"
+      "ruleUri": "docs/rules/reproducibility/version-floating.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/reproducibility/version_floating.go (DetectVersionFloating). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "secretsInPrompt",
       "constName": "SignalSecretsInPrompt",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "gate",
+      "disabledByDefault": true,
       "title": "Secrets in Prompt",
       "description": "A prompt-classified file contains embedded credentials (OpenAI / Anthropic / GitHub / Slack / AWS keys, JWT, bearer tokens). Anyone with read access to the prompt has access to the credential.",
       "remediation": "Rotate the leaked credential immediately, then move it to an environment variable or secret manager.",
@@ -1530,14 +1535,15 @@
       ],
       "ruleId": "terrain/hygiene/secrets-in-prompt",
       "ruleUri": "docs/rules/hygiene/secrets-in-prompt.md",
-      "promotionPlan": "Stable — Go-native regex detector ships first; richer secret-vocabulary integration is a possible follow-up."
+      "promotionPlan": "Off by default. Detector function exists at internal/hygiene/secrets_in_prompt.go (DetectSecretsInPrompt). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "noTestsForCodeUnit",
       "constName": "SignalNoTestsForCodeUnit",
       "domain": "quality",
-      "status": "stable",
+      "status": "experimental",
       "tier": "observability",
+      "disabledByDefault": true,
       "title": "No Tests for Code Unit",
       "description": "A code unit (exported function / method / class) exists in the codebase but no test in the snapshot's dependency graph covers it. Untested code reaches production undetected when changed.",
       "remediation": "Add a test that imports the code unit and exercises its observable behavior. The rule defaults to exported symbols only; configure `include_private: true` to widen coverage.",
@@ -1548,14 +1554,16 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/coverage/no-tests",
-      "ruleUri": "docs/rules/coverage/no-tests.md"
+      "ruleUri": "docs/rules/coverage/no-tests.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/coverage/no_tests.go (DetectNoTestsForCodeUnit). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "noEvalForAISurface",
       "constName": "SignalNoEvalForAISurface",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "gate",
+      "disabledByDefault": true,
       "title": "No Eval for AI Surface",
       "description": "An AI-typed CodeSurface (prompt / context / dataset / tool / retrieval / agent / eval_definition / model) has no Eval that claims to cover it. Model behavior can shift in production without any eval surfacing the regression.",
       "remediation": "Add an eval scenario that exercises the surface and asserts on its output / metric / shape.",
@@ -1566,14 +1574,16 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/coverage/no-eval",
-      "ruleUri": "docs/rules/coverage/no-eval.md"
+      "ruleUri": "docs/rules/coverage/no-eval.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/coverage/no_eval.go (DetectNoEvalForAISurface). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "modelFixtureUnpinned",
       "constName": "SignalModelFixtureUnpinned",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "gate",
+      "disabledByDefault": true,
       "title": "Model Fixture Unpinned",
       "description": "A model-loading call (from_pretrained / torch.load / joblib.load / load_model / snapshot_download) uses a path or revision that isn't content-addressed. The underlying weights may change without a code edit, regressing eval scores silently.",
       "remediation": "Pin the load to a commit SHA (revision=\"\u003csha\u003e\" for HuggingFace), a version-suffixed filename (model_v3.0.pt), or a .safetensors-with-checksum format.",
@@ -1584,14 +1594,16 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/hygiene/model-fixture-unpinned",
-      "ruleUri": "docs/rules/hygiene/model-fixture-unpinned.md"
+      "ruleUri": "docs/rules/hygiene/model-fixture-unpinned.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/hygiene/model_fixture_unpinned.go (DetectModelFixtureUnpinned). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "evalNoAssertion",
       "constName": "SignalEvalNoAssertion",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "gate",
+      "disabledByDefault": true,
       "title": "Eval Without Assertion",
       "description": "An eval test function runs to completion without any assertion / score / metric call. The test cannot detect regressions because it accepts any model output.",
       "remediation": "Add an assert / score check that fails when the eval output deviates from expectations.",
@@ -1602,14 +1614,16 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/hygiene/eval-no-assertion",
-      "ruleUri": "docs/rules/hygiene/eval-no-assertion.md"
+      "ruleUri": "docs/rules/hygiene/eval-no-assertion.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/hygiene/eval_no_assertion.go (DetectEvalNoAssertion). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "noSeed",
       "constName": "SignalNoSeed",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "observability",
+      "disabledByDefault": true,
       "title": "Missing Random Seed",
       "description": "Stochastic library call (np.random / torch / random / tf.random) in an eval or training file without a preceding seed call. Run-to-run results vary, masking real regressions.",
       "remediation": "Add a seed call at module scope or in a pytest fixture (np.random.seed(42), torch.manual_seed(42), or transformers.set_seed(42)).",
@@ -1620,14 +1634,16 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/reproducibility/no-seed",
-      "ruleUri": "docs/rules/reproducibility/no-seed.md"
+      "ruleUri": "docs/rules/reproducibility/no-seed.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/reproducibility/no_seed.go (DetectNoSeed). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "missingEnvPinning",
       "constName": "SignalMissingEnvPinning",
       "domain": "quality",
-      "status": "stable",
+      "status": "experimental",
       "tier": "observability",
+      "disabledByDefault": true,
       "title": "Missing Env Pinning",
       "description": "An environment-variable read in eval / inference code lacks a default value. The same code produces different behavior depending on which environment runs it.",
       "remediation": "Supply a default — os.environ.get(KEY, \"\u003cpinned-value\u003e\") — or fail fast with a clear error message when the variable is absent.",
@@ -1638,14 +1654,16 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/reproducibility/missing-env-pinning",
-      "ruleUri": "docs/rules/reproducibility/missing-env-pinning.md"
+      "ruleUri": "docs/rules/reproducibility/missing-env-pinning.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/reproducibility/missing_env_pinning.go (DetectMissingEnvPinning). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "piiInEval",
       "constName": "SignalPIIInEval",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "gate",
+      "disabledByDefault": true,
       "title": "PII in Eval Dataset",
       "description": "An eval-directory file contains PII-shaped values (emails, phone numbers, SSNs, credit card numbers, IPv4 addresses). Eval datasets that retain production PII expose customer data to anyone with repo access.",
       "remediation": "Replace PII in the eval dataset with synthetic equivalents (Faker, Mimesis, mockaroo) or apply a redaction pass before committing.",
@@ -1656,14 +1674,16 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/security/pii-in-eval",
-      "ruleUri": "docs/rules/security/pii-in-eval.md"
+      "ruleUri": "docs/rules/security/pii-in-eval.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/security/pii_in_eval.go (DetectPIIInEval). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "insecureDeserialization",
       "constName": "SignalInsecureDeserialize",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "gate",
+      "disabledByDefault": true,
       "title": "Insecure Deserialization",
       "description": "A call into an unsafe deserialization primitive (pickle.load, torch.load without weights_only=True, joblib.load, yaml.load without SafeLoader, dill.load, marshal.load) executes arbitrary code on untrusted input.",
       "remediation": "Switch to a safe format (JSON, msgpack, safetensors, ONNX). When the primitive is unavoidable, declare the explicit safe option (weights_only=True for torch.load, Loader=SafeLoader for yaml.load).",
@@ -1674,14 +1694,16 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/security/insecure-deserialization",
-      "ruleUri": "docs/rules/security/insecure-deserialization.md"
+      "ruleUri": "docs/rules/security/insecure-deserialization.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/security/insecure_deserialization.go (DetectInsecureDeserialization). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "missingPerfTest",
       "constName": "SignalMissingPerfTest",
       "domain": "quality",
-      "status": "stable",
+      "status": "experimental",
       "tier": "observability",
+      "disabledByDefault": true,
       "title": "Missing Performance Test",
       "description": "A latency-critical AI surface (prompt / retrieval / agent / model / handler / route) has no benchmark or load test exercising it. Latency or throughput regressions ship silently.",
       "remediation": "Add a benchmark under benchmarks/ or perf/ that records P50 / P95 latency for the surface.",
@@ -1692,14 +1714,16 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/performance/missing-perf-test",
-      "ruleUri": "docs/rules/performance/missing-perf-test.md"
+      "ruleUri": "docs/rules/performance/missing-perf-test.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/performance/missing_perf_test.go (DetectMissingPerfTest). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "dataLeakageSuspected",
       "constName": "SignalDataLeakageSuspected",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "gate",
+      "disabledByDefault": true,
       "title": "Data Leakage Suspected",
       "description": "Source-level patterns associated with train/test contamination: preprocessing (scaler/encoder fit) applied before the split, or random train/test split applied to time-series data.",
       "remediation": "Move scaler/encoder fits to AFTER the split. For time-series, use TimeSeriesSplit or a manual time-based cutoff.",
@@ -1710,14 +1734,16 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/data/leakage-suspected",
-      "ruleUri": "docs/rules/data/leakage-suspected.md"
+      "ruleUri": "docs/rules/data/leakage-suspected.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/data/leakage_suspected.go (DetectLeakageSuspected). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "missingTrainTestSplit",
       "constName": "SignalMissingTrainTestSplit",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "gate",
+      "disabledByDefault": true,
       "title": "Missing Train/Test Split",
       "description": "A training call (.fit() / .train() / .partial_fit()) appears in a training file without any preceding split helper (train_test_split, KFold, TimeSeriesSplit, cross_val_score, etc.). The model is fit on the full dataset; evaluation against the same data measures memorization, not generalization.",
       "remediation": "Split the dataset before training (sklearn.model_selection.train_test_split, KFold for general use, TimeSeriesSplit for temporal data).",
@@ -1728,14 +1754,16 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/data/missing-train-test-split",
-      "ruleUri": "docs/rules/data/missing-train-test-split.md"
+      "ruleUri": "docs/rules/data/missing-train-test-split.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/data/missing_train_test_split.go (DetectMissingTrainTestSplit). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "baselineNotSet",
       "constName": "SignalBaselineNotSet",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "observability",
+      "disabledByDefault": true,
       "title": "Baseline Not Set",
       "description": "An EvalRun exists for the current PR but no baseline is recorded. Eval-regression detection is disabled until a baseline exists.",
       "remediation": "Run `terrain ai record` on the current main-branch state to lock the baseline. Subsequent PRs will be compared against it.",
@@ -1746,14 +1774,16 @@
         "eval-execution"
       ],
       "ruleId": "terrain/regression/baseline-not-set",
-      "ruleUri": "docs/rules/regression/baseline-not-set.md"
+      "ruleUri": "docs/rules/regression/baseline-not-set.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/regression/baseline_not_set.go (DetectBaselineNotSet). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "passRateDrop",
       "constName": "SignalPassRateDrop",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "gate",
+      "disabledByDefault": true,
       "title": "Eval Pass Rate Dropped",
       "description": "The success / total ratio across eval cases dropped past the configured threshold from baseline to current. Distinct from eval-regression (continuous score deltas) — fires on discrete pass/fail count deltas.",
       "remediation": "Inspect per-case eval-regression findings for cases that flipped from pass to fail. If intentional, update the baseline.",
@@ -1764,14 +1794,16 @@
         "eval-execution"
       ],
       "ruleId": "terrain/regression/pass-rate-drop",
-      "ruleUri": "docs/rules/regression/pass-rate-drop.md"
+      "ruleUri": "docs/rules/regression/pass-rate-drop.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/regression/pass_rate_drop.go (DetectPassRateDrop). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "snapshotMismatch",
       "constName": "SignalSnapshotMismatch",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "observability",
+      "disabledByDefault": true,
       "title": "Snapshot Mismatch",
       "description": "An eval case's recorded output snapshot diverged from baseline to current. Catches behavior changes the scalar score may not surface.",
       "remediation": "Inspect the diff for prompt / model / retrieval changes affecting the case. If the new output is correct, accept it via `terrain ai record`.",
@@ -1782,14 +1814,16 @@
         "eval-execution"
       ],
       "ruleId": "terrain/regression/snapshot-mismatch",
-      "ruleUri": "docs/rules/regression/snapshot-mismatch.md"
+      "ruleUri": "docs/rules/regression/snapshot-mismatch.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/regression/snapshot_mismatch.go (DetectSnapshotMismatch). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "testFailed",
       "constName": "SignalTestFailed",
       "domain": "health",
-      "status": "stable",
+      "status": "experimental",
       "tier": "gate",
+      "disabledByDefault": true,
       "title": "Impacted Test Failed",
       "description": "A test selected by impact analysis as relevant to the current change failed. The change broke something the test suite already protects.",
       "remediation": "Reproduce locally with `terrain test --selector regression/test-failed`. Fix the failure or, if the test is stale, update it deliberately.",
@@ -1801,14 +1835,16 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/regression/test-failed",
-      "ruleUri": "docs/rules/regression/test-failed.md"
+      "ruleUri": "docs/rules/regression/test-failed.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/regression/test_failed.go (DetectTestFailed). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "performanceRegression",
       "constName": "SignalPerformanceRegression",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "gate",
+      "disabledByDefault": true,
       "title": "Performance Regression",
       "description": "An ML model's performance metric (accuracy / F1 / AUC / RMSE / etc.) regressed past the configured threshold from baseline to current. Same shape as eval-regression but applied to classical ML metrics rather than LLM rubric scores.",
       "remediation": "Inspect the diff for training data / hyperparameter / feature changes. If the regression is intentional, update the baseline.",
@@ -1819,14 +1855,16 @@
         "eval-execution"
       ],
       "ruleId": "terrain/regression/performance-regression",
-      "ruleUri": "docs/rules/regression/performance-regression.md"
+      "ruleUri": "docs/rules/regression/performance-regression.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/regression/performance_regression.go (DetectPerformanceRegression). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "missingBaseline",
       "constName": "SignalMissingBaseline",
       "domain": "ai",
-      "status": "stable",
+      "status": "experimental",
       "tier": "observability",
+      "disabledByDefault": true,
       "title": "Missing Coverage Baseline",
       "description": "The repository has eval surfaces but no `.terrain/baselines/` directory exists. Eval regression detection is disabled at the coverage layer.",
       "remediation": "Run `terrain ai record` to create the baseline directory. Commit `.terrain/baselines/latest.json` so subsequent PRs compare against it.",
@@ -1837,14 +1875,16 @@
         "static"
       ],
       "ruleId": "terrain/coverage/missing-baseline",
-      "ruleUri": "docs/rules/coverage/missing-baseline.md"
+      "ruleUri": "docs/rules/coverage/missing-baseline.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/coverage/missing_baseline.go (DetectMissingBaseline). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "noIntegrationTest",
       "constName": "SignalNoIntegrationTest",
       "domain": "quality",
-      "status": "stable",
+      "status": "experimental",
       "tier": "observability",
+      "disabledByDefault": true,
       "title": "No Integration Test",
       "description": "A code unit reachable from a production entry point (handler / route) has no integration test exercising it through that entry point.",
       "remediation": "Add an integration test that exercises the handler / route end-to-end. The unit test stays as a fast inner-loop check; the integration test ensures the cross-stack contract holds.",
@@ -1855,14 +1895,16 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/coverage/no-integration-test",
-      "ruleUri": "docs/rules/coverage/no-integration-test.md"
+      "ruleUri": "docs/rules/coverage/no-integration-test.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/coverage/no_integration_test.go (DetectNoIntegrationTest). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "noDataValidation",
       "constName": "SignalNoDataValidation",
       "domain": "quality",
-      "status": "stable",
+      "status": "experimental",
       "tier": "observability",
+      "disabledByDefault": true,
       "title": "No Data Validation",
       "description": "A data pipeline file (ETL / dbt model / training data loader) has no data-validation library import (Great Expectations, pandera, dbt-expectations, soda).",
       "remediation": "Add data validation (GE expectations, pandera schemas, dbt-expectations tests) on the pipeline's output. Run the validation in CI on a fixed sample.",
@@ -1873,7 +1915,8 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/coverage/no-data-validation",
-      "ruleUri": "docs/rules/coverage/no-data-validation.md"
+      "ruleUri": "docs/rules/coverage/no-data-validation.md",
+      "promotionPlan": "Off by default. Detector function exists at internal/coverage/no_data_validation.go (DetectNoDataValidation). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
     },
     {
       "type": "promptBloat",

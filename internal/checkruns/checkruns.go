@@ -2,9 +2,9 @@
 // Checks-API check runs:
 //
 //   - `terrain (gate)`         — required check; fails when an
-//                                 undismissed gate-tier finding fires.
+//     undismissed gate-tier finding fires.
 //   - `terrain (observability)` — informational; always neutral
-//                                 conclusion.
+//     conclusion.
 //
 // Terrain itself does NOT post to GitHub. Adopters' CI workflows
 // shell out to `gh api` (or actions/github-script) to post each

@@ -508,11 +508,11 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 				// sees something is wrong instead of getting a quietly
 				// half-empty snapshot.
 				snap.Signals = append(snap.Signals, models.Signal{
-					Type:        "detectorPanic",
-					Category:    models.CategoryQuality,
-					Severity:    models.SeverityCritical,
-					Confidence:  1.0,
-					Explanation: fmt.Sprintf("detector %q declared RequiresGraph=true but does not implement GraphDetector — surfaced as a configuration bug rather than silently skipped.", reg.Meta.ID),
+					Type:            "detectorPanic",
+					Category:        models.CategoryQuality,
+					Severity:        models.SeverityCritical,
+					Confidence:      1.0,
+					Explanation:     fmt.Sprintf("detector %q declared RequiresGraph=true but does not implement GraphDetector — surfaced as a configuration bug rather than silently skipped.", reg.Meta.ID),
 					SuggestedAction: "Verify that the detector's concrete type implements DetectWithGraph(*TestSuiteSnapshot, *Graph), or set RequiresGraph=false in the registration.",
 				})
 				continue

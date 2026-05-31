@@ -98,13 +98,13 @@ func (GreatExpectationsAdapter) Ingest(path string) (*EvalRun, error) {
 				Meta            map[string]interface{} `json:"meta"`
 			} `json:"expectation_config"`
 			Result struct {
-				ObservedValue     interface{} `json:"observed_value"`
-				UnexpectedCount   int         `json:"unexpected_count"`
-				UnexpectedPercent float64     `json:"unexpected_percent"`
+				ObservedValue         interface{}   `json:"observed_value"`
+				UnexpectedCount       int           `json:"unexpected_count"`
+				UnexpectedPercent     float64       `json:"unexpected_percent"`
 				PartialUnexpectedList []interface{} `json:"partial_unexpected_list"`
 			} `json:"result"`
 			ExceptionInfo struct {
-				RaisedException bool   `json:"raised_exception"`
+				RaisedException  bool   `json:"raised_exception"`
 				ExceptionMessage string `json:"exception_message"`
 			} `json:"exception_info"`
 		} `json:"results"`

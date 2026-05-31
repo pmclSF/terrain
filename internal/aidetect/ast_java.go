@@ -18,13 +18,16 @@ import (
 // path) to a package. We classify the package through classifyJavaPackage.
 //
 // SDKs currently recognized:
-//   com.theokanning.openai.* (community OpenAI for Java)
-//   com.openai.* (official OpenAI Java SDK)
-//   com.anthropic.* (Anthropic Java)
-//   com.azure.ai.openai.* (Azure OpenAI)
+//
+//	com.theokanning.openai.* (community OpenAI for Java)
+//	com.openai.* (official OpenAI Java SDK)
+//	com.anthropic.* (Anthropic Java)
+//	com.azure.ai.openai.* (Azure OpenAI)
 //
 // Model extraction handles the Java builder pattern:
-//   ChatCompletionRequest.builder().model("gpt-4o").build()
+//
+//	ChatCompletionRequest.builder().model("gpt-4o").build()
+//
 // We find a `.model("...")` invocation chained within the call's
 // argument tree and pull the string literal.
 //

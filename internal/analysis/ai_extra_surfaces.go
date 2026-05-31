@@ -66,14 +66,14 @@ func DetectExtraAISurfaces(root string, testFiles []models.TestFile, existing []
 // detector. We're stingy with the universe so the cost stays linear
 // in test+source-relevant files, not "every text file".
 var contentScanLanguages = map[string]bool{
-	".py":  true,
-	".js":  true,
-	".ts":  true,
-	".tsx": true,
-	".jsx": true,
-	".go":  true,
-	".rb":  true,
-	".rs":  true,
+	".py":   true,
+	".js":   true,
+	".ts":   true,
+	".tsx":  true,
+	".jsx":  true,
+	".go":   true,
+	".rb":   true,
+	".rs":   true,
 	".java": true,
 }
 
@@ -143,11 +143,11 @@ func detectDatasetSurfaces(testPaths map[string]bool, sourceFiles []string) []mo
 		}
 		name := strings.TrimSuffix(filepath.Base(rel), ext)
 		out = append(out, models.CodeSurface{
-			SurfaceID: models.BuildSurfaceID(rel, name, ""),
-			Path:      rel,
-			Name:      name,
-			Kind:      models.SurfaceDataset,
-			Reason:    "Dataset file (extension " + ext + ") referenced in repo tree",
+			SurfaceID:     models.BuildSurfaceID(rel, name, ""),
+			Path:          rel,
+			Name:          name,
+			Kind:          models.SurfaceDataset,
+			Reason:        "Dataset file (extension " + ext + ") referenced in repo tree",
 			DetectionTier: "content",
 		})
 	}
@@ -221,12 +221,12 @@ func detectDBCursorSurfaces(rel, src string) []models.CodeSurface {
 			line := lineNumberAt(src, loc[0])
 			name := "db_retrieval_" + filepath.Base(rel)
 			out = append(out, models.CodeSurface{
-				SurfaceID: models.BuildSurfaceID(rel, name, ""),
-				Path:      rel,
-				Name:      name,
-				Kind:      models.SurfaceRetrieval,
-				Line:      line,
-				Reason:    "Database cursor / fetch call in a file with AI-related symbols (likely RAG retrieval)",
+				SurfaceID:     models.BuildSurfaceID(rel, name, ""),
+				Path:          rel,
+				Name:          name,
+				Kind:          models.SurfaceRetrieval,
+				Line:          line,
+				Reason:        "Database cursor / fetch call in a file with AI-related symbols (likely RAG retrieval)",
 				DetectionTier: "content",
 			})
 			break // one per file is enough; the pattern hits multiple ways
@@ -268,12 +268,12 @@ func detectVectorSearchSurfaces(rel, src string) []models.CodeSurface {
 		}
 		seen[p.name] = true
 		out = append(out, models.CodeSurface{
-			SurfaceID: models.BuildSurfaceID(rel, p.name, ""),
-			Path:      rel,
-			Name:      p.name,
-			Kind:      models.SurfaceRetrieval,
-			Line:      lineNumberAt(src, loc[0]),
-			Reason:    "Vector search / retrieval pattern (" + p.name + ")",
+			SurfaceID:     models.BuildSurfaceID(rel, p.name, ""),
+			Path:          rel,
+			Name:          p.name,
+			Kind:          models.SurfaceRetrieval,
+			Line:          lineNumberAt(src, loc[0]),
+			Reason:        "Vector search / retrieval pattern (" + p.name + ")",
 			DetectionTier: "content",
 		})
 	}
@@ -299,12 +299,12 @@ func detectMCPToolSurfaces(rel, src string) []models.CodeSurface {
 		}
 		name := "mcp_tool_" + filepath.Base(rel)
 		out = append(out, models.CodeSurface{
-			SurfaceID: models.BuildSurfaceID(rel, name, ""),
-			Path:      rel,
-			Name:      name,
-			Kind:      models.SurfaceToolDef,
-			Line:      lineNumberAt(src, loc[0]),
-			Reason:    "MCP tool definition (decorator / server.tool registration)",
+			SurfaceID:     models.BuildSurfaceID(rel, name, ""),
+			Path:          rel,
+			Name:          name,
+			Kind:          models.SurfaceToolDef,
+			Line:          lineNumberAt(src, loc[0]),
+			Reason:        "MCP tool definition (decorator / server.tool registration)",
 			DetectionTier: "content",
 		})
 		break

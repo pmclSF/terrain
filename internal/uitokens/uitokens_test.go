@@ -406,8 +406,8 @@ func TestColorComposition_BoldOnTopOfColor(t *testing.T) {
 // vocabulary actual humans use when reading a PR comment.
 func TestPRLabel(t *testing.T) {
 	cases := []struct {
-		name             string
-		tier, severity   string
+		name              string
+		tier, severity    string
 		want, wantBracket string
 	}{
 		// Gate-tier rungs.

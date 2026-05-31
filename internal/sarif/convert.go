@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/analyze"
+	"github.com/pmclSF/terrain/internal/models"
 )
 
 const (
@@ -90,21 +91,37 @@ func redactPath(p, repoRoot string) string {
 	return filepath.ToSlash(clean)
 }
 
-// buildRules derives SARIF rules from the KeyFindings categories.
-//
-// Each rule carries a `helpUri` so SARIF findings in GitHub Code
-// Scanning have a clickthrough to documentation; the URI maps each
-// legacy category-derived rule ID to its rendered Markdown docs page.
-//
-// A later restructure will switch SARIF emission to walk
-// Snapshot.Signals directly so the rule IDs become the canonical
-// TER-<DOMAIN>-NNN namespace from internal/signals/manifest.go. That
-// requires threading signals through the analyze.Report API and is
-// tracked separately.
+// buildRules emits SARIF rules. Two sources combine to cover both the
+// curated top-N KeyFindings (legacy category-derived IDs kept for
+// continuity with existing SARIF consumers) and every per-detector
+// signal in Report.Signals (canonical manifest RuleIDs like
+// `terrain/hygiene/secrets-in-prompt`). Adopter SARIF tooling can
+// suppress on either; new adopters should prefer the canonical
+// per-detector form.
 func buildRules(r *analyze.Report) []Rule {
 	seen := map[string]bool{}
 	var rules []Rule
 
+	// Per-detector canonical rules from Report.Signals.
+	for _, fr := range r.Signals {
+		if fr.RuleID == "" || seen[fr.RuleID] {
+			continue
+		}
+		seen[fr.RuleID] = true
+		desc := fr.Evidence
+		if desc == "" {
+			desc = fr.Type
+		}
+		rules = append(rules, Rule{
+			ID:               fr.RuleID,
+			ShortDescription: Message{Text: desc},
+			DefaultConfig:    RuleConfig{Level: severityToLevel(fr.Severity)},
+			HelpURI:          canonicalRuleHelpURI(fr.RuleID),
+			Properties:       pillarProperties(models.PillarFor(models.SignalCategory(fr.Category))),
+		})
+	}
+
+	// Legacy category-derived rules from KeyFindings.
 	for _, kf := range r.KeyFindings {
 		ruleID := ruleIDFromCategory(kf.Category)
 		if seen[ruleID] {
@@ -121,6 +138,17 @@ func buildRules(r *analyze.Report) []Rule {
 	}
 
 	return rules
+}
+
+// canonicalRuleHelpURI builds the canonical docs URL for a manifest
+// RuleID by mapping `terrain/<category>/<rule>` to the rule-doc path.
+func canonicalRuleHelpURI(ruleID string) string {
+	const docBase = "https://github.com/pmclSF/terrain/blob/main/docs/rules/"
+	stripped := strings.TrimPrefix(ruleID, "terrain/")
+	if stripped == "" || stripped == ruleID {
+		return ""
+	}
+	return docBase + stripped + ".md"
 }
 
 // pillarProperties returns the SARIF properties bag carrying the
@@ -167,6 +195,41 @@ func buildResults(r *analyze.Report, opts Options) []Result {
 
 	var results []Result
 
+	// Emit one SARIF result per Report.Signals entry using canonical
+	// manifest RuleIDs. Adopter SARIF tooling (GitHub code-scanning,
+	// security dashboards) sees the same rule IDs documented in
+	// docs/rules/** and suppressed via `terrain suppress`.
+	for _, fr := range r.Signals {
+		if fr.RuleID == "" {
+			continue
+		}
+		result := Result{
+			RuleID:     fr.RuleID,
+			Level:      severityToLevel(fr.Severity),
+			Message:    Message{Text: signalMessage(fr)},
+			Properties: pillarProperties(models.PillarFor(models.SignalCategory(fr.Category))),
+		}
+		if fr.File != "" {
+			path := fr.File
+			if opts.RedactPaths {
+				path = redactPath(path, opts.RepoRoot)
+			}
+			loc := Location{
+				PhysicalLocation: PhysicalLocation{
+					ArtifactLocation: ArtifactLocation{URI: path},
+				},
+			}
+			if fr.Line > 0 {
+				loc.PhysicalLocation.Region = &Region{StartLine: fr.Line}
+			}
+			result.Locations = append(result.Locations, loc)
+		}
+		results = append(results, result)
+	}
+
+	// Legacy KeyFindings path. Kept so SARIF consumers that aggregated
+	// on the category-derived IDs continue to work during the
+	// transition; new consumers should index on the canonical IDs above.
 	for _, kf := range r.KeyFindings {
 		result := Result{
 			RuleID:     ruleIDFromCategory(kf.Category),
@@ -191,6 +254,15 @@ func buildResults(r *analyze.Report, opts Options) []Result {
 	}
 
 	return results
+}
+
+// signalMessage produces the SARIF result message for a per-signal
+// finding. Prefers Evidence when available, falls back to the type.
+func signalMessage(fr analyze.FindingRecord) string {
+	if fr.Evidence != "" {
+		return fr.Evidence
+	}
+	return fmt.Sprintf("%s finding", fr.Type)
 }
 
 func ruleIDFromCategory(category string) string {

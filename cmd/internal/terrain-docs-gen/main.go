@@ -105,13 +105,11 @@ func writeRuleDocs(root string) error {
 		if !strings.HasPrefix(entry.RuleURI, "docs/rules/") || !strings.HasSuffix(entry.RuleURI, ".md") {
 			continue
 		}
-		// Skip entries that are not yet shipping. They still appear in
-		// docs/signals/manifest.json (the catalog) but get no public
-		// rule doc — the doc would only describe a not-yet-implemented
-		// detector.
-		if entry.Status == signals.StatusPlanned {
-			continue
-		}
+		// Planned entries get a minimal "reserved name" stub so
+		// `terrain explain <rule>` and `terrain show rule <rule>`
+		// land on something explanatory rather than 404. The full
+		// detector content is gated on the detector actually
+		// landing — see renderRuleStub which switches on Status.
 		path := filepath.Join(root, filepath.FromSlash(entry.RuleURI))
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 			return fmt.Errorf("create %s: %w", filepath.Dir(path), err)
@@ -179,6 +177,18 @@ func renderRuleStub(e signals.ManifestEntry) string {
 	fmt.Fprintf(&b, "**Default severity:** %s  \n", e.DefaultSeverity)
 	fmt.Fprintf(&b, "**Lifecycle status:** %s  \n", e.Status)
 	fmt.Fprintf(&b, "**Gating tier:** %s\n\n", e.Tier)
+
+	// Planned entries get a brief "reserved" stub. The rule_id is
+	// committed to so future consumers can write policy against it,
+	// but no detector ships yet — so the doc explicitly says so.
+	if e.Status == signals.StatusPlanned {
+		fmt.Fprintf(&b, "## Status: planned\n\n")
+		fmt.Fprintf(&b, "This rule's identifier (`%s`) is reserved in the manifest so adopters can write forward-compatible policy and suppressions. **No detector for this rule ships yet** — runs will never emit signals of this type until the detector lands.\n\n", e.Type)
+		if e.PromotionPlan != "" {
+			fmt.Fprintf(&b, "## Promotion plan\n\n%s\n", e.PromotionPlan)
+		}
+		return b.String()
+	}
 
 	if e.Description != "" {
 		fmt.Fprintf(&b, "## Summary\n\n%s\n\n", e.Description)

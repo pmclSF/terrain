@@ -45,10 +45,10 @@ func TestIsPromptFile_RejectsCodeGenJinja(t *testing.T) {
 		path string
 		want bool
 	}{
-		{"prompts/render.go.j2", false},  // Go codegen
-		{"prompts/types.ts.j2", false},   // TS codegen
-		{"prompts/header.h.jinja2", false}, // C header codegen
-		{"prompts/config.yml.j2", false}, // ansible-style
+		{"prompts/render.go.j2", false},            // Go codegen
+		{"prompts/types.ts.j2", false},             // TS codegen
+		{"prompts/header.h.jinja2", false},         // C header codegen
+		{"prompts/config.yml.j2", false},           // ansible-style
 		{"sky/templates/lambda-ray.yml.j2", false}, // skypilot infra template
 	}
 	for _, c := range cases {

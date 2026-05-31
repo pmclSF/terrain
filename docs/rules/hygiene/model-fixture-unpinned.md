@@ -5,7 +5,7 @@
 **Type:** `modelFixtureUnpinned`  
 **Domain:** ai  
 **Default severity:** high  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** gate
 
 ## Summary
@@ -15,6 +15,10 @@ A model-loading call (from_pretrained / torch.load / joblib.load / load_model / 
 ## Remediation
 
 Pin the load to a commit SHA (revision="<sha>" for HuggingFace), a version-suffixed filename (model_v3.0.pt), or a .safetensors-with-checksum format.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/hygiene/model_fixture_unpinned.go (DetectModelFixtureUnpinned). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

@@ -337,12 +337,12 @@ func directionFromKey(key string) Direction {
 	}
 
 	return Direction{
-		From:           from,
-		To:             to,
-		Language:       framework.Language,
-		Category:       framework.Category,
-		Shorthands:     buildAliases(from, to),
-		LegacyRuntime:  "javascript",
+		From:          from,
+		To:            to,
+		Language:      framework.Language,
+		Category:      framework.Category,
+		Shorthands:    buildAliases(from, to),
+		LegacyRuntime: "javascript",
 		GoNativeState: state,
 		// Experimental directions also dispatch to the Go-native runtime;
 		// callers gating on GoNativeReady should additionally check

@@ -45,10 +45,35 @@ func (DefaultDispatcher) Handle(ev WebhookEvent, cmd *Command) (string, error) {
 	case VerbEscalate:
 		return "`/terrain escalate` — wire a Dispatcher that flips the active finding's tier for this PR only.", nil
 	case VerbScaffold:
-		return "`/terrain scaffold accept` — wire a Dispatcher that materializes the test scaffold the finding suggested.", nil
+		// /terrain scaffold accept materializes a mutation-test
+		// scaffold from a schema. The default reply tells the adopter
+		// the equivalent CLI invocation; a production dispatcher can
+		// shell out to `terrain scaffold` and post the output back as
+		// a PR comment or commit it directly.
+		schema := cmd.Keyword["schema"]
+		prompt := cmd.Keyword["prompt"]
+		lang := cmd.Keyword["lang"]
+		if lang == "" {
+			lang = "python"
+		}
+		if schema == "" {
+			return "`/terrain scaffold accept` — pass `schema:<path>` (and optional `prompt:<path>`, `lang:python|typescript|json`) to materialize a runnable mutation-test scaffold.\n\nExample: `/terrain scaffold accept schema:schemas/input.json prompt:prompts/main.md`\n\nThe equivalent CLI invocation is `terrain scaffold --schema <path>`.", nil
+		}
+		cli := fmt.Sprintf("terrain scaffold --schema %s --lang %s", schema, lang)
+		if prompt != "" {
+			cli = fmt.Sprintf("terrain scaffold --schema %s --prompt %s --lang %s", schema, prompt, lang)
+		}
+		return fmt.Sprintf("`/terrain scaffold accept` — would generate boundary-case mutation tests from `%s`%s.\n\nRun locally: `%s`\n\nA production Dispatcher overrides this to execute the generator and either post the scaffold as a PR comment or commit it to a `tests/` path.", schema, promptSuffix(prompt), cli), nil
 	case VerbBench:
 		id := strings.Join(cmd.Positional, " ")
 		return fmt.Sprintf("`/terrain bench %s` — wire a Dispatcher that runs the benchmark suite by id.", id), nil
 	}
 	return fmt.Sprintf("Unhandled verb `%s` — extend DefaultDispatcher.Handle().", cmd.Verb), nil
+}
+
+func promptSuffix(prompt string) string {
+	if prompt == "" {
+		return ""
+	}
+	return fmt.Sprintf(" (prompt under test: `%s`)", prompt)
 }

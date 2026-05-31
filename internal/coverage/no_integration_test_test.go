@@ -14,8 +14,8 @@ func TestDetectNoIntegrationTest_FiresWhenEntryPointUncovered(t *testing.T) {
 			{SurfaceID: "h:1", Name: "handleRefund", Path: "backend/refund.go", Kind: models.SurfaceHandler},
 		},
 		TestFiles: []models.TestFile{
-			{Path: "tests/unit/refund_test.go"},                  // unit test
-			{Path: "tests/integration/checkout_test.go"},          // integration test, doesn't cover h:1
+			{Path: "tests/unit/refund_test.go"},          // unit test
+			{Path: "tests/integration/checkout_test.go"}, // integration test, doesn't cover h:1
 		},
 	}
 	g := &impact.ImpactGraph{

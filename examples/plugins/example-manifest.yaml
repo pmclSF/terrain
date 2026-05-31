@@ -1,0 +1,47 @@
+# Example terrain plugin manifest.
+#
+# Validate this file:
+#   terrain plugins manifest examples/plugins/example-manifest.yaml
+#
+# Adopters publish plugins as packages (Go binary, npm, Python wheel)
+# that ship with a plugin-manifest.yaml in this shape.
+
+schema_version: 1
+
+# `<author>/<name>` — lowercase, hyphen-separated. Stable forever once
+# published; this identifier appears in policy / suppressions.
+id: acme/example-detector
+
+name: Acme Example Detector
+version: 0.1.0
+author: Acme
+
+description: |
+  Demonstrates the plugin manifest contract. Replace with a real
+  detector when shipping your own plugin.
+
+# Optional. When true, adopters must opt in via
+# `terrain plugins add --allow-network <plugin-id>`.
+requires_network: false
+
+# Optional. Lists provider names whose API keys the plugin reads from
+# the adopter env (e.g. ["anthropic", "openai"]).
+requires_api_key: []
+
+# Optional. URL to plugin documentation.
+homepage: https://github.com/acme/terrain-example-detector
+
+# Required. One or more detectors the plugin ships.
+detectors:
+  - rule_id: acme/example/sample-rule
+    signal_type: acmeSampleRule
+    # Must be one of: structural-ast, import-graph, receiver-type,
+    # manifest-schema. literal-string and regex primitives are NOT
+    # permitted — every rule must clear a class, not a cell.
+    mechanism_class: structural-ast
+    default_severity: medium
+    # Optional. Plugins ship at observability tier by default;
+    # promotion to gate requires terrain's per-plugin validation
+    # flow (reserved for a future release).
+    tier: observability
+    description: One-line summary shown in `terrain plugins list`.

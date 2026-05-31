@@ -19,19 +19,20 @@ import (
 //     module path through classifyGoModule.
 //
 //   - Call sites either:
-//       openai.NewClient(...)       — package-qualified call on a
-//                                     bound AI package.
-//       client.CreateChatCompletion(ctx, req)
-//                                   — method on a receiver whose type
-//                                     we can't statically resolve
-//                                     without full type analysis; we
-//                                     classify by call shape against
-//                                     known SDK method names when an
-//                                     AI binding exists in scope.
+//     openai.NewClient(...)       — package-qualified call on a
+//     bound AI package.
+//     client.CreateChatCompletion(ctx, req)
+//     — method on a receiver whose type
+//     we can't statically resolve
+//     without full type analysis; we
+//     classify by call shape against
+//     known SDK method names when an
+//     AI binding exists in scope.
 //
 // Go SDKs currently recognized:
-//   github.com/sashabaranov/go-openai (community)
-//   github.com/openai/openai-go (official)
+//
+//	github.com/sashabaranov/go-openai (community)
+//	github.com/openai/openai-go (official)
 //
 // Returns nil on parse failure.
 func DetectGoAISurfaces(src []byte, relPath string) []AICallSite {

@@ -5,7 +5,7 @@
 **Type:** `evalRegression`  
 **Domain:** ai  
 **Default severity:** high  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** gate
 
 ## Summary
@@ -15,6 +15,10 @@ An eval case's primary Score dropped from baseline to current past the configure
 ## Remediation
 
 Inspect the diff for prompt / model / retrieval changes that affect the regressing case(s). If intentional, update the baseline with `terrain ai record`.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/regression/eval_regression.go (DetectEvalRegression). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 
@@ -140,7 +144,7 @@ ignore:
 ## 8. False-positive characterization
 
 - **Stochastic eval noise mistakenly triggers the rule** — mitigated by `samples_per_run` + `confidence_alpha` config. Adopters whose evals are inherently noisy should raise `samples_per_run` and accept the CI runtime cost.
-- **Baseline drift** — if the cached baseline in `.terrain/baselines/` represents a known-bad state (because the adopter accepted a regression previously without updating the baseline), the rule won't fire on subsequent PRs. Mitigation: `terrain accept-snapshot --review` walks the adopter through accepting baseline updates deliberately.
+- **Baseline drift** — if the cached baseline in `.terrain/baselines/` represents a known-bad state (because the adopter accepted a regression previously without updating the baseline), the rule won't fire on subsequent PRs. Mitigation: `terrain accept-snapshot <baseline-id> --yes` per accepted baseline, deliberately.
 - **Eval framework non-determinism** — some frameworks return slightly different results on re-runs even with `temperature: 0` (e.g., due to model serving non-determinism upstream). Adopters affected should switch to `base_strategy: cached` to compare against a pinned baseline rather than re-running.
 - **Threshold set too tight** — adopters with high-variance evals who set a 1% threshold will see frequent false positives. Default 5% is conservative; adopters tune up or down per eval characteristics.
 - **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag.
@@ -148,7 +152,7 @@ ignore:
 ## 9. Reproducibility
 
 ```bash
-terrain test --selector regression/eval-regression --base $(git merge-base HEAD main) --head HEAD
+terrain test --selector regression/eval-regression
 ```
 
 From CI:

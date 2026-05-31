@@ -201,11 +201,11 @@ type junitTestSuites struct {
 }
 
 type junitTestSuite struct {
-	Name     string           `xml:"name,attr"`
-	Tests    int              `xml:"tests,attr"`
-	Failures int              `xml:"failures,attr"`
-	Errors   int              `xml:"errors,attr"`
-	Cases    []junitTestCase  `xml:"testcase"`
+	Name     string          `xml:"name,attr"`
+	Tests    int             `xml:"tests,attr"`
+	Failures int             `xml:"failures,attr"`
+	Errors   int             `xml:"errors,attr"`
+	Cases    []junitTestCase `xml:"testcase"`
 }
 
 type junitTestCase struct {

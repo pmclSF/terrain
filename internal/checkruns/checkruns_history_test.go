@@ -95,11 +95,11 @@ func TestBuildBundleWithHistory_EmptyTypeOrFileIgnoresHistory(t *testing.T) {
 	}
 }
 
-// TestBuildBundleWithHistory_DemotedObsBlockLabelsAsWATCH closes a
-// follow-up gap surfaced in adversarial review: when a manifest-gate
-// signal is demoted into the obs set, the obs check's markdown body
-// must render its per-detector block with the [WATCH] label — NOT
-// the [GATE]/[BLOCK] label the manifest tier would otherwise produce.
+// TestBuildBundleWithHistory_DemotedObsBlockLabelsAsWATCH covers a
+// cross-surface consistency requirement: when a manifest-gate signal
+// is demoted into the obs set, the obs check's markdown body must
+// render its per-detector block with the [WATCH] label — NOT the
+// [GATE]/[BLOCK] label the manifest tier would otherwise produce.
 // Otherwise the obs check disagrees with the PR comment on the same
 // finding even though the gate conclusion is correct.
 func TestBuildBundleWithHistory_DemotedObsBlockLabelsAsWATCH(t *testing.T) {

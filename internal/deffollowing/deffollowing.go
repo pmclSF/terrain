@@ -49,16 +49,16 @@ const MaxDepth = 3
 // allow trailing characters (`assertTrue`, `expect(...)`, `t.isTrue`,
 // `g.Expect`) because the actual assertion is the call, not the bare name.
 var AssertionTokens = []*regexp.Regexp{
-	regexp.MustCompile(`\bassert[A-Z]`),                // assertEqual, assertTrue, assertCalled, ...
-	regexp.MustCompile(`\bexpect\s*\(`),                 // expect(...)
-	regexp.MustCompile(`\bt\.is[A-Z]`),                  // Tap / Node t.is*
-	regexp.MustCompile(`\bt\.assert[A-Z]`),              // testing.T t.assert*
-	regexp.MustCompile(`\bg\.Expect`),                   // Gomega
-	regexp.MustCompile(`\bnp\.testing\.[a-z]`),          // numpy
-	regexp.MustCompile(`\bself\.assert[A-Z]`),           // Python unittest
-	regexp.MustCompile(`\bmock\.assert_`),                // mock.assert_called_with
-	regexp.MustCompile(`\.assert_called`),                // *.assert_called*
-	regexp.MustCompile(`\bassert\s+\w`),                  // Python bare `assert x`
+	regexp.MustCompile(`\bassert[A-Z]`),        // assertEqual, assertTrue, assertCalled, ...
+	regexp.MustCompile(`\bexpect\s*\(`),        // expect(...)
+	regexp.MustCompile(`\bt\.is[A-Z]`),         // Tap / Node t.is*
+	regexp.MustCompile(`\bt\.assert[A-Z]`),     // testing.T t.assert*
+	regexp.MustCompile(`\bg\.Expect`),          // Gomega
+	regexp.MustCompile(`\bnp\.testing\.[a-z]`), // numpy
+	regexp.MustCompile(`\bself\.assert[A-Z]`),  // Python unittest
+	regexp.MustCompile(`\bmock\.assert_`),      // mock.assert_called_with
+	regexp.MustCompile(`\.assert_called`),      // *.assert_called*
+	regexp.MustCompile(`\bassert\s+\w`),        // Python bare `assert x`
 }
 
 // Counter tracks transitive assertions across an in-repo function call

@@ -118,10 +118,10 @@ func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string, 
 }
 
 // runSelectTests performs impact analysis and outputs the protective test set.
-func runSelectTests(root, baseRef string, jsonOutput bool) error {
-	impactResult, _, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
+func runSelectTests(root, baseRef string, jsonOutput bool, format string) error {
+	impactResult, _, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput || format != ""))
 	if err != nil {
-		if !jsonOutput {
+		if !jsonOutput && format == "" {
 			fmt.Fprintf(os.Stderr, "error: report select-tests failed: %v\n", err)
 			fmt.Fprintln(os.Stderr)
 			fmt.Fprintln(os.Stderr, "Common causes (same as report impact):")
@@ -131,7 +131,29 @@ func runSelectTests(root, baseRef string, jsonOutput bool) error {
 		return err
 	}
 
-	if jsonOutput {
+	// --format paths emits one bare test-file path per line, suitable
+	// for `terrain select-tests --format paths | xargs <test-runner>`.
+	// Documented usage in docs/user-guides/impact-analysis-and-test-selection.md.
+	if format == "paths" {
+		ps := impactResult.ProtectiveSet
+		if ps == nil {
+			return nil
+		}
+		seen := map[string]bool{}
+		for _, t := range ps.Tests {
+			if t.Path == "" || seen[t.Path] {
+				continue
+			}
+			seen[t.Path] = true
+			fmt.Println(t.Path)
+		}
+		return nil
+	}
+	if format != "" && format != "json" && format != "text" {
+		return fmt.Errorf("invalid --format %q (valid: json, text, paths)", format)
+	}
+
+	if jsonOutput || format == "json" {
 		ps := impactResult.ProtectiveSet
 		// Ensure Tests serializes as [] not null.
 		if ps != nil && ps.Tests == nil {

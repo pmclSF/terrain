@@ -49,8 +49,8 @@ func TestEvaluate_Diagnostics_PerRuleStatus(t *testing.T) {
 	}
 	cfg := &policy.Config{
 		Rules: policy.Rules{
-			DisallowFrameworks:   []string{"jest"},   // will violate
-			DisallowSkippedTests: boolPtr(true),      // no skips → pass
+			DisallowFrameworks:   []string{"jest"}, // will violate
+			DisallowSkippedTests: boolPtr(true),    // no skips → pass
 			// Other rules left nil → "skipped" status
 		},
 	}

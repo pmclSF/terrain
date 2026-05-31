@@ -7,6 +7,76 @@ All notable changes to Terrain are documented here. The format follows
 
 ### Added
 
+- **`.terrain/findings.json` is written after every `terrain analyze` run.**
+  A canonical Finding artifact downstream consumers (`terrain mcp`, IDE
+  plugins, third-party SARIF uploaders) can read without setting any
+  flag. The MCP server now actually sees what the latest analyze run
+  produced. The file is gitignored.
+- **`/terrain scaffold accept` slash verb now materializes scaffolds for
+  real.** Pass `schema:<path>` (and optionally `prompt:<path>`,
+  `lang:python|typescript|json`) and the dispatcher runs the scaffold
+  generator and returns the rendered test file in the reply. Path
+  arguments are resolved under the repo root and rejected if they
+  escape, so a hostile slash comment can't ask the server to read
+  arbitrary files.
+- **`terrain doctor` reports per-rule policy overrides.** Summarizes how
+  many rules `.terrain/policy.yaml` turns off, demotes to warn, or
+  promotes to block — so policy drift surfaces in the same place infra
+  drift does.
+- **`terrain init` now prints the path of the annotated
+  `.terrain/policy.yaml.example`** alongside `policy.yaml`. Adopters
+  no longer have to discover the reference file by inspecting the
+  directory.
+- **`terrain test --summary` flag help mentions `$GITHUB_STEP_SUMMARY`**;
+  `docs/quickstart.md` has a new "Wire into CI" section with the
+  canonical GitHub Actions snippet so reviewers see Terrain findings
+  on the workflow run page.
+
+### Fixed
+
+- **`make docs-verify` no longer fails on the hand-authored
+  `docs/rules/_template.md`.** The drift check now skips files starting
+  with `_` so canonical templates stay as a reference without breaking
+  the gate.
+- **151 `gofmt` violations across the repo.** Added `gofmt -l` as the
+  first step of `go-release-verify` so future drift fails the release
+  gate before vet/test/build run.
+- **CLI typo-suggestion list completeness.** `terrain plugin`,
+  `terrain injec`, `terrain scaffol`, `terrain webhok` now suggest the
+  correct command — previously they silently fell through.
+- **MCP `ServerVersion` bumped to `0.3.0`** so the handshake reflects
+  the current binary.
+- **Internal-vocabulary leaks scrubbed from public source.** Six
+  `cycle-2`/`cycle-3`/`future cycle` comments rewritten to neutral
+  phrasing in `cmd/terrain/cmd_plugins.go`, `internal/plugin/manifest.go`,
+  `internal/injection/patterns.go`, `internal/aliases/aliases.go`,
+  `docs/scripts/verify_doc_consistency.sh`, and
+  `internal/checkruns/checkruns_history_test.go`.
+
+### Earlier in this cycle
+
+- **`terrain scaffold --schema <path>`** generates a runnable mutation-test
+  scaffold from a JSON Schema. Each declared property produces a
+  parametrized test exercising boundary cases (empty, max-length,
+  unicode-edge, SQL/XSS/path-traversal shapes, null-byte, INT32 bounds,
+  near-double-limits, etc.). Emits `python`, `typescript`, or `json`;
+  default Python output parses cleanly. The `/terrain scaffold accept`
+  slash verb now points adopters at the equivalent CLI invocation
+  (production deployments override `DefaultDispatcher` to execute the
+  generator and post the scaffold inline).
+- **`terrain inject --prompt <path>`** matches a prompt body against a
+  cataloged set of jailbreak/injection patterns (DAN-style, instruction
+  leak, system-prompt fishing, role confusion, indirect-via-retrieval)
+  and emits a runnable test scaffold so adopters can assert their
+  prompt pipeline degrades safely. LLM-free: the assertion is the
+  adopter's; terrain never invokes the model.
+- **`terrain plugins manifest <path>`** validates third-party plugin
+  manifests against `schema_version: 1`. Plugins must declare an
+  allowed `mechanism_class` (structural-ast | import-graph |
+  receiver-type | manifest-schema); literal-string and regex
+  primitives are explicitly forbidden, so every plugin rule clears a
+  class, not a cell. `terrain plugins add/remove` is reserved for
+  a future release once the runtime ships.
 - **`terrain` (no-args) discovery report.** A friendly first-touch summary —
   detected frameworks, AI surfaces, schema files, trace logs — followed by
   three copy-pasteable next-step commands. Strictly read-only: no

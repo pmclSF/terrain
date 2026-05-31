@@ -12,19 +12,19 @@ import (
 // terrain convert run that produces real output appends a record to
 // `.terrain/conversion-history/log.jsonl`.
 type HistoryRecord struct {
-	Timestamp      time.Time              `json:"timestamp"`
-	Source         string                 `json:"source"`
-	Output         string                 `json:"output,omitempty"`
-	From           string                 `json:"from"`
-	To             string                 `json:"to"`
-	Mode           string                 `json:"mode"`
-	ValidationMode string                 `json:"validationMode,omitempty"`
-	Validated      bool                   `json:"validated"`
-	ConvertedCount int                    `json:"convertedCount"`
-	UnchangedCount int                    `json:"unchangedCount,omitempty"`
-	Files          []HistoryFileRecord    `json:"files,omitempty"`
-	Warnings       []string               `json:"warnings,omitempty"`
-	TerrainVersion string                 `json:"terrainVersion,omitempty"`
+	Timestamp      time.Time           `json:"timestamp"`
+	Source         string              `json:"source"`
+	Output         string              `json:"output,omitempty"`
+	From           string              `json:"from"`
+	To             string              `json:"to"`
+	Mode           string              `json:"mode"`
+	ValidationMode string              `json:"validationMode,omitempty"`
+	Validated      bool                `json:"validated"`
+	ConvertedCount int                 `json:"convertedCount"`
+	UnchangedCount int                 `json:"unchangedCount,omitempty"`
+	Files          []HistoryFileRecord `json:"files,omitempty"`
+	Warnings       []string            `json:"warnings,omitempty"`
+	TerrainVersion string              `json:"terrainVersion,omitempty"`
 }
 
 // HistoryFileRecord trims the per-file information so the audit log

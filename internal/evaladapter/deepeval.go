@@ -65,10 +65,10 @@ func (DeepevalAdapter) Ingest(path string) (*EvalRun, error) {
 	var raw struct {
 		TestFile  string `json:"testFile"`
 		TestCases []struct {
-			Name            string  `json:"name"`
-			Input           string  `json:"input"`
-			ActualOutput    string  `json:"actualOutput"`
-			Success         bool    `json:"success"`
+			Name            string `json:"name"`
+			Input           string `json:"input"`
+			ActualOutput    string `json:"actualOutput"`
+			Success         bool   `json:"success"`
 			MetricsMetadata []struct {
 				Metric    string  `json:"metric"`
 				Score     float64 `json:"score"`

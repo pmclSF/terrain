@@ -329,8 +329,8 @@ func resolveFromRoot(root, pathNoExt string) []string {
 // tsconfig (a common monorepo pattern) are picked up by leaf projects.
 //
 // Resolution order:
-//   1. tsconfig.json at root (highest priority)
-//   2. jsconfig.json at root (JS-only projects use the same shape)
+//  1. tsconfig.json at root (highest priority)
+//  2. jsconfig.json at root (JS-only projects use the same shape)
 //
 // For each tsconfig the loader merges in `extends` results first, then
 // overlays the leaf's own paths. Each path entry can map to multiple
@@ -438,8 +438,8 @@ func loadTSPathAliasesFromFile(root, path string, seen map[string]bool) []pathAl
 //   - "./shared/tsconfig.base.json"  — relative to current config dir
 //   - "../tsconfig.base.json"        — same; relative
 //   - "@scope/tsconfig"              — node_modules lookup; we resolve
-//                                      via node_modules/<name>/tsconfig.json
-//                                      when present, otherwise drop.
+//     via node_modules/<name>/tsconfig.json
+//     when present, otherwise drop.
 func resolveTSExtendsPath(configDir, extends string) string {
 	if strings.HasPrefix(extends, ".") || strings.HasPrefix(extends, "/") {
 		candidate := filepath.Join(configDir, extends)

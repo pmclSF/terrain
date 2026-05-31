@@ -23,12 +23,12 @@ import (
 //
 // Detection model:
 //
-//   1. Walk source files (Python / JS / TS / Go / Java / Ruby / Rust)
-//      whose path is referenced as a CodeSurface OR appears in the
-//      configured surface universe.
-//   2. Look for a known embedding-model identifier (regex list).
-//   3. If at least one match in the repo AND the snapshot has no
-//      retrieval-shaped scenario coverage, emit one signal per file.
+//  1. Walk source files (Python / JS / TS / Go / Java / Ruby / Rust)
+//     whose path is referenced as a CodeSurface OR appears in the
+//     configured surface universe.
+//  2. Look for a known embedding-model identifier (regex list).
+//  3. If at least one match in the repo AND the snapshot has no
+//     retrieval-shaped scenario coverage, emit one signal per file.
 //
 // Retrieval-shaped scenario means: scenario.Category contains
 // "retriev" / "rag" / "embedding" / "vector" / "knn", OR the scenario

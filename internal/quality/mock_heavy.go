@@ -48,8 +48,8 @@ func (d *MockHeavyDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sign
 				EvidenceStrength: models.EvidenceModerate,
 				EvidenceSource:   models.SourceStructuralPattern,
 				Location:         models.SignalLocation{File: tf.Path},
-				Explanation: fmt.Sprintf("Test file contains %d mock(s) but zero assertions. Tests verify wiring only, not behavior.", tf.MockCount),
-				SuggestedAction: "Add assertions on outputs, state changes, or side effects to validate real behavior.",
+				Explanation:      fmt.Sprintf("Test file contains %d mock(s) but zero assertions. Tests verify wiring only, not behavior.", tf.MockCount),
+				SuggestedAction:  "Add assertions on outputs, state changes, or side effects to validate real behavior.",
 			})
 			continue
 		}
@@ -72,8 +72,8 @@ func (d *MockHeavyDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sign
 				EvidenceStrength: models.EvidenceWeak,
 				EvidenceSource:   models.SourceStructuralPattern,
 				Location:         models.SignalLocation{File: tf.Path},
-				Explanation: fmt.Sprintf("High mock usage detected: %d mock(s) vs %d assertion(s).", tf.MockCount, tf.AssertionCount),
-				SuggestedAction: "Consider adding assertions on real outputs or supplementing with integration coverage. Detector is experimental.",
+				Explanation:      fmt.Sprintf("High mock usage detected: %d mock(s) vs %d assertion(s).", tf.MockCount, tf.AssertionCount),
+				SuggestedAction:  "Consider adding assertions on real outputs or supplementing with integration coverage. Detector is experimental.",
 			})
 		}
 	}

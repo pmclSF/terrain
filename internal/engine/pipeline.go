@@ -309,24 +309,24 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	// - runtime artifact ingestion (if provided)
 	// - coverage artifact ingestion (if provided)
 	var (
-		snapshot          *models.TestSuiteSnapshot
-		policyResult      *policy.LoadResult
-		policyErr         error
-		terrainCfg        *policy.TerrainConfig
-		terrainCfgErr     error
-		ownerResolver     *ownership.Resolver
-		runtimeResults    []runtime.TestResult
-		runtimeIngestErr     error
-		coverageArtifacts    []coverage.CoverageArtifact
-		coverageIngestErr    error
-		gauntletArtifacts    []*gauntlet.Artifact
-		gauntletIngestErr    error
-		promptfooEnvelopes   []models.EvalRunEnvelope
-		promptfooIngestErr   error
-		deepevalEnvelopes    []models.EvalRunEnvelope
-		deepevalIngestErr    error
-		ragasEnvelopes       []models.EvalRunEnvelope
-		ragasIngestErr       error
+		snapshot           *models.TestSuiteSnapshot
+		policyResult       *policy.LoadResult
+		policyErr          error
+		terrainCfg         *policy.TerrainConfig
+		terrainCfgErr      error
+		ownerResolver      *ownership.Resolver
+		runtimeResults     []runtime.TestResult
+		runtimeIngestErr   error
+		coverageArtifacts  []coverage.CoverageArtifact
+		coverageIngestErr  error
+		gauntletArtifacts  []*gauntlet.Artifact
+		gauntletIngestErr  error
+		promptfooEnvelopes []models.EvalRunEnvelope
+		promptfooIngestErr error
+		deepevalEnvelopes  []models.EvalRunEnvelope
+		deepevalIngestErr  error
+		ragasEnvelopes     []models.EvalRunEnvelope
+		ragasIngestErr     error
 
 		staticAnalysisDuration  time.Duration
 		policyLoadDuration      time.Duration

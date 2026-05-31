@@ -132,8 +132,8 @@ content: a
 func TestPromptVersioning_RejectsPlaceholderTokens(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
-		name  string
-		body  string
+		name string
+		body string
 	}{
 		{"todo_quoted", `version: "TODO"` + "\n"},
 		{"tbd_unquoted", `version: TBD` + "\n"},

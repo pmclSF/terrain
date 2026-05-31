@@ -10,9 +10,9 @@ import (
 
 	"github.com/pmclSF/terrain/internal/benchmark"
 	"github.com/pmclSF/terrain/internal/comparison"
+	"github.com/pmclSF/terrain/internal/framework_migration"
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/metrics"
-	"github.com/pmclSF/terrain/internal/framework_migration"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/reporting"
 )

@@ -96,9 +96,9 @@ export const appRouter = router({
 	}
 
 	want := map[string]bool{
-		"users.list":     true,
-		"users.getById":  true,
-		"posts.list":     true,
+		"users.list":    true,
+		"users.getById": true,
+		"posts.list":    true,
 	}
 	for _, op := range c.Operations {
 		if !want[op.OperationID] {

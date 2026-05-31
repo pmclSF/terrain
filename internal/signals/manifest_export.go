@@ -17,10 +17,10 @@ import (
 // (alphabetical-by-default). We keep the json tags ordered by intent so
 // downstream readers see Type/ConstName/Domain/Status first.
 type ManifestExportEntry struct {
-	Type              models.SignalType     `json:"type"`
-	ConstName         string                `json:"constName"`
-	Domain            models.SignalCategory `json:"domain"`
-	Status            SignalStatus          `json:"status"`
+	Type      models.SignalType     `json:"type"`
+	ConstName string                `json:"constName"`
+	Domain    models.SignalCategory `json:"domain"`
+	Status    SignalStatus          `json:"status"`
 	// Tier classifies the rule as "gate" (counts toward
 	// `--fail-on=*` gate decisions) or "observability" (informational
 	// only). The field is always emitted — no default tier — so external

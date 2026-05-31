@@ -5,7 +5,7 @@
 **Type:** `baselineNotSet`  
 **Domain:** ai  
 **Default severity:** medium  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** observability
 
 ## Summary
@@ -15,6 +15,10 @@ An EvalRun exists for the current PR but no baseline is recorded. Eval-regressio
 ## Remediation
 
 Run `terrain ai record` on the current main-branch state to lock the baseline. Subsequent PRs will be compared against it.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/regression/baseline_not_set.go (DetectBaselineNotSet). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

@@ -33,7 +33,7 @@ var ErrToolCallsNotImplemented = errors.New("llmprovider: tool calls not impleme
 
 // Message is one entry in a chat conversation.
 type Message struct {
-	Role    string `json:"role"`    // system | user | assistant | tool
+	Role    string `json:"role"` // system | user | assistant | tool
 	Content string `json:"content"`
 }
 
@@ -169,7 +169,7 @@ func FromConfig(cfg Config) (Provider, error) {
 // disabledProvider returns ErrProviderDisabled for every call.
 type disabledProvider struct{}
 
-func (disabledProvider) Name() string                                       { return "none" }
+func (disabledProvider) Name() string { return "none" }
 func (disabledProvider) Chat(context.Context, ChatRequest) (*ChatResponse, error) {
 	return nil, ErrProviderDisabled
 }

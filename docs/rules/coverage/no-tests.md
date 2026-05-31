@@ -5,7 +5,7 @@
 **Type:** `noTestsForCodeUnit`  
 **Domain:** quality  
 **Default severity:** medium  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** observability
 
 ## Summary
@@ -15,6 +15,10 @@ A code unit (exported function / method / class) exists in the codebase but no t
 ## Remediation
 
 Add a test that imports the code unit and exercises its observable behavior. The rule defaults to exported symbols only; configure `include_private: true` to widen coverage.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/coverage/no_tests.go (DetectNoTestsForCodeUnit). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 
@@ -154,7 +158,7 @@ terrain test --selector coverage/no-tests
 The rule fires on the entire repo's code units, not just changed ones. To scope to changes only:
 
 ```bash
-terrain test --selector coverage/no-tests --base $(git merge-base HEAD main) --head HEAD
+terrain test --selector coverage/no-tests
 ```
 
 ## 10. Stability commitment

@@ -16,12 +16,12 @@ import "github.com/pmclSF/terrain/internal/models"
 //
 //   - Inventory  → Tier 1: claimed publicly in 0.2.0
 //   - Hygiene    → Tier 2: visible but not on the recommended
-//                  --fail-on path; opt-in for adopters who've
-//                  measured precision in their own repo
+//     --fail-on path; opt-in for adopters who've
+//     measured precision in their own repo
 //   - Regression → Tier 2: same posture as hygiene, but the
-//                  data-quality lever is "do you ship eval
-//                  artifacts" rather than "do you accept heuristic
-//                  precision floors"
+//     data-quality lever is "do you ship eval
+//     artifacts" rather than "do you accept heuristic
+//     precision floors"
 type AISubdomain string
 
 const (
@@ -66,7 +66,7 @@ var aiSubdomainBySignal = map[models.SignalType]AISubdomain{
 	SignalAIPolicyViolation:       AISubdomainInventory,
 	SignalAIPromptVersioning:      AISubdomainInventory,
 	SignalAISafetyEvalMissing:     AISubdomainInventory,
-	SignalPromptFileMissingEval:      AISubdomainInventory,
+	SignalPromptFileMissingEval:   AISubdomainInventory,
 	SignalUncoveredAISurface:      AISubdomainInventory,
 	SignalUntestedPromptFlow:      AISubdomainInventory,
 	SignalCapabilityValidationGap: AISubdomainInventory,
@@ -76,15 +76,15 @@ var aiSubdomainBySignal = map[models.SignalType]AISubdomain{
 	// Heuristic structural patterns: detector reads source code
 	// and flags shapes. Medium trust; false-positive guidance per
 	// detector lives in docs/rules/ai/.
-	SignalAIPromptInjectionRisk:           AISubdomainHygiene,
-	SignalAIPromptSchemaDrift:             AISubdomainHygiene,
-	SignalAIHardcodedAPIKey:               AISubdomainHygiene,
-	SignalAIHardcodedAPIKeyLiteralShape:   AISubdomainHygiene,
-	SignalSecretScannerCoverageDegraded:   AISubdomainHygiene,
-	SignalAIToolWithoutSandbox:            AISubdomainHygiene,
-	SignalAIModelDeprecationRisk: AISubdomainHygiene,
-	SignalAIFewShotContamination: AISubdomainHygiene,
-	SignalContextOverflowRisk:    AISubdomainHygiene,
+	SignalAIPromptInjectionRisk:         AISubdomainHygiene,
+	SignalAIPromptSchemaDrift:           AISubdomainHygiene,
+	SignalAIHardcodedAPIKey:             AISubdomainHygiene,
+	SignalAIHardcodedAPIKeyLiteralShape: AISubdomainHygiene,
+	SignalSecretScannerCoverageDegraded: AISubdomainHygiene,
+	SignalAIToolWithoutSandbox:          AISubdomainHygiene,
+	SignalAIModelDeprecationRisk:        AISubdomainHygiene,
+	SignalAIFewShotContamination:        AISubdomainHygiene,
+	SignalContextOverflowRisk:           AISubdomainHygiene,
 
 	// ── Regression ─────────────────────────────────────────────
 	// Eval-data-dependent: fire only when eval artifacts are

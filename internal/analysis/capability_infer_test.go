@@ -97,21 +97,21 @@ func TestInferCapabilities_Integration(t *testing.T) {
 	scenarios := []models.Eval{
 		{
 			EvalID: "s1",
-			Name:       "refund-explanation-accuracy",
-			Path:       "evals/refund/accuracy.test.ts",
+			Name:   "refund-explanation-accuracy",
+			Path:   "evals/refund/accuracy.test.ts",
 		},
 		{
 			EvalID: "s2",
-			Name:       "enterprise-search-eval",
-			Path:       "evals/search/retrieval.test.ts",
+			Name:   "enterprise-search-eval",
+			Path:   "evals/search/retrieval.test.ts",
 		},
 		{
-			EvalID:        "s3",
+			EvalID:            "s3",
 			Name:              "safety-check",
 			CoveredSurfaceIDs: []string{"s1", "s2"},
 		},
 		{
-			EvalID: "s4",
+			EvalID:     "s4",
 			Name:       "pre-set-capability",
 			Capability: "billing", // already set — should not be overridden
 		},

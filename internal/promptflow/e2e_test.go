@@ -78,7 +78,7 @@ func TestE2E_FixtureRepo(t *testing.T) {
 		"prompts/scoreboard.md",
 		"schemas/result.json",
 		"integer → string",
-		"Score for example_string: 42",          // before render
+		"Score for example_string: 42",             // before render
 		"Score for example_string: example_string", // after render
 	} {
 		if !strings.Contains(md, want) {

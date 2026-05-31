@@ -251,16 +251,16 @@ func fixturePathSignal(path string) (string, bool) {
 // liveConfigFileBasenames are filenames that are almost always live config
 // when present at standard locations.
 var liveConfigFileBasenames = map[string]bool{
-	".env":            true,
-	"settings.py":     true,
-	"settings.yaml":   true,
-	"settings.yml":    true,
-	"config.yaml":     true,
-	"config.yml":      true,
-	"config.toml":     true,
-	"config.json":     true,
-	"pyproject.toml":  true,
-	"setup.cfg":       true,
+	".env":             true,
+	"settings.py":      true,
+	"settings.yaml":    true,
+	"settings.yml":     true,
+	"config.yaml":      true,
+	"config.yml":       true,
+	"config.toml":      true,
+	"config.json":      true,
+	"pyproject.toml":   true,
+	"setup.cfg":        true,
 	"appsettings.json": true,
 }
 

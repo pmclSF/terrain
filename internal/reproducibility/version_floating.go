@@ -24,16 +24,16 @@ import (
 // Severity ladder:
 //
 //   - PinningUnpinned     → high  ("foo" with no spec at all — any
-//                                  version may be resolved at install
-//                                  time)
+//     version may be resolved at install
+//     time)
 //   - PinningRange        → medium (^1.2.3, >=1.0,<2.0 — admits patch/
-//                                   minor drift)
+//     minor drift)
 //   - PinningGit (non-SHA) → medium (git+https://...@branch — moving
-//                                    reference, not content-addressed)
+//     reference, not content-addressed)
 //   - PinningGit (SHA)    → suppressed (committed SHA is reproducible)
 //   - PinningURL          → medium (tarball / wheel URL may move)
 //   - PinningPath         → low    (file:// or ./local — reproducible
-//                                   within the repo checkout)
+//     within the repo checkout)
 //   - PinningExact        → suppressed
 //
 // Build / dev dependencies are flagged at one severity step lower

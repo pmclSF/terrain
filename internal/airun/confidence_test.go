@@ -13,12 +13,12 @@ func TestWilsonInterval_Centers(t *testing.T) {
 	cases := []struct {
 		successes, total int
 	}{
-		{45, 50},   // 90%
-		{99, 100},  // 99%
-		{1, 100},   // 1%
+		{45, 50},    // 90%
+		{99, 100},   // 99%
+		{1, 100},    // 1%
 		{500, 1000}, // 50%
-		{50, 50},   // 100%
-		{0, 50},    // 0%
+		{50, 50},    // 100%
+		{0, 50},     // 0%
 	}
 	for _, c := range cases {
 		lo, hi := WilsonInterval95(c.successes, c.total)

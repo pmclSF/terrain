@@ -132,12 +132,12 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 			emitted[emitKey] = true
 
 			out = append(out, models.Signal{
-				Type:        signals.SignalAIFewShotContamination,
-				Category:    models.CategoryAI,
-				Severity:    models.SeverityMedium,
-				Confidence:  0.7,
-				Location:    models.SignalLocation{File: promptPath[surfaceID], ScenarioID: sc.EvalID, Symbol: sc.Name},
-				Explanation: "Scenario `" + sc.Name + "` contains text that appears verbatim in prompt `" + promptPath[surfaceID] + "`. Few-shot examples that overlap with the eval test set inflate scores.",
+				Type:            signals.SignalAIFewShotContamination,
+				Category:        models.CategoryAI,
+				Severity:        models.SeverityMedium,
+				Confidence:      0.7,
+				Location:        models.SignalLocation{File: promptPath[surfaceID], ScenarioID: sc.EvalID, Symbol: sc.Name},
+				Explanation:     "Scenario `" + sc.Name + "` contains text that appears verbatim in prompt `" + promptPath[surfaceID] + "`. Few-shot examples that overlap with the eval test set inflate scores.",
 				SuggestedAction: "Hold the matching examples out of the prompt's few-shot block, or rewrite the eval input so it isn't a copy of an example. Re-run the eval after de-duplication.",
 
 				SeverityClauses: []string{"sev-medium-009"},
@@ -157,10 +157,10 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 				EvidenceSource:   models.SourceStructuralPattern,
 				EvidenceStrength: models.EvidenceModerate,
 				Metadata: map[string]any{
-					"surfaceId":         surfaceID,
-					"scenarioId":        sc.EvalID,
-					"matchedExcerpt":    truncateExcerpt(matchedCandidate, 80),
-					"thresholdChars":    threshold,
+					"surfaceId":      surfaceID,
+					"scenarioId":     sc.EvalID,
+					"matchedExcerpt": truncateExcerpt(matchedCandidate, 80),
+					"thresholdChars": threshold,
 				},
 			})
 		}

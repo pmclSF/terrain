@@ -439,6 +439,28 @@ func terrainInfraDoctorChecks(root string) []conv.MigrationDoctorCheck {
 		}
 	}
 
+	// Policy file — load and summarize per-rule overrides so adopters
+	// can see which rules their .terrain/policy.yaml is changing from
+	// the defaults. Surfaces drift that ablations might cause silently.
+	policyPath := filepath.Join(root, ".terrain", "policy.yaml")
+	if data, err := os.ReadFile(policyPath); err == nil {
+		off, demoted, promoted := countPolicyOverrides(string(data))
+		total := off + demoted + promoted
+		if total == 0 {
+			checks = append(checks, conv.MigrationDoctorCheck{
+				ID: "policy.overrides", Label: "Policy overrides",
+				Status: "PASS",
+				Detail: ".terrain/policy.yaml present; no rule overrides (defaults in effect)",
+			})
+		} else {
+			checks = append(checks, conv.MigrationDoctorCheck{
+				ID: "policy.overrides", Label: "Policy overrides",
+				Status: "PASS",
+				Detail: fmt.Sprintf("%d rule override(s) active: %d off, %d demoted-to-warn, %d promoted-to-block", total, off, demoted, promoted),
+			})
+		}
+	}
+
 	// .gitignore for .terrain/ — warn if .gitignore exists but doesn't
 	// list .terrain (so users don't accidentally commit runtime cache).
 	gitignorePath := filepath.Join(root, ".gitignore")
@@ -461,14 +483,49 @@ func terrainInfraDoctorChecks(root string) []conv.MigrationDoctorCheck {
 		} else {
 			checks = append(checks, conv.MigrationDoctorCheck{
 				ID: "gitignore.terrain", Label: ".gitignore covers .terrain/",
-				Status: "WARN",
-				Detail: ".terrain not listed in .gitignore",
+				Status:      "WARN",
+				Detail:      ".terrain not listed in .gitignore",
 				Remediation: "Add `.terrain/` to .gitignore so the runtime cache and shadow sink aren't committed.",
 			})
 		}
 	}
 
 	return checks
+}
+
+// countPolicyOverrides walks a policy.yaml body line-by-line and tallies
+// per-rule overrides. The format the writer emits is:
+//
+//	rules:
+//	  - rule: "<id>"
+//	    action: off|demote|promote
+//
+// Comment-only lines (starting with `#` after whitespace stripping)
+// are skipped, so the commented-out starter file reports zero
+// overrides. The parser is deliberately tolerant — it never errors
+// on malformed policy; the dedicated policy loader covers strict
+// validation.
+func countPolicyOverrides(body string) (off, demoted, promoted int) {
+	for _, line := range strings.Split(body, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		if !strings.HasPrefix(trimmed, "action:") {
+			continue
+		}
+		value := strings.TrimSpace(strings.TrimPrefix(trimmed, "action:"))
+		value = strings.Trim(value, `"'`)
+		switch value {
+		case "off", "disable", "ignore":
+			off++
+		case "demote", "warn":
+			demoted++
+		case "promote", "block":
+			promoted++
+		}
+	}
+	return
 }
 
 // recountDoctorSummary recomputes Pass / Warn / Fail / Total counts

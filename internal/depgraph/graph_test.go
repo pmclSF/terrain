@@ -331,7 +331,7 @@ func TestBuild_Scenarios(t *testing.T) {
 	snap := &models.TestSuiteSnapshot{
 		Evals: []models.Eval{
 			{
-				EvalID:        "scenario:auth:login-flow",
+				EvalID:            "scenario:auth:login-flow",
 				Name:              "Login flow",
 				Category:          "happy_path",
 				Framework:         "deepeval",

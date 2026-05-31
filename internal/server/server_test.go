@@ -188,9 +188,9 @@ func TestSecurityHeaders_PresentOnEveryResponse(t *testing.T) {
 	handler.ServeHTTP(w, req)
 
 	required := map[string]string{
-		"X-Frame-Options":         "DENY",
-		"X-Content-Type-Options":  "nosniff",
-		"Referrer-Policy":         "no-referrer",
+		"X-Frame-Options":        "DENY",
+		"X-Content-Type-Options": "nosniff",
+		"Referrer-Policy":        "no-referrer",
 	}
 	for header, want := range required {
 		if got := w.Header().Get(header); got != want {

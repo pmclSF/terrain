@@ -46,9 +46,22 @@ type Config struct {
 
 	// OnTerrainError is "block" (default, fails closed) or "pass"
 	// (fails open).
+	//
+	// CURRENTLY INERT: parsed but not yet consumed by the engine. The
+	// pipeline always fails closed today; this flag is documented to
+	// reserve the field name so adopter terrain.yaml files don't need
+	// a schema migration when the consumer wiring lands. See
+	// docs/LIMITATIONS.md.
 	OnTerrainError string `yaml:"on_terrain_error,omitempty" json:"on_terrain_error,omitempty"`
 
-	// RedactSource elides code excerpts from emitted artifacts.
+	// RedactSource elides code excerpts from emitted artifacts when
+	// adopter codebases have stringent code-confidentiality requirements.
+	//
+	// CURRENTLY INERT: parsed but not yet consumed by any emission
+	// path. The SARIF emitter already supports RedactPaths (separate
+	// flag for filesystem paths); source-content redaction lands once
+	// the emission surfaces consistently carry per-finding code
+	// excerpts that can be elided. See docs/LIMITATIONS.md.
 	RedactSource bool `yaml:"redact_source,omitempty" json:"redact_source,omitempty"`
 
 	// Explain configures CLI LLM enrichment (never read in CI).
@@ -351,9 +364,10 @@ func pathMatches(patterns []string, path string) bool {
 }
 
 // matchGlob implements a minimal glob matcher supporting:
-//   * within a path segment
-//   ** across path segments
-//   ? single char
+//   - within a path segment
+//     ** across path segments
+//     ? single char
+//
 // No character classes — kept narrow on purpose.
 func matchGlob(pattern, name string) bool {
 	return globRecursive([]byte(pattern), []byte(name))

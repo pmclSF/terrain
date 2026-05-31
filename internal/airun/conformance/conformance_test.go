@@ -5,8 +5,8 @@
 // flags the warnings we expect.
 //
 // Adding a new fixture is the documented way to extend coverage:
-//   1. Drop a JSON file under testdata/<framework>/.
-//   2. Add a test case below mapping the file → expected ShapeInfo.
+//  1. Drop a JSON file under testdata/<framework>/.
+//  2. Add a test case below mapping the file → expected ShapeInfo.
 //
 // This is the load-bearing test suite for adapter conformance
 // fixtures per (framework × version) and the warn-on-shape-drift

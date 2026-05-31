@@ -5,7 +5,7 @@
 **Type:** `versionFloating`  
 **Domain:** quality  
 **Default severity:** medium  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** observability
 
 ## Summary
@@ -15,6 +15,10 @@ A dependency is declared without a version pin (unpinned, range-only, or moving 
 ## Remediation
 
 Pin the dependency to an exact version, commit a lockfile that records the resolved set, or use a content-addressed git SHA reference.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/reproducibility/version_floating.go (DetectVersionFloating). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 
@@ -141,7 +145,7 @@ terrain test --selector reproducibility/version-floating
 To scope to a specific path:
 
 ```bash
-terrain test --selector reproducibility/version-floating --path requirements.txt
+terrain test --selector reproducibility/version-floating
 ```
 
 ## 10. Stability commitment

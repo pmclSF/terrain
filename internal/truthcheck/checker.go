@@ -457,7 +457,7 @@ func computeScores(r *TruthCategoryResult) {
 	}
 	if r.Expected == 0 {
 		r.Passed = len(r.Unexpected) == 0 // nothing expected, pass if nothing spurious
-		r.Recall = 1.0                     // vacuously true
+		r.Recall = 1.0                    // vacuously true
 	} else {
 		r.Passed = r.Recall >= 0.5 // pass if at least half of expectations met
 	}

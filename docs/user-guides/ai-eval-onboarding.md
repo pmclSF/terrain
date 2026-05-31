@@ -15,7 +15,7 @@ terrain ai list
 npx promptfoo eval --output results.json     # or deepeval / ragas
 
 # 3. Hand the result to Terrain for gating:
-terrain ai run --baseline .terrain/snapshots/baseline.json
+terrain ai run --base .terrain/snapshots/baseline.json
 ```
 
 That's it. Terrain reads your eval framework's output; it does not
@@ -104,11 +104,11 @@ when they affect parsing.
 ## Step 3 — Hand the result to Terrain for gating
 
 ```bash
-# First time — record this run as the baseline:
-terrain ai run --record-baseline
+# First time — record this run as the baseline (writes to .terrain/baselines/):
+terrain ai record
 
 # Subsequent runs — gate against the baseline:
-terrain ai run --baseline .terrain/snapshots/baseline.json
+terrain ai run --base .terrain/snapshots/baseline.json
 ```
 
 Terrain renders a hero verdict block:

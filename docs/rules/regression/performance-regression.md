@@ -5,7 +5,7 @@
 **Type:** `performanceRegression`  
 **Domain:** ai  
 **Default severity:** high  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** gate
 
 ## Summary
@@ -15,6 +15,10 @@ An ML model's performance metric (accuracy / F1 / AUC / RMSE / etc.) regressed p
 ## Remediation
 
 Inspect the diff for training data / hyperparameter / feature changes. If the regression is intentional, update the baseline.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/regression/performance_regression.go (DetectPerformanceRegression). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

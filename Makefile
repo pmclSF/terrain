@@ -127,6 +127,10 @@ regression-gate:
 release-gate: go-release-verify regression-gate
 
 go-release-verify:
+	@offenders=$$(gofmt -l .); \
+		if [ -n "$$offenders" ]; then \
+			echo "::error::gofmt violations:"; echo "$$offenders"; exit 1; \
+		fi
 	go vet $(GO_OWNED_PKGS)
 	go test $(GO_OWNED_PKGS)
 	go build ./cmd/terrain
@@ -151,6 +155,7 @@ docs-gen:
 
 docs-verify:
 	@scripts/docs-verify.sh
+	@docs/scripts/verify_doc_consistency.sh
 
 # `docs-linkcheck` walks docs/ and verifies that every intra-repo
 # markdown link resolves to a real file. Skips docs/internal/ and

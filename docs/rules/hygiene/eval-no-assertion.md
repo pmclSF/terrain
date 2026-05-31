@@ -5,7 +5,7 @@
 **Type:** `evalNoAssertion`  
 **Domain:** ai  
 **Default severity:** high  
-**Lifecycle status:** stable  
+**Lifecycle status:** experimental  
 **Gating tier:** gate
 
 ## Summary
@@ -15,6 +15,10 @@ An eval test function runs to completion without any assertion / score / metric 
 ## Remediation
 
 Add an assert / score check that fails when the eval output deviates from expectations.
+
+## Promotion plan
+
+Off by default. Detector function exists at internal/hygiene/eval_no_assertion.go (DetectEvalNoAssertion). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
 
 ## Evidence sources
 

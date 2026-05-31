@@ -102,13 +102,15 @@ func RoleOf(facts GraphFacts) Role {
 //
 // Off → no role test runs, falls back to the Classify verdict.
 // Shadow → role test runs, emits would_suppress / would_demote events
-//   on disagreement with legacy behavior, user-visible findings
-//   unchanged.
+//
+//	on disagreement with legacy behavior, user-visible findings
+//	unchanged.
+//
 // On → role test result is authoritative.
 type RoleDecision struct {
 	Role   Role
-	Keep   bool  // false → suppress (or demote)
-	Demote bool  // true → keep but demote severity
+	Keep   bool // false → suppress (or demote)
+	Demote bool // true → keep but demote severity
 }
 
 func GateRole(reg *mechanisms.Registry, facts GraphFacts, loc Location, ruleID string) RoleDecision {
@@ -177,4 +179,3 @@ func CombineWithClassify(roleDec RoleDecision, classifyRes Result) RoleDecision 
 		return roleDec
 	}
 }
-

@@ -88,7 +88,7 @@ func TestDetectPromptWithoutTemperature(t *testing.T) {
 func TestDetectMissingPromptValidator(t *testing.T) {
 	t.Parallel()
 	cases := map[string][]byte{
-		"with_pydantic.py":    []byte(`from pydantic import BaseModel
+		"with_pydantic.py": []byte(`from pydantic import BaseModel
 client.chat.completions.create(messages=[...], response_model=Foo)
 `),
 		"without_validator.py": []byte(`client.chat.completions.create(messages=[...])
@@ -118,7 +118,7 @@ func TestDetectAgentLoopRisk(t *testing.T) {
 func TestDetectToolWithoutBudget(t *testing.T) {
 	t.Parallel()
 	cases := map[string][]byte{
-		"budgeted.py": []byte(`AgentExecutor(tools=[t], max_iterations=10, max_tool_calls=5)`),
+		"budgeted.py":   []byte(`AgentExecutor(tools=[t], max_iterations=10, max_tool_calls=5)`),
 		"unbudgeted.py": []byte(`AgentExecutor(tools=[t], max_iterations=10)`),
 	}
 	sigs := DetectToolWithoutBudget(cases)

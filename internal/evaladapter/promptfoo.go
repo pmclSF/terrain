@@ -57,20 +57,20 @@ func (PromptfooAdapter) Ingest(path string) (*EvalRun, error) {
 			Version   int    `json:"version"`
 			Timestamp string `json:"timestamp"`
 			Results   []struct {
-				ID            string         `json:"id"`
-				PromptIdx     int            `json:"promptIdx"`
-				Success       bool           `json:"success"`
-				Score         float64        `json:"score"`
-				NamedScores   map[string]float64 `json:"namedScores"`
-				TestCase      struct {
+				ID          string             `json:"id"`
+				PromptIdx   int                `json:"promptIdx"`
+				Success     bool               `json:"success"`
+				Score       float64            `json:"score"`
+				NamedScores map[string]float64 `json:"namedScores"`
+				TestCase    struct {
 					Description string                 `json:"description"`
 					Vars        map[string]interface{} `json:"vars"`
 					Threshold   float64                `json:"threshold"`
 				} `json:"testCase"`
 				GradingResult struct {
-					Pass    bool    `json:"pass"`
-					Score   float64 `json:"score"`
-					Reason  string  `json:"reason"`
+					Pass   bool    `json:"pass"`
+					Score  float64 `json:"score"`
+					Reason string  `json:"reason"`
 				} `json:"gradingResult"`
 			} `json:"results"`
 			Stats struct {

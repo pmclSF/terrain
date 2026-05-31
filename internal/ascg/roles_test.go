@@ -19,8 +19,8 @@ func TestRoleOf_Live_ExportedAndConsumed(t *testing.T) {
 
 func TestRoleOf_Live_ExportedAndImportReached(t *testing.T) {
 	facts := GraphFacts{
-		IsExported:                  true,
-		ImportReachedFromCallSites:  true,
+		IsExported:                 true,
+		ImportReachedFromCallSites: true,
 	}
 	if got := RoleOf(facts); got != RoleLiveConfigValue {
 		t.Errorf("RoleOf = %v, want RoleLiveConfigValue", got)
