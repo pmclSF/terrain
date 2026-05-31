@@ -89,10 +89,7 @@ examples.
 
 ## docs-verify gate
 
-`make docs-verify` — the release gate that asserts the generated
-docs (manifest, severity rubric, rule doc stubs) are zero-diff
-against what the generators produce from the Go source.
-Drift between code and docs is treated as a release blocker.
+`make docs-verify` — the release gate that re-generates the manifest, severity rubric, and rule-doc stubs into a tempdir and diffs against the committed copies. Any drift between the Go source of truth and the published docs fails the gate.
 
 ## Surface ID
 

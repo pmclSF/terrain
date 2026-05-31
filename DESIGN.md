@@ -2,7 +2,7 @@
 
 > **Pre-flight checks for AI/ML systems and the tests around them. Runs locally. No API key required.**
 
-Terrain is a static analyzer that treats tests, evals, prompts, and schemas as one dependency graph — and catches the drift that crosses their boundaries before it reaches production.
+Terrain is a static analyzer that treats tests, evals, prompts, and schemas as one dependency graph — and catches the drift that crosses their boundaries before the PR merges.
 
 The product story lives in [`docs/PRODUCT.md`](docs/PRODUCT.md). This document is the technical companion: what packages exist, what artifacts they produce, where the integration boundaries sit.
 
@@ -11,7 +11,7 @@ The product story lives in [`docs/PRODUCT.md`](docs/PRODUCT.md). This document i
 - **Signals are the core abstraction.** Every finding is a structured signal with type, severity, evidence, and location. See `internal/signals/manifest.go` for the manifest model.
 - **The snapshot is the integration boundary.** `TestSuiteSnapshot` (`internal/models/snapshot.go`) is the serialized artifact at which detection, graph construction, impact analysis, and reporting compose. Anything that can serialize into the snapshot inherits graph traversal, impact analysis, and the diagnostic-rendering pipeline.
 - **Risk must be explainable.** Risk surfaces are derived from signals with transparent scoring, not opaque scores.
-- **Local-first, LLM-free by default.** Terrain runs on a developer machine or CI runner with no accounts, SaaS, or network access required. No LLM API key is ever required. The default configuration makes zero outbound network calls (verifiable via `terrain --print-network`).
+- **Local-first, LLM-free by default.** Terrain analysis runs on a developer machine or CI runner with no accounts, SaaS, or network access required. No LLM API key is ever required. `terrain analyze` makes zero outbound network calls in the default configuration (verifiable via `terrain --print-network`). Install paths download signed binaries from GitHub Releases — that's the only network step.
 - **Privacy boundary.** Aggregate metrics and benchmark exports never expose raw file paths or source code. Adopters with stringent code-confidentiality requirements can set `redact_source: true` in `terrain.yaml`.
 - **Two-tier severity.** Detectors are explicitly classified as `gate` (counts toward `--fail-on=*` gate decisions) or `observability` (informational only). The tier is mandatory on every manifest entry — no implicit default.
 

@@ -13,7 +13,7 @@ Pre-built binaries ship for:
 | Windows | amd64 | Tier 1 — unit-test parity in CI |
 | Windows arm64 | — | Not built |
 
-Tier 1 means a pre-built binary ships and `go test ./...` runs in CI on every PR. The linux/amd64 release archive is the smoke-tested platform post-publish; extending the smoke to darwin/arm64 and windows/amd64 is planned. Source builds work on any platform Go 1.23+ supports.
+Tier 1 means a pre-built binary ships and `go test ./...` runs in CI on every PR. Linux additionally runs the race detector and a byte-identical determinism check; the published linux/amd64 archive is smoke-tested post-publish (other architectures will join that smoke as it becomes feasible). Source builds work on any platform Go 1.23+ supports.
 
 ## Build-time
 
@@ -72,7 +72,7 @@ The cross-language graph resolves prompt / RAG / API references across language 
 
 ## CI providers
 
-Any CI that runs a binary and can read git history. GitHub Actions templates ship in [`docs/examples/gate/`](examples/gate/). GitLab CI, CircleCI, Jenkins, and pre-commit integration guides are planned.
+Any CI that runs a binary and can read git history. GitHub Actions templates ship in [`docs/examples/gate/`](examples/gate/). Dedicated guides for GitLab CI, CircleCI, Jenkins, and pre-commit hooks will follow as adopters request them.
 
 ## Snapshot schema compatibility
 

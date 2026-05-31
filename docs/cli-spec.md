@@ -18,7 +18,7 @@ Canonical commands route through namespace dispatchers (`terrain report`, `terra
 | `terrain ai <verb>` | AI inventory + eval orchestration: `list`, `run`, `replay`, `record`, `baseline`, `baseline compare`, `doctor`, `findings` |
 | `terrain inject --prompt <path>` | Generate jailbreak-shaped test inputs from a prompt template. Emits pytest / vitest / JSON. |
 | `terrain scaffold --schema <path>` | Generate boundary-case mutation tests from a JSON Schema. Emits pytest / vitest / JSON. |
-| `terrain plugins <verb>` | Third-party detector plugins: `manifest <path>` validates a plugin manifest (`list`, `add`, `remove` reserved for a future release). |
+| `terrain plugins <verb>` | Third-party detector plugins: `manifest <path>` validates a plugin manifest. `list`, `add`, `remove` are stub commands; the runtime loader ships in a future release. |
 | `terrain debug <verb>` | Dependency-graph drill-downs: `graph`, `coverage`, `fanout`, `duplicates`, `depgraph` |
 | `terrain config <verb>` | Workspace prefs: `feedback`, `telemetry` |
 | `terrain doctor [path]` | Diagnostics for current setup. Surfaces registry, alias-registry, gitignore, and per-rule policy-override state. |

@@ -2,7 +2,7 @@
 
 **Pre-flight checks for AI/ML systems and the tests around them. Runs locally. No API key required.**
 
-Terrain is a static analyzer that treats tests, evals, prompts, and schemas as one dependency graph — and catches the drift that crosses their boundaries before it reaches production.
+Terrain is a static analyzer that treats tests, evals, prompts, and schemas as one dependency graph — and catches the drift that crosses their boundaries before the PR merges.
 
 ## Install
 
@@ -70,8 +70,6 @@ Risk Posture
 
 ## Workflow
 
-Four commands cover most adopter use:
-
 | Command | Question |
 |---------|----------|
 | `terrain analyze` | What is the state of our test system? |
@@ -79,7 +77,7 @@ Four commands cover most adopter use:
 | `terrain report impact` | What validations matter for this change? |
 | `terrain report explain <target>` | Why did Terrain make this decision? |
 
-The bare forms (`terrain insights`, `terrain impact`, `terrain explain`) are preserved as aliases. The full command surface — including AI / eval verbs, framework conversion, debug drill-downs, and the slash-receiver — is in [docs/cli-spec.md](docs/cli-spec.md).
+The bare forms (`terrain insights`, `terrain impact`, `terrain explain`) work as aliases. AI / eval verbs, framework conversion, debug drill-downs, and the slash-receiver round out the surface — full reference in [docs/cli-spec.md](docs/cli-spec.md).
 
 ## CI integration
 
@@ -109,18 +107,20 @@ For a blocking gate, add `--fail-on=high` (or `--fail-on=critical` for the stric
 
 ## What it is not
 
-The test-tooling space has a lot of overlapping vendors and the boundaries matter:
-
 - **Not a test runner.** Terrain reads what `pytest` / `jest` / `go test` / `playwright` produce. It doesn't execute tests.
-- **Not a coverage tool.** Terrain ingests coverage reports if you have them; it doesn't instrument code or compute coverage itself.
-- **Not a static analyzer for application code.** Sonar / Semgrep / CodeQL stay better-positioned for source-side bug-finding.
-- **Not an LLM eval framework.** Terrain understands AI surfaces and ingests the artifacts Promptfoo / DeepEval / Ragas produce. It doesn't run the evals.
-- **Not a developer-productivity dashboard.** Terrain measures the test system, not the people writing tests. No leaderboards. No per-developer metrics. Ownership data routes findings, never scores people.
-- **Not a service.** Analysis is local. No SaaS. No telemetry. No account. Verifiable with `terrain --print-network`. (npm and brew install paths download signed binaries from GitHub Releases; analysis itself never phones home.)
+- **Not a coverage tool.** Terrain ingests coverage reports if you have them; it doesn't instrument code.
+- **Not a source-code linter.** Sonar / Semgrep / CodeQL stay better-positioned for application-code bug-finding.
+- **Not an LLM eval framework.** Terrain ingests artifacts Promptfoo / DeepEval / Ragas produce. It doesn't run the evals.
+- **Not a productivity dashboard.** No leaderboards, no per-developer metrics. Ownership data routes findings, never scores people.
+- **Not a service.** Analysis runs locally with zero outbound network calls — verifiable with `terrain --print-network`. The install paths download signed binaries from GitHub Releases; that's the only network step.
 
 ## AI-aware testing
 
-The same dependency graph that powers test selection for application code also traces AI surface edges, so a prompt-template change triggers the right eval scenarios automatically. `terrain ai run --base main` runs only the evals affected by your change; `terrain report pr` flags changed AI surfaces with no covering eval; `terrain ai findings` emits AI eval-gap findings with evidence chains.
+The same dependency graph that powers test selection for application code also traces AI surface edges. A prompt-template change triggers the right eval scenarios automatically — no manual mapping.
+
+- `terrain ai run --base main` — run only the evals your change affects
+- `terrain report pr` — flag changed AI surfaces with no covering eval
+- `terrain ai findings` — AI eval-gap findings with evidence chains
 
 Two generators help adopters harden a prompt before deploying it:
 
@@ -133,11 +133,11 @@ Both emit runnable pytest / vitest scaffolds you drop into your test tree. Terra
 
 ## MCP integration
 
-`terrain mcp` starts an [MCP](https://modelcontextprotocol.io) server on stdio for AI coding assistants (Claude Code, Cursor, etc.). It reads the last `terrain analyze` snapshot from `.terrain/findings.json` and exposes findings, surfaces, and baselines as tools the assistant can query.
+`terrain mcp` exposes the last analyze run to AI coding assistants (Claude Code, Cursor, others) over the [Model Context Protocol](https://modelcontextprotocol.io). The assistant can query findings, drill into surfaces, and read baselines without you copy-pasting JSON — so "why is this PR failing Terrain?" gets a useful answer in the IDE instead of a context-switch to the terminal.
 
 ## Plugins
 
-Third-party detectors ship as plugins with a YAML manifest; validate one with `terrain plugins manifest <path>`. The manifest contract is stable today (see [examples/plugins/example-manifest.yaml](examples/plugins/example-manifest.yaml)); the runtime that loads and executes plugins is reserved for a future release.
+Third-party detectors ship as YAML manifests; `terrain plugins manifest <path>` validates one against the stable schema. The plugin runtime — the loader that executes registered detectors — is reserved for a future release. Adopters can author and publish manifests now and they'll be loadable when the runtime ships. See [`examples/plugins/example-manifest.yaml`](examples/plugins/example-manifest.yaml).
 
 ## Documentation
 

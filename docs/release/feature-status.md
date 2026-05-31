@@ -127,7 +127,7 @@ Several detector entries (xfail accumulation, statistical flaky-test rate, addit
 
 ## CLI restructure
 
-The 0.2 release introduces three new namespace dispatchers (`report`, `migrate`, `config`) alongside the historical 32 top-level commands. The canonical 11-command shape is the recommended surface; legacy commands keep working through 0.2 with deprecation hints. Removal is future work.
+The 0.2 release introduced namespace dispatchers (`report`, `migrate`, `config`, `debug`, `ai`) alongside the historical 32 top-level commands. The canonical 14-command shape is the recommended surface; legacy commands keep working as aliases with optional deprecation hints (`TERRAIN_LEGACY_HINT=1`). See [`docs/cli-spec.md`](../cli-spec.md) for the full surface.
 
 ---
 

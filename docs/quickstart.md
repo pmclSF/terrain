@@ -39,7 +39,7 @@ terrain report impact --base main --explain-selection
 
 The selected tests plus the reason chain for each. `--explain-selection` shows why a test made the cut and why others didn't — clarity, not safe-skip advice.
 
-That's the canonical adopter loop. Everything below is depth.
+That's the core loop. Everything below adds depth.
 
 ---
 
@@ -108,17 +108,10 @@ Default output is pytest; use `--lang typescript` for vitest.
 
 Every `terrain analyze` writes a canonical `.terrain/findings.json` (schema version 1). `terrain mcp` reads it; IDE plugins consume it; SARIF uploaders transform it.
 
-## What Terrain reads out of the box
-
-- **Frameworks** — Jest, Vitest, Mocha, Playwright, Cypress, pytest, Go testing, JUnit 5, RSpec, and more (full list in [`docs/compatibility.md`](compatibility.md))
-- **Languages** — Python, TypeScript / JavaScript, Go, Java, Ruby
-- **Schema sources** — Postgres / MySQL DDL, Pydantic, TypeScript types, sqlc, gorm, Prisma, sqlalchemy
-- **Eval frameworks** — Promptfoo, DeepEval, Ragas
-- **Pipelines + registries** — dbt, Airflow, Prefect, MLflow, Weights & Biases
-
 ## Next
 
 - [CLI specification](cli-spec.md) — every command, every flag
+- [Compatibility](compatibility.md) — supported frameworks, languages, schemas, eval tools, pipelines
 - [Example reports](examples/) — full sample outputs for analyze / impact / insights / explain
-- [Signal catalog](signal-catalog.md) — every detector, what it fires on
+- [Signal catalog](signal-catalog.md) — every detector and what it fires on
 - [Contributing](contributing/adding-a-measurement.md) — extending Terrain
