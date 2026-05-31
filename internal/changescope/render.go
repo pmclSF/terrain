@@ -5,6 +5,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/prtemplates"
@@ -372,7 +373,7 @@ func findingSeverityRank(s string) int {
 // (no SignalType) default to gate-tier — they're coverage issues
 // meant to block.
 func renderFindingCard(line func(string, ...any), f ChangeScopedFinding) {
-	renderFindingCardWithHistory(line, f, activeHistoryStore)
+	renderFindingCardWithHistory(line, f, getActiveHistoryStore())
 }
 
 // renderFindingCardWithHistory is the history-aware form. The PR-
@@ -425,12 +426,29 @@ type HistoryStore interface {
 // renderFindingsCardsByDetector) consult it without needing extra
 // parameters that would churn every call site.
 //
-// Not thread-safe across concurrent renders. RenderPRSummaryMarkdown
-// is the CLI's `terrain pr` entry point — invoked once per process
-// — so there is no in-process renderer concurrency today. A future
+// Protected by activeHistoryStoreMu for the race detector's benefit:
+// the CLI invokes the renderer once per process, but tests run with
+// t.Parallel() and trip the race detector without a guard. A future
 // long-running server that renders for multiple PRs in parallel
 // must thread the store through call arguments instead.
-var activeHistoryStore HistoryStore
+var (
+	activeHistoryStoreMu sync.Mutex
+	activeHistoryStore   HistoryStore
+)
+
+func setActiveHistoryStore(s HistoryStore) (prev HistoryStore) {
+	activeHistoryStoreMu.Lock()
+	defer activeHistoryStoreMu.Unlock()
+	prev = activeHistoryStore
+	activeHistoryStore = s
+	return prev
+}
+
+func getActiveHistoryStore() HistoryStore {
+	activeHistoryStoreMu.Lock()
+	defer activeHistoryStoreMu.Unlock()
+	return activeHistoryStore
+}
 
 // RenderPRSummaryMarkdownWithHistory is the history-aware form of
 // RenderPRSummaryMarkdown. When `hist` is non-nil, every
@@ -442,9 +460,8 @@ var activeHistoryStore HistoryStore
 // Pass nil for `hist` to get the legacy behavior (or call
 // RenderPRSummaryMarkdown directly).
 func RenderPRSummaryMarkdownWithHistory(w io.Writer, pr *PRAnalysis, hist HistoryStore) {
-	prev := activeHistoryStore
-	activeHistoryStore = hist
-	defer func() { activeHistoryStore = prev }()
+	prev := setActiveHistoryStore(hist)
+	defer setActiveHistoryStore(prev)
 	RenderPRSummaryMarkdown(w, pr)
 }
 
