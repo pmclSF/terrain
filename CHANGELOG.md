@@ -5,6 +5,8 @@ All notable changes to Terrain are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] — PR surface upgrade + adopter scaffolding
+
 ### Added
 
 - **`.terrain/findings.json` is written after every `terrain analyze` run.**
