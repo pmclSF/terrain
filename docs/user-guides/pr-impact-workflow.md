@@ -97,7 +97,7 @@ jobs:
 The `terrain pr --format markdown` command produces output like:
 
 ```markdown
-## Terrain Impact Analysis
+## Terrain · Impact Analysis
 
 **Change-risk posture:** MODERATE
 
@@ -150,7 +150,7 @@ The JSON structure includes:
 
 ```json
 {
-  "posture": "MODERATE",
+  "posture": "moderate",
   "changed_files": 8,
   "impacted_units": 14,
   "protective_tests": 11,

@@ -473,7 +473,7 @@ func TestAIWorkflow_InventoryText_Content(t *testing.T) {
 	output := buf.String()
 
 	// Key sections must be present.
-	for _, section := range []string{"Terrain AI Inventory", "Component", "Scenarios", "Next steps"} {
+	for _, section := range []string{"Terrain · AI Inventory", "Component", "Scenarios", "Next steps"} {
 		if !strings.Contains(output, section) {
 			t.Errorf("missing section %q in text output", section)
 		}

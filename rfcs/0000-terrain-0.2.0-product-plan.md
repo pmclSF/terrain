@@ -38,19 +38,19 @@ Key commitments accepted by this RFC:
 
 - **Scope is genuinely multi-engineer-year.** The plan is honest about this; the dependency-order spine acknowledges it. Adopters and contributors should walk in with realistic expectations.
 - **Validation operations carry recurring cost.** Funding model is documented in `docs/CONTRIBUTING.md`.
-- **0.2.0 is a clean slate vs. pre-0.2.0.** Adopters using earlier Terrain treat 0.2.0 as a fresh install; no migration path is provided. The project judged this acceptable because adopter base is small (per §19 #7).
+- **0.2.0 is a clean slate vs. pre-0.2.0.** Adopters using earlier Terrain treat 0.2.0 as a fresh install; no migration path is provided. The project judged this acceptable because the adopter base was small at decision time.
 - **Several rules in stable depend on infrastructure that's net-new for 0.2.0.** The dependency-order spine sequences this; risk is dependency-chain breakage causing late-release scope cuts. Mitigated by per-rule readiness cards being independent and by the explicit "30 stable is a ceiling, not a floor" framing.
 
 ## Alternatives considered
 
-- **Smaller 0.2.0 scope** — ship the unified-graph product without classical-ML rules; defer to 0.3.0. Rejected because the plan explicitly positions Terrain as AI *and* ML (per `docs/PRODUCT.md` §5 vocabulary section); shipping LLM-only would mis-frame the category claim.
+- **Smaller 0.2.0 scope** — ship the unified-graph product without classical-ML rules; defer to 0.3.0. Rejected because the plan explicitly positions Terrain as AI *and* ML (see the vocabulary section of `docs/PRODUCT.md`); shipping LLM-only would mis-frame the category claim.
 - **Defer auditable quality (Goal 3)** — ship two-goal product (unified graph + CI gate) first. Rejected because public readiness cards are the trust signals that make adopter evaluation possible; deferring them ships a product senior decision-makers can't evaluate.
-- **Marketplace listings (Claude Skill, GitHub Actions Marketplace) at 0.2.0** — accelerate distribution. Rejected because the MCP server should harden through one release cycle of adopter use before locking vendor-marketplace wrappers per §16 non-goals.
+- **Marketplace listings (Claude Skill, GitHub Actions Marketplace) at 0.2.0** — accelerate distribution. Rejected because the MCP server should harden through one release cycle of adopter use before locking vendor-marketplace wrappers; see the non-goals section in `docs/PRODUCT.md`.
 - **Do nothing** — keep Terrain as the pre-0.2.0 single-domain test-quality tool it currently is. Rejected because the unified AI/ML testing category does not exist as a product today and Terrain has the architectural foundation to define it.
 
 ## Unresolved questions
 
-All operational opens are tracked in `docs/PRODUCT.md` §19. Three remain at RFC acceptance time:
+All operational opens are tracked in `docs/PRODUCT.md` (Open questions). Three remain at RFC acceptance time:
 
 1. **License audit per representative-repository candidate** — operational; depends on shortlisting specific OSS candidates
 2. **Validation operations onboarding** — operational outreach

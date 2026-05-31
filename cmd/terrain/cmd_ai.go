@@ -216,8 +216,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	}
 
 	// --- Text output ---
-	fmt.Println("Terrain AI Inventory")
-	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
+	fmt.Println(uitokens.Header("AI Inventory"))
 	fmt.Println()
 
 	// Summary table.
@@ -248,7 +247,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// Capabilities.
 	if len(capabilities) > 0 {
 		fmt.Println("Capabilities")
-		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
+		fmt.Println(uitokens.H2Sep)
 		for _, cap := range capabilities {
 			names := capScenarios[cap]
 			fmt.Printf("  %-30s %d %s\n", cap, len(names), reporting.Plural(len(names), "scenario"))
@@ -259,7 +258,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// Frameworks.
 	if len(frameworks) > 0 {
 		fmt.Println("Frameworks")
-		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
+		fmt.Println(uitokens.H2Sep)
 		for _, fw := range frameworks {
 			fmt.Printf("  %-20s via %s (%.0f%%)\n", fw.Name, fw.Source, fw.Confidence*100)
 		}
@@ -269,7 +268,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// Scenarios grouped by capability.
 	if len(scenarios) > 0 {
 		fmt.Printf("Scenarios (%d)\n", len(scenarios))
-		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
+		fmt.Println(uitokens.H2Sep)
 		for _, sc := range scenarios {
 			capLabel := ""
 			if sc.Capability != "" {
@@ -290,7 +289,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 			continue
 		}
 		fmt.Printf("%s (%d)\n", g.label, len(g.items))
-		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
+		fmt.Println(uitokens.H2Sep)
 		for _, s := range g.items {
 			if verbose {
 				reporting.RenderSurfaceEvidence(os.Stdout, s.Name, s.Path, s.Line, s.DetectionTier, s.Confidence, s.Reason)
@@ -310,7 +309,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// Eval files.
 	if len(evalFiles) > 0 {
 		fmt.Printf("Eval Files (%d)\n", len(evalFiles))
-		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
+		fmt.Println(uitokens.H2Sep)
 		for _, f := range evalFiles {
 			fmt.Printf("  %s\n", f)
 		}
@@ -320,7 +319,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 	// Validation gaps.
 	if len(uncoveredSurfaces) > 0 {
 		fmt.Printf("Missing Validation (%d AI %s not covered by any scenario)\n", len(uncoveredSurfaces), reporting.Plural(len(uncoveredSurfaces), "surface"))
-		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
+		fmt.Println(uitokens.H2Sep)
 		limit := 10
 		if len(uncoveredSurfaces) < limit {
 			limit = len(uncoveredSurfaces)
@@ -565,8 +564,7 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	}
 
 	// Text output.
-	fmt.Println("Terrain AI Run")
-	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
+	fmt.Println(uitokens.Header("AI Run"))
 	fmt.Println()
 	fmt.Printf("Mode:      %s\n", mode)
 	fmt.Printf("Framework: %s\n", framework)
@@ -579,7 +577,7 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	// Show selected scenarios.
 	if len(selected) > 0 {
 		fmt.Println("Selected Scenarios")
-		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
+		fmt.Println(uitokens.H2Sep)
 		for _, sc := range selected {
 			capLabel := ""
 			if sc.Capability != "" {
@@ -861,7 +859,7 @@ func runAIRecord(root string, jsonOutput bool) error {
 	}
 
 	fmt.Println("Terrain AI Record")
-	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
+	fmt.Println(uitokens.H1Sep)
 	fmt.Printf("Recorded %d scenarios to %s\n", len(bl.Scenarios), blPath)
 	fmt.Printf("Prompt surfaces: %d\n", bl.Surfaces.Prompts)
 	fmt.Printf("Dataset surfaces: %d\n", bl.Surfaces.Datasets)
@@ -907,7 +905,7 @@ func runAIBaseline(root string, jsonOutput bool) error {
 	}
 
 	fmt.Println("Terrain AI Baseline")
-	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
+	fmt.Println(uitokens.H1Sep)
 	fmt.Printf("Recorded: %s\n", bl.RecordedAt)
 	fmt.Printf("Scenarios: %d\n", len(bl.Scenarios))
 	fmt.Printf("Prompt surfaces: %d\n", bl.Surfaces.Prompts)
@@ -1024,7 +1022,7 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 
 	// Human-readable output.
 	fmt.Println("Terrain AI Baseline Comparison")
-	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
+	fmt.Println(uitokens.H1Sep)
 	fmt.Printf("Baseline recorded: %s\n", baseline.RecordedAt)
 	fmt.Printf("Scenarios: %d → %d", len(baseline.Scenarios), len(result.Snapshot.Evals))
 	if diff := len(result.Snapshot.Evals) - len(baseline.Scenarios); diff > 0 {
@@ -1094,7 +1092,7 @@ func runAIReplay(root string, jsonOutput bool, artifactPath string) error {
 	}
 
 	fmt.Println("Terrain AI Replay")
-	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
+	fmt.Println(uitokens.H1Sep)
 	fmt.Println()
 	fmt.Printf("Artifact:    %s\n", artifactPath)
 	fmt.Printf("Scenarios:   %d original → %d current\n", replayResult.OriginalScenarios, replayResult.CurrentScenarios)
@@ -1109,7 +1107,7 @@ func runAIReplay(root string, jsonOutput bool, artifactPath string) error {
 		fmt.Printf("Result: MISMATCH — %d %s found\n", len(replayResult.Mismatches), reporting.Plural(len(replayResult.Mismatches), "difference"))
 		fmt.Println()
 		fmt.Println("Differences")
-		fmt.Println(strings.Repeat("-", aiSeparatorWidth))
+		fmt.Println(uitokens.H2Sep)
 		for _, m := range replayResult.Mismatches {
 			fmt.Printf("  [%s] %s\n", m.Kind, m.Detail)
 			if m.Surface != "" {
@@ -1283,8 +1281,7 @@ func runAIDoctor(root string, jsonOutput bool) error {
 	}
 
 	// Text output.
-	fmt.Println("Terrain AI Doctor")
-	fmt.Println(strings.Repeat("=", aiSeparatorWidth))
+	fmt.Println(uitokens.Header("AI Doctor"))
 	fmt.Println()
 
 	passCount := 0
@@ -1293,13 +1290,13 @@ func runAIDoctor(root string, jsonOutput bool) error {
 		icon := "  "
 		switch c.Status {
 		case "pass":
-			icon = "  [pass]"
+			icon = "  " + colorizeStatus("PASS")
 			passCount++
 		case "warn":
-			icon = "  [warn]"
+			icon = "  " + colorizeStatus("WARN")
 			warnCount++
 		case "fail":
-			icon = "  [FAIL]"
+			icon = "  " + colorizeStatus("FAIL")
 		}
 		fmt.Printf("%s %-16s %s\n", icon, c.Name, c.Message)
 	}

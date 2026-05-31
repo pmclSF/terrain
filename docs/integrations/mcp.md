@@ -130,8 +130,8 @@ and clone it to evals/summarize_v3.yaml, then point its
 covered_surface_ids at the v3 surface.
 ```
 
-## Limitations at v0.2.0
+## Known limitations
 
-- The MCP server reads from the most recent `terrain analyze` run's snapshot, not live re-analysis. Re-run `terrain analyze` to refresh.
-- Tool-calling (model invokes Terrain back through the server) returns `ErrToolCallsNotImplemented` at 0.2.0; chat-completion-only at this revision.
+- The MCP server reads from the most recent `terrain analyze` run (via `.terrain/findings.json`); it doesn't re-analyze on each query. Re-run `terrain analyze` to refresh.
+- Tool-calling (model invokes Terrain back through the server) returns `ErrToolCallsNotImplemented`. The server is read-only — chat-completion / resource-fetch only.
 - Baseline reading uses the JSON shape in `.terrain/baselines/`; consult the latest schema in the repo for the exact fields surfaced.

@@ -169,7 +169,7 @@ Impact Analysis: feature/add-auth vs main
   Protective tests: 11
   Protection gaps:   3
 
-  Change-risk posture: MODERATE
+  Change-risk posture: Moderate
 
   Confidence: 9 exact, 5 inferred
 ```

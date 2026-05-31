@@ -61,7 +61,7 @@ The `terrain posture` command renders a full posture breakdown with measurement 
 
 ```
 HEALTH
-  Posture: WEAK
+  Posture: Weak
   health posture is weak. Driven by: health.flaky_share.
 
   Driving measurements: health.flaky_share
@@ -86,7 +86,7 @@ Shows posture and measurement changes across snapshots:
 ```
 Posture Changes
 ----------------------------------------
-  health                     STRONG → WEAK
+  health                     Strong → Weak
 
 Measurement Changes
 ----------------------------------------

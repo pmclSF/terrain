@@ -6,14 +6,14 @@ import (
 
 	"github.com/pmclSF/terrain/internal/heatmap"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderSummaryReport writes a leadership-oriented summary to w.
 func RenderSummaryReport(w io.Writer, snap *models.TestSuiteSnapshot, h *heatmap.Heatmap, opts ...ReportOptions) {
 	line, blank := reportHelpers(w)
 
-	line("Terrain Summary")
-	line(strings.Repeat("=", 50))
+	line(uitokens.Header("Summary"))
 	blank()
 
 	if h == nil {
@@ -28,7 +28,7 @@ func RenderSummaryReport(w io.Writer, snap *models.TestSuiteSnapshot, h *heatmap
 
 	// Key numbers
 	line("Key Numbers")
-	line(strings.Repeat("-", 50))
+	line(uitokens.H2Sep)
 	line("  Test files:          %d", len(snap.TestFiles))
 	line("  Frameworks:          %d", len(snap.Frameworks))
 	line("  Total signals:       %d", h.TotalSignals)
@@ -43,7 +43,7 @@ func RenderSummaryReport(w io.Writer, snap *models.TestSuiteSnapshot, h *heatmap
 	// Posture (measurement layer)
 	if snap.Measurements != nil && len(snap.Measurements.Posture) > 0 {
 		line("Posture Dimensions")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		for _, p := range snap.Measurements.Posture {
 			line("  %-24s %s", p.Dimension+":", strings.ToUpper(p.Band))
 			if p.Explanation != "" {
@@ -59,7 +59,7 @@ func RenderSummaryReport(w io.Writer, snap *models.TestSuiteSnapshot, h *heatmap
 		if r.Scope == "repository" {
 			if !hasRisk {
 				line("Risk Dimensions")
-				line(strings.Repeat("-", 50))
+				line(uitokens.H2Sep)
 				hasRisk = true
 			}
 			line("  %-20s %s", r.Type+":", strings.ToUpper(string(r.Band)))
@@ -72,7 +72,7 @@ func RenderSummaryReport(w io.Writer, snap *models.TestSuiteSnapshot, h *heatmap
 	// Directory hotspots (top 5)
 	if len(h.DirectoryHotSpots) > 0 {
 		line("Highest-Risk Directories")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		limit := 5
 		if len(h.DirectoryHotSpots) < limit {
 			limit = len(h.DirectoryHotSpots)
@@ -86,7 +86,7 @@ func RenderSummaryReport(w io.Writer, snap *models.TestSuiteSnapshot, h *heatmap
 	// Owner hotspots (top 5)
 	if len(h.OwnerHotSpots) > 0 {
 		line("Highest-Risk Owners")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		limit := 5
 		if len(h.OwnerHotSpots) < limit {
 			limit = len(h.OwnerHotSpots)
@@ -101,7 +101,7 @@ func RenderSummaryReport(w io.Writer, snap *models.TestSuiteSnapshot, h *heatmap
 	if snap.CoverageSummary != nil && snap.CoverageSummary.TotalCodeUnits > 0 {
 		cs := snap.CoverageSummary
 		line("Coverage by Type")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		line("  Code units:          %d", cs.TotalCodeUnits)
 		if cs.CoveredByUnitTests > 0 {
 			line("  Covered by unit:     %d", cs.CoveredByUnitTests)
@@ -128,7 +128,7 @@ func RenderSummaryReport(w io.Writer, snap *models.TestSuiteSnapshot, h *heatmap
 		}
 		if len(typeCounts) > 0 {
 			line("Test Types")
-			line(strings.Repeat("-", 50))
+			line(uitokens.H2Sep)
 			line("  Total test cases:    %d", len(snap.TestCases))
 			for _, t := range []string{"unit", "integration", "e2e"} {
 				if c, ok := typeCounts[t]; ok {
@@ -156,7 +156,7 @@ func RenderSummaryReport(w io.Writer, snap *models.TestSuiteSnapshot, h *heatmap
 		}
 		unowned := len(allFiles) - ownedCount
 		line("Ownership Coverage")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		line("  Files with owners:   %d / %d", ownedCount, len(allFiles))
 		if unowned > 0 {
 			line("  Unowned files:       %d", unowned)

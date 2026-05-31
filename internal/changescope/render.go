@@ -206,6 +206,41 @@ func RenderPRSummaryMarkdown(w io.Writer, pr *PRAnalysis) {
 // per-detector visibility floor.
 //
 // Trails a blank line so the next section header has breathing room.
+// renderFindingsByPath groups findings by file path and renders one
+// header per path followed by indented [SEV] explanation lines. Keeps
+// the wall-of-same-path effect from drowning multi-rule files (a
+// repo with three AI surfaces × three AI rules previously printed the
+// same path nine times; now it prints once with nine indented bullets).
+func renderFindingsByPath(line func(string, ...any), findings []ChangeScopedFinding) {
+	// Group preserving first-seen path order so the output is stable.
+	type group struct {
+		path  string
+		items []ChangeScopedFinding
+	}
+	var groups []*group
+	idx := map[string]*group{}
+	for _, f := range findings {
+		g, ok := idx[f.Path]
+		if !ok {
+			g = &group{path: f.Path}
+			idx[f.Path] = g
+			groups = append(groups, g)
+		}
+		g.items = append(g.items, f)
+	}
+	for _, g := range groups {
+		if len(g.items) == 1 {
+			f := g.items[0]
+			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, collapseLinebreaks(f.Explanation))
+			continue
+		}
+		line("  %s", g.path)
+		for _, f := range g.items {
+			line("    %s %s", uitokens.BracketedSeverity(f.Severity), collapseLinebreaks(f.Explanation))
+		}
+	}
+}
+
 func renderFindingsCards(line func(string, ...any), findings []ChangeScopedFinding, limit int) {
 	if len(findings) < limit {
 		limit = len(findings)
@@ -471,14 +506,19 @@ func RenderPRSummaryMarkdownWithHistory(w io.Writer, pr *PRAnalysis, hist Histor
 // / SuggestedAction when no template is registered — protection-gap
 // findings (no SignalType) always fall through.
 //
-// The trailing newline a YAML block-scalar leaves on Summary is
-// stripped — render output should be a single line.
+// Hard-wraps from YAML block scalars or detector source strings are
+// collapsed to a single line so the markdown bullet doesn't break
+// across paragraphs on GitHub. Leading `[signalType]` prefixes are
+// stripped — the same id is already embedded in the hidden
+// `terrain:finding=` marker and the PR-comment badge.
 func summaryAndActionForFinding(f ChangeScopedFinding) (summary, action string) {
-	summary = f.Explanation
-	action = f.SuggestedAction
+	summary = collapseLinebreaks(f.Explanation)
+	action = collapseLinebreaks(f.SuggestedAction)
 	if f.SignalType == "" {
 		return
 	}
+	// Strip a redundant `[signalType]` prefix some detectors include.
+	summary = stripSignalTypePrefix(summary, f.SignalType)
 	reg, err := prtemplates.Default()
 	if err != nil || reg == nil {
 		return
@@ -487,8 +527,8 @@ func summaryAndActionForFinding(f ChangeScopedFinding) (summary, action string) 
 	if !ok {
 		return
 	}
-	summary = strings.TrimSpace(tpl.Summary)
-	action = strings.TrimSpace(tpl.Action)
+	summary = collapseLinebreaks(strings.TrimSpace(tpl.Summary))
+	action = collapseLinebreaks(strings.TrimSpace(tpl.Action))
 	return
 }
 
@@ -675,27 +715,21 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 	if len(directRisk) > 0 {
 		line("New Risks (directly changed)")
 		line(strings.Repeat("-", 40))
-		for _, f := range directRisk {
-			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
-		}
+		renderFindingsByPath(line, directRisk)
 		blank()
 	}
 
 	if len(indirectRisk) > 0 {
 		line("Indirectly Impacted Gaps (%d)", len(indirectRisk))
 		line(strings.Repeat("-", 40))
-		for _, f := range indirectRisk {
-			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
-		}
+		renderFindingsByPath(line, indirectRisk)
 		blank()
 	}
 
 	if len(existingDebt) > 0 {
 		line("Pre-Existing Issues")
 		line(strings.Repeat("-", 40))
-		for _, f := range existingDebt {
-			line("  %s %s — %s", uitokens.BracketedSeverity(f.Severity), f.Path, f.Explanation)
-		}
+		renderFindingsByPath(line, existingDebt)
 		blank()
 	}
 
@@ -771,14 +805,86 @@ func RenderChangeScopedReport(w io.Writer, pr *PRAnalysis) {
 		blank()
 	}
 
-	if len(pr.Limitations) > 0 {
+	// Drop full-repo edge-case advisories from the PR view; they
+	// confuse adopters when they appear under a diff-scoped report.
+	if filtered := filterDiffScopedLimitations(pr.Limitations); len(filtered) > 0 {
 		line("Limitations")
 		line(strings.Repeat("-", 40))
-		for _, l := range pr.Limitations {
+		for _, l := range filtered {
 			line("  %s", l)
 		}
 		blank()
 	}
+}
+
+// collapseLinebreaks joins multi-line strings into one line so that
+// detector explanations with hard-wrap source formatting don't break
+// markdown list items on the PR-comment surface. Single-line input
+// returns unchanged; multi-line input collapses to a single
+// space-separated line.
+func collapseLinebreaks(s string) string {
+	if !strings.Contains(s, "\n") {
+		return s
+	}
+	var b strings.Builder
+	for _, line := range strings.Split(s, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
+			continue
+		}
+		if b.Len() > 0 {
+			b.WriteString(" ")
+		}
+		b.WriteString(trimmed)
+	}
+	return b.String()
+}
+
+// stripSignalTypePrefix removes a leading `[signalType]` token from
+// an explanation string. Some detectors emit `[fooBar] explanation
+// text`; the same id is already in the hidden `terrain:finding=`
+// marker, so duplicating it inline is just noise.
+func stripSignalTypePrefix(s, signalType string) string {
+	if signalType == "" {
+		return s
+	}
+	prefix := "[" + signalType + "] "
+	return strings.TrimPrefix(s, prefix)
+}
+
+// filterDiffScopedLimitations strips full-repo advisories ("too few
+// tests", "CI is already fast", etc.) from the PR-scoped limitations
+// list. Mirrors internal/reporting.filterDiffScopedLimitations —
+// duplicated here to keep changescope independent of reporting in
+// the package graph.
+func filterDiffScopedLimitations(lims []string) []string {
+	if len(lims) == 0 {
+		return nil
+	}
+	dropPrefixes := []string{
+		"too few tests",
+		"ci is already fast",
+		"ci is fast",
+		"high test duplication",
+		"high proportion of skipped",
+		"high proportion of flaky",
+		"low graph visibility",
+	}
+	out := make([]string, 0, len(lims))
+	for _, lim := range lims {
+		lower := strings.ToLower(strings.TrimLeft(lim, " *•"))
+		drop := false
+		for _, p := range dropPrefixes {
+			if strings.HasPrefix(lower, p) {
+				drop = true
+				break
+			}
+		}
+		if !drop {
+			out = append(out, lim)
+		}
+	}
+	return out
 }
 
 // renderAISection renders the AI risk review summary in markdown.

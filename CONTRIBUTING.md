@@ -10,21 +10,24 @@ go test ./cmd/... ./internal/...
 ./terrain analyze
 ```
 
-## Project Structure
+## Project structure
 
 ```
-cmd/terrain/          CLI entry point (11 canonical commands + legacy aliases)
-cmd/internal/         Maintainer-only tooling (benchmarks, corpus, doc gen, release gates)
-internal/             core libraries (see internal/README.md for the full listing)
-├── analysis/        Repository scanning and code surface inference
-├── convert/         Go-native test conversion (25 directions)
-├── depgraph/        Dependency graph with 5 reasoning engines
-├── engine/          Pipeline orchestration
-├── impact/          Change-scope analysis
-├── insights/        Prioritized health report
-├── measurement/     5 posture dimensions, 18 measurements
-├── reporting/       14 report renderers
-└── ...              See README.md for full package list
+cmd/terrain/        CLI entry point (14 canonical commands + legacy aliases)
+cmd/internal/       Maintainer-only tooling (benchmarks, doc gen, release gates)
+internal/           Core libraries — see DESIGN.md for the full package map
+├── analysis/       Repository scanning + code-surface inference
+├── convert/        Go-native test conversion (25 directions)
+├── depgraph/       Typed dependency graph (21 node types, 18 edge types)
+├── engine/         Pipeline orchestration
+├── impact/         Change-scope analysis
+├── injection/      Prompt-injection pattern library + test-input emitter
+├── insights/       Prioritized health report
+├── measurement/    Posture-band computation
+├── plugin/         Third-party plugin manifest schema + validator
+├── reporting/      Diagnostic format renderers
+├── scaffold/       Mutation-test scaffold generator
+└── signals/        Signal manifest (rule registry)
 ```
 
 ## Development Workflow
@@ -36,15 +39,31 @@ go build -o terrain ./cmd/terrain
 # Test all Go packages
 go test ./cmd/... ./internal/...
 
-# Verify formatting
-gofmt -l cmd/ internal/
+# Format (release-gate runs gofmt -l first and fails if any file needs reformatting)
+gofmt -w .
 
 # Run vet
 go vet ./...
 
-# Full release verification (Go + npm + VS Code extension)
+# Verify generated docs are in sync with the manifest
+make docs-verify
+
+# Full release verification: gofmt check → vet → tests → snapshot tests → regression gate
+make release-gate
+
+# Broader release verification (Go + npm + VS Code extension)
 make release-verify
 ```
+
+`make release-gate` is the single command CI runs to validate a PR. It exits 0 only when:
+
+1. `gofmt -l .` produces no output (run `gofmt -w .` to fix).
+2. `go vet ./cmd/... ./internal/...` is clean.
+3. `go test ./cmd/... ./internal/...` passes.
+4. The CLI snapshot tests (`-run TestSnapshot`) pass.
+5. The regression-suite + recall-harness loaders validate every YAML file under `harness/`.
+
+If `make release-gate` fails, fix the underlying issue rather than skipping the gate.
 
 ## Adding a New Command
 
@@ -104,22 +123,16 @@ type(scope): description
 Repository scan → Signal detection → Risk scoring → Snapshot → Reporting
 ```
 
-See [DESIGN.md](DESIGN.md) for the architecture overview and the [CLI spec](docs/cli-spec.md) for the complete command reference.
+See [DESIGN.md](DESIGN.md) for the full architecture and the [CLI spec](docs/cli-spec.md) for the complete command reference.
 
-## Release gates
+## Maintainer gates
 
-Terrain enforces release gates so no functional area drifts behind the others. Hard gates block release; soft gates warn. The full gate machinery is maintainer-side; contributor PRs are reviewed against the gates but don't have to interact with them directly.
-
-### Local commands
+Beyond `make release-gate` (which all PRs must pass), maintainers run uniformity gates that catch unevenness across detectors / frameworks / commands / outputs — e.g. "every detector has the same required fields", "every Tier-1 framework reaches the same coverage axis floor":
 
 ```bash
 make pillar-parity            # full matrix + per-pillar verdict
-make pillar-parity-floor      # compact: just the floor map
+make pillar-parity-floor      # compact floor map
 make pillar-parity-json       # JSON for tooling
 ```
 
-Exit codes: `0` if every hard-gate pillar is at or above its floor (soft warns are OK), `1` if any hard-gate pillar is below its floor, `2` for usage errors (missing files, malformed YAML).
-
-### Uniformity gates
-
-In addition to per-cell floors, uniformity gates catch *unevenness* across detectors / frameworks / commands / outputs (e.g. "every detector has the same required fields", "every Tier-1 framework reaches the same axis floor").
+Exit codes: `0` every hard-gate pillar at or above floor (soft warns allowed); `1` any hard-gate pillar below floor; `2` usage error.

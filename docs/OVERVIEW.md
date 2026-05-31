@@ -51,7 +51,7 @@ See `docs/LIMITATIONS.md` for the comprehensive list. The major items:
 - **Single-repo analysis only** — adopters with FE/BE in separate repos run Terrain on each independently; cross-repo edges are future work
 - **No observability-tool ingestion** — Honeycomb / Datadog / production-metric-based rules are not in scope today
 - **No marketplace listings** — GitHub Action / Claude Skill / OpenAI listings are not yet published
-- **Analyzed languages** — Go, JavaScript, TypeScript, Python, Java. Other languages (Ruby, Rust, Kotlin, Swift) are not analyzed today
+- **Analyzed languages** — Go, JavaScript, TypeScript, Python, Java. Ruby, Rust, Kotlin, Swift, Scala, and C# are not analyzed in 0.2.x
 
 ## What adopting 0.2.0 requires
 

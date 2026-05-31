@@ -24,7 +24,7 @@ If this RFC fixes something in `docs/PRODUCT.md`, cite the section and quote the
 Concrete proposal. Be specific:
 
 - If proposing a new rule: include the full rule template fill per `docs/rules/_template.md`, including detection mechanism, default severity, worked example
-- If proposing a breaking change to a public API: include the deprecation cycle plan per §18 versioning (alias period, stderr message format, removal version)
+- If proposing a breaking change to a public API: include the deprecation plan per the versioning section in `docs/PRODUCT.md` (alias period, stderr message format, removal version)
 - If proposing a new integration: include the `docs/integrations/<tool>.md` template fill
 - If proposing a new LB quality bar: include how it's measured by the validation harness
 

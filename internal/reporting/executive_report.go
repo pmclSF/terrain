@@ -7,6 +7,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/measurement"
 	"github.com/pmclSF/terrain/internal/summary"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderExecutiveSummary writes a concise, leadership-oriented summary to w.
@@ -16,8 +17,7 @@ import (
 func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	line, blank := reportHelpers(w)
 
-	line("Terrain Executive Summary")
-	line(strings.Repeat("=", 50))
+	line(uitokens.Header("Executive Summary"))
 	blank()
 
 	// Overall posture — surface the underlying measurements alongside
@@ -33,7 +33,7 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	// the full measurement breakdown with evidence + caveats; this
 	// summary view trims to a one-line digest.
 	line("Overall Posture")
-	line(strings.Repeat("-", 50))
+	line(uitokens.H2Sep)
 	for _, d := range es.Posture.Dimensions {
 		dim := measurement.Dimension(d.Dimension)
 		label := measurement.DimensionDisplayName(dim)
@@ -53,16 +53,17 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 		line("  (no risk surfaces computed)")
 	} else {
 		line("  Dimension meaning:")
-		line("    reliability: runtime stability and determinism")
-		line("    change: test confidence for safe refactoring and delivery")
-		line("    speed: execution efficiency and feedback-loop latency")
-		line("    governance: policy adherence and operational control")
+		line("    Health:             test-system reliability and signal cleanliness")
+		line("    Coverage depth:     how thoroughly tests cover the source surface")
+		line("    Coverage diversity: how many test layers (unit / integration / e2e) participate")
+		line("    Structural risk:    blind-spots in the dependency graph (high fanout, weak coverage)")
+		line("    Operational risk:   skip / flake / slow-test burden eroding signal")
 	}
 	blank()
 
 	// Key numbers
 	line("Key Numbers")
-	line(strings.Repeat("-", 50))
+	line(uitokens.H2Sep)
 	line("  Test files:          %d", es.KeyNumbers.TestFiles)
 	line("  Frameworks:          %d", es.KeyNumbers.Frameworks)
 	line("  Total signals:       %d", es.KeyNumbers.TotalSignals)
@@ -77,7 +78,7 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	// Top risk areas
 	if len(es.TopRiskAreas) > 0 {
 		line("Top Risk Areas")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		for _, a := range es.TopRiskAreas {
 			// "Top Risk Areas" is unambiguously risk-shaped output —
 			// translate Strong → Low, Weak → Significant, etc. so
@@ -96,7 +97,7 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	// Trend highlights
 	if es.HasTrendData && len(es.TrendHighlights) > 0 {
 		line("Trend Highlights")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		for _, t := range es.TrendHighlights {
 			icon := " "
 			switch t.Direction {
@@ -110,7 +111,7 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 		blank()
 	} else if !es.HasTrendData {
 		line("Trend Highlights")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		line("  This is the first analysis — it establishes your baseline.")
 		line("  Save it and re-run later to see trends:")
 		line("    terrain analyze --write-snapshot    save this as baseline")
@@ -121,7 +122,7 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	// Dominant drivers
 	if len(es.DominantDrivers) > 0 {
 		line("Dominant Drivers")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		for _, d := range es.DominantDrivers {
 			line("  %s", d)
 		}
@@ -131,7 +132,7 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	// Recommended focus
 	if es.RecommendedFocus != "" {
 		line("Recommended Focus")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		line("  %s", es.RecommendedFocus)
 		blank()
 	}
@@ -139,7 +140,7 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	// Structured recommendations
 	if len(es.Recommendations) > 0 {
 		line("Prioritized Recommendations")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		for _, r := range es.Recommendations {
 			strength := string(r.EvidenceStrength)
 			if strength == "" {
@@ -156,7 +157,7 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 	// Blind spots
 	if len(es.BlindSpots) > 0 {
 		line("Known Blind Spots")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		for _, b := range es.BlindSpots {
 			line("  %s: %s", b.Area, b.Reason)
 			if b.Remediation != "" {
@@ -168,7 +169,7 @@ func RenderExecutiveSummary(w io.Writer, es *summary.ExecutiveSummary) {
 
 	// Benchmark readiness
 	line("Benchmark Readiness")
-	line(strings.Repeat("-", 50))
+	line(uitokens.H2Sep)
 	if len(es.BenchmarkReadiness.ReadyDimensions) > 0 {
 		line("  Ready:")
 		for _, d := range es.BenchmarkReadiness.ReadyDimensions {

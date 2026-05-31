@@ -56,9 +56,7 @@ Grouped triage for:
 - terminal shortcuts for summary and migration blockers
 - file reveal from findings
 
-Future editor enrichments like diagnostics, hovers, and diff previews can build
-on the same CLI report contracts without moving business logic into the
-extension.
+Diagnostics, hovers, and diff previews can build on the same CLI report contracts as adopter feedback drives them — no business logic moves into the extension.
 
 ## Implementation
 

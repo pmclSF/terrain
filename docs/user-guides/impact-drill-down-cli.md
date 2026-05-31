@@ -123,7 +123,7 @@ Owner Impact:
     Changed units: 7
     Protective tests: 6
     Gaps: 2
-    Posture: MODERATE
+    Posture: Moderate
 
   @platform-team
     Changed units: 4

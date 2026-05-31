@@ -9,8 +9,8 @@ terrain explain test/auth.test.js
 ```
 
 ```
-Terrain Explain
-============================================================
+Terrain · Explain
+────────────────────────────────────────────────────────────
 
 Target: test/auth.test.js
 Framework: jest
@@ -18,12 +18,12 @@ Framework: jest
 Verdict: Selected via exact per-test coverage from src/auth.js:login (confidence: high), plus 1 alternative path(s).
 
 Strongest path (confidence: 95% — high)
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   src/auth.js:login
     → test/auth.test.js  [exact per-test coverage, confidence: 95%]
 
 Alternative paths (1)
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Path 1 (confidence: 95% — high)
   src/auth.js:logout
     → test/auth.test.js  [exact per-test coverage, confidence: 95%]
@@ -43,8 +43,8 @@ terrain explain selection
 ```
 
 ```
-Terrain Explain — Test Selection
-============================================================
+Terrain · Explain — Test Selection
+────────────────────────────────────────────────────────────
 
 Summary: 1 test(s) selected, strategy: exact, coverage confidence: high.
 
@@ -59,7 +59,7 @@ High confidence (1):
   test/auth.test.js                               95%  via exact per-test coverage from src/auth.js:login
 
 Limitations
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   * No ownership data available; coordination risk may be underestimated.
 
 Next steps:
@@ -77,8 +77,8 @@ terrain explain selection
 ```
 
 ```
-Terrain Explain — Test Selection
-============================================================
+Terrain · Explain — Test Selection
+────────────────────────────────────────────────────────────
 
 Summary: 0 test(s) selected, strategy: fallback_broad, coverage confidence: low, 1 protection gap(s).
 
@@ -91,7 +91,7 @@ Fallback: all
   no impacted tests identified; full suite fallback
 
 Limitations
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   * No per-test coverage lineage available; test selection uses structural heuristics.
   * No ownership data available; coordination risk may be underestimated.
 
@@ -110,8 +110,8 @@ terrain explain test/api.test.js
 ```
 
 ```
-Terrain Explain
-============================================================
+Terrain · Explain
+────────────────────────────────────────────────────────────
 
 Target: test/api.test.js
 Framework: jest
@@ -119,12 +119,12 @@ Framework: jest
 Verdict: Selected via exact per-test coverage from src/api/handler.js:handle (confidence: high), plus 1 alternative path(s).
 
 Strongest path (confidence: 95% — high)
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   src/api/handler.js:handle
     → test/api.test.js  [exact per-test coverage, confidence: 95%]
 
 Alternative paths (1)
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Path 1 (confidence: 95% — high)
   src/api/validator.js:validate
     → test/api.test.js  [exact per-test coverage, confidence: 95%]

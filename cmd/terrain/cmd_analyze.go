@@ -430,15 +430,11 @@ func runAnalyze(o analyzeRunOpts) error {
 		reporting.RenderAnalyzeReportV2(os.Stdout, report)
 	}
 
-	// Show hints for missing artifacts after the report.
-	hints := engine.MissingArtifactHints(&opt, result.ArtifactDiscovery, result.Snapshot.Repository.Languages)
-	if len(hints) > 0 {
-		fmt.Println()
-		fmt.Println("Unlock more:")
-		for _, hint := range hints {
-			fmt.Printf("  %s\n", hint)
-		}
-	}
+	// The "Unlock more" hints used to print here, but they
+	// duplicated the Recommended actions + Limitations sections the
+	// report already renders. Removing the duplicate keeps the
+	// post-report space clean for the gate result.
+	_ = engine.MissingArtifactHints
 
 	// --fail-on gate: text-mode renderer falls through to the same
 	// gateErr() the other branches use, so the gate decision applies

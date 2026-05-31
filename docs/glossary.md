@@ -1,17 +1,10 @@
 # Glossary
 
-A single page for the Terrain-specific vocabulary the rest of the
-docs assume you've absorbed. Each term gets a one-sentence
-definition plus a "see also" pointer for the longer form.
+Terrain-specific vocabulary the rest of the docs assume. One sentence + a pointer.
 
 ## Snapshot
 
-The canonical serialised artifact Terrain produces from a repo: a
-JSON document conforming to the schema in
-[`docs/schema/COMPAT.md`](schema/COMPAT.md). A snapshot captures
-test files, scenarios, signals, surfaces, eval runs, risk surfaces,
-and metadata at one point in time. Two snapshots can be compared
-(`terrain compare`) to surface trends.
+The canonical serialized artifact Terrain produces from a repo: a JSON document conforming to the schema in [`docs/schema/COMPAT.md`](schema/COMPAT.md). Captures test files, scenarios, signals, surfaces, eval runs, risk surfaces, and metadata at one point in time. Compare two with `terrain compare` to see trends.
 
 ## Signal
 
@@ -96,10 +89,7 @@ examples.
 
 ## docs-verify gate
 
-`make docs-verify` — the release gate that asserts the generated
-docs (manifest, severity rubric, rule doc stubs) are zero-diff
-against what the generators produce from the Go source.
-Drift between code and docs is treated as a release blocker.
+`make docs-verify` — the release gate that re-generates the manifest, severity rubric, and rule-doc stubs into a tempdir and diffs against the committed copies. Any drift between the Go source of truth and the published docs fails the gate.
 
 ## Surface ID
 

@@ -1,151 +1,71 @@
 # Terrain Quickstart
 
-Five minutes from install to one actionable insight on your repo. The walkthrough is structured around three insights that anchor a first-user evaluation:
-
-1. **PR risk explanation** — a finding tied to a changed file
-2. **Coverage gap with explanation** — a named uncovered export with a
-   remediation pointer
-3. **Test-selection explanation** — chosen tests + reason chains
-
-Terrain operates one layer above your test runners (Jest / pytest / Go
-test / Playwright / Promptfoo). It reads what they produce, models the
-test system as one thing, and gates against it. No config, no setup,
-no test execution required for the walkthrough.
+Five minutes from install to three actionable insights on your repo. No config, no setup, no test execution required.
 
 ## Install
 
 ```bash
-# Homebrew
-brew install pmclSF/terrain/mapterrain
-
-# npm
-npm install -g mapterrain
-
-# Go binary
-go install github.com/pmclSF/terrain/cmd/terrain@latest
-
-# From source
-git clone https://github.com/pmclSF/terrain.git
-cd terrain && go build -o terrain ./cmd/terrain
+brew install pmclSF/terrain/mapterrain        # Homebrew (macOS / Linux)
+npm install -g mapterrain                     # npm (Node 22+)
+go install github.com/pmclSF/terrain/cmd/terrain@latest  # Go
 ```
 
-## Step 1 — Understand (90 seconds)
+Or download a signed binary from the [releases page](https://github.com/pmclSF/terrain/releases).
 
-The primary workflow's first command. Run this in any repository with
-test files:
+## 1. Understand your test system
 
 ```bash
+cd your-repo
 terrain analyze
 ```
 
-You should see a report with the repository profile, signal breakdown,
-risk posture, and key findings. **This is your "coverage gap with
-explanation" insight**: the report names specific uncovered exports
-with remediation pointers ("Add test coverage for 12 uncovered
-exported function(s) — see untestedExport signals for specific
-functions").
+You'll see a one-line headline (the most surprising finding), a Key Findings block ranked by severity, repository profile, and risk posture. Every finding names specific files and signals — no vague handwaving.
 
-That's the first of the three first-user insights. Two more to go.
+## 2. See what your change puts at risk
 
-## Step 2 — Gate (90 seconds)
-
-The primary workflow's second command. On a feature branch with diff
-against main, run:
+On a feature branch with a diff against `main`:
 
 ```bash
 terrain report pr --base main
 ```
 
-This emits a change-scoped PR risk report — what your diff actually
-puts at risk, ranked by confidence. **This is your "PR risk
-explanation" insight**: every blocking signal is tied to a specific
-changed file with a "what / why / what-to-do" line.
+A change-scoped risk report — what your diff actually affects, ranked by confidence, each line tied to a specific file. Add `--fail-on=high` to turn it into a CI gate (exit code 6 on blocking findings).
 
-Add `--fail-on critical` and the command exits non-zero (code 6) when
-any critical-severity finding is present. That's how you wire it
-into CI as a gate. See the [CI integration
-example](examples/gate/github-action.yml) for the recommended config.
-
-## Step 3 — See which tests matter (90 seconds)
+## 3. See which tests matter for the change
 
 ```bash
 terrain report impact --base main --explain-selection
 ```
 
-This is the **test-selection explanation** insight: chosen tests plus
-the reason chain for why each was selected and why others were not.
+The selected tests plus the reason chain for each. `--explain-selection` shows why a test made the cut and why others didn't — clarity, not safe-skip advice.
 
-> **Note on safe-skip:** Terrain provides explainable selection. It does
-> not assert that any specific test is safe to skip. The "see which
-> tests matter — and why" pitch is a clarity claim, not a safe-skip
-> claim. Whether to skip the unselected tests is your call, with the
-> evidence Terrain hands you.
+That's the core loop. Everything below adds depth.
 
-That's the three first-user insights. From here, the rest of this
-guide goes deeper.
+---
 
-## Understanding the report
+## Adding optional inputs
 
-The report starts with the most important information:
-
-**Headline** -- a single sentence summarizing the most surprising finding.
-
-**Key Findings** -- the top issues by severity (duplicates, coverage gaps, high-fanout modules).
-
-**What to do next** -- copy-pasteable commands for the highest-impact next steps.
-
-Below that, you'll see the repository profile, signal breakdown, risk posture, and any structural anomalies. Every finding traces back to specific files and signals.
-
-## What Terrain detects
-
-Out of the box, with no configuration:
-
-- **Frameworks**: Jest, Vitest, Playwright, Cypress, pytest, unittest, Go testing, JUnit, TestNG, Mocha, Jasmine, WebdriverIO, Puppeteer, TestCafe, nose2, and more
-- **Languages**: JavaScript, TypeScript, Python, Go, Java
-- **Quality signals**: weak assertions, mock-heavy tests, assertion-free tests, orphaned tests, untested exports
-- **Health signals**: slow tests, flaky tests, skipped tests, dead tests (requires runtime data)
-- **Structural signals**: high-fanout fixtures, duplicate test clusters, coverage gaps
-- **Migration signals**: deprecated patterns, framework fragmentation, blocker density
-- **AI/eval surfaces**: prompts, contexts, datasets, tool definitions, RAG pipelines, eval scenarios
-
-With optional coverage and runtime data, Terrain also detects coverage breaches, runtime budget violations, and stability clusters.
-
-## Going deeper
-
-### Add coverage data
-
-If your project generates coverage reports, Terrain uses them for precise coverage mapping:
+Terrain reads what your tools already produce. Each integration is one flag:
 
 ```bash
-# Generate coverage (pick your framework)
-npx jest --coverage --coverageReporters=lcov
-go test -coverprofile=coverage.out ./...
+# Coverage data → precise structural coverage mapping
 pytest --cov --cov-report=lcov
-
-# Terrain auto-detects common paths, or specify explicitly:
 terrain analyze --coverage coverage/lcov.info
-```
 
-### Add runtime data
-
-Runtime artifacts (JUnit XML, Jest JSON) unlock health signals -- flaky tests, slow tests, dead tests:
-
-```bash
-# Generate runtime artifacts
-npx jest --json --outputFile=jest-results.json
-go test -json ./... > test-output.json
+# Runtime artifacts → flaky / slow / dead test detection
 pytest --junitxml=junit.xml
-
-# Terrain auto-detects common paths, or specify explicitly:
 terrain analyze --runtime junit.xml
+
+# Snapshot for trend tracking
+terrain analyze --write-snapshot
+terrain compare        # later
 ```
 
-### Wire into CI
+## Wire into CI
 
-`terrain test` is the CI-mode wrapper. It runs analyze and emits two artifacts: JUnit XML (so your CI's test reporter renders Terrain findings as test cases) and a markdown step-summary (so reviewers see findings on the workflow run page).
+`terrain test` is the CI-mode wrapper. It writes JUnit XML (GitHub's test reporter shows Terrain findings as test cases) and a markdown step-summary (visible on the workflow run page):
 
 ```yaml
-# GitHub Actions
 - name: Terrain pre-flight
   run: |
     terrain test \
@@ -153,99 +73,45 @@ terrain analyze --runtime junit.xml
       --summary "$GITHUB_STEP_SUMMARY"
 ```
 
-The `--summary` value is the path Terrain writes to; `$GITHUB_STEP_SUMMARY` is the file GitHub Actions reads from. Setting them equal makes the findings appear on the run page automatically. Outside GitHub Actions, point `--summary` at any file your CI exposes.
+The `--summary` value is the file Terrain writes; `$GITHUB_STEP_SUMMARY` is the file GitHub Actions reads. Set them equal and findings appear on the run page automatically. Full templates in [`docs/examples/gate/`](examples/gate/).
 
-### See what your change affects
+## AI surfaces
 
-```bash
-terrain impact --base main
-```
-
-This traces your diff through the dependency graph and tells you which tests matter for the change.
-
-### Get prioritized recommendations
+If your repo has prompts, RAG pipelines, or eval suites, Terrain maps them automatically:
 
 ```bash
-terrain insights
+terrain ai list                          # inventory
+terrain ai run --base main --dry-run     # which evals does this change affect?
+terrain ai doctor                        # validate setup
+terrain ai findings --json               # CI-consumable eval-gap findings
 ```
 
-A ranked list of findings with effort estimates and suggested actions.
+`terrain report pr` flags changed AI surfaces with no covering eval. The dependency graph that powers test selection for application code also traces AI surface edges.
 
-### Understand a specific finding
+## Hardening a prompt before deployment
+
+Two generators produce a test suite around a prompt without invoking the model — the assertion is yours:
 
 ```bash
-# Explain a test file
-terrain explain src/auth/login.test.ts
+# Boundary-case mutation tests from a JSON Schema
+terrain scaffold --schema schemas/input.json --prompt prompts/main.md \
+  > tests/test_prompt_boundaries.py
 
-# Explain the overall test selection strategy
-terrain explain selection
+# Jailbreak-shaped inputs matched against the prompt body
+terrain inject --prompt prompts/main.md \
+  > tests/test_prompt_injection.py
 ```
 
-Shows the reasoning behind any finding — which signals fired, what dependency paths are involved, and how scoring rules produced the decision.
+Default output is pytest; use `--lang typescript` for vitest.
 
-### Track trends over time
+## Downstream tooling handoff
 
-```bash
-# Save a snapshot
-terrain analyze --write-snapshot
+Every `terrain analyze` writes a canonical `.terrain/findings.json` (schema version 1). `terrain mcp` reads it; IDE plugins consume it; SARIF uploaders transform it.
 
-# Later, compare
-terrain compare
-```
+## Next
 
-### Check policy compliance in CI
-
-```bash
-terrain policy check --json
-# Exit 0 = pass, 2 = violations
-```
-
-### AI surface validation
-
-If your codebase has AI components (prompts, RAG pipelines, eval suites), Terrain maps them automatically:
-
-```bash
-# See what AI surfaces exist and what's covered
-terrain ai list
-
-# Check which eval scenarios a change affects
-terrain ai run --base main --dry-run
-
-# Validate AI setup
-terrain ai doctor
-```
-
-Terrain starts giving AI surfaces CI-visible structure: inventory, impact-scoped eval selection where configured, protection-gap detection, and reviewable risk signals. Suppression workflows and labeled-repo precision floors are future work.
-
-## The four primary questions
-
-Everything in Terrain maps to one of four questions:
-
-| Command | Question |
-|---------|----------|
-| `terrain analyze` | What is the state of our test system? |
-| `terrain insights` | What should we fix? |
-| `terrain impact --base main` | What tests matter for this change? |
-| `terrain explain <target>` | Why did Terrain make this decision? |
-
-## Supporting views
-
-| Command | Purpose |
-|---------|---------|
-| `terrain summary` | Executive summary with risk and trends |
-| `terrain focus` | Prioritized next actions |
-| `terrain posture` | Measurement evidence by dimension |
-| `terrain portfolio` | Cost, breadth, leverage, redundancy |
-| `terrain metrics` | Aggregate metrics scorecard |
-| `terrain select-tests` | Protective test set for CI |
-| `terrain pr --base main` | PR-scoped analysis |
-| `terrain show test <path>` | Drill into a specific test file |
-
-All commands support `--json` for machine-readable output and `--root PATH` to target a specific repository.
-
-## What's next
-
-- [CLI Reference](cli-spec.md) -- all commands and flags
-- [Signal Catalog](signal-catalog.md) -- the signal types Terrain detects
-- [Example Reports](examples/analyze-report.md) -- sample output for each command
-- [Contributing](contributing/adding-a-measurement.md) -- how to extend Terrain
+- [CLI specification](cli-spec.md) — every command, every flag
+- [Compatibility](compatibility.md) — supported frameworks, languages, schemas, eval tools, pipelines
+- [Example reports](examples/) — full sample outputs for analyze / impact / insights / explain
+- [Signal catalog](signal-catalog.md) — every detector and what it fires on
+- [Contributing](contributing/adding-a-measurement.md) — extending Terrain

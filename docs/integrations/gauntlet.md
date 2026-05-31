@@ -126,42 +126,10 @@ When a Gauntlet artifact is ingested:
 
 4. **Coverage enrichment** — Scenario execution results improve coverage confidence for the code surfaces those scenarios validate.
 
-## Graph Integration
+## Graph integration
 
-Gauntlet results connect through the AI reasoning path:
+Gauntlet results attach to the AI reasoning graph through `CodeSurface ← Scenario ← ExecutionRun`. When `terrain explain <scenario-id>` runs, the trace includes Gauntlet execution status, metric values, and baseline comparisons.
 
-```
-CodeSurface ← Scenario (with Gauntlet execution data)
-                  ↓
-              Environment (execution target)
-                  ↓
-              ExecutionRun (Gauntlet run metadata)
-```
+## `terrain ai run` workflow
 
-When `terrain explain <scenario-id>` is called, the explanation traces include Gauntlet execution status, metric values, and baseline comparisons.
-
-## Benchmark Integration
-
-Gauntlet is included in Terrain's benchmark matrix as a real-world repository:
-
-```json
-{
-  "name": "gauntlet",
-  "path": "benchmarks/repos/gauntlet",
-  "type": "real",
-  "description": "AI eval execution provider — deterministic eval runner with baseline comparison"
-}
-```
-
-This ensures Terrain's analysis engines (framework detection, signal generation, coverage analysis) are validated against Gauntlet's codebase structure.
-
-## `terrain ai run` Integration
-
-`terrain ai run` integrates with Gauntlet by:
-
-1. Selecting relevant scenarios based on code changes (`terrain impact`)
-2. Invoking the eval framework as the execution backend
-3. Ingesting results automatically via `--gauntlet` flag
-4. Reporting pass/fail with explanation traces
-
-The interface between Terrain and Gauntlet is the artifact JSON described above — Terrain writes a scenario selection file, the eval framework executes and writes results, Terrain ingests results via `terrain analyze --gauntlet results.json`.
+`terrain ai run` selects scenarios based on `terrain impact`, invokes Gauntlet as the execution backend, and ingests the results via `--gauntlet results.json`. The interface is the artifact JSON described above — Terrain writes a scenario selection file, Gauntlet executes, Terrain ingests.

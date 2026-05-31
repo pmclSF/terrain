@@ -31,6 +31,23 @@ Verifiable: run `terrain --print-network` — for templates-only operation, the 
 
 Build-time dependencies (Go module fetching, etc.) are not at runtime; they're at install/build time and follow standard Go toolchain behavior.
 
+## Binary install integrity
+
+Pre-built binaries are downloaded by the `npm install -g mapterrain` and `brew install pmclSF/terrain/mapterrain` paths from GitHub Releases. Each release is signed with [Sigstore + cosign](https://www.sigstore.dev/) keyless signatures.
+
+- **npm path:** the postinstall script verifies each binary against its Sigstore signature before placing it on `PATH`. Install cosign first (`brew install cosign` on macOS/Linux, `scoop install cosign` on Windows). Node 22+ is required for the postinstall — the script uses APIs (`fetch`, top-level `await`, modern stream primitives) that landed in Node 22; CI images on Node 20 LTS should use the Homebrew or `go install` path.
+- **Brew path:** Homebrew handles its own bottle signing; Sigstore verification of the underlying binary still applies if you also pre-install cosign.
+- **Source path (`go install`):** the Go toolchain validates module checksums via `go.sum`; no Sigstore step.
+
+If cosign isn't installed and you need to proceed:
+
+| Environment variable | Effect | When to use |
+|---|---|---|
+| `TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1` | Falls back to SHA-256 checksum verification (still validates the binary hasn't been tampered with in transit) | CI images that can't install cosign |
+| `TERRAIN_INSTALLER_SKIP_VERIFY=1` | Skips all verification entirely | Air-gapped environments or local development only — not recommended for production CI |
+
+For air-gapped installations or organizations that mirror their own binaries, download from the [releases page](https://github.com/pmclSF/terrain/releases), verify the cosign signature manually against `terrain_<platform>.tar.gz.sig`, and place on `PATH`.
+
 ## What changes when each optional feature is enabled
 
 Terrain has three LLM tiers, all opt-in and configured in `terrain.yaml`. None is enabled by default.

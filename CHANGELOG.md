@@ -153,7 +153,7 @@ All notable changes to Terrain are documented here. The format follows
   same files at `<ref>` and flags prompt templates that reference
   fields the PR removed or whose type changed. The finding includes
   a side-by-side rendering of the template before and after, with
-  values synthesised from each schema's property types and a
+  values synthesized from each schema's property types and a
   `MISSING(<name>)` marker where a referenced field is no longer
   present. LLM-free, deterministic, no network. Ships at observability
   tier; stays at observability until adopter-corpus precision
@@ -162,7 +162,7 @@ All notable changes to Terrain are documented here. The format follows
   substitution with two flavors: mustache (`{{name}}`, used in
   `.md`/`.markdown` template files) and Python f-string (`{name}`,
   used inline in Python sources — caller extracts the literal).
-  Both honour escape sequences (`{{{{x}}}}` → literal `{{x}}` for
+  Both honor escape sequences (`{{{{x}}}}` → literal `{{x}}` for
   mustache; `{{` / `}}` → literal braces for f-string) and trim
   whitespace inside placeholders. Returns a typed `MissingVarError`
   with the template path when a referenced variable is absent.
@@ -412,7 +412,7 @@ weight, span). JSON mode is structured for CI consumption.
 
 `terrain ai list` (inventory), `terrain ai findings` (verdict engine), and the AI catalog detectors (via `terrain analyze` / `terrain report pr`) emit different shapes and answer different questions — run all three in CI.
 
-### CLI restructure — phase A (canonical 11 + 33 legacy aliases)
+### CLI restructure — canonical 11 commands + 33 legacy aliases
 
 The canonical 11-command surface ships as non-breaking namespace
 dispatchers (`terrain report`, `terrain migrate`, `terrain config`)
@@ -703,7 +703,7 @@ foundation.
 
 ### Correctness & durability fixes
 
-- `.gitignore` is now honoured during repository scanning. Vendored
+- `.gitignore` is now honored during repository scanning. Vendored
   trees and generated artefacts the user has explicitly excluded are
   no longer walked.
 - File cache is bounded: per-file 8 MB, total 256 MB. Files past the

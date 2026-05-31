@@ -7,14 +7,14 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/impact"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderImpactReport writes a human-readable impact analysis report.
 func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	line, blank := reportHelpers(w)
 
-	line("Terrain Impact Analysis")
-	line(strings.Repeat("=", 60))
+	line(uitokens.Header("Impact Analysis"))
 	blank()
 
 	// Designed empty-state when the change has no measurable test
@@ -29,11 +29,18 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	line("Summary: %s", result.Summary)
 	blank()
 
-	// Changed areas
+	// Changed areas — dedupe by (area, path, change-kind) so a file
+	// with multiple impacted code units doesn't print once per unit.
 	if len(result.ChangedAreas) > 0 {
 		line("Changed areas:")
+		seen := map[string]bool{}
 		for _, area := range result.ChangedAreas {
 			for _, s := range area.Surfaces {
+				key := area.Area + "\x00" + s.Path + "\x00" + string(s.ChangeKind)
+				if seen[key] {
+					continue
+				}
+				seen[key] = true
 				line("  %-22s %s (%s)", area.Area, s.Path, s.ChangeKind)
 			}
 		}
@@ -65,7 +72,7 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	line("Coverage confidence:     %s", capitalizeFirst(result.CoverageConfidence))
 
 	// PR risk
-	line("PR risk:                 %s", strings.ToUpper(result.Posture.Band))
+	line("PR risk:                 %s", capitalizeFirst(result.Posture.Band))
 	blank()
 
 	// Reason categories
@@ -88,11 +95,11 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	}
 
 	// Change-risk posture dimensions
-	line("Change-Risk Posture: %s", strings.ToUpper(result.Posture.Band))
+	line("Change-Risk Posture: %s", capitalizeFirst(result.Posture.Band))
 	line("  %s", result.Posture.Explanation)
 	if len(result.Posture.Dimensions) > 0 {
 		for _, d := range result.Posture.Dimensions {
-			line("  %-20s %s", d.Name+":", d.Band)
+			line("  %-20s %s", d.Name+":", capitalizeFirst(d.Band))
 		}
 	}
 	blank()
@@ -100,7 +107,7 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	// Selected protective tests
 	if len(result.SelectedTests) > 0 {
 		line("Recommended Tests (%d)", len(result.SelectedTests))
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, t := range result.SelectedTests {
 			conf := ""
 			if t.ImpactConfidence != "" {
@@ -134,7 +141,7 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 		}
 
 		line("Impacted Scenarios (%d)", len(result.ImpactedEvals))
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, sc := range result.ImpactedEvals {
 			conf := ""
 			if sc.ImpactConfidence != "" {
@@ -169,9 +176,9 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	// Protection gaps
 	if len(result.ProtectionGaps) > 0 {
 		line("Protection Gaps")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, gap := range result.ProtectionGaps {
-			line("  [%s] %s", gap.Severity, gap.Explanation)
+			line("  %s %s", uitokens.BracketedSeverity(gap.Severity), gap.Explanation)
 			if gap.SuggestedAction != "" {
 				line("    Action: %s", gap.SuggestedAction)
 			}
@@ -185,11 +192,14 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 		blank()
 	}
 
-	// Limitations
-	if len(result.Limitations) > 0 {
+	// Limitations — filter to caveats that affect the *change-scoped*
+	// view. "Too few tests for meaningful optimization" / "CI is
+	// already fast" are full-repo edge cases that don't belong in a
+	// diff-scoped report.
+	if filtered := filterDiffScopedLimitations(result.Limitations); len(filtered) > 0 {
 		line("Limitations")
-		line(strings.Repeat("-", 60))
-		for _, lim := range result.Limitations {
+		line(uitokens.H2Sep)
+		for _, lim := range filtered {
 			line("  * %s", lim)
 		}
 		blank()
@@ -210,6 +220,42 @@ func capitalizeFirst(s string) string {
 		return s
 	}
 	return strings.ToUpper(s[:1]) + s[1:]
+}
+
+// filterDiffScopedLimitations drops full-repo edge-case messaging
+// (e.g. "Too few tests for meaningful optimization", "CI is already
+// fast") from the limitations list rendered under change-scoped
+// reports like `terrain report impact` and `terrain report pr`.
+// Those advisories belong in the analyze report's Edge Cases section;
+// they confuse adopters when they appear under a PR's diff view.
+func filterDiffScopedLimitations(lims []string) []string {
+	if len(lims) == 0 {
+		return nil
+	}
+	dropPrefixes := []string{
+		"too few tests",
+		"ci is already fast",
+		"ci is fast",
+		"high test duplication",
+		"high proportion of skipped",
+		"high proportion of flaky",
+		"low graph visibility",
+	}
+	out := make([]string, 0, len(lims))
+	for _, lim := range lims {
+		lower := strings.ToLower(strings.TrimLeft(lim, " *•"))
+		drop := false
+		for _, p := range dropPrefixes {
+			if strings.HasPrefix(lower, p) {
+				drop = true
+				break
+			}
+		}
+		if !drop {
+			out = append(out, lim)
+		}
+	}
+	return out
 }
 
 // isImpactEmpty reports whether an ImpactResult has nothing

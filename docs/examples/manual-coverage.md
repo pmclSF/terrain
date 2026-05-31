@@ -127,7 +127,7 @@ manual_coverage:
 
 ```
 Manual Coverage Overlay
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Artifacts:  5 (not executable — supplements CI coverage)
   Sources:    testrail: 3, checklist: 1, exploratory: 1
   Criticality: high: 3, medium: 2
@@ -141,8 +141,8 @@ When manual coverage artifacts lack execution dates, insights flags this as cove
 
 ```
 Coverage Debt (1)
-------------------------------------------------------------
-  [MEDIUM] 3 of 5 manual coverage artifacts have no recent execution date
+────────────────────────────────────────────────────────────
+  [MED] 3 of 5 manual coverage artifacts have no recent execution date
            Stale manual coverage may provide false confidence.
            Verify these validation activities are still being performed.
 ```

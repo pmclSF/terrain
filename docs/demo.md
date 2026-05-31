@@ -91,7 +91,7 @@ This shows signal count changes, risk band changes, framework changes, and repre
 
 ## 5. Policy Check
 
-Create a policy file at `.terrain/policy.yaml`:
+`terrain init` writes a commented `.terrain/policy.yaml` plus an annotated `.terrain/policy.yaml.example` covering every supported field. Edit the policy to enable rules:
 
 ```yaml
 rules:
@@ -105,7 +105,7 @@ Then check compliance:
 terrain policy check
 ```
 
-Exit code 0 means pass, 1 means violations found. Use `--json` for CI integration.
+Exit code 0 = pass, 2 = violations, 1 = error. Use `--json` for CI integration.
 
 ## 6. Migration Workflow
 
@@ -151,7 +151,29 @@ Export a benchmark-safe artifact:
 terrain export benchmark
 ```
 
-This outputs JSON with aggregate metrics and segmentation tags — no raw file paths or source code. Designed for future cross-repo comparison.
+JSON with aggregate metrics and segmentation tags — no raw file paths or source code. Designed for cross-repo comparison without leaking adopter data.
+
+## 9. AI-only flows
+
+If your repo has prompts, RAG pipelines, or eval suites:
+
+```bash
+terrain ai list                          # inventory
+terrain ai findings --json               # CI-consumable AI eval-gap findings
+terrain inject --prompt prompts/main.md > tests/test_prompt_injection.py
+terrain scaffold --schema schemas/input.json > tests/test_prompt_boundaries.py
+```
+
+Both `inject` and `scaffold` emit runnable pytest (use `--lang typescript` for vitest). Terrain never invokes the model; the assertion is yours.
+
+## 10. Diagnostics
+
+When something looks off:
+
+```bash
+terrain doctor              # registry, aliases, gitignore, per-rule policy overrides
+terrain --print-network     # audit: every external call under current config
+```
 
 ## Quick Demo
 

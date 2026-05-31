@@ -284,8 +284,18 @@ type FallbackInfo struct {
 	AdditionalTests int `json:"additionalTests"`
 }
 
+// ImpactResultSchemaVersion is the schema version for impact-analysis
+// JSON output. Bumped on breaking changes to ImpactResult field
+// shapes; new optional fields are non-breaking. Consumers should
+// validate they accept the schema version before parsing.
+const ImpactResultSchemaVersion = "1"
+
 // ImpactResult is the output of impact analysis.
 type ImpactResult struct {
+	// SchemaVersion identifies the JSON shape of this result. Always
+	// populated; consumers should reject unknown major versions.
+	SchemaVersion string `json:"schemaVersion"`
+
 	// ChangeSet is the normalized change input when constructed via AnalyzeChangeSet.
 	// Nil when constructed via the legacy Analyze() path.
 	ChangeSet *models.ChangeSet `json:"changeSet,omitempty"`
@@ -470,6 +480,7 @@ func Analyze(scope *ChangeScope, snap *models.TestSuiteSnapshot) *ImpactResult {
 // analyzeFromScope is the shared implementation for both entry points.
 func analyzeFromScope(scope *ChangeScope, snap *models.TestSuiteSnapshot) *ImpactResult {
 	result := &ImpactResult{
+		SchemaVersion:  ImpactResultSchemaVersion,
 		Scope:          *scope,
 		TotalTestCount: len(snap.TestFiles),
 	}

@@ -13,6 +13,7 @@ import (
 	conv "github.com/pmclSF/terrain/internal/convert"
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/reporting"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 type migrateCommandOptions struct {
@@ -27,6 +28,21 @@ type migrateCommandOptions struct {
 	JSON           bool
 	StrictValidate bool
 	OnError        string
+}
+
+// colorizeStatus renders a doctor / ai-doctor check status as a
+// colored bracket token. PASS green, WARN yellow, FAIL red.
+func colorizeStatus(status string) string {
+	switch strings.ToUpper(strings.TrimSpace(status)) {
+	case "PASS":
+		return uitokens.Ok("[PASS]")
+	case "WARN":
+		return uitokens.Warn("[WARN]")
+	case "FAIL":
+		return uitokens.Alert(uitokens.Bold("[FAIL]"))
+	default:
+		return "[" + status + "]"
+	}
 }
 
 func runMigrateCLI(args []string) error {
@@ -348,11 +364,11 @@ func runDoctor(root string, jsonOutput, verbose bool) (conv.MigrationDoctorResul
 			"pillars": pillars,
 		})
 	}
-	fmt.Println("Terrain Doctor")
+	fmt.Println(uitokens.Header("Doctor"))
 	fmt.Println()
 	renderPillarStatuses(os.Stdout, pillars)
 	for _, check := range result.Checks {
-		fmt.Printf("  [%s] %s: %s\n", check.Status, check.Label, check.Detail)
+		fmt.Printf("  %s %s: %s\n", colorizeStatus(check.Status), check.Label, check.Detail)
 		if verbose && strings.TrimSpace(check.Verbose) != "" {
 			fmt.Printf("         %s\n", check.Verbose)
 		}

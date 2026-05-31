@@ -5,11 +5,11 @@
 ## Terminal Output
 
 ```
-Terrain — Test Suite Analysis
-============================================================
+Terrain · Test Suite Analysis
+────────────────────────────────────────────────────────────
 
 Repository Profile
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Test volume:          small
   CI pressure:          low
   Coverage confidence:  high
@@ -17,7 +17,7 @@ Repository Profile
   Fanout burden:        low
 
 Validation Inventory
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Test files:     6
   Test cases:     18
   Code units:     9
@@ -27,38 +27,38 @@ Validation Inventory
     pytest                  4 files [unit]
 
 Coverage Confidence
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   High:    4 files (100%)
   Medium:  0 files (0%)
   Low:     0 files (0%)
 
 High-Fanout Nodes
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Flagged: 2 (threshold: 10)
       (behavior_surface, 12 dependents)
       (behavior_surface, 12 dependents)
 
 CI Optimization Potential
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   High-fanout nodes:          2
   2 high-fanout nodes could be refactored to reduce blast radius.
 
 Top Insight
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
    fans out to 12 transitive dependents — changes here trigger wide test impact. Consider splitting or isolating.
 
 Risk Posture
-------------------------------------------------------------
-  health:                  STRONG
-  coverage_depth:          STRONG
-  coverage_diversity:      STRONG
-  structural_risk:         STRONG
-  operational_risk:        STRONG
+────────────────────────────────────────────────────────────
+  health:                  Strong
+  coverage_depth:          Strong
+  coverage_diversity:      Strong
+  structural_risk:         Strong
+  operational_risk:        Strong
 
 Signals: 0 total
 
 Behavior Redundancy
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   Redundant tests:  18 across 3 clusters
   [wasteful] 8 tests, 4 shared surfaces (100% confidence) [pytest]
          Tests in the same framework exercise 4 identical behavior surfaces (100% overlap). Consolidation would reduce CI cost without losing coverage.
@@ -68,27 +68,27 @@ Behavior Redundancy
          Tests in the same framework exercise 4 identical behavior surfaces (100% overlap). Consolidation would reduce CI cost without losing coverage.
 
 Stability
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   No runtime data provided. Provide --runtime (JUnit XML or Jest JSON)
   to unlock: flaky test detection, slow test flagging, stability clustering.
 
 Edge Cases
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   [warning] CI is already fast — optimization may yield minimal benefit.
 
 Policy Recommendations
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   • CI is already fast. Test selection would yield minimal time savings.
 
 Data Completeness
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   [available] source
   [missing  ] coverage
   [missing  ] runtime
   [missing  ] policy
 
 Limitations
-------------------------------------------------------------
+────────────────────────────────────────────────────────────
   * No coverage data provided; coverage confidence is structural (import-based) only.
   * No policy file found; governance checks skipped.
   * No runtime data provided; skip/flaky/slow test detection unavailable.

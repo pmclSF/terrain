@@ -26,13 +26,13 @@ Shows posture as part of the executive summary:
 
 ```
 Posture Dimensions
---------------------------------------------------
-  health:                    STRONG
-  coverage_depth:            WEAK
+────────────────────────────────────────────────────────────
+  health:                    Strong
+  coverage_depth:            Weak
     15 of 40 exported code unit(s) appear untested (38%).
-  coverage_diversity:        MODERATE
-  structural_risk:           STRONG
-  operational_risk:          STRONG
+  coverage_diversity:        Moderate
+  structural_risk:           Strong
+  operational_risk:          Strong
 ```
 
 ### Detailed View
@@ -45,7 +45,7 @@ Shows full evidence for every measurement:
 
 ```
 COVERAGE_DEPTH
-  Posture: WEAK
+  Posture: Weak
   coverage_depth posture is weak. Driven by: coverage_depth.uncovered_exports.
 
   Driving measurements: coverage_depth.uncovered_exports
@@ -100,11 +100,11 @@ The comparison now includes posture and measurement changes:
 
 ```
 Posture Changes
-----------------------------------------
-  health                     STRONG → WEAK
+────────────────────────────────────────────────────────────
+  health                     Strong → Weak
 
 Measurement Changes
-----------------------------------------
+────────────────────────────────────────────────────────────
   health.flaky_share                     +23.0%
     band: strong → weak
 ```
@@ -151,7 +151,7 @@ Measurement Changes
 
 ```
 HEALTH
-  Posture: WEAK
+  Posture: Weak
   Driven by: health.flaky_share
 
   health.flaky_share    25.0% [weak]

@@ -9,6 +9,24 @@ canonical reference for field-level semantics.
 - Unknown fields should be ignored by consumers for forward compatibility.
 - Optional fields are omitted when no evidence is available.
 
+## `.terrain/findings.json`
+
+Written by every `terrain analyze` run. The canonical Finding artifact downstream consumers (`terrain mcp`, IDE plugins, third-party SARIF uploaders) read from.
+
+Top-level type: `findings.Artifact` (schema version 1, defined in [`schemas/finding.v1.json`](../schemas/finding.v1.json)).
+
+Key fields per Finding:
+
+- `version`: schema version (always `1` at this revision).
+- `rule_id`: stable rule identifier (`terrain/<category>/<rule>`).
+- `severity`: `error`, `warning`, or `notice` (maps from internal critical/high/medium/low/info per [severity-rubric.md](severity-rubric.md)).
+- `primary_loc`: file + line where the finding lives.
+- `short_message` / `long_message`: one-line summary and full explanation.
+- `docs_url`: relative path to the rule's documentation page.
+- `metadata`: detector-specific evidence (rule-shaped).
+
+Gitignored by the template `terrain init` writes.
+
 ## `terrain analyze --json`
 
 Top-level type: `models.TestSuiteSnapshot`.

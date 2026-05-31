@@ -10,46 +10,57 @@ import (
 	"github.com/pmclSF/terrain/internal/signals"
 )
 
-// runTestCommand implements `terrain test --selector <pattern>`. Runs
-// the analyze pipeline, filters the resulting snapshot signals to the
-// selector-matched rule IDs, and emits the matching findings via the
-// canonical artifacts (JSON / JUnit / Step Summary).
+// runTestCommand implements `terrain test`. The canonical CI-mode
+// wrapper around analyze: runs the analyze pipeline and emits the
+// findings as CI-consumable artifacts (JUnit XML / Step Summary
+// markdown / JSON).
 //
-// Selector syntax: `<category>`, `<category>/<rule>`, `<category>/*`,
-// or `*`. Selector matches against manifest `RuleID`s (everything
-// after `terrain/`).
+// When --selector is provided, only signals whose rule_id matches the
+// selector pattern are emitted. The selector syntax is `<category>`,
+// `<category>/<rule>`, `<category>/*`, or `*`. Selector matches against
+// manifest RuleIDs (everything after `terrain/`). Without --selector,
+// every signal flows through to the artifacts.
 //
 // When the analyze pipeline can't run (e.g., the root isn't a git
-// checkout), the command degrades to listing matched rule IDs only —
-// still useful for confirming the rule is registered.
+// checkout), the command surfaces the failure and exits non-zero —
+// CI runs need an actionable failure, not a silent degradation.
 func runTestCommand(root, selector string, jsonOut bool, junitPath, summaryPath string) error {
-	matched, err := matchRulesBySelector(selector)
-	if err != nil {
-		return err
-	}
-	if len(matched) == 0 {
-		return fmt.Errorf("selector %q matched no rules. Available categories: regression coverage hygiene reproducibility security performance data ai", selector)
-	}
-
-	// Map signal type → ruleID for the lookup the converter needs.
+	// Map signal type → ruleID for the findings converter.
 	typeToRuleID := map[models.SignalType]string{}
 	for _, entry := range signals.Manifest() {
 		if entry.RuleID != "" {
 			typeToRuleID[entry.Type] = entry.RuleID
 		}
 	}
-	// Set of matched rule IDs for the filter.
-	wantRule := map[string]bool{}
-	for _, r := range matched {
-		wantRule[r] = true
+
+	// Build the selector-filter set when a selector is provided.
+	// Empty selector → no filter (every signal flows through).
+	var wantRule map[string]bool
+	var matched []string
+	if selector != "" {
+		var err error
+		matched, err = matchRulesBySelector(selector)
+		if err != nil {
+			return err
+		}
+		if len(matched) == 0 {
+			return fmt.Errorf("selector %q matched no rules. Available categories: regression coverage hygiene reproducibility security performance data ai", selector)
+		}
+		wantRule = map[string]bool{}
+		for _, r := range matched {
+			wantRule[r] = true
+		}
 	}
 
-	// Run the analyze pipeline. Failure here is non-fatal; we fall
-	// back to listing matched rules, which is still informative.
+	// Run the analyze pipeline.
 	var filtered []models.Signal
 	result, perr := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOut || junitPath != "" || summaryPath != ""))
 	if perr == nil && result != nil && result.Snapshot != nil {
 		for _, s := range result.Snapshot.Signals {
+			if wantRule == nil {
+				filtered = append(filtered, s)
+				continue
+			}
 			if ruleID := typeToRuleID[s.Type]; wantRule[ruleID] {
 				filtered = append(filtered, s)
 			}
@@ -63,7 +74,14 @@ func runTestCommand(root, selector string, jsonOut bool, junitPath, summaryPath 
 
 	if junitPath != "" {
 		if err := writeFile(junitPath, func(f *os.File) error {
-			return art.WriteJUnit(f, findings.JUnitOptions{})
+			// EmitWarnings: true so warning-severity findings (the
+			// majority of medium-severity signals) appear as test
+			// cases. The default JUnitOptions.EmitWarnings=false is
+			// only appropriate when an adopter explicitly wants
+			// errors-only — `terrain test` should surface everything
+			// since CI test reporters rendering the XML are the user-
+			// facing surface.
+			return art.WriteJUnit(f, findings.JUnitOptions{EmitWarnings: true})
 		}); err != nil {
 			return fmt.Errorf("write junit: %w", err)
 		}
@@ -79,30 +97,53 @@ func runTestCommand(root, selector string, jsonOut bool, junitPath, summaryPath 
 		return art.WriteJSON(os.Stdout)
 	}
 
-	// Human-readable output.
-	fmt.Printf("Selector %q matched %d rule(s):\n", selector, len(matched))
-	for _, r := range matched {
-		fmt.Printf("  %s\n", r)
-	}
-	fmt.Println()
+	// Surface analyze failures as actionable errors — CI needs to
+	// fail clearly when the analyze pipeline broke.
 	if perr != nil {
-		fmt.Printf("Pipeline run failed (%v); listing matched rule IDs only.\n", perr)
-		fmt.Println("Fix the underlying analyze failure to see live findings here.")
-		return nil
+		return fmt.Errorf("analyze pipeline failed: %w", perr)
 	}
-	fmt.Printf("Live findings matching the selector: %d\n", len(filtered))
-	if len(filtered) == 0 {
-		fmt.Println("No findings from the matched rule(s) on the current snapshot.")
-		return nil
+
+	// Human-readable summary. Optimized for CI logs: one line at the
+	// top with what was emitted, then one line per artifact path.
+	if selector == "" {
+		fmt.Printf("terrain test: %d %s emitted\n", len(filtered), Plural(len(filtered), "finding"))
+	} else {
+		fmt.Printf("terrain test --selector %q: %d %s from %d matched %s\n",
+			selector, len(filtered), Plural(len(filtered), "finding"),
+			len(matched), Plural(len(matched), "rule"))
 	}
-	for _, s := range filtered {
-		loc := s.Location.File
-		if s.Location.Line > 0 {
-			loc = fmt.Sprintf("%s:%d", loc, s.Location.Line)
+	if junitPath != "" {
+		fmt.Printf("  JUnit XML:       %s\n", junitPath)
+	}
+	if summaryPath != "" {
+		fmt.Printf("  Step Summary:    %s\n", summaryPath)
+	}
+	if !jsonOut && junitPath == "" && summaryPath == "" {
+		// No artifacts requested — show the findings inline so the
+		// user can see what they would have gotten.
+		if len(filtered) == 0 {
+			fmt.Println("No findings.")
+			return nil
 		}
-		fmt.Printf("  [%s] %s  %s\n", s.Severity, s.Type, loc)
+		fmt.Println()
+		for _, s := range filtered {
+			loc := s.Location.File
+			if s.Location.Line > 0 {
+				loc = fmt.Sprintf("%s:%d", loc, s.Location.Line)
+			}
+			fmt.Printf("  [%s] %s  %s\n", s.Severity, s.Type, loc)
+		}
 	}
 	return nil
+}
+
+// Plural is a tiny pluralizer for the terrain test output.
+// Falls through to reporting.Plural when the count is non-1.
+func Plural(n int, word string) string {
+	if n == 1 {
+		return word
+	}
+	return word + "s"
 }
 
 // matchRulesBySelector returns rule IDs whose URI suffix matches the

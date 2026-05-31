@@ -1,17 +1,17 @@
 # Terrain — Architecture Overview
 
-> **Pre-flight checks for AI/ML systems and the tests around them. Locally, no API key required.**
+> **Pre-flight checks for AI/ML systems and the tests around them. Runs locally. No API key required.**
 
-Terrain is a static analyzer that treats unit tests, integration tests, e2e tests, and AI/ML evals as one dependency graph. It catches prompt-schema drift, train/test leakage, eval coverage gaps, model deprecations, framework-migration blockers, untested exports, and the cross-language cause chains general-purpose tools miss — locally, deterministically, on every PR.
+Terrain is a static analyzer that treats tests, evals, prompts, and schemas as one dependency graph — and catches the drift that crosses their boundaries before the PR merges.
 
-The product story lives in [`docs/PRODUCT.md`](docs/PRODUCT.md). This document is the technical companion: what packages exist, what artifacts they produce, and where the integration boundaries sit.
+The product story lives in [`docs/PRODUCT.md`](docs/PRODUCT.md). This document is the technical companion: what packages exist, what artifacts they produce, where the integration boundaries sit.
 
 ## Core principles
 
 - **Signals are the core abstraction.** Every finding is a structured signal with type, severity, evidence, and location. See `internal/signals/manifest.go` for the manifest model.
 - **The snapshot is the integration boundary.** `TestSuiteSnapshot` (`internal/models/snapshot.go`) is the serialized artifact at which detection, graph construction, impact analysis, and reporting compose. Anything that can serialize into the snapshot inherits graph traversal, impact analysis, and the diagnostic-rendering pipeline.
 - **Risk must be explainable.** Risk surfaces are derived from signals with transparent scoring, not opaque scores.
-- **Local-first, LLM-free by default.** Terrain runs on a developer machine or CI runner with no accounts, SaaS, or network access required. No LLM API key is ever required. The default configuration makes zero outbound network calls (verifiable via `terrain --print-network`).
+- **Local-first, LLM-free by default.** Terrain analysis runs on a developer machine or CI runner with no accounts, SaaS, or network access required. No LLM API key is ever required. `terrain analyze` makes zero outbound network calls in the default configuration (verifiable via `terrain --print-network`). Install paths download signed binaries from GitHub Releases — that's the only network step.
 - **Privacy boundary.** Aggregate metrics and benchmark exports never expose raw file paths or source code. Adopters with stringent code-confidentiality requirements can set `redact_source: true` in `terrain.yaml`.
 - **Two-tier severity.** Detectors are explicitly classified as `gate` (counts toward `--fail-on=*` gate decisions) or `observability` (informational only). The tier is mandatory on every manifest entry — no implicit default.
 
@@ -33,7 +33,7 @@ The dependency graph is the integration boundary for adding detection capabiliti
 
 ## Three-surface model
 
-Per `docs/PRODUCT.md` §7 (Architecture — three-surface model), Terrain has three consumer surfaces. All three consume the same artifact (JUnit XML + `findings.json` + the source repo state at the failing commit):
+Per the three-surface model in [`docs/PRODUCT.md`](docs/PRODUCT.md), Terrain has three consumer surfaces. All three consume the same artifact (JUnit XML + `findings.json` + the source repo state at the failing commit):
 
 | Surface | Renderers | Interactivity | LLM |
 |---|---|---|---|
@@ -74,6 +74,9 @@ internal/                     Core libraries (see internal/README.md for full li
   runtime/                    Test runtime artifact ingestion (JUnit, Jest/Vitest JSON)
   severity/                   Severity rubric and clause references
   signals/                    Signal manifest (rule registry; per-rule status: stable | experimental | planned)
+  injection/                  Prompt-injection pattern library and test-input emitter
+  scaffold/                   Mutation-test scaffold generator from JSON Schema
+  plugin/                     Third-party plugin manifest schema and validator
   structural/                 Structural detectors (graph + AST joins)
   testcase/                   Per-language test extraction (AST + regex fallback)
   testtype/                   Test classification (unit / integration / e2e / component / smoke)
@@ -83,21 +86,24 @@ harness/                      Validation harness (corpora, runner, validators, r
 rfcs/                         RFCs for significant changes (governance per docs/CONTRIBUTING.md)
 ```
 
-## CLI surface (0.2.0)
+## CLI surface
 
 The complete adopter-facing CLI is documented in [`docs/cli-spec.md`](docs/cli-spec.md). Summary:
 
 | Command | Purpose |
 |---|---|
-| `terrain analyze [path]` | What is the state of our test system? Primary entry point. |
-| `terrain test [flags]` | CI-mode wrapper around analyze (emits JUnit XML + GH annotations). |
-| `terrain report <verb>` | Read-side queries: `insights`, `impact`, `explain`, `summary`, `metrics`, `status`, `checklist`, `readiness`, `blockers`, `preview`. |
+| `terrain analyze [path]` | What is the state of our test system? Primary entry point. Writes `.terrain/findings.json` after every run. |
+| `terrain test [flags]` | CI-mode wrapper around analyze. Emits JUnit XML and a markdown step-summary (point `--summary` at `$GITHUB_STEP_SUMMARY` for GitHub Actions). |
+| `terrain report <verb>` | Read-side queries: `insights`, `impact`, `explain`, `summary`, `metrics`, `pr`, `posture`, `select-tests`. |
 | `terrain migrate <verb>` | Framework conversion + migration workflow. |
-| `terrain ai <verb>` | Eval scenarios: `list`, `run`, `doctor`, `record`, `baseline`, `replay`, `findings`. |
+| `terrain ai <verb>` | Eval scenarios: `list`, `run`, `doctor`, `record`, `baseline`, `baseline compare`, `replay`, `findings`. |
+| `terrain inject --prompt <path>` | Generate jailbreak-shaped test inputs from a prompt template. |
+| `terrain scaffold --schema <path>` | Generate boundary-case mutation tests from a JSON Schema. |
+| `terrain plugins manifest <path>` | Validate a third-party plugin manifest. |
 | `terrain config <verb>` | Workspace prefs: `feedback`, `telemetry`. |
-| `terrain init [path]` | Set up Terrain in a repository. |
-| `terrain doctor [path]` | Diagnostics for current setup. |
-| `terrain mcp [--root <dir>]` | Start the MCP server on stdio for AI assistants. |
+| `terrain init [path]` | Set up Terrain in a repository. Writes `.terrain/policy.yaml` + an annotated `.terrain/policy.yaml.example`. |
+| `terrain doctor [path]` | Diagnostics for current setup (registry, aliases, gitignore, per-rule policy overrides). |
+| `terrain mcp [--root <dir>]` | Start the MCP server on stdio for AI assistants. Reads `.terrain/findings.json` from the last analyze run. |
 | `terrain serve [flags]` | Local HTTP server with HTML report + JSON API. |
 | `terrain portfolio [flags]` | Multi-repo workspace intelligence. |
 | `terrain --print-network` | Audit: list every external call Terrain would make under current config. |
@@ -131,9 +137,9 @@ Canonical terms used in this doc and across `docs/PRODUCT.md`:
 - **Cause path** — chain of graph nodes from a finding's primary location back to the change in the PR that caused it
 - **Unified graph** — dependency graph spanning code, tests, surfaces, evals, data, and cross-language edges (bidirectional cause attribution)
 
-## What's stable at 0.2.0
+## What's stable
 
-Per `docs/PRODUCT.md` §11 (Stability commitments):
+Stable from 0.2.0 forward (see [`docs/PRODUCT.md`](docs/PRODUCT.md) Stability commitments):
 
 - Rule IDs (`terrain/<category>/<rule>` namespace)
 - JSON output schema (`version: 1` on `terrain report pr --json` and `findings.json`)
@@ -142,13 +148,13 @@ Per `docs/PRODUCT.md` §11 (Stability commitments):
 - Artifact format (JUnit XML structure, SARIF for security rules, `findings.json` shape)
 - Documented quality bars
 
-All follow the one-cycle deprecation contract per `docs/PRODUCT.md` §14 (Versioning).
+All follow the one-cycle deprecation contract documented in [`docs/PRODUCT.md`](docs/PRODUCT.md) (Versioning).
 
 ## Migration context
 
-Terrain originated as a multi-framework test converter. That migration surface lives in `internal/convert/` and the conversion-subsystem CLI (`migrate`, `convert`, `detect`, etc.). It ships in the same binary as the AI/ML CI gate at 0.2.0 and is stable from the 0.2.0 release tag, but is positioned as a parallel product capability with its own narrative.
+Terrain originated as a multi-framework test converter. That migration surface lives in `internal/convert/` and the conversion-subsystem CLI (`migrate`, `convert`, `detect`, etc.). It ships in the same binary as the AI/ML CI gate, stable from 0.2.0 forward, positioned as a parallel product capability with its own narrative.
 
-Pre-0.2.0 was unstable by design; 0.2.0 is the first release with stability commitments. Adopters using pre-0.2.0 versions treat 0.2.0 as a fresh install.
+Pre-0.2.0 was unstable by design; 0.2.0 is the first release with stability commitments. Adopters on earlier versions treat 0.2.0 as a fresh install.
 
 ## Extension architecture
 

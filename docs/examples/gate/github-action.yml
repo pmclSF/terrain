@@ -3,22 +3,18 @@
 # This is the ONE config the project recommends. Drop it into
 # `.github/workflows/terrain-pr.yml`, commit, and you have:
 #
-#   - per-PR `terrain analyze` running on every push
-#   - per-PR `terrain report pr` posting a unified comment with the
-#     test-system risk for the diff
-#   - safe-default mode by default (warn, don't block) so day-one
-#     adoption doesn't brick CI on existing repo debt
-#   - a one-line opt-in to flip on blocking gates once the warning
-#     output is calibrated for your repo
+#   - per-PR `terrain test` running on every push
+#   - step-summary markdown rendered on the workflow run page
+#   - JUnit XML so GitHub's test reporter shows Terrain findings
+#   - a unified PR comment with the change-scoped risk report
+#   - warn-only by default; one-line opt-in to flip on blocking gates
 #
 # The two-step flow at the heart of Terrain (`terrain analyze` →
-# `terrain report pr`) is the workflow's spine. Everything else is
-# an optional add-on.
+# `terrain report pr`) is the workflow's spine; `terrain test` is a
+# CI-mode wrapper that runs analyze and emits the CI-friendly artifacts.
 #
-# Reference: https://github.com/pmclSF/terrain
-# Vision:    the product reference
-# Trust:     the trust posture documented in `SECURITY-DATA-HANDLING.md` (which mode to run when)
-# Policy:    docs/policy/examples/{minimal,balanced,strict}.yaml
+# Trust: see `SECURITY-DATA-HANDLING.md` for the data-flow posture.
+# Policy: see `docs/policy/examples/{minimal,balanced,strict}.yaml`.
 
 name: Terrain
 
@@ -45,39 +41,45 @@ jobs:
 
     steps:
       - name: Check out the PR head
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0   # full history so `--base main` diffs work
 
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22.x'
+
       - name: Install Terrain
         # Pick the install path that matches your runner image.
-        # Homebrew is the lowest-friction default; npm needs cosign;
-        # `go install` works on any image with Go 1.23+.
+        # npm is the friction-light default; Homebrew also works on
+        # ubuntu-latest if Linuxbrew is preinstalled; `go install`
+        # works on any image with Go 1.23+.
         run: |
-          brew install pmclSF/terrain/mapterrain
+          npm install -g mapterrain
           terrain version
 
-      # ── Step 1 of the primary workflow: understand the test system ──
+      # ── Step 1 of the primary workflow: analyze + emit CI artifacts ─
       #
-      # `analyze` is the gate. `--new-findings-only --baseline <path>`
-      # filters to signals introduced AFTER the baseline snapshot, so
-      # established repos with pre-existing debt don't get blocked on
-      # day one. To gate, uncomment `--fail-on critical` (exit 6 on
-      # any Critical finding). The default below is warn-only — it
-      # produces output but does not fail the job.
-      - name: terrain analyze (warn-only by default)
+      # `terrain test` is the CI-mode wrapper around `analyze`. It
+      # writes JUnit XML (so GitHub's test reporter shows Terrain
+      # findings) and a markdown step summary (so reviewers see the
+      # report on the workflow run page without opening artifacts).
+      #
+      # To flip from warn-only to blocking, add `--fail-on=high` (exit
+      # 6 on any High+ finding). For onboarding a repo with existing
+      # debt, add `--new-findings-only --baseline <path>` so only
+      # regressions block — the baseline path is typically a snapshot
+      # uploaded from your main-branch CI as a workflow artifact.
+      - name: terrain test (warn-only by default)
         run: |
-          terrain analyze \
-            --write-snapshot \
-            --new-findings-only \
-            --baseline terrain-snapshot.json \
-            --json > terrain-snapshot.json
-            # --fail-on critical    # uncomment to gate the build (exit 6)
+          terrain test \
+            --junit terrain-results.xml \
+            --summary "$GITHUB_STEP_SUMMARY"
+            # --fail-on=high    # uncomment to gate the build (exit 6)
 
       # ── Step 2: render the PR comment ──────────────────────────────
-      # `report pr` summarizes the gated state. The exit status of
-      # this step is independent of the gating decision (which is
-      # already determined by step 1's `--fail-on`).
+      # `report pr` summarizes the change-scoped risk. Exit status here
+      # is independent of step 1's gating decision.
       - name: terrain report pr
         run: |
           terrain report pr \
@@ -95,6 +97,15 @@ jobs:
           # Stable comment marker so successive runs update the same
           # thread instead of stacking new comments.
           body-includes: '<!-- terrain-pr-report -->'
+
+      # Upload the canonical findings artifact so downstream tooling
+      # (IDE plugins, SARIF uploaders, audit pipelines) can consume it.
+      - name: Upload findings.json
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: terrain-findings
+          path: .terrain/findings.json
 
       # Optional: upload SARIF for GitHub code scanning. Adds Terrain
       # findings to the Security tab alongside CodeQL / Snyk / etc.

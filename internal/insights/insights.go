@@ -40,8 +40,15 @@ const (
 	SeverityLow      Severity = "low"
 )
 
+// ReportSchemaVersion is the schema version for insights JSON output.
+// Bumped on breaking changes to Report field shapes.
+const ReportSchemaVersion = "1"
+
 // Report is the structured output of `terrain insights`.
 type Report struct {
+	// SchemaVersion identifies the JSON shape of this report.
+	SchemaVersion string `json:"schemaVersion"`
+
 	// Headline is a one-line summary of the most important finding.
 	Headline string `json:"headline"`
 
@@ -198,10 +205,12 @@ func plural(n int, singular string, pluralForm ...string) string {
 func Build(input *BuildInput) *Report {
 	if input == nil || input.Snapshot == nil {
 		return &Report{
+			SchemaVersion:   ReportSchemaVersion,
 			CategorySummary: map[Category]CategoryBreakdown{},
 		}
 	}
 	r := &Report{
+		SchemaVersion:      ReportSchemaVersion,
 		RepoProfile:        input.Profile,
 		EdgeCases:          input.EdgeCases,
 		Policy:             input.Policy,
