@@ -10,7 +10,7 @@
 
 ## Summary
 
-Detected patterns will complicate framework migration.
+Detected patterns will complicate framework framework_migration.
 
 ## Remediation
 
