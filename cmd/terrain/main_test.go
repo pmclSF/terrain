@@ -13,7 +13,7 @@ func TestFindRecentSnapshots_SingleArchivePlusLatest(t *testing.T) {
 	t.Parallel()
 
 	dir := t.TempDir()
-	archive := filepath.Join(dir, "2026-03-09T10-00-00Z.json")
+	archive := filepath.Join(dir, "2099-03-09T10-00-00Z.json")
 	latest := filepath.Join(dir, "latest.json")
 	if err := os.WriteFile(archive, []byte("{}"), 0o644); err != nil {
 		t.Fatalf("write archive: %v", err)
@@ -42,7 +42,7 @@ func TestLoadSnapshot_MigratesLegacyFields(t *testing.T) {
 	json := `{
   "repository": {
     "name": "repo",
-    "snapshotTimestamp": "2026-03-01T00:00:00Z"
+    "snapshotTimestamp": "2099-03-01T00:00:00Z"
   },
   "codeUnits": [
     {"path":"src/auth.js","name":"login","kind":"function","exported":true}
@@ -62,7 +62,7 @@ func TestLoadSnapshot_MigratesLegacyFields(t *testing.T) {
 	if snap.GeneratedAt.IsZero() {
 		t.Fatal("expected generatedAt to be backfilled")
 	}
-	want := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	want := time.Date(2099, 3, 1, 0, 0, 0, 0, time.UTC)
 	if !snap.GeneratedAt.Equal(want) {
 		t.Fatalf("generatedAt = %s, want %s", snap.GeneratedAt.UTC().Format(time.RFC3339), want.Format(time.RFC3339))
 	}

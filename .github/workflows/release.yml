@@ -246,7 +246,7 @@ jobs:
           dist/checksums.txt
       # COSIGN_EXPERIMENTAL=1 was required by cosign 1.x for keyless;
       # cosign 2.x makes keyless the default and emits a deprecation
-      # notice when the env var is set. Removed in 0.2.0 final-polish.
+      # notice when the env var is set, so it is intentionally omitted.
 
     # SLSA L2 build-provenance attestation (0.2). actions/attest-build-provenance
     # signs a SLSA-compliant in-toto statement against every binary archive

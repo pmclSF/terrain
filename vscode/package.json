@@ -1,0 +1,72 @@
+{
+  "name": "terrain",
+  "displayName": "Terrain",
+  "description": "Unified AI/ML testing in CI — surfaces findings from the latest Terrain run in the Problems pane with click-to-navigate and hover diagnostics.",
+  "publisher": "pmclSF",
+  "version": "0.2.0",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pmclSF/terrain.git"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Testing",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "ai",
+    "ml",
+    "testing",
+    "evals",
+    "ci",
+    "linter"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "workspaceContains:.terrain/findings.json",
+    "workspaceContains:terrain.yaml"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "terrain.refresh",
+        "title": "Terrain: Reload Findings"
+      },
+      {
+        "command": "terrain.openRuleDocs",
+        "title": "Terrain: Open Rule Docs"
+      }
+    ],
+    "configuration": {
+      "title": "Terrain",
+      "properties": {
+        "terrain.findingsPath": {
+          "type": "string",
+          "default": ".terrain/findings.json",
+          "description": "Path to findings.json relative to the workspace root."
+        },
+        "terrain.docsBaseURL": {
+          "type": "string",
+          "default": "https://github.com/pmclSF/terrain/blob/main/docs/rules/",
+          "description": "Base URL prepended to rule slugs for the Open Rule Docs command."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  }
+}

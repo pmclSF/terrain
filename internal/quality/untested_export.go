@@ -2,13 +2,22 @@ package quality
 
 import (
 	"path/filepath"
+	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/barrelresolver"
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
 // UntestedExportDetector identifies exported/public code units that have
 // no linked test coverage in the current analysis model.
+//
+// In mature JVM/Rust codebases this detector tends to fire on stable
+// infrastructure code that doesn't change — the maintenance-debt
+// reading, not the regression-risk reading. Adopters in those
+// ecosystems should pair with `--new-findings-only` to scope firings
+// to newly-added untested exports.
 //
 // Detection uses a layered approach:
 //  1. Import graph (highest confidence): if the snapshot includes an import graph,
@@ -23,7 +32,84 @@ import (
 //   - Heuristic fallback cannot determine actual runtime coverage.
 //   - Code tested via integration tests in a different directory may be flagged
 //     unless the import graph captures the linkage.
-type UntestedExportDetector struct{}
+type UntestedExportDetector struct {
+	// RepoRoot enables the a7_barrel_resolver mechanism. When set, the
+	// detector consults barrelresolver to follow re-export / barrel
+	// indirection that the legacy import graph misses (Jest path
+	// aliases, dist-path indirection, Python namespace re-exports).
+	// Empty disables the barrel-resolver fallback.
+	RepoRoot string
+}
+
+// toolingPathPrefixes are repo-root-relative path prefixes that we
+// treat as build / CI / tooling code and exclude from untested-export
+// detection. Examples: deployment scripts under `.github/actions/`
+// that don't need unit-test coverage; repo-wide helper scripts
+// (`scripts/`); build tooling (`tools/`, `build-tools/`); and shipped
+// artifacts (`bin/`, `dist/`).
+//
+// Tested ANY path-component match, not just leading slash, because
+// monorepos commonly have `packages/foo/scripts/build.ts` etc.
+var toolingPathPrefixes = []string{
+	".github/",
+	".gitlab/",
+	".circleci/",
+	"scripts/",
+	"tools/",
+	"build-tools/",
+	"build/",
+	"bin/",
+	"dist/",
+	"benchmarks/",
+	"benchmark/",
+	"examples/",
+	"example/",
+	"vendor/",
+	"third_party/",
+	"_vendor/",
+	"node_modules/",
+	"generated/",
+	"_generated/",
+	"proto/",
+	"protobuf/",
+	"autogen/",
+	// Additional generated-code paths:
+	"tests-gen/",       // Kotlin/JetBrains auto-generated test stubs
+	"applyconfigurations/", // Kubernetes auto-generated SDK setters
+	"apps/playground/", // React/compiler playground demo
+	"playground/",      // generic playground apps
+	"docs/",            // documentation snippets
+}
+
+// generatedFileRe matches generated-code suffixes that should be
+// excluded from untested-export detection regardless of directory.
+// Covers .pb.go / _pb2.py / .bundle.js / _generated.* files —
+// protobuf bindings, minified JS, and codegen outputs that don't need
+// direct unit tests.
+var generatedFileRe = regexp.MustCompile(
+	`(?i)(_pb2\.py$|\.pb\.go$|_pb\.go$|\.pb\.cc$|\.pb\.h$|` +
+		`\.min\.js$|\.bundle\.js$|\.bundle\.css$|` +
+		`_generated\.[a-z]+$|\.generated\.[a-z]+$|` +
+		`\.g\.dart$|\.freezed\.dart$|\.gen\.go$)`)
+
+// isToolingPath returns true when path lives under a tooling/CI prefix
+// anywhere in its directory chain, OR matches a generated-file suffix
+// regardless of directory.
+func isToolingPath(path string) bool {
+	slashed := filepath.ToSlash(path)
+	for _, prefix := range toolingPathPrefixes {
+		if strings.HasPrefix(slashed, prefix) {
+			return true
+		}
+		if strings.Contains(slashed, "/"+prefix) {
+			return true
+		}
+	}
+	if generatedFileRe.MatchString(slashed) {
+		return true
+	}
+	return false
+}
 
 // Detect scans code units for untested exports.
 func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
@@ -39,6 +125,41 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 		for _, imports := range snap.ImportGraph {
 			for mod := range imports {
 				importedModules[mod] = true
+			}
+		}
+	}
+	// Mechanism gate: a7_barrel_resolver. Routed through
+	// mechanisms.GateAdd so shadow mode runs the resolver and emits
+	// would-add events without changing user-visible behavior; state=on
+	// merges the resolved paths into importedModules.
+	if d.RepoRoot != "" && mechanisms.Default().State(barrelresolver.MechanismName) != mechanisms.StateOff {
+		resolver, err := barrelresolver.New(d.RepoRoot)
+		if err == nil {
+			resolved := map[string]bool{}
+			for testPath, imports := range snap.ImportGraph {
+				fromDir := filepath.Dir(testPath)
+				for importPath := range imports {
+					for _, res := range resolver.Resolve(mechanisms.Default(), fromDir, importPath) {
+						if !importedModules[res.File] {
+							resolved[res.File] = true
+						}
+					}
+				}
+			}
+			if len(resolved) > 0 {
+				add := mechanisms.GateAdd(mechanisms.Default(), barrelresolver.MechanismName,
+					mechanisms.EventContext{RuleID: "untestedExport"},
+					func() mechanisms.PredicateResult {
+						return mechanisms.PredicateResult{
+							Fired:   true,
+							Reasons: []string{"barrel-resolved imports would expand the linked-test set"},
+						}
+					})
+				if add {
+					for path := range resolved {
+						importedModules[path] = true
+					}
+				}
 			}
 		}
 	}
@@ -65,6 +186,57 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 
 	for _, cu := range snap.CodeUnits {
 		if !cu.Exported {
+			continue
+		}
+		// Skip code units in CI / tooling / build paths. These are
+		// deploy scripts, build helpers, benchmarks, and examples —
+		// not the production exports the detector targets.
+		if isToolingPath(cu.Path) {
+			continue
+		}
+
+		// Test-infrastructure filters:
+		//
+		// (a) Filenames that self-declare as test infrastructure:
+		//     internal-for-testing.ts, test-helpers.*, *-fixture.*, etc.
+		//     bun has `internal-for-testing.ts` — the name announces it.
+		basename := strings.ToLower(filepath.Base(cu.Path))
+		if strings.Contains(basename, "internal-for-testing") ||
+			strings.Contains(basename, "test-helpers") ||
+			strings.Contains(basename, "testhelpers") ||
+			strings.HasSuffix(basename, "-fixture.go") ||
+			strings.HasSuffix(basename, "-fixture.ts") ||
+			strings.HasSuffix(basename, ".fixture.ts") ||
+			strings.HasSuffix(basename, ".fixture.js") {
+			continue
+		}
+
+		// (b) Go test functions matching ^Test[A-Z] are tests, not
+		// production exports. Same convention as `go test`. Go's
+		// exported-Test pattern can accidentally cross the
+		// "production export" line.
+		if (strings.HasSuffix(cu.Path, ".go") || strings.HasSuffix(cu.Path, "_test.go")) &&
+			isGoTestFunction(cu.Name) {
+			continue
+		}
+
+		// (c) Standard JVM Object method overrides — toString,
+		// hashCode, equals, finalize. Framework-mandated, every class
+		// has them, no separate test expected. Same for AutoCloseable
+		// close() and Comparable compareTo().
+		if (strings.HasSuffix(cu.Path, ".java") || strings.HasSuffix(cu.Path, ".kt")) &&
+			isJVMOverrideMethod(cu.Name) {
+			continue
+		}
+
+		// (d) Type/schema declaration exports get flagged as "untested"
+		// but they're not callable behavior: Zod schemas
+		// (CamelCaseSchema), React component Props types (FooProps),
+		// config/params/request/response interfaces. Type aliases, not
+		// behavior — no unit test expected.
+		if (strings.HasSuffix(cu.Path, ".ts") || strings.HasSuffix(cu.Path, ".tsx") ||
+			strings.HasSuffix(cu.Path, ".js") || strings.HasSuffix(cu.Path, ".jsx")) &&
+			isTypeOrSchemaDecl(cu.Name) {
 			continue
 		}
 
@@ -107,11 +279,78 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 			},
 			Explanation: "Exported " + string(cu.Kind) + " \"" + cu.Name +
 				"\" has no linked tests in the current analysis model.",
-			SuggestedAction: "Add direct tests for this exported behavior or improve test-to-code linkage.",
+			// In some ecosystems (JVM/Rust monorepos especially) this
+			// detector identifies stable infrastructure rather than
+			// regression risk. Adopters who want regression-focused
+			// gating should pair it with --new-findings-only to scope
+			// to changing code.
+			SuggestedAction: "Add direct tests for this exported behavior or improve test-to-code linkage. " +
+				"For regression-focused gating, use `terrain analyze --baseline <prev> --new-findings-only` " +
+				"so this rule only fires on newly-added untested exports rather than long-standing debt.",
 		})
 	}
 
 	return signals
+}
+
+// isGoTestFunction returns true for Go function names matching `Test[A-Z]…`,
+// the convention `go test` uses to discover tests. These ARE tests even when
+// they happen to be exported — flagging them as "untested exports" is a
+// category error.
+func isGoTestFunction(name string) bool {
+	if len(name) < 5 || !strings.HasPrefix(name, "Test") {
+		return false
+	}
+	r := name[4]
+	return r >= 'A' && r <= 'Z'
+}
+
+// isJVMOverrideMethod returns true for methods that are nearly-universal
+// JVM Object / interface overrides — `toString`, `hashCode`, `equals`,
+// `finalize`, `clone`, `compareTo`, `close`, `dispose`. Per-class tests for
+// these are vanishingly rare in practice; the interface contract usually has
+// its own conformance tests.
+func isJVMOverrideMethod(name string) bool {
+	switch name {
+	case "toString", "hashCode", "equals", "finalize", "clone",
+		"compareTo", "close", "dispose", "reset", "init", "<init>",
+		"readResolve", "writeReplace":
+		return true
+	}
+	return false
+}
+
+// typeOrSchemaSuffixes are name-suffix conventions for type / schema /
+// configuration declarations. These are non-callable declarations
+// (Zod schemas, TypeScript type aliases, config interfaces, DTO
+// definitions) — adding unit tests for them isn't expected.
+//
+// PascalCase prefix check is intentional — a function named `parseSchema`
+// (camelCase) does behavior and should NOT be excluded. Only PascalCase
+// declarations matching these suffixes get filtered.
+var typeOrSchemaSuffixes = []string{
+	"Schema", "Props", "Type", "Config", "Params", "Request", "Response",
+	"Options", "Settings", "Args", "Input", "Output", "Variables", "Result",
+	"State", "Context",
+}
+
+// isTypeOrSchemaDecl returns true when name is a PascalCase identifier
+// ending in a type/schema/config suffix. Treats `FooSchema`, `UserProps`,
+// `ApiResponse` as non-behavioral type exports.
+func isTypeOrSchemaDecl(name string) bool {
+	if len(name) == 0 {
+		return false
+	}
+	// Must start uppercase (PascalCase).
+	if name[0] < 'A' || name[0] > 'Z' {
+		return false
+	}
+	for _, suffix := range typeOrSchemaSuffixes {
+		if strings.HasSuffix(name, suffix) && len(name) > len(suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 // stripTestSuffix removes test/spec suffixes to get the base module name.

@@ -35,10 +35,9 @@ func TestConvertNamespace_KnownVerbsAreNotRejected(t *testing.T) {
 // TestConvertNamespace_LegacyDirectInvocationGoesToConvertCLI verifies
 // that `terrain convert <file>` (no canonical verb) falls through to
 // runConvertCLI (per-file converter) NOT runMigrateCLI (directory).
-// This was the regression that motivated the split — pre-fix a
-// per-file invocation routed to the directory-mode runner and errored
-// with "--from <framework> is required (since the path was treated
-// as a directory)".
+// Without this routing, a per-file invocation lands in the directory
+// runner and errors with "--from <framework> is required (since the
+// path was treated as a directory)".
 func TestConvertNamespace_LegacyDirectInvocationGoesToConvertCLI(t *testing.T) {
 	t.Parallel()
 	// Calling with an obviously-invalid framework pair triggers

@@ -26,13 +26,50 @@ const (
 	StatusPlanned SignalStatus = "planned"
 )
 
+// SignalTier separates gate-relevant detectors (lift-validated, CI-blocking)
+// from observability detectors (target silent failure modes that PR-revert
+// proxy cannot measure, never block CI). Some detectors have flat corpus
+// lift but match real public-incident classes (aiEmbeddingModelChange,
+// aiSafetyEvalMissing, uncoveredAISurface); the observability tier exists
+// so those detectors can ship without abusing severity ladders.
+//
+// Severity-from-lift logic respects this tier:
+//   - TierGate detectors: declared severity may be demoted per the lift CI
+//     ladder; they gate CI (`--fail-on=high` selects them).
+//   - TierObservability detectors: lift evidence informs explain output but
+//     does NOT demote severity (since lift can't measure their failure
+//     mode); severity is capped at Medium so they never gate CI.
+//   - Tier is REQUIRED on every manifest entry. The contract is enforced
+//     by TestManifest_AllEntriesHaveExplicitTier. Empty Tier is a build
+//     error so no detector can silently fall through to either side of
+//     the gate/observability split.
+type SignalTier string
+
+const (
+	// TierGate detectors target code regressions that produce revert/hotfix-
+	// shaped failures within ~90 days. PR-lift on the corpus is the right
+	// metric. The CI gate fires on these. Examples: blastRadiusHotspot,
+	// aiModelDeprecationRisk, depsDriftRisk.
+	TierGate SignalTier = "gate"
+
+	// TierObservability detectors target structural conditions for *silent*
+	// quality degradation (eval-score drift, hallucination-rate creep,
+	// embedding-model-without-reindex). They never produce revert/hotfix
+	// patterns because the failure mode is gradual. Validated by sampled
+	// review and public-incident matching, NOT by PR-lift. Severity
+	// capped at Medium; never gate-relevant. Examples:
+	// aiSafetyEvalMissing, uncoveredAISurface, aiEmbeddingModelChange,
+	// aiPromptVersioning.
+	TierObservability SignalTier = "observability"
+)
+
 // ManifestEntry is the canonical record for a signal type. Every signal
 // declared in signal_types.go must have a matching entry here, and every
 // entry here must reference a real signal-type constant. Drift between the
 // two is caught by TestManifest_MatchesSignalTypes in 0.1.2 and becomes a
 // release-gate failure once the doc-generation pipeline lands in 0.2.
 //
-// The manifest replaces three older mechanisms over time:
+// The manifest replaces three older registration layers over time:
 //   - Registry (registry.go): superset; will be regenerated from this manifest
 //   - typeInfoBySignal (signal_types.go): description/remediation pairs
 //   - docs/signal-catalog.md: hand-edited list with persistent drift
@@ -67,9 +104,9 @@ type ManifestEntry struct {
 	DefaultSeverity models.SignalSeverity
 
 	// ConfidenceMin / ConfidenceMax bracket the typical confidence range
-	// the detector emits. 0.1.2 values are descriptive (sourced from
-	// detector code review), not calibrated. Calibration arrives in 0.3
-	// alongside the corpus work.
+	// the detector emits. Today's values are descriptive (sourced from
+	// detector code review), not calibrated. Calibration arrives in a
+	// future release alongside the corpus work.
 	ConfidenceMin float64
 	ConfidenceMax float64
 
@@ -79,7 +116,7 @@ type ManifestEntry struct {
 	EvidenceSources []string
 
 	// RuleID is a stable identifier for documentation cross-references and
-	// SARIF emission. Format: TER-<DOMAIN>-<3-digit-number>.
+	// SARIF emission. Format: terrain/<category>/<rule-name>.
 	RuleID string
 
 	// RuleURI points to the canonical rule documentation page. The path is
@@ -91,6 +128,34 @@ type ManifestEntry struct {
 	// status. Populated for experimental and planned entries; empty for
 	// stable.
 	PromotionPlan string
+
+	// Tier classifies the detector as gate (lift-validated, CI-blocking)
+	// or observability (silent-failure-mode, never blocks CI). Empty
+	// defaults to TierObservability — a detector must opt in to
+	// TierGate explicitly. See SignalTier comment.
+	Tier SignalTier
+
+	// DisabledByDefault marks a detector as off in the default config.
+	// Used for detectors whose precision is below an actionable bar
+	// pending a structural redesign: the implementation stays in tree
+	// so a future fix or an opt-in user can exercise it, but the
+	// pipeline does not emit its findings unless the user opts in via
+	// .terrain/policy.yaml.
+	DisabledByDefault bool
+}
+
+// DefaultDisabledTypes returns the set of signal types disabled by
+// default at the manifest level. The engine's emission path consults
+// this and skips emission for any signal type in the set unless the
+// user has explicitly enabled it via policy config.
+func DefaultDisabledTypes() map[string]bool {
+	out := map[string]bool{}
+	for _, e := range allSignalManifest {
+		if e.DisabledByDefault {
+			out[string(e.Type)] = true
+		}
+	}
+	return out
 }
 
 // allSignalManifest is the canonical inventory. Order is significant for
@@ -115,8 +180,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-HEALTH-001",
+		RuleID:          "terrain/health/slow-test",
 		RuleURI:         "docs/rules/health/slow-test.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalFlakyTest, ConstName: "SignalFlakyTest",
@@ -127,10 +193,11 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-HEALTH-002",
+		RuleID:          "terrain/health/flaky-test",
 		RuleURI:         "docs/rules/health/flaky-test.md",
 		PromotionPlan: "Today's detector is retry-based, not statistical failure-rate. " +
-			"Statistical detection lands in 0.3 with the calibration corpus.",
+			"Statistical detection lands in a future release.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalSkippedTest, ConstName: "SignalSkippedTest",
@@ -141,8 +208,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime", "structural-pattern"},
-		RuleID:          "TER-HEALTH-003",
+		RuleID:          "terrain/health/skipped-test",
 		RuleURI:         "docs/rules/health/skipped-test.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalDeadTest, ConstName: "SignalDeadTest",
@@ -153,8 +221,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityLow,
 		ConfidenceMin:   0.6, ConfidenceMax: 0.8,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-HEALTH-004",
+		RuleID:          "terrain/health/dead-test",
 		RuleURI:         "docs/rules/health/dead-test.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalUnstableSuite, ConstName: "SignalUnstableSuite",
@@ -165,8 +234,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-HEALTH-005",
+		RuleID:          "terrain/health/unstable-suite",
 		RuleURI:         "docs/rules/health/unstable-suite.md",
+		Tier:            TierObservability,
 	},
 
 	// ── Quality ────────────────────────────────────────────────
@@ -179,8 +249,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.5, ConfidenceMax: 0.7,
 		EvidenceSources: []string{"path-name", "graph-traversal"},
-		RuleID:          "TER-QUAL-001",
-		RuleURI:         "docs/rules/quality/untested-export.md",
+		RuleID:          "terrain/coverage/untested-export",
+		RuleURI:         "docs/rules/coverage/untested-export.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalWeakAssertion, ConstName: "SignalWeakAssertion",
@@ -191,22 +262,40 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.4, ConfidenceMax: 0.8,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-QUAL-002",
-		RuleURI:         "docs/rules/quality/weak-assertion.md",
-		PromotionPlan: "Detector is regex/density-based; AST-based semantic scoring lands in 0.3 " +
-			"alongside the calibration corpus.",
+		RuleID:          "terrain/hygiene/weak-assertion",
+		RuleURI:         "docs/rules/hygiene/weak-assertion.md",
+		// "Is this assertion strong enough?" is a value judgment that
+		// doesn't have a stable extension across framing assumptions —
+		// validation showed substantial verdict instability under shifts
+		// in reviewer persona. Capability preserved at observability;
+		// not appropriate for CI gating without an explicit policy
+		// threshold from the user.
+		Tier: TierObservability,
+		PromotionPlan: "Observability-tier. Gate-tier promotion requires an explicit user-declared policy threshold and framing-stable evaluation.",
 	},
 	{
 		Type: SignalMockHeavyTest, ConstName: "SignalMockHeavyTest",
-		Domain: models.CategoryQuality, Status: StatusStable,
+		Domain: models.CategoryQuality, Status: StatusExperimental,
 		Title:           "Mock-Heavy Test",
 		Description:     "Tests rely heavily on mocks and may miss integration-level regressions.",
 		Remediation:     "Replace brittle mocks with real collaborators where practical.",
-		DefaultSeverity: models.SeverityMedium,
-		ConfidenceMin:   0.6, ConfidenceMax: 0.8,
+		DefaultSeverity: models.SeverityLow,
+		// Demoted to experimental + low severity because the underlying
+		// hypothesis ("more mocks => brittle tests => regressions") is
+		// not supported by validation — mock-heavy files do not show
+		// elevated regression rates. The rule either needs a different
+		// underlying signal (e.g. mock-target diversity, module vs
+		// callback distinction) or should be removed.
+		ConfidenceMin: 0.3, ConfidenceMax: 0.5,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-QUAL-003",
-		RuleURI:         "docs/rules/quality/mock-heavy.md",
+		RuleID:          "terrain/hygiene/mock-heavy",
+		RuleURI:         "docs/rules/hygiene/mock-heavy.md",
+		// "Are mocks > assertions a defect or a design choice?" is
+		// stylistic and framing-unstable. Capability preserved at
+		// observability; rebuild path requires distinguishing
+		// module-boundary mocks from callback-spy stubs.
+		Tier: TierObservability,
+		PromotionPlan: "Observability-tier. Rebuild requires a mock-classifier distinguishing module vs callback mocks.",
 	},
 	{
 		Type: SignalTestsOnlyMocks, ConstName: "SignalTestsOnlyMocks",
@@ -214,11 +303,17 @@ var allSignalManifest = []ManifestEntry{
 		Title:           "Tests Only Mocks",
 		Description:     "Test files contain mock setup but zero assertions, verifying wiring only.",
 		Remediation:     "Add assertions on outputs, state changes, or side effects to validate real behavior.",
-		DefaultSeverity: models.SeverityHigh,
+		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-QUAL-004",
+		RuleID:          "terrain/quality/tests-only-mocks",
 		RuleURI:         "docs/rules/quality/tests-only-mocks.md",
+		// True "wiring-only" tests are a low-base-rate phenomenon, so
+		// the per-file signal is structurally near-silent. Re-frame as
+		// a repo-aggregate posture metric rather than a per-file
+		// finding.
+		Tier: TierObservability,
+		PromotionPlan: "Observability tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting.",
 	},
 	{
 		Type: SignalSnapshotHeavyTest, ConstName: "SignalSnapshotHeavyTest",
@@ -229,8 +324,14 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityLow,
 		ConfidenceMin:   0.5, ConfidenceMax: 0.75,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-QUAL-005",
-		RuleURI:         "docs/rules/quality/snapshot-heavy.md",
+		RuleID:          "terrain/hygiene/snapshot-heavy",
+		RuleURI:         "docs/rules/hygiene/snapshot-heavy.md",
+		// "Is snapshot use heavy enough to flag?" is a value judgment;
+		// validation showed it is framing-unstable. Capability preserved
+		// at observability. Gate-tier promotion requires broader corpus
+		// diversity AND a framing-stable threshold conjunction.
+		Tier: TierObservability,
+		PromotionPlan: "Observability-tier. Gate-tier promotion requires a broader corpus and a framing-stable threshold (e.g. snap>=2 AND ratio>=0.3) plus an explicit user-facing policy declaration.",
 	},
 	{
 		Type: SignalCoverageBlindSpot, ConstName: "SignalCoverageBlindSpot",
@@ -241,8 +342,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.5, ConfidenceMax: 0.8,
 		EvidenceSources: []string{"coverage", "graph-traversal"},
-		RuleID:          "TER-QUAL-006",
-		RuleURI:         "docs/rules/quality/coverage-blind-spot.md",
+		RuleID:          "terrain/coverage/blind-spot",
+		RuleURI:         "docs/rules/coverage/blind-spot.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalCoverageThresholdBreak, ConstName: "SignalCoverageThresholdBreak",
@@ -253,10 +355,11 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.9, ConfidenceMax: 0.99,
 		EvidenceSources: []string{"coverage"},
-		RuleID:          "TER-QUAL-007",
+		RuleID:          "terrain/quality/coverage-threshold",
 		RuleURI:         "docs/rules/quality/coverage-threshold.md",
-		PromotionPlan: "Severity flips at hard 100%-gap boundary; smooth gradient lands in 0.3 " +
+		PromotionPlan: "Severity flips at hard 100%-gap boundary; a smooth gradient lands in a future release " +
 			"per docs/scoring-rubric.md.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalStaticSkippedTest, ConstName: "SignalStaticSkippedTest",
@@ -267,8 +370,43 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityLow,
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-QUAL-008",
-		RuleURI:         "docs/rules/quality/static-skip.md",
+		RuleID:          "terrain/hygiene/permanently-skipped",
+		RuleURI:         "docs/rules/hygiene/permanently-skipped.md",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalStaticSkippedTestUnconditional, ConstName: "SignalStaticSkippedTestUnconditional",
+		Domain: models.CategoryQuality, Status: StatusPlanned,
+		Title:           "Static Skipped Test — Unconditional",
+		Description:     "A test is statically marked as skipped without any surrounding environment / feature-flag gate. The skip is permanent until the marker is removed.",
+		Remediation:     "Re-enable, replace, or delete the test. Add a comment explaining why if the skip should persist.",
+		DefaultSeverity: models.SeverityLow,
+		ConfidenceMin:   0.9, ConfidenceMax: 0.95,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/hygiene/static-skip-unconditional",
+		RuleURI:         "docs/rules/hygiene/static-skip-unconditional.md",
+		PromotionPlan:   "Preview status. Promotes to stable when broader validation confirms the unconditional / conditional-gate split preserves true positives without inflating false positives.",
+		// Tier deliberately observability while StatusPlanned. The
+		// parent SignalStaticSkippedTest is TierGate; this split child
+		// stays out of the gate decision until its precision is
+		// validated and Status moves to StatusStable.
+		Tier: TierObservability,
+	},
+	{
+		Type: SignalStaticSkippedTestConditionalGate, ConstName: "SignalStaticSkippedTestConditionalGate",
+		Domain: models.CategoryQuality, Status: StatusPlanned,
+		Title:           "Conditionally-Skipped Test (informational)",
+		Description:     "A test is statically marked as skipped, but the skip is wrapped by an environment, feature-flag, or platform predicate. The skip is intentional and gated by code. This finding is informational — no action is required unless the gate condition itself is wrong.",
+		Remediation:     "Audit the gate condition periodically. CI should run the test on platforms or branches where the gate evaluates to false.",
+		DefaultSeverity: models.SeverityLow,
+		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/hygiene/static-skip-conditional-gate",
+		RuleURI:         "docs/rules/hygiene/static-skip-conditional-gate.md",
+		PromotionPlan:   "Preview status. Promotes to stable when broader validation confirms the conditional-gate variant preserves the intentional-skip true positives that a narrower predicate would drop.",
+		// Informational by design — see the Description. Tier stays
+		// observability even after promotion to StatusStable.
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalAssertionFreeTest, ConstName: "SignalAssertionFreeTest",
@@ -276,11 +414,17 @@ var allSignalManifest = []ManifestEntry{
 		Title:           "Assertion-Free Test",
 		Description:     "Test files contain test function signatures but no detectable assertions.",
 		Remediation:     "Add assertions to validate behavior — tests without assertions verify nothing.",
-		DefaultSeverity: models.SeverityHigh,
+		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-QUAL-009",
-		RuleURI:         "docs/rules/quality/assertion-free.md",
+		RuleID:          "terrain/hygiene/no-assertions",
+		RuleURI:         "docs/rules/hygiene/no-assertions.md",
+		// The assertion counter is blind to several real assertion
+		// dialects (self.assertX, np.testing.*, mock.assert_called_*),
+		// which leaves a ceiling on precision until a multi-dialect
+		// oracle plus a path-role gate are in place.
+		Tier: TierObservability,
+		PromotionPlan: "Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role gate that excludes conftest/fixtures/commented-out tests, and framing-stable evaluation.",
 	},
 	{
 		Type: SignalOrphanedTestFile, ConstName: "SignalOrphanedTestFile",
@@ -291,8 +435,85 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityLow,
 		ConfidenceMin:   0.4, ConfidenceMax: 0.7,
 		EvidenceSources: []string{"graph-traversal"},
-		RuleID:          "TER-QUAL-010",
-		RuleURI:         "docs/rules/quality/orphaned-test.md",
+		RuleID:          "terrain/hygiene/orphaned-test",
+		RuleURI:         "docs/rules/hygiene/orphaned-test.md",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalDepsDriftRisk, ConstName: "SignalDepsDriftRisk",
+		Domain: models.CategoryQuality, Status: StatusExperimental,
+		Title:           "Dependency Drift Risk",
+		Description:     "A dependency manifest has a high share of moving-target version specs (caret, tilde, *, latest), making the repo silently susceptible to upstream regressions.",
+		Remediation:     "Pin versions or add a lockfile-verification gate. Re-audit the manifest after pinning to confirm the moving-target share drops below the threshold.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.55, ConfidenceMax: 0.85,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/deps/drift-risk",
+		RuleURI:         "docs/rules/deps/drift-risk.md",
+		PromotionPlan:   "Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on deps-bump PRs.",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalDepsDriftRiskStrictPin, ConstName: "SignalDepsDriftRiskStrictPin",
+		Domain: models.CategoryQuality, Status: StatusPlanned,
+		Title:           "Unpinned Dependency",
+		Description:     "One or more dependencies are declared without an explicit version anchor (bare name, `*`, `latest`, or unversioned URL). The resolver picks whatever happens to be available at install time, so installs are not reproducible across runs.",
+		Remediation:     "Add an explicit version, version range, or lockfile-verification gate so installs are reproducible.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/deps/drift-strict-pin",
+		RuleURI:         "docs/rules/deps/drift-strict-pin.md",
+		PromotionPlan:   "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when broader validation confirms regression-PR lift on deps-bump PRs.",
+		// Tier deliberately observability while StatusPlanned. The
+		// parent SignalDepsDriftRisk is TierGate; this split child
+		// stays out of the gate decision until promotion to
+		// StatusStable.
+		Tier: TierObservability,
+	},
+	{
+		Type: SignalDepsDriftRiskCaretPolicy, ConstName: "SignalDepsDriftRiskCaretPolicy",
+		Domain: models.CategoryQuality, Status: StatusPlanned,
+		Title:           "Caret-Range Dependency Drift",
+		Description:     "Dependencies use caret-range specs (`^x.y.z`) in an ecosystem where caret semantics let minor versions drift silently (npm, Poetry, and Cargo each interpret caret differently). The runtime version can change without a manifest edit.",
+		Remediation:     "Adopt a stricter pinning policy (tilde, exact, or commit-pinned) where minor-version drift would silently affect runtime behavior.",
+		DefaultSeverity: models.SeverityLow,
+		ConfidenceMin:   0.55, ConfidenceMax: 0.8,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/deps/drift-caret-policy",
+		RuleURI:         "docs/rules/deps/drift-caret-policy.md",
+		PromotionPlan:   "Preview status. One half of the dependency-drift split (the other is the strict-pin counterpart). Promotes to stable when broader validation confirms regression-PR lift on deps-bump PRs.",
+		// Tier deliberately observability while StatusPlanned. See the
+		// strict-pin counterpart above for rationale.
+		Tier: TierObservability,
+	},
+	{
+		Type: SignalConfigSchemaDrift, ConstName: "SignalConfigSchemaDrift",
+		Domain: models.CategoryQuality, Status: StatusExperimental,
+		Title:           "Config Schema Drift Risk",
+		Description:     "An infra-config file (GitHub Actions workflow, docker-compose, Helm values, or k8s manifest) uses forward-compat hazards: mutable action refs, `:latest` or untagged image tags, deprecated apiVersions.",
+		Remediation:     "Pin action refs to a SHA or tagged release. Replace `:latest` and untagged images with explicit versions. Upgrade deprecated apiVersions to their current replacement.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.5, ConfidenceMax: 0.8,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/config/schema-drift",
+		RuleURI:         "docs/rules/config/schema-drift.md",
+		PromotionPlan:   "Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on config-only PRs.",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalPromptFileMissingEval, ConstName: "SignalPromptFileMissingEval",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title:           "AI/ML Surface Without Eval Coverage",
+		Description:     "An AI/ML surface (prompt, agent, tool definition, model context, or model artifact) has no eval scenario covering it. Across 2000 OSS AI/ML repos, 136 of every 137 detected surfaces have this gap — the dominant AI-testing failure mode.",
+		Remediation:     "Add an eval scenario (promptfoo / DeepEval / Ragas / framework-specific) that exercises this surface. Use `terrain ai list` to see other uncovered surfaces in the same repo and batch-fix.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.55, ConfidenceMax: 0.85,
+		EvidenceSources: []string{"graph-traversal"},
+		RuleID:          "terrain/ai/surface-missing-eval",
+		RuleURI:         "docs/rules/ai/surface-missing-eval.md",
+		PromotionPlan:   "Promotes to stable once calibration data confirms regression-PR lift on prompt-eval-gap findings.",
+		Tier:            TierObservability,
 	},
 
 	// ── Migration ──────────────────────────────────────────────
@@ -301,24 +522,32 @@ var allSignalManifest = []ManifestEntry{
 		Domain: models.CategoryMigration, Status: StatusStable,
 		Title:           "Framework Migration Opportunity",
 		Description:     "The repository or package appears suitable for migration to a target framework.",
-		Remediation:     "Evaluate candidates with `terrain migration readiness` and plan staged migration.",
+		Remediation:     "Evaluate candidates with `terrain migration readiness` and plan staged framework_migration.",
 		DefaultSeverity: models.SeverityInfo,
 		ConfidenceMin:   0.5, ConfidenceMax: 0.8,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-MIG-001",
+		RuleID:          "terrain/migration/framework-migration",
 		RuleURI:         "docs/rules/migration/framework-migration.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalMigrationBlocker, ConstName: "SignalMigrationBlocker",
 		Domain: models.CategoryMigration, Status: StatusStable,
 		Title:           "Migration Blocker",
-		Description:     "Detected patterns will complicate framework migration.",
+		Description:     "Detected patterns will complicate framework framework_migration.",
 		Remediation:     "Address blockers incrementally before broad migration changes.",
-		DefaultSeverity: models.SeverityHigh,
+		DefaultSeverity: models.SeverityLow,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-MIG-002",
+		RuleID:          "terrain/migration/migration-blocker",
 		RuleURI:         "docs/rules/migration/migration-blocker.md",
+		// Validation found that the enzyme-usage sub-rule no longer has
+		// real positives in modern AI repos — enzyme as a migration
+		// target is historical. Capability preserved by refreshing the
+		// trigger set to living migration patterns (mocha->jest,
+		// jasmine->jest, unittest->pytest).
+		Tier: TierObservability,
+		PromotionPlan: "Observability-tier. Refresh the trigger set to living migration patterns and drop the enzyme sub-rule once base rates are confirmed.",
 	},
 	{
 		Type: SignalDeprecatedTestPattern, ConstName: "SignalDeprecatedTestPattern",
@@ -326,11 +555,19 @@ var allSignalManifest = []ManifestEntry{
 		Title:           "Deprecated Test Pattern",
 		Description:     "Deprecated test patterns increase migration and maintenance risk.",
 		Remediation:     "Replace deprecated APIs with supported alternatives.",
-		DefaultSeverity: models.SeverityMedium,
+		DefaultSeverity: models.SeverityLow,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-MIG-003",
+		RuleID:          "terrain/migration/deprecated-pattern",
 		RuleURI:         "docs/rules/migration/deprecated-pattern.md",
+		// Validation surfaced two sub-rules:
+		//   - enzyme-usage is no longer a productive trigger in modern
+		//     AI repos and should be retired or refreshed
+		//   - setTimeout-in-test needs a scope/binding gate to
+		//     distinguish jest.setTimeout config from bare setTimeout
+		//     in a test body
+		Tier: TierObservability,
+		PromotionPlan: "Observability-tier. Drop the enzyme sub-rule, refresh the trigger set, and add a scope gate distinguishing jest.setTimeout from bare setTimeout in a test body.",
 	},
 	{
 		Type: SignalDynamicTestGeneration, ConstName: "SignalDynamicTestGeneration",
@@ -341,8 +578,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.5, ConfidenceMax: 0.75,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-MIG-004",
+		RuleID:          "terrain/migration/dynamic-generation",
 		RuleURI:         "docs/rules/migration/dynamic-generation.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalCustomMatcherRisk, ConstName: "SignalCustomMatcherRisk",
@@ -353,8 +591,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityLow,
 		ConfidenceMin:   0.4, ConfidenceMax: 0.7,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-MIG-005",
+		RuleID:          "terrain/migration/custom-matcher",
 		RuleURI:         "docs/rules/migration/custom-matcher.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalUnsupportedSetup, ConstName: "SignalUnsupportedSetup",
@@ -365,8 +604,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityLow,
 		ConfidenceMin:   0.4, ConfidenceMax: 0.7,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-MIG-006",
+		RuleID:          "terrain/migration/unsupported-setup",
 		RuleURI:         "docs/rules/migration/unsupported-setup.md",
+		Tier:            TierObservability,
 	},
 
 	// ── Governance ─────────────────────────────────────────────
@@ -379,8 +619,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"policy"},
-		RuleID:          "TER-GOV-001",
+		RuleID:          "terrain/governance/policy-violation",
 		RuleURI:         "docs/rules/governance/policy-violation.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalLegacyFrameworkUsage, ConstName: "SignalLegacyFrameworkUsage",
@@ -391,8 +632,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"policy", "structural-pattern"},
-		RuleID:          "TER-GOV-002",
+		RuleID:          "terrain/governance/legacy-framework",
 		RuleURI:         "docs/rules/governance/legacy-framework.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalSkippedTestsInCI, ConstName: "SignalSkippedTestsInCI",
@@ -403,8 +645,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"policy", "structural-pattern"},
-		RuleID:          "TER-GOV-003",
+		RuleID:          "terrain/governance/skipped-in-ci",
 		RuleURI:         "docs/rules/governance/skipped-in-ci.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalRuntimeBudgetExceeded, ConstName: "SignalRuntimeBudgetExceeded",
@@ -415,8 +658,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"policy", "runtime"},
-		RuleID:          "TER-GOV-004",
+		RuleID:          "terrain/governance/runtime-budget",
 		RuleURI:         "docs/rules/governance/runtime-budget.md",
+		Tier:            TierGate,
 	},
 
 	// ── Structural (graph-powered) ─────────────────────────────
@@ -429,25 +673,25 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"graph-traversal", "structural-pattern"},
-		RuleID:          "TER-STRUCT-001",
+		RuleID:          "terrain/structural/uncovered-ai-surface",
 		RuleURI:         "docs/rules/structural/uncovered-ai-surface.md",
 		PromotionPlan: "Coverage attribution depends on .terrain/terrain.yaml scenario " +
 			"declarations; precision/recall calibrated in 0.2 against the AI fixture corpus.",
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalPhantomEvalScenario, ConstName: "SignalPhantomEvalScenario",
-		Domain: models.CategoryAI, Status: StatusExperimental,
+		Domain: models.CategoryAI, Status: StatusStable,
 		Title:           "Phantom Eval Scenario",
-		Description:     "Eval scenarios claim to validate AI surfaces but have no import-graph path to those surfaces.",
+		Description:     "Eval scenarios claim to validate AI surfaces but have no import-graph path to those surfaces — typically caused by a prompt/surface rename that wasn't propagated to the eval YAML.",
 		Remediation:     "Verify the test file actually imports and exercises the target code, or correct the surface mapping.",
-		DefaultSeverity: models.SeverityMedium,
+		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"graph-traversal"},
-		RuleID:          "TER-STRUCT-002",
+		RuleID:          "terrain/structural/phantom-eval",
 		RuleURI:         "docs/rules/structural/phantom-eval.md",
-		PromotionPlan: "Promote once .terrain/terrain.yaml scenario declarations are validated " +
-			"against the AI fixture corpus in 0.2. Today's traversal can miss surfaces declared " +
-			"by ID without a corresponding code path; calibration in 0.3 closes the gap.",
+		PromotionPlan: "Stable. Ships at observability tier because a silent eval-coverage gap is informational, not gate-blocking. Severity is High because the failure mode (eval reports passing while running zero tests) silently degrades trust in CI signal.",
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalUntestedPromptFlow, ConstName: "SignalUntestedPromptFlow",
@@ -458,11 +702,12 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"graph-traversal"},
-		RuleID:          "TER-STRUCT-003",
+		RuleID:          "terrain/structural/untested-prompt-flow",
 		RuleURI:         "docs/rules/structural/untested-prompt-flow.md",
 		PromotionPlan: "Detection currently misses prompt flows that go through framework " +
 			"abstractions (LangChain runnables, LlamaIndex query engines). 0.2 ships AST-based " +
 			"prompt-flow tracing; promote once recall measures >=0.8 on the AI fixture corpus.",
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalBlastRadiusHotspot, ConstName: "SignalBlastRadiusHotspot",
@@ -473,8 +718,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"graph-traversal"},
-		RuleID:          "TER-STRUCT-004",
+		RuleID:          "terrain/structural/blast-radius",
 		RuleURI:         "docs/rules/structural/blast-radius.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalFixtureFragilityHotspot, ConstName: "SignalFixtureFragilityHotspot",
@@ -485,8 +731,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"graph-traversal"},
-		RuleID:          "TER-STRUCT-005",
+		RuleID:          "terrain/structural/fixture-fragility",
 		RuleURI:         "docs/rules/structural/fixture-fragility.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAssertionFreeImport, ConstName: "SignalAssertionFreeImport",
@@ -494,11 +741,17 @@ var allSignalManifest = []ManifestEntry{
 		Title:           "Assertion-Free Import",
 		Description:     "Test files import production code but contain zero assertions — exercising code without verifying behavior.",
 		Remediation:     "Add assertions to validate behavior or remove tests that verify nothing.",
-		DefaultSeverity: models.SeverityHigh,
+		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"graph-traversal", "structural-pattern"},
-		RuleID:          "TER-STRUCT-006",
+		RuleID:          "terrain/structural/assertion-free-import",
 		RuleURI:         "docs/rules/structural/assertion-free-import.md",
+		// Shares the same assertion-counter blindness as the other
+		// assertion detectors — misses self.assertX, np.testing,
+		// mock.assert_called_*, and fluent helpers. Inherited-base-class
+		// assertions also require cross-file resolution to fully fix.
+		Tier: TierObservability,
+		PromotionPlan: "Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role test gate, cross-file inherited-assertion resolution, and framing-stable evaluation.",
 	},
 	{
 		Type: SignalCapabilityValidationGap, ConstName: "SignalCapabilityValidationGap",
@@ -509,11 +762,10 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.5, ConfidenceMax: 0.8,
 		EvidenceSources: []string{"graph-traversal", "structural-pattern"},
-		RuleID:          "TER-STRUCT-007",
+		RuleID:          "terrain/structural/capability-gap",
 		RuleURI:         "docs/rules/structural/capability-gap.md",
-		PromotionPlan: "Capability inference is heuristic in 0.1.2; 0.2 introduces the AI " +
-			"taxonomy v2 with explicit capability tags so this signal can fire only on declared " +
-			"capabilities, eliminating false positives. Promote once precision >=0.8.",
+		PromotionPlan: "Capability inference is heuristic; will be promoted once the AI taxonomy supports explicit capability tags and precision is validated.",
+		Tier: TierObservability,
 	},
 
 	// ── AI / Eval (planned in 0.1.2; ship in 0.2) ──────────────
@@ -529,28 +781,29 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.9, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-001",
+		RuleID:          "terrain/ai/eval-failure",
 		RuleURI:         "docs/rules/ai/eval-failure.md",
-		// 0.2 shipped the airun eval-framework adapters (Promptfoo,
-		// DeepEval, Ragas) which emit per-case failure data into the
-		// snapshot's EvalRuns, but the standalone evalFailure detector
-		// did not ship — the failures surface today via the more
-		// specific aiHallucinationRate / aiCostRegression /
-		// aiRetrievalRegression detectors. Reframe for 0.3.
-		PromotionPlan: "0.3 — generic per-case failure surfacing on top of the 0.2 airun eval ingestion. Today's per-case failures route through the specific aiHallucinationRate / aiCostRegression / aiRetrievalRegression detectors.",
+		// The airun eval-framework adapters (Promptfoo, DeepEval, Ragas)
+		// emit per-case failure data into the snapshot's EvalRuns, but
+		// the standalone evalFailure detector did not ship — failures
+		// Today's per-case failures surface via more specific
+		// detectors (hallucination-rate, cost-regression,
+		// retrieval-regression).
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalEvalRegression, ConstName: "SignalEvalRegression",
-		Domain: models.CategoryAI, Status: StatusPlanned,
+		Domain: models.CategoryAI, Status: StatusStable,
 		Title:           "Eval Regression",
+		Description:     "An eval case's primary Score dropped from baseline to current past the configured threshold, OR the run's PrimaryMetric dropped across all matched cases. Identifies regressions before merge.",
+		Remediation:     "Inspect the diff for prompt / model / retrieval changes that affect the regressing case(s). If intentional, update the baseline with `terrain ai record`.",
 		DefaultSeverity: models.SeverityHigh,
-		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
-		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-002", RuleURI: "docs/rules/ai/eval-regression.md",
-		// 0.2 shipped baseline-vs-current ingestion, but the umbrella
-		// evalRegression detector did not — concrete regression types
-		// (cost / retrieval / hallucination) ship instead.
-		PromotionPlan: "0.3 — umbrella evalRegression detector. Concrete shapes (aiCostRegression, aiRetrievalRegression) shipped in 0.2 and cover the practical cases today.",
+		ConfidenceMin:   0.85, ConfidenceMax: 0.99,
+		EvidenceSources: []string{"eval-execution"},
+		RuleID:          "terrain/regression/eval-regression",
+		RuleURI:         "docs/rules/regression/eval-regression.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalAccuracyRegression, ConstName: "SignalAccuracyRegression",
@@ -558,11 +811,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Accuracy Regression", DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-003", RuleURI: "docs/rules/ai/accuracy-regression.md",
-		// Did not ship in 0.2; deferred. The airun adapters surface
-		// per-case score data into the snapshot, so the detector
-		// itself is plumbing-only when it lands.
-		PromotionPlan: "0.3 — accuracy axis regression detector. Per-case score data lands in EvalRuns via the 0.2 airun adapters; detector wiring is the remaining work.",
+		RuleID:          "terrain/ai/accuracy-regression", RuleURI: "docs/rules/ai/accuracy-regression.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalCitationMissing, ConstName: "SignalCitationMissing",
@@ -570,8 +821,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Citation Missing", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-004", RuleURI: "docs/rules/ai/citation-missing.md",
-		PromotionPlan: "0.3 — RAG-specific detectors.",
+		RuleID:          "terrain/ai/citation-missing", RuleURI: "docs/rules/ai/citation-missing.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalRetrievalMiss, ConstName: "SignalRetrievalMiss",
@@ -579,8 +831,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Retrieval Miss", DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-005", RuleURI: "docs/rules/ai/retrieval-miss.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/retrieval-miss", RuleURI: "docs/rules/ai/retrieval-miss.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalAnswerGroundingFailure, ConstName: "SignalAnswerGroundingFailure",
@@ -588,8 +841,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Answer Grounding Failure", DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-006", RuleURI: "docs/rules/ai/grounding-failure.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/grounding-failure", RuleURI: "docs/rules/ai/grounding-failure.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalToolSelectionError, ConstName: "SignalToolSelectionError",
@@ -597,8 +851,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Tool Selection Error", DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-007", RuleURI: "docs/rules/ai/tool-selection-error.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/tool-selection-error", RuleURI: "docs/rules/ai/tool-selection-error.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalSchemaParseFailure, ConstName: "SignalSchemaParseFailure",
@@ -606,14 +861,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Schema Parse Failure", DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-008", RuleURI: "docs/rules/ai/schema-parse-failure.md",
-		// 0.2 closed the structural side (aiToolWithoutSandbox now
-		// reads typed fields, prompt-versioning rejects empty values,
-		// embedding-change detector sees env-var-loaded models). The
-		// runtime side — schema parse failures from eval frameworks —
-		// did not ship; deferred to 0.3 once the airun adapters expose
-		// `errors` buckets distinct from `failures`.
-		PromotionPlan: "0.3 — depends on airun adapters surfacing parse-error buckets distinct from assertion-failure buckets (currently lumped into Failures).",
+		RuleID:          "terrain/ai/schema-parse-failure", RuleURI: "docs/rules/ai/schema-parse-failure.md",
+		PromotionPlan: "Planned. Reserved signal type — runtime detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalSafetyFailure, ConstName: "SignalSafetyFailure",
@@ -621,14 +871,12 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Safety Failure", DefaultSeverity: models.SeverityCritical,
 		ConfidenceMin: 0.9, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"runtime", "policy"},
-		RuleID:          "TER-AI-009", RuleURI: "docs/rules/ai/safety-failure.md",
-		// 0.2 shipped the structural counterpart aiSafetyEvalMissing,
-		// which warns when no safety-shaped scenario covers the AI
-		// surfaces. Runtime first-class safety failures (where the
-		// eval framework explicitly grades a case as a safety
-		// violation) wait on a uniform `safetyVerdict` field across
-		// adapters — slated for 0.3.
-		PromotionPlan: "0.3 — depends on a uniform safety-verdict field across Promptfoo / DeepEval / Ragas adapters. The structural counterpart (aiSafetyEvalMissing) shipped in 0.2.",
+		RuleID:          "terrain/ai/safety-failure", RuleURI: "docs/rules/ai/safety-failure.md",
+		// The structural counterpart aiSafetyEvalMissing already
+		// ships; this runtime variant fires when an eval framework
+		// explicitly grades a case as a safety violation.
+		PromotionPlan: "Planned. Reserved signal type — runtime detector not yet wired.",
+		Tier:           TierGate,
 	},
 	{
 		Type: SignalAIPolicyViolation, ConstName: "SignalAIPolicyViolation",
@@ -636,8 +884,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "AI Policy Violation", DefaultSeverity: models.SeverityCritical,
 		ConfidenceMin: 1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"policy"},
-		RuleID:          "TER-AI-010", RuleURI: "docs/rules/ai/ai-policy-violation.md",
-		PromotionPlan: "0.2",
+		RuleID:          "terrain/ai/ai-policy-violation", RuleURI: "docs/rules/ai/ai-policy-violation.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:           TierGate,
 	},
 	{
 		Type: SignalHallucinationDetected, ConstName: "SignalHallucinationDetected",
@@ -645,8 +894,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Hallucination Detected", DefaultSeverity: models.SeverityCritical,
 		ConfidenceMin: 0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-011", RuleURI: "docs/rules/ai/hallucination.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/hallucination", RuleURI: "docs/rules/ai/hallucination.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:           TierGate,
 	},
 	{
 		Type: SignalLatencyRegression, ConstName: "SignalLatencyRegression",
@@ -654,17 +904,19 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Latency Regression", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-012", RuleURI: "docs/rules/ai/latency-regression.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/latency-regression", RuleURI: "docs/rules/ai/latency-regression.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:           TierGate,
 	},
 	{
 		Type: SignalCostRegression, ConstName: "SignalCostRegression",
 		Domain: models.CategoryAI, Status: StatusPlanned,
-		Title: "Cost Regression", DefaultSeverity: models.SeverityMedium,
+		Title: "Cost Regression (umbrella)", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-013", RuleURI: "docs/rules/ai/cost-regression.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/cost-regression-umbrella", RuleURI: "docs/rules/ai/cost-regression-umbrella.md",
+		PromotionPlan: "Planned. Reserved signal type — generic cost-regression umbrella; not yet wired.",
+		Tier:           TierGate,
 	},
 	{
 		Type: SignalContextOverflowRisk, ConstName: "SignalContextOverflowRisk",
@@ -672,8 +924,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Context Overflow Risk", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"structural-pattern", "runtime"},
-		RuleID:          "TER-AI-014", RuleURI: "docs/rules/ai/context-overflow.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/context-overflow", RuleURI: "docs/rules/ai/context-overflow.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalWrongSourceSelected, ConstName: "SignalWrongSourceSelected",
@@ -681,8 +934,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Wrong Source Selected", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-015", RuleURI: "docs/rules/ai/wrong-source.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/wrong-source", RuleURI: "docs/rules/ai/wrong-source.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalCitationMismatch, ConstName: "SignalCitationMismatch",
@@ -690,8 +944,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Citation Mismatch", DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-016", RuleURI: "docs/rules/ai/citation-mismatch.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/citation-mismatch", RuleURI: "docs/rules/ai/citation-mismatch.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalStaleSourceRisk, ConstName: "SignalStaleSourceRisk",
@@ -699,8 +954,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Stale Source Risk", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.5, ConfidenceMax: 0.8,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-AI-017", RuleURI: "docs/rules/ai/stale-source.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/stale-source", RuleURI: "docs/rules/ai/stale-source.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalChunkingRegression, ConstName: "SignalChunkingRegression",
@@ -708,8 +964,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Chunking Regression", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-018", RuleURI: "docs/rules/ai/chunking-regression.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/chunking-regression", RuleURI: "docs/rules/ai/chunking-regression.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalRerankerRegression, ConstName: "SignalRerankerRegression",
@@ -717,8 +974,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Reranker Regression", DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-019", RuleURI: "docs/rules/ai/reranker-regression.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/reranker-regression", RuleURI: "docs/rules/ai/reranker-regression.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalTopKRegression, ConstName: "SignalTopKRegression",
@@ -726,8 +984,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Top-K Regression", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-020", RuleURI: "docs/rules/ai/topk-regression.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/topk-regression", RuleURI: "docs/rules/ai/topk-regression.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalToolRoutingError, ConstName: "SignalToolRoutingError",
@@ -735,8 +994,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Tool Routing Error", DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-021", RuleURI: "docs/rules/ai/tool-routing-error.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/tool-routing-error", RuleURI: "docs/rules/ai/tool-routing-error.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalToolGuardrailViolation, ConstName: "SignalToolGuardrailViolation",
@@ -744,8 +1004,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Tool Guardrail Violation", DefaultSeverity: models.SeverityCritical,
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime", "policy"},
-		RuleID:          "TER-AI-022", RuleURI: "docs/rules/ai/tool-guardrail.md",
-		PromotionPlan: "0.2 — tools-without-sandbox detection.",
+		RuleID:          "terrain/ai/tool-guardrail", RuleURI: "docs/rules/ai/tool-guardrail.md",
+		PromotionPlan: "Planned. Reserved signal type for runtime tool-guardrail violations; the structural side ships as aiToolWithoutSandbox.",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalToolBudgetExceeded, ConstName: "SignalToolBudgetExceeded",
@@ -753,8 +1014,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Tool Budget Exceeded", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime", "policy"},
-		RuleID:          "TER-AI-023", RuleURI: "docs/rules/ai/tool-budget.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/tool-budget", RuleURI: "docs/rules/ai/tool-budget.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAgentFallbackTriggered, ConstName: "SignalAgentFallbackTriggered",
@@ -762,8 +1024,9 @@ var allSignalManifest = []ManifestEntry{
 		Title: "Agent Fallback Triggered", DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin: 0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-024", RuleURI: "docs/rules/ai/agent-fallback.md",
-		PromotionPlan: "0.3",
+		RuleID:          "terrain/ai/agent-fallback", RuleURI: "docs/rules/ai/agent-fallback.md",
+		PromotionPlan: "Planned. Reserved signal type — detector not yet wired.",
+		Tier:            TierObservability,
 	},
 
 	// ── 0.2 AI signals (planned in 0.2, detectors land before 0.2 close) ──
@@ -776,18 +1039,21 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern", "graph-traversal"},
-		RuleID:          "TER-AI-100", RuleURI: "docs/rules/ai/safety-eval-missing.md",
+		RuleID:          "terrain/ai/safety-eval-missing", RuleURI: "docs/rules/ai/safety-eval-missing.md",
+		Tier: TierObservability,
 	},
 	{
 		Type: SignalAIPromptVersioning, ConstName: "SignalAIPromptVersioning",
 		Domain: models.CategoryAI, Status: StatusStable,
 		Title:           "Prompt Versioning",
-		Description:     "Prompt-kind surface ships without a recognisable version marker (filename suffix, inline `version:` field, or `# version:` comment). Future content changes will silently drift; consumers can't detect the change.",
+		Description:     "Prompt-kind surface ships without a recognizable version marker (filename suffix, inline `version:` field, or `# version:` comment). Future content changes will silently drift; consumers can't detect the change.",
 		Remediation:     "Add a `version:` field, a `_v<N>` filename suffix, or a `# version: ...` comment so downstream consumers can detect content drift.",
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.75, ConfidenceMax: 0.92,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-AI-101", RuleURI: "docs/rules/ai/prompt-versioning.md",
+		RuleID:          "terrain/ai/prompt-versioning", RuleURI: "docs/rules/ai/prompt-versioning.md",
+		Tier:            TierObservability,
+		PromotionPlan:   "Stays at observability tier until adopter-corpus precision confirms gate-readiness.",
 	},
 	{
 		Type: SignalAIPromptInjectionRisk, ConstName: "SignalAIPromptInjectionRisk",
@@ -798,8 +1064,10 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.6, ConfidenceMax: 0.85,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-AI-102", RuleURI: "docs/rules/ai/prompt-injection-risk.md",
-		PromotionPlan:   "0.2 ships heuristic regex detection. Promotes to stable in 0.3 when AST-precise taint-flow analysis lands.",
+		RuleID:          "terrain/ai/prompt-injection-risk", RuleURI: "docs/rules/ai/prompt-injection-risk.md",
+		Tier:            TierObservability,
+		PromotionPlan:   "Off by default. The current pattern-matching predicate over-fires on non-injection prompt templates; the rule will be re-enabled when a structurally precise taint-flow predicate replaces it. Opt in via .terrain/policy.yaml only when an adopter has confirmed the local signal is useful.",
+		DisabledByDefault: true,
 	},
 	{
 		Type: SignalAIHardcodedAPIKey, ConstName: "SignalAIHardcodedAPIKey",
@@ -810,7 +1078,38 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityCritical,
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-AI-103", RuleURI: "docs/rules/ai/hardcoded-api-key.md",
+		RuleID:          "terrain/ai/hardcoded-api-key", RuleURI: "docs/rules/ai/hardcoded-api-key.md",
+		Tier:            TierObservability,
+		PromotionPlan:   "Off by default. The current literal-shape predicate is too narrow to fire reliably across typical adopter codebases; capability is preserved via the planned split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded. Opt in via .terrain/policy.yaml when the local repo shape matches the predicate.",
+		DisabledByDefault: true,
+	},
+	{
+		Type: SignalAIHardcodedAPIKeyLiteralShape, ConstName: "SignalAIHardcodedAPIKeyLiteralShape",
+		Domain: models.CategoryAI, Status: StatusPlanned,
+		Title:           "Hard-Coded API Key in Source",
+		Description:     "An API-key-shaped string appears verbatim in an eval, prompt, or agent definition file. Pairs with the CI-coverage counterpart, secretScannerCoverageDegraded.",
+		Remediation:     "Move the secret to an environment variable or secrets store and reference it via the runner's secret-resolution path.",
+		DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/ai/hardcoded-api-key-literal-shape",
+		RuleURI:         "docs/rules/ai/hardcoded-api-key-literal-shape.md",
+		Tier:            TierObservability,
+		PromotionPlan:   "Planned. Reserved signal type — the literal-shape half of the API-key split; detector not yet wired.",
+	},
+	{
+		Type: SignalSecretScannerCoverageDegraded, ConstName: "SignalSecretScannerCoverageDegraded",
+		Domain: models.CategoryAI, Status: StatusPlanned,
+		Title:           "No Secret Scanner in CI",
+		Description:     "The repository configures or references AI surfaces that should be guarded by a secret scanner, but no secret-scanner CI integration (GitGuardian, GitHub secret scanning, gitleaks, trufflehog) is enabled. CI-coverage counterpart to aiHardcodedAPIKey-literal-shape.",
+		Remediation:     "Enable a secret scanner in CI and document its coverage in the project README. Re-audit periodically.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.6, ConfidenceMax: 0.85,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/ai/secret-scanner-coverage-degraded",
+		RuleURI:         "docs/rules/ai/secret-scanner-coverage-degraded.md",
+		PromotionPlan:   "Planned. Reserved signal type for the CI-integration gap that pairs with the in-repo key-shape detector.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAIToolWithoutSandbox, ConstName: "SignalAIToolWithoutSandbox",
@@ -821,7 +1120,8 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-AI-104", RuleURI: "docs/rules/ai/tool-without-sandbox.md",
+		RuleID:          "terrain/ai/tool-without-sandbox", RuleURI: "docs/rules/ai/tool-without-sandbox.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalAINonDeterministicEval, ConstName: "SignalAINonDeterministicEval",
@@ -832,7 +1132,8 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.9, ConfidenceMax: 0.98,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-AI-105", RuleURI: "docs/rules/ai/non-deterministic-eval.md",
+		RuleID:          "terrain/ai/non-deterministic-eval", RuleURI: "docs/rules/ai/non-deterministic-eval.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAIModelDeprecationRisk, ConstName: "SignalAIModelDeprecationRisk",
@@ -843,7 +1144,8 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-AI-106", RuleURI: "docs/rules/ai/model-deprecation-risk.md",
+		RuleID:          "terrain/ai/model-deprecation-risk", RuleURI: "docs/rules/ai/model-deprecation-risk.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAICostRegression, ConstName: "SignalAICostRegression",
@@ -854,7 +1156,8 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-107", RuleURI: "docs/rules/ai/cost-regression.md",
+		RuleID:          "terrain/ai/cost-regression", RuleURI: "docs/rules/ai/cost-regression.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAIHallucinationRate, ConstName: "SignalAIHallucinationRate",
@@ -864,20 +1167,21 @@ var allSignalManifest = []ManifestEntry{
 		// failure metadata that the eval framework (Promptfoo / DeepEval
 		// / Ragas) already produced and computes the rate. The original
 		// "Hallucination Rate Above Threshold" name implies Terrain is
-		// judging model truthfulness; that's the mis-claim flagged in
-		// the launch-readiness review. The detector's job is to surface
-		// what the eval framework reported. Renaming the signal type
-		// itself to `aiEvalFlaggedHallucinationShare` is 0.3 work
-		// (deprecation alias, then removal); for 0.2.0 we keep the
-		// type name for back-compat and tighten the description /
-		// remediation so the trust framing is correct.
+		// judging model truthfulness; that's a mis-claim flagged in
+		// review. The detector's job is to surface what the eval
+		// framework reported. Renaming the signal type itself to
+		// `aiEvalFlaggedHallucinationShare` is a follow-up task
+		// (deprecation alias, then removal); the current name is kept
+		// for back-compat while the description / remediation carry
+		// the correct trust framing.
 		Title:       "Eval-Flagged Hallucination Share",
 		Description: "The eval framework's own hallucination metadata reports a share of cases above the project-configured threshold (default 5%). Terrain reads this from the framework output (Promptfoo / DeepEval / Ragas) — Terrain does not judge hallucinations directly.",
 		Remediation: "Investigate the underlying eval-flagged cases; tighten retrieval or grounding before merging. If you disagree with the eval framework's classification, fix the eval scenario or raise the threshold (with a documented justification).",
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-108", RuleURI: "docs/rules/ai/hallucination-rate.md",
+		RuleID:          "terrain/ai/hallucination-rate", RuleURI: "docs/rules/ai/hallucination-rate.md",
+		Tier:            TierGate,
 	},
 	{
 		Type: SignalAIFewShotContamination, ConstName: "SignalAIFewShotContamination",
@@ -888,8 +1192,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.55, ConfidenceMax: 0.83,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-AI-109", RuleURI: "docs/rules/ai/few-shot-contamination.md",
-		PromotionPlan:   "Substring-overlap detector ships in 0.2; promotes to stable in 0.3 once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes.",
+		RuleID:          "terrain/ai/few-shot-contamination", RuleURI: "docs/rules/ai/few-shot-contamination.md",
+		PromotionPlan:   "Substring-overlap detector ships today; promotes to stable once broader validation tunes the threshold and adds token-level n-gram + semantic-similarity passes.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAIEmbeddingModelChange, ConstName: "SignalAIEmbeddingModelChange",
@@ -900,8 +1205,9 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   0.7, ConfidenceMax: 0.88,
 		EvidenceSources: []string{"structural-pattern"},
-		RuleID:          "TER-AI-110", RuleURI: "docs/rules/ai/embedding-model-change.md",
-		PromotionPlan:   "0.2 ships the static precondition (embedding referenced + no retrieval coverage). Cross-snapshot content-hash diff variant lands in 0.3 once snapshot fingerprints are recorded.",
+		RuleID:          "terrain/ai/embedding-model-change", RuleURI: "docs/rules/ai/embedding-model-change.md",
+		PromotionPlan:   "Ships the static precondition (embedding referenced + no retrieval coverage) today. The cross-snapshot content-hash diff variant lands once snapshot fingerprints are recorded.",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalAIRetrievalRegression, ConstName: "SignalAIRetrievalRegression",
@@ -912,7 +1218,21 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityHigh,
 		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
 		EvidenceSources: []string{"runtime"},
-		RuleID:          "TER-AI-111", RuleURI: "docs/rules/ai/retrieval-regression.md",
+		RuleID:          "terrain/ai/retrieval-regression", RuleURI: "docs/rules/ai/retrieval-regression.md",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalAIPromptSchemaDrift, ConstName: "SignalAIPromptSchemaDrift",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Prompt Template References Changed Schema Field",
+		Description:     "A prompt template references a schema field that this PR removed or whose declared type changed. The template will render with a missing value (or wrong type) once merged.",
+		Remediation:     "Update the template to use the new schema field, restore the old field, or remove the variable reference.",
+		DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
+		EvidenceSources: []string{"static"},
+		RuleID:          "terrain/ai/prompt-schema-drift", RuleURI: "docs/rules/ai/prompt-schema-drift.md",
+		Tier:            TierObservability,
+		PromotionPlan:   "Ships at observability tier. Stays at observability until adopter-corpus measurement confirms gate-readiness.",
 	},
 
 	// ── Engine self-diagnostic signals ──────────────────────────────
@@ -929,14 +1249,15 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityCritical,
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"static"},
-		RuleID:          "TER-ENGINE-001", RuleURI: "docs/rules/engine/detector-panic.md",
+		RuleID:          "terrain/engine/detector-panic", RuleURI: "docs/rules/engine/detector-panic.md",
+		Tier:            TierObservability,
 	},
-	// Track 9.4: per-detector wall-clock timeout budgets. Emitted by
-	// the pipeline (safeDetectWithBudget) when a detector exceeds
-	// its DetectorMeta.Budget (default DefaultDetectorBudget). The
-	// detector's signals from any post-budget completion are
-	// dropped — this marker is the only signal returned for the
-	// abandoned detector.
+	// Per-detector wall-clock timeout budgets. Emitted by the
+	// pipeline (safeDetectWithBudget) when a detector exceeds its
+	// DetectorMeta.Budget (default DefaultDetectorBudget). The
+	// detector's signals from any post-budget completion are dropped
+	// — this marker is the only signal returned for the abandoned
+	// detector.
 	{
 		Type: SignalDetectorBudgetExceeded, ConstName: "SignalDetectorBudgetExceeded",
 		Domain: models.CategoryQuality, Status: StatusStable,
@@ -946,13 +1267,14 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityCritical,
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"static"},
-		RuleID:          "TER-ENGINE-002", RuleURI: "docs/rules/engine/detector-budget.md",
+		RuleID:          "terrain/engine/detector-budget", RuleURI: "docs/rules/engine/detector-budget.md",
+		Tier:            TierObservability,
 	},
-	// Track 9.3: emitted by safeDetectChecked when a detector's
-	// declared input requirements (RequiresRuntime / RequiresBaseline
-	// / RequiresEvalArtifact) aren't satisfied by the current
-	// snapshot. Surfaces the gap so adopters know which flag to add
-	// rather than seeing silent zero-output from the affected detector.
+	// Emitted by safeDetectChecked when a detector's declared input
+	// requirements (RequiresRuntime / RequiresBaseline /
+	// RequiresEvalArtifact) aren't satisfied by the current snapshot.
+	// Surfaces the gap so adopters know which flag to add rather than
+	// seeing silent zero-output from the affected detector.
 	{
 		Type: SignalDetectorMissingInput, ConstName: "SignalDetectorMissingInput",
 		Domain: models.CategoryQuality, Status: StatusStable,
@@ -962,7 +1284,8 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityLow,
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"static"},
-		RuleID:          "TER-ENGINE-003", RuleURI: "docs/rules/engine/detector-missing-input.md",
+		RuleID:          "terrain/engine/detector-missing-input", RuleURI: "docs/rules/engine/detector-missing-input.md",
+		Tier:            TierObservability,
 	},
 	{
 		Type: SignalSuppressionExpired, ConstName: "SignalSuppressionExpired",
@@ -973,7 +1296,447 @@ var allSignalManifest = []ManifestEntry{
 		DefaultSeverity: models.SeverityMedium,
 		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
 		EvidenceSources: []string{"policy"},
-		RuleID:          "TER-ENGINE-004", RuleURI: "docs/rules/engine/suppression-expired.md",
+		RuleID:          "terrain/engine/suppression-expired", RuleURI: "docs/rules/engine/suppression-expired.md",
+		Tier:            TierObservability,
+	},
+
+	// ── Stable rules ─────────────────────────────────────────────
+	// These implement the canonical stable taxonomy (regression /
+	// coverage / hygiene / reproducibility / security / performance /
+	// data). Domain stays as the closest existing SignalCategory until
+	// the SignalCategory enum is extended in a separate change; the
+	// rule ID encodes the taxonomy category.
+
+	{
+		Type: SignalVersionFloating, ConstName: "SignalVersionFloating",
+		Domain: models.CategoryQuality, Status: StatusStable,
+		Title:           "Floating Dependency Version",
+		Description:     "A dependency is declared without a version pin (unpinned, range-only, or moving git/url reference). Subsequent installs may resolve to different versions, introducing non-determinism in test and eval runs.",
+		Remediation:     "Pin the dependency to an exact version, commit a lockfile that records the resolved set, or use a content-addressed git SHA reference.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.85, ConfidenceMax: 0.99,
+		EvidenceSources: []string{"structural-pattern", "manifest"},
+		RuleID:          "terrain/reproducibility/version-floating",
+		RuleURI:         "docs/rules/reproducibility/version-floating.md",
+		Tier:            TierObservability,
+	},
+
+	// Remaining stable rules — declared as Planned. Each gets its
+	// detector + doc page in subsequent commits as the implementations
+	// land. The manifest-parity test requires every Signal* constant
+	// to have an entry here.
+
+	{
+		Type: SignalSecretsInPrompt, ConstName: "SignalSecretsInPrompt",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Secrets in Prompt",
+		Description:     "A prompt-classified file contains embedded credentials (OpenAI / Anthropic / GitHub / Slack / AWS keys, JWT, bearer tokens). Anyone with read access to the prompt has access to the credential.",
+		Remediation:     "Rotate the leaked credential immediately, then move it to an environment variable or secret manager.",
+		DefaultSeverity: models.SeverityCritical,
+		ConfidenceMin:   0.95, ConfidenceMax: 0.99,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/hygiene/secrets-in-prompt",
+		RuleURI:         "docs/rules/hygiene/secrets-in-prompt.md",
+		PromotionPlan:   "Stable — Go-native regex detector ships first; richer secret-vocabulary integration is a possible follow-up.",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalNoTestsForCodeUnit, ConstName: "SignalNoTestsForCodeUnit",
+		Domain: models.CategoryQuality, Status: StatusStable,
+		Title:           "No Tests for Code Unit",
+		Description:     "A code unit (exported function / method / class) exists in the codebase but no test in the snapshot's dependency graph covers it. Untested code reaches production undetected when changed.",
+		Remediation:     "Add a test that imports the code unit and exercises its observable behavior. The rule defaults to exported symbols only; configure `include_private: true` to widen coverage.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
+		EvidenceSources: []string{"graph-traversal"},
+		RuleID:          "terrain/coverage/no-tests",
+		RuleURI:         "docs/rules/coverage/no-tests.md",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalNoEvalForAISurface, ConstName: "SignalNoEvalForAISurface",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "No Eval for AI Surface",
+		Description:     "An AI-typed CodeSurface (prompt / context / dataset / tool / retrieval / agent / eval_definition / model) has no Eval that claims to cover it. Model behavior can shift in production without any eval surfacing the regression.",
+		Remediation:     "Add an eval scenario that exercises the surface and asserts on its output / metric / shape.",
+		DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
+		EvidenceSources: []string{"graph-traversal"},
+		RuleID:          "terrain/coverage/no-eval",
+		RuleURI:         "docs/rules/coverage/no-eval.md",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalModelFixtureUnpinned, ConstName: "SignalModelFixtureUnpinned",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Model Fixture Unpinned",
+		Description:     "A model-loading call (from_pretrained / torch.load / joblib.load / load_model / snapshot_download) uses a path or revision that isn't content-addressed. The underlying weights may change without a code edit, regressing eval scores silently.",
+		Remediation:     "Pin the load to a commit SHA (revision=\"<sha>\" for HuggingFace), a version-suffixed filename (model_v3.0.pt), or a .safetensors-with-checksum format.",
+		DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/hygiene/model-fixture-unpinned",
+		RuleURI:         "docs/rules/hygiene/model-fixture-unpinned.md",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalEvalNoAssertion, ConstName: "SignalEvalNoAssertion",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Eval Without Assertion",
+		Description:     "An eval test function runs to completion without any assertion / score / metric call. The test cannot detect regressions because it accepts any model output.",
+		Remediation:     "Add an assert / score check that fails when the eval output deviates from expectations.",
+		DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/hygiene/eval-no-assertion",
+		RuleURI:         "docs/rules/hygiene/eval-no-assertion.md",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalNoSeed, ConstName: "SignalNoSeed",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Missing Random Seed",
+		Description:     "Stochastic library call (np.random / torch / random / tf.random) in an eval or training file without a preceding seed call. Run-to-run results vary, masking real regressions.",
+		Remediation:     "Add a seed call at module scope or in a pytest fixture (np.random.seed(42), torch.manual_seed(42), or transformers.set_seed(42)).",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/reproducibility/no-seed",
+		RuleURI:         "docs/rules/reproducibility/no-seed.md",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalMissingEnvPinning, ConstName: "SignalMissingEnvPinning",
+		Domain: models.CategoryQuality, Status: StatusStable,
+		Title:           "Missing Env Pinning",
+		Description:     "An environment-variable read in eval / inference code lacks a default value. The same code produces different behavior depending on which environment runs it.",
+		Remediation:     "Supply a default — os.environ.get(KEY, \"<pinned-value>\") — or fail fast with a clear error message when the variable is absent.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/reproducibility/missing-env-pinning",
+		RuleURI:         "docs/rules/reproducibility/missing-env-pinning.md",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalPIIInEval, ConstName: "SignalPIIInEval",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "PII in Eval Dataset",
+		Description:     "An eval-directory file contains PII-shaped values (emails, phone numbers, SSNs, credit card numbers, IPv4 addresses). Eval datasets that retain production PII expose customer data to anyone with repo access.",
+		Remediation:     "Replace PII in the eval dataset with synthetic equivalents (Faker, Mimesis, mockaroo) or apply a redaction pass before committing.",
+		DefaultSeverity: models.SeverityCritical,
+		ConfidenceMin:   0.75, ConfidenceMax: 0.95,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/security/pii-in-eval",
+		RuleURI:         "docs/rules/security/pii-in-eval.md",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalInsecureDeserialize, ConstName: "SignalInsecureDeserialize",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Insecure Deserialization",
+		Description:     "A call into an unsafe deserialization primitive (pickle.load, torch.load without weights_only=True, joblib.load, yaml.load without SafeLoader, dill.load, marshal.load) executes arbitrary code on untrusted input.",
+		Remediation:     "Switch to a safe format (JSON, msgpack, safetensors, ONNX). When the primitive is unavoidable, declare the explicit safe option (weights_only=True for torch.load, Loader=SafeLoader for yaml.load).",
+		DefaultSeverity: models.SeverityCritical,
+		ConfidenceMin:   0.9, ConfidenceMax: 0.99,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/security/insecure-deserialization",
+		RuleURI:         "docs/rules/security/insecure-deserialization.md",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalMissingPerfTest, ConstName: "SignalMissingPerfTest",
+		Domain: models.CategoryQuality, Status: StatusStable,
+		Title:           "Missing Performance Test",
+		Description:     "A latency-critical AI surface (prompt / retrieval / agent / model / handler / route) has no benchmark or load test exercising it. Latency or throughput regressions ship silently.",
+		Remediation:     "Add a benchmark under benchmarks/ or perf/ that records P50 / P95 latency for the surface.",
+		DefaultSeverity: models.SeverityLow,
+		ConfidenceMin:   0.7, ConfidenceMax: 0.85,
+		EvidenceSources: []string{"graph-traversal"},
+		RuleID:          "terrain/performance/missing-perf-test",
+		RuleURI:         "docs/rules/performance/missing-perf-test.md",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalDataLeakageSuspected, ConstName: "SignalDataLeakageSuspected",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Data Leakage Suspected",
+		Description:     "Source-level patterns associated with train/test contamination: preprocessing (scaler/encoder fit) applied before the split, or random train/test split applied to time-series data.",
+		Remediation:     "Move scaler/encoder fits to AFTER the split. For time-series, use TimeSeriesSplit or a manual time-based cutoff.",
+		DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin:   0.7, ConfidenceMax: 0.9,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/data/leakage-suspected",
+		RuleURI:         "docs/rules/data/leakage-suspected.md",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalMissingTrainTestSplit, ConstName: "SignalMissingTrainTestSplit",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Missing Train/Test Split",
+		Description:     "A training call (.fit() / .train() / .partial_fit()) appears in a training file without any preceding split helper (train_test_split, KFold, TimeSeriesSplit, cross_val_score, etc.). The model is fit on the full dataset; evaluation against the same data measures memorization, not generalization.",
+		Remediation:     "Split the dataset before training (sklearn.model_selection.train_test_split, KFold for general use, TimeSeriesSplit for temporal data).",
+		DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/data/missing-train-test-split",
+		RuleURI:         "docs/rules/data/missing-train-test-split.md",
+		Tier:            TierGate,
+	},
+
+	// ── Regression family (stable) ────────────────────────────────
+	// Consume the Tier 1 eval-adapter foundation to compare baseline
+	// and current runs.
+	{
+		Type: SignalBaselineNotSet, ConstName: "SignalBaselineNotSet",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Baseline Not Set",
+		Description:     "An EvalRun exists for the current PR but no baseline is recorded. Eval-regression detection is disabled until a baseline exists.",
+		Remediation:     "Run `terrain ai record` on the current main-branch state to lock the baseline. Subsequent PRs will be compared against it.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.99, ConfidenceMax: 0.99,
+		EvidenceSources: []string{"eval-execution"},
+		RuleID:          "terrain/regression/baseline-not-set",
+		RuleURI:         "docs/rules/regression/baseline-not-set.md",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalPassRateDrop, ConstName: "SignalPassRateDrop",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Eval Pass Rate Dropped",
+		Description:     "The success / total ratio across eval cases dropped past the configured threshold from baseline to current. Distinct from eval-regression (continuous score deltas) — fires on discrete pass/fail count deltas.",
+		Remediation:     "Inspect per-case eval-regression findings for cases that flipped from pass to fail. If intentional, update the baseline.",
+		DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin:   0.9, ConfidenceMax: 0.99,
+		EvidenceSources: []string{"eval-execution"},
+		RuleID:          "terrain/regression/pass-rate-drop",
+		RuleURI:         "docs/rules/regression/pass-rate-drop.md",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalSnapshotMismatch, ConstName: "SignalSnapshotMismatch",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Snapshot Mismatch",
+		Description:     "An eval case's recorded output snapshot diverged from baseline to current. Catches behavior changes the scalar score may not surface.",
+		Remediation:     "Inspect the diff for prompt / model / retrieval changes affecting the case. If the new output is correct, accept it via `terrain ai record`.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.85, ConfidenceMax: 0.95,
+		EvidenceSources: []string{"eval-execution"},
+		RuleID:          "terrain/regression/snapshot-mismatch",
+		RuleURI:         "docs/rules/regression/snapshot-mismatch.md",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalTestFailed, ConstName: "SignalTestFailed",
+		Domain: models.CategoryHealth, Status: StatusStable,
+		Title:           "Impacted Test Failed",
+		Description:     "A test selected by impact analysis as relevant to the current change failed. The change broke something the test suite already protects.",
+		Remediation:     "Reproduce locally with `terrain test --selector regression/test-failed`. Fix the failure or, if the test is stale, update it deliberately.",
+		DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
+		EvidenceSources: []string{"runtime", "graph-traversal"},
+		RuleID:          "terrain/regression/test-failed",
+		RuleURI:         "docs/rules/regression/test-failed.md",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalPerformanceRegression, ConstName: "SignalPerformanceRegression",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Performance Regression",
+		Description:     "An ML model's performance metric (accuracy / F1 / AUC / RMSE / etc.) regressed past the configured threshold from baseline to current. Same shape as eval-regression but applied to classical ML metrics rather than LLM rubric scores.",
+		Remediation:     "Inspect the diff for training data / hyperparameter / feature changes. If the regression is intentional, update the baseline.",
+		DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin:   0.9, ConfidenceMax: 0.99,
+		EvidenceSources: []string{"eval-execution"},
+		RuleID:          "terrain/regression/performance-regression",
+		RuleURI:         "docs/rules/regression/performance-regression.md",
+		Tier:            TierGate,
+	},
+
+	// ── Coverage family (stable) ──────────────────────────────────
+	{
+		Type: SignalMissingBaseline, ConstName: "SignalMissingBaseline",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title:           "Missing Coverage Baseline",
+		Description:     "The repository has eval surfaces but no `.terrain/baselines/` directory exists. Eval regression detection is disabled at the coverage layer.",
+		Remediation:     "Run `terrain ai record` to create the baseline directory. Commit `.terrain/baselines/latest.json` so subsequent PRs compare against it.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   1.0, ConfidenceMax: 1.0,
+		EvidenceSources: []string{"static"},
+		RuleID:          "terrain/coverage/missing-baseline",
+		RuleURI:         "docs/rules/coverage/missing-baseline.md",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalNoIntegrationTest, ConstName: "SignalNoIntegrationTest",
+		Domain: models.CategoryQuality, Status: StatusStable,
+		Title:           "No Integration Test",
+		Description:     "A code unit reachable from a production entry point (handler / route) has no integration test exercising it through that entry point.",
+		Remediation:     "Add an integration test that exercises the handler / route end-to-end. The unit test stays as a fast inner-loop check; the integration test ensures the cross-stack contract holds.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.8, ConfidenceMax: 0.95,
+		EvidenceSources: []string{"graph-traversal"},
+		RuleID:          "terrain/coverage/no-integration-test",
+		RuleURI:         "docs/rules/coverage/no-integration-test.md",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalNoDataValidation, ConstName: "SignalNoDataValidation",
+		Domain: models.CategoryQuality, Status: StatusStable,
+		Title:           "No Data Validation",
+		Description:     "A data pipeline file (ETL / dbt model / training data loader) has no data-validation library import (Great Expectations, pandera, dbt-expectations, soda).",
+		Remediation:     "Add data validation (GE expectations, pandera schemas, dbt-expectations tests) on the pipeline's output. Run the validation in CI on a fixed sample.",
+		DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin:   0.75, ConfidenceMax: 0.9,
+		EvidenceSources: []string{"structural-pattern"},
+		RuleID:          "terrain/coverage/no-data-validation",
+		RuleURI:         "docs/rules/coverage/no-data-validation.md",
+		Tier:            TierObservability,
+	},
+
+	// ── Preview rules ────────────────────────────────────────────
+	// Preview rules ship detection logic with a short-form doc page.
+	// They're default-off and pending broader validation before
+	// promotion to Stable.
+	//
+	// Status=Experimental signals "detection works but not yet broadly
+	// validated"; detectors land alongside these entries in
+	// internal/preview/.
+
+	{
+		Type: SignalPromptBloat, ConstName: "SignalPromptBloat",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Prompt Bloat", DefaultSeverity: models.SeverityLow,
+		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
+		RuleID: "terrain/prompt-quality/prompt-bloat", RuleURI: "docs/rules/prompt-quality/prompt-bloat.md",
+		PromotionPlan: "Fires when prompt token count exceeds the configured budget.",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalPromptWithoutTemperature, ConstName: "SignalPromptWithoutTemperature",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Prompt Without Temperature", DefaultSeverity: models.SeverityLow,
+		ConfidenceMin: 0.85, ConfidenceMax: 0.95, EvidenceSources: []string{"structural-pattern"},
+		RuleID: "terrain/prompt-quality/prompt-without-temperature", RuleURI: "docs/rules/prompt-quality/prompt-without-temperature.md",
+		PromotionPlan: "Fires when an LLM SDK call has no temperature kwarg. Defaults differ across SDKs; an explicit value is reproducibility-critical.",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalMissingPromptValidator, ConstName: "SignalMissingPromptValidator",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Missing Prompt Validator", DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
+		RuleID: "terrain/prompt-quality/missing-validator", RuleURI: "docs/rules/prompt-quality/missing-validator.md",
+		PromotionPlan: "Fires when a prompt template has no output-validator schema attached.",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalPromptVersionSkew, ConstName: "SignalPromptVersionSkew",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Prompt Version Skew", DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin: 0.75, ConfidenceMax: 0.9, EvidenceSources: []string{"graph-traversal"},
+		RuleID: "terrain/prompt-quality/version-skew", RuleURI: "docs/rules/prompt-quality/version-skew.md",
+		PromotionPlan: "Detects when the same prompt template is referenced by multiple eval scenarios under different version names.",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalRetrievalWithoutRerank, ConstName: "SignalRetrievalWithoutRerank",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Retrieval Without Rerank", DefaultSeverity: models.SeverityLow,
+		ConfidenceMin: 0.65, ConfidenceMax: 0.8, EvidenceSources: []string{"structural-pattern"},
+		RuleID: "terrain/retrieval-quality/no-rerank", RuleURI: "docs/rules/retrieval-quality/no-rerank.md",
+		PromotionPlan: "Flags retrieval pipelines with top_k > 5 and no reranker.",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalColdVectorStore, ConstName: "SignalColdVectorStore",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Cold Vector Store", DefaultSeverity: models.SeverityLow,
+		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
+		RuleID: "terrain/retrieval-quality/cold-store", RuleURI: "docs/rules/retrieval-quality/cold-store.md",
+		PromotionPlan: "Fires when a vector store is initialized but no index-population call exists in the same module.",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalAgentLoopRisk, ConstName: "SignalAgentLoopRisk",
+		Domain: models.CategoryAI, Status: StatusStable,
+		Title: "Agent Loop Risk", DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
+		RuleID: "terrain/agent-quality/loop-risk", RuleURI: "docs/rules/agent-quality/loop-risk.md",
+		PromotionPlan: "Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; validated against documented public agent-loop incidents.",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalToolWithoutBudget, ConstName: "SignalToolWithoutBudget",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Tool Without Budget", DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin: 0.75, ConfidenceMax: 0.9, EvidenceSources: []string{"structural-pattern"},
+		RuleID: "terrain/agent-quality/tool-no-budget", RuleURI: "docs/rules/agent-quality/tool-no-budget.md",
+		PromotionPlan: "Fires when a tool-call-enabled agent has no rate limit or cost ceiling configured.",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalTargetLeakage, ConstName: "SignalTargetLeakage",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Target Leakage", DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin: 0.7, ConfidenceMax: 0.85, EvidenceSources: []string{"structural-pattern"},
+		RuleID: "terrain/data-quality/target-leakage", RuleURI: "docs/rules/data-quality/target-leakage.md",
+		PromotionPlan: "Fires when a feature column is derived from the target column (e.g., y_lag1 in features after target encoding).",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalDuplicateEvalRows, ConstName: "SignalDuplicateEvalRows",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Duplicate Eval Rows", DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin: 0.9, ConfidenceMax: 0.99, EvidenceSources: []string{"structural-pattern"},
+		RuleID: "terrain/data-quality/duplicate-rows", RuleURI: "docs/rules/data-quality/duplicate-rows.md",
+		PromotionPlan: "Fires when an eval dataset has more than 5% duplicate input rows.",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalSchemaDrift, ConstName: "SignalSchemaDrift",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Schema Drift", DefaultSeverity: models.SeverityHigh,
+		ConfidenceMin: 0.85, ConfidenceMax: 0.95, EvidenceSources: []string{"structural-pattern"},
+		RuleID: "terrain/data-quality/schema-drift", RuleURI: "docs/rules/data-quality/schema-drift.md",
+		PromotionPlan: "Fires when the pipeline output schema has changed between baseline and current run.",
+		Tier:            TierGate,
+	},
+	{
+		Type: SignalMissingEvalCategories, ConstName: "SignalMissingEvalCategories",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Missing Eval Categories", DefaultSeverity: models.SeverityLow,
+		ConfidenceMin: 0.65, ConfidenceMax: 0.8, EvidenceSources: []string{"structural-pattern"},
+		RuleID: "terrain/coverage/missing-eval-categories", RuleURI: "docs/rules/coverage/missing-eval-categories.md",
+		PromotionPlan: "Fires when an eval suite has happy-path coverage but no adversarial or edge-case categories.",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalOrphanedEval, ConstName: "SignalOrphanedEval",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Orphaned Eval", DefaultSeverity: models.SeverityLow,
+		ConfidenceMin: 0.8, ConfidenceMax: 0.95, EvidenceSources: []string{"graph-traversal"},
+		RuleID: "terrain/coverage/orphaned-eval", RuleURI: "docs/rules/coverage/orphaned-eval.md",
+		PromotionPlan: "Fires when an eval has no CoveredSurfaceIDs (references no surface).",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalColdStartTime, ConstName: "SignalColdStartTime",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Cold Start Time", DefaultSeverity: models.SeverityLow,
+		ConfidenceMin: 0.8, ConfidenceMax: 0.95, EvidenceSources: []string{"runtime"},
+		RuleID: "terrain/performance/cold-start-time", RuleURI: "docs/rules/performance/cold-start-time.md",
+		PromotionPlan: "Fires when first-request latency exceeds the configured threshold (e.g., 2x P50).",
+		Tier:            TierObservability,
+	},
+	{
+		Type: SignalTokenCostBudget, ConstName: "SignalTokenCostBudget",
+		Domain: models.CategoryAI, Status: StatusExperimental,
+		Title: "Token Cost Budget Exceeded", DefaultSeverity: models.SeverityMedium,
+		ConfidenceMin: 0.9, ConfidenceMax: 0.99, EvidenceSources: []string{"runtime"},
+		RuleID: "terrain/performance/token-cost-budget", RuleURI: "docs/rules/performance/token-cost-budget.md",
+		PromotionPlan: "Fires when per-run token cost exceeds the configured ceiling.",
+		Tier:            TierObservability,
 	},
 }
 

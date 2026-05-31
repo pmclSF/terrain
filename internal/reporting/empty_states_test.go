@@ -29,7 +29,7 @@ func TestEmptyStateFor_AllKindsHaveHeader(t *testing.T) {
 	}
 }
 
-// TestEmptyStateFor_VoiceAndTone enforces the Track 10.7 voice rules
+// TestEmptyStateFor_VoiceAndTone enforces the voice rules
 // on every shipped empty state: no exclamation marks, no emoji
 // codepoints, no British spellings ("colour" / "behaviour" / etc.).
 //

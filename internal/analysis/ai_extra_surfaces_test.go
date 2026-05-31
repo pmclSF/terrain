@@ -41,6 +41,45 @@ func TestDetectExtraAISurfaces_DatasetExtensions(t *testing.T) {
 	}
 }
 
+func TestDetectExtraAISurfaces_ModelArtifacts(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	// One file per supported model-artifact extension.
+	writeSrc(t, root, "models/classifier.pt", "torch-binary")
+	writeSrc(t, root, "models/embedder.pth", "torch-binary")
+	writeSrc(t, root, "models/keras_seq.h5", "hdf5-binary")
+	writeSrc(t, root, "models/saved.keras", "keras-archive")
+	writeSrc(t, root, "models/sklearn_rf.joblib", "sklearn-pickle")
+	writeSrc(t, root, "models/xgb_model.pkl", "xgboost-pickle")
+	writeSrc(t, root, "models/legacy.pickle", "raw-pickle")
+	writeSrc(t, root, "models/exported.onnx", "onnx-binary")
+	writeSrc(t, root, "models/llama_q4.gguf", "gguf-binary")
+	writeSrc(t, root, "models/safe.safetensors", "safetensors-binary")
+	// And a non-artifact file in the same dir to confirm it doesn't fire.
+	writeSrc(t, root, "models/README.md", "model card")
+
+	surfaces := DetectExtraAISurfaces(root, nil, nil, []string{
+		"models/classifier.pt", "models/embedder.pth",
+		"models/keras_seq.h5", "models/saved.keras",
+		"models/sklearn_rf.joblib", "models/xgb_model.pkl",
+		"models/legacy.pickle", "models/exported.onnx",
+		"models/llama_q4.gguf", "models/safe.safetensors",
+		"models/README.md",
+	})
+
+	kinds := map[string]int{}
+	for _, s := range surfaces {
+		kinds[string(s.Kind)]++
+	}
+	if kinds[string(models.SurfaceModel)] != 10 {
+		t.Errorf("model surfaces = %d, want 10: %+v", kinds[string(models.SurfaceModel)], surfaces)
+	}
+	if kinds[string(models.SurfaceDataset)] != 0 {
+		t.Errorf(".pkl/.pickle should NOT be datasets anymore — got %d", kinds[string(models.SurfaceDataset)])
+	}
+}
+
 func TestDetectExtraAISurfaces_PgvectorQuery(t *testing.T) {
 	t.Parallel()
 

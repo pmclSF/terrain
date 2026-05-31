@@ -11,12 +11,10 @@ import (
 // skipDirs are directories the AI-config walker never descends into.
 // These MUST match the canonical set in
 // internal/analysis/repository_scan.go — drift here causes detectors to
-// re-scan trees other walkers correctly avoid. Worst case (the bug we
-// just fixed): descending into .terrain/ and re-detecting the engine's
-// own previously-saved snapshots, which inflated signal counts on every
-// successive `terrain analyze --write-snapshot` run (18 → 22 → 38 on
-// three identical runs). The .terrain entry was missing from this list
-// entirely.
+// re-scan trees other walkers correctly avoid. In particular, descending
+// into .terrain/ would re-detect the engine's own previously-saved
+// snapshots and inflate signal counts on each successive
+// `terrain analyze --write-snapshot` run.
 var skipDirs = map[string]bool{
 	".git":          true,
 	"node_modules":  true,
@@ -123,11 +121,11 @@ func snapshotPaths(snap *models.TestSuiteSnapshot) []string {
 	if snap == nil {
 		return nil
 	}
-	out := make([]string, 0, len(snap.TestFiles)+len(snap.Scenarios))
+	out := make([]string, 0, len(snap.TestFiles)+len(snap.Evals))
 	for _, tf := range snap.TestFiles {
 		out = append(out, tf.Path)
 	}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		if sc.Path != "" {
 			out = append(out, sc.Path)
 		}
@@ -145,7 +143,7 @@ func snapshotPaths(snap *models.TestSuiteSnapshot) []string {
 // at 0.9 from paired>=20. Linear interpolation inside each band keeps
 // the function easy to reason about and matches the rough "you need
 // double-digit case counts before a regression call is high-confidence"
-// intuition the calibration corpus carries today.
+// intuition.
 func pairedConfidence(paired int) float64 {
 	switch {
 	case paired <= 1:

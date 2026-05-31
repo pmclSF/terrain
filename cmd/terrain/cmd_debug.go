@@ -15,11 +15,11 @@ import (
 )
 
 func runDepgraph(root string, jsonOutput bool, show string, changed string) error {
-	// Honour Ctrl-C: pre-0.2.x final-polish, runDepgraph used the
-	// non-context Analyze() so SIGINT during a deep monorepo scan
-	// killed the process abruptly with no cleanup. Every other
-	// analysis-shaped command now goes through runPipelineWithSignals
-	// or AnalyzeContext; keep this consistent.
+	// Honour Ctrl-C: earlier revisions used the non-context Analyze()
+	// here so SIGINT during a deep monorepo scan killed the process
+	// abruptly with no cleanup. Every other analysis-shaped command
+	// now goes through runPipelineWithSignals or AnalyzeContext; keep
+	// this consistent.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 	analyzer := analysis.New(root)

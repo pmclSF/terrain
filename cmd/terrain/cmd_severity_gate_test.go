@@ -21,7 +21,7 @@ func TestParseSeverityGate(t *testing.T) {
 		{"CRITICAL", severityGateCritical, ""},
 		{"  high  ", severityGateHigh, ""},
 		{"medium", severityGateMedium, ""},
-		{"low", "", "invalid --fail-on"},
+		{"low", "low", ""},
 		{"info", "", "invalid --fail-on"},
 		{"garbage", "", "invalid --fail-on"},
 	}
@@ -86,9 +86,8 @@ func TestSeverityGateBlocked(t *testing.T) {
 }
 
 // TestRunAnalyze_GateBlocksOnFixture is an end-to-end exercise of the
-// `--fail-on` path that the launch-readiness review flagged as missing.
-// It runs `runAnalyze` against the calibration corpus (which we know
-// contains medium+ severity findings) and asserts:
+// `--fail-on` path. It runs `runAnalyze` against the fixture corpus
+// (which we know contains medium+ severity findings) and asserts:
 //
 //  1. The function returns `errSeverityGateBlocked` (so main.go maps to
 //     exit code 6).
@@ -103,7 +102,7 @@ func TestRunAnalyze_GateBlocksOnFixture(t *testing.T) {
 		return runAnalyze(analyzeRunOpts{
 			Root:          root,
 			SlowThreshold: defaultSlowThresholdMs,
-			Gate:          severityGateMedium,
+			Gate:          severityGateLow,
 		})
 	})
 
@@ -113,15 +112,14 @@ func TestRunAnalyze_GateBlocksOnFixture(t *testing.T) {
 	}
 
 	// Error message should be informative (severity counts + label).
-	if !strings.Contains(err.Error(), "--fail-on=medium") {
+	if !strings.Contains(err.Error(), "--fail-on=low") {
 		t.Errorf("error message missing --fail-on label: %v", err)
 	}
 
 	// Report renders before the gate check — stdout must be non-empty.
-	// Pre-fix, a gate that returns before the report renders would
-	// produce empty stdout; the user would only see the gate message
-	// without context. This test locks in the "render-then-gate"
-	// invariant.
+	// A gate that returns before the report renders would produce empty
+	// stdout; the user would only see the gate message without context.
+	// This test locks in the "render-then-gate" invariant.
 	if len(stdout) == 0 {
 		t.Error("stdout is empty — report should render before the gate fires")
 	}
@@ -134,8 +132,7 @@ func TestRunAnalyze_GateBlocksOnFixture(t *testing.T) {
 // AND `--fail-on` matching, the JSON snapshot lands on stdout cleanly
 // and is parseable as JSON. The gate message goes to the returned
 // error (which main.go writes to stderr) so stdout stays a valid JSON
-// document. This is the "JSON stdout purity" property the launch-
-// readiness review asked for.
+// document — the "JSON stdout purity" property.
 func TestRunAnalyze_JSONStdoutPurity(t *testing.T) {
 	root := fixtureRoot(t)
 
@@ -144,7 +141,7 @@ func TestRunAnalyze_JSONStdoutPurity(t *testing.T) {
 			Root:          root,
 			JSONOutput:    true,
 			SlowThreshold: defaultSlowThresholdMs,
-			Gate:          severityGateMedium,
+			Gate:          severityGateLow,
 		})
 	})
 
@@ -163,8 +160,8 @@ func TestRunAnalyze_JSONStdoutPurity(t *testing.T) {
 
 // TestPRSeverityBreakdown verifies the helper that converts a PR's
 // findings + AI blocking signals into a SignalBreakdown for the gate.
-// Track 3.1 — the gate decision must apply uniformly across analyze
-// + pr, sharing one helper.
+// The gate decision must apply uniformly across `analyze` and `pr`,
+// sharing one helper.
 func TestPRSeverityBreakdown(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

@@ -7,18 +7,19 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/surfacelit"
 )
 
 // EmbeddingModelChangeDetector flags repos that reference an embedding
 // model in source code without a retrieval-shaped eval scenario to
-// catch regressions when the model swaps. The round-4 plan named the
-// signal "embedding model change without RAG re-evaluation"; the
-// 0.2 detector ships the static precondition (embedding referenced
-// at all + no retrieval coverage) so the warning fires before a
-// silent swap. The literal cross-snapshot diff variant lands once
-// content hashes are on the snapshot.
+// catch regressions when the model swaps. This detector ships the
+// static precondition (embedding referenced at all + no retrieval
+// coverage) so the warning fires before a silent swap. A richer
+// literal cross-snapshot diff variant can be added once content hashes
+// are on the snapshot.
 //
 // Detection model:
 //
@@ -40,8 +41,7 @@ type EmbeddingModelChangeDetector struct {
 
 // embeddingModelPatterns matches the most common embedding model
 // identifiers across providers. Conservative — we'd rather miss a
-// niche provider than fire on a random string. Calibration corpus
-// expansions in 0.3 broaden the list.
+// niche provider than fire on a random string.
 var embeddingModelPatterns = []*regexp.Regexp{
 	// OpenAI.
 	regexp.MustCompile(`\btext-embedding-(?:ada-002|3-small|3-large)\b`),
@@ -64,12 +64,13 @@ var embeddingModelPatterns = []*regexp.Regexp{
 // invocations whose model literal is loaded from an env var or config
 // (`os.environ["EMBED_MODEL"]`, `cfg["embedding"]`) still get caught.
 //
-// Pre-0.2.x the detector required a known model literal on the same
-// line as the call, missing the most common production shape (env-var
-// driven model selection). The constructor patterns expand recall for
-// that case at the cost of a slightly higher false-positive rate when
-// the constructor is imported but used elsewhere — confidence stays
-// at EvidenceModerate to reflect that.
+// Without these constructor patterns the detector would only fire when
+// a known model literal appears on the same line as the call, missing
+// the most common production shape (env-var driven model selection).
+// The constructor patterns expand recall for that case at the cost of
+// a slightly higher false-positive rate when the constructor is
+// imported but used elsewhere — confidence stays at EvidenceModerate
+// to reflect that.
 var embeddingConstructorPatterns = []*regexp.Regexp{
 	// langchain (Python + JS): `OpenAIEmbeddings(...)`.
 	regexp.MustCompile(`\b(?:OpenAI|HuggingFace|Cohere|Voyage|Bedrock|Azure|Vertex|Ollama|InProcess)Embeddings?\s*\(`),
@@ -122,7 +123,19 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 			continue
 		}
 		emitted[comp.Path] = true
-		out = append(out, buildEmbeddingChangeSignal(comp.Path, comp.Line, comp.Config.ModelName, 1, models.EvidenceStrong, 0.85))
+		// Mechanism gate: surface_literal_presence_gate. Skip the
+		// presence check when the model name is a synthetic label
+		// (e.g. constructor-driven detection where the literal isn't
+		// in the file as a token).
+		abs := filepath.Join(d.Root, comp.Path)
+		if !IsSyntheticIdentifier(comp.Config.ModelName) {
+			if dec := surfacelit.Gate(mechanisms.Default(), comp.Config.ModelName, abs, "aiEmbeddingModelChange"); !dec.Keep {
+				continue
+			}
+		}
+		// Structured-config path confidence is held at 0.55 pending
+		// more validation data — current sample is small.
+		out = append(out, buildEmbeddingChangeSignal(comp.Path, comp.Line, comp.Config.ModelName, 1, models.EvidenceStrong, 0.55))
 	}
 
 	candidatePaths := d.gatherSourcePaths(snap)
@@ -130,15 +143,29 @@ func (d *EmbeddingModelChangeDetector) Detect(snap *models.TestSuiteSnapshot) []
 		if emitted[rel] {
 			continue
 		}
-		hits := scanFileForEmbeddingModels(filepath.Join(d.Root, rel))
+		abs := filepath.Join(d.Root, rel)
+		hits := scanFileForEmbeddingModels(abs)
 		if len(hits) == 0 {
 			continue
 		}
+		// Mechanism gate: surface_literal_presence_gate. Skip when
+		// the identifier is a synthetic constructor-driven label.
+		if !IsSyntheticIdentifier(hits[0].Identifier) {
+			if dec := surfacelit.Gate(mechanisms.Default(), hits[0].Identifier, abs, "aiEmbeddingModelChange"); !dec.Keep {
+				continue
+			}
+		}
 		emitted[rel] = true
-		out = append(out, buildEmbeddingChangeSignal(rel, hits[0].Line, hits[0].Identifier, len(hits), models.EvidenceModerate, 0.8))
+		// Pattern-scan path uses confidence 0.50 (vs. 0.8 for the
+		// structured RAG-surface path) since the literal-only signal is
+		// weaker evidence.
+		out = append(out, buildEmbeddingChangeSignal(rel, hits[0].Line, hits[0].Identifier, len(hits), models.EvidenceModerate, 0.50))
 	}
 	return out
 }
+
+// Synthetic-identifier helpers moved to synthetic_ids.go so consumers
+// can share one source of truth.
 
 // buildEmbeddingChangeSignal constructs the canonical
 // SignalAIEmbeddingModelChange signal. Confidence and evidence
@@ -154,10 +181,14 @@ func buildEmbeddingChangeSignal(path string, line int, identifier string, matche
 	if intervalHigh > 1 {
 		intervalHigh = 1
 	}
+	// Embedding-model references in `examples/` are still real
+	// findings: an example is meant to be copied, so a stale model
+	// id propagates if a user follows it.
+	severity := models.SignalSeverity(models.SeverityMedium)
 	return models.Signal{
 		Type:            signals.SignalAIEmbeddingModelChange,
 		Category:        models.CategoryAI,
-		Severity:        models.SeverityMedium,
+		Severity:        severity,
 		Confidence:      confidence,
 		Location:        models.SignalLocation{File: path, Line: line},
 		Explanation:     "File references embedding model `" + identifier + "` but the project has no retrieval-shaped eval scenario. A future model swap will silently change retrieval quality.",
@@ -167,7 +198,7 @@ func buildEmbeddingChangeSignal(path string, line int, identifier string, matche
 		Actionability:   models.ActionabilityScheduled,
 		LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 		AIRelevance:     models.AIRelevanceHigh,
-		RuleID:          "TER-AI-110",
+		RuleID:          "terrain/ai/embedding-model-change",
 		RuleURI:         "docs/rules/ai/embedding-model-change.md",
 		DetectorVersion: "0.2.0",
 		ConfidenceDetail: &models.ConfidenceDetail{
@@ -208,7 +239,7 @@ func (d *EmbeddingModelChangeDetector) gatherSourcePaths(snap *models.TestSuiteS
 	for _, tf := range snap.TestFiles {
 		add(tf.Path)
 	}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		add(sc.Path)
 	}
 	for _, surface := range snap.CodeSurfaces {
@@ -228,7 +259,7 @@ func hasRetrievalCoverage(snap *models.TestSuiteSnapshot) bool {
 			retrievalSurfaces[surface.SurfaceID] = true
 		}
 	}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		hay := strings.ToLower(sc.Category + " " + sc.Name + " " + sc.Description)
 		for _, marker := range retrievalCategoryMarkers {
 			if strings.Contains(hay, marker) {

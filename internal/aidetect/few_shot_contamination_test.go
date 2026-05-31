@@ -41,9 +41,9 @@ content: |
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: rel, Name: "classifier", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:1",
+				EvalID:        "scenario:1",
 				Name:              "device overheats",
 				Description:       "The customer reports the device overheats during gameplay sessions",
 				CoveredSurfaceIDs: []string{"s1"},
@@ -73,9 +73,9 @@ content: |
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: rel, Name: "classifier", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:1",
+				EvalID:        "scenario:1",
 				Name:              "happy path",
 				Description:       "happy path",
 				CoveredSurfaceIDs: []string{"s1"},
@@ -103,9 +103,9 @@ content: |
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: rel, Name: "classifier", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:1",
+				EvalID:        "scenario:1",
 				Name:              "kilo lima",
 				Description:       "kilo lima mike november oscar papa quebec romeo sierra tango",
 				CoveredSurfaceIDs: []string{"s1"},
@@ -118,13 +118,12 @@ content: |
 }
 
 // TestFewShotContamination_FiresOnImplicitCoverage_AutoDerivedScenario
-// locks in the 0.2.0 final-polish fix: pre-fix, a scenario with empty
-// `CoveredSurfaceIDs` (the default for auto-derived scenarios — the
-// dominant shape in the wild) silently disabled the detector. The fix
-// adds path-based implicit coverage (matching the same pattern
-// aiSafetyEvalMissing already uses). The detector should fire when the
-// scenario file and prompt file share a top-level directory, OR when
-// the scenario has no Path at all (whole-repo fallback).
+// pins that a scenario with empty `CoveredSurfaceIDs` (the default for
+// auto-derived scenarios — the dominant shape in the wild) still
+// activates the detector via path-based implicit coverage (the same
+// pattern aiSafetyEvalMissing already uses). The detector should fire
+// when the scenario file and prompt file share a top-level directory,
+// OR when the scenario has no Path at all (whole-repo fallback).
 func TestFewShotContamination_FiresOnImplicitCoverage_AutoDerivedScenario(t *testing.T) {
 	t.Parallel()
 
@@ -138,9 +137,9 @@ content: |
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: rel, Name: "classifier", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:  "scenario:1",
+				EvalID:  "scenario:1",
 				Name:        "device overheats",
 				Description: "The customer reports the device overheats during gameplay sessions",
 				// CoveredSurfaceIDs intentionally empty (auto-derived shape).
@@ -177,9 +176,9 @@ content: |
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s1", Path: relB, Name: "classifier", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:  "scenario:1",
+				EvalID:  "scenario:1",
 				Name:        "device overheats",
 				Description: "The customer reports the device overheats during gameplay sessions",
 				Path:        "service-a/scenarios/overheat.yaml",

@@ -7,10 +7,9 @@ import (
 )
 
 // EmptyStateKind identifies which empty-state path is being rendered.
-// Track 10.6 of the 0.2.0 release plan calls for every list-producing
-// command to have a *designed* empty-state path — a clear next-move
-// nudge instead of silence — so first-run / clean-repo experiences
-// don't read as broken output.
+// Every list-producing command must have a *designed* empty-state
+// path — a clear next-move nudge instead of silence — so first-run
+// or clean-repo experiences don't read as broken output.
 //
 // One enum value per distinct empty case keeps the wiring tight: the
 // renderer asks "which kind?" and the helper produces a stable,
@@ -84,7 +83,7 @@ type EmptyState struct {
 // The strings are deliberately short — first sentence is the header,
 // next-move nudge is one short imperative. No exclamation marks
 // (jarring on terminal); no emojis (out-of-vocabulary in the design
-// system); plain English voice consistent with Track 10.7.
+// system); plain English voice.
 func EmptyStateFor(kind EmptyStateKind) EmptyState {
 	switch kind {
 	case EmptyZeroFindings:
@@ -109,7 +108,7 @@ func EmptyStateFor(kind EmptyStateKind) EmptyState {
 		return EmptyState{
 			Kind:     kind,
 			Header:   "First time here? Welcome.",
-			NextMove: "Try `terrain analyze` to map your test terrain — typical service repos finish in 5–15 seconds.",
+			NextMove: "Try `terrain analyze` to map your test terrain.",
 		}
 	case EmptyNoImpact:
 		return EmptyState{

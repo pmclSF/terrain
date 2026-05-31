@@ -131,6 +131,49 @@ func TestAnalyzePR_UntestedExport(t *testing.T) {
 	}
 }
 
+func TestAnalyzePR_CrossFileSignalSurfacesAsIndirect(t *testing.T) {
+	t.Parallel()
+	// Simulate a PR that changes a schema file. A signal on a TEMPLATE
+	// file (different path) references the schema via metadata. The
+	// signal should appear at indirect scope so the PR view doesn't
+	// silently drop the headline detector finding when the template
+	// path itself isn't in the changed set.
+	snap := testSnapshot()
+	snap.Signals = append(snap.Signals, models.Signal{
+		Type:     models.SignalType("aiPromptSchemaDrift"),
+		Category: models.CategoryAI,
+		Severity: models.SeverityHigh,
+		Location: models.SignalLocation{File: "prompts/welcome.md"},
+		Metadata: map[string]any{
+			"schemaPath":     "schemas/user.json",
+			"variable":       "user_id",
+			"renderedBefore": "Hello example_string!",
+			"renderedAfter":  "Hello MISSING(user_id)!",
+		},
+		Explanation: "Template references removed field user_id",
+	})
+	// PR only touched the schema.
+	scope := impact.ChangeScopeFromPaths([]string{"schemas/user.json"}, impact.ChangeModified)
+
+	pr := AnalyzePR(scope, snap)
+	var matched *ChangeScopedFinding
+	for i, f := range pr.NewFindings {
+		if f.SignalType == "aiPromptSchemaDrift" {
+			matched = &pr.NewFindings[i]
+			break
+		}
+	}
+	if matched == nil {
+		t.Fatalf("expected aiPromptSchemaDrift finding in PR view, got %+v", pr.NewFindings)
+	}
+	if matched.Scope != "indirect" {
+		t.Errorf("Scope = %q, want %q", matched.Scope, "indirect")
+	}
+	if matched.Path != "prompts/welcome.md" {
+		t.Errorf("Path = %q, want %q", matched.Path, "prompts/welcome.md")
+	}
+}
+
 func TestAnalyzeChangedPaths(t *testing.T) {
 	t.Parallel()
 	snap := testSnapshot()
@@ -224,12 +267,11 @@ func TestPostureBadge(t *testing.T) {
 		band string
 		want string
 	}{
-		{"well_protected", "[PASS]"},
-		{"partially_protected", "[WARN]"},
-		{"weakly_protected", "[RISK]"},
-		{"high_risk", "[FAIL]"},
-		{"evidence_limited", "[INFO]"},
-		{"unknown", "[????]"},
+		{"strong", "[PASS]"},
+		{"moderate", "[WARN]"},
+		{"weak", "[RISK]"},
+		{"critical", "[FAIL]"},
+		{"unknown", "[INFO]"},
 	}
 	for _, tt := range tests {
 		got := postureBadge(tt.band)
@@ -492,16 +534,16 @@ func TestBuildAIValidationSummary_NoAI(t *testing.T) {
 func TestBuildAIValidationSummary_WithScenarios(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{Name: "safety-check", Capability: "safety", Relevance: "prompt changed"},
 			{Name: "accuracy-test", Capability: "accuracy", Relevance: "model updated"},
 		},
 	}
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:1", Name: "safety-check"},
-			{ScenarioID: "sc:2", Name: "accuracy-test"},
-			{ScenarioID: "sc:3", Name: "latency-test"},
+		Evals: []models.Eval{
+			{EvalID: "sc:1", Name: "safety-check"},
+			{EvalID: "sc:2", Name: "accuracy-test"},
+			{EvalID: "sc:3", Name: "latency-test"},
 		},
 	}
 
@@ -526,9 +568,9 @@ func TestBuildAIValidationSummary_WithScenarios(t *testing.T) {
 // TestBuildAIValidationSummary_WithSignals locks in the contract that
 // the AI risk review summary in `terrain pr` output is impact-scoped:
 // only AI signals whose Location.File appears in the PR's changed-
-// files set are reported as Blocking / Warning. Pre-fix the loop
-// included every AI signal in the snapshot, so a doc-only PR
-// surfaced every calibration-corpus fixture as a "blocking" finding.
+// files set are reported as Blocking / Warning. Without that filter, a
+// doc-only PR would surface every in-repo AI signal as a "blocking"
+// finding.
 //
 // Fixture: three AI signals + one Quality signal. Two of the AI
 // signals are on a changed file ("src/prompt.ts"); one is on an
@@ -545,13 +587,13 @@ func TestBuildAIValidationSummary_WithSignals(t *testing.T) {
 				{Path: "src/prompt.ts"},
 			},
 		},
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{Name: "test", Capability: "search"},
 		},
 	}
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:1", Name: "test"},
+		Evals: []models.Eval{
+			{EvalID: "sc:1", Name: "test"},
 		},
 		Signals: []models.Signal{
 			{Type: "safetyFailure", Category: models.CategoryAI, Severity: models.SeverityCritical,
@@ -580,7 +622,7 @@ func TestBuildAIValidationSummary_WithSignals(t *testing.T) {
 
 // TestBuildAIValidationSummary_DropsSignalsOnUnchangedFiles is the
 // regression test for the noisy-AI-gate bug: a doc-only PR shouldn't
-// surface calibration-corpus fixture signals as merge blockers.
+// surface in-repo fixture signals as merge blockers.
 func TestBuildAIValidationSummary_DropsSignalsOnUnchangedFiles(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{
@@ -594,8 +636,8 @@ func TestBuildAIValidationSummary_DropsSignalsOnUnchangedFiles(t *testing.T) {
 	}
 	snap := &models.TestSuiteSnapshot{
 		Signals: []models.Signal{
-			// Calibration-fixture-shaped signal: pre-existing in repo,
-			// not introduced by this PR.
+			// Fixture-shaped signal: pre-existing in repo, not
+			// introduced by this PR.
 			{Type: "aiModelDeprecationRisk", Category: models.CategoryAI, Severity: models.SeverityHigh,
 				Explanation: "OpenAI text-davinci-003 reached EOL",
 				Location: models.SignalLocation{File: "tests/calibration/floating-model-tag/config.yaml"}},
@@ -625,13 +667,13 @@ func TestBuildAIValidationSummary_UncoveredContexts(t *testing.T) {
 				{Path: "src/prompt.ts"},
 			},
 		},
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{Name: "test"},
 		},
 	}
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:1", Name: "test"},
+		Evals: []models.Eval{
+			{EvalID: "sc:1", Name: "test"},
 		},
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "surface:src/prompt.ts:sysPrompt", Name: "sysPrompt", Path: "src/prompt.ts", Kind: models.SurfaceContext},
@@ -715,7 +757,7 @@ func TestBuildChangeScopedFindings_SkipsDuplicateUntestedExport(t *testing.T) {
 func TestBuildPostureDelta_WellProtected(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{
-		Posture: impact.ChangeRiskPosture{Band: "well_protected"},
+		Posture: impact.ChangeRiskPosture{Band: "strong"},
 	}
 	delta := buildPostureDelta(result)
 	if delta.OverallDirection != "unchanged" {
@@ -729,7 +771,7 @@ func TestBuildPostureDelta_WellProtected(t *testing.T) {
 func TestBuildPostureDelta_HighRisk(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{
-		Posture:        impact.ChangeRiskPosture{Band: "high_risk"},
+		Posture:        impact.ChangeRiskPosture{Band: "critical"},
 		ProtectionGaps: []impact.ProtectionGap{{Path: "a"}, {Path: "b"}},
 	}
 	delta := buildPostureDelta(result)

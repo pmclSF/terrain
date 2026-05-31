@@ -25,9 +25,9 @@ func TestSortSnapshot_SignalOrder(t *testing.T) {
 
 	snap := &TestSuiteSnapshot{
 		Signals: []Signal{
-			{Category: CategoryMigration, Type: "migration.deprecated-pattern", Location: SignalLocation{File: "b.js", Line: 10}},
+			{Category: CategoryMigration, Type: "framework_migration.deprecated-pattern", Location: SignalLocation{File: "b.js", Line: 10}},
 			{Category: CategoryQuality, Type: "quality.weak-assertion", Location: SignalLocation{File: "a.js", Line: 5}},
-			{Category: CategoryMigration, Type: "migration.custom-matcher", Location: SignalLocation{File: "a.js", Line: 1}},
+			{Category: CategoryMigration, Type: "framework_migration.custom-matcher", Location: SignalLocation{File: "a.js", Line: 1}},
 			{Category: CategoryQuality, Type: "quality.weak-assertion", Location: SignalLocation{File: "a.js", Line: 1}},
 		},
 	}
@@ -51,7 +51,7 @@ func TestSortSnapshot_SignalOrder(t *testing.T) {
 		t.Error("signals not in canonical order")
 	}
 
-	// migration.* should come before quality.* (lexicographic on category)
+	// framework_migration.* should come before quality.* (lexicographic on category)
 	if snap.Signals[0].Category != CategoryMigration {
 		t.Errorf("expected migration first, got %s", snap.Signals[0].Category)
 	}
@@ -124,7 +124,7 @@ func TestSortSnapshot_Idempotent(t *testing.T) {
 	snap := &TestSuiteSnapshot{
 		Signals: []Signal{
 			{Category: CategoryQuality, Type: "quality.weak-assertion", Location: SignalLocation{File: "a.js"}},
-			{Category: CategoryMigration, Type: "migration.deprecated-pattern", Location: SignalLocation{File: "b.js"}},
+			{Category: CategoryMigration, Type: "framework_migration.deprecated-pattern", Location: SignalLocation{File: "b.js"}},
 		},
 		TestFiles: []TestFile{
 			{Path: "z.js"},

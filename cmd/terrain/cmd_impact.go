@@ -12,8 +12,11 @@ import (
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/explain"
 	"github.com/pmclSF/terrain/internal/impact"
+	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/metrics"
+	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/reporting"
+	"github.com/pmclSF/terrain/internal/signals"
 )
 
 // runImpactPipeline runs the analysis pipeline, computes a git diff changeset,
@@ -44,8 +47,7 @@ func runImpactPipeline(root, baseRef string, opts engine.PipelineOptions) (*impa
 func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string, explainSelection bool) error {
 	impactResult, _, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
-		// Audit-named gap (insights_impact_explain.P5):
-		// designed remediation for impact-pipeline failures.
+		// Designed remediation for impact-pipeline failures.
 		// Same shape as runPR's remediation since the
 		// underlying failure modes are identical (missing
 		// base ref, shallow clone, empty diff).
@@ -68,7 +70,7 @@ func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string, 
 	}
 
 	// `--explain-selection` defends the pitch claim
-	// "see which tests matter for a PR — and why" (Track 3.2). Surfaces
+	// "see which tests matter for a PR — and why". Surfaces
 	// the structured reason chains that internal/explain produces and
 	// renders them via the existing RenderSelectionExplanation. Passes
 	// `verbose=true` so per-test evidence (selection reasons, code unit
@@ -175,9 +177,14 @@ func applyImpactPolicy(impactResult *impact.ImpactResult, result *engine.Pipelin
 
 func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGate) error {
 	impactResult, result, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
+	if err == nil && result != nil && result.Snapshot != nil {
+		if appendErr := appendPromptSchemaDriftSignals(result.Snapshot, root, baseRef); appendErr != nil {
+			err = appendErr
+		}
+	}
 	if err != nil {
-		// Audit-named gap (pr_change_scoped.P5): the impact
-		// pipeline can fail for half a dozen different reasons —
+		// The impact pipeline can fail for half a dozen
+		// different reasons —
 		// missing git history, no base ref, unparseable diff,
 		// analysis crash. Wrap with a hint about the most
 		// adopter-actionable cause.
@@ -203,11 +210,21 @@ func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGa
 	// path. Mirrors the pattern used by `runAnalyze` after the JSON-
 	// stdout-purity bug fix in PR #134 — the renderer always completes
 	// before the exit decision is made.
+	// Collect severities for the gate decision, filtering out
+	// observability-tier findings so they don't block CI.
 	severities := make([]string, 0, len(pr.NewFindings))
 	for _, f := range pr.NewFindings {
+		// SignalType is empty for protection_gap entries (always gate-
+		// relevant). For existing_signal entries, skip when the
+		// underlying detector is observability tier.
+		if f.SignalType != "" && !signals.IsGateRelevant(models.SignalType(f.SignalType)) {
+			continue
+		}
 		severities = append(severities, f.Severity)
 	}
 	if pr.AI != nil {
+		// BlockingSignals already exclude observability-tier per
+		// changescope.AnalyzePR, so append verbatim.
 		for _, s := range pr.AI.BlockingSignals {
 			severities = append(severities, s.Severity)
 		}
@@ -229,9 +246,24 @@ func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGa
 		return gateErr()
 	}
 
+	// Load per-repo finding-history so the PR-comment renderer can
+	// demote chronically-firing-without-dismiss findings to the
+	// observability footer. Missing file → empty store, the correct
+	// first-run behavior. Other errors are non-fatal: log + render
+	// without history rather than block the comment.
+	hist, histErr := engine.LoadFindingHistory(root)
+	if histErr != nil {
+		logging.L().Debug("finding history: load failed at render", "err", histErr)
+		hist = nil
+	}
+
 	switch format {
 	case "markdown", "md":
-		changescope.RenderPRSummaryMarkdown(os.Stdout, pr)
+		if hist != nil {
+			changescope.RenderPRSummaryMarkdownWithHistory(os.Stdout, pr, hist)
+		} else {
+			changescope.RenderPRSummaryMarkdown(os.Stdout, pr)
+		}
 	case "comment":
 		changescope.RenderPRCommentConcise(os.Stdout, pr)
 	case "annotation", "ci":

@@ -11,7 +11,7 @@ import (
 
 // DetectExtraAISurfaces broadens the set of AI surfaces beyond the
 // framework-attributed inference in ai_context_infer.go. Catches
-// patterns the round-4 review flagged as gaps:
+// patterns the framework-based inferrer misses:
 //
 //   - Dataset filename detection: .jsonl, .parquet, .csv, .arrow,
 //     .tfrecord, .npy, .npz
@@ -36,6 +36,9 @@ func DetectExtraAISurfaces(root string, testFiles []models.TestFile, existing []
 
 	// Pass 1: dataset filenames (path-based, no content read).
 	out = appendNew(out, existingIDs, detectDatasetSurfaces(testPaths, sourceFiles))
+
+	// Pass 1b: saved model artifacts (path-based, no content read).
+	out = appendNew(out, existingIDs, detectModelArtifactSurfaces(testPaths, sourceFiles))
 
 	// Pass 2: content-based detection on each source file.
 	for _, rel := range sourceFiles {
@@ -77,6 +80,12 @@ var contentScanLanguages = map[string]bool{
 // datasetExtensions is the set of extensions whose mere presence makes
 // a file a candidate dataset surface. The `npz` / `npy` / `tfrecord`
 // entries cover ML-specific formats that the existing inference misses.
+//
+// .pkl / .pickle moved out of this set at 0.2.0 — pickle is the
+// canonical sklearn / xgboost model-save format, so files with those
+// extensions are classified as SurfaceModel (a separate artifact kind
+// representing learned behavior, not training data). See
+// modelArtifactExtensions below.
 var datasetExtensions = map[string]bool{
 	".jsonl":    true,
 	".parquet":  true,
@@ -86,8 +95,35 @@ var datasetExtensions = map[string]bool{
 	".tfrecord": true,
 	".npy":      true,
 	".npz":      true,
-	".pickle":   true,
-	".pkl":      true,
+}
+
+// modelArtifactExtensions is the set of extensions whose mere presence
+// makes a file a candidate SurfaceModel — a serialized model the
+// production code loads at inference time.
+//
+// PyTorch (.pt, .pth) — saved state_dict or full model
+// Keras/TensorFlow (.h5, .keras) — HDF5 model or v3 archive
+// sklearn / xgboost / general (.joblib, .pkl, .pickle) — pickled estimator
+// ONNX (.onnx) — cross-framework model exchange format
+// HuggingFace (.safetensors) — safe alternative to pickled checkpoints
+// GGUF / GGML (.gguf, .ggml) — llama.cpp quantized inference
+//
+// Treating these as their own surface kind (rather than as datasets)
+// unlocks the model-fixture-unpinned and lifecycle/* rules: swapping a
+// .pt file changes production behavior the same way a prompt edit
+// does, even with no code change in the diff.
+var modelArtifactExtensions = map[string]bool{
+	".pt":          true,
+	".pth":         true,
+	".h5":          true,
+	".keras":       true,
+	".joblib":      true,
+	".pkl":         true,
+	".pickle":      true,
+	".onnx":        true,
+	".safetensors": true,
+	".gguf":        true,
+	".ggml":        true,
 }
 
 func detectDatasetSurfaces(testPaths map[string]bool, sourceFiles []string) []models.CodeSurface {
@@ -112,6 +148,36 @@ func detectDatasetSurfaces(testPaths map[string]bool, sourceFiles []string) []mo
 			Name:      name,
 			Kind:      models.SurfaceDataset,
 			Reason:    "Dataset file (extension " + ext + ") referenced in repo tree",
+			DetectionTier: "content",
+		})
+	}
+	return out
+}
+
+// detectModelArtifactSurfaces finds serialized model files in the repo
+// tree and emits one SurfaceModel per file. Mirrors detectDatasetSurfaces
+// for the model-artifact case; kept separate to preserve the
+// dataset/model distinction in detection logs.
+func detectModelArtifactSurfaces(testPaths map[string]bool, sourceFiles []string) []models.CodeSurface {
+	var out []models.CodeSurface
+	for _, rel := range sourceFiles {
+		if testPaths[rel] {
+			continue
+		}
+		ext := strings.ToLower(relPathExt(rel))
+		if !modelArtifactExtensions[ext] {
+			continue
+		}
+		if strings.HasPrefix(rel, "node_modules/") || strings.HasPrefix(rel, "vendor/") {
+			continue
+		}
+		name := strings.TrimSuffix(filepath.Base(rel), ext)
+		out = append(out, models.CodeSurface{
+			SurfaceID:     models.BuildSurfaceID(rel, name, ""),
+			Path:          rel,
+			Name:          name,
+			Kind:          models.SurfaceModel,
+			Reason:        "Saved model artifact (extension " + ext + ") referenced in repo tree",
 			DetectionTier: "content",
 		})
 	}

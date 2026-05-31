@@ -45,6 +45,8 @@ const messages = [
 func TestStructuralJS_NestedMessageBuilder(t *testing.T) {
 	t.Parallel()
 	src := `
+import OpenAI from 'openai';
+
 function buildPrompt(query, context) {
   const messages = [
     { role: "system", content: "You are a QA assistant." },
@@ -76,6 +78,8 @@ function buildPrompt(query, context) {
 func TestStructuralJS_FewShotArray(t *testing.T) {
 	t.Parallel()
 	src := `
+import OpenAI from 'openai';
+
 const fewShotExamples = [
   { input: "What is the weather?", output: "I can check weather for you." },
   { input: "Book a flight", output: "I'll help you book a flight." },
@@ -99,7 +103,8 @@ const fewShotExamples = [
 
 func TestStructuralJS_ExportedPromptConstant(t *testing.T) {
 	t.Parallel()
-	src := `const systemInstructions = "You are a helpful AI assistant. Your role is to answer questions based on the provided documentation. Do not make up information. Always respond with cited data.";`
+	src := `import OpenAI from 'openai';
+const systemInstructions = "You are a helpful AI assistant. Your role is to answer questions based on the provided documentation. Do not make up information. Always respond with cited data.";`
 	surfaces := ParseStructural("src/config.ts", src, "js")
 	found := false
 	for _, s := range surfaces {
@@ -118,6 +123,8 @@ func TestStructuralJS_ExportedPromptConstant(t *testing.T) {
 func TestStructuralJS_HelperFunctionReturningMessages(t *testing.T) {
 	t.Parallel()
 	src := `
+import OpenAI from 'openai';
+
 function createMessageContext(user, history) {
   return [
     { role: "system", content: "You are a chat assistant." },
@@ -187,6 +194,8 @@ messages = [
 func TestStructuralPython_FewShotList(t *testing.T) {
 	t.Parallel()
 	src := `
+import openai
+
 examples = [
     {"input": "How do I return?", "output": "Visit returns.example.com"},
     {"input": "Track my order", "output": "Check your tracking page"},
@@ -207,6 +216,8 @@ examples = [
 func TestStructuralPython_PromptBuilderFunc(t *testing.T) {
 	t.Parallel()
 	src := `
+import openai
+
 def build_prompt_messages(query, context):
     return [
         {"role": "system", "content": "You are a QA bot."},

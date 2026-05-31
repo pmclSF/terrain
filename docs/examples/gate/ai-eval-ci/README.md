@@ -20,7 +20,7 @@ After wiring this in:
    - Recommended tests
    - AI Risk Review with three tier-tagged sub-stanzas (Inventory /
      Hygiene / Regression — see
-     [`docs/product/ai-risk-tiers.md`](../../../product/ai-risk-tiers.md))
+     [`docs/severity-rubric.md`](../../../severity-rubric.md))
 2. A `--fail-on critical` gate blocks merges when:
    - A new untested AI surface is introduced (Inventory)
    - An eval-flagged hallucination regression appears (Regression)
@@ -135,7 +135,7 @@ reasons:
    findings.
 
 The "warn-only by default" trust ladder
-([`docs/product/trust-ladder.md`](../../../product/trust-ladder.md))
+([`SECURITY-DATA-HANDLING.md`](../../../../SECURITY-DATA-HANDLING.md))
 is the alternative for adopters who want to see findings before
 committing to a blocking gate. This walkthrough assumes
 `--fail-on critical` is the destination; adjust the template if
@@ -151,11 +151,8 @@ isn't there:
 - **Doesn't ship API keys.** `OPENAI_API_KEY` is consumed by
   Promptfoo (a child process Terrain optionally spawns). Terrain
   does not read, log, or proxy the key. See
-  [`docs/product/ai-trust-boundary.md`](../../../product/ai-trust-boundary.md).
-- **Doesn't sandbox eval execution.** Sandboxing is on the 0.3
-  roadmap. If your prompts include tool-call shapes that touch
-  filesystem or network, the sandbox is the eval framework's
-  responsibility in 0.2.
+  [`SECURITY-DATA-HANDLING.md`](../../../../SECURITY-DATA-HANDLING.md).
+- **Doesn't sandbox eval execution.** Sandboxing is future work. If your prompts include tool-call shapes that touch filesystem or network, the sandbox is the eval framework's responsibility in 0.2.
 - **Doesn't replace Lakera / Guardrails.** Those are
   request-time AI safety services. Terrain solves the structural
   / pre-deploy / inventory side. Both can coexist.
@@ -171,7 +168,7 @@ both.
 
 ### "Terrain reports unfamiliar Promptfoo shape"
 
-Track 7.2 surfaces a single warning when Promptfoo's output shape
+Terrain surfaces a single warning when Promptfoo's output shape
 doesn't match v3 or v4. The warning text names the specific drift.
 Most often it means Promptfoo got upgraded and the export shape
 shifted; file an issue with the Terrain version + Promptfoo
@@ -191,9 +188,9 @@ terrain ai list
 
 - [`docs/examples/gate/github-action.yml`](../github-action.yml) —
   the canonical Terrain CI workflow (without AI eval wiring)
-- [`docs/product/ai-risk-tiers.md`](../../../product/ai-risk-tiers.md) —
+- [`docs/severity-rubric.md`](../../../severity-rubric.md) —
   why the AI section has three sub-stanzas
-- [`docs/product/unified-pr-comment.md`](../../../product/unified-pr-comment.md) —
+- the PR-comment surface documented in `docs/cli-spec.md` —
   the visual contract this comment commits to
 - [`docs/integrations/promptfoo.md`](../../../integrations/promptfoo.md) —
   full Promptfoo integration notes

@@ -127,12 +127,12 @@ func TestRetrievalRegression_RequiresBaseline(t *testing.T) {
 	}
 }
 
-// TestRetrievalRegression_FiresOnRagasModernKeys locks in the 0.2
-// ship-blocker fix — Ragas's current key (`context_precision`,
-// `context_recall`, `context_entity_recall`) and LangSmith's
-// `relevance_score` must trigger the regression detector. Pre-0.2.x
-// only the legacy `context_relevance` was in the allowlist; against a
-// real Ragas run the detector fired zero signals.
+// TestRetrievalRegression_FiresOnRagasModernKeys locks in the fix —
+// Ragas's current key (`context_precision`, `context_recall`,
+// `context_entity_recall`) and LangSmith's `relevance_score` must
+// trigger the regression detector. Earlier revisions had only the
+// legacy `context_relevance` in the allowlist; against a real Ragas
+// run the detector fired zero signals.
 func TestRetrievalRegression_FiresOnRagasModernKeys(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

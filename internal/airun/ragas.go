@@ -92,12 +92,13 @@ func ParseRagasJSON(data []byte) (*EvalRunResult, error) {
 			NamedScores: named,
 		}
 		// Mean score across the QUALITY axes only; success := all >= threshold.
-		// Pre-0.2.x every numeric column flowed into the success vote,
-		// including ancillary metrics like `cost`, `latency_ms`, or any
-		// custom user-added column. A faithfulness=0.45 alongside
-		// `cost: 0.003` flipped the case to failed because cost < 0.5
-		// (nonsensical: small cost is GOOD). We now restrict the
-		// threshold check to keys that pass `isRagasQualityKey`.
+		// Earlier revisions let every numeric column flow into the
+		// success vote, including ancillary metrics like `cost`,
+		// `latency_ms`, or any custom user-added column. A
+		// faithfulness=0.45 alongside `cost: 0.003` flipped the case
+		// to failed because cost < 0.5 (nonsensical: small cost is
+		// GOOD). We now restrict the threshold check to keys that pass
+		// `isRagasQualityKey`.
 		qualityScores := make([]float64, 0, len(named))
 		for k, v := range named {
 			if isRagasQualityKey(k) {
@@ -215,8 +216,8 @@ var ragasQualityKeys = map[string]bool{
 	"retrieval_score":        true,
 	"ndcg":                   true,
 	"coverage":               true,
-	// Ragas 0.2 modern metrics (added in 0.2.0 final-polish to keep this
-	// whitelist aligned with retrievalScoreKeys in aiRetrievalRegression).
+	// Ragas modern metrics — kept aligned with retrievalScoreKeys in
+	// aiRetrievalRegression.
 	"context_utilization": true,
 	"noise_sensitivity":   true,
 	"summarization":       true,
@@ -226,10 +227,9 @@ var ragasQualityKeys = map[string]bool{
 // isRagasQualityKey reports whether a NamedScore key is a quality
 // axis whose value should flow into success/failure synthesis.
 // Variants (hyphens, spaces, leading `eval_`, suffixed `_score`) are
-// normalized. 0.2.0 final-polish: added space→underscore and `eval_`
-// prefix-strip to handle the `ragas-evaluate-helpers` library's
-// `eval_faithfulness` / `eval context_relevance` shapes that the
-// pre-fix pattern missed.
+// normalized — without space→underscore and `eval_` prefix-strip,
+// the `ragas-evaluate-helpers` library's `eval_faithfulness` /
+// `eval context_relevance` shapes leak through unmatched.
 func isRagasQualityKey(key string) bool {
 	low := strings.ToLower(strings.TrimSpace(key))
 	low = strings.ReplaceAll(low, "-", "_")
@@ -242,9 +242,9 @@ func isRagasQualityKey(key string) bool {
 // numericValue extracts a float64 from a JSON-decoded value if it
 // looks numeric. Booleans / strings / nested objects return false.
 //
-// Pre-0.2.x this only accepted float64 / json.Number, so wrappers that
-// emit ints (Ragas DataFrame export through certain helpers, custom
-// JSON encoders) silently dropped the score.
+// Earlier revisions only accepted float64 / json.Number, so wrappers
+// that emit ints (Ragas DataFrame export through certain helpers,
+// custom JSON encoders) silently dropped the score.
 func numericValue(v any) (float64, bool) {
 	switch x := v.(type) {
 	case float64:
@@ -279,10 +279,10 @@ func stringField(row map[string]any, key string) string {
 type ragasEnvelope struct {
 	RunID     string           `json:"run_id,omitempty"`
 	CreatedAt string           `json:"created_at,omitempty"`
-	// 0.2.0 final-polish: modern Ragas (≥0.1.0) emits `evaluation_results`
-	// instead of `results`; some users export via DataFrame.to_json
-	// which produces just `scores`. We accept any of the three field
-	// names and merge them in the parser.
+	// Modern Ragas (≥0.1.0) emits `evaluation_results` instead of
+	// `results`; some users export via DataFrame.to_json which produces
+	// just `scores`. We accept any of the three field names and merge
+	// them in the parser.
 	Results            []map[string]any `json:"results"`
 	EvaluationResults  []map[string]any `json:"evaluation_results"`
 	Scores             []map[string]any `json:"scores"`

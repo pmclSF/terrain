@@ -366,13 +366,20 @@ const reranked = await reranker.rerank({ query, documents, topN: 5 });
 func TestInferAIContext_QueryRewriteNameBased(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
+	// AI-context import added: name-based AI-surface classification is
+	// gated on per-file AI corroboration (see hasAIContextJS) so the
+	// substring-match patterns don't false-positive on non-AI code.
+	// LangChain import here corroborates that this file is doing AI
+	// work, so the queryRewriter / retrievalFilter names get classified
+	// as SurfaceRetrieval as the test intends.
 	writeFile(t, root, "src/search.ts", `
+import { ChatOpenAI } from '@langchain/openai';
+
 export function queryRewriter(query, context) {
   return reformulate(query, context);
 }
 export const retrievalFilter = { status: "published", lang: "en" };
 `)
-	// These should be caught by name-based detection (SurfaceRetrieval).
 	ext := &jsSurfaceExtractor{}
 	surfaces := ext.ExtractSurfaces(root, "src/search.ts")
 	retrievals := filterByKind(surfaces, models.SurfaceRetrieval)
@@ -382,10 +389,34 @@ export const retrievalFilter = { status: "published", lang: "en" };
 	}
 }
 
+func TestInferAIContext_QueryRewriteWithoutAIImportSkipped(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	// Same content as TestInferAIContext_QueryRewriteNameBased but
+	// without the AI import. The gate should suppress AI-kind
+	// classification — they fall through to SurfaceFunction.
+	writeFile(t, root, "src/search.ts", `
+export function queryRewriter(query, context) {
+  return reformulate(query, context);
+}
+export const retrievalFilter = { status: "published", lang: "en" };
+`)
+	ext := &jsSurfaceExtractor{}
+	surfaces := ext.ExtractSurfaces(root, "src/search.ts")
+	retrievals := filterByKind(surfaces, models.SurfaceRetrieval)
+	if len(retrievals) != 0 {
+		t.Errorf("expected 0 retrieval surfaces without AI context, got %d: %v",
+			len(retrievals), surfaceNames(surfaces))
+	}
+}
+
 func TestInferAIContext_PythonChunkConfig(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
+	// AI-context import added — same gating rationale as the JS test above.
 	writeFile(t, root, "config.py", `
+from langchain.embeddings import OpenAIEmbeddings
+
 def chunk_config():
     return {"chunk_size": 500, "chunk_overlap": 50}
 

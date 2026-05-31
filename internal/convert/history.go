@@ -10,8 +10,7 @@ import (
 
 // HistoryRecord is one entry in the conversion audit trail. Each
 // terrain convert run that produces real output appends a record to
-// `.terrain/conversion-history/log.jsonl`. Closes the round-4 finding
-// "`.terrain/conversion-history/` for audit trail".
+// `.terrain/conversion-history/log.jsonl`.
 type HistoryRecord struct {
 	Timestamp      time.Time              `json:"timestamp"`
 	Source         string                 `json:"source"`

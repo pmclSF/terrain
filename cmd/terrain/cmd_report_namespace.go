@@ -6,8 +6,8 @@ import (
 	"strings"
 )
 
-// Phase A of the 0.2 CLI restructure folds the 11 read-side top-level
-// commands into one noun: `terrain report`. The canonical shape:
+// The CLI restructure folds the 11 read-side top-level commands into
+// one noun: `terrain report`. The canonical shape:
 //
 //   terrain report summary       (was: summary)
 //   terrain report insights      (was: insights)
@@ -20,15 +20,15 @@ import (
 //   terrain report select-tests  (was: select-tests)
 //
 // The `focus → --focus=<path>` and `export → --output=<path>` flag
-// collapses are DEFERRED to Phase B — the underlying runners
-// (runFocus, runExport*) don't yet accept the path/output parameters
-// these flags would set, so wiring the flags here would silently drop
-// the user's value. Until Phase B lands the runner-side plumbing,
-// use the legacy top-level commands (`terrain focus`, `terrain
-// export`).
+// collapses are DEFERRED — the underlying runners (runFocus,
+// runExport*) don't yet accept the path/output parameters these flags
+// would set, so wiring the flags here would silently drop the user's
+// value. Until the runner-side plumbing lands, use the legacy
+// top-level commands (`terrain focus`, `terrain export`).
 //
-// The 9 read-side legacy top-level commands keep working unchanged
-// through 0.2; they get a deprecation note in 0.2.x and removal in 0.3.
+// The 9 read-side legacy top-level commands keep working unchanged;
+// they will get a deprecation note in a later release and be removed
+// in a future release per the CHANGELOG.
 
 // reportVerbs is the canonical-verb allowlist. Used by the dispatcher
 // and by the help text on bare `terrain report`.
@@ -42,6 +42,7 @@ var reportVerbs = []string{
 	"pr",
 	"posture",
 	"select-tests",
+	"check-runs",
 }
 
 // runReportNamespaceCLI dispatches `terrain report <verb> ...`.
@@ -75,6 +76,8 @@ func runReportNamespaceCLI(args []string) error {
 		return runReportPostureCLI(rest)
 	case "select-tests":
 		return runReportSelectTestsCLI(rest)
+	case "check-runs":
+		return runReportCheckRunsCLI(rest)
 	default:
 		printReportUsage()
 		return fmt.Errorf("unknown report verb %q (valid: %s)", verb, strings.Join(reportVerbs, ", "))
@@ -96,6 +99,7 @@ func printReportUsage() {
 	fmt.Println("  pr            PR-level summary (--format=markdown|comment|annotation)")
 	fmt.Println("  posture       release readiness posture")
 	fmt.Println("  select-tests  protective test selection for a change")
+	fmt.Println("  check-runs    emit two GitHub Checks-API check-run bodies (gate + observability)")
 	fmt.Println()
 	fmt.Println("Common flags (all verbs):")
 	fmt.Println("  --root <path>       repository root (default .)")
@@ -220,6 +224,28 @@ func runReportPRCLI(args []string) error {
 		return err
 	}
 	return runPR(*root, *baseRef, *jsonOut, *format, gate)
+}
+
+// runReportCheckRunsCLI emits structured JSON for two GitHub Checks-
+// API check runs: `terrain (gate)` (required) and
+// `terrain (observability)` (informational). Adopters' CI workflows
+// consume the JSON and POST each half to the Checks API. Terrain
+// itself does no network I/O; the binary writes JSON, the workflow
+// handles auth + HTTP.
+//
+// Default: writes the bundle to stdout. With --out=<path>, writes to
+// the file instead.
+func runReportCheckRunsCLI(args []string) error {
+	fs := flag.NewFlagSet("report check-runs", flag.ExitOnError)
+	root := fs.String("root", ".", "repository root to analyze")
+	headSHA := fs.String("head-sha", "", "HEAD commit SHA (required; the check runs target this commit)")
+	out := fs.String("out", "", "write the JSON bundle to this path instead of stdout")
+	_ = fs.Parse(args)
+	mountPositionalAsRoot("report check-runs", fs.Args(), root)
+	if *headSHA == "" {
+		return fmt.Errorf("--head-sha is required (the check-run target commit; typically $GITHUB_SHA)")
+	}
+	return runCheckRuns(*root, *headSHA, *out)
 }
 
 func runReportPostureCLI(args []string) error {

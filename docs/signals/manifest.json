@@ -1,11 +1,12 @@
 {
-  "schemaVersion": "1.0.0",
+  "schemaVersion": "1.2.0",
   "entries": [
     {
       "type": "slowTest",
       "constName": "SignalSlowTest",
       "domain": "health",
       "status": "stable",
+      "tier": "observability",
       "title": "Slow Test",
       "description": "Tests exceed expected runtime budget and slow feedback loops.",
       "remediation": "Profile slow paths and split or optimize expensive tests.",
@@ -15,7 +16,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-HEALTH-001",
+      "ruleId": "terrain/health/slow-test",
       "ruleUri": "docs/rules/health/slow-test.md"
     },
     {
@@ -23,6 +24,7 @@
       "constName": "SignalFlakyTest",
       "domain": "health",
       "status": "stable",
+      "tier": "observability",
       "title": "Flaky Test",
       "description": "Tests exhibit inconsistent pass/fail behavior across runs.",
       "remediation": "Stabilize timing, shared state, and external dependency handling.",
@@ -32,15 +34,16 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-HEALTH-002",
+      "ruleId": "terrain/health/flaky-test",
       "ruleUri": "docs/rules/health/flaky-test.md",
-      "promotionPlan": "Today's detector is retry-based, not statistical failure-rate. Statistical detection lands in 0.3 with the calibration corpus."
+      "promotionPlan": "Today's detector is retry-based, not statistical failure-rate. Statistical detection lands in a future release."
     },
     {
       "type": "skippedTest",
       "constName": "SignalSkippedTest",
       "domain": "health",
       "status": "stable",
+      "tier": "observability",
       "title": "Skipped Test",
       "description": "Tests are skipped and may hide latent regressions.",
       "remediation": "Unskip, remove, or explicitly justify skipped tests in policy.",
@@ -51,7 +54,7 @@
         "runtime",
         "structural-pattern"
       ],
-      "ruleId": "TER-HEALTH-003",
+      "ruleId": "terrain/health/skipped-test",
       "ruleUri": "docs/rules/health/skipped-test.md"
     },
     {
@@ -59,6 +62,7 @@
       "constName": "SignalDeadTest",
       "domain": "health",
       "status": "stable",
+      "tier": "observability",
       "title": "Dead Test",
       "description": "Tests may no longer validate meaningful behavior.",
       "remediation": "Remove obsolete tests or reconnect them to active behavior.",
@@ -68,7 +72,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-HEALTH-004",
+      "ruleId": "terrain/health/dead-test",
       "ruleUri": "docs/rules/health/dead-test.md"
     },
     {
@@ -76,6 +80,7 @@
       "constName": "SignalUnstableSuite",
       "domain": "health",
       "status": "stable",
+      "tier": "observability",
       "title": "Unstable Suite",
       "description": "The suite has concentrated instability signals.",
       "remediation": "Prioritize stabilization in the highest-instability areas.",
@@ -85,7 +90,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-HEALTH-005",
+      "ruleId": "terrain/health/unstable-suite",
       "ruleUri": "docs/rules/health/unstable-suite.md"
     },
     {
@@ -93,6 +98,7 @@
       "constName": "SignalUntestedExport",
       "domain": "quality",
       "status": "stable",
+      "tier": "gate",
       "title": "Untested Export",
       "description": "Exported code units are not directly covered by tests.",
       "remediation": "Add direct tests for public exports to protect API behavior.",
@@ -103,14 +109,15 @@
         "path-name",
         "graph-traversal"
       ],
-      "ruleId": "TER-QUAL-001",
-      "ruleUri": "docs/rules/quality/untested-export.md"
+      "ruleId": "terrain/coverage/untested-export",
+      "ruleUri": "docs/rules/coverage/untested-export.md"
     },
     {
       "type": "weakAssertion",
       "constName": "SignalWeakAssertion",
       "domain": "quality",
       "status": "stable",
+      "tier": "observability",
       "title": "Weak Assertion",
       "description": "Tests use weak or low-density assertions, reducing defect-catching power.",
       "remediation": "Add behavior-focused assertions on outputs, state transitions, and side effects.",
@@ -120,49 +127,54 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-QUAL-002",
-      "ruleUri": "docs/rules/quality/weak-assertion.md",
-      "promotionPlan": "Detector is regex/density-based; AST-based semantic scoring lands in 0.3 alongside the calibration corpus."
+      "ruleId": "terrain/hygiene/weak-assertion",
+      "ruleUri": "docs/rules/hygiene/weak-assertion.md",
+      "promotionPlan": "Observability-tier. Gate-tier promotion requires an explicit user-declared policy threshold and framing-stable evaluation."
     },
     {
       "type": "mockHeavyTest",
       "constName": "SignalMockHeavyTest",
       "domain": "quality",
-      "status": "stable",
+      "status": "experimental",
+      "tier": "observability",
       "title": "Mock-Heavy Test",
       "description": "Tests rely heavily on mocks and may miss integration-level regressions.",
       "remediation": "Replace brittle mocks with real collaborators where practical.",
-      "defaultSeverity": "medium",
-      "confidenceMin": 0.6,
-      "confidenceMax": 0.8,
+      "defaultSeverity": "low",
+      "confidenceMin": 0.3,
+      "confidenceMax": 0.5,
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-QUAL-003",
-      "ruleUri": "docs/rules/quality/mock-heavy.md"
+      "ruleId": "terrain/hygiene/mock-heavy",
+      "ruleUri": "docs/rules/hygiene/mock-heavy.md",
+      "promotionPlan": "Observability-tier. Rebuild requires a mock-classifier distinguishing module vs callback mocks."
     },
     {
       "type": "testsOnlyMocks",
       "constName": "SignalTestsOnlyMocks",
       "domain": "quality",
       "status": "stable",
+      "tier": "observability",
       "title": "Tests Only Mocks",
       "description": "Test files contain mock setup but zero assertions, verifying wiring only.",
       "remediation": "Add assertions on outputs, state changes, or side effects to validate real behavior.",
-      "defaultSeverity": "high",
+      "defaultSeverity": "medium",
       "confidenceMin": 0.7,
       "confidenceMax": 0.9,
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-QUAL-004",
-      "ruleUri": "docs/rules/quality/tests-only-mocks.md"
+      "ruleId": "terrain/quality/tests-only-mocks",
+      "ruleUri": "docs/rules/quality/tests-only-mocks.md",
+      "promotionPlan": "Observability tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting."
     },
     {
       "type": "snapshotHeavyTest",
       "constName": "SignalSnapshotHeavyTest",
       "domain": "quality",
       "status": "stable",
+      "tier": "observability",
       "title": "Snapshot-Heavy Test",
       "description": "Test files over-rely on snapshot assertions, reducing defect specificity.",
       "remediation": "Supplement snapshots with targeted assertions on critical behavior.",
@@ -172,14 +184,16 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-QUAL-005",
-      "ruleUri": "docs/rules/quality/snapshot-heavy.md"
+      "ruleId": "terrain/hygiene/snapshot-heavy",
+      "ruleUri": "docs/rules/hygiene/snapshot-heavy.md",
+      "promotionPlan": "Observability-tier. Gate-tier promotion requires a broader corpus and a framing-stable threshold (e.g. snap\u003e=2 AND ratio\u003e=0.3) plus an explicit user-facing policy declaration."
     },
     {
       "type": "coverageBlindSpot",
       "constName": "SignalCoverageBlindSpot",
       "domain": "quality",
       "status": "stable",
+      "tier": "gate",
       "title": "Coverage Blind Spot",
       "description": "Code units appear unprotected or weakly protected by current coverage mix.",
       "remediation": "Add unit/integration tests where only broad or indirect coverage exists.",
@@ -190,14 +204,15 @@
         "coverage",
         "graph-traversal"
       ],
-      "ruleId": "TER-QUAL-006",
-      "ruleUri": "docs/rules/quality/coverage-blind-spot.md"
+      "ruleId": "terrain/coverage/blind-spot",
+      "ruleUri": "docs/rules/coverage/blind-spot.md"
     },
     {
       "type": "coverageThresholdBreak",
       "constName": "SignalCoverageThresholdBreak",
       "domain": "quality",
       "status": "stable",
+      "tier": "gate",
       "title": "Coverage Threshold Break",
       "description": "Measured coverage falls below configured thresholds.",
       "remediation": "Target low-coverage, high-risk areas and raise meaningful coverage first.",
@@ -207,15 +222,16 @@
       "evidenceSources": [
         "coverage"
       ],
-      "ruleId": "TER-QUAL-007",
+      "ruleId": "terrain/quality/coverage-threshold",
       "ruleUri": "docs/rules/quality/coverage-threshold.md",
-      "promotionPlan": "Severity flips at hard 100%-gap boundary; smooth gradient lands in 0.3 per docs/scoring-rubric.md."
+      "promotionPlan": "Severity flips at hard 100%-gap boundary; a smooth gradient lands in a future release per docs/scoring-rubric.md."
     },
     {
       "type": "staticSkippedTest",
       "constName": "SignalStaticSkippedTest",
       "domain": "quality",
       "status": "stable",
+      "tier": "gate",
       "title": "Static Skipped Test",
       "description": "Tests are statically marked as skipped (it.skip, xit, @skip, etc.).",
       "remediation": "Re-enable, replace, or document skip markers older than the policy threshold.",
@@ -225,31 +241,70 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-QUAL-008",
-      "ruleUri": "docs/rules/quality/static-skip.md"
+      "ruleId": "terrain/hygiene/permanently-skipped",
+      "ruleUri": "docs/rules/hygiene/permanently-skipped.md"
+    },
+    {
+      "type": "staticSkippedTest-unconditional",
+      "constName": "SignalStaticSkippedTestUnconditional",
+      "domain": "quality",
+      "status": "planned",
+      "tier": "observability",
+      "title": "Static Skipped Test — Unconditional",
+      "description": "A test is statically marked as skipped without any surrounding environment / feature-flag gate. The skip is permanent until the marker is removed.",
+      "remediation": "Re-enable, replace, or delete the test. Add a comment explaining why if the skip should persist.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.9,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/hygiene/static-skip-unconditional",
+      "promotionPlan": "Preview status. Promotes to stable when broader validation confirms the unconditional / conditional-gate split preserves true positives without inflating false positives."
+    },
+    {
+      "type": "staticSkippedTest-conditional-gate",
+      "constName": "SignalStaticSkippedTestConditionalGate",
+      "domain": "quality",
+      "status": "planned",
+      "tier": "observability",
+      "title": "Conditionally-Skipped Test (informational)",
+      "description": "A test is statically marked as skipped, but the skip is wrapped by an environment, feature-flag, or platform predicate. The skip is intentional and gated by code. This finding is informational — no action is required unless the gate condition itself is wrong.",
+      "remediation": "Audit the gate condition periodically. CI should run the test on platforms or branches where the gate evaluates to false.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/hygiene/static-skip-conditional-gate",
+      "promotionPlan": "Preview status. Promotes to stable when broader validation confirms the conditional-gate variant preserves the intentional-skip true positives that a narrower predicate would drop."
     },
     {
       "type": "assertionFreeTest",
       "constName": "SignalAssertionFreeTest",
       "domain": "quality",
       "status": "stable",
+      "tier": "observability",
       "title": "Assertion-Free Test",
       "description": "Test files contain test function signatures but no detectable assertions.",
       "remediation": "Add assertions to validate behavior — tests without assertions verify nothing.",
-      "defaultSeverity": "high",
+      "defaultSeverity": "medium",
       "confidenceMin": 0.75,
       "confidenceMax": 0.9,
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-QUAL-009",
-      "ruleUri": "docs/rules/quality/assertion-free.md"
+      "ruleId": "terrain/hygiene/no-assertions",
+      "ruleUri": "docs/rules/hygiene/no-assertions.md",
+      "promotionPlan": "Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role gate that excludes conftest/fixtures/commented-out tests, and framing-stable evaluation."
     },
     {
       "type": "orphanedTestFile",
       "constName": "SignalOrphanedTestFile",
       "domain": "quality",
       "status": "stable",
+      "tier": "observability",
       "title": "Orphaned Test File",
       "description": "Test files do not import any source modules from the repository.",
       "remediation": "Connect orphaned tests to source code or remove if obsolete.",
@@ -259,24 +314,118 @@
       "evidenceSources": [
         "graph-traversal"
       ],
-      "ruleId": "TER-QUAL-010",
-      "ruleUri": "docs/rules/quality/orphaned-test.md"
+      "ruleId": "terrain/hygiene/orphaned-test",
+      "ruleUri": "docs/rules/hygiene/orphaned-test.md"
+    },
+    {
+      "type": "depsDriftRisk",
+      "constName": "SignalDepsDriftRisk",
+      "domain": "quality",
+      "status": "experimental",
+      "tier": "gate",
+      "title": "Dependency Drift Risk",
+      "description": "A dependency manifest has a high share of moving-target version specs (caret, tilde, *, latest), making the repo silently susceptible to upstream regressions.",
+      "remediation": "Pin versions or add a lockfile-verification gate. Re-audit the manifest after pinning to confirm the moving-target share drops below the threshold.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.55,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/deps/drift-risk",
+      "ruleUri": "docs/rules/deps/drift-risk.md",
+      "promotionPlan": "Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on deps-bump PRs."
+    },
+    {
+      "type": "depsDriftRisk-strict-pin",
+      "constName": "SignalDepsDriftRiskStrictPin",
+      "domain": "quality",
+      "status": "planned",
+      "tier": "observability",
+      "title": "Unpinned Dependency",
+      "description": "One or more dependencies are declared without an explicit version anchor (bare name, `*`, `latest`, or unversioned URL). The resolver picks whatever happens to be available at install time, so installs are not reproducible across runs.",
+      "remediation": "Add an explicit version, version range, or lockfile-verification gate so installs are reproducible.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/deps/drift-strict-pin",
+      "promotionPlan": "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when broader validation confirms regression-PR lift on deps-bump PRs."
+    },
+    {
+      "type": "depsDriftRisk-caret-policy",
+      "constName": "SignalDepsDriftRiskCaretPolicy",
+      "domain": "quality",
+      "status": "planned",
+      "tier": "observability",
+      "title": "Caret-Range Dependency Drift",
+      "description": "Dependencies use caret-range specs (`^x.y.z`) in an ecosystem where caret semantics let minor versions drift silently (npm, Poetry, and Cargo each interpret caret differently). The runtime version can change without a manifest edit.",
+      "remediation": "Adopt a stricter pinning policy (tilde, exact, or commit-pinned) where minor-version drift would silently affect runtime behavior.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.55,
+      "confidenceMax": 0.8,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/deps/drift-caret-policy",
+      "promotionPlan": "Preview status. One half of the dependency-drift split (the other is the strict-pin counterpart). Promotes to stable when broader validation confirms regression-PR lift on deps-bump PRs."
+    },
+    {
+      "type": "configSchemaDrift",
+      "constName": "SignalConfigSchemaDrift",
+      "domain": "quality",
+      "status": "experimental",
+      "tier": "gate",
+      "title": "Config Schema Drift Risk",
+      "description": "An infra-config file (GitHub Actions workflow, docker-compose, Helm values, or k8s manifest) uses forward-compat hazards: mutable action refs, `:latest` or untagged image tags, deprecated apiVersions.",
+      "remediation": "Pin action refs to a SHA or tagged release. Replace `:latest` and untagged images with explicit versions. Upgrade deprecated apiVersions to their current replacement.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.5,
+      "confidenceMax": 0.8,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/config/schema-drift",
+      "ruleUri": "docs/rules/config/schema-drift.md",
+      "promotionPlan": "Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on config-only PRs."
+    },
+    {
+      "type": "promptFileMissingEval",
+      "constName": "SignalPromptFileMissingEval",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "AI/ML Surface Without Eval Coverage",
+      "description": "An AI/ML surface (prompt, agent, tool definition, model context, or model artifact) has no eval scenario covering it. Across 2000 OSS AI/ML repos, 136 of every 137 detected surfaces have this gap — the dominant AI-testing failure mode.",
+      "remediation": "Add an eval scenario (promptfoo / DeepEval / Ragas / framework-specific) that exercises this surface. Use `terrain ai list` to see other uncovered surfaces in the same repo and batch-fix.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.55,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "terrain/ai/surface-missing-eval",
+      "ruleUri": "docs/rules/ai/surface-missing-eval.md",
+      "promotionPlan": "Promotes to stable once calibration data confirms regression-PR lift on prompt-eval-gap findings."
     },
     {
       "type": "frameworkMigration",
       "constName": "SignalFrameworkMigration",
       "domain": "migration",
       "status": "stable",
+      "tier": "gate",
       "title": "Framework Migration Opportunity",
       "description": "The repository or package appears suitable for migration to a target framework.",
-      "remediation": "Evaluate candidates with `terrain migration readiness` and plan staged migration.",
+      "remediation": "Evaluate candidates with `terrain migration readiness` and plan staged framework_migration.",
       "defaultSeverity": "info",
       "confidenceMin": 0.5,
       "confidenceMax": 0.8,
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-MIG-001",
+      "ruleId": "terrain/migration/framework-migration",
       "ruleUri": "docs/rules/migration/framework-migration.md"
     },
     {
@@ -284,40 +433,45 @@
       "constName": "SignalMigrationBlocker",
       "domain": "migration",
       "status": "stable",
+      "tier": "observability",
       "title": "Migration Blocker",
-      "description": "Detected patterns will complicate framework migration.",
+      "description": "Detected patterns will complicate framework framework_migration.",
       "remediation": "Address blockers incrementally before broad migration changes.",
-      "defaultSeverity": "high",
+      "defaultSeverity": "low",
       "confidenceMin": 0.7,
       "confidenceMax": 0.9,
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-MIG-002",
-      "ruleUri": "docs/rules/migration/migration-blocker.md"
+      "ruleId": "terrain/migration/migration-blocker",
+      "ruleUri": "docs/rules/migration/migration-blocker.md",
+      "promotionPlan": "Observability-tier. Refresh the trigger set to living migration patterns and drop the enzyme sub-rule once base rates are confirmed."
     },
     {
       "type": "deprecatedTestPattern",
       "constName": "SignalDeprecatedTestPattern",
       "domain": "migration",
       "status": "stable",
+      "tier": "observability",
       "title": "Deprecated Test Pattern",
       "description": "Deprecated test patterns increase migration and maintenance risk.",
       "remediation": "Replace deprecated APIs with supported alternatives.",
-      "defaultSeverity": "medium",
+      "defaultSeverity": "low",
       "confidenceMin": 0.7,
       "confidenceMax": 0.9,
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-MIG-003",
-      "ruleUri": "docs/rules/migration/deprecated-pattern.md"
+      "ruleId": "terrain/migration/deprecated-pattern",
+      "ruleUri": "docs/rules/migration/deprecated-pattern.md",
+      "promotionPlan": "Observability-tier. Drop the enzyme sub-rule, refresh the trigger set, and add a scope gate distinguishing jest.setTimeout from bare setTimeout in a test body."
     },
     {
       "type": "dynamicTestGeneration",
       "constName": "SignalDynamicTestGeneration",
       "domain": "migration",
       "status": "stable",
+      "tier": "observability",
       "title": "Dynamic Test Generation",
       "description": "Dynamic test generation may reduce migration and analysis confidence.",
       "remediation": "Prefer explicit, static test declarations for critical paths.",
@@ -327,7 +481,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-MIG-004",
+      "ruleId": "terrain/migration/dynamic-generation",
       "ruleUri": "docs/rules/migration/dynamic-generation.md"
     },
     {
@@ -335,6 +489,7 @@
       "constName": "SignalCustomMatcherRisk",
       "domain": "migration",
       "status": "stable",
+      "tier": "observability",
       "title": "Custom Matcher Risk",
       "description": "Custom matcher behavior can be difficult to migrate safely.",
       "remediation": "Audit matcher semantics and provide migration-safe equivalents.",
@@ -344,7 +499,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-MIG-005",
+      "ruleId": "terrain/migration/custom-matcher",
       "ruleUri": "docs/rules/migration/custom-matcher.md"
     },
     {
@@ -352,6 +507,7 @@
       "constName": "SignalUnsupportedSetup",
       "domain": "migration",
       "status": "stable",
+      "tier": "observability",
       "title": "Unsupported Setup",
       "description": "Setup/teardown patterns may not port cleanly to target frameworks.",
       "remediation": "Refactor setup boundaries toward framework-agnostic patterns.",
@@ -361,7 +517,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-MIG-006",
+      "ruleId": "terrain/migration/unsupported-setup",
       "ruleUri": "docs/rules/migration/unsupported-setup.md"
     },
     {
@@ -369,6 +525,7 @@
       "constName": "SignalPolicyViolation",
       "domain": "governance",
       "status": "stable",
+      "tier": "gate",
       "title": "Policy Violation",
       "description": "Repository state violates configured Terrain policy rules.",
       "remediation": "Resolve violations or intentionally update policy thresholds.",
@@ -378,7 +535,7 @@
       "evidenceSources": [
         "policy"
       ],
-      "ruleId": "TER-GOV-001",
+      "ruleId": "terrain/governance/policy-violation",
       "ruleUri": "docs/rules/governance/policy-violation.md"
     },
     {
@@ -386,6 +543,7 @@
       "constName": "SignalLegacyFrameworkUsage",
       "domain": "governance",
       "status": "stable",
+      "tier": "gate",
       "title": "Legacy Framework Usage",
       "description": "Legacy framework usage remains where policy discourages it.",
       "remediation": "Plan and execute incremental migration away from legacy frameworks.",
@@ -396,7 +554,7 @@
         "policy",
         "structural-pattern"
       ],
-      "ruleId": "TER-GOV-002",
+      "ruleId": "terrain/governance/legacy-framework",
       "ruleUri": "docs/rules/governance/legacy-framework.md"
     },
     {
@@ -404,6 +562,7 @@
       "constName": "SignalSkippedTestsInCI",
       "domain": "governance",
       "status": "stable",
+      "tier": "gate",
       "title": "Skipped Tests In CI",
       "description": "Skipped tests are present where CI policy disallows them.",
       "remediation": "Investigate skip conditions and re-enable tests or replace with targeted alternatives.",
@@ -414,7 +573,7 @@
         "policy",
         "structural-pattern"
       ],
-      "ruleId": "TER-GOV-003",
+      "ruleId": "terrain/governance/skipped-in-ci",
       "ruleUri": "docs/rules/governance/skipped-in-ci.md"
     },
     {
@@ -422,6 +581,7 @@
       "constName": "SignalRuntimeBudgetExceeded",
       "domain": "governance",
       "status": "stable",
+      "tier": "gate",
       "title": "Runtime Budget Exceeded",
       "description": "Observed runtimes exceed configured policy budget.",
       "remediation": "Reduce runtime hotspots or adjust policy to reflect intentional tradeoffs.",
@@ -432,7 +592,7 @@
         "policy",
         "runtime"
       ],
-      "ruleId": "TER-GOV-004",
+      "ruleId": "terrain/governance/runtime-budget",
       "ruleUri": "docs/rules/governance/runtime-budget.md"
     },
     {
@@ -440,6 +600,7 @@
       "constName": "SignalUncoveredAISurface",
       "domain": "ai",
       "status": "experimental",
+      "tier": "observability",
       "title": "Uncovered AI Surface",
       "description": "AI surfaces (prompts, tools, datasets) have zero test or scenario coverage.",
       "remediation": "Add eval scenarios that exercise this AI surface — untested prompts and tools can change behavior silently.",
@@ -450,7 +611,7 @@
         "graph-traversal",
         "structural-pattern"
       ],
-      "ruleId": "TER-STRUCT-001",
+      "ruleId": "terrain/structural/uncovered-ai-surface",
       "ruleUri": "docs/rules/structural/uncovered-ai-surface.md",
       "promotionPlan": "Coverage attribution depends on .terrain/terrain.yaml scenario declarations; precision/recall calibrated in 0.2 against the AI fixture corpus."
     },
@@ -458,25 +619,27 @@
       "type": "phantomEvalScenario",
       "constName": "SignalPhantomEvalScenario",
       "domain": "ai",
-      "status": "experimental",
+      "status": "stable",
+      "tier": "observability",
       "title": "Phantom Eval Scenario",
-      "description": "Eval scenarios claim to validate AI surfaces but have no import-graph path to those surfaces.",
+      "description": "Eval scenarios claim to validate AI surfaces but have no import-graph path to those surfaces — typically caused by a prompt/surface rename that wasn't propagated to the eval YAML.",
       "remediation": "Verify the test file actually imports and exercises the target code, or correct the surface mapping.",
-      "defaultSeverity": "medium",
+      "defaultSeverity": "high",
       "confidenceMin": 0.6,
       "confidenceMax": 0.85,
       "evidenceSources": [
         "graph-traversal"
       ],
-      "ruleId": "TER-STRUCT-002",
+      "ruleId": "terrain/structural/phantom-eval",
       "ruleUri": "docs/rules/structural/phantom-eval.md",
-      "promotionPlan": "Promote once .terrain/terrain.yaml scenario declarations are validated against the AI fixture corpus in 0.2. Today's traversal can miss surfaces declared by ID without a corresponding code path; calibration in 0.3 closes the gap."
+      "promotionPlan": "Stable. Ships at observability tier because a silent eval-coverage gap is informational, not gate-blocking. Severity is High because the failure mode (eval reports passing while running zero tests) silently degrades trust in CI signal."
     },
     {
       "type": "untestedPromptFlow",
       "constName": "SignalUntestedPromptFlow",
       "domain": "ai",
       "status": "experimental",
+      "tier": "observability",
       "title": "Untested Prompt Flow",
       "description": "A prompt flows through multiple source files via imports with zero test coverage at any point in the chain.",
       "remediation": "Add integration tests at the prompt's consumption points to catch behavioral regressions.",
@@ -486,7 +649,7 @@
       "evidenceSources": [
         "graph-traversal"
       ],
-      "ruleId": "TER-STRUCT-003",
+      "ruleId": "terrain/structural/untested-prompt-flow",
       "ruleUri": "docs/rules/structural/untested-prompt-flow.md",
       "promotionPlan": "Detection currently misses prompt flows that go through framework abstractions (LangChain runnables, LlamaIndex query engines). 0.2 ships AST-based prompt-flow tracing; promote once recall measures \u003e=0.8 on the AI fixture corpus."
     },
@@ -495,6 +658,7 @@
       "constName": "SignalBlastRadiusHotspot",
       "domain": "structure",
       "status": "stable",
+      "tier": "gate",
       "title": "Blast-Radius Hotspot",
       "description": "Source files where a change would impact an unusually large number of tests.",
       "remediation": "Ensure high direct test coverage and consider adding contract tests at interface boundaries.",
@@ -504,7 +668,7 @@
       "evidenceSources": [
         "graph-traversal"
       ],
-      "ruleId": "TER-STRUCT-004",
+      "ruleId": "terrain/structural/blast-radius",
       "ruleUri": "docs/rules/structural/blast-radius.md"
     },
     {
@@ -512,6 +676,7 @@
       "constName": "SignalFixtureFragilityHotspot",
       "domain": "structure",
       "status": "stable",
+      "tier": "observability",
       "title": "Fixture Fragility Hotspot",
       "description": "Fixtures depended on by many tests, where a single change cascades widely.",
       "remediation": "Extract smaller, focused fixtures to reduce cascading test failures.",
@@ -521,7 +686,7 @@
       "evidenceSources": [
         "graph-traversal"
       ],
-      "ruleId": "TER-STRUCT-005",
+      "ruleId": "terrain/structural/fixture-fragility",
       "ruleUri": "docs/rules/structural/fixture-fragility.md"
     },
     {
@@ -529,24 +694,27 @@
       "constName": "SignalAssertionFreeImport",
       "domain": "structure",
       "status": "stable",
+      "tier": "observability",
       "title": "Assertion-Free Import",
       "description": "Test files import production code but contain zero assertions — exercising code without verifying behavior.",
       "remediation": "Add assertions to validate behavior or remove tests that verify nothing.",
-      "defaultSeverity": "high",
+      "defaultSeverity": "medium",
       "confidenceMin": 0.8,
       "confidenceMax": 0.95,
       "evidenceSources": [
         "graph-traversal",
         "structural-pattern"
       ],
-      "ruleId": "TER-STRUCT-006",
-      "ruleUri": "docs/rules/structural/assertion-free-import.md"
+      "ruleId": "terrain/structural/assertion-free-import",
+      "ruleUri": "docs/rules/structural/assertion-free-import.md",
+      "promotionPlan": "Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role test gate, cross-file inherited-assertion resolution, and framing-stable evaluation."
     },
     {
       "type": "capabilityValidationGap",
       "constName": "SignalCapabilityValidationGap",
       "domain": "ai",
       "status": "experimental",
+      "tier": "observability",
       "title": "Capability Validation Gap",
       "description": "Inferred AI capabilities have no eval scenarios validating them.",
       "remediation": "Add eval scenarios that exercise this capability to ensure behavioral regression detection.",
@@ -557,15 +725,16 @@
         "graph-traversal",
         "structural-pattern"
       ],
-      "ruleId": "TER-STRUCT-007",
+      "ruleId": "terrain/structural/capability-gap",
       "ruleUri": "docs/rules/structural/capability-gap.md",
-      "promotionPlan": "Capability inference is heuristic in 0.1.2; 0.2 introduces the AI taxonomy v2 with explicit capability tags so this signal can fire only on declared capabilities, eliminating false positives. Promote once precision \u003e=0.8."
+      "promotionPlan": "Capability inference is heuristic; will be promoted once the AI taxonomy supports explicit capability tags and precision is validated."
     },
     {
       "type": "evalFailure",
       "constName": "SignalEvalFailure",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Eval Failure",
       "description": "An AI eval scenario reported a hard failure.",
       "remediation": "Investigate the failing case in the eval framework's report and patch the prompt or guardrail.",
@@ -575,32 +744,33 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-001",
-      "ruleUri": "docs/rules/ai/eval-failure.md",
-      "promotionPlan": "0.3 — generic per-case failure surfacing on top of the 0.2 airun eval ingestion. Today's per-case failures route through the specific aiHallucinationRate / aiCostRegression / aiRetrievalRegression detectors."
+      "ruleId": "terrain/ai/eval-failure",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "evalRegression",
       "constName": "SignalEvalRegression",
       "domain": "ai",
-      "status": "planned",
+      "status": "stable",
+      "tier": "gate",
       "title": "Eval Regression",
-      "description": "",
+      "description": "An eval case's primary Score dropped from baseline to current past the configured threshold, OR the run's PrimaryMetric dropped across all matched cases. Identifies regressions before merge.",
+      "remediation": "Inspect the diff for prompt / model / retrieval changes that affect the regressing case(s). If intentional, update the baseline with `terrain ai record`.",
       "defaultSeverity": "high",
       "confidenceMin": 0.85,
-      "confidenceMax": 0.95,
+      "confidenceMax": 0.99,
       "evidenceSources": [
-        "runtime"
+        "eval-execution"
       ],
-      "ruleId": "TER-AI-002",
-      "ruleUri": "docs/rules/ai/eval-regression.md",
-      "promotionPlan": "0.3 — umbrella evalRegression detector. Concrete shapes (aiCostRegression, aiRetrievalRegression) shipped in 0.2 and cover the practical cases today."
+      "ruleId": "terrain/regression/eval-regression",
+      "ruleUri": "docs/rules/regression/eval-regression.md"
     },
     {
       "type": "accuracyRegression",
       "constName": "SignalAccuracyRegression",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Accuracy Regression",
       "description": "",
       "defaultSeverity": "high",
@@ -609,15 +779,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-003",
-      "ruleUri": "docs/rules/ai/accuracy-regression.md",
-      "promotionPlan": "0.3 — accuracy axis regression detector. Per-case score data lands in EvalRuns via the 0.2 airun adapters; detector wiring is the remaining work."
+      "ruleId": "terrain/ai/accuracy-regression",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "citationMissing",
       "constName": "SignalCitationMissing",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Citation Missing",
       "description": "",
       "defaultSeverity": "medium",
@@ -626,15 +796,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-004",
-      "ruleUri": "docs/rules/ai/citation-missing.md",
-      "promotionPlan": "0.3 — RAG-specific detectors."
+      "ruleId": "terrain/ai/citation-missing",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "retrievalMiss",
       "constName": "SignalRetrievalMiss",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Retrieval Miss",
       "description": "",
       "defaultSeverity": "high",
@@ -643,15 +813,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-005",
-      "ruleUri": "docs/rules/ai/retrieval-miss.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/retrieval-miss",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "answerGroundingFailure",
       "constName": "SignalAnswerGroundingFailure",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Answer Grounding Failure",
       "description": "",
       "defaultSeverity": "high",
@@ -660,15 +830,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-006",
-      "ruleUri": "docs/rules/ai/grounding-failure.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/grounding-failure",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "toolSelectionError",
       "constName": "SignalToolSelectionError",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Tool Selection Error",
       "description": "",
       "defaultSeverity": "high",
@@ -677,15 +847,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-007",
-      "ruleUri": "docs/rules/ai/tool-selection-error.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/tool-selection-error",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "schemaParseFailure",
       "constName": "SignalSchemaParseFailure",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Schema Parse Failure",
       "description": "",
       "defaultSeverity": "high",
@@ -694,15 +864,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-008",
-      "ruleUri": "docs/rules/ai/schema-parse-failure.md",
-      "promotionPlan": "0.3 — depends on airun adapters surfacing parse-error buckets distinct from assertion-failure buckets (currently lumped into Failures)."
+      "ruleId": "terrain/ai/schema-parse-failure",
+      "promotionPlan": "Planned. Reserved signal type — runtime detector not yet wired."
     },
     {
       "type": "safetyFailure",
       "constName": "SignalSafetyFailure",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Safety Failure",
       "description": "",
       "defaultSeverity": "critical",
@@ -712,15 +882,15 @@
         "runtime",
         "policy"
       ],
-      "ruleId": "TER-AI-009",
-      "ruleUri": "docs/rules/ai/safety-failure.md",
-      "promotionPlan": "0.3 — depends on a uniform safety-verdict field across Promptfoo / DeepEval / Ragas adapters. The structural counterpart (aiSafetyEvalMissing) shipped in 0.2."
+      "ruleId": "terrain/ai/safety-failure",
+      "promotionPlan": "Planned. Reserved signal type — runtime detector not yet wired."
     },
     {
       "type": "aiPolicyViolation",
       "constName": "SignalAIPolicyViolation",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "AI Policy Violation",
       "description": "",
       "defaultSeverity": "critical",
@@ -729,15 +899,15 @@
       "evidenceSources": [
         "policy"
       ],
-      "ruleId": "TER-AI-010",
-      "ruleUri": "docs/rules/ai/ai-policy-violation.md",
-      "promotionPlan": "0.2"
+      "ruleId": "terrain/ai/ai-policy-violation",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "hallucinationDetected",
       "constName": "SignalHallucinationDetected",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Hallucination Detected",
       "description": "",
       "defaultSeverity": "critical",
@@ -746,15 +916,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-011",
-      "ruleUri": "docs/rules/ai/hallucination.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/hallucination",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "latencyRegression",
       "constName": "SignalLatencyRegression",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Latency Regression",
       "description": "",
       "defaultSeverity": "medium",
@@ -763,16 +933,16 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-012",
-      "ruleUri": "docs/rules/ai/latency-regression.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/latency-regression",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "costRegression",
       "constName": "SignalCostRegression",
       "domain": "ai",
       "status": "planned",
-      "title": "Cost Regression",
+      "tier": "gate",
+      "title": "Cost Regression (umbrella)",
       "description": "",
       "defaultSeverity": "medium",
       "confidenceMin": 0.85,
@@ -780,15 +950,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-013",
-      "ruleUri": "docs/rules/ai/cost-regression.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/cost-regression-umbrella",
+      "promotionPlan": "Planned. Reserved signal type — generic cost-regression umbrella; not yet wired."
     },
     {
       "type": "contextOverflowRisk",
       "constName": "SignalContextOverflowRisk",
       "domain": "ai",
       "status": "planned",
+      "tier": "observability",
       "title": "Context Overflow Risk",
       "description": "",
       "defaultSeverity": "medium",
@@ -798,15 +968,15 @@
         "structural-pattern",
         "runtime"
       ],
-      "ruleId": "TER-AI-014",
-      "ruleUri": "docs/rules/ai/context-overflow.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/context-overflow",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "wrongSourceSelected",
       "constName": "SignalWrongSourceSelected",
       "domain": "ai",
       "status": "planned",
+      "tier": "observability",
       "title": "Wrong Source Selected",
       "description": "",
       "defaultSeverity": "medium",
@@ -815,15 +985,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-015",
-      "ruleUri": "docs/rules/ai/wrong-source.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/wrong-source",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "citationMismatch",
       "constName": "SignalCitationMismatch",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Citation Mismatch",
       "description": "",
       "defaultSeverity": "high",
@@ -832,15 +1002,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-016",
-      "ruleUri": "docs/rules/ai/citation-mismatch.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/citation-mismatch",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "staleSourceRisk",
       "constName": "SignalStaleSourceRisk",
       "domain": "ai",
       "status": "planned",
+      "tier": "observability",
       "title": "Stale Source Risk",
       "description": "",
       "defaultSeverity": "medium",
@@ -849,15 +1019,15 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-AI-017",
-      "ruleUri": "docs/rules/ai/stale-source.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/stale-source",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "chunkingRegression",
       "constName": "SignalChunkingRegression",
       "domain": "ai",
       "status": "planned",
+      "tier": "observability",
       "title": "Chunking Regression",
       "description": "",
       "defaultSeverity": "medium",
@@ -866,15 +1036,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-018",
-      "ruleUri": "docs/rules/ai/chunking-regression.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/chunking-regression",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "rerankerRegression",
       "constName": "SignalRerankerRegression",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Reranker Regression",
       "description": "",
       "defaultSeverity": "high",
@@ -883,15 +1053,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-019",
-      "ruleUri": "docs/rules/ai/reranker-regression.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/reranker-regression",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "topKRegression",
       "constName": "SignalTopKRegression",
       "domain": "ai",
       "status": "planned",
+      "tier": "observability",
       "title": "Top-K Regression",
       "description": "",
       "defaultSeverity": "medium",
@@ -900,15 +1070,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-020",
-      "ruleUri": "docs/rules/ai/topk-regression.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/topk-regression",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "toolRoutingError",
       "constName": "SignalToolRoutingError",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Tool Routing Error",
       "description": "",
       "defaultSeverity": "high",
@@ -917,15 +1087,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-021",
-      "ruleUri": "docs/rules/ai/tool-routing-error.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/tool-routing-error",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "toolGuardrailViolation",
       "constName": "SignalToolGuardrailViolation",
       "domain": "ai",
       "status": "planned",
+      "tier": "gate",
       "title": "Tool Guardrail Violation",
       "description": "",
       "defaultSeverity": "critical",
@@ -935,15 +1105,15 @@
         "runtime",
         "policy"
       ],
-      "ruleId": "TER-AI-022",
-      "ruleUri": "docs/rules/ai/tool-guardrail.md",
-      "promotionPlan": "0.2 — tools-without-sandbox detection."
+      "ruleId": "terrain/ai/tool-guardrail",
+      "promotionPlan": "Planned. Reserved signal type for runtime tool-guardrail violations; the structural side ships as aiToolWithoutSandbox."
     },
     {
       "type": "toolBudgetExceeded",
       "constName": "SignalToolBudgetExceeded",
       "domain": "ai",
       "status": "planned",
+      "tier": "observability",
       "title": "Tool Budget Exceeded",
       "description": "",
       "defaultSeverity": "medium",
@@ -953,15 +1123,15 @@
         "runtime",
         "policy"
       ],
-      "ruleId": "TER-AI-023",
-      "ruleUri": "docs/rules/ai/tool-budget.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/tool-budget",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "agentFallbackTriggered",
       "constName": "SignalAgentFallbackTriggered",
       "domain": "ai",
       "status": "planned",
+      "tier": "observability",
       "title": "Agent Fallback Triggered",
       "description": "",
       "defaultSeverity": "medium",
@@ -970,15 +1140,15 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-024",
-      "ruleUri": "docs/rules/ai/agent-fallback.md",
-      "promotionPlan": "0.3"
+      "ruleId": "terrain/ai/agent-fallback",
+      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
     },
     {
       "type": "aiSafetyEvalMissing",
       "constName": "SignalAISafetyEvalMissing",
       "domain": "ai",
       "status": "stable",
+      "tier": "observability",
       "title": "AI Safety Eval Missing",
       "description": "Agent or prompt has no eval scenario covering the documented safety category (jailbreak, harm, leak).",
       "remediation": "Add an eval scenario tagged with the missing safety category and re-run the gauntlet.",
@@ -989,7 +1159,7 @@
         "structural-pattern",
         "graph-traversal"
       ],
-      "ruleId": "TER-AI-100",
+      "ruleId": "terrain/ai/safety-eval-missing",
       "ruleUri": "docs/rules/ai/safety-eval-missing.md"
     },
     {
@@ -997,8 +1167,9 @@
       "constName": "SignalAIPromptVersioning",
       "domain": "ai",
       "status": "stable",
+      "tier": "observability",
       "title": "Prompt Versioning",
-      "description": "Prompt-kind surface ships without a recognisable version marker (filename suffix, inline `version:` field, or `# version:` comment). Future content changes will silently drift; consumers can't detect the change.",
+      "description": "Prompt-kind surface ships without a recognizable version marker (filename suffix, inline `version:` field, or `# version:` comment). Future content changes will silently drift; consumers can't detect the change.",
       "remediation": "Add a `version:` field, a `_v\u003cN\u003e` filename suffix, or a `# version: ...` comment so downstream consumers can detect content drift.",
       "defaultSeverity": "medium",
       "confidenceMin": 0.75,
@@ -1006,14 +1177,17 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-AI-101",
-      "ruleUri": "docs/rules/ai/prompt-versioning.md"
+      "ruleId": "terrain/ai/prompt-versioning",
+      "ruleUri": "docs/rules/ai/prompt-versioning.md",
+      "promotionPlan": "Stays at observability tier until adopter-corpus precision confirms gate-readiness."
     },
     {
       "type": "aiPromptInjectionRisk",
       "constName": "SignalAIPromptInjectionRisk",
       "domain": "ai",
       "status": "experimental",
+      "tier": "observability",
+      "disabledByDefault": true,
       "title": "Prompt-Injection-Shaped Concatenation",
       "description": "User-controlled input is concatenated into a prompt without escaping, system-prompt boundaries, or structured input boundaries.",
       "remediation": "Use a prompt template with explicit user-content boundaries, or run user input through a sanitizer.",
@@ -1023,15 +1197,17 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-AI-102",
+      "ruleId": "terrain/ai/prompt-injection-risk",
       "ruleUri": "docs/rules/ai/prompt-injection-risk.md",
-      "promotionPlan": "0.2 ships heuristic regex detection. Promotes to stable in 0.3 when AST-precise taint-flow analysis lands."
+      "promotionPlan": "Off by default. The current pattern-matching predicate over-fires on non-injection prompt templates; the rule will be re-enabled when a structurally precise taint-flow predicate replaces it. Opt in via .terrain/policy.yaml only when an adopter has confirmed the local signal is useful."
     },
     {
       "type": "aiHardcodedAPIKey",
       "constName": "SignalAIHardcodedAPIKey",
       "domain": "ai",
       "status": "stable",
+      "tier": "observability",
+      "disabledByDefault": true,
       "title": "Hard-Coded API Key in AI Configuration",
       "description": "API-key-shaped string appears in an eval YAML, prompt config, or agent definition.",
       "remediation": "Move the secret to an environment variable or secrets store and reference it through the runner's secret-resolution path.",
@@ -1041,14 +1217,52 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-AI-103",
-      "ruleUri": "docs/rules/ai/hardcoded-api-key.md"
+      "ruleId": "terrain/ai/hardcoded-api-key",
+      "ruleUri": "docs/rules/ai/hardcoded-api-key.md",
+      "promotionPlan": "Off by default. The current literal-shape predicate is too narrow to fire reliably across typical adopter codebases; capability is preserved via the planned split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded. Opt in via .terrain/policy.yaml when the local repo shape matches the predicate."
+    },
+    {
+      "type": "aiHardcodedAPIKey-literal-shape",
+      "constName": "SignalAIHardcodedAPIKeyLiteralShape",
+      "domain": "ai",
+      "status": "planned",
+      "tier": "observability",
+      "title": "Hard-Coded API Key in Source",
+      "description": "An API-key-shaped string appears verbatim in an eval, prompt, or agent definition file. Pairs with the CI-coverage counterpart, secretScannerCoverageDegraded.",
+      "remediation": "Move the secret to an environment variable or secrets store and reference it via the runner's secret-resolution path.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/ai/hardcoded-api-key-literal-shape",
+      "promotionPlan": "Planned. Reserved signal type — the literal-shape half of the API-key split; detector not yet wired."
+    },
+    {
+      "type": "secretScannerCoverageDegraded",
+      "constName": "SignalSecretScannerCoverageDegraded",
+      "domain": "ai",
+      "status": "planned",
+      "tier": "observability",
+      "title": "No Secret Scanner in CI",
+      "description": "The repository configures or references AI surfaces that should be guarded by a secret scanner, but no secret-scanner CI integration (GitGuardian, GitHub secret scanning, gitleaks, trufflehog) is enabled. CI-coverage counterpart to aiHardcodedAPIKey-literal-shape.",
+      "remediation": "Enable a secret scanner in CI and document its coverage in the project README. Re-audit periodically.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.6,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/ai/secret-scanner-coverage-degraded",
+      "promotionPlan": "Planned. Reserved signal type for the CI-integration gap that pairs with the in-repo key-shape detector."
     },
     {
       "type": "aiToolWithoutSandbox",
       "constName": "SignalAIToolWithoutSandbox",
       "domain": "ai",
       "status": "stable",
+      "tier": "gate",
       "title": "Destructive Tool Without Sandbox",
       "description": "An agent tool definition can perform an irreversible operation (delete, drop, exec) without an explicit approval gate, sandbox, or dry-run mode.",
       "remediation": "Wrap the tool in an approval gate or restrict its capability surface to a sandbox.",
@@ -1058,7 +1272,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-AI-104",
+      "ruleId": "terrain/ai/tool-without-sandbox",
       "ruleUri": "docs/rules/ai/tool-without-sandbox.md"
     },
     {
@@ -1066,6 +1280,7 @@
       "constName": "SignalAINonDeterministicEval",
       "domain": "ai",
       "status": "stable",
+      "tier": "observability",
       "title": "Non-Deterministic Eval Configuration",
       "description": "An LLM eval runs without temperature pinned to 0 or a deterministic seed, so re-runs produce noisy comparisons.",
       "remediation": "Pin temperature: 0 and a seed in the eval config, or document the non-determinism budget.",
@@ -1075,7 +1290,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-AI-105",
+      "ruleId": "terrain/ai/non-deterministic-eval",
       "ruleUri": "docs/rules/ai/non-deterministic-eval.md"
     },
     {
@@ -1083,6 +1298,7 @@
       "constName": "SignalAIModelDeprecationRisk",
       "domain": "ai",
       "status": "stable",
+      "tier": "observability",
       "title": "Model Pinned to Deprecated or Floating Tag",
       "description": "Code references a model name that resolves to a deprecated version or a floating tag (e.g. `gpt-4`, `gpt-3.5-turbo`).",
       "remediation": "Pin to a dated model variant or upgrade to a supported tier.",
@@ -1092,7 +1308,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-AI-106",
+      "ruleId": "terrain/ai/model-deprecation-risk",
       "ruleUri": "docs/rules/ai/model-deprecation-risk.md"
     },
     {
@@ -1100,6 +1316,7 @@
       "constName": "SignalAICostRegression",
       "domain": "ai",
       "status": "stable",
+      "tier": "observability",
       "title": "Prompt Token-Cost Regression",
       "description": "A prompt change increases the token count by more than 25% versus the recorded baseline.",
       "remediation": "Investigate the change for unintended bloat; bump the baseline if the increase is intentional.",
@@ -1109,7 +1326,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-107",
+      "ruleId": "terrain/ai/cost-regression",
       "ruleUri": "docs/rules/ai/cost-regression.md"
     },
     {
@@ -1117,6 +1334,7 @@
       "constName": "SignalAIHallucinationRate",
       "domain": "ai",
       "status": "stable",
+      "tier": "gate",
       "title": "Eval-Flagged Hallucination Share",
       "description": "The eval framework's own hallucination metadata reports a share of cases above the project-configured threshold (default 5%). Terrain reads this from the framework output (Promptfoo / DeepEval / Ragas) — Terrain does not judge hallucinations directly.",
       "remediation": "Investigate the underlying eval-flagged cases; tighten retrieval or grounding before merging. If you disagree with the eval framework's classification, fix the eval scenario or raise the threshold (with a documented justification).",
@@ -1126,7 +1344,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-108",
+      "ruleId": "terrain/ai/hallucination-rate",
       "ruleUri": "docs/rules/ai/hallucination-rate.md"
     },
     {
@@ -1134,6 +1352,7 @@
       "constName": "SignalAIFewShotContamination",
       "domain": "ai",
       "status": "experimental",
+      "tier": "observability",
       "title": "Few-Shot Contamination",
       "description": "Few-shot examples in a prompt overlap verbatim with the inputs of eval scenarios that exercise that prompt, inflating reported scores.",
       "remediation": "Hold out the contaminated examples from the prompt's few-shot block, or rewrite the eval input so it isn't a copy of an example. Re-run the eval after de-duplication.",
@@ -1143,15 +1362,16 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-AI-109",
+      "ruleId": "terrain/ai/few-shot-contamination",
       "ruleUri": "docs/rules/ai/few-shot-contamination.md",
-      "promotionPlan": "Substring-overlap detector ships in 0.2; promotes to stable in 0.3 once the calibration corpus tunes the threshold and adds token-level n-gram + semantic-similarity passes."
+      "promotionPlan": "Substring-overlap detector ships today; promotes to stable once broader validation tunes the threshold and adds token-level n-gram + semantic-similarity passes."
     },
     {
       "type": "aiEmbeddingModelChange",
       "constName": "SignalAIEmbeddingModelChange",
       "domain": "ai",
       "status": "stable",
+      "tier": "observability",
       "title": "Embedding Model Swap Without Re-Evaluation",
       "description": "A repository references an embedding model in source code without a retrieval-shaped eval scenario, so a future model swap will silently change retrieval quality.",
       "remediation": "Add a retrieval eval scenario (Ragas, Promptfoo, or DeepEval) that exercises this surface so embedding swaps surface as a measurable regression.",
@@ -1161,15 +1381,16 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "TER-AI-110",
+      "ruleId": "terrain/ai/embedding-model-change",
       "ruleUri": "docs/rules/ai/embedding-model-change.md",
-      "promotionPlan": "0.2 ships the static precondition (embedding referenced + no retrieval coverage). Cross-snapshot content-hash diff variant lands in 0.3 once snapshot fingerprints are recorded."
+      "promotionPlan": "Ships the static precondition (embedding referenced + no retrieval coverage) today. The cross-snapshot content-hash diff variant lands once snapshot fingerprints are recorded."
     },
     {
       "type": "aiRetrievalRegression",
       "constName": "SignalAIRetrievalRegression",
       "domain": "ai",
       "status": "stable",
+      "tier": "gate",
       "title": "Retrieval Quality Regression",
       "description": "Context relevance, nDCG, or coverage dropped versus the recorded baseline.",
       "remediation": "Investigate the regression; revert the offending change or re-tune retrieval before merging.",
@@ -1179,14 +1400,34 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "TER-AI-111",
+      "ruleId": "terrain/ai/retrieval-regression",
       "ruleUri": "docs/rules/ai/retrieval-regression.md"
+    },
+    {
+      "type": "aiPromptSchemaDrift",
+      "constName": "SignalAIPromptSchemaDrift",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "observability",
+      "title": "Prompt Template References Changed Schema Field",
+      "description": "A prompt template references a schema field that this PR removed or whose declared type changed. The template will render with a missing value (or wrong type) once merged.",
+      "remediation": "Update the template to use the new schema field, restore the old field, or remove the variable reference.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "static"
+      ],
+      "ruleId": "terrain/ai/prompt-schema-drift",
+      "ruleUri": "docs/rules/ai/prompt-schema-drift.md",
+      "promotionPlan": "Ships at observability tier. Stays at observability until adopter-corpus measurement confirms gate-readiness."
     },
     {
       "type": "detectorPanic",
       "constName": "SignalDetectorPanic",
       "domain": "quality",
       "status": "stable",
+      "tier": "observability",
       "title": "Detector Panic",
       "description": "A registered detector panicked during the run; safeDetect caught the panic and emitted this marker so the rest of the pipeline could continue.",
       "remediation": "Re-run with --log-level=debug to capture the stack trace, then file an issue at https://github.com/pmclSF/terrain/issues with the detector ID and the input that triggered the panic.",
@@ -1196,7 +1437,7 @@
       "evidenceSources": [
         "static"
       ],
-      "ruleId": "TER-ENGINE-001",
+      "ruleId": "terrain/engine/detector-panic",
       "ruleUri": "docs/rules/engine/detector-panic.md"
     },
     {
@@ -1204,6 +1445,7 @@
       "constName": "SignalDetectorBudgetExceeded",
       "domain": "quality",
       "status": "stable",
+      "tier": "observability",
       "title": "Detector Budget Exceeded",
       "description": "A registered detector exceeded its wall-clock budget and was abandoned by the pipeline. The rest of the pipeline continued without that detector's signals.",
       "remediation": "If the detector is legitimately slow on your repo, raise DetectorMeta.Budget for it. If it should be fast, the runaway suggests a quadratic-or-worse code path or a hung I/O — re-run with --log-level=debug.",
@@ -1213,7 +1455,7 @@
       "evidenceSources": [
         "static"
       ],
-      "ruleId": "TER-ENGINE-002",
+      "ruleId": "terrain/engine/detector-budget",
       "ruleUri": "docs/rules/engine/detector-budget.md"
     },
     {
@@ -1221,6 +1463,7 @@
       "constName": "SignalDetectorMissingInput",
       "domain": "quality",
       "status": "stable",
+      "tier": "observability",
       "title": "Detector Missing Input",
       "description": "A registered detector requires inputs (runtime artifacts, baseline snapshot, or eval-framework results) that the current snapshot doesn't carry. The detector was skipped; the rest of the pipeline ran normally.",
       "remediation": "The marker explanation lists the specific flag(s) to pass to `terrain analyze` to provide the missing inputs. If you don't need this detector's signals, leave the inputs absent — the marker is informational.",
@@ -1230,7 +1473,7 @@
       "evidenceSources": [
         "static"
       ],
-      "ruleId": "TER-ENGINE-003",
+      "ruleId": "terrain/engine/detector-missing-input",
       "ruleUri": "docs/rules/engine/detector-missing-input.md"
     },
     {
@@ -1238,6 +1481,7 @@
       "constName": "SignalSuppressionExpired",
       "domain": "governance",
       "status": "stable",
+      "tier": "observability",
       "title": "Suppression Expired",
       "description": "A `.terrain/suppressions.yaml` entry has passed its `expires` date and is no longer in effect. The underlying findings will fire again until the entry is renewed or removed.",
       "remediation": "Edit `.terrain/suppressions.yaml`: extend the `expires` date if the suppression is still warranted, or remove the entry if the underlying issue is resolved.",
@@ -1247,8 +1491,659 @@
       "evidenceSources": [
         "policy"
       ],
-      "ruleId": "TER-ENGINE-004",
+      "ruleId": "terrain/engine/suppression-expired",
       "ruleUri": "docs/rules/engine/suppression-expired.md"
+    },
+    {
+      "type": "versionFloating",
+      "constName": "SignalVersionFloating",
+      "domain": "quality",
+      "status": "stable",
+      "tier": "observability",
+      "title": "Floating Dependency Version",
+      "description": "A dependency is declared without a version pin (unpinned, range-only, or moving git/url reference). Subsequent installs may resolve to different versions, introducing non-determinism in test and eval runs.",
+      "remediation": "Pin the dependency to an exact version, commit a lockfile that records the resolved set, or use a content-addressed git SHA reference.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.99,
+      "evidenceSources": [
+        "structural-pattern",
+        "manifest"
+      ],
+      "ruleId": "terrain/reproducibility/version-floating",
+      "ruleUri": "docs/rules/reproducibility/version-floating.md"
+    },
+    {
+      "type": "secretsInPrompt",
+      "constName": "SignalSecretsInPrompt",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "gate",
+      "title": "Secrets in Prompt",
+      "description": "A prompt-classified file contains embedded credentials (OpenAI / Anthropic / GitHub / Slack / AWS keys, JWT, bearer tokens). Anyone with read access to the prompt has access to the credential.",
+      "remediation": "Rotate the leaked credential immediately, then move it to an environment variable or secret manager.",
+      "defaultSeverity": "critical",
+      "confidenceMin": 0.95,
+      "confidenceMax": 0.99,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/hygiene/secrets-in-prompt",
+      "ruleUri": "docs/rules/hygiene/secrets-in-prompt.md",
+      "promotionPlan": "Stable — Go-native regex detector ships first; richer secret-vocabulary integration is a possible follow-up."
+    },
+    {
+      "type": "noTestsForCodeUnit",
+      "constName": "SignalNoTestsForCodeUnit",
+      "domain": "quality",
+      "status": "stable",
+      "tier": "observability",
+      "title": "No Tests for Code Unit",
+      "description": "A code unit (exported function / method / class) exists in the codebase but no test in the snapshot's dependency graph covers it. Untested code reaches production undetected when changed.",
+      "remediation": "Add a test that imports the code unit and exercises its observable behavior. The rule defaults to exported symbols only; configure `include_private: true` to widen coverage.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "terrain/coverage/no-tests",
+      "ruleUri": "docs/rules/coverage/no-tests.md"
+    },
+    {
+      "type": "noEvalForAISurface",
+      "constName": "SignalNoEvalForAISurface",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "gate",
+      "title": "No Eval for AI Surface",
+      "description": "An AI-typed CodeSurface (prompt / context / dataset / tool / retrieval / agent / eval_definition / model) has no Eval that claims to cover it. Model behavior can shift in production without any eval surfacing the regression.",
+      "remediation": "Add an eval scenario that exercises the surface and asserts on its output / metric / shape.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.8,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "terrain/coverage/no-eval",
+      "ruleUri": "docs/rules/coverage/no-eval.md"
+    },
+    {
+      "type": "modelFixtureUnpinned",
+      "constName": "SignalModelFixtureUnpinned",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "gate",
+      "title": "Model Fixture Unpinned",
+      "description": "A model-loading call (from_pretrained / torch.load / joblib.load / load_model / snapshot_download) uses a path or revision that isn't content-addressed. The underlying weights may change without a code edit, regressing eval scores silently.",
+      "remediation": "Pin the load to a commit SHA (revision=\"\u003csha\u003e\" for HuggingFace), a version-suffixed filename (model_v3.0.pt), or a .safetensors-with-checksum format.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/hygiene/model-fixture-unpinned",
+      "ruleUri": "docs/rules/hygiene/model-fixture-unpinned.md"
+    },
+    {
+      "type": "evalNoAssertion",
+      "constName": "SignalEvalNoAssertion",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "gate",
+      "title": "Eval Without Assertion",
+      "description": "An eval test function runs to completion without any assertion / score / metric call. The test cannot detect regressions because it accepts any model output.",
+      "remediation": "Add an assert / score check that fails when the eval output deviates from expectations.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.8,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/hygiene/eval-no-assertion",
+      "ruleUri": "docs/rules/hygiene/eval-no-assertion.md"
+    },
+    {
+      "type": "noSeed",
+      "constName": "SignalNoSeed",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "observability",
+      "title": "Missing Random Seed",
+      "description": "Stochastic library call (np.random / torch / random / tf.random) in an eval or training file without a preceding seed call. Run-to-run results vary, masking real regressions.",
+      "remediation": "Add a seed call at module scope or in a pytest fixture (np.random.seed(42), torch.manual_seed(42), or transformers.set_seed(42)).",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/reproducibility/no-seed",
+      "ruleUri": "docs/rules/reproducibility/no-seed.md"
+    },
+    {
+      "type": "missingEnvPinning",
+      "constName": "SignalMissingEnvPinning",
+      "domain": "quality",
+      "status": "stable",
+      "tier": "observability",
+      "title": "Missing Env Pinning",
+      "description": "An environment-variable read in eval / inference code lacks a default value. The same code produces different behavior depending on which environment runs it.",
+      "remediation": "Supply a default — os.environ.get(KEY, \"\u003cpinned-value\u003e\") — or fail fast with a clear error message when the variable is absent.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/reproducibility/missing-env-pinning",
+      "ruleUri": "docs/rules/reproducibility/missing-env-pinning.md"
+    },
+    {
+      "type": "piiInEval",
+      "constName": "SignalPIIInEval",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "gate",
+      "title": "PII in Eval Dataset",
+      "description": "An eval-directory file contains PII-shaped values (emails, phone numbers, SSNs, credit card numbers, IPv4 addresses). Eval datasets that retain production PII expose customer data to anyone with repo access.",
+      "remediation": "Replace PII in the eval dataset with synthetic equivalents (Faker, Mimesis, mockaroo) or apply a redaction pass before committing.",
+      "defaultSeverity": "critical",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/security/pii-in-eval",
+      "ruleUri": "docs/rules/security/pii-in-eval.md"
+    },
+    {
+      "type": "insecureDeserialization",
+      "constName": "SignalInsecureDeserialize",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "gate",
+      "title": "Insecure Deserialization",
+      "description": "A call into an unsafe deserialization primitive (pickle.load, torch.load without weights_only=True, joblib.load, yaml.load without SafeLoader, dill.load, marshal.load) executes arbitrary code on untrusted input.",
+      "remediation": "Switch to a safe format (JSON, msgpack, safetensors, ONNX). When the primitive is unavoidable, declare the explicit safe option (weights_only=True for torch.load, Loader=SafeLoader for yaml.load).",
+      "defaultSeverity": "critical",
+      "confidenceMin": 0.9,
+      "confidenceMax": 0.99,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/security/insecure-deserialization",
+      "ruleUri": "docs/rules/security/insecure-deserialization.md"
+    },
+    {
+      "type": "missingPerfTest",
+      "constName": "SignalMissingPerfTest",
+      "domain": "quality",
+      "status": "stable",
+      "tier": "observability",
+      "title": "Missing Performance Test",
+      "description": "A latency-critical AI surface (prompt / retrieval / agent / model / handler / route) has no benchmark or load test exercising it. Latency or throughput regressions ship silently.",
+      "remediation": "Add a benchmark under benchmarks/ or perf/ that records P50 / P95 latency for the surface.",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "terrain/performance/missing-perf-test",
+      "ruleUri": "docs/rules/performance/missing-perf-test.md"
+    },
+    {
+      "type": "dataLeakageSuspected",
+      "constName": "SignalDataLeakageSuspected",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "gate",
+      "title": "Data Leakage Suspected",
+      "description": "Source-level patterns associated with train/test contamination: preprocessing (scaler/encoder fit) applied before the split, or random train/test split applied to time-series data.",
+      "remediation": "Move scaler/encoder fits to AFTER the split. For time-series, use TimeSeriesSplit or a manual time-based cutoff.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/data/leakage-suspected",
+      "ruleUri": "docs/rules/data/leakage-suspected.md"
+    },
+    {
+      "type": "missingTrainTestSplit",
+      "constName": "SignalMissingTrainTestSplit",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "gate",
+      "title": "Missing Train/Test Split",
+      "description": "A training call (.fit() / .train() / .partial_fit()) appears in a training file without any preceding split helper (train_test_split, KFold, TimeSeriesSplit, cross_val_score, etc.). The model is fit on the full dataset; evaluation against the same data measures memorization, not generalization.",
+      "remediation": "Split the dataset before training (sklearn.model_selection.train_test_split, KFold for general use, TimeSeriesSplit for temporal data).",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/data/missing-train-test-split",
+      "ruleUri": "docs/rules/data/missing-train-test-split.md"
+    },
+    {
+      "type": "baselineNotSet",
+      "constName": "SignalBaselineNotSet",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "observability",
+      "title": "Baseline Not Set",
+      "description": "An EvalRun exists for the current PR but no baseline is recorded. Eval-regression detection is disabled until a baseline exists.",
+      "remediation": "Run `terrain ai record` on the current main-branch state to lock the baseline. Subsequent PRs will be compared against it.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.99,
+      "confidenceMax": 0.99,
+      "evidenceSources": [
+        "eval-execution"
+      ],
+      "ruleId": "terrain/regression/baseline-not-set",
+      "ruleUri": "docs/rules/regression/baseline-not-set.md"
+    },
+    {
+      "type": "passRateDrop",
+      "constName": "SignalPassRateDrop",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "gate",
+      "title": "Eval Pass Rate Dropped",
+      "description": "The success / total ratio across eval cases dropped past the configured threshold from baseline to current. Distinct from eval-regression (continuous score deltas) — fires on discrete pass/fail count deltas.",
+      "remediation": "Inspect per-case eval-regression findings for cases that flipped from pass to fail. If intentional, update the baseline.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.9,
+      "confidenceMax": 0.99,
+      "evidenceSources": [
+        "eval-execution"
+      ],
+      "ruleId": "terrain/regression/pass-rate-drop",
+      "ruleUri": "docs/rules/regression/pass-rate-drop.md"
+    },
+    {
+      "type": "snapshotMismatch",
+      "constName": "SignalSnapshotMismatch",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "observability",
+      "title": "Snapshot Mismatch",
+      "description": "An eval case's recorded output snapshot diverged from baseline to current. Catches behavior changes the scalar score may not surface.",
+      "remediation": "Inspect the diff for prompt / model / retrieval changes affecting the case. If the new output is correct, accept it via `terrain ai record`.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "eval-execution"
+      ],
+      "ruleId": "terrain/regression/snapshot-mismatch",
+      "ruleUri": "docs/rules/regression/snapshot-mismatch.md"
+    },
+    {
+      "type": "testFailed",
+      "constName": "SignalTestFailed",
+      "domain": "health",
+      "status": "stable",
+      "tier": "gate",
+      "title": "Impacted Test Failed",
+      "description": "A test selected by impact analysis as relevant to the current change failed. The change broke something the test suite already protects.",
+      "remediation": "Reproduce locally with `terrain test --selector regression/test-failed`. Fix the failure or, if the test is stale, update it deliberately.",
+      "defaultSeverity": "high",
+      "confidenceMin": 1,
+      "confidenceMax": 1,
+      "evidenceSources": [
+        "runtime",
+        "graph-traversal"
+      ],
+      "ruleId": "terrain/regression/test-failed",
+      "ruleUri": "docs/rules/regression/test-failed.md"
+    },
+    {
+      "type": "performanceRegression",
+      "constName": "SignalPerformanceRegression",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "gate",
+      "title": "Performance Regression",
+      "description": "An ML model's performance metric (accuracy / F1 / AUC / RMSE / etc.) regressed past the configured threshold from baseline to current. Same shape as eval-regression but applied to classical ML metrics rather than LLM rubric scores.",
+      "remediation": "Inspect the diff for training data / hyperparameter / feature changes. If the regression is intentional, update the baseline.",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.9,
+      "confidenceMax": 0.99,
+      "evidenceSources": [
+        "eval-execution"
+      ],
+      "ruleId": "terrain/regression/performance-regression",
+      "ruleUri": "docs/rules/regression/performance-regression.md"
+    },
+    {
+      "type": "missingBaseline",
+      "constName": "SignalMissingBaseline",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "observability",
+      "title": "Missing Coverage Baseline",
+      "description": "The repository has eval surfaces but no `.terrain/baselines/` directory exists. Eval regression detection is disabled at the coverage layer.",
+      "remediation": "Run `terrain ai record` to create the baseline directory. Commit `.terrain/baselines/latest.json` so subsequent PRs compare against it.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 1,
+      "confidenceMax": 1,
+      "evidenceSources": [
+        "static"
+      ],
+      "ruleId": "terrain/coverage/missing-baseline",
+      "ruleUri": "docs/rules/coverage/missing-baseline.md"
+    },
+    {
+      "type": "noIntegrationTest",
+      "constName": "SignalNoIntegrationTest",
+      "domain": "quality",
+      "status": "stable",
+      "tier": "observability",
+      "title": "No Integration Test",
+      "description": "A code unit reachable from a production entry point (handler / route) has no integration test exercising it through that entry point.",
+      "remediation": "Add an integration test that exercises the handler / route end-to-end. The unit test stays as a fast inner-loop check; the integration test ensures the cross-stack contract holds.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.8,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "terrain/coverage/no-integration-test",
+      "ruleUri": "docs/rules/coverage/no-integration-test.md"
+    },
+    {
+      "type": "noDataValidation",
+      "constName": "SignalNoDataValidation",
+      "domain": "quality",
+      "status": "stable",
+      "tier": "observability",
+      "title": "No Data Validation",
+      "description": "A data pipeline file (ETL / dbt model / training data loader) has no data-validation library import (Great Expectations, pandera, dbt-expectations, soda).",
+      "remediation": "Add data validation (GE expectations, pandera schemas, dbt-expectations tests) on the pipeline's output. Run the validation in CI on a fixed sample.",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/coverage/no-data-validation",
+      "ruleUri": "docs/rules/coverage/no-data-validation.md"
+    },
+    {
+      "type": "promptBloat",
+      "constName": "SignalPromptBloat",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "Prompt Bloat",
+      "description": "",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/prompt-quality/prompt-bloat",
+      "ruleUri": "docs/rules/prompt-quality/prompt-bloat.md",
+      "promotionPlan": "Fires when prompt token count exceeds the configured budget."
+    },
+    {
+      "type": "promptWithoutTemperature",
+      "constName": "SignalPromptWithoutTemperature",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "Prompt Without Temperature",
+      "description": "",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/prompt-quality/prompt-without-temperature",
+      "ruleUri": "docs/rules/prompt-quality/prompt-without-temperature.md",
+      "promotionPlan": "Fires when an LLM SDK call has no temperature kwarg. Defaults differ across SDKs; an explicit value is reproducibility-critical."
+    },
+    {
+      "type": "missingPromptValidator",
+      "constName": "SignalMissingPromptValidator",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "Missing Prompt Validator",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/prompt-quality/missing-validator",
+      "ruleUri": "docs/rules/prompt-quality/missing-validator.md",
+      "promotionPlan": "Fires when a prompt template has no output-validator schema attached."
+    },
+    {
+      "type": "promptVersionSkew",
+      "constName": "SignalPromptVersionSkew",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "Prompt Version Skew",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "terrain/prompt-quality/version-skew",
+      "ruleUri": "docs/rules/prompt-quality/version-skew.md",
+      "promotionPlan": "Detects when the same prompt template is referenced by multiple eval scenarios under different version names."
+    },
+    {
+      "type": "retrievalWithoutRerank",
+      "constName": "SignalRetrievalWithoutRerank",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "Retrieval Without Rerank",
+      "description": "",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.65,
+      "confidenceMax": 0.8,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/retrieval-quality/no-rerank",
+      "ruleUri": "docs/rules/retrieval-quality/no-rerank.md",
+      "promotionPlan": "Flags retrieval pipelines with top_k \u003e 5 and no reranker."
+    },
+    {
+      "type": "coldVectorStore",
+      "constName": "SignalColdVectorStore",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "Cold Vector Store",
+      "description": "",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/retrieval-quality/cold-store",
+      "ruleUri": "docs/rules/retrieval-quality/cold-store.md",
+      "promotionPlan": "Fires when a vector store is initialized but no index-population call exists in the same module."
+    },
+    {
+      "type": "agentLoopRisk",
+      "constName": "SignalAgentLoopRisk",
+      "domain": "ai",
+      "status": "stable",
+      "tier": "gate",
+      "title": "Agent Loop Risk",
+      "description": "",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/agent-quality/loop-risk",
+      "ruleUri": "docs/rules/agent-quality/loop-risk.md",
+      "promotionPlan": "Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; validated against documented public agent-loop incidents."
+    },
+    {
+      "type": "toolWithoutBudget",
+      "constName": "SignalToolWithoutBudget",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "Tool Without Budget",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.75,
+      "confidenceMax": 0.9,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/agent-quality/tool-no-budget",
+      "ruleUri": "docs/rules/agent-quality/tool-no-budget.md",
+      "promotionPlan": "Fires when a tool-call-enabled agent has no rate limit or cost ceiling configured."
+    },
+    {
+      "type": "targetLeakage",
+      "constName": "SignalTargetLeakage",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "gate",
+      "title": "Target Leakage",
+      "description": "",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.7,
+      "confidenceMax": 0.85,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/data-quality/target-leakage",
+      "ruleUri": "docs/rules/data-quality/target-leakage.md",
+      "promotionPlan": "Fires when a feature column is derived from the target column (e.g., y_lag1 in features after target encoding)."
+    },
+    {
+      "type": "duplicateEvalRows",
+      "constName": "SignalDuplicateEvalRows",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "Duplicate Eval Rows",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.9,
+      "confidenceMax": 0.99,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/data-quality/duplicate-rows",
+      "ruleUri": "docs/rules/data-quality/duplicate-rows.md",
+      "promotionPlan": "Fires when an eval dataset has more than 5% duplicate input rows."
+    },
+    {
+      "type": "schemaDrift",
+      "constName": "SignalSchemaDrift",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "gate",
+      "title": "Schema Drift",
+      "description": "",
+      "defaultSeverity": "high",
+      "confidenceMin": 0.85,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/data-quality/schema-drift",
+      "ruleUri": "docs/rules/data-quality/schema-drift.md",
+      "promotionPlan": "Fires when the pipeline output schema has changed between baseline and current run."
+    },
+    {
+      "type": "missingEvalCategories",
+      "constName": "SignalMissingEvalCategories",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "Missing Eval Categories",
+      "description": "",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.65,
+      "confidenceMax": 0.8,
+      "evidenceSources": [
+        "structural-pattern"
+      ],
+      "ruleId": "terrain/coverage/missing-eval-categories",
+      "ruleUri": "docs/rules/coverage/missing-eval-categories.md",
+      "promotionPlan": "Fires when an eval suite has happy-path coverage but no adversarial or edge-case categories."
+    },
+    {
+      "type": "orphanedEval",
+      "constName": "SignalOrphanedEval",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "Orphaned Eval",
+      "description": "",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.8,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "graph-traversal"
+      ],
+      "ruleId": "terrain/coverage/orphaned-eval",
+      "ruleUri": "docs/rules/coverage/orphaned-eval.md",
+      "promotionPlan": "Fires when an eval has no CoveredSurfaceIDs (references no surface)."
+    },
+    {
+      "type": "coldStartTime",
+      "constName": "SignalColdStartTime",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "Cold Start Time",
+      "description": "",
+      "defaultSeverity": "low",
+      "confidenceMin": 0.8,
+      "confidenceMax": 0.95,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "terrain/performance/cold-start-time",
+      "ruleUri": "docs/rules/performance/cold-start-time.md",
+      "promotionPlan": "Fires when first-request latency exceeds the configured threshold (e.g., 2x P50)."
+    },
+    {
+      "type": "tokenCostBudget",
+      "constName": "SignalTokenCostBudget",
+      "domain": "ai",
+      "status": "experimental",
+      "tier": "observability",
+      "title": "Token Cost Budget Exceeded",
+      "description": "",
+      "defaultSeverity": "medium",
+      "confidenceMin": 0.9,
+      "confidenceMax": 0.99,
+      "evidenceSources": [
+        "runtime"
+      ],
+      "ruleId": "terrain/performance/token-cost-budget",
+      "ruleUri": "docs/rules/performance/token-cost-budget.md",
+      "promotionPlan": "Fires when per-run token cost exceeds the configured ceiling."
     }
   ]
 }

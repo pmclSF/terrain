@@ -86,7 +86,7 @@ func dimensionPolarityOf(dim Dimension) dimensionPolarity {
 //	(StructuralRisk, Weak)   → "Significant"   (significant risk)
 //	(StructuralRisk, Critical) → "Critical"    (critical risk — same word, both polarities)
 //
-// 0.2.0 polish: pre-fix the executive report read
+// Without this translator the executive report reads
 // "Structural risk: Strong" which the natural English interpretation
 // flips upside-down (strong = high risk?), so users mentally inverted
 // the band only for half the dimensions. The translator unifies the

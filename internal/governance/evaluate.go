@@ -19,10 +19,10 @@ type Result struct {
 	Pass       bool
 
 	// Diagnostics records, per active rule, what was checked and
-	// what was found — even when the rule passed. Audit-named gap
-	// (policy_governance.E3): adopters needed visibility into which
-	// rules ran, what they evaluated against, and why they did or
-	// didn't fire. Empty when no policy is configured.
+	// what was found — even when the rule passed. Adopters need
+	// visibility into which rules ran, what they evaluated
+	// against, and why they did or didn't fire. Empty when no
+	// policy is configured.
 	Diagnostics []RuleDiagnostic
 }
 
@@ -408,7 +408,7 @@ func checkAIPolicy(snap *models.TestSuiteSnapshot, cfg *policy.Config) []models.
 	// Rule: block on uncovered AI context surfaces.
 	if ai.BlockOnUncoveredContext != nil && *ai.BlockOnUncoveredContext {
 		coveredIDs := map[string]bool{}
-		for _, sc := range snap.Scenarios {
+		for _, sc := range snap.Evals {
 			for _, sid := range sc.CoveredSurfaceIDs {
 				coveredIDs[sid] = true
 			}

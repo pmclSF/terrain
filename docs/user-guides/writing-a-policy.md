@@ -182,8 +182,7 @@ complementary:
 - **Policy** — blanket rules ("no skipped tests", "min 70% coverage").
 - **Suppressions** — per-finding waivers with reasons and expiry.
 
-Suppressions ship in 0.2 (Track 4.5/4.6/4.7 — `terrain suppress
-<id> --reason "<why>" --expires <date>`).
+Suppressions ship in 0.2: `terrain suppress <id> --reason "<why>" --expires <date>`.
 
 ## What policy isn't
 
@@ -191,8 +190,8 @@ Suppressions ship in 0.2 (Track 4.5/4.6/4.7 — `terrain suppress
   wanting "block when X but not Y", that's a sign the rule needs
   splitting at the detector level, not policy expressivity.
 - **Not centralized.** Each repo owns its own policy file.
-  Cross-repo policy aggregation is on the 0.3 roadmap (depends
-  on multi-repo Track 6 maturing).
+  Cross-repo policy aggregation is future work and depends on the
+  multi-repo aggregator maturing.
 - **Not a security control.** Policy gates a CI build. It does
   not stop a determined developer from merging. Combine with
   branch protection rules.

@@ -11,23 +11,22 @@ import (
 )
 
 // RepoManifest is the shape of `.terrain/repos.yaml` — the multi-repo
-// declaration that Track 6 of the 0.2.0 release plan introduces. The
-// manifest enumerates each repo Terrain should aggregate over, plus
-// per-repo metadata that the cross-repo aggregator (when it lands)
-// will use to compute portfolio-level posture.
+// declaration that lets Terrain aggregate over more than one
+// repository. The manifest enumerates each repo Terrain should
+// aggregate over, plus per-repo metadata that the cross-repo
+// aggregator (when fully shipped) uses to compute portfolio-level
+// posture.
 //
-// Status in 0.2.0: **Tier 3 / experimental.** The schema is locked
-// for this release, but the cross-repo aggregation engine is partial
-// and the public claim ("multi-repo control plane") is explicitly
-// marked emerging in the README + feature-status doc. Adopters who
-// hand-roll a `repos.yaml` today get the file format they'll keep
-// using when 0.2.x ships the aggregator; the file written today is
-// forward-compatible.
+// Status: **Tier 3 / experimental.** The schema is locked, but the
+// cross-repo aggregation engine is partial and the public claim
+// ("multi-repo control plane") is explicitly marked emerging in the
+// README + feature-status doc. Adopters who hand-roll a `repos.yaml`
+// today get a forward-compatible file format.
 //
-// Per the parity plan's pillar-priority rule: Align is secondary in
-// 0.2.0 with floor ≥ 3 soft (warn-only). Shipping the manifest format
-// without the full aggregator is acceptable provided the marketing
-// reflects that — which `docs/release/feature-status.md` does.
+// Pillar-priority: Align is a secondary pillar with floor ≥ 3 soft
+// (warn-only). Shipping the manifest format without the full
+// aggregator is acceptable provided the marketing reflects that —
+// which `docs/release/feature-status.md` does.
 type RepoManifest struct {
 	// Version is the manifest schema version. 0.2 ships v1; later
 	// schema changes that aren't strictly additive will bump this.

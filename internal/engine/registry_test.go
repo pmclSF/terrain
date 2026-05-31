@@ -11,16 +11,18 @@ func TestDefaultRegistry_WithoutPolicy(t *testing.T) {
 	t.Parallel()
 	r, _ := DefaultRegistry(Config{RepoRoot: "."})
 
-	// 5 quality + 2 coverage + 4 health (assertion-free + orphaned-test +
-	// static-skip + 5 runtime adapters) + 5 migration + 7 structural +
-	// 12 AI = 38, no governance.
-	if r.Len() != 38 {
-		t.Errorf("DefaultRegistry without policy: Len() = %d, want 38", r.Len())
+	// 7 quality (incl. deps.drift-risk + config.schema-drift) + 2
+	// coverage + 4 health (assertion-free + orphaned-test + static-skip +
+	// 5 runtime adapters) + 5 migration + 7 structural + 13 stable AI
+	// (incl. surface-missing-eval) = 41, no governance. Preview AI
+	// detectors (15) are gated behind EnablePreviewRules.
+	if r.Len() != 41 {
+		t.Errorf("DefaultRegistry without policy: Len() = %d, want 41", r.Len())
 	}
 
 	quality := r.ByDomain(signals.DomainQuality)
-	if len(quality) != 5 {
-		t.Errorf("quality detectors = %d, want 5", len(quality))
+	if len(quality) != 7 {
+		t.Errorf("quality detectors = %d, want 7", len(quality))
 	}
 
 	coverage := r.ByDomain(signals.DomainCoverage)
@@ -34,13 +36,25 @@ func TestDefaultRegistry_WithoutPolicy(t *testing.T) {
 	}
 
 	ai := r.ByDomain(signals.DomainAI)
-	if len(ai) != 12 {
-		t.Errorf("ai detectors = %d, want 12 (full 0.2 batch)", len(ai))
+	if len(ai) != 13 {
+		t.Errorf("ai detectors = %d, want 13 (stable; preview gated)", len(ai))
 	}
 
 	governance := r.ByDomain(signals.DomainGovernance)
 	if len(governance) != 0 {
 		t.Errorf("governance detectors = %d, want 0 (no policy)", len(governance))
+	}
+}
+
+func TestDefaultRegistry_PreviewEnabled(t *testing.T) {
+	t.Parallel()
+	r, _ := DefaultRegistry(Config{RepoRoot: ".", EnablePreviewRules: true})
+	if r.Len() != 56 {
+		t.Errorf("DefaultRegistry with preview: Len() = %d, want 56", r.Len())
+	}
+	ai := r.ByDomain(signals.DomainAI)
+	if len(ai) != 28 {
+		t.Errorf("ai detectors = %d, want 28 (13 stable + 15 preview)", len(ai))
 	}
 }
 
@@ -57,9 +71,9 @@ func TestDefaultRegistry_WithPolicy(t *testing.T) {
 	}
 	r, _ := DefaultRegistry(cfg)
 
-	// Same 38 plus the policy governance detector.
-	if r.Len() != 39 {
-		t.Errorf("DefaultRegistry with policy: Len() = %d, want 39", r.Len())
+	// Same 41 plus the policy governance detector.
+	if r.Len() != 42 {
+		t.Errorf("DefaultRegistry with policy: Len() = %d, want 42", r.Len())
 	}
 
 	governance := r.ByDomain(signals.DomainGovernance)
@@ -70,7 +84,8 @@ func TestDefaultRegistry_WithPolicy(t *testing.T) {
 
 func TestDefaultRegistry_DetectorIDs(t *testing.T) {
 	t.Parallel()
-	r, _ := DefaultRegistry(Config{RepoRoot: "."})
+	// Enable preview rules so the full ID enumeration runs end-to-end.
+	r, _ := DefaultRegistry(Config{RepoRoot: ".", EnablePreviewRules: true})
 
 	expectedIDs := []string{
 		"quality.weak-assertion",
@@ -82,11 +97,13 @@ func TestDefaultRegistry_DetectorIDs(t *testing.T) {
 		"quality.static-skip",
 		"health.assertion-free",
 		"health.orphaned-test",
-		"migration.deprecated-pattern",
-		"migration.dynamic-test-generation",
-		"migration.custom-matcher",
-		"migration.unsupported-setup",
-		"migration.framework-migration",
+		"deps.drift-risk",
+		"config.schema-drift",
+		"framework_migration.deprecated-pattern",
+		"framework_migration.dynamic-test-generation",
+		"framework_migration.custom-matcher",
+		"framework_migration.unsupported-setup",
+		"framework_migration.framework-migration",
 		"health.slow-test",
 		"health.flaky-test",
 		"health.skipped-test",
@@ -105,12 +122,28 @@ func TestDefaultRegistry_DetectorIDs(t *testing.T) {
 		"ai.prompt-injection-risk",
 		"ai.tool-without-sandbox",
 		"ai.safety-eval-missing",
+		"ai.surface-missing-eval",
 		"ai.hallucination-rate",
 		"ai.cost-regression",
 		"ai.retrieval-regression",
 		"ai.prompt-versioning",
 		"ai.few-shot-contamination",
 		"ai.embedding-model-change",
+		"ai.orphaned-eval",
+		"ai.missing-eval-categories",
+		"ai.prompt-bloat",
+		"ai.prompt-without-temperature",
+		"ai.missing-prompt-validator",
+		"ai.prompt-version-skew",
+		"ai.retrieval-without-rerank",
+		"ai.cold-vector-store",
+		"ai.agent-loop-risk",
+		"ai.tool-without-budget",
+		"ai.target-leakage",
+		"ai.duplicate-eval-rows",
+		"ai.schema-drift",
+		"ai.cold-start-time",
+		"ai.token-cost-budget",
 	}
 
 	all := r.All()

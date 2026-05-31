@@ -38,12 +38,11 @@ type HallucinationRateDetector struct {
 // hallucinationKeywords are FailureReason substrings that mark a case
 // as hallucination-shaped, used when NamedScores aren't populated.
 //
-// 0.2.0 final-polish: pre-fix this list was closed-class English with
-// only 5 stems. Real failure-reason text from production evaluators
-// uses richer phrasing — "no evidence in source", "not in context",
-// "outside the document scope", "no citation found", "answer not
-// supported", "off-topic from passage". Expanding the list is pure
-// data; precision unchanged because all stems are unambiguous.
+// Real failure-reason text from production evaluators uses rich
+// phrasing — "no evidence in source", "not in context", "outside the
+// document scope", "no citation found", "answer not supported",
+// "off-topic from passage". All stems are unambiguous so expanding the
+// list is pure data without precision cost.
 var hallucinationKeywords = []string{
 	"fabricat",                                // fabricated, fabrication
 	"hallucinat",                              // hallucinated, hallucination
@@ -77,11 +76,11 @@ func (d *HallucinationRateDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 		}
 		// Denominator: only count cases that produced a meaningful
 		// score. Errored cases (provider crashed, network timeout, no
-		// scoring at all) dilute the hallucination rate — pre-0.2.x a
+		// scoring at all) would dilute the hallucination rate — e.g. a
 		// 50-case suite with 40 errors and 5 hallucinated valid cases
-		// reported 10% (5/50) instead of the actual 50% (5/10) among
-		// scoreable cases. Catastrophic eval suite degradation hid the
-		// hallucination signal in infra noise.
+		// would report 10% (5/50) instead of the actual 50% (5/10) among
+		// scoreable cases, hiding the hallucination signal behind infra
+		// noise.
 		scoreable := 0
 		hallucinated := 0
 		for _, c := range result.Cases {
@@ -100,10 +99,9 @@ func (d *HallucinationRateDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 		rate := float64(hallucinated) / float64(total)
 		// Boundary: fire when rate is STRICTLY GREATER than the threshold,
 		// matching how the rubric is documented ("5% > 5% threshold
-		// fires"). Pre-0.2.x final-polish, `rate <= threshold` skipped
-		// the equal-to-threshold case, so a project that set
-		// threshold=0.05 expecting "fire above 5%" would silently miss
-		// runs at exactly 5%.
+		// fires"). The equality case is excluded so a project that sets
+		// threshold=0.05 expecting "fire above 5%" never silently misses
+		// a run sitting exactly at 5%.
 		if rate <= threshold {
 			continue
 		}
@@ -121,7 +119,7 @@ func (d *HallucinationRateDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 			Actionability:   models.ActionabilityImmediate,
 			LifecycleStages: []models.LifecycleStage{models.StageCIRun},
 			AIRelevance:     models.AIRelevanceHigh,
-			RuleID:          "TER-AI-108",
+			RuleID:          "terrain/ai/hallucination-rate",
 			RuleURI:         "docs/rules/ai/hallucination-rate.md",
 			DetectorVersion: "0.2.0",
 			ConfidenceDetail: &models.ConfidenceDetail{
@@ -169,10 +167,10 @@ func caseIsScoreable(c airun.EvalCase) bool {
 }
 
 // hallucinationGroundingKeys lists named-score keys whose semantics are
-// "low value means ungrounded / hallucinated." Pre-0.2.x the detector
-// matched any key containing the substring "ground", which collided
-// with non-AI metric names like `background_score` or
-// `playground_metric`. Whitelist instead.
+// "low value means ungrounded / hallucinated." A broader substring
+// match on "ground" would collide with non-AI metric names like
+// `background_score` or `playground_metric`, so this whitelist is
+// explicit.
 var hallucinationGroundingKeys = map[string]bool{
 	"groundedness":           true,
 	"groundtruth":            true,

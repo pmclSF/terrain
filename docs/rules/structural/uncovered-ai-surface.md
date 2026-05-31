@@ -1,11 +1,12 @@
-# TER-STRUCT-001 — Uncovered AI Surface
+# terrain/structural/uncovered-ai-surface — Uncovered AI Surface
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
 **Type:** `uncoveredAISurface`  
 **Domain:** ai  
 **Default severity:** high  
-**Status:** experimental
+**Lifecycle status:** experimental  
+**Gating tier:** observability
 
 ## Summary
 
@@ -26,6 +27,6 @@ Coverage attribution depends on .terrain/terrain.yaml scenario declarations; pre
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.70, 0.90] (heuristic in 0.2; calibration in 0.3).
+Confidence interval: 0.70–0.90.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

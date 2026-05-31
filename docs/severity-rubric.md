@@ -193,7 +193,7 @@ Average per-case cost rose more than the configured percentage threshold versus 
 
 #### `sev-medium-007` — Prompt drift without version marker
 
-A prompt-kind surface ships without a recognisable version marker (filename suffix, inline `version:` literal, or comment-style version), so future content changes can't be tracked.
+A prompt-kind surface ships without a recognizable version marker (filename suffix, inline `version:` literal, or comment-style version), so future content changes can't be tracked.
 
 **Applies when:**
 
@@ -264,9 +264,8 @@ models.Signal{
 `internal/severity.ValidateClauseIDs` returns the set of unknown IDs from a list,
 which detectors and tests use to fail loudly on typos.
 
-## Calibration ladder
+## Quality ladder
 
-Clauses are heuristic in 0.2 — author-set based on the rule's structure and the
-examples above. The 0.2 calibration corpus (50 labeled repos) measures per-clause
-precision/recall and re-anchors borderline severities. Calibrated clauses gain a
-`Quality: "calibrated"` field on the corresponding `ConfidenceDetail`.
+Clauses start as heuristic — author-set based on the rule's structure and the
+examples above. Measured clauses gain a `Quality: "measured"` field on the
+corresponding `ConfidenceDetail` once their precision/recall has been re-anchored.

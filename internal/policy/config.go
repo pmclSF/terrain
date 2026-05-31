@@ -14,6 +14,8 @@
 // any single repository.
 package policy
 
+import "strings"
+
 // Config represents a local Terrain policy loaded from .terrain/policy.yaml.
 //
 // All fields are pointers or zero-value-safe so that a partial policy
@@ -53,6 +55,52 @@ type Rules struct {
 	// MaxMockHeavyTests sets the maximum allowed number of mockHeavyTest
 	// signals before a policy violation is raised.
 	MaxMockHeavyTests *int `yaml:"max_mock_heavy_tests"`
+
+	// DisabledDetectors lists detector signal types (e.g., "weakAssertion",
+	// "mockHeavyTest") that should be suppressed entirely — no findings
+	// emitted, no CI gating. Use when a detector has been demoted to
+	// observability tier but its findings are still cluttering output,
+	// OR when an adopter has confirmed the detector's signal isn't useful
+	// for their codebase.
+	//
+	// Safety machinery: every CI-blocking detector has a per-rule kill
+	// switch. Equivalent to `--disable-rule` on the CLI.
+	//
+	// Alias expansion: a bare rule_id that's registered as an alias old-ID
+	// expands through the alias registry. E.g. `aiHardcodedAPIKey` disables
+	// the back-compat shim AND every split half (literal-shape +
+	// secret-scanner-coverage-degraded). To disable JUST the back-compat
+	// rule and keep the split halves firing, prefix the name with `=`:
+	//
+	//   disabled_detectors:
+	//     - "=aiHardcodedAPIKey"         # literal: only the back-compat shim
+	//     - aiHardcodedAPIKey-literal-shape  # explicit new ID
+	//
+	// Example .terrain/policy.yaml:
+	//   rules:
+	//     disabled_detectors:
+	//       - mockHeavyTest
+	//       - weakAssertion
+	DisabledDetectors []string `yaml:"disabled_detectors"`
+
+	// EnabledDetectors opts back IN to detectors that are marked
+	// DisabledByDefault in the manifest. Example: an adopter wants to
+	// run aiPromptInjectionRisk on their codebase even though the
+	// default config has it off. The list takes plain signal-type
+	// names (no alias prefix). Has no effect on detectors that are
+	// not in the default-disabled set.
+	//
+	// Alias expansion: a name listed here is matched as-is against the
+	// manifest signal type. If a detector ships under a deprecated
+	// rule_id with an alias entry, use the canonical new ID (the alias
+	// registry does NOT expand opt-ins; expansion only applies to the
+	// `disabled_detectors` opt-out list).
+	//
+	// Example .terrain/policy.yaml:
+	//   rules:
+	//     enabled_detectors:
+	//       - aiPromptInjectionRisk
+	EnabledDetectors []string `yaml:"enabled_detectors"`
 
 	// AI holds AI/eval-specific CI policy rules.
 	AI *AIRules `yaml:"ai"`
@@ -108,5 +156,45 @@ func (c *Config) IsEmpty() bool {
 		r.MinimumCoveragePercent == nil &&
 		r.MaxWeakAssertions == nil &&
 		r.MaxMockHeavyTests == nil &&
+		len(r.DisabledDetectors) == 0 &&
+		len(r.EnabledDetectors) == 0 &&
 		r.AI == nil
 }
+
+// DisabledDetectorSet returns the configured disabled detectors as a
+// lookup set for O(1) membership checks during signal filtering. The
+// set normalizes whitespace and is case-sensitive on signal-type names
+// (the manifest uses camelCase signal types — we don't lowercase to
+// avoid surprise when an adopter's typo silently disables nothing).
+func (c *Config) DisabledDetectorSet() map[string]bool {
+	if c == nil || len(c.Rules.DisabledDetectors) == 0 {
+		return nil
+	}
+	out := make(map[string]bool, len(c.Rules.DisabledDetectors))
+	for _, d := range c.Rules.DisabledDetectors {
+		d = strings.TrimSpace(d)
+		if d != "" {
+			out[d] = true
+		}
+	}
+	return out
+}
+
+// EnabledDetectorSet returns the configured enabled-detector opt-ins
+// as a lookup set. Mirrors DisabledDetectorSet shape but expresses an
+// opt-in: a detector that is disabled by default at the manifest
+// level can be re-enabled by listing its rule_id here.
+func (c *Config) EnabledDetectorSet() map[string]bool {
+	if c == nil || len(c.Rules.EnabledDetectors) == 0 {
+		return nil
+	}
+	out := make(map[string]bool, len(c.Rules.EnabledDetectors))
+	for _, d := range c.Rules.EnabledDetectors {
+		d = strings.TrimSpace(d)
+		if d != "" {
+			out[d] = true
+		}
+	}
+	return out
+}
+

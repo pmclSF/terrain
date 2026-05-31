@@ -253,7 +253,7 @@ func BuildMigrationSummaries(snap *models.TestSuiteSnapshot) []OwnerMigrationSum
 	return summaries
 }
 
-// MigrationCoordinationRisk describes the organizational complexity of a migration.
+// MigrationCoordinationRisk describes the organizational complexity of a framework_migration.
 type MigrationCoordinationRisk struct {
 	// OwnerCount is the number of distinct owners with migration blockers.
 	OwnerCount int `json:"ownerCount"`

@@ -158,7 +158,7 @@ func TestSchema_ImpactAggregateForwardCompat(t *testing.T) {
 	rawJSON := `{
 		"changedFileCount": 5,
 		"impactedUnitCount": 3,
-		"posture": "well_protected",
+		"posture": "strong",
 		"futureField": "should be ignored",
 		"protectionCounts": {},
 		"confidenceCounts": {}

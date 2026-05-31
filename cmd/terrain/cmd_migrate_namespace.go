@@ -6,8 +6,8 @@ import (
 	"os"
 )
 
-// Phase A of the 0.2 CLI restructure folds the conversion + migration
-// universe into a single noun: `terrain migrate`. The canonical shape:
+// The CLI restructure folds the conversion + migration universe into
+// a single noun: `terrain migrate`. The canonical shape:
 //
 //   terrain migrate run <from-to>     // execute a conversion
 //   terrain migrate config <from-to>  // convert config files only
@@ -22,11 +22,11 @@ import (
 //   terrain migrate preview           // dry-run a single file/scope
 //
 // `terrain convert ...` is an alias dispatched through the same entry
-// point so muscle memory keeps working through 0.2. Legacy top-level
-// commands (estimate, status, checklist, list, list-conversions,
-// shorthands, detect, convert-config, migration <verb>) continue to
-// work unchanged in 0.2 and get a deprecation note in 0.2.x. Removal
-// targets 0.3.
+// point so muscle memory keeps working. Legacy top-level commands
+// (estimate, status, checklist, list, list-conversions, shorthands,
+// detect, convert-config, migration <verb>) continue to work unchanged;
+// they will get a deprecation note in a later release and be removed
+// in a future release per the CHANGELOG.
 //
 // When the first arg isn't a known verb, we fall through to the legacy
 // runner — preserves `terrain migrate cypress-playwright` direct
@@ -69,11 +69,12 @@ func runConvertNamespaceCLI(args []string) error {
 
 func runMigrateOrConvertNamespaceCLI(args []string, fallthroughFn func([]string) error) error {
 	if len(args) == 0 {
-		// Pre-0.2.x bare `terrain migrate` / `terrain convert` fell
-		// through to the legacy directory-mode runner which printed an
-		// error-shaped usage block. The canonical 0.2 shape is the
-		// verb listing — a plain `terrain migrate` without args means
-		// "show me what I can do," not "I'm trying to migrate the cwd."
+		// Earlier revisions had bare `terrain migrate` / `terrain
+		// convert` fall through to the legacy directory-mode runner
+		// which printed an error-shaped usage block. The canonical
+		// shape is the verb listing — a plain `terrain migrate`
+		// without args means "show me what I can do," not "I'm trying
+		// to migrate the cwd."
 		printMigrateNamespaceUsage(noun(fallthroughFn))
 		return nil
 	}
@@ -82,7 +83,7 @@ func runMigrateOrConvertNamespaceCLI(args []string, fallthroughFn func([]string)
 	if isHelpArg(verb) {
 		// `terrain migrate --help` / `terrain convert -h` — print the
 		// namespace-verb listing instead of falling through to the
-		// legacy directory-mode help. Pre-0.2.x this printed
+		// legacy directory-mode help. Earlier revisions printed
 		// `Usage: terrain migrate <dir>` which actively misled users
 		// away from the canonical shape.
 		printMigrateNamespaceUsage(noun(fallthroughFn))
@@ -159,7 +160,7 @@ func printMigrateNamespaceUsage(name string) {
 		fmt.Fprintln(w, "  terrain migrate <dir> --from <fw> --to <fw>")
 	}
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "See: docs/cli/migrate.md  (or `terrain migrate run --help` for run-specific flags)")
+	fmt.Fprintln(w, "Run `terrain migrate run --help` for run-specific flags.")
 }
 
 // runMigrationLegacySubcommand wraps the historical `terrain migration

@@ -1,8 +1,11 @@
 package quality
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -88,6 +91,84 @@ func TestStaticSkipDetector_SeverityThresholds(t *testing.T) {
 			}
 		})
 	}
+}
+
+// TestStaticSkipDetector_SplitMechanism_On asserts that flipping
+// the static_skipped_test_split mechanism to On observably changes
+// the emitted Type: legacy "staticSkippedTest" becomes
+// staticSkippedTest-unconditional / -conditional-gate based on
+// whether the file has a runtime gate predicate.
+func TestStaticSkipDetector_SplitMechanism_On(t *testing.T) {
+	dir := t.TempDir()
+	// File A: bare skip marker, no gate predicate → unconditional.
+	mustWriteFile(t, filepath.Join(dir, "a.test.ts"),
+		"test.skip('x', () => {});")
+	// File B: skip wrapped by a process.env gate predicate.
+	mustWriteFile(t, filepath.Join(dir, "b.test.ts"),
+		"if (process.env.CI) { test.skip('y', () => {}); }")
+
+	snap := &models.TestSuiteSnapshot{
+		TestFiles: []models.TestFile{
+			{Path: "a.test.ts", Framework: "vitest", TestCount: 1, SkipCount: 1},
+			{Path: "b.test.ts", Framework: "vitest", TestCount: 1, SkipCount: 1},
+		},
+	}
+
+	reg, err := mechanisms.Load()
+	if err != nil {
+		t.Fatalf("load mechanisms: %v", err)
+	}
+	prev := mechanisms.SetDefault(reg)
+	defer mechanisms.SetDefault(prev)
+
+	d := &StaticSkipDetector{RepoRoot: dir}
+
+	// Default state=shadow → legacy "staticSkippedTest" type.
+	got := d.Detect(snap)
+	if !hasSignalType(got, "staticSkippedTest") {
+		t.Fatalf("shadow: expected legacy staticSkippedTest type; got %v", typesOf(got))
+	}
+	if hasSignalType(got, "staticSkippedTest-unconditional") ||
+		hasSignalType(got, "staticSkippedTest-conditional-gate") {
+		t.Fatalf("shadow: split types should NOT appear; got %v", typesOf(got))
+	}
+
+	// Flip mechanism on → split types appear; legacy disappears from
+	// per-file signals.
+	if err := reg.ApplyCLIOverrides([]string{"static_skipped_test_split=on"}); err != nil {
+		t.Fatalf("override: %v", err)
+	}
+	got = d.Detect(snap)
+	if !hasSignalType(got, "staticSkippedTest-unconditional") {
+		t.Errorf("on: expected staticSkippedTest-unconditional for bare-skip file; got %v", typesOf(got))
+	}
+	if !hasSignalType(got, "staticSkippedTest-conditional-gate") {
+		t.Errorf("on: expected staticSkippedTest-conditional-gate for gated-skip file; got %v", typesOf(got))
+	}
+}
+
+func mustWriteFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
+}
+
+func hasSignalType(sigs []models.Signal, t models.SignalType) bool {
+	for _, s := range sigs {
+		if s.Type == t {
+			return true
+		}
+	}
+	return false
+}
+
+func typesOf(sigs []models.Signal) []models.SignalType {
+	out := make([]models.SignalType, 0, len(sigs))
+	for _, s := range sigs {
+		out = append(out, s.Type)
+	}
+	return out
 }
 
 func TestStaticSkipDetector_DeterministicOrder(t *testing.T) {

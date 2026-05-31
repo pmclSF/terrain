@@ -84,7 +84,7 @@ type AIValidationSummary struct {
 	TotalScenarios int `json:"totalScenarios"`
 
 	// Scenarios lists impacted scenarios with reasons.
-	Scenarios []AIScenarioSummary `json:"scenarios,omitempty"`
+	Scenarios []EvalSummary `json:"scenarios,omitempty"`
 
 	// BlockingSignals lists AI signals that block the merge.
 	BlockingSignals []AISignalSummary `json:"blockingSignals,omitempty"`
@@ -96,8 +96,8 @@ type AIValidationSummary struct {
 	UncoveredContexts []string `json:"uncoveredContexts,omitempty"`
 }
 
-// AIScenarioSummary is a compact scenario entry for PR display.
-type AIScenarioSummary struct {
+// EvalSummary is a compact scenario entry for PR display.
+type EvalSummary struct {
 	Name       string `json:"name"`
 	Capability string `json:"capability,omitempty"`
 	Reason     string `json:"reason"`
@@ -144,6 +144,19 @@ type ChangeScopedFinding struct {
 	Path string `json:"path"`
 	// Severity is "high", "medium", or "low".
 	Severity string `json:"severity"`
+	// SignalType is the underlying signal type when the finding was
+	// produced by an existing_signal; empty for protection_gap. Used
+	// by the gate to filter observability-tier findings out of the
+	// blocking severity counts.
+	SignalType string `json:"signalType,omitempty"`
+	// FindingID mirrors the underlying Signal.FindingID (when the
+	// finding is an existing_signal). Empty for protection_gap and
+	// for legacy detectors that haven't been updated to populate the
+	// id. Surfaced as a hidden marker in the PR-comment card so the
+	// slash-receiver proxy can resolve `/dismiss` replies back to the
+	// originating finding without an outbound GitHub API call from
+	// terrain itself.
+	FindingID string `json:"findingId,omitempty"`
 	// Explanation describes the finding.
 	Explanation string `json:"explanation"`
 	// SuggestedAction recommends a fix.

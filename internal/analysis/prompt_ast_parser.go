@@ -98,6 +98,145 @@ var jsOpenAICallPattern = regexp.MustCompile(
 var jsAnthropicCallPattern = regexp.MustCompile(
 	`\b(?:anthropic|client)\.messages\.create\s*\(`)
 
+// --- AI context gates ---
+//
+// Infrastructure patterns below (streaming, eval-metric, guardrail,
+// fine-tuning, tool-control) are deliberately broad — they have to
+// match many phrasings. Run unguarded, they fire on plain HTTP
+// streaming, statistics primitives, schema validators, etc., in
+// non-AI code. To keep them sharp we require co-presence of an
+// explicit AI marker in the same file before the infrastructure loop
+// runs.
+//
+// "AI marker" = SDK constructor / generation call / known AI import.
+// If a file has none of these, we don't classify ReadableStream as
+// LLM streaming or BLEU as eval-metric.
+
+// jsAIImports matches any import statement that pulls in a recognised
+// AI/ML SDK. Anchored to import-statement shapes (import/from/require)
+// so plain identifier matches in comments / strings don't count.
+//
+// Two alternation branches because scoped packages (@org/name) carry
+// a slash inside the package name and need a different terminator
+// than bare names:
+//
+//   - Scoped: `@<org>/<anything-non-quote>` — match the recognised
+//     org prefix and consume up to the closing quote.
+//   - Bare: exact package name + optional `/<subpath>` + closing
+//     quote. Anchored exactness prevents `openai` from matching a
+//     hypothetical `openai-helper` package.
+var jsAIImports = regexp.MustCompile(
+	`(?:from\s+|require\s*\(\s*|^\s*import\s+)['"]` +
+		`(?:` +
+		`@(?:langchain|openai|anthropic-ai|cohere-ai|google/generative-ai|` +
+		`instructor-ai|vercel/ai|huggingface|mistralai)/[^'"]+` +
+		`|` +
+		`(?:openai|anthropic|cohere-ai|langchain|llamaindex|instructor|` +
+		`huggingface|replicate|groq-sdk|together-ai|fireworks-ai)` +
+		`(?:/[^'"]*)?` +
+		`)['"]`)
+
+// pyAIImports matches Python import statements for AI/ML SDKs.
+var pyAIImports = regexp.MustCompile(
+	`(?m)^\s*(?:from\s+|import\s+)` +
+		`(?:openai|anthropic|cohere|google\.generativeai|google_generativeai|mistralai|groq|together|fireworks|` +
+		`langchain|llama_index|llamaindex|instructor|litellm|guidance|dspy|haystack|` +
+		`transformers|sentence_transformers|huggingface_hub|datasets|accelerate|peft|trl|` +
+		`torch\.nn\.functional|tensorflow\.keras|sklearn\.metrics|` +
+		`ragas|deepeval|promptfoo)` +
+		`\b`)
+
+// customAIMarkerPatterns is an opt-in extension point for adopters
+// whose codebases use private LLM SDKs that aren't in the canonical
+// jsAIImports / pyAIImports lists. Set via SetCustomAIMarkers from
+// CLI / config loading. Each pattern is OR'd into both hasAIContextJS
+// and hasAIContextPython.
+//
+// Stored as compiled regexes so the hot path stays cheap. The
+// underlying slice is read-only after init — SetCustomAIMarkers
+// replaces the slice atomically.
+var customAIMarkerPatterns []*regexp.Regexp
+
+// SetCustomAIMarkers registers adopter-defined string patterns that
+// should corroborate AI context for the per-file gate. Patterns are
+// matched as regular expressions against the file source; invalid
+// regexes are silently skipped.
+//
+// Intended to be called once during CLI startup after terrain.yaml
+// load. Calling concurrently with active detection is not supported.
+func SetCustomAIMarkers(patterns []string) {
+	out := make([]*regexp.Regexp, 0, len(patterns))
+	for _, p := range patterns {
+		if p == "" {
+			continue
+		}
+		re, err := regexp.Compile(p)
+		if err != nil {
+			continue
+		}
+		out = append(out, re)
+	}
+	customAIMarkerPatterns = out
+}
+
+// matchesCustomAIMarker returns true when any adopter-configured
+// marker pattern matches the source.
+func matchesCustomAIMarker(src string) bool {
+	for _, re := range customAIMarkerPatterns {
+		if re.MatchString(src) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasAIContextJS returns true when the source file has direct
+// evidence of AI/LLM work — an SDK constructor, a generation call,
+// or a recognised AI-package import. Used to gate the broad
+// infrastructure patterns so they don't fire on plain HTTP streaming
+// or statistics code.
+func HasAIContextJS(src string) bool {
+	if jsSDKConstructor.MatchString(src) {
+		return true
+	}
+	if jsGenerationCall.MatchString(src) {
+		return true
+	}
+	if jsOpenAICallPattern.MatchString(src) {
+		return true
+	}
+	if jsAnthropicCallPattern.MatchString(src) {
+		return true
+	}
+	if jsAIImports.MatchString(src) {
+		return true
+	}
+	if matchesCustomAIMarker(src) {
+		return true
+	}
+	return false
+}
+
+// hasAIContextPython is the Python equivalent of hasAIContextJS.
+func HasAIContextPython(src string) bool {
+	if pySDKConstructor.MatchString(src) {
+		return true
+	}
+	if pyGenerationCall.MatchString(src) {
+		return true
+	}
+	if pyAIDecorator.MatchString(src) {
+		return true
+	}
+	if pyAIImports.MatchString(src) {
+		return true
+	}
+	if matchesCustomAIMarker(src) {
+		return true
+	}
+	return false
+}
+
 // --- AI infrastructure patterns (streaming, tokens, guardrails, etc.) ---
 
 // Streaming configuration: stream: true, .stream(), for await...of response
@@ -329,62 +468,82 @@ func parsePromptASTJS(relPath, src string) []models.CodeSurface {
 			line, 0.88)
 	}
 
+	// Steps 5, 6, 7 require per-file AI corroboration: they classify
+	// surfaces based on variable-name patterns + AI-marker substrings
+	// in string/template content. Without the gate, these fire on
+	// Angular documentation template literals containing words like
+	// "model" or "prompt" in JSDoc examples — verified 9 firings on
+	// angular HEAD before this gate. Compute aiContext once and reuse.
+	aiContext := HasAIContextJS(src)
+
 	// 5. Detect system prompt string assignments.
 	// Look for: const systemPrompt = "You are..." or const SYSTEM_PROMPT = `...`
-	for i, line := range lines {
-		varName, content := extractStringAssignment(line)
-		if varName == "" || len(content) < 30 {
-			continue
-		}
-		if !isSystemPromptVarName(varName) {
-			continue
-		}
-		// Require at least 1 AI marker (lower threshold for named system prompts).
-		if len(aiStringMarkers.FindAllString(content, -1)) >= 1 {
-			add("system_prompt_"+varName, models.SurfaceContext, DetectorASTSystemPrompt,
-				"AST: system prompt assignment '"+varName+"' with AI instruction content",
-				i+1, 0.92)
+	if aiContext {
+		for i, line := range lines {
+			varName, content := extractStringAssignment(line)
+			if varName == "" || len(content) < 30 {
+				continue
+			}
+			if !isSystemPromptVarName(varName) {
+				continue
+			}
+			// Require at least 1 AI marker (lower threshold for named system prompts).
+			if len(aiStringMarkers.FindAllString(content, -1)) >= 1 {
+				add("system_prompt_"+varName, models.SurfaceContext, DetectorASTSystemPrompt,
+					"AST: system prompt assignment '"+varName+"' with AI instruction content",
+					i+1, 0.92)
+			}
 		}
 	}
 
 	// 6. Detect multi-line template literals assigned to prompt-named variables.
-	for i, line := range lines {
-		varName := extractTemplateAssignTarget(line)
-		if varName == "" || !isPromptVarName(varName) {
-			continue
-		}
-		// Extract the template literal content.
-		templateContent := extractBacktickContent(src, lines, i)
-		if len(templateContent) < 40 {
-			continue
-		}
-		if len(aiStringMarkers.FindAllString(templateContent, -1)) >= 1 {
-			add("template_prompt_"+varName, models.SurfacePrompt, DetectorASTTemplateCall,
-				"AST: template literal prompt '"+varName+"'",
-				i+1, 0.90)
+	if aiContext {
+		for i, line := range lines {
+			varName := extractTemplateAssignTarget(line)
+			if varName == "" || !isPromptVarName(varName) {
+				continue
+			}
+			// Extract the template literal content.
+			templateContent := extractBacktickContent(src, lines, i)
+			if len(templateContent) < 40 {
+				continue
+			}
+			if len(aiStringMarkers.FindAllString(templateContent, -1)) >= 1 {
+				add("template_prompt_"+varName, models.SurfacePrompt, DetectorASTTemplateCall,
+					"AST: template literal prompt '"+varName+"'",
+					i+1, 0.90)
+			}
 		}
 	}
 
 	// 7. AI infrastructure detection — streaming, tokens, metrics, guardrails, fine-tuning, tools.
-	infraPatterns := []struct {
-		pat        *regexp.Regexp
-		name       string
-		kind       models.CodeSurfaceKind
-		detectorID string
-		reason     string
-		confidence float64
-	}{
-		{jsStreamingPattern, "streaming_handler", models.SurfaceAgent, DetectorASTPromptBuilder, "streaming response handler", 0.88},
-		{jsTokenPattern, "token_management", models.SurfaceAgent, DetectorASTPromptBuilder, "token counting/management infrastructure", 0.85},
-		{jsEvalMetricPattern, "eval_metric", models.SurfaceEvalDef, DetectorASTPromptBuilder, "AI evaluation metric computation", 0.88},
-		{jsGuardrailPattern, "guardrail", models.SurfaceAgent, DetectorASTPromptBuilder, "AI safety guardrail/content filter", 0.90},
-		{jsFineTunePattern, "fine_tuning", models.SurfaceDataset, DetectorASTPromptBuilder, "fine-tuning data or configuration", 0.85},
-		{jsToolControlPattern, "tool_control", models.SurfaceToolDef, DetectorASTPromptBuilder, "tool selection/control flow pattern", 0.88},
-	}
-	for _, ip := range infraPatterns {
-		if m := ip.pat.FindStringIndex(src); m != nil {
-			line := 1 + strings.Count(src[:m[0]], "\n")
-			add(ip.name, ip.kind, ip.detectorID, "AST: "+ip.reason, line, ip.confidence)
+	// Same gate as steps 5/6: only run on files that already show direct
+	// AI context. Without it, infrastructure patterns match plain HTTP
+	// streaming (ReadableStream, text/event-stream), statistics
+	// primitives (BLEU/F1/cosine), and schema validators in non-AI
+	// code, producing false-positive uncoveredAISurface signals on
+	// non-AI repos.
+	if aiContext {
+		infraPatterns := []struct {
+			pat        *regexp.Regexp
+			name       string
+			kind       models.CodeSurfaceKind
+			detectorID string
+			reason     string
+			confidence float64
+		}{
+			{jsStreamingPattern, "streaming_handler", models.SurfaceAgent, DetectorASTPromptBuilder, "streaming response handler", 0.88},
+			{jsTokenPattern, "token_management", models.SurfaceAgent, DetectorASTPromptBuilder, "token counting/management infrastructure", 0.85},
+			{jsEvalMetricPattern, "eval_metric", models.SurfaceEvalDef, DetectorASTPromptBuilder, "AI evaluation metric computation", 0.88},
+			{jsGuardrailPattern, "guardrail", models.SurfaceAgent, DetectorASTPromptBuilder, "AI safety guardrail/content filter", 0.90},
+			{jsFineTunePattern, "fine_tuning", models.SurfaceDataset, DetectorASTPromptBuilder, "fine-tuning data or configuration", 0.85},
+			{jsToolControlPattern, "tool_control", models.SurfaceToolDef, DetectorASTPromptBuilder, "tool selection/control flow pattern", 0.88},
+		}
+		for _, ip := range infraPatterns {
+			if m := ip.pat.FindStringIndex(src); m != nil {
+				line := 1 + strings.Count(src[:m[0]], "\n")
+				add(ip.name, ip.kind, ip.detectorID, "AST: "+ip.reason, line, ip.confidence)
+			}
 		}
 	}
 
@@ -576,82 +735,97 @@ func parsePromptASTPython(relPath, src string) []models.CodeSurface {
 			line, 0.88)
 	}
 
+	// Steps 5-8 require per-file AI corroboration. Compute once.
+	pyAIContext := HasAIContextPython(src)
+
 	// 5. Detect system prompt string assignments.
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		varName, content := extractPyStringAssignment(trimmed)
-		if varName == "" || len(content) < 30 {
-			continue
-		}
-		if !isSystemPromptVarName(varName) {
-			continue
-		}
-		if len(aiStringMarkers.FindAllString(content, -1)) >= 1 {
-			add("system_prompt_"+varName, models.SurfaceContext, DetectorASTSystemPrompt,
-				"AST: system prompt assignment '"+varName+"' with AI instruction content",
-				i+1, 0.92)
+	if pyAIContext {
+		for i, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			varName, content := extractPyStringAssignment(trimmed)
+			if varName == "" || len(content) < 30 {
+				continue
+			}
+			if !isSystemPromptVarName(varName) {
+				continue
+			}
+			if len(aiStringMarkers.FindAllString(content, -1)) >= 1 {
+				add("system_prompt_"+varName, models.SurfaceContext, DetectorASTSystemPrompt,
+					"AST: system prompt assignment '"+varName+"' with AI instruction content",
+					i+1, 0.92)
+			}
 		}
 	}
 
 	// 6. Detect triple-quoted prompt strings assigned to prompt-named variables.
-	for i, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		varName := extractPyTripleQuoteAssignTarget(trimmed)
-		if varName == "" {
-			continue
-		}
-		if !isPromptVarName(varName) && !isSystemPromptVarName(varName) {
-			continue
-		}
-		// Extract content up to closing triple-quote.
-		content := extractTripleQuoteContent(lines, i)
-		if len(content) < 40 {
-			continue
-		}
-		if len(aiStringMarkers.FindAllString(content, -1)) >= 1 {
-			kind := models.SurfacePrompt
-			detectorID := DetectorASTTemplateCall
-			namePrefix := "template_prompt_"
-			if isSystemPromptVarName(varName) {
-				kind = models.SurfaceContext
-				detectorID = DetectorASTSystemPrompt
-				namePrefix = "system_prompt_"
+	if pyAIContext {
+		for i, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			varName := extractPyTripleQuoteAssignTarget(trimmed)
+			if varName == "" {
+				continue
 			}
-			add(namePrefix+varName, kind, detectorID,
-				"AST: triple-quoted prompt '"+varName+"'",
-				i+1, 0.92)
+			if !isPromptVarName(varName) && !isSystemPromptVarName(varName) {
+				continue
+			}
+			// Extract content up to closing triple-quote.
+			content := extractTripleQuoteContent(lines, i)
+			if len(content) < 40 {
+				continue
+			}
+			if len(aiStringMarkers.FindAllString(content, -1)) >= 1 {
+				kind := models.SurfacePrompt
+				detectorID := DetectorASTTemplateCall
+				namePrefix := "template_prompt_"
+				if isSystemPromptVarName(varName) {
+					kind = models.SurfaceContext
+					detectorID = DetectorASTSystemPrompt
+					namePrefix = "system_prompt_"
+				}
+				add(namePrefix+varName, kind, detectorID,
+					"AST: triple-quoted prompt '"+varName+"'",
+					i+1, 0.92)
+			}
 		}
 	}
 
 	// 7. Detect few-shot example lists with input/output dict structure.
-	for _, ar := range pyArrayRanges {
-		if ar.hasFewShotShape && ar.objectCount >= 2 && !ar.hasRoleContent {
-			add("few_shot_"+ar.varName, models.SurfaceContext, DetectorASTFewShot,
-				"AST: list of "+strconv.Itoa(ar.objectCount)+" dicts with input/output shape in '"+ar.varName+"'",
-				ar.line, 0.93)
+	if pyAIContext {
+		for _, ar := range pyArrayRanges {
+			if ar.hasFewShotShape && ar.objectCount >= 2 && !ar.hasRoleContent {
+				add("few_shot_"+ar.varName, models.SurfaceContext, DetectorASTFewShot,
+					"AST: list of "+strconv.Itoa(ar.objectCount)+" dicts with input/output shape in '"+ar.varName+"'",
+					ar.line, 0.93)
+			}
 		}
 	}
 
 	// 8. AI infrastructure detection — streaming, tokens, metrics, guardrails, fine-tuning, tools.
-	pyInfraPatterns := []struct {
-		pat        *regexp.Regexp
-		name       string
-		kind       models.CodeSurfaceKind
-		detectorID string
-		reason     string
-		confidence float64
-	}{
-		{pyStreamingPattern, "streaming_handler", models.SurfaceAgent, DetectorASTPromptBuilder, "streaming response handler", 0.88},
-		{pyTokenPattern, "token_management", models.SurfaceAgent, DetectorASTPromptBuilder, "token counting/management infrastructure", 0.85},
-		{pyEvalMetricPattern, "eval_metric", models.SurfaceEvalDef, DetectorASTPromptBuilder, "AI evaluation metric computation", 0.88},
-		{pyGuardrailPattern, "guardrail", models.SurfaceAgent, DetectorASTPromptBuilder, "AI safety guardrail/content filter", 0.90},
-		{pyFineTunePattern, "fine_tuning", models.SurfaceDataset, DetectorASTPromptBuilder, "fine-tuning data or configuration", 0.85},
-		{pyToolControlPattern, "tool_control", models.SurfaceToolDef, DetectorASTPromptBuilder, "tool selection/control flow pattern", 0.88},
-	}
-	for _, ip := range pyInfraPatterns {
-		if m := ip.pat.FindStringIndex(src); m != nil {
-			line := 1 + strings.Count(src[:m[0]], "\n")
-			add(ip.name, ip.kind, ip.detectorID, "AST: "+ip.reason, line, ip.confidence)
+	// Same gate. Without it, infrastructure patterns match plain HTTP
+	// streaming, statistics primitives, and schema validators in
+	// non-AI code, producing false-positive uncoveredAISurface
+	// signals on non-AI repos.
+	if pyAIContext {
+		pyInfraPatterns := []struct {
+			pat        *regexp.Regexp
+			name       string
+			kind       models.CodeSurfaceKind
+			detectorID string
+			reason     string
+			confidence float64
+		}{
+			{pyStreamingPattern, "streaming_handler", models.SurfaceAgent, DetectorASTPromptBuilder, "streaming response handler", 0.88},
+			{pyTokenPattern, "token_management", models.SurfaceAgent, DetectorASTPromptBuilder, "token counting/management infrastructure", 0.85},
+			{pyEvalMetricPattern, "eval_metric", models.SurfaceEvalDef, DetectorASTPromptBuilder, "AI evaluation metric computation", 0.88},
+			{pyGuardrailPattern, "guardrail", models.SurfaceAgent, DetectorASTPromptBuilder, "AI safety guardrail/content filter", 0.90},
+			{pyFineTunePattern, "fine_tuning", models.SurfaceDataset, DetectorASTPromptBuilder, "fine-tuning data or configuration", 0.85},
+			{pyToolControlPattern, "tool_control", models.SurfaceToolDef, DetectorASTPromptBuilder, "tool selection/control flow pattern", 0.88},
+		}
+		for _, ip := range pyInfraPatterns {
+			if m := ip.pat.FindStringIndex(src); m != nil {
+				line := 1 + strings.Count(src[:m[0]], "\n")
+				add(ip.name, ip.kind, ip.detectorID, "AST: "+ip.reason, line, ip.confidence)
+			}
 		}
 	}
 

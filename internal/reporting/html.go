@@ -40,12 +40,14 @@ var htmlTmpl = template.Must(template.New("report").Funcs(template.FuncMap{
 	},
 	"bandColor": func(b string) string {
 		switch b {
-		case "High", "high", "well_protected", "strong":
+		case "High", "high", "strong":
 			return "#16a34a"
-		case "Medium", "medium", "partially_protected", "moderate":
+		case "Medium", "medium", "moderate":
 			return "#d97706"
-		case "Low", "low", "weakly_protected", "weak":
+		case "Low", "low", "weak":
 			return "#dc2626"
+		case "critical":
+			return "#991b1b"
 		default:
 			return "#6b7280"
 		}

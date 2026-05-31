@@ -7,8 +7,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/surfacelit"
 )
 
 // modelDeprecationList is the curated registry of model identifiers that
@@ -19,9 +21,7 @@ import (
 //   - a category: "deprecated" or "floating"
 //   - a one-line explanation surfaced in the signal
 //
-// The list is hand-curated and intentionally conservative. We expand it
-// as the calibration corpus grows. False positives are tracked under
-// `expectedAbsent: aiModelDeprecationRisk` in the corpus.
+// The list is hand-curated and intentionally conservative.
 var modelDeprecationList = []deprecationRule{
 	// Floating / undated tags.
 	{Match: "gpt-4", Category: "floating", Explanation: "model tag `gpt-4` resolves to whatever the provider currently maps it to; pin a dated variant (e.g. gpt-4-0613)"},
@@ -33,11 +33,11 @@ var modelDeprecationList = []deprecationRule{
 	// Sunset / deprecated lineage.
 	{Match: "text-davinci-003", Category: "deprecated", Explanation: "OpenAI text-davinci-003 reached EOL in early 2024; switch to gpt-4-* or gpt-3.5-turbo-*"},
 	{Match: "text-davinci-002", Category: "deprecated", Explanation: "OpenAI text-davinci-002 is sunset; switch to a current chat model"},
-	// code-davinci lineage: pre-0.2.x had a bare `code-davinci` rule, but
-	// the trailing boundary class excludes `-`, so neither `code-davinci-001`
-	// nor `code-davinci-002` (the actual identifiers in the wild) matched.
-	// Enumerate the dated variants explicitly. The bare `code-davinci`
-	// stays for the exact-string case.
+	// code-davinci lineage: a bare `code-davinci` rule misses
+	// `code-davinci-001` / `code-davinci-002` because the trailing
+	// boundary class excludes `-`. Enumerate the dated variants
+	// explicitly; the bare `code-davinci` stays for the exact-string
+	// case.
 	{Match: "code-davinci", Category: "deprecated", Explanation: "OpenAI code-davinci-* is sunset; use gpt-4 with code prompts"},
 	{Match: "code-davinci-001", Category: "deprecated", Explanation: "OpenAI code-davinci-001 is sunset (Codex deprecation, 2023-03); use gpt-4 with code prompts"},
 	{Match: "code-davinci-002", Category: "deprecated", Explanation: "OpenAI code-davinci-002 is sunset (Codex deprecation, 2023-03); use gpt-4 with code prompts"},
@@ -45,6 +45,38 @@ var modelDeprecationList = []deprecationRule{
 	{Match: "code-cushman-001", Category: "deprecated", Explanation: "OpenAI code-cushman-001 is sunset (Codex deprecation, 2023-03); use gpt-3.5-turbo or gpt-4"},
 	{Match: "claude-2", Category: "deprecated", Explanation: "Anthropic claude-2 lineage is being sunset; migrate to claude-3.x"},
 	{Match: "claude-1", Category: "deprecated", Explanation: "Anthropic claude-1 is sunset"},
+}
+
+// demoteSeverity returns the severity one tier below `s`. Used by
+// gate helpers that demote findings on catalog/example occurrences.
+func demoteSeverity(s models.SignalSeverity) models.SignalSeverity {
+	switch s {
+	case models.SeverityCritical:
+		return models.SeverityHigh
+	case models.SeverityHigh:
+		return models.SeverityMedium
+	case models.SeverityMedium:
+		return models.SeverityLow
+	default:
+		return models.SeverityLow
+	}
+}
+
+// severityClauseTier returns the canonical clause-set tier prefix
+// matching `s`. Detectors with severity-shift logic (deprecation
+// gates, ASCG demotes) must use this so SeverityClauses stays in
+// sync with the emitted Severity.
+func severityClauseTier(s models.SignalSeverity) string {
+	switch s {
+	case models.SeverityCritical:
+		return "sev-critical"
+	case models.SeverityHigh:
+		return "sev-high"
+	case models.SeverityMedium:
+		return "sev-medium"
+	default:
+		return "sev-low"
+	}
 }
 
 type deprecationRule struct {
@@ -88,6 +120,45 @@ var modelScanExts = map[string]bool{
 	".go": true, ".java": true, ".rb": true, ".rs": true,
 }
 
+// isDeprecationFixturePath returns true when the path is a place
+// where deprecated model names appear by reference, not by use:
+// test code (pins specific versions for behavior testing), docs
+// (historical references), GitHub issue templates (ask users which
+// model they hit a bug with), changelogs. The detector skips these
+// paths because they don't represent runtime calls that would break.
+func isDeprecationFixturePath(relPath string) bool {
+	lower := strings.ToLower(filepath.ToSlash(relPath))
+	// Leading-prefix matches.
+	if strings.HasPrefix(lower, "test/") ||
+		strings.HasPrefix(lower, "tests/") ||
+		strings.HasPrefix(lower, "docs/") ||
+		strings.HasPrefix(lower, "doc/") ||
+		strings.HasPrefix(lower, ".github/") ||
+		strings.HasPrefix(lower, ".gitlab/") ||
+		strings.HasPrefix(lower, "examples/") ||
+		strings.HasPrefix(lower, "changelog") {
+		return true
+	}
+	// Substring matches (monorepo / nested).
+	subs := []string{
+		"/test/", "/tests/", "/docs/", "/doc/",
+		"/.github/", "/examples/",
+		"/changelog", "/CHANGELOG",
+	}
+	for _, s := range subs {
+		if strings.Contains(lower, s) {
+			return true
+		}
+	}
+	// Specific file-name patterns.
+	base := strings.ToLower(filepath.Base(relPath))
+	if base == "changelog.md" || base == "history.md" ||
+		base == "release_notes.md" || base == "release-notes.md" {
+		return true
+	}
+	return false
+}
+
 // ModelDeprecationDetector flags references to deprecated or floating
 // model tags in repository config and source files. Lives in the AI
 // domain because the consequence is "your eval / agent silently drifts
@@ -109,20 +180,34 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 
 	var out []models.Signal
 	for _, relPath := range paths {
+		// Skip non-actionable paths: test code, docs, GitHub issue
+		// templates, changelogs, etc. In these locations deprecated
+		// model names appear by reference (tests pin specific
+		// versions for behavior testing; issue templates ask users
+		// which model they used; docs reference models historically).
+		// None of those are "your production code uses a deprecated
+		// model and the next API call will break."
+		if isDeprecationFixturePath(relPath) {
+			continue
+		}
 		abs := filepath.Join(d.Root, relPath)
 		hits := scanFileForModelTags(abs)
 		for _, h := range hits {
-			// 0.2.0 final-polish: severity now tracks the category.
-			// "deprecated" tags (text-davinci-003, code-davinci-002,
-			// claude-1) are sunset and the next API call WILL break;
-			// these are High. "floating" tags (gpt-4, claude-3-opus)
-			// merely drift over time as the provider remaps the alias;
-			// these stay Medium. Pre-fix every category was Medium,
-			// which under-prioritized the genuinely-broken cases.
+			// Mechanism gate: surface_literal_presence_gate.
+			if dec := surfacelit.Gate(mechanisms.Default(), h.Rule.Match, abs, "aiModelDeprecationRisk"); !dec.Keep {
+				continue
+			}
+			// Severity tracks the category. "deprecated" tags
+			// (text-davinci-003, code-davinci-002, claude-1) are sunset
+			// and the next API call WILL break; these are High.
+			// "floating" tags (gpt-4, claude-3-opus) merely drift over
+			// time as the provider remaps the alias; these stay Medium.
 			severity := models.SeverityMedium
 			if h.Rule.Category == "deprecated" {
 				severity = models.SeverityHigh
 			}
+			// Model deprecations in `examples/` are still real findings
+			// because the example is meant to be copied.
 			out = append(out, models.Signal{
 				Type:        signals.SignalAIModelDeprecationRisk,
 				Category:    models.CategoryAI,
@@ -132,11 +217,11 @@ func (d *ModelDeprecationDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 				Explanation: h.Rule.Explanation,
 				SuggestedAction: "Pin to a dated model variant or upgrade to a supported tier.",
 
-				SeverityClauses: []string{"sev-medium-005"},
+				SeverityClauses: []string{severityClauseTier(severity) + "-005"},
 				Actionability:   models.ActionabilityScheduled,
 				LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 				AIRelevance:     models.AIRelevanceHigh,
-				RuleID:          "TER-AI-106",
+				RuleID:          "terrain/ai/model-deprecation-risk",
 				RuleURI:         "docs/rules/ai/model-deprecation-risk.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{
@@ -234,13 +319,13 @@ func scanFileForModelTags(path string) []modelHit {
 // the whole point is to mention the deprecated tag — flagging that as
 // a finding would be inverted.
 //
-// Comment-prefix coverage: pre-0.2.x this only recognized `#`, `//`,
-// and `*` (block-comment continuation), missing the styles used by SQL
-// (`--`), Lua/Haskell (`--`), config (`;`), shell-doc (`#:`), Lisp
-// (`;;`), HTML/Markdown (`<!--`), reStructuredText (`..`), and
-// markdown bullet/header lines that prose-document deprecations
-// (`-`, `*`, `1.`, `>`, `#`). Source files quoting deprecated model
-// names inside CHANGELOG-shaped lines were producing false positives.
+// Comment-prefix coverage includes the styles used by SQL (`--`),
+// Lua/Haskell (`--`), config (`;`), shell-doc (`#:`), Lisp (`;;`),
+// HTML/Markdown (`<!--`), reStructuredText (`..`), and markdown
+// bullet/header lines that prose-document deprecations (`-`, `*`,
+// `1.`, `>`, `#`). Without this coverage, source files quoting
+// deprecated model names inside CHANGELOG-shaped lines produce false
+// positives.
 func commentLooksLikeChangeLog(text string) bool {
 	t := strings.TrimSpace(text)
 	if t == "" {

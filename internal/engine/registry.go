@@ -8,9 +8,11 @@ import (
 	"fmt"
 
 	"github.com/pmclSF/terrain/internal/aidetect"
+	"github.com/pmclSF/terrain/internal/configdrift"
+	"github.com/pmclSF/terrain/internal/deps"
 	"github.com/pmclSF/terrain/internal/governance"
 	"github.com/pmclSF/terrain/internal/health"
-	"github.com/pmclSF/terrain/internal/migration"
+	"github.com/pmclSF/terrain/internal/framework_migration"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/policy"
 	"github.com/pmclSF/terrain/internal/quality"
@@ -34,6 +36,12 @@ type Config struct {
 	// SlowTestThresholdMs is the threshold for slow test detection.
 	// Zero uses the default (5000ms).
 	SlowTestThresholdMs float64
+
+	// EnablePreviewRules registers the preview-tier AI detectors
+	// alongside the stable batch. Default false — preview rules ship
+	// default-off, pending broader validation. Set via
+	// `terrain analyze --preview` or terrain.yaml: rules.preview.enabled.
+	EnablePreviewRules bool
 }
 
 // DefaultRegistry returns a DetectorRegistry populated with all
@@ -68,6 +76,12 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		},
 		Detector: &quality.WeakAssertionDetector{},
 	})
+	// MockHeavyDetector emits both SignalMockHeavyTest (mocks outnumber
+	// assertions) and SignalTestsOnlyMocks (mocks present, zero
+	// assertions) from a single pass. Per-detector machinery
+	// (budget, panic, missing-input) affects both signal types
+	// together; per-signal-type machinery (manifest DisabledByDefault,
+	// suppressions) still operates independently.
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
 			ID:           "quality.mock-heavy",
@@ -96,7 +110,7 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			Description:  "Detect exported code units without matching test files.",
 			SignalTypes:  []models.SignalType{signals.SignalUntestedExport},
 		},
-		Detector: &quality.UntestedExportDetector{},
+		Detector: &quality.UntestedExportDetector{RepoRoot: cfg.RepoRoot},
 	})
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
@@ -127,7 +141,7 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			Description:  "Detect statically skipped tests from source code patterns (.skip, xit, @skip, etc.).",
 			SignalTypes:  []models.SignalType{signals.SignalStaticSkippedTest},
 		},
-		Detector: &quality.StaticSkipDetector{},
+		Detector: &quality.StaticSkipDetector{RepoRoot: cfg.RepoRoot},
 	})
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
@@ -147,66 +161,93 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			Description:  "Detect test files with no linked source code units.",
 			SignalTypes:  []models.SignalType{signals.SignalOrphanedTestFile},
 		},
-		Detector: &quality.OrphanedTestDetector{},
+		Detector: &quality.OrphanedTestDetector{RepoRoot: cfg.RepoRoot},
+	})
+
+	// Dependency-drift detector: targets bot-authored deps-bump PRs.
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "deps.drift-risk",
+			Domain:         signals.DomainQuality,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Detect dependency manifests with a high share of moving-target version specs.",
+			SignalTypes:    []models.SignalType{signals.SignalDepsDriftRisk},
+			RequiresFileIO: true,
+		},
+		Detector: &deps.DriftRiskDetector{Root: cfg.RepoRoot},
+	})
+
+	// Config-schema-drift detector: targets config-only PRs (CI,
+	// docker-compose, helm, k8s manifests).
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:             "config.schema-drift",
+			Domain:         signals.DomainQuality,
+			EvidenceType:   signals.EvidenceStructuralPattern,
+			Description:    "Detect infra configs using forward-compat hazards (mutable action refs, :latest images, deprecated apiVersions).",
+			SignalTypes:    []models.SignalType{signals.SignalConfigSchemaDrift},
+			RequiresFileIO: true,
+		},
+		Detector: &configdrift.SchemaDriftDetector{Root: cfg.RepoRoot},
 	})
 
 	// Migration detectors (no dependencies on other signals).
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
-			ID:             "migration.deprecated-pattern",
+			ID:             "framework_migration.deprecated-pattern",
 			Domain:         signals.DomainMigration,
 			EvidenceType:   signals.EvidenceStructuralPattern,
-			Description:    "Detect deprecated test patterns that block migration.",
+			Description:    "Detect deprecated test patterns that block framework_migration.",
 			SignalTypes:    []models.SignalType{signals.SignalDeprecatedTestPattern},
 			RequiresFileIO: true,
 		},
-		Detector: &migration.DeprecatedPatternDetector{RepoRoot: cfg.RepoRoot},
+		Detector: &framework_migration.DeprecatedPatternDetector{RepoRoot: cfg.RepoRoot},
 	})
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
-			ID:             "migration.dynamic-test-generation",
+			ID:             "framework_migration.dynamic-test-generation",
 			Domain:         signals.DomainMigration,
 			EvidenceType:   signals.EvidenceStructuralPattern,
 			Description:    "Detect dynamic test generation patterns.",
 			SignalTypes:    []models.SignalType{signals.SignalDynamicTestGeneration},
 			RequiresFileIO: true,
 		},
-		Detector: &migration.DynamicTestGenerationDetector{RepoRoot: cfg.RepoRoot},
+		Detector: &framework_migration.DynamicTestGenerationDetector{RepoRoot: cfg.RepoRoot},
 	})
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
-			ID:             "migration.custom-matcher",
+			ID:             "framework_migration.custom-matcher",
 			Domain:         signals.DomainMigration,
 			EvidenceType:   signals.EvidenceStructuralPattern,
-			Description:    "Detect custom matchers that complicate migration.",
+			Description:    "Detect custom matchers that complicate framework_migration.",
 			SignalTypes:    []models.SignalType{signals.SignalCustomMatcherRisk},
 			RequiresFileIO: true,
 		},
-		Detector: &migration.CustomMatcherDetector{RepoRoot: cfg.RepoRoot},
+		Detector: &framework_migration.CustomMatcherDetector{RepoRoot: cfg.RepoRoot},
 	})
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
-			ID:             "migration.unsupported-setup",
+			ID:             "framework_migration.unsupported-setup",
 			Domain:         signals.DomainMigration,
 			EvidenceType:   signals.EvidenceStructuralPattern,
 			Description:    "Detect framework-specific setup/fixture patterns.",
 			SignalTypes:    []models.SignalType{signals.SignalUnsupportedSetup},
 			RequiresFileIO: true,
 		},
-		Detector: &migration.UnsupportedSetupDetector{RepoRoot: cfg.RepoRoot},
+		Detector: &framework_migration.UnsupportedSetupDetector{RepoRoot: cfg.RepoRoot},
 	})
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
-			ID:           "migration.framework-migration",
+			ID:           "framework_migration.framework-migration",
 			Domain:       signals.DomainMigration,
 			EvidenceType: signals.EvidenceStructuralPattern,
-			Description:  "Detect multi-framework repos suitable for migration.",
+			Description:  "Detect multi-framework repos suitable for framework_migration.",
 			SignalTypes:  []models.SignalType{signals.SignalFrameworkMigration},
 		},
-		Detector: &migration.FrameworkMigrationDetector{},
+		Detector: &framework_migration.FrameworkMigrationDetector{},
 	})
 
-	// Runtime health detectors (Phase 1: adapted from health.HealthDetector).
+	// Runtime health detectors (flat stage: adapted from health.HealthDetector).
 	// These are silent when no runtime data is provided.
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
@@ -274,7 +315,7 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		},
 	})
 
-	// Graph-powered structural detectors (Phase 2: require dependency graph).
+	// Graph-powered structural detectors (graph stage: require dependency graph).
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
 			ID:            "structural.assertion-free-import",
@@ -420,7 +461,17 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			Description:  "Detect safety-critical surfaces with no safety-shaped scenario coverage.",
 			SignalTypes:  []models.SignalType{signals.SignalAISafetyEvalMissing},
 		},
-		Detector: &aidetect.SafetyEvalMissingDetector{},
+		Detector: &aidetect.SafetyEvalMissingDetector{Root: cfg.RepoRoot},
+	})
+	reg(signals.DetectorRegistration{
+		Meta: signals.DetectorMeta{
+			ID:           "ai.surface-missing-eval",
+			Domain:       signals.DomainAI,
+			EvidenceType: signals.EvidenceGraphTraversal,
+			Description:  "Detect AI/ML surfaces (prompt / agent / tool / context / model) with no eval coverage at all.",
+			SignalTypes:  []models.SignalType{signals.SignalPromptFileMissingEval},
+		},
+		Detector: &aidetect.PromptFileMissingEvalDetector{},
 	})
 	reg(signals.DetectorRegistration{
 		Meta: signals.DetectorMeta{
@@ -457,7 +508,7 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 			ID:             "ai.prompt-versioning",
 			Domain:         signals.DomainAI,
 			EvidenceType:   signals.EvidenceStructuralPattern,
-			Description:    "Flag prompt-kind surfaces with no recognisable version marker (filename, inline, or comment).",
+			Description:    "Flag prompt-kind surfaces with no recognizable version marker (filename, inline, or comment).",
 			SignalTypes:    []models.SignalType{signals.SignalAIPromptVersioning},
 			RequiresFileIO: true,
 		},
@@ -485,6 +536,178 @@ func DefaultRegistry(cfg Config) (*signals.DetectorRegistry, error) {
 		},
 		Detector: &aidetect.EmbeddingModelChangeDetector{Root: cfg.RepoRoot},
 	})
+
+	// Preview-tier AI/ML detectors. These ship default-off and are
+	// pending broader validation before promotion to Stable. Each
+	// adapter wraps a thin detector in internal/preview that owns
+	// the rule semantics. Enabled via Config.EnablePreviewRules.
+	previewRegs := []signals.DetectorRegistration{
+		{
+			Meta: signals.DetectorMeta{
+				ID:           "ai.orphaned-eval",
+				Domain:       signals.DomainAI,
+				EvidenceType: signals.EvidenceStructuralPattern,
+				Description:  "Detect evals with no covered AI surface.",
+				SignalTypes:  []models.SignalType{signals.SignalOrphanedEval},
+			},
+			Detector: &aidetect.OrphanedEvalDetector{},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:           "ai.missing-eval-categories",
+				Domain:       signals.DomainAI,
+				EvidenceType: signals.EvidenceStructuralPattern,
+				Description:  "Detect eval suites missing adversarial / edge_case / safety categories.",
+				SignalTypes:  []models.SignalType{signals.SignalMissingEvalCategories},
+			},
+			Detector: &aidetect.MissingEvalCategoriesDetector{},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:             "ai.prompt-bloat",
+				Domain:         signals.DomainAI,
+				EvidenceType:   signals.EvidenceStructuralPattern,
+				Description:    "Detect prompt files that exceed the configured size budget.",
+				SignalTypes:    []models.SignalType{signals.SignalPromptBloat},
+				RequiresFileIO: true,
+			},
+			Detector: &aidetect.PromptBloatDetector{Root: cfg.RepoRoot},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:             "ai.prompt-without-temperature",
+				Domain:         signals.DomainAI,
+				EvidenceType:   signals.EvidenceStructuralPattern,
+				Description:    "Detect LLM SDK calls without an explicit temperature value.",
+				SignalTypes:    []models.SignalType{signals.SignalPromptWithoutTemperature},
+				RequiresFileIO: true,
+			},
+			Detector: &aidetect.PromptWithoutTemperatureDetector{Root: cfg.RepoRoot},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:             "ai.missing-prompt-validator",
+				Domain:         signals.DomainAI,
+				EvidenceType:   signals.EvidenceStructuralPattern,
+				Description:    "Detect LLM call sites without a structured-output validator.",
+				SignalTypes:    []models.SignalType{signals.SignalMissingPromptValidator},
+				RequiresFileIO: true,
+			},
+			Detector: &aidetect.MissingPromptValidatorDetector{Root: cfg.RepoRoot},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:             "ai.prompt-version-skew",
+				Domain:         signals.DomainAI,
+				EvidenceType:   signals.EvidenceStructuralPattern,
+				Description:    "Detect duplicate prompts that share substantial content under different paths.",
+				SignalTypes:    []models.SignalType{signals.SignalPromptVersionSkew},
+				RequiresFileIO: true,
+			},
+			Detector: &aidetect.PromptVersionSkewDetector{Root: cfg.RepoRoot},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:             "ai.retrieval-without-rerank",
+				Domain:         signals.DomainAI,
+				EvidenceType:   signals.EvidenceStructuralPattern,
+				Description:    "Detect retrieval call sites that don't apply a reranker.",
+				SignalTypes:    []models.SignalType{signals.SignalRetrievalWithoutRerank},
+				RequiresFileIO: true,
+			},
+			Detector: &aidetect.RetrievalWithoutRerankDetector{Root: cfg.RepoRoot},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:             "ai.cold-vector-store",
+				Domain:         signals.DomainAI,
+				EvidenceType:   signals.EvidenceStructuralPattern,
+				Description:    "Detect vector stores constructed without a population call.",
+				SignalTypes:    []models.SignalType{signals.SignalColdVectorStore},
+				RequiresFileIO: true,
+			},
+			Detector: &aidetect.ColdVectorStoreDetector{Root: cfg.RepoRoot},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:             "ai.agent-loop-risk",
+				Domain:         signals.DomainAI,
+				EvidenceType:   signals.EvidenceStructuralPattern,
+				Description:    "Detect agent constructors without max_iterations / recursion_limit.",
+				SignalTypes:    []models.SignalType{signals.SignalAgentLoopRisk},
+				RequiresFileIO: true,
+			},
+			Detector: &aidetect.AgentLoopRiskDetector{Root: cfg.RepoRoot},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:             "ai.tool-without-budget",
+				Domain:         signals.DomainAI,
+				EvidenceType:   signals.EvidenceStructuralPattern,
+				Description:    "Detect tool-calling agents without a budget / rate limit.",
+				SignalTypes:    []models.SignalType{signals.SignalToolWithoutBudget},
+				RequiresFileIO: true,
+			},
+			Detector: &aidetect.ToolWithoutBudgetDetector{Root: cfg.RepoRoot},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:             "ai.target-leakage",
+				Domain:         signals.DomainAI,
+				EvidenceType:   signals.EvidenceStructuralPattern,
+				Description:    "Detect features derived from the target column in training code.",
+				SignalTypes:    []models.SignalType{signals.SignalTargetLeakage},
+				RequiresFileIO: true,
+			},
+			Detector: &aidetect.TargetLeakageDetector{Root: cfg.RepoRoot},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:             "ai.duplicate-eval-rows",
+				Domain:         signals.DomainAI,
+				EvidenceType:   signals.EvidenceStructuralPattern,
+				Description:    "Detect eval datasets with high row-level duplication.",
+				SignalTypes:    []models.SignalType{signals.SignalDuplicateEvalRows},
+				RequiresFileIO: true,
+			},
+			Detector: &aidetect.DuplicateEvalRowsDetector{Root: cfg.RepoRoot},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:           "ai.schema-drift",
+				Domain:       signals.DomainAI,
+				EvidenceType: signals.EvidenceRuntime,
+				Description:  "Detect column-set changes between pipeline runs (dormant until 0.3.0 telemetry).",
+				SignalTypes:  []models.SignalType{signals.SignalSchemaDrift},
+			},
+			Detector: &aidetect.SchemaDriftDetector{},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:           "ai.cold-start-time",
+				Domain:       signals.DomainAI,
+				EvidenceType: signals.EvidenceRuntime,
+				Description:  "Detect first-request latency spikes vs. warm P50 (dormant until 0.3.0 telemetry).",
+				SignalTypes:  []models.SignalType{signals.SignalColdStartTime},
+			},
+			Detector: &aidetect.ColdStartTimeDetector{},
+		},
+		{
+			Meta: signals.DetectorMeta{
+				ID:           "ai.token-cost-budget",
+				Domain:       signals.DomainAI,
+				EvidenceType: signals.EvidenceRuntime,
+				Description:  "Detect eval-run cost crossing budget thresholds (dormant until 0.3.0 telemetry).",
+				SignalTypes:  []models.SignalType{signals.SignalTokenCostBudget},
+			},
+			Detector: &aidetect.TokenCostBudgetDetector{},
+		},
+	}
+	if cfg.EnablePreviewRules {
+		for _, p := range previewRegs {
+			reg(p)
+		}
+	}
 
 	// Governance detectors (depend on signals from quality/migration detectors).
 	if cfg.PolicyConfig != nil && !cfg.PolicyConfig.IsEmpty() {

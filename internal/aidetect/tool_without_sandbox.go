@@ -6,8 +6,10 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/surfacelit"
 	"gopkg.in/yaml.v3"
 )
 
@@ -35,11 +37,33 @@ type ToolWithoutSandboxDetector struct {
 // match `delete_user`. Allowing `_` as a boundary catches the common
 // `verb_object` snake-case form that almost every real-world tool
 // definition uses.
+// Two dominant false-positive failure modes shape the tightened regex:
+//   (a) Bare "execute" / "exec" matches `execute_event_loop_cycle`
+//       (agent framework main loop) and `execute_tool $X` where the
+//       wrapped tool $X is benign (calculate, get_weather). The
+//       framework boilerplate verb doesn't make the tool destructive.
+//   (b) Bare "transfer" matches `transfer_to_spanish_agent` (agent
+//       handoff between assistants), not financial transfer.
+//
+// Tightened regex:
+//   - exec / execute now require explicit destructive context:
+//     exec_shell, run_shell, run_command, spawn_process, etc.
+//   - eval matches as before (Python's eval() is genuinely dangerous)
+//   - transfer requires payment/money context (was matching agent
+//     handoff verbs)
 var destructiveVerbs = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)\b(delete|destroy|remove|drop|truncate|purge)(?:_|\b)`),
-	regexp.MustCompile(`(?i)\b(exec|execute|run_shell|run_command|spawn|eval)(?:_|\b)`),
+	regexp.MustCompile(`(?i)\b(delete|destroy|drop_(?:table|database|index)|truncate|purge)(?:_|\b)`),
+	// exec/execute/run/spawn require an explicit destructive object —
+	// command, shell, code, script, sql, query, subprocess, arbitrary —
+	// to avoid matching agent-framework boilerplate like
+	// `execute_event_loop_cycle` or `execute_tool $benign_tool`.
+	regexp.MustCompile(`(?i)\b(exec|execute|run|spawn)_(?:command|shell|code|script|sql|query|subprocess|process|arbitrary|raw|untrusted)(?:_|\b)`),
+	// eval is destructive in any object form (eval(user_input), eval_code, etc.)
+	regexp.MustCompile(`(?i)\beval(?:_|\b)`),
 	regexp.MustCompile(`(?i)\b(write|overwrite|replace|patch)_(?:file|disk|prod)(?:_|\b)`),
-	regexp.MustCompile(`(?i)\b(send_email|send_payment|charge|refund|transfer)(?:_|\b)`),
+	regexp.MustCompile(`(?i)\b(send_email|send_payment|charge_card|charge|refund_payment|transfer_funds|transfer_money|wire_transfer)(?:_|\b)`),
+	// "remove" only when paired with destructive nouns (file/account/database/etc.)
+	regexp.MustCompile(`(?i)\b(remove_(?:file|account|user|database|repo|repository|cluster|namespace|pod))(?:_|\b)`),
 }
 
 // approvalMarkers are substrings/keys that, when present in the tool
@@ -67,14 +91,34 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 
 	var out []models.Signal
 	for _, relPath := range paths {
+		// Skip test fixtures and mock-recording files. Recorded API
+		// responses can contain destructive verbs in log-entry
+		// display names (e.g. vcrpy cassettes of cloud-provider
+		// Activity Log responses) — those aren't tool definitions
+		// and shouldn't fire.
+		if isTestFixturePath(relPath) {
+			continue
+		}
+		// Test-integration schema fixtures are a known false-positive
+		// source: these paths are explicitly fixtures for integration
+		// tests against agent frameworks, not real tool definitions.
+		lp := strings.ToLower(filepath.ToSlash(relPath))
+		if strings.Contains(lp, "test_integrations/") ||
+			strings.Contains(lp, "/schemas/") && strings.Contains(lp, "tests/") {
+			continue
+		}
 		abs := filepath.Join(d.Root, relPath)
 		findings := analyseToolConfig(abs)
 		for _, f := range findings {
+			// Mechanism gate: surface_literal_presence_gate.
+			if dec := surfacelit.Gate(mechanisms.Default(), f.ToolName, abs, "aiToolWithoutSandbox"); !dec.Keep {
+				continue
+			}
 			out = append(out, models.Signal{
 				Type:        signals.SignalAIToolWithoutSandbox,
 				Category:    models.CategoryAI,
 				Severity:    models.SeverityHigh,
-				Confidence:  0.78,
+				Confidence:  0.50,
 				Location:    models.SignalLocation{File: relPath, Symbol: f.ToolName},
 				Explanation: f.Explanation,
 				SuggestedAction: "Wrap the tool in an approval gate, or restrict its capability surface to a sandbox / dry-run mode.",
@@ -83,14 +127,14 @@ func (d *ToolWithoutSandboxDetector) Detect(snap *models.TestSuiteSnapshot) []mo
 				Actionability:   models.ActionabilityImmediate,
 				LifecycleStages: []models.LifecycleStage{models.StageDesign},
 				AIRelevance:     models.AIRelevanceHigh,
-				RuleID:          "TER-AI-104",
+				RuleID:          "terrain/ai/tool-without-sandbox",
 				RuleURI:         "docs/rules/ai/tool-without-sandbox.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{
-					Value:        0.78,
-					IntervalLow:  0.65,
-					IntervalHigh: 0.88,
-					Quality:      "heuristic",
+					Value:        0.50,
+					IntervalLow:  0.50,
+					IntervalHigh: 0.50,
+					Quality:      "estimate",
 					Sources:      []models.EvidenceSource{models.SourceStructuralPattern},
 				},
 				EvidenceSource:   models.SourceStructuralPattern,
@@ -155,12 +199,11 @@ func analyseToolConfig(path string) []toolFinding {
 	tools := extractToolEntries(&node)
 	var out []toolFinding
 	for _, t := range tools {
-		// classifyDestructive (added in 0.2.0 final-polish) suppresses
-		// the well-known benign forms — `delete_cache`, `purge_logs`,
-		// `remove_session`, etc. — where the verb's blast radius is
-		// bounded by the object noun. Always-high verbs (`exec`,
-		// `transfer`, `send_payment`) stay flagged regardless of
-		// object.
+		// classifyDestructive suppresses the well-known benign forms —
+		// `delete_cache`, `purge_logs`, `remove_session`, etc. — where
+		// the verb's blast radius is bounded by the object noun.
+		// Always-high verbs (`exec`, `transfer`, `send_payment`) stay
+		// flagged regardless of object.
 		if !classifyDestructive(t.name + " " + t.description) {
 			continue
 		}
@@ -265,17 +308,18 @@ var benignDestructiveObjects = regexp.MustCompile(
 	`(?i)\b(?:delete|destroy|remove|drop|truncate|purge)_(?:cache|caches|log|logs|tmp|temp|tempfile|tmpfile|session|sessions|cookie|cookies|buffer|history|local_state)\b`,
 )
 
-// destructiveVerbsAlwaysHigh matches verbs whose destructive intent
-// stands regardless of object: shell exec, code evaluation, payment
-// movement. These never get the benign-object downgrade because the
-// blast radius isn't bounded by the object noun.
+// contextDependentVerbs lists the destructive-verb families whose
+// danger depends on the object noun: deleting a `cache` is fine,
+// deleting a `database` is not. The benign-object downgrade
+// (benignDestructiveObjects) only applies to these. Every other
+// destructive verb (exec, eval, payment movement, file rewrite) is
+// always-high regardless of object.
 //
 // Trailing boundary is `(?:_|\b)` rather than `\b` alone — Go's `\b`
-// treats `_` as a word character, so `\bexec\b` does NOT match
-// `exec_command`. Allowing `_` lets the `verb_object` form match
-// (`exec_command`, `run_shell`, `send_payment`).
-var destructiveVerbsAlwaysHigh = regexp.MustCompile(
-	`(?i)\b(?:exec|execute|run_shell|run_command|spawn|eval|send_email|send_payment|charge|refund|transfer)(?:_|\b)`,
+// treats `_` as a word character, so `\bdelete\b` does NOT match
+// `delete_cache`. Allowing `_` lets the `verb_object` form match.
+var contextDependentVerbs = regexp.MustCompile(
+	`(?i)\b(?:delete|destroy|remove|drop|truncate|purge)(?:_|\b)`,
 )
 
 func looksDestructive(s string) bool {
@@ -288,15 +332,15 @@ func looksDestructive(s string) bool {
 }
 
 // classifyDestructive returns true if the matched destructive verb
-// should fire a finding (i.e. it's not the benign-object form). For
-// always-high verbs it always returns true; for delete-style verbs it
-// returns false when the object noun is in the benign whitelist
-// (cache, log, tmp, session, cookie, etc.).
+// should fire a finding (i.e. it's not the benign-object form). Only
+// the context-dependent verb family (delete / destroy / remove / drop
+// / truncate / purge) gets the benign-object downgrade; every other
+// destructive verb stays high regardless of object.
 func classifyDestructive(s string) bool {
 	if !looksDestructive(s) {
 		return false
 	}
-	if destructiveVerbsAlwaysHigh.MatchString(s) {
+	if !contextDependentVerbs.MatchString(s) {
 		return true
 	}
 	if benignDestructiveObjects.MatchString(s) {

@@ -31,6 +31,16 @@ const (
 	// SurfaceDataset is a dataset loader, fixture, or data pipeline entry point.
 	SurfaceDataset CodeSurfaceKind = "dataset"
 
+	// SurfaceModel is a saved model artifact: a serialized weights /
+	// parameters / architecture file that production code loads at
+	// inference time. Examples: PyTorch .pt/.pth checkpoints, Keras/TF
+	// .h5 saved models, sklearn .joblib/.pkl pickles, ONNX .onnx
+	// exports, HuggingFace .safetensors shards. Distinct from
+	// SurfaceDataset because model artifacts encode learned behavior —
+	// swapping the file changes what the system does, the same way a
+	// prompt edit does, even when no code changed.
+	SurfaceModel CodeSurfaceKind = "model"
+
 	// SurfaceToolDef is a tool/function-calling definition, schema, or description.
 	SurfaceToolDef CodeSurfaceKind = "tool_definition"
 

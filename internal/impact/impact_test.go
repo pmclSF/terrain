@@ -49,7 +49,7 @@ func TestAnalyze_WellProtectedChange(t *testing.T) {
 	}
 	// Posture is partially_protected because exported unit changes carry exposure risk,
 	// even when coverage is strong.
-	if result.Posture.Band != "partially_protected" {
+	if result.Posture.Band != "moderate" {
 		t.Errorf("expected partially_protected posture (exported unit), got %s", result.Posture.Band)
 	}
 }
@@ -480,7 +480,7 @@ func TestFilterByOwner(t *testing.T) {
 			{GapType: "untested_export", CodeUnitID: "pay:PaymentService", Severity: "high"},
 		},
 		ImpactedOwners: []string{"team-auth", "team-payments"},
-		Posture:        ChangeRiskPosture{Band: "partially_protected"},
+		Posture:        ChangeRiskPosture{Band: "moderate"},
 	}
 
 	filtered := FilterByOwner(result, "team-auth")
@@ -505,7 +505,7 @@ func TestFilterByOwner_PreservesContext(t *testing.T) {
 		ChangeSet:          &models.ChangeSet{Source: "git-diff", BaseRef: "main"},
 		Scope:              ChangeScope{Source: "git-diff"},
 		ChangedAreas:       []ChangedArea{{Area: "auth"}},
-		Posture:            ChangeRiskPosture{Band: "partially_protected"},
+		Posture:            ChangeRiskPosture{Band: "moderate"},
 		CoverageConfidence: "medium",
 		Fallback:           FallbackInfo{Level: "exact"},
 		TotalTestCount:     42,
@@ -573,7 +573,7 @@ func TestBuildAggregate_SparseData(t *testing.T) {
 			{Severity: "medium", GapType: "no_coverage"},
 		},
 		ImpactedOwners: []string{"team-a"},
-		Posture:        ChangeRiskPosture{Band: "partially_protected"},
+		Posture:        ChangeRiskPosture{Band: "moderate"},
 	}
 
 	agg := BuildAggregate(result)
@@ -590,7 +590,7 @@ func TestBuildAggregate_SparseData(t *testing.T) {
 	if agg.GapCount != 2 {
 		t.Errorf("expected 2 gaps, got %d", agg.GapCount)
 	}
-	if agg.Posture != "partially_protected" {
+	if agg.Posture != "moderate" {
 		t.Errorf("expected partially_protected posture, got %s", agg.Posture)
 	}
 	// Below privacy threshold (3), breakdowns are suppressed.
@@ -628,7 +628,7 @@ func TestBuildAggregate_AboveThreshold(t *testing.T) {
 			{Severity: "high", GapType: "untested_export"},
 		},
 		ImpactedOwners: []string{"team-a", "team-b", "team-c"},
-		Posture:        ChangeRiskPosture{Band: "weakly_protected"},
+		Posture:        ChangeRiskPosture{Band: "weak"},
 	}
 
 	agg := BuildAggregate(result)
@@ -984,7 +984,7 @@ func TestInstabilityDimension_WellProtected(t *testing.T) {
 		},
 	}
 	dim := computeInstabilityDimension(result)
-	if dim.Band != "well_protected" {
+	if dim.Band != "strong" {
 		t.Errorf("expected well_protected, got %s", dim.Band)
 	}
 }
@@ -998,7 +998,7 @@ func TestInstabilityDimension_HighRisk(t *testing.T) {
 		},
 	}
 	dim := computeInstabilityDimension(result)
-	if dim.Band != "high_risk" {
+	if dim.Band != "critical" {
 		t.Errorf("expected high_risk, got %s", dim.Band)
 	}
 }
@@ -1016,7 +1016,7 @@ func TestEvidenceLimited_NoUnitsNoTests(t *testing.T) {
 
 	result := Analyze(scope, snap)
 
-	if result.Posture.Band != "evidence_limited" {
+	if result.Posture.Band != "unknown" {
 		t.Errorf("expected evidence_limited, got %s", result.Posture.Band)
 	}
 }
@@ -1356,23 +1356,23 @@ func TestAnalyze_PromptChangeImpactsScenarios(t *testing.T) {
 			{SurfaceID: "surface:src/ai/prompts.ts:userTemplate", Name: "userTemplate", Path: "src/ai/prompts.ts", Kind: models.SurfacePrompt, Language: "typescript", Exported: true},
 			{SurfaceID: "surface:src/utils/helper.ts:formatDate", Name: "formatDate", Path: "src/utils/helper.ts", Kind: models.SurfaceFunction, Language: "typescript", Exported: true},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:eval:safety",
+				EvalID:        "scenario:eval:safety",
 				Name:              "safety-check",
 				Category:          "safety",
 				Framework:         "promptfoo",
 				CoveredSurfaceIDs: []string{"surface:src/ai/prompts.ts:systemPrompt"},
 			},
 			{
-				ScenarioID:        "scenario:eval:accuracy",
+				EvalID:        "scenario:eval:accuracy",
 				Name:              "accuracy-check",
 				Category:          "accuracy",
 				Framework:         "deepeval",
 				CoveredSurfaceIDs: []string{"surface:src/ai/prompts.ts:systemPrompt", "surface:src/ai/prompts.ts:userTemplate"},
 			},
 			{
-				ScenarioID:        "scenario:eval:unrelated",
+				EvalID:        "scenario:eval:unrelated",
 				Name:              "unrelated-check",
 				Category:          "regression",
 				CoveredSurfaceIDs: []string{"surface:src/utils/helper.ts:formatDate"},
@@ -1409,12 +1409,12 @@ func TestAnalyze_PromptChangeImpactsScenarios(t *testing.T) {
 	}
 
 	// Should impact 2 scenarios (safety and accuracy), but not the unrelated one.
-	if len(result.ImpactedScenarios) != 2 {
-		t.Fatalf("expected 2 impacted scenarios, got %d", len(result.ImpactedScenarios))
+	if len(result.ImpactedEvals) != 2 {
+		t.Fatalf("expected 2 impacted scenarios, got %d", len(result.ImpactedEvals))
 	}
 
 	scenarioIDs := map[string]bool{}
-	for _, sc := range result.ImpactedScenarios {
+	for _, sc := range result.ImpactedEvals {
 		scenarioIDs[sc.ScenarioID] = true
 		if sc.ImpactConfidence == "" {
 			t.Errorf("scenario %s: missing confidence", sc.ScenarioID)
@@ -1449,9 +1449,9 @@ func TestAnalyze_DatasetChangeImpactsScenarios(t *testing.T) {
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "surface:data/loader.py:trainingDataset", Name: "trainingDataset", Path: "data/loader.py", Kind: models.SurfaceDataset, Language: "python", Exported: true},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:eval:data-quality",
+				EvalID:        "scenario:eval:data-quality",
 				Name:              "data-quality",
 				Category:          "quality",
 				Framework:         "custom",
@@ -1469,11 +1469,11 @@ func TestAnalyze_DatasetChangeImpactsScenarios(t *testing.T) {
 
 	result := Analyze(scope, snap)
 
-	if len(result.ImpactedScenarios) != 1 {
-		t.Fatalf("expected 1 impacted scenario for dataset change, got %d", len(result.ImpactedScenarios))
+	if len(result.ImpactedEvals) != 1 {
+		t.Fatalf("expected 1 impacted scenario for dataset change, got %d", len(result.ImpactedEvals))
 	}
-	if result.ImpactedScenarios[0].ScenarioID != "scenario:eval:data-quality" {
-		t.Errorf("expected data-quality scenario, got %s", result.ImpactedScenarios[0].ScenarioID)
+	if result.ImpactedEvals[0].ScenarioID != "scenario:eval:data-quality" {
+		t.Errorf("expected data-quality scenario, got %s", result.ImpactedEvals[0].ScenarioID)
 	}
 }
 
@@ -1495,8 +1495,8 @@ func TestAnalyze_NoScenariosProducesEmptyList(t *testing.T) {
 
 	result := Analyze(scope, snap)
 
-	if len(result.ImpactedScenarios) != 0 {
-		t.Errorf("expected 0 scenarios when none defined, got %d", len(result.ImpactedScenarios))
+	if len(result.ImpactedEvals) != 0 {
+		t.Errorf("expected 0 scenarios when none defined, got %d", len(result.ImpactedEvals))
 	}
 }
 
@@ -1513,9 +1513,9 @@ func TestFindImpactedScenarios_Deterministic(t *testing.T) {
 	}
 
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "scenario:b", Name: "b-check", CoveredSurfaceIDs: []string{"surface:src/ai/prompts.ts:buildPrompt"}},
-			{ScenarioID: "scenario:a", Name: "a-check", CoveredSurfaceIDs: []string{"surface:src/ai/prompts.ts:buildPrompt"}},
+		Evals: []models.Eval{
+			{EvalID: "scenario:b", Name: "b-check", CoveredSurfaceIDs: []string{"surface:src/ai/prompts.ts:buildPrompt"}},
+			{EvalID: "scenario:a", Name: "a-check", CoveredSurfaceIDs: []string{"surface:src/ai/prompts.ts:buildPrompt"}},
 		},
 	}
 
@@ -1705,8 +1705,8 @@ func TestAIProtectionGap_CoveredSurfaceNoGap(t *testing.T) {
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s:prompt", Name: "buildPrompt", Path: "src/prompts.ts", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:1", CoveredSurfaceIDs: []string{"s:prompt"}},
+		Evals: []models.Eval{
+			{EvalID: "sc:1", CoveredSurfaceIDs: []string{"s:prompt"}},
 		},
 	}
 	scope := ChangeScopeFromPaths([]string{"src/prompts.ts"}, ChangeModified)
@@ -1725,12 +1725,12 @@ func TestAIProtectionGap_WeakCapability(t *testing.T) {
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s:p1", Name: "prompt1", Path: "src/a.ts", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:1", Name: "s1", Capability: "search",
+		Evals: []models.Eval{
+			{EvalID: "sc:1", Name: "s1", Capability: "search",
 				CoveredSurfaceIDs: []string{"s:p1"}},
-			{ScenarioID: "sc:2", Name: "s2", Capability: "search",
+			{EvalID: "sc:2", Name: "s2", Capability: "search",
 				CoveredSurfaceIDs: []string{"s:other"}},
-			{ScenarioID: "sc:3", Name: "s3", Capability: "search",
+			{EvalID: "sc:3", Name: "s3", Capability: "search",
 				CoveredSurfaceIDs: []string{"s:other2"}},
 		},
 	}
@@ -1759,9 +1759,9 @@ func TestAnalyze_ToolSchemaChangeImpactsAgentScenario(t *testing.T) {
 			{SurfaceID: "s:tool", Name: "searchToolSchema", Path: "src/tools/search.ts", Kind: models.SurfaceToolDef},
 			{SurfaceID: "s:agent", Name: "agentRouter", Path: "src/agent.ts", Kind: models.SurfaceAgent},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "sc:agent-tool-use",
+				EvalID:        "sc:agent-tool-use",
 				Name:              "agent-tool-use",
 				Category:          "accuracy",
 				CoveredSurfaceIDs: []string{"s:tool", "s:agent"},
@@ -1772,11 +1772,11 @@ func TestAnalyze_ToolSchemaChangeImpactsAgentScenario(t *testing.T) {
 	scope := ChangeScopeFromPaths([]string{"src/tools/search.ts"}, ChangeModified)
 	result := Analyze(scope, snap)
 
-	if len(result.ImpactedScenarios) != 1 {
-		t.Fatalf("expected 1 impacted scenario, got %d", len(result.ImpactedScenarios))
+	if len(result.ImpactedEvals) != 1 {
+		t.Fatalf("expected 1 impacted scenario, got %d", len(result.ImpactedEvals))
 	}
-	if !strings.Contains(result.ImpactedScenarios[0].Relevance, "tool schema changed") {
-		t.Errorf("expected 'tool schema changed' in relevance, got: %s", result.ImpactedScenarios[0].Relevance)
+	if !strings.Contains(result.ImpactedEvals[0].Relevance, "tool schema changed") {
+		t.Errorf("expected 'tool schema changed' in relevance, got: %s", result.ImpactedEvals[0].Relevance)
 	}
 }
 
@@ -1786,9 +1786,9 @@ func TestAnalyze_ParserChangeImpactsStructuredOutput(t *testing.T) {
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s:parser", Name: "outputSchema", Path: "src/parsers/output.ts", Kind: models.SurfaceToolDef},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "sc:structured-output",
+				EvalID:        "sc:structured-output",
 				Name:              "structured-output-validation",
 				Category:          "accuracy",
 				CoveredSurfaceIDs: []string{"s:parser"},
@@ -1798,12 +1798,12 @@ func TestAnalyze_ParserChangeImpactsStructuredOutput(t *testing.T) {
 	scope := ChangeScopeFromPaths([]string{"src/parsers/output.ts"}, ChangeModified)
 	result := Analyze(scope, snap)
 
-	if len(result.ImpactedScenarios) != 1 {
-		t.Fatalf("expected 1 impacted scenario, got %d", len(result.ImpactedScenarios))
+	if len(result.ImpactedEvals) != 1 {
+		t.Fatalf("expected 1 impacted scenario, got %d", len(result.ImpactedEvals))
 	}
-	if !strings.Contains(result.ImpactedScenarios[0].Relevance, "tool schema changed") {
+	if !strings.Contains(result.ImpactedEvals[0].Relevance, "tool schema changed") {
 		t.Errorf("expected tool schema in relevance (parser is SurfaceToolDef), got: %s",
-			result.ImpactedScenarios[0].Relevance)
+			result.ImpactedEvals[0].Relevance)
 	}
 }
 
@@ -1814,9 +1814,9 @@ func TestAnalyze_FallbackChangeImpactsResilience(t *testing.T) {
 			{SurfaceID: "s:fallback", Name: "fallbackStrategy", Path: "src/agent/fallback.ts", Kind: models.SurfaceAgent},
 			{SurfaceID: "s:retry", Name: "retryPolicy", Path: "src/agent/retry.ts", Kind: models.SurfaceAgent},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "sc:resilience",
+				EvalID:        "sc:resilience",
 				Name:              "agent-resilience",
 				Category:          "reliability",
 				CoveredSurfaceIDs: []string{"s:fallback", "s:retry"},
@@ -1827,11 +1827,11 @@ func TestAnalyze_FallbackChangeImpactsResilience(t *testing.T) {
 	scope := ChangeScopeFromPaths([]string{"src/agent/fallback.ts"}, ChangeModified)
 	result := Analyze(scope, snap)
 
-	if len(result.ImpactedScenarios) != 1 {
-		t.Fatalf("expected 1 impacted scenario, got %d", len(result.ImpactedScenarios))
+	if len(result.ImpactedEvals) != 1 {
+		t.Fatalf("expected 1 impacted scenario, got %d", len(result.ImpactedEvals))
 	}
-	if !strings.Contains(result.ImpactedScenarios[0].Relevance, "agent config changed") {
-		t.Errorf("expected 'agent config changed' in relevance, got: %s", result.ImpactedScenarios[0].Relevance)
+	if !strings.Contains(result.ImpactedEvals[0].Relevance, "agent config changed") {
+		t.Errorf("expected 'agent config changed' in relevance, got: %s", result.ImpactedEvals[0].Relevance)
 	}
 }
 
@@ -1849,16 +1849,16 @@ export function toolFilter(tool, context) { return tool.allowed; }
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s:guard", Name: "toolGuardrail", Path: "src/guards.ts", Kind: models.SurfaceToolDef},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:safe-tools", Name: "safe-tool-invocation",
+		Evals: []models.Eval{
+			{EvalID: "sc:safe-tools", Name: "safe-tool-invocation",
 				CoveredSurfaceIDs: []string{"s:guard"}},
 		},
 	}
 	scope := ChangeScopeFromPaths([]string{"src/guards.ts"}, ChangeModified)
 	result := Analyze(scope, snap)
 
-	if len(result.ImpactedScenarios) != 1 {
-		t.Fatalf("expected 1 impacted scenario, got %d", len(result.ImpactedScenarios))
+	if len(result.ImpactedEvals) != 1 {
+		t.Fatalf("expected 1 impacted scenario, got %d", len(result.ImpactedEvals))
 	}
 }
 
@@ -1869,9 +1869,9 @@ func TestAnalyze_ContextChangeTriggersScenario(t *testing.T) {
 			{SurfaceID: "surface:src/context.ts:systemPrompt", Name: "systemPrompt", Path: "src/context.ts", Kind: models.SurfaceContext},
 			{SurfaceID: "surface:src/context.ts:safetyOverlay", Name: "safetyOverlay", Path: "src/context.ts", Kind: models.SurfaceContext},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:custom:guardrail",
+				EvalID:        "scenario:custom:guardrail",
 				Name:              "refund-escalation-guardrail",
 				Category:          "safety",
 				CoveredSurfaceIDs: []string{"surface:src/context.ts:systemPrompt", "surface:src/context.ts:safetyOverlay"},
@@ -1881,10 +1881,10 @@ func TestAnalyze_ContextChangeTriggersScenario(t *testing.T) {
 	scope := ChangeScopeFromPaths([]string{"src/context.ts"}, ChangeModified)
 	result := Analyze(scope, snap)
 
-	if len(result.ImpactedScenarios) != 1 {
-		t.Fatalf("expected 1 impacted scenario, got %d", len(result.ImpactedScenarios))
+	if len(result.ImpactedEvals) != 1 {
+		t.Fatalf("expected 1 impacted scenario, got %d", len(result.ImpactedEvals))
 	}
-	sc := result.ImpactedScenarios[0]
+	sc := result.ImpactedEvals[0]
 	if sc.Name != "refund-escalation-guardrail" {
 		t.Errorf("wrong scenario: %s", sc.Name)
 	}
@@ -1904,9 +1904,9 @@ func TestAnalyze_NonAIChangeDoesNotTriggerScenarios(t *testing.T) {
 			{SurfaceID: "surface:src/utils.ts:formatDate", Name: "formatDate", Path: "src/utils.ts", Kind: models.SurfaceFunction},
 			{SurfaceID: "surface:src/ai/prompt.ts:buildPrompt", Name: "buildPrompt", Path: "src/ai/prompt.ts", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:custom:qa-accuracy",
+				EvalID:        "scenario:custom:qa-accuracy",
 				Name:              "qa-accuracy",
 				CoveredSurfaceIDs: []string{"surface:src/ai/prompt.ts:buildPrompt"},
 			},
@@ -1916,9 +1916,9 @@ func TestAnalyze_NonAIChangeDoesNotTriggerScenarios(t *testing.T) {
 	scope := ChangeScopeFromPaths([]string{"src/utils.ts"}, ChangeModified)
 	result := Analyze(scope, snap)
 
-	if len(result.ImpactedScenarios) != 0 {
+	if len(result.ImpactedEvals) != 0 {
 		t.Errorf("expected 0 impacted scenarios for non-AI change, got %d: %v",
-			len(result.ImpactedScenarios), result.ImpactedScenarios)
+			len(result.ImpactedEvals), result.ImpactedEvals)
 	}
 }
 
@@ -1930,9 +1930,9 @@ func TestAnalyze_MultipleAISurfaceChangesMerge(t *testing.T) {
 			{SurfaceID: "surface:src/ai/prompt.ts:searchPrompt", Name: "searchPrompt", Path: "src/ai/prompt.ts", Kind: models.SurfacePrompt},
 			{SurfaceID: "surface:src/tools/search.ts:toolSchema", Name: "toolSchema", Path: "src/tools/search.ts", Kind: models.SurfaceToolDef},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID: "scenario:custom:enterprise-search",
+				EvalID: "scenario:custom:enterprise-search",
 				Name:       "enterprise-search-citations",
 				CoveredSurfaceIDs: []string{
 					"surface:src/rag/chunking.ts:chunkConfig",
@@ -1946,10 +1946,10 @@ func TestAnalyze_MultipleAISurfaceChangesMerge(t *testing.T) {
 	scope := ChangeScopeFromPaths([]string{"src/rag/chunking.ts", "src/ai/prompt.ts", "src/tools/search.ts"}, ChangeModified)
 	result := Analyze(scope, snap)
 
-	if len(result.ImpactedScenarios) != 1 {
-		t.Fatalf("expected 1 impacted scenario, got %d", len(result.ImpactedScenarios))
+	if len(result.ImpactedEvals) != 1 {
+		t.Fatalf("expected 1 impacted scenario, got %d", len(result.ImpactedEvals))
 	}
-	rel := result.ImpactedScenarios[0].Relevance
+	rel := result.ImpactedEvals[0].Relevance
 	// Should mention all 3 kinds.
 	if !strings.Contains(rel, "prompt changed") {
 		t.Errorf("expected 'prompt changed' in relevance, got: %s", rel)
@@ -1969,15 +1969,15 @@ func TestAnalyze_RAGSurfaceChangeImpactsScenarios(t *testing.T) {
 			{SurfaceID: "surface:src/rag/chunking.ts:chunkConfig", Name: "chunkConfig", Path: "src/rag/chunking.ts", Kind: models.SurfaceRetrieval},
 			{SurfaceID: "surface:src/rag/reranker.ts:rerankerConfig", Name: "rerankerConfig", Path: "src/rag/reranker.ts", Kind: models.SurfaceRetrieval},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:custom:retrieval-quality",
+				EvalID:        "scenario:custom:retrieval-quality",
 				Name:              "retrieval-quality",
 				Category:          "accuracy",
 				CoveredSurfaceIDs: []string{"surface:src/rag/chunking.ts:chunkConfig", "surface:src/rag/reranker.ts:rerankerConfig"},
 			},
 			{
-				ScenarioID:        "scenario:custom:citation-completeness",
+				EvalID:        "scenario:custom:citation-completeness",
 				Name:              "citation-completeness",
 				Category:          "accuracy",
 				CoveredSurfaceIDs: []string{"surface:src/rag/reranker.ts:rerankerConfig"},
@@ -1988,18 +1988,18 @@ func TestAnalyze_RAGSurfaceChangeImpactsScenarios(t *testing.T) {
 	// Change chunk config → should impact retrieval-quality but NOT citation-completeness.
 	scope := ChangeScopeFromPaths([]string{"src/rag/chunking.ts"}, ChangeModified)
 	result := Analyze(scope, snap)
-	if len(result.ImpactedScenarios) != 1 {
-		t.Fatalf("expected 1 impacted scenario from chunk change, got %d", len(result.ImpactedScenarios))
+	if len(result.ImpactedEvals) != 1 {
+		t.Fatalf("expected 1 impacted scenario from chunk change, got %d", len(result.ImpactedEvals))
 	}
-	if result.ImpactedScenarios[0].Name != "retrieval-quality" {
-		t.Errorf("expected retrieval-quality, got %s", result.ImpactedScenarios[0].Name)
+	if result.ImpactedEvals[0].Name != "retrieval-quality" {
+		t.Errorf("expected retrieval-quality, got %s", result.ImpactedEvals[0].Name)
 	}
 
 	// Change reranker → should impact BOTH scenarios.
 	scope2 := ChangeScopeFromPaths([]string{"src/rag/reranker.ts"}, ChangeModified)
 	result2 := Analyze(scope2, snap)
-	if len(result2.ImpactedScenarios) != 2 {
-		t.Fatalf("expected 2 impacted scenarios from reranker change, got %d", len(result2.ImpactedScenarios))
+	if len(result2.ImpactedEvals) != 2 {
+		t.Fatalf("expected 2 impacted scenarios from reranker change, got %d", len(result2.ImpactedEvals))
 	}
 }
 
@@ -2010,9 +2010,9 @@ func TestAnalyze_ContextSurfaceChangeImpactsScenarios(t *testing.T) {
 			{SurfaceID: "surface:src/prompts.ts:systemPrompt", Name: "systemPrompt", Path: "src/prompts.ts", Kind: models.SurfaceContext},
 			{SurfaceID: "surface:src/prompts.ts:buildPrompt", Name: "buildPrompt", Path: "src/prompts.ts", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:custom:safety",
+				EvalID:        "scenario:custom:safety",
 				Name:              "safety",
 				Category:          "safety",
 				CoveredSurfaceIDs: []string{"surface:src/prompts.ts:systemPrompt"},
@@ -2023,15 +2023,15 @@ func TestAnalyze_ContextSurfaceChangeImpactsScenarios(t *testing.T) {
 	result := Analyze(scope, snap)
 
 	// Context surface change should impact the scenario.
-	if len(result.ImpactedScenarios) != 1 {
-		t.Fatalf("expected 1 impacted scenario from context change, got %d", len(result.ImpactedScenarios))
+	if len(result.ImpactedEvals) != 1 {
+		t.Fatalf("expected 1 impacted scenario from context change, got %d", len(result.ImpactedEvals))
 	}
-	if result.ImpactedScenarios[0].Name != "safety" {
-		t.Errorf("expected impacted scenario 'safety', got %q", result.ImpactedScenarios[0].Name)
+	if result.ImpactedEvals[0].Name != "safety" {
+		t.Errorf("expected impacted scenario 'safety', got %q", result.ImpactedEvals[0].Name)
 	}
 	// Should have exact confidence (scenario explicitly covers this surface).
-	if result.ImpactedScenarios[0].ImpactConfidence != ConfidenceExact {
-		t.Errorf("expected exact confidence, got %s", result.ImpactedScenarios[0].ImpactConfidence)
+	if result.ImpactedEvals[0].ImpactConfidence != ConfidenceExact {
+		t.Errorf("expected exact confidence, got %s", result.ImpactedEvals[0].ImpactConfidence)
 	}
 }
 

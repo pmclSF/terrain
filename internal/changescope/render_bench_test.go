@@ -8,12 +8,12 @@ import (
 
 // BenchmarkRenderPRSummaryMarkdown_Small benchmarks the PR markdown
 // renderer against a small, realistic PR (5 findings, 3 selections,
-// 2 owners). Audit-named gap (pr_change_scoped.E5): published
-// performance evidence for the PR pipeline's render stage.
+// 2 owners). Provides published performance evidence for the PR
+// pipeline's render stage.
 //
 // Run with: go test -bench=BenchmarkRenderPR -benchmem ./internal/changescope/
 //
-// Reference baseline (Intel i7-8850H @ 2.60GHz, captured 2026-05):
+// Reference order-of-magnitude baseline on a recent x86_64 laptop:
 //   small  (5 findings)    ≈ 19 µs/op,  9 KB/op,  93 allocs/op
 //   medium (50 findings)   ≈ 51 µs/op, 44 KB/op, 241 allocs/op
 //   large  (200 findings)  ≈ 155 µs/op, 164 KB/op, 553 allocs/op
@@ -95,7 +95,7 @@ func newBenchPR(findingCount, selectionCount, ownerCount int) *PRAnalysis {
 	}
 
 	return &PRAnalysis{
-		PostureBand:        "partially_protected",
+		PostureBand:        "moderate",
 		ChangedFileCount:   findingCount / 2,
 		ChangedSourceCount: findingCount / 3,
 		ChangedTestCount:   findingCount / 6,

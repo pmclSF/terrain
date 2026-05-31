@@ -26,7 +26,7 @@ falls back to a default.
   // expose one. Surface as a `default-applied` IngestionDiagnostic
   // when present-but-unparseable.
   // Stability: Stable.
-  "createdAt": "2026-04-30T12:00:00Z",
+  "createdAt": "2099-04-30T12:00:00Z",
 
   // One entry per (test, prompt, provider) combination. May be
   // empty when the framework only provides aggregate stats.

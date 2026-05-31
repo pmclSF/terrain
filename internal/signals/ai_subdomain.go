@@ -3,11 +3,10 @@ package signals
 import "github.com/pmclSF/terrain/internal/models"
 
 // AISubdomain classifies an AI-domain signal into one of three trust
-// tiers. The subdivision is the load-bearing change for Track 5.1 of
-// the 0.2 release plan: the launch-readiness review flagged that
-// presenting AI inventory data alongside heuristic AI hygiene and
-// eval-data-dependent regression signals as a single undifferentiated
-// list overstated the trust we can claim.
+// tiers. The subdivision exists because presenting AI inventory data
+// alongside heuristic AI hygiene and eval-data-dependent regression
+// signals as a single undifferentiated list overstates the trust we
+// can claim.
 //
 // Adopters reading the AI Risk Review section of a PR comment should
 // see — at a glance — which signals are derived from facts (inventory),
@@ -67,6 +66,7 @@ var aiSubdomainBySignal = map[models.SignalType]AISubdomain{
 	SignalAIPolicyViolation:       AISubdomainInventory,
 	SignalAIPromptVersioning:      AISubdomainInventory,
 	SignalAISafetyEvalMissing:     AISubdomainInventory,
+	SignalPromptFileMissingEval:      AISubdomainInventory,
 	SignalUncoveredAISurface:      AISubdomainInventory,
 	SignalUntestedPromptFlow:      AISubdomainInventory,
 	SignalCapabilityValidationGap: AISubdomainInventory,
@@ -76,9 +76,12 @@ var aiSubdomainBySignal = map[models.SignalType]AISubdomain{
 	// Heuristic structural patterns: detector reads source code
 	// and flags shapes. Medium trust; false-positive guidance per
 	// detector lives in docs/rules/ai/.
-	SignalAIPromptInjectionRisk:  AISubdomainHygiene,
-	SignalAIHardcodedAPIKey:      AISubdomainHygiene,
-	SignalAIToolWithoutSandbox:   AISubdomainHygiene,
+	SignalAIPromptInjectionRisk:           AISubdomainHygiene,
+	SignalAIPromptSchemaDrift:             AISubdomainHygiene,
+	SignalAIHardcodedAPIKey:               AISubdomainHygiene,
+	SignalAIHardcodedAPIKeyLiteralShape:   AISubdomainHygiene,
+	SignalSecretScannerCoverageDegraded:   AISubdomainHygiene,
+	SignalAIToolWithoutSandbox:            AISubdomainHygiene,
 	SignalAIModelDeprecationRisk: AISubdomainHygiene,
 	SignalAIFewShotContamination: AISubdomainHygiene,
 	SignalContextOverflowRisk:    AISubdomainHygiene,
@@ -119,6 +122,42 @@ var aiSubdomainBySignal = map[models.SignalType]AISubdomain{
 	SignalToolRoutingError:       AISubdomainRegression,
 	SignalToolSelectionError:     AISubdomainRegression,
 	SignalTopKRegression:         AISubdomainRegression,
+
+	// Stable-rule AI signals (Planned at this commit, detectors
+	// land in followups).
+	SignalSecretsInPrompt:       AISubdomainHygiene,
+	SignalNoEvalForAISurface:    AISubdomainInventory,
+	SignalModelFixtureUnpinned:  AISubdomainHygiene,
+	SignalEvalNoAssertion:       AISubdomainHygiene,
+	SignalNoSeed:                AISubdomainHygiene,
+	SignalPIIInEval:             AISubdomainHygiene,
+	SignalInsecureDeserialize:   AISubdomainHygiene,
+	SignalDataLeakageSuspected:  AISubdomainHygiene,
+	SignalMissingTrainTestSplit: AISubdomainHygiene,
+
+	// Regression family — eval-output-driven.
+	SignalBaselineNotSet:        AISubdomainRegression,
+	SignalPassRateDrop:          AISubdomainRegression,
+	SignalSnapshotMismatch:      AISubdomainRegression,
+	SignalPerformanceRegression: AISubdomainRegression,
+	SignalMissingBaseline:       AISubdomainInventory,
+
+	// Preview rules — most are hygiene-class structural patterns.
+	SignalPromptBloat:              AISubdomainHygiene,
+	SignalPromptWithoutTemperature: AISubdomainHygiene,
+	SignalMissingPromptValidator:   AISubdomainHygiene,
+	SignalPromptVersionSkew:        AISubdomainInventory,
+	SignalRetrievalWithoutRerank:   AISubdomainHygiene,
+	SignalColdVectorStore:          AISubdomainHygiene,
+	SignalAgentLoopRisk:            AISubdomainHygiene,
+	SignalToolWithoutBudget:        AISubdomainHygiene,
+	SignalTargetLeakage:            AISubdomainHygiene,
+	SignalDuplicateEvalRows:        AISubdomainHygiene,
+	SignalSchemaDrift:              AISubdomainRegression,
+	SignalMissingEvalCategories:    AISubdomainInventory,
+	SignalOrphanedEval:             AISubdomainInventory,
+	SignalColdStartTime:            AISubdomainRegression,
+	SignalTokenCostBudget:          AISubdomainRegression,
 }
 
 // AISubdomainOf returns the AI subdomain classification for a signal

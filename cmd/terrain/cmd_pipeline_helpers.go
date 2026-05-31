@@ -10,9 +10,9 @@ import (
 )
 
 // runPipelineWithSignals wraps engine.RunPipelineContext with a
-// SIGINT-aware context. Pre-0.2.x only `terrain analyze` honoured
-// Ctrl-C; the other analysis commands (ai *, compare, explain, impact,
-// insights *, report *) inherited engine.RunPipeline's
+// SIGINT-aware context. Earlier revisions had only `terrain analyze`
+// honour Ctrl-C; the other analysis commands (ai *, compare, explain,
+// impact, insights *, report *) inherited engine.RunPipeline's
 // context.Background and exited abruptly on Ctrl-C with no cleanup —
 // leaving the user staring at a half-printed report and any in-flight
 // detector still holding open file handles.

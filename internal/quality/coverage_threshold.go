@@ -2,6 +2,7 @@ package quality
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 
@@ -135,8 +136,8 @@ func (d *CoverageThresholdDetector) checkThreshold(summary istanbulSummary, thre
 				EvidenceStrength: models.EvidenceStrong,
 				EvidenceSource:   models.SourceCoverage,
 				Location:         models.SignalLocation{Repository: "total"},
-				Explanation: m.name + " coverage is " + formatPct(m.pct) +
-					"%, below threshold of " + formatPct(threshold) + "%.",
+				Explanation: fmt.Sprintf("%s coverage is %s%%, below threshold of %s%%.",
+					m.name, formatPct(m.pct), formatPct(threshold)),
 				SuggestedAction: "Identify concentrated coverage gaps and target high-risk modules first.",
 				Metadata: map[string]any{
 					"metric":    m.name,
@@ -158,11 +159,8 @@ func metricPct(m *istanbulMetric) float64 {
 }
 
 func formatPct(v float64) string {
-	// Simple float formatting without importing strconv for a lightweight package.
-	whole := int(v)
-	frac := int((v - float64(whole)) * 10)
-	if frac == 0 {
-		return itoa(whole)
+	if v == float64(int(v)) {
+		return fmt.Sprintf("%d", int(v))
 	}
-	return itoa(whole) + "." + itoa(frac)
+	return fmt.Sprintf("%.1f", v)
 }

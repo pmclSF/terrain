@@ -97,7 +97,7 @@ func TestReplay_ExactMatch(t *testing.T) {
 	art := &Artifact{
 		Version:  "1",
 		Mode:     "full",
-		Selected: []ScenarioEntry{{ID: "sc1", Name: "test"}},
+		Selected: []EvalEntry{{ID: "sc1", Name: "test"}},
 		Hashes:   hashes,
 	}
 
@@ -127,7 +127,7 @@ func TestReplay_DetectsContentChange(t *testing.T) {
 	hashes := ComputeHashes(root, surfaces)
 	art := &Artifact{
 		Version:  "1",
-		Selected: []ScenarioEntry{{ID: "sc1", Name: "test"}},
+		Selected: []EvalEntry{{ID: "sc1", Name: "test"}},
 		Hashes:   hashes,
 	}
 
@@ -166,7 +166,7 @@ func TestReplay_DetectsScenarioCountChange(t *testing.T) {
 
 	art := &Artifact{
 		Version:  "1",
-		Selected: []ScenarioEntry{{ID: "sc1"}, {ID: "sc2"}},
+		Selected: []EvalEntry{{ID: "sc1"}, {ID: "sc2"}},
 		Hashes:   ContentHashes{Prompts: map[string]string{}, Contexts: map[string]string{}, Datasets: map[string]string{}, ToolDefs: map[string]string{}, Retrievals: map[string]string{}, Agents: map[string]string{}, EvalDefs: map[string]string{}},
 	}
 	artPath := filepath.Join(t.TempDir(), "artifact.json")
@@ -204,7 +204,7 @@ func TestReplay_DetectsSurfaceRemoved(t *testing.T) {
 	hashes := ComputeHashes(root, surfaces)
 	art := &Artifact{
 		Version:  "1",
-		Selected: []ScenarioEntry{{ID: "sc1"}},
+		Selected: []EvalEntry{{ID: "sc1"}},
 		Hashes:   hashes,
 	}
 	artPath := filepath.Join(t.TempDir(), "artifact.json")
@@ -241,7 +241,7 @@ func TestReplay_DetectsSurfaceAdded(t *testing.T) {
 	// Record artifact with no surfaces.
 	art := &Artifact{
 		Version:  "1",
-		Selected: []ScenarioEntry{{ID: "sc1"}},
+		Selected: []EvalEntry{{ID: "sc1"}},
 		Hashes: ContentHashes{
 			Prompts: map[string]string{}, Contexts: map[string]string{},
 			Datasets: map[string]string{}, ToolDefs: map[string]string{},
@@ -283,7 +283,7 @@ func TestSaveArtifact_WritesFile(t *testing.T) {
 
 	art := &Artifact{
 		Mode:     "full",
-		Selected: []ScenarioEntry{{ID: "sc1", Name: "test"}},
+		Selected: []EvalEntry{{ID: "sc1", Name: "test"}},
 		Decision: Decision{Action: "pass"},
 	}
 

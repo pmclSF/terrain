@@ -7,17 +7,19 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/surfacelit"
 )
 
 // PromptVersioningDetector flags prompt-kind surfaces that ship
-// without a recognisable version marker. The round-4 plan called for
-// detecting "prompt content changed without version bump" via baseline
-// comparison; that variant lands when ContentHashes are persisted on
-// the snapshot. This 0.2 detector ships the simpler-but-actionable
-// static check: any prompt that doesn't declare a version is at risk
-// of silent drift the next time it changes.
+// without a recognizable version marker. A richer "prompt content
+// changed without version bump" check via baseline comparison can be
+// added once ContentHashes are persisted on the snapshot. This
+// detector ships the simpler-but-actionable static check: any prompt
+// that doesn't declare a version is at risk of silent drift the next
+// time it changes.
 //
 // Recognised version markers:
 //   - YAML key `version:` (with any value) at column 0
@@ -69,10 +71,10 @@ var filenameVersionPattern = regexp.MustCompile(`(?:[_\-.]v\d+)$`)
 // Requires a non-empty value matching digits / semver / calver / a
 // quoted token.
 //
-// Pre-0.2.x the pattern only required `version:` followed by anything
-// (or nothing). `version: TODO` and `version:` with no value satisfied
-// the check, defeating the detector's intent — silent prompt drift.
-// Now we require a recognisable version literal.
+// A looser pattern that merely required `version:` followed by
+// anything (or nothing) would let `version: TODO` and `version:` with
+// no value satisfy the check, defeating the detector's intent. The
+// pattern below requires a recognizable version literal.
 var inlineVersionPattern = regexp.MustCompile(
 	`(?i)(?:^|\s)(?:#|//|\*)?\s*"?version"?\s*[:=]\s*` +
 		`(?:` +
@@ -114,28 +116,37 @@ func (d *PromptVersioningDetector) Detect(snap *models.TestSuiteSnapshot) []mode
 		if fileHasInlineVersion(abs) {
 			continue
 		}
+		// Mechanism gate: surface_literal_presence_gate. Skip the
+		// presence check when surface.Name is synthetic
+		// (constructor-derived label), which wouldn't appear as a
+		// literal token in a prompt file.
+		if !IsSyntheticIdentifier(surface.Name) {
+			if dec := surfacelit.Gate(mechanisms.Default(), surface.Name, abs, "aiPromptVersioning"); !dec.Keep {
+				continue
+			}
+		}
 
 		out = append(out, models.Signal{
 			Type:        signals.SignalAIPromptVersioning,
 			Category:    models.CategoryAI,
 			Severity:    models.SeverityMedium,
-			Confidence:  0.85,
+			Confidence:  0.50,
 			Location:    models.SignalLocation{File: surface.Path, Symbol: surface.Name},
-			Explanation: "Prompt file `" + surface.Path + "` has no recognisable version marker. Future content changes will silently drift; consumers can't detect the change.",
+			Explanation: "Prompt file `" + surface.Path + "` has no recognizable version marker. Future content changes will silently drift; consumers can't detect the change.",
 			SuggestedAction: "Add a `version:` field, a `_v<N>` suffix to the filename, or a `# version: ...` comment so downstream consumers can detect content drift.",
 
 			SeverityClauses: []string{"sev-medium-007"},
 			Actionability:   models.ActionabilityScheduled,
 			LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 			AIRelevance:     models.AIRelevanceHigh,
-			RuleID:          "TER-AI-101",
+			RuleID:          "terrain/ai/prompt-versioning",
 			RuleURI:         "docs/rules/ai/prompt-versioning.md",
 			DetectorVersion: "0.2.0",
 			ConfidenceDetail: &models.ConfidenceDetail{
-				Value:        0.85,
-				IntervalLow:  0.75,
-				IntervalHigh: 0.92,
-				Quality:      "heuristic",
+				Value:        0.50,
+				IntervalLow:  0.50,
+				IntervalHigh: 0.50,
+				Quality:      "estimate",
 				Sources:      []models.EvidenceSource{models.SourceStructuralPattern},
 			},
 			EvidenceSource:   models.SourceStructuralPattern,
@@ -162,10 +173,10 @@ func filenameLooksVersioned(path string) bool {
 // huge prompt file doesn't trigger a full scan; versioning markers
 // virtually always appear at the top.
 //
-// 0.2.0 final-polish: even after `inlineVersionPattern` was tightened
-// to require a recognisable version literal, quoted-non-empty branch
-// still accepted `"TODO"`, `"tbd"`, `"xxx"`, `"?"`, `"unknown"` etc.
-// Reject those placeholder tokens explicitly so a comment like
+// Even after `inlineVersionPattern` was tightened to require a
+// recognizable version literal, the quoted-non-empty branch still
+// accepted `"TODO"`, `"tbd"`, `"xxx"`, `"?"`, `"unknown"` etc. Reject
+// those placeholder tokens explicitly so a comment like
 // `version: "TODO"` doesn't silence the detector.
 func fileHasInlineVersion(absPath string) bool {
 	f, err := os.Open(absPath)

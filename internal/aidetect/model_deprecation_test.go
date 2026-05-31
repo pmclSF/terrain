@@ -101,11 +101,11 @@ func TestModelDeprecation_DedupsPerLineMatch(t *testing.T) {
 	}
 }
 
-// TestModelDeprecation_FlagsCodeDavinciDatedVariants locks in the
-// 0.2 ship-blocker that pre-0.2 the bare `code-davinci` rule could
-// not match the actual identifiers users have in code (`code-davinci-001`,
-// `code-davinci-002`) because the trailing boundary class excludes `-`.
-// Each dated variant is now its own list entry so the detector fires.
+// TestModelDeprecation_FlagsCodeDavinciDatedVariants pins that dated
+// `code-davinci` variants (`code-davinci-001`, `code-davinci-002`, etc.)
+// fire — a bare `code-davinci` rule with a `-`-excluding boundary class
+// would miss the identifiers users actually have in code, so each dated
+// variant is its own list entry.
 func TestModelDeprecation_FlagsCodeDavinciDatedVariants(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -140,11 +140,11 @@ func TestModelDeprecation_FlagsCodeDavinciDatedVariants(t *testing.T) {
 	}
 }
 
-// TestModelDeprecation_BroaderCommentPrefixes locks in the 0.2
-// ship-blocker that pre-0.2 commentLooksLikeChangeLog only recognized
-// `#`, `//`, `*`. SQL/Lua `--`, INI `;`, HTML `<!--`, Markdown bullet
-// `-` / `*` / `>`, and reStructuredText `..` styles all caused false
-// positives in CHANGELOG-shaped snippets that quoted deprecated tags.
+// TestModelDeprecation_BroaderCommentPrefixes pins that
+// commentLooksLikeChangeLog recognizes SQL/Lua `--`, INI `;`, HTML `<!--`,
+// Markdown bullet `-` / `*` / `>`, and reStructuredText `..` in addition
+// to `#`, `//`, `*` — otherwise CHANGELOG-shaped snippets that quote
+// deprecated tags trigger false positives.
 func TestModelDeprecation_BroaderCommentPrefixes(t *testing.T) {
 	t.Parallel()
 	cases := []struct {

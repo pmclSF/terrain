@@ -5,9 +5,32 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 
+	"github.com/pmclSF/terrain/internal/deffollowing"
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 )
+
+// defFollowingCounter is the per-root cache of deffollowing.Counter
+// instances. Sharing one Counter across parallel scan goroutines
+// avoids re-indexing the repo for every file. Counter.Count is now
+// mutex-guarded internally.
+var (
+	defFollowingMu     sync.Mutex
+	defFollowingCounter = map[string]*deffollowing.Counter{}
+)
+
+func counterFor(root string) *deffollowing.Counter {
+	defFollowingMu.Lock()
+	defer defFollowingMu.Unlock()
+	if c, ok := defFollowingCounter[root]; ok {
+		return c
+	}
+	c := deffollowing.NewCounter(root)
+	defFollowingCounter[root] = c
+	return c
+}
 
 // analyzeTestFileContentCached reads a test file, populates analysis counts,
 // and returns the file content string for reuse by downstream stages.
@@ -20,42 +43,123 @@ func analyzeTestFileContentCached(tf *models.TestFile, root string) string {
 	src := string(content)
 
 	tf.TestCount = countTests(src, tf.Framework)
-	tf.AssertionCount = countAssertions(src, tf.Framework)
+	immediate := countAssertions(src, tf.Framework)
+	// Mechanism gate: a1_def_following. When on, the per-file
+	// assertion count is lifted to include transitive assertions
+	// inside in-repo helper bodies that the test calls. When off, the
+	// immediate count is preserved.
+	tf.AssertionCount = deffollowing.GateLift(
+		mechanisms.Default(), counterFor(root), src,
+		"assertionCounterFamily", tf.Path, immediate,
+	)
 	tf.MockCount = countMocks(src, tf.Framework)
 	tf.SnapshotCount = countSnapshots(src, tf.Framework)
 	tf.SkipCount = countSkips(src, tf.Framework)
 	return src
 }
 
-// JS/TS patterns
+// Assertion-counting patterns. Covers test-helper delegation,
+// framework-specific assertion families (chex, chispa, torch.testing,
+// numpy.testing.*, pandas testing.assert_*), JUnit @Test(expected=)
+// form, and Mockito verify() as quasi-assertion.
 var (
-	jsTestPattern     = regexp.MustCompile(`\b(it|test)\s*\(`)
-	jsExpectPattern   = regexp.MustCompile(`\bexpect\s*\(`)
-	jsAssertPattern   = regexp.MustCompile(`\bassert\s*[\.(]`)
+	// JS/TS patterns
+	jsTestPattern   = regexp.MustCompile(`\b(it|test)\s*\(`)
+	jsExpectPattern = regexp.MustCompile(`\bexpect\s*\(`)
+	// Expanded from \bassert\s*[\.(]: add chai's should(), Sinon's
+	// sinon.assert.*, cypress shorthand cy.should(), nodejs assert
+	// module's strict/equal/deepEqual.
+	jsAssertPattern = regexp.MustCompile(
+		`\bassert\s*[\.(]|` +
+			`\bshould\s*[\.(]|` +
+			`\bsinon\.assert\.|` +
+			`\bcy\.(?:should|expect)\s*\(|` +
+			`\bassert(?:Strict)?Equal\b|\bdeepEqual\b`)
 	jsMockPattern     = regexp.MustCompile(`\b(jest\.mock|jest\.fn|jest\.spyOn|vi\.mock|vi\.fn|vi\.spyOn|sinon\.stub|sinon\.mock|sinon\.spy|\.mockImplementation|\.mockReturnValue|\.mockResolvedValue)\b`)
 	jsSnapshotPattern = regexp.MustCompile(`\b(toMatchSnapshot|toMatchInlineSnapshot|matchSnapshot)\b`)
 
 	// JS/TS skip patterns: it.skip, test.skip, describe.skip, xit, xdescribe, xtest
 	jsSkipPattern = regexp.MustCompile(`\b(it\.skip|test\.skip|describe\.skip|xit|xdescribe|xtest)\s*\(`)
 
-	// Go patterns
-	goTestPattern   = regexp.MustCompile(`func\s+Test\w+\s*\(`)
-	goAssertPattern = regexp.MustCompile(`\b(t\.Error|t\.Errorf|t\.Fatal|t\.Fatalf|assert\.|require\.)\b`)
-	goSkipPattern   = regexp.MustCompile(`\bt\.Skip\w*\s*\(`)
+	// Go patterns. Helper-delegation (e.g. cryptotest.TestBlockMode in
+	// stdlib crypto tests) is impossible to detect by regex alone, so
+	// we widen to common helper-method namespaces: *.TestX, suite.Equal,
+	// gomega.Expect, ginkgo.By. False positives here are acceptable —
+	// our concern is missed assertions becoming false-negative weak-
+	// assertion flags.
+	goTestPattern = regexp.MustCompile(`func\s+Test\w+\s*\(`)
+	goAssertPattern = regexp.MustCompile(
+		`\b(?:t\.Error|t\.Errorf|t\.Fatal|t\.Fatalf|` +
+			`assert\.|require\.|` +
+			`suite\.(?:Equal|NotEqual|Nil|NotNil|True|False|Error|NoError)|` +
+			`gomega\.Expect\s*\(|\.Should\s*\(|` +
+			`ginkgo\.(?:By|Expect)\s*\(|` +
+			`testify/suite|` +
+			// Helper-method patterns: <pkg>.Test*, common test-helper namespaces.
+			`cryptotest\.|fstest\.|httptest\.)\b`)
+	goSkipPattern = regexp.MustCompile(`\bt\.Skip\w*\s*\(`)
 
-	// Python patterns
-	pyTestPattern   = regexp.MustCompile(`\bdef\s+test_\w+`)
-	pyAssertPattern = regexp.MustCompile(`\b(assert\s|self\.assert|pytest\.raises)\b`)
-	pyMockPattern   = regexp.MustCompile(`\b(mock\.patch|Mock\(|MagicMock\(|@patch)\b`)
-	pySkipPattern   = regexp.MustCompile(`(@pytest\.mark\.skip|@unittest\.skip|@skip\b|pytest\.skip\s*\()`)
+	// Python patterns. Expanded for ML/scientific Python:
+	// numpy/torch/jax testing modules, pandas tm.assert_*,
+	// pyspark chispa, pytest plugins.
+	pyTestPattern = regexp.MustCompile(`\bdef\s+test_\w+`)
+	pyAssertPattern = regexp.MustCompile(
+		`\b(?:` +
+			`assert\s|self\.assert|pytest\.raises|` +
+			`np\.testing\.assert_|numpy\.testing\.assert_|` +
+			`torch\.testing\.assert_|pt\.testing\.assert_|` +
+			`tf\.test\.|tensorflow\.test\.|` +
+			`chex\.assert_|jax\.test_util\.|` +
+			`tm\.assert_|pd\.testing\.assert_|pandas\.testing\.assert_|` +
+			`chispa\.|assert_df_equality|` +
+			`assertEqual|assertAlmostEqual|assertIn|assertNotIn|assertGreater|` +
+			`assertLess|assertGreaterEqual|assertLessEqual|assertCountEqual|` +
+			`assertSequenceEqual|assertDictEqual|assertSetEqual|assertListEqual|` +
+			`assertRegex|assertNotRegex|` +
+			`assertTrue|assertFalse|` +
+			`assertRaises|assertRaisesRegex|assertWarns|assertWarnsRegex|` +
+			`assertIsInstance|assertNotIsInstance|assertIsNone|assertIsNotNone|` +
+			`raises\s*\(|raises_exception\s*\(|` +
+			// Mock-API assertion family — a common false-positive class
+			// for testsOnlyMocks, weakAssertion, and assertionFreeImport
+			// where files have real assertions but the detector counter
+			// only sees bare `assert`.
+			`\.assert_called(?:_with|_once|_once_with|_any_call)?\b|` +
+			`\.assert_not_called\b|\.assert_any_call\b|\.assert_awaited(?:_with|_once|_once_with)?\b|` +
+			`\.assert_has_calls\b|\.assert_not_awaited\b|` +
+			// TVM + ML-framework testing helpers — common in
+			// assertionFreeImport false positives.
+			`tvm\.testing\.assert_|assert_structural_equal|assert_allclose|` +
+			`assert_array_equal|assert_array_almost_equal|assert_frame_equal|` +
+			`assert_series_equal|` +
+			// pytest context-manager assertions (pytest.warns/raises in
+			// context-manager form not always caught by the bare-assert
+			// path).
+			`pytest\.warns\s*\(|pytest\.deprecated_call\s*\(|pytest\.fail\s*\(` +
+			`)`)
+	pyMockPattern = regexp.MustCompile(`\b(mock\.patch|Mock\(|MagicMock\(|@patch)\b`)
+	pySkipPattern = regexp.MustCompile(`(@pytest\.mark\.skip|@unittest\.skip|@skip\b|pytest\.skip\s*\()`)
 
 	// Java skip patterns
 	javaSkipPattern = regexp.MustCompile(`(@Disabled|@Ignore)\b`)
 
-	// Java patterns
-	javaTestPattern   = regexp.MustCompile(`@Test\b`)
-	javaAssertPattern = regexp.MustCompile(`\b(assert\w+\s*\(|assertThat\s*\()`)
-	javaMockPattern   = regexp.MustCompile(`\b(mock\(|when\(|verify\(|@Mock|Mockito\.)`)
+	// Java patterns. Expanded for:
+	//   - @Test(expected=…)            JUnit 4 exception-expectation form
+	//   - assertThrows / assertDoesNotThrow JUnit 5
+	//   - Mockito verify() — semantically an assertion on call shape
+	//   - Hamcrest fluent matchers (assertThat is already caught)
+	//   - RxJava TestObserver.assert*
+	javaTestPattern = regexp.MustCompile(`@Test\b`)
+	javaAssertPattern = regexp.MustCompile(
+		`\b(?:` +
+			`assert\w+\s*\(|assertThat\s*\(|` +
+			`@Test\s*\(\s*expected\s*=|` +
+			`@Test\s*\(\s*[^)]*expected\s*=|` +
+			`assertThrows\s*\(|assertDoesNotThrow\s*\(|` +
+			`verify\s*\(|verifyNoInteractions\s*\(|verifyZeroInteractions\s*\(|` +
+			`TestObserver\s*\(\s*\)|\.assertValue|\.assertResult|\.assertComplete|\.assertError|\.assertNoErrors` +
+			`)`)
+	javaMockPattern = regexp.MustCompile(`\b(mock\(|when\(|verify\(|@Mock|Mockito\.)`)
 )
 
 func countTests(src, framework string) int {

@@ -7,6 +7,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/impact"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/signals"
 )
 
 // AnalyzePR performs a PR/change-scoped analysis.
@@ -175,22 +176,59 @@ func buildChangeScopedFindings(result *impact.ImpactResult, snap *models.TestSui
 	}
 
 	for _, sig := range snap.Signals {
-		if !directPaths[sig.Location.File] {
+		scope, ok := signalScope(sig, directPaths)
+		if !ok {
 			continue
 		}
 		if sig.Type == "untestedExport" && gapPaths[sig.Location.File] {
 			continue
 		}
+		// Observability-tier findings stay in the report (rendered with
+		// the existing_signal type) but never gate CI; their severity
+		// stays as declared so the user sees the original framing.
 		findings = append(findings, ChangeScopedFinding{
 			Type:        "existing_signal",
-			Scope:       "direct",
+			Scope:       scope,
 			Path:        sig.Location.File,
 			Severity:    string(sig.Severity),
+			SignalType:  string(sig.Type),
+			FindingID:   sig.FindingID,
 			Explanation: fmt.Sprintf("[%s] %s", sig.Type, sig.Explanation),
 		})
 	}
 
 	return findings
+}
+
+// signalScope reports whether sig belongs in the PR view, and at what
+// scope. Direct: the signal's own location is a changed file. Indirect:
+// the signal's metadata references a changed file via a cross-file key
+// (e.g. aiPromptSchemaDrift's `schemaPath` is the schema whose change
+// affects the prompt template at Location.File). Returns (_, false)
+// when sig has no link to the changed set.
+func signalScope(sig models.Signal, directPaths map[string]bool) (string, bool) {
+	if directPaths[sig.Location.File] {
+		return "direct", true
+	}
+	for _, key := range crossFileMetadataKeys {
+		v, ok := sig.Metadata[key]
+		if !ok {
+			continue
+		}
+		if path, ok := v.(string); ok && directPaths[path] {
+			return "indirect", true
+		}
+	}
+	return "", false
+}
+
+// crossFileMetadataKeys lists the Signal.Metadata keys we treat as
+// "this signal is about a file other than Location.File." Detectors
+// that span multiple files (a schema change breaking a template, a
+// dependency bump breaking a consumer) add their metadata key here so
+// the PR view picks them up at indirect scope.
+var crossFileMetadataKeys = []string{
+	"schemaPath",
 }
 
 func buildPostureDelta(result *impact.ImpactResult) *PostureDelta {
@@ -199,13 +237,13 @@ func buildPostureDelta(result *impact.ImpactResult) *PostureDelta {
 	}
 
 	switch result.Posture.Band {
-	case "well_protected":
+	case "strong":
 		delta.OverallDirection = "unchanged"
 		delta.Explanation = "Change is well protected by existing tests."
-	case "partially_protected":
+	case "moderate":
 		delta.OverallDirection = "unchanged"
 		delta.Explanation = fmt.Sprintf("Change has partial protection. %d gap(s) found.", len(result.ProtectionGaps))
-	case "weakly_protected", "high_risk":
+	case "weak", "critical":
 		delta.OverallDirection = "worsened"
 		delta.Explanation = fmt.Sprintf("Change introduces risk. %d protection gap(s) found.", len(result.ProtectionGaps))
 	default:
@@ -236,19 +274,19 @@ func buildPRSummary(pr *PRAnalysis) string {
 // buildAIValidationSummary extracts AI-specific validation data from the
 // impact result and snapshot. Returns nil if no AI content is relevant.
 func buildAIValidationSummary(result *impact.ImpactResult, snap *models.TestSuiteSnapshot) *AIValidationSummary {
-	if len(snap.Scenarios) == 0 && len(result.ImpactedScenarios) == 0 {
+	if len(snap.Evals) == 0 && len(result.ImpactedEvals) == 0 {
 		return nil
 	}
 
 	ai := &AIValidationSummary{
-		TotalScenarios:    len(snap.Scenarios),
-		SelectedScenarios: len(result.ImpactedScenarios),
+		TotalScenarios:    len(snap.Evals),
+		SelectedScenarios: len(result.ImpactedEvals),
 	}
 
 	// Collect impacted capabilities and scenario summaries.
 	capSet := map[string]bool{}
-	for _, is := range result.ImpactedScenarios {
-		ai.Scenarios = append(ai.Scenarios, AIScenarioSummary{
+	for _, is := range result.ImpactedEvals {
+		ai.Scenarios = append(ai.Scenarios, EvalSummary{
 			Name:       is.Name,
 			Capability: is.Capability,
 			Reason:     is.Relevance,
@@ -299,7 +337,13 @@ func buildAIValidationSummary(result *impact.ImpactResult, snap *models.TestSuit
 			Line:        sig.Location.Line,
 			Symbol:      sig.Location.Symbol,
 		}
-		if sig.Severity == models.SeverityCritical || sig.Severity == models.SeverityHigh {
+		// Observability-tier AI findings never block CI; route them to
+		// warnings regardless of declared severity.
+		blocks := sig.Severity == models.SeverityCritical || sig.Severity == models.SeverityHigh
+		if blocks && !signals.IsGateRelevant(sig.Type) {
+			blocks = false
+		}
+		if blocks {
 			ai.BlockingSignals = append(ai.BlockingSignals, entry)
 		} else {
 			ai.WarningSignals = append(ai.WarningSignals, entry)
@@ -308,7 +352,7 @@ func buildAIValidationSummary(result *impact.ImpactResult, snap *models.TestSuit
 
 	// Find changed context surfaces that lack scenario coverage.
 	coveredIDs := map[string]bool{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		for _, sid := range sc.CoveredSurfaceIDs {
 			coveredIDs[sid] = true
 		}

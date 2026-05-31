@@ -197,6 +197,9 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 					line("           Consider: %s", info.Remediation)
 				}
 			}
+			if opt.Verbose {
+				renderSignalMetadata(line, s)
+			}
 		}
 		if !opt.Verbose && len(orderedSignals) > limit {
 			remaining := orderedSignals[limit:]
@@ -365,4 +368,53 @@ func countHighSeverities(signals []models.Signal) (critical, high int) {
 		}
 	}
 	return critical, high
+}
+
+// renderSignalMetadata prints additional metadata for a signal in
+// verbose mode. Today this is used to surface the before / after
+// rendered prompt body produced by the aiPromptSchemaDrift detector.
+// Future detectors can land metadata blocks here without further
+// renderer changes.
+func renderSignalMetadata(line func(string, ...any), s models.Signal) {
+	if s.Metadata == nil {
+		return
+	}
+	before, hasBefore := metadataString(s.Metadata, "renderedBefore")
+	after, hasAfter := metadataString(s.Metadata, "renderedAfter")
+	if hasBefore || hasAfter {
+		line("           ── Rendered before ──")
+		for _, ln := range splitNonEmptyLines(before) {
+			line("           %s", ln)
+		}
+		line("           ── Rendered after ──")
+		for _, ln := range splitNonEmptyLines(after) {
+			line("           %s", ln)
+		}
+	}
+}
+
+func metadataString(m map[string]any, key string) (string, bool) {
+	if m == nil {
+		return "", false
+	}
+	v, ok := m[key]
+	if !ok {
+		return "", false
+	}
+	s, ok := v.(string)
+	if !ok || s == "" {
+		return "", false
+	}
+	return s, true
+}
+
+// splitNonEmptyLines splits s on '\n' and drops trailing whitespace-
+// only entries so a body ending in "\n" doesn't render a blank
+// dangling line.
+func splitNonEmptyLines(s string) []string {
+	lines := strings.Split(s, "\n")
+	for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
+		lines = lines[:len(lines)-1]
+	}
+	return lines
 }

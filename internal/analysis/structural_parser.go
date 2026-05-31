@@ -76,11 +76,22 @@ func parseStructuralJS(relPath, src string) []models.CodeSurface {
 
 	// 1. Find message arrays via bracket-aware scanning.
 	// Look for: variable = [ { role: "system", ... }, { role: "user", ... } ]
+	// This pass is self-corroborating — the {role, content} object
+	// shape with 2+ entries is highly AI-specific. Run unconditional.
 	msgArrays := findJSMessageArrays(src, lines)
 	for _, ma := range msgArrays {
 		add("message_array_"+ma.varName, DetectorStructuralMessageArray,
 			"bracket-matched message array '"+ma.varName+"' with "+strconv.Itoa(ma.roleCount)+" role entries",
 			ma.line, 0.95, models.TierStructural)
+	}
+
+	// Passes 2-4 require per-file AI corroboration. {input, output}
+	// arrays appear in non-AI test data and mapping configs; prompt-
+	// substring variable names appear in CSS/templating/HTTP code; and
+	// `prompt`-named functions in non-AI codebases are common (Angular
+	// benchpress has DEFAULT_PROVIDERS arrays that trip pass 2).
+	if !HasAIContextJS(src) {
+		return surfaces
 	}
 
 	// 2. Find few-shot example arrays.
@@ -287,6 +298,15 @@ func parseStructuralPython(relPath, src string) []models.CodeSurface {
 				"bracket-matched message list '"+varName+"' with "+strconv.Itoa(roleCount)+" role entries",
 				i+1, 0.95, models.TierStructural)
 		}
+	}
+
+	// Passes 2-3 require per-file AI corroboration. Same rationale as
+	// the JS structural parser — generic `{input, output}` dicts and
+	// substring `prompt`/`message`/`context` function names appear in
+	// non-AI Python code (test fixtures, config builders, message-bus
+	// utilities) without being AI surfaces.
+	if !HasAIContextPython(src) {
+		return surfaces
 	}
 
 	// 2. Few-shot arrays.

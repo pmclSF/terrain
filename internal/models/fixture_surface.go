@@ -73,9 +73,8 @@ type FixtureSurface struct {
 	// depends on, derived from the function signature parameters
 	// (`def my_fixture(db, request, redis)` → ["db", "redis"];
 	// `request` and method receivers like `self`/`cls` are filtered).
-	// Closes the round-4 finding "Pytest fixture dependency graph"
-	// — consumers walk this list to compute transitive depth and
-	// identify fanout bottlenecks. SignalV2 0.2 field.
+	// Consumers walk this list to compute transitive depth and
+	// identify fanout bottlenecks.
 	Dependencies []string `json:"dependencies,omitempty"`
 }
 

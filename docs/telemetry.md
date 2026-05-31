@@ -8,7 +8,7 @@ When enabled, each command invocation appends one JSON line to `~/.terrain/telem
 
 | Field | Example | Purpose |
 |-------|---------|---------|
-| `ts` | `2026-03-31T12:00:00Z` | When the command ran |
+| `ts` | `2099-03-31T12:00:00Z` | When the command ran |
 | `version` | `0.2.0` | Terrain version |
 | `command` | `analyze` | Which command was run |
 | `sizeBand` | `medium` | Test file count band (small/medium/large) |
@@ -43,9 +43,7 @@ terrain config telemetry --on
 terrain config telemetry --off
 ```
 
-The bare `terrain telemetry` form is a legacy alias and prints a
-deprecation hint when `TERRAIN_LEGACY_HINT=1` is set. Removal targets
-0.3.
+The bare `terrain telemetry` form is a legacy alias and prints a deprecation hint when `TERRAIN_LEGACY_HINT=1` is set. Removal is future work.
 
 Or set the environment variable (overrides file config):
 

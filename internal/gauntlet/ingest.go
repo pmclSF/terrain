@@ -51,8 +51,8 @@ func ApplyToSnapshot(snap *models.TestSuiteSnapshot, art *Artifact) ApplyResult 
 
 	// Index snapshot scenarios by ID for O(1) lookup.
 	scenarioIdx := map[string]int{}
-	for i, sc := range snap.Scenarios {
-		scenarioIdx[sc.ScenarioID] = i
+	for i, sc := range snap.Evals {
+		scenarioIdx[sc.EvalID] = i
 	}
 
 	for _, sr := range art.Scenarios {
@@ -148,7 +148,7 @@ type ApplyResult struct {
 
 // classifyFailureSignal maps a failed scenario to the most specific AI signal
 // type based on the scenario name and category.
-func classifyFailureSignal(sr ScenarioResult) models.SignalType {
+func classifyFailureSignal(sr EvalResult) models.SignalType {
 	name := strings.ToLower(sr.Name)
 	switch {
 	case strings.Contains(name, "safety"):

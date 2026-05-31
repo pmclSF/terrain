@@ -180,14 +180,13 @@ function isCosignAvailable() {
 // environments is the documented opt-out
 // `TERRAIN_INSTALLER_SKIP_VERIFY=1`.
 //
-// Pre-0.2.x silently degraded to "checksum-only" when cosign was
-// missing, which meant a typical npm-install on a host without cosign
-// (most macOS / Linux dev machines) skipped Sigstore entirely without
-// any signal in the install log beyond a one-line "falling back"
-// message. Adversarial review flagged this as the headline gap in our
-// supply-chain story: the strong-integrity guarantee we advertise
-// degrades silently to weak by default. Promotion to mandatory closes
-// the gap; the env-var escape keeps adoption viable.
+// Earlier revisions silently degraded to "checksum-only" when cosign
+// was missing, which meant a typical npm-install on a host without
+// cosign (most macOS / Linux dev machines) skipped Sigstore entirely
+// without any signal in the install log beyond a one-line "falling
+// back" message: the strong-integrity guarantee we advertise degraded
+// silently to weak by default. Mandatory verification closes the gap;
+// the env-var escape keeps adoption viable.
 //
 // Escape hatches:
 //
@@ -195,7 +194,7 @@ function isCosignAvailable() {
 //     Prints a WARNING so the bypass is auditable.
 //   - TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1 — opt-in degrade-to-
 //     checksum behavior for hosts that genuinely cannot install
-//     cosign. Pre-0.2.x default; opt-in in 0.2.x.
+//     cosign.
 //
 // Once cosign is on the host, every verify failure is a hard error.
 async function verifySignatureBestEffort({
@@ -315,9 +314,9 @@ function log(message, quiet = false) {
 
 // MAX_REDIRECTS caps redirect chains to defend against misconfigured
 // proxies that loop. 5 covers every normal redirect chain (GitHub
-// release → CDN → storage backend) with margin to spare. 0.2.0
-// final-polish: pre-fix the recursion was unbounded — a redirect
-// loop hung the installer until the OS killed it.
+// release → CDN → storage backend) with margin to spare. Without this
+// cap the recursion is unbounded — a redirect loop hangs the installer
+// until the OS kills it.
 const MAX_REDIRECTS = 5;
 
 async function downloadFile(

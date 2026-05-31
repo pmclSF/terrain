@@ -74,7 +74,17 @@ func buildUnitLookupContext(snap *models.TestSuiteSnapshot) *unitLookupContext {
 }
 
 // mapChangedUnits maps changed files to impacted code units.
-func mapChangedUnits(scope *ChangeScope, snap *models.TestSuiteSnapshot) []ImpactedCodeUnit {
+//
+// Per-unit coverage lookups (covering tests, coverage-type classification, unit
+// protection status) traverse the typed ImpactGraph rather than direct-scanning
+// snap.TestFiles[].LinkedCodeUnits. This is the audit-CH5 fix per PRODUCT.md
+// §16; the graph is built first in analyzeFromScope and passed through.
+//
+// Behavior is preserved: the graph itself is built from LinkedCodeUnits, so
+// findings are equivalent. The fix is architectural — coverage queries now
+// consult the integration-boundary primitive (the graph), making the unified-
+// graph architectural claim structurally true.
+func mapChangedUnits(scope *ChangeScope, snap *models.TestSuiteSnapshot, graph *ImpactGraph) []ImpactedCodeUnit {
 	// Build code-unit index by file path.
 	unitsByFile := map[string][]models.CodeUnit{}
 	for _, cu := range snap.CodeUnits {
@@ -122,9 +132,9 @@ func mapChangedUnits(scope *ChangeScope, snap *models.TestSuiteSnapshot) []Impac
 				ChangeKind:       cf.ChangeKind,
 				Exported:         cu.Exported,
 				ImpactConfidence: confidence,
-				ProtectionStatus: classifyUnitProtection(cu, snap, ctx),
-				CoveringTests:    findCoveringTests(cu, snap, ctx),
-				CoverageTypes:    classifyCoverageTypes(cu, snap, ctx),
+				ProtectionStatus: classifyUnitProtection(cu, snap, ctx, graph),
+				CoveringTests:    findCoveringTests(cu, snap, ctx, graph),
+				CoverageTypes:    classifyCoverageTypes(cu, snap, ctx, graph),
 				Complexity:       cu.Complexity,
 			}
 
@@ -253,8 +263,8 @@ func pathTreesOverlap(a, b string) bool {
 //
 //	"retrieval config changed (chunkConfig)"
 //	"context template changed (systemPrompt, safetyOverlay)"
-func findImpactedScenarios(changedAreas []ChangedArea, snap *models.TestSuiteSnapshot) []ImpactedScenario {
-	if len(snap.Scenarios) == 0 {
+func findImpactedScenarios(changedAreas []ChangedArea, snap *models.TestSuiteSnapshot) []ImpactedEval {
+	if len(snap.Evals) == 0 {
 		return nil
 	}
 
@@ -275,8 +285,8 @@ func findImpactedScenarios(changedAreas []ChangedArea, snap *models.TestSuiteSna
 		return nil
 	}
 
-	var scenarios []ImpactedScenario
-	for _, sc := range snap.Scenarios {
+	var scenarios []ImpactedEval
+	for _, sc := range snap.Evals {
 		var matchedSurfaces []string
 		for _, sid := range sc.CoveredSurfaceIDs {
 			if changedSurfaceIDs[sid] {
@@ -292,8 +302,8 @@ func findImpactedScenarios(changedAreas []ChangedArea, snap *models.TestSuiteSna
 		sort.Strings(matchedSurfaces)
 		relevance := buildSurfaceRelevance(matchedSurfaces, surfaceByID)
 
-		scenarios = append(scenarios, ImpactedScenario{
-			ScenarioID:       sc.ScenarioID,
+		scenarios = append(scenarios, ImpactedEval{
+			ScenarioID:       sc.EvalID,
 			Name:             sc.Name,
 			Category:         sc.Category,
 			Framework:        sc.Framework,
@@ -516,7 +526,7 @@ func findAIProtectionGaps(result *ImpactResult, snap *models.TestSuiteSnapshot) 
 
 	// Build set of surface IDs covered by at least one scenario.
 	coveredIDs := map[string]bool{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		for _, sid := range sc.CoveredSurfaceIDs {
 			coveredIDs[sid] = true
 		}
@@ -560,15 +570,15 @@ func findAIProtectionGaps(result *ImpactResult, snap *models.TestSuiteSnapshot) 
 
 	// Check for partially covered capabilities: a capability where some
 	// scenarios are impacted but the change also touches uncovered surfaces.
-	if len(result.ImpactedScenarios) > 0 {
+	if len(result.ImpactedEvals) > 0 {
 		impactedCaps := map[string]int{}
 		totalCaps := map[string]int{}
-		for _, sc := range snap.Scenarios {
+		for _, sc := range snap.Evals {
 			if sc.Capability != "" {
 				totalCaps[sc.Capability]++
 			}
 		}
-		for _, is := range result.ImpactedScenarios {
+		for _, is := range result.ImpactedEvals {
 			if is.Capability != "" {
 				impactedCaps[is.Capability]++
 			}
@@ -665,15 +675,15 @@ func computeChangeRiskPosture(result *ImpactResult) ChangeRiskPosture {
 	// Check if evidence is limited — if so, override band.
 	if isEvidenceLimited(result) {
 		return ChangeRiskPosture{
-			Band:        "evidence_limited",
+			Band:        "unknown",
 			Explanation: "Insufficient data to assess change risk confidently. No code units or coverage lineage available.",
 			Dimensions:  dims,
 		}
 	}
 
 	// Overall band is the worst dimension.
-	bandOrder := map[string]int{"well_protected": 0, "partially_protected": 1, "weakly_protected": 2, "high_risk": 3}
-	worst := "well_protected"
+	bandOrder := map[string]int{"strong": 0, "moderate": 1, "weak": 2, "critical": 3}
+	worst := "strong"
 	for _, d := range dims {
 		if bandOrder[d.Band] > bandOrder[worst] {
 			worst = d.Band
@@ -692,7 +702,7 @@ func computeChangeRiskPosture(result *ImpactResult) ChangeRiskPosture {
 func computeProtectionDimension(result *ImpactResult) ChangeRiskDimension {
 	if len(result.ImpactedUnits) == 0 {
 		return ChangeRiskDimension{
-			Name: "protection", Band: "well_protected",
+			Name: "protection", Band: "strong",
 			Explanation: "No impacted code units identified.",
 		}
 	}
@@ -705,11 +715,11 @@ func computeProtectionDimension(result *ImpactResult) ChangeRiskDimension {
 	}
 
 	// When no coverage data was provided, protection gaps reflect missing data
-	// rather than measured absence. Cap the band at "partially_protected" to
+	// rather than measured absence. Cap the band at "moderate" to
 	// avoid alarming merge recommendations based on absent evidence.
 	if !result.HasCoverageData && unprotected > 0 {
 		return ChangeRiskDimension{
-			Name: "protection", Band: "partially_protected",
+			Name: "protection", Band: "moderate",
 			Explanation: fmt.Sprintf("%d of %d impacted unit(s) have no observed coverage (no coverage artifacts provided).", unprotected, len(result.ImpactedUnits)),
 		}
 	}
@@ -718,22 +728,22 @@ func computeProtectionDimension(result *ImpactResult) ChangeRiskDimension {
 	switch {
 	case ratio == 0:
 		return ChangeRiskDimension{
-			Name: "protection", Band: "well_protected",
+			Name: "protection", Band: "strong",
 			Explanation: "All impacted code units have strong or partial coverage.",
 		}
 	case ratio < 0.3:
 		return ChangeRiskDimension{
-			Name: "protection", Band: "partially_protected",
+			Name: "protection", Band: "moderate",
 			Explanation: fmt.Sprintf("%d of %d impacted unit(s) have weak or no coverage.", unprotected, len(result.ImpactedUnits)),
 		}
 	case ratio < 0.6:
 		return ChangeRiskDimension{
-			Name: "protection", Band: "weakly_protected",
+			Name: "protection", Band: "weak",
 			Explanation: fmt.Sprintf("%d of %d impacted unit(s) have weak or no coverage.", unprotected, len(result.ImpactedUnits)),
 		}
 	default:
 		return ChangeRiskDimension{
-			Name: "protection", Band: "high_risk",
+			Name: "protection", Band: "critical",
 			Explanation: fmt.Sprintf("%d of %d impacted unit(s) have weak or no coverage.", unprotected, len(result.ImpactedUnits)),
 		}
 	}
@@ -749,14 +759,14 @@ func computeExposureDimension(result *ImpactResult) ChangeRiskDimension {
 
 	if exportedCount == 0 {
 		return ChangeRiskDimension{
-			Name: "exposure", Band: "well_protected",
+			Name: "exposure", Band: "strong",
 			Explanation: "No exported/public code units affected.",
 		}
 	}
 
-	band := "partially_protected"
+	band := "moderate"
 	if exportedCount > 3 {
-		band = "weakly_protected"
+		band = "weak"
 	}
 
 	return ChangeRiskDimension{
@@ -769,31 +779,31 @@ func computeCoordinationDimension(result *ImpactResult) ChangeRiskDimension {
 	ownerCount := len(result.ImpactedOwners)
 	if ownerCount <= 1 {
 		return ChangeRiskDimension{
-			Name: "coordination", Band: "well_protected",
+			Name: "coordination", Band: "strong",
 			Explanation: "Change affects a single owner area.",
 		}
 	}
 	if ownerCount <= 3 {
 		return ChangeRiskDimension{
-			Name: "coordination", Band: "partially_protected",
+			Name: "coordination", Band: "moderate",
 			Explanation: fmt.Sprintf("Change spans %d owner areas.", ownerCount),
 		}
 	}
 	return ChangeRiskDimension{
-		Name: "coordination", Band: "weakly_protected",
+		Name: "coordination", Band: "weak",
 		Explanation: fmt.Sprintf("Change spans %d owner areas — coordination risk is elevated.", ownerCount),
 	}
 }
 
 func buildPostureExplanation(band string, result *ImpactResult) string {
 	switch band {
-	case "well_protected":
+	case "strong":
 		return "This change appears well protected by existing tests."
-	case "partially_protected":
+	case "moderate":
 		return fmt.Sprintf("This change has partial protection. %d protection gap(s) identified.", len(result.ProtectionGaps))
-	case "weakly_protected":
+	case "weak":
 		return fmt.Sprintf("This change has weak protection. %d protection gap(s) identified.", len(result.ProtectionGaps))
-	case "high_risk":
+	case "critical":
 		return fmt.Sprintf("This change has significant risk. %d protection gap(s) and weak coverage across impacted units.", len(result.ProtectionGaps))
 	default:
 		return "Unable to determine change-risk posture."
@@ -805,7 +815,7 @@ func buildPostureExplanation(band string, result *ImpactResult) string {
 func computeInstabilityDimension(result *ImpactResult) ChangeRiskDimension {
 	if len(result.ImpactedUnits) == 0 {
 		return ChangeRiskDimension{
-			Name: "instability", Band: "well_protected",
+			Name: "instability", Band: "strong",
 			Explanation: "No impacted code units to assess for instability.",
 		}
 	}
@@ -827,22 +837,22 @@ func computeInstabilityDimension(result *ImpactResult) ChangeRiskDimension {
 	switch {
 	case instabilityScore == 0:
 		return ChangeRiskDimension{
-			Name: "instability", Band: "well_protected",
+			Name: "instability", Band: "strong",
 			Explanation: "Impacted code has stable coverage and low complexity.",
 		}
 	case instabilityScore < 0.3:
 		return ChangeRiskDimension{
-			Name: "instability", Band: "partially_protected",
+			Name: "instability", Band: "moderate",
 			Explanation: fmt.Sprintf("%d unit(s) with weak coverage or high complexity.", weakCoverage+highComplexity),
 		}
 	case instabilityScore < 0.6:
 		return ChangeRiskDimension{
-			Name: "instability", Band: "weakly_protected",
+			Name: "instability", Band: "weak",
 			Explanation: fmt.Sprintf("%d unit(s) with weak coverage or high complexity out of %d impacted.", weakCoverage+highComplexity, len(result.ImpactedUnits)),
 		}
 	default:
 		return ChangeRiskDimension{
-			Name: "instability", Band: "high_risk",
+			Name: "instability", Band: "critical",
 			Explanation: fmt.Sprintf("Most impacted units have instability indicators: %d weak coverage, %d high complexity.", weakCoverage, highComplexity),
 		}
 	}
@@ -898,8 +908,8 @@ func buildImpactSummary(result *ImpactResult) string {
 	if len(result.ImpactedTests) > 0 {
 		parts = append(parts, fmt.Sprintf("%d test(s) relevant", len(result.ImpactedTests)))
 	}
-	if len(result.ImpactedScenarios) > 0 {
-		parts = append(parts, fmt.Sprintf("%d scenario(s) impacted", len(result.ImpactedScenarios)))
+	if len(result.ImpactedEvals) > 0 {
+		parts = append(parts, fmt.Sprintf("%d scenario(s) impacted", len(result.ImpactedEvals)))
 	}
 	if len(result.ProtectionGaps) > 0 {
 		parts = append(parts, fmt.Sprintf("%d protection gap(s)", len(result.ProtectionGaps)))
@@ -962,22 +972,34 @@ func classifyProtection(filePath string, snap *models.TestSuiteSnapshot) Protect
 	return ProtectionNone
 }
 
-func classifyUnitProtection(cu models.CodeUnit, snap *models.TestSuiteSnapshot, ctx *unitLookupContext) ProtectionStatus {
+// classifyUnitProtection determines protection status by consulting the
+// ImpactGraph (CH5). The graph's edges carry CoverageType ("unit"/"e2e"/
+// "integration") populated at build time from the test file's framework.
+// Edges are indexed by the source-side string that appeared in
+// LinkedCodeUnits (canonical unit ID or bare name); linkedMatchesCodeUnit
+// handles both forms.
+func classifyUnitProtection(cu models.CodeUnit, snap *models.TestSuiteSnapshot, ctx *unitLookupContext, graph *ImpactGraph) ProtectionStatus {
+	if graph == nil {
+		return ProtectionNone
+	}
 	unitID := cu.Path + ":" + cu.Name
 	hasUnit := false
 	hasE2E := false
 
-	for _, tf := range snap.TestFiles {
-		for _, linked := range tf.LinkedCodeUnits {
-			if linkedMatchesCodeUnit(linked, unitID, cu.Name, ctx.nameCounts) {
-				fwType := ctx.fwTypes[tf.Framework]
-				if fwType == models.FrameworkTypeUnit {
-					hasUnit = true
-				} else if fwType == models.FrameworkTypeE2E {
-					hasE2E = true
-				} else {
-					hasUnit = true // integration, etc. treated as unit-level
-				}
+	for sourceID, testPaths := range graph.UnitToTests {
+		if !linkedMatchesCodeUnit(sourceID, unitID, cu.Name, ctx.nameCounts) {
+			continue
+		}
+		for _, tp := range testPaths {
+			covType := ""
+			if idx, ok := graph.EdgeIndex[sourceID+"->"+tp]; ok {
+				covType = graph.Edges[idx].CoverageType
+			}
+			switch covType {
+			case "unit", "integration", "":
+				hasUnit = true // integration treated as unit-level for protection
+			case "e2e":
+				hasE2E = true
 			}
 		}
 	}
@@ -991,15 +1013,29 @@ func classifyUnitProtection(cu models.CodeUnit, snap *models.TestSuiteSnapshot, 
 	return ProtectionNone
 }
 
-func findCoveringTests(cu models.CodeUnit, snap *models.TestSuiteSnapshot, ctx *unitLookupContext) []string {
+// findCoveringTests returns the tests covering a code unit by consulting the
+// ImpactGraph (CH5). The graph's edges are indexed by whatever appeared in
+// LinkedCodeUnits — which can be either the canonical unit ID
+// ("path:name") or a bare symbol name. Matching uses linkedMatchesCodeUnit
+// to handle both forms, preserving the prior behavior. Replaces the prior
+// direct scan of snap.TestFiles[].LinkedCodeUnits.
+func findCoveringTests(cu models.CodeUnit, snap *models.TestSuiteSnapshot, ctx *unitLookupContext, graph *ImpactGraph) []string {
+	if graph == nil {
+		return nil
+	}
 	unitID := cu.Path + ":" + cu.Name
+	seen := map[string]bool{}
 	var tests []string
-	for _, tf := range snap.TestFiles {
-		for _, linked := range tf.LinkedCodeUnits {
-			if linkedMatchesCodeUnit(linked, unitID, cu.Name, ctx.nameCounts) {
-				tests = append(tests, tf.Path)
-				break
+	for sourceID, testPaths := range graph.UnitToTests {
+		if !linkedMatchesCodeUnit(sourceID, unitID, cu.Name, ctx.nameCounts) {
+			continue
+		}
+		for _, tp := range testPaths {
+			if seen[tp] {
+				continue
 			}
+			seen[tp] = true
+			tests = append(tests, tp)
 		}
 	}
 	return tests
@@ -1018,22 +1054,33 @@ func confidenceOrder(c Confidence) int {
 	}
 }
 
-// classifyCoverageTypes determines the mix of coverage types for a code unit.
-func classifyCoverageTypes(cu models.CodeUnit, snap *models.TestSuiteSnapshot, ctx *unitLookupContext) *CoverageTypeInfo {
-	unitID := cu.Path + ":" + cu.Name
+// classifyCoverageTypes determines the mix of coverage types for a code unit
+// by consulting the ImpactGraph (CH5). Each edge carries CoverageType
+// populated at graph-build time from the test file's framework. Source-side
+// matching via linkedMatchesCodeUnit handles unit-ID-or-name indexing.
+func classifyCoverageTypes(cu models.CodeUnit, snap *models.TestSuiteSnapshot, ctx *unitLookupContext, graph *ImpactGraph) *CoverageTypeInfo {
 	info := &CoverageTypeInfo{}
+	if graph == nil {
+		return info
+	}
+	unitID := cu.Path + ":" + cu.Name
 
-	for _, tf := range snap.TestFiles {
-		for _, linked := range tf.LinkedCodeUnits {
-			if linkedMatchesCodeUnit(linked, unitID, cu.Name, ctx.nameCounts) {
-				switch ctx.fwTypes[tf.Framework] {
-				case models.FrameworkTypeUnit:
-					info.HasUnitCoverage = true
-				case models.FrameworkTypeE2E:
-					info.HasE2ECoverage = true
-				default:
-					info.HasIntegrationCoverage = true
-				}
+	for sourceID, testPaths := range graph.UnitToTests {
+		if !linkedMatchesCodeUnit(sourceID, unitID, cu.Name, ctx.nameCounts) {
+			continue
+		}
+		for _, tp := range testPaths {
+			covType := ""
+			if idx, ok := graph.EdgeIndex[sourceID+"->"+tp]; ok {
+				covType = graph.Edges[idx].CoverageType
+			}
+			switch covType {
+			case "unit":
+				info.HasUnitCoverage = true
+			case "e2e":
+				info.HasE2ECoverage = true
+			case "integration", "":
+				info.HasIntegrationCoverage = true
 			}
 		}
 	}

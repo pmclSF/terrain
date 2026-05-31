@@ -8,7 +8,7 @@ import (
 	"github.com/pmclSF/terrain/internal/models"
 )
 
-// Track 9.4 — per-detector budget enforcement tests.
+// per-detector budget enforcement tests.
 
 // slowDetector deliberately sleeps past its budget so the timeout
 // path in safeDetectWithBudget exercises end-to-end. The work-time
@@ -102,9 +102,8 @@ func TestSafeDetectWithBudget_FastDetectorPasses(t *testing.T) {
 // TestSafeDetectWithBudget_ZeroBudgetUsesDefault verifies that a
 // detector with Budget=0 picks up DefaultDetectorBudget rather than
 // timing out immediately. This is the contract for legacy detectors
-// registered before Track 9.4 — Budget defaults to zero, behavior
-// stays the same as pre-Track-9.4 (no enforced timeout) but with
-// the safety net of the default.
+// registered before Budget defaults to zero: behavior is unchanged
+// (no enforced timeout) but with the safety net of the default.
 func TestSafeDetectWithBudget_ZeroBudgetUsesDefault(t *testing.T) {
 	t.Parallel()
 	reg := DetectorRegistration{

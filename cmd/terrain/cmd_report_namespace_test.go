@@ -24,6 +24,7 @@ func TestReportNamespace_KnownVerbsAreNotRejected(t *testing.T) {
 		"pr":           true,
 		"posture":      true,
 		"select-tests": true,
+		"check-runs":   true,
 	}
 	if len(reportVerbs) != len(expected) {
 		t.Errorf("reportVerbs has %d entries, expected %d", len(reportVerbs), len(expected))

@@ -57,10 +57,6 @@ type SnapshotProfileData struct {
 	FrameworkTypes []string
 	// MigrationSignalCount is the number of migration-category signals.
 	MigrationSignalCount int
-	// ExternalServiceNodeCount is populated from graph stats.
-	ExternalServiceNodeCount int
-	// GeneratedArtifactNodeCount is populated from graph stats.
-	GeneratedArtifactNodeCount int
 	// LegacyFrameworkSignalCount counts legacyFrameworkUsage signals.
 	LegacyFrameworkSignalCount int
 }

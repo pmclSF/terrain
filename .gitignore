@@ -1,3 +1,33 @@
+# Local-only research and harness directories.
+internal/docs/
+!internal/docs/release/
+
+cmd/internal/terrain-corpus/
+cmd/internal/terrain-precision/
+
+# scripts/ is local-only by default, except for the bench + verification
+# helpers that the public Makefile + npm packaging tasks reference.
+scripts/
+!scripts/benchmarks/
+!scripts/benchmarks/**
+!scripts/docs-verify.sh
+!scripts/test-installer-marker.mjs
+!scripts/verify-pack.js
+!scripts/verify_copy_policy.py
+!scripts/_checkpoint.py
+!scripts/_checkpoint_test.py
+
+.terrain/
+
+# Private working directories (not committed).
+tier-4/
+.private/
+
+# === Python ===
+__pycache__/
+*.pyc
+*.pyo
+
 # === Node.js ===
 node_modules/
 *.tgz
@@ -15,6 +45,7 @@ npm-debug.log*
 coverage/
 !internal/coverage/
 !tests/calibration/**/coverage/
+!docs/rules/coverage/
 *.lcov
 
 # === Build output ===
@@ -44,7 +75,6 @@ Thumbs.db
 /terrain-bench
 /terrain-truthcheck
 /terrain-voice-lint
-/terrain-parity-gate
 /terrain-docs-gen
 
 # === SBOM artifacts (generated locally via `make sbom`) ===
@@ -98,13 +128,15 @@ PR_DESCRIPTION.md
 *.tmp
 tmp/
 temp/
-terrain-parity-gate
 
 # === Local agent / build scratch ===
 .claude/
 terrain-docs-linkcheck
 terrain-truth-verify
 /terrain-corpus
+terrain-mechanism-recall
+.venv/
+terrain-pipeline
 /terrain-precision
 
 # === Corpus research data — NEVER publish ===

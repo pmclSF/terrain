@@ -14,8 +14,8 @@ go test ./cmd/... ./internal/...
 
 ```
 cmd/terrain/          CLI entry point (11 canonical commands + legacy aliases)
-cmd/terrain-bench/    Benchmark harness
-internal/             53 Go packages
+cmd/internal/         Maintainer-only tooling (benchmarks, corpus, doc gen, release gates)
+internal/             core libraries (see internal/README.md for the full listing)
 ├── analysis/        Repository scanning and code surface inference
 ├── convert/         Go-native test conversion (25 directions)
 ├── depgraph/        Dependency graph with 5 reasoning engines
@@ -104,46 +104,11 @@ type(scope): description
 Repository scan → Signal detection → Risk scoring → Snapshot → Reporting
 ```
 
-See [DESIGN.md](DESIGN.md) for the full architecture overview, [docs/architecture/](docs/architecture/) for detailed design documents, and the [CLI spec](docs/cli-spec.md) for the complete command reference.
+See [DESIGN.md](DESIGN.md) for the architecture overview and the [CLI spec](docs/cli-spec.md) for the complete command reference.
 
-## Parity gate (lifting maturity uniformly)
+## Release gates
 
-Terrain enforces a **parity gate** so no functional area drifts behind
-the others. The gate measures every shipping area against a 17-axis
-rubric (7 product / 7 engineering / 3 UI/visual). Per-pillar floors
-apply:
-
-| Pillar | Floor | Block release? |
-|--------|-------|----------------|
-| Gate | every cell ≥ 3 in 0.2.0 (≥ 4 in 0.3) | yes |
-| Understand | every cell ≥ 3 | yes |
-| Align | every cell ≥ 3 | soft (warn-only) |
-
-The Gate floor is 3 in 0.2.0 because P2 / E2 axes at level 4/5 require a
-labeled real-repo precision floor — the central deliverable of the 0.3
-program. Gate floor=3 reflects recall-anchored synthetic calibration in
-0.2.0; the level-4/5 jump lands cell-by-cell as the 0.3 corpus work
-materializes.
-
-### How to lift a cell in your PR
-
-1. Find the cell you're improving in `docs/release/parity/scores.yaml`.
-2. Update the score (1–5) and replace the evidence line with a
-   one-line pointer to the change you're making (file:line, test
-   name, or short rationale).
-3. Run `make pillar-parity` locally — your change should move at
-   least one cell; CI will compare the diff.
-
-### Source-of-truth split
-
-- **Structural** rubric (areas, axes, level definitions, floors,
-  uniformity gates): `docs/release/parity/rubric.yaml`. Changes
-  rarely; anything that moves cells around or redefines what "3"
-  means lives here.
-- **Per-cell scores**: `docs/release/parity/scores.yaml`. Changes
-  every parity-lift PR. The shape is `area_id → axis_id → {score,
-  evidence}`. Each cell carries a one-line evidence pointer
-  (file:line, test name, PR number) so the lift is auditable.
+Terrain enforces release gates so no functional area drifts behind the others. Hard gates block release; soft gates warn. The full gate machinery is maintainer-side; contributor PRs are reviewed against the gates but don't have to interact with them directly.
 
 ### Local commands
 
@@ -153,15 +118,8 @@ make pillar-parity-floor      # compact: just the floor map
 make pillar-parity-json       # JSON for tooling
 ```
 
-Exit codes: `0` if every hard-gate pillar is at or above its floor
-(soft warns are OK), `1` if any hard-gate pillar is below its floor,
-`2` for usage errors (missing files, malformed YAML).
+Exit codes: `0` if every hard-gate pillar is at or above its floor (soft warns are OK), `1` if any hard-gate pillar is below its floor, `2` for usage errors (missing files, malformed YAML).
 
 ### Uniformity gates
 
-In addition to per-cell floors, the rubric defines seven uniformity
-gates that catch *unevenness* across detectors / frameworks /
-commands / outputs (e.g. "every detector has the same eight required
-fields", "every Tier-1 framework reaches the same axis floor"). These
-are tracked as advisory in 0.2.0 and become hard gates in 0.2.x. See
-the `uniformity_gates` block in `rubric.yaml`.
+In addition to per-cell floors, uniformity gates catch *unevenness* across detectors / frameworks / commands / outputs (e.g. "every detector has the same required fields", "every Tier-1 framework reaches the same axis floor").

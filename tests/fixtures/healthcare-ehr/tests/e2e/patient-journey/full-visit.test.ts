@@ -9,7 +9,7 @@ describe('full patient visit e2e', () => {
   it('should complete visit flow', () => {
     connectDB(); seedPatient(); seedDoctor();
     const pat = registerPatient('Jane', '1990-01-01');
-    scheduleAppointment(pat.patientId, 'doc_1', '2026-04-01');
+    scheduleAppointment(pat.patientId, 'doc_1', '2099-04-01');
     createPrescription(pat.patientId, 'Amoxicillin', '500mg');
     orderLabTest(pat.patientId, 'cbc');
     submitClaim(pat.patientId, 350, 'office_visit');

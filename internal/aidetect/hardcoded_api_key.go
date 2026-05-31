@@ -20,9 +20,8 @@ import (
 //
 // The regexes deliberately match the **prefix shape** rather than the
 // exact char count for each provider, since providers occasionally shift
-// length. False positives are caught by tests/calibration/ fixtures
-// labeled `expectedAbsent: aiHardcodedAPIKey` (e.g. literal placeholders
-// like `sk-fake-key`).
+// length. Literal placeholders like `sk-fake-key` are suppressed by
+// downstream filtering.
 var aiAPIKeyPatterns = []apiKeyRule{
 	{
 		Name:    "openai",
@@ -80,10 +79,11 @@ var placeholderMarkers = []string{
 // scans. Keeping the surface narrow avoids the cost of regex-walking
 // every text file in a repo; AI evals/configs live in a small set.
 //
-// Pre-0.2.x this list missed several real-world key-leak surfaces:
-// .properties (Java configs), .tfvars (Terraform), .sh (env-export
-// shell scripts), .config (.NET/generic), .dockerfile/Dockerfile.
-// Polyglot AI infra repos commonly stash keys in these — added.
+// Coverage includes real-world key-leak surfaces beyond the obvious
+// YAML/JSON: .properties (Java configs), .tfvars (Terraform), .sh
+// (env-export shell scripts), .config (.NET/generic), and
+// .dockerfile/Dockerfile — polyglot AI infra repos commonly stash
+// keys in these.
 var configFileExts = map[string]bool{
 	".yaml":       true,
 	".yml":        true,
@@ -97,6 +97,39 @@ var configFileExts = map[string]bool{
 	".sh":         true, // env-export shell scripts
 	".config":     true, // .NET / generic
 	".dockerfile": true, // explicit dockerfile extension
+}
+
+// isTestFixturePath returns true when the path looks like a
+// test-mock / recorded-response fixture rather than real config.
+// Used to suppress aiHardcodedAPIKey FPs on fixture libraries
+// (placebo, vcrpy, cassettes, etc.) that contain mocked SDK
+// responses with fake credentials by design.
+func isTestFixturePath(relPath string) bool {
+	lower := strings.ToLower(filepath.ToSlash(relPath))
+	// Test-path prefixes (handled the same way as
+	// quality.isToolingPath).
+	testishMarkers := []string{
+		"/tests/data/", "/tests/fixtures/",
+		"/test/data/", "/test/fixtures/",
+		"/testdata/", "/__fixtures__/",
+		"/placebo/",    // botocore/placebo mock recordings
+		"/cassettes/",  // vcrpy/betamax recorded HTTP
+		"/recordings/", // various test recorders
+	}
+	if strings.HasPrefix(lower, "tests/data/") ||
+		strings.HasPrefix(lower, "tests/fixtures/") ||
+		strings.HasPrefix(lower, "test/data/") ||
+		strings.HasPrefix(lower, "test/fixtures/") ||
+		strings.HasPrefix(lower, "testdata/") ||
+		strings.HasPrefix(lower, "__fixtures__/") {
+		return true
+	}
+	for _, m := range testishMarkers {
+		if strings.Contains(lower, m) {
+			return true
+		}
+	}
+	return false
 }
 
 // HardcodedAPIKeyDetector identifies API keys embedded in AI configuration
@@ -126,17 +159,25 @@ func (d *HardcodedAPIKeyDetector) Detect(snap *models.TestSuiteSnapshot) []model
 	candidatePaths := d.gatherConfigPaths(snap)
 	var out []models.Signal
 	for _, relPath := range candidatePaths {
+		// Skip test-fixture paths. SDK-testing fixtures commonly
+		// contain example-shaped keys (e.g. AKIA...EXAMPLE) in mocked
+		// API responses; a real committed-key incident in test
+		// fixtures is rare relative to the per-repo FP load these
+		// mocks generate.
+		if isTestFixturePath(relPath) {
+			continue
+		}
 		abs := filepath.Join(d.Root, relPath)
 		hits := scanFileForAPIKeys(abs)
 		for _, h := range hits {
-			// 0.2.0 final-polish: scan-error hits surface as a low-
-			// severity diagnostic, not a critical Signal. Pre-fix the
-			// synthetic "scan-error: ..." hit was emitted with
-			// SeverityCritical and looked like a real secret in the
-			// rendered report — confusing users and ranking infra
-			// noise as a top-priority finding. Route through the
-			// detectorPanic-shaped engine-self-diagnostic channel:
-			// SeverityMedium so it surfaces but doesn't dominate the
+			// Scan-error hits surface as a low-severity diagnostic, not
+			// a critical Signal. An earlier revision emitted the
+			// synthetic "scan-error: ..." hit with SeverityCritical and
+			// it looked like a real secret in the rendered report —
+			// confusing users and ranking infra noise as a top-priority
+			// finding. Route through the detectorPanic-shaped engine-
+			// self-diagnostic channel: SeverityMedium so it surfaces but
+			// doesn't dominate the
 			// dashboard, and Type stays aiHardcodedAPIKey for catalog
 			// roundtripping.
 			if h.ScanError {
@@ -152,7 +193,7 @@ func (d *HardcodedAPIKeyDetector) Detect(snap *models.TestSuiteSnapshot) []model
 					Actionability:   models.ActionabilityScheduled,
 					LifecycleStages: []models.LifecycleStage{models.StageMaintenance},
 					AIRelevance:     models.AIRelevanceMedium,
-					RuleID:          "TER-AI-103",
+					RuleID:          "terrain/ai/hardcoded-api-key",
 					RuleURI:         "docs/rules/ai/hardcoded-api-key.md",
 					DetectorVersion: "0.2.0",
 					EvidenceSource:   models.SourceStructuralPattern,
@@ -175,7 +216,7 @@ func (d *HardcodedAPIKeyDetector) Detect(snap *models.TestSuiteSnapshot) []model
 				Actionability:   models.ActionabilityImmediate,
 				LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageMaintenance},
 				AIRelevance:     models.AIRelevanceHigh,
-				RuleID:          "TER-AI-103",
+				RuleID:          "terrain/ai/hardcoded-api-key",
 				RuleURI:         "docs/rules/ai/hardcoded-api-key.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{
@@ -224,10 +265,10 @@ type keyHit struct {
 	Line     int
 	// ScanError is set for the synthetic "scanner failed mid-file"
 	// hit. Callers route these to diagnostics output rather than
-	// emitting them as critical-severity Signals (pre-0.2.x final-
-	// polish, scan errors landed in the same Signal slice as real
-	// secrets, which painted a binary blob as a high-entropy key
-	// match in the rendered report).
+	// emitting them as critical-severity Signals — earlier revisions
+	// landed scan errors in the same Signal slice as real secrets,
+	// which painted a binary blob as a high-entropy key match in the
+	// rendered report.
 	ScanError bool
 }
 
@@ -252,8 +293,8 @@ func scanFileForAPIKeys(path string) []keyHit {
 	line := 0
 	// Track which (line, provider) we've already emitted so a config
 	// that lists `openai_key=... aws_key=...` on a single line emits
-	// both findings — pre-0.2.x the per-line `break` after the first
-	// match swallowed the second key.
+	// both findings — earlier revisions used a per-line `break` after
+	// the first match that swallowed the second key.
 	emitted := map[string]bool{}
 	for sc.Scan() {
 		line++
@@ -274,11 +315,11 @@ func scanFileForAPIKeys(path string) []keyHit {
 			hits = append(hits, keyHit{Provider: rule.Name, Line: line})
 		}
 	}
-	// Pre-0.2.x sc.Err() was never checked, so a single line longer
-	// than 1 MB (minified YAML, embedded blob) would silently drop
-	// the rest of the file — secret never detected. Surface scanner
-	// errors as a degraded-coverage hit; the caller routes them to
-	// diagnostics output rather than emitting them as Signals.
+	// Without checking sc.Err(), a single line longer than 1 MB
+	// (minified YAML, embedded blob) would silently drop the rest of
+	// the file — secret never detected. Surface scanner errors as a
+	// degraded-coverage hit; the caller routes them to diagnostics
+	// output rather than emitting them as Signals.
 	if err := sc.Err(); err != nil {
 		hits = append(hits, keyHit{Provider: "scan-error:" + err.Error(), Line: line, ScanError: true})
 	}

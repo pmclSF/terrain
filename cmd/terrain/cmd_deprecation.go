@@ -6,31 +6,36 @@ import (
 )
 
 // legacyDeprecationNotice prints a one-line stderr hint pointing the
-// user from a legacy top-level command to its canonical 0.2 namespace
-// shape. The runway is:
+// user from a legacy top-level command to its canonical namespace
+// shape. The hint is silent unless TERRAIN_LEGACY_HINT=1 is set (opt-in
+// to avoid noise on first ship).
 //
-//   - 0.2:    namespaces ship as aliases; both shapes work; this hint is silent
-//             unless TERRAIN_LEGACY_HINT=1 is set (opt-in for now to avoid
-//             noise on first ship).
-//   - 0.2.x: hint enabled by default; `TERRAIN_SILENCE_DEPRECATION=1`
-//             escape for CI scripts that already migrated.
-//   - 0.3:   legacy commands removed.
+// Either TERRAIN_QUIET=1 (the umbrella "no stderr chatter" flag) or
+// the per-feature TERRAIN_SILENCE_DEPRECATION=1 suppresses the hint.
+// Users typically set TERRAIN_QUIET=1 and expect every Terrain-internal
+// status line to stop.
 //
 // Hooks at the top of every legacy dispatch case in main.go. The
 // command name passed in is the legacy form ("summary"); canonicalForm
 // is the new shape ("report summary").
 func legacyDeprecationNotice(legacy, canonicalForm string) {
-	if os.Getenv("TERRAIN_SILENCE_DEPRECATION") != "" {
+	if isTerrainQuiet() || os.Getenv("TERRAIN_SILENCE_DEPRECATION") != "" {
 		return
 	}
-	// 0.2: opt-in only so the first release isn't noisy. Flip default
-	// to on in 0.2.x with a tracking entry in docs/release/0.2-known-gaps.md.
 	if os.Getenv("TERRAIN_LEGACY_HINT") == "" {
 		return
 	}
 	fmt.Fprintf(os.Stderr,
-		"hint: `terrain %s` is deprecated; use `terrain %s` in 0.3+. "+
-			"Set TERRAIN_SILENCE_DEPRECATION=1 to suppress.\n",
+		"hint: `terrain %s` is deprecated; use `terrain %s`. "+
+			"Set TERRAIN_QUIET=1 to suppress all deprecation hints.\n",
 		legacy, canonicalForm,
 	)
+}
+
+// isTerrainQuiet returns true when the user has opted into a quiet
+// run via the umbrella TERRAIN_QUIET=1 flag. The internal engine and
+// alias-notes paths use the same check, so a single env var silences
+// every Terrain-internal stderr chatter source.
+func isTerrainQuiet() bool {
+	return os.Getenv("TERRAIN_QUIET") == "1"
 }

@@ -17,18 +17,24 @@ import (
 
 	"github.com/pmclSF/terrain/internal/aidetect"
 	"github.com/pmclSF/terrain/internal/airun"
+	"github.com/pmclSF/terrain/internal/aliases"
 	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/coverage"
 	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/gauntlet"
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/measurement"
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/ownership"
 	"github.com/pmclSF/terrain/internal/policy"
 	"github.com/pmclSF/terrain/internal/portfolio"
 	"github.com/pmclSF/terrain/internal/runtime"
+	"github.com/pmclSF/terrain/internal/runtimeconfig"
 	"github.com/pmclSF/terrain/internal/scoring"
+	"github.com/pmclSF/terrain/internal/shadow"
+	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/surfacelit"
 )
 
 // DefaultEngineVersion is used when PipelineOptions.EngineVersion is not set.
@@ -102,6 +108,10 @@ type PipelineOptions struct {
 	// SlowTestThresholdMs overrides the default slow test threshold.
 	SlowTestThresholdMs float64
 
+	// EnablePreviewRules turns on the preview-tier detectors.
+	// Default off; surface via `terrain analyze --preview`.
+	EnablePreviewRules bool
+
 	// CollectDiagnostics enables pipeline timing and count diagnostics.
 	CollectDiagnostics bool
 
@@ -135,6 +145,19 @@ type PipelineOptions struct {
 	// to subtract; pipeline emits a warning so the user notices their
 	// flag is inert).
 	NewFindingsOnly bool
+
+	// MechanismOverrides is a list of "name=state" strings from the
+	// `--mechanisms.<name>=on|off|shadow` CLI flag. They are applied to
+	// the loaded mechanisms registry at pipeline start. Unknown names
+	// produce a startup error; malformed strings produce a startup error.
+	MechanismOverrides []string
+
+	// EnabledDetectorsOverride opts back IN to detectors marked
+	// DisabledByDefault in the manifest, in addition to any
+	// `enabled_detectors` specified in `.terrain/policy.yaml`. Useful
+	// for test harnesses that need to exercise detectors regardless
+	// of the shipped default-disabled set.
+	EnabledDetectorsOverride []string
 }
 
 // RunPipeline executes the full analysis pipeline:
@@ -154,6 +177,19 @@ func RunPipeline(root string, opts ...PipelineOptions) (*PipelineResult, error) 
 	return RunPipelineContext(context.Background(), root, opts...)
 }
 
+// pipelineGlobalsMu serializes concurrent RunPipeline invocations within
+// one process so the shared process globals — shadow.SetSink and
+// mechanisms.SetDefault — have non-overlapping lifetimes per call. The
+// save/restore pattern only behaves correctly under strict LIFO; under
+// arbitrary overlap, A's restore can clobber B's installation. Holding
+// this mutex for the duration of each pipeline matches what users
+// expect (one analyze pass at a time per repo).
+//
+// Concurrent callers block here. Cancellation (via the supplied ctx)
+// is honored before acquiring the lock so a CTRL-C during a long queue
+// returns immediately rather than waiting for its turn.
+var pipelineGlobalsMu sync.Mutex
+
 // RunPipelineContext executes the full analysis pipeline with cancellation
 // support via context.
 func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOptions) (*PipelineResult, error) {
@@ -166,6 +202,74 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	}
 	if err := validatePipelineOptions(root, opt); err != nil {
 		return nil, err
+	}
+
+	// Acquire the process-wide pipeline lock. Honor ctx cancellation so
+	// a queued caller can bail out without waiting.
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	pipelineGlobalsMu.Lock()
+	defer pipelineGlobalsMu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+
+	// Reset per-run caches that detectors share within a single
+	// pipeline run. Long-lived processes (e.g. tests, the MCP server)
+	// invoke RunPipeline multiple times; the caches survive each call
+	// to amortize cost, then get dropped here so a re-run picks up
+	// filesystem changes.
+	surfacelit.ClearCache()
+	runtimeconfig.ClearLoaderCache()
+
+	// Mechanisms registry (loaded once per pipeline run). Every
+	// detector behavior change is gated by this registry; an
+	// unloaded registry means every gate is StateOff (legacy
+	// behavior). Per-run
+	// CLI overrides via --mechanisms.<name>=on|off|shadow.
+	mechReg, err := mechanisms.Load()
+	if err != nil {
+		return nil, fmt.Errorf("load mechanisms registry: %w", err)
+	}
+	if len(opt.MechanismOverrides) > 0 {
+		if err := mechReg.ApplyCLIOverrides(opt.MechanismOverrides); err != nil {
+			return nil, fmt.Errorf("apply --mechanisms overrides: %w", err)
+		}
+	}
+	// Save + restore the previous default registry. Under
+	// pipelineGlobalsMu the LIFO save/restore is safe; the prev
+	// returned by SetDefault is the value installed before this
+	// pipeline started (typically nil; non-nil only when a host
+	// program pre-installed one).
+	prevDefault := mechanisms.SetDefault(mechReg)
+	defer mechanisms.SetDefault(prevDefault)
+
+	// Shadow sink. When any mechanism is in shadow OR on state, install
+	// a FileSink at .terrain/shadow-report.jsonl so consumer detectors'
+	// would-suppress / would-add / would-demote events land on disk.
+	// When every mechanism is off, the sink is a no-op (no file is
+	// created).
+	if mechanismsAnyNonOff(mechReg) {
+		// Ensure .terrain/.gitignore exists before the sink writes
+		// shadow-report.jsonl into the user's repo. The init-time write
+		// in WriteInitConfig only fires when the user explicitly ran
+		// `terrain init`; users who skip init and run `terrain analyze`
+		// directly would otherwise have shadow-report.jsonl leak into
+		// their git commits. Idempotent — no-op if the file exists.
+		_ = ensureTerrainGitignore(root)
+
+		shadowPath := filepath.Join(root, ".terrain", "shadow-report.jsonl")
+		fs, ferr := shadow.NewFileSink(shadowPath)
+		if ferr != nil {
+			logging.L().Debug("shadow sink unavailable", "err", ferr, "path", shadowPath)
+		} else {
+			prev := shadow.SetSink(fs)
+			defer func() {
+				shadow.SetSink(prev)
+				_ = fs.Close()
+			}()
+		}
 	}
 
 	// Auto-discover coverage and runtime artifacts when not explicitly provided.
@@ -425,7 +529,7 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		}
 		scenarios := terrainCfg.ToScenarios()
 		if len(scenarios) > 0 {
-			snapshot.Scenarios = append(snapshot.Scenarios, scenarios...)
+			snapshot.Evals = append(snapshot.Evals, scenarios...)
 		}
 	}
 
@@ -433,33 +537,33 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	// Detects eval frameworks (promptfoo, deepeval, langchain, etc.) and
 	// derives scenarios from eval test files and AI import patterns.
 	// DetectContext respects pipeline cancellation in the source-walk
-	// inner loop — pre-Track 5.3 a slow AI scan would block until the
-	// walk completed even when ctx had been cancelled.
+	// inner loop, so a slow AI scan no longer blocks until the walk
+	// completes when ctx has been cancelled.
 	aiDetection := aidetect.DetectContext(ctx, root)
-	derivedScenarios := aidetect.DeriveScenarios(root, aiDetection, snapshot.CodeSurfaces, snapshot.TestFiles)
+	derivedScenarios := aidetect.DeriveEvals(root, aiDetection, snapshot.CodeSurfaces, snapshot.TestFiles)
 	if len(derivedScenarios) > 0 {
 		// Merge with manual scenarios, avoiding duplicates by ID or by
 		// name+path (manual YAML and auto-derived may have different IDs
 		// but represent the same logical scenario).
 		existingIDs := map[string]bool{}
 		existingKeys := map[string]bool{}
-		for _, s := range snapshot.Scenarios {
-			existingIDs[s.ScenarioID] = true
+		for _, s := range snapshot.Evals {
+			existingIDs[s.EvalID] = true
 			existingKeys[s.Name+"|"+s.Path] = true
 		}
 		for _, ds := range derivedScenarios {
-			if existingIDs[ds.ScenarioID] || existingKeys[ds.Name+"|"+ds.Path] {
+			if existingIDs[ds.EvalID] || existingKeys[ds.Name+"|"+ds.Path] {
 				continue
 			}
-			snapshot.Scenarios = append(snapshot.Scenarios, ds)
+			snapshot.Evals = append(snapshot.Evals, ds)
 		}
 	}
 
 	// Step 2d: Infer capabilities on scenarios from naming, paths, and surfaces.
-	analysis.InferCapabilities(snapshot.Scenarios, snapshot.CodeSurfaces)
+	analysis.InferCapabilities(snapshot.Evals, snapshot.CodeSurfaces)
 
 	// Step 2e: Infer AI capabilities from surface kinds (framework-agnostic).
-	snapshot.InferredCapabilities = analysis.InferAICapabilities(snapshot.CodeSurfaces, snapshot.Scenarios)
+	snapshot.InferredCapabilities = analysis.InferAICapabilities(snapshot.CodeSurfaces, snapshot.Evals)
 
 	// Step 3: Runtime ingestion and health detection (optional).
 	if len(opt.RuntimePaths) > 0 {
@@ -645,6 +749,7 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		PolicyConfig:        policyCfg,
 		RuntimeResults:      runtimeResultsPtr,
 		SlowTestThresholdMs: opt.SlowTestThresholdMs,
+		EnablePreviewRules:  opt.EnablePreviewRules,
 	})
 	if regErr != nil {
 		return nil, fmt.Errorf("initialize detector registry: %w", regErr)
@@ -652,6 +757,68 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	signalsBefore := len(snapshot.Signals)
 	registry.RunWithGraph(snapshot, dg)
 	signalsProduced := len(snapshot.Signals) - signalsBefore
+
+	// Apply disabled-detectors kill switch. The set combines:
+	//   - manifest entries marked DisabledByDefault (off in default config)
+	//   - user-configured disabled_detectors in .terrain/policy.yaml
+	// The combined set is expanded through the alias registry by
+	// expandDisabledDetectors — see that helper for the "=" literal-prefix
+	// opt-out semantics. User config can override a default-disabled
+	// detector by passing it in `enabled_detectors`.
+	manifestDisabled := signals.DefaultDisabledTypes()
+	userDisabled := policyCfg.DisabledDetectorSet()
+	userEnabled := policyCfg.EnabledDetectorSet()
+	// Merge in pipeline-options override.
+	if len(opt.EnabledDetectorsOverride) > 0 {
+		if userEnabled == nil {
+			userEnabled = map[string]bool{}
+		}
+		for _, t := range opt.EnabledDetectorsOverride {
+			if t = strings.TrimSpace(t); t != "" {
+				userEnabled[t] = true
+			}
+		}
+	}
+	combined := map[string]bool{}
+	for t := range manifestDisabled {
+		if !userEnabled[t] {
+			combined[t] = true
+		}
+	}
+	for t := range userDisabled {
+		combined[t] = true
+	}
+	if len(combined) > 0 {
+		aliasReg, aliasErr := aliases.Load()
+		if aliasErr != nil {
+			logging.L().Debug("alias registry load failed; disabled_detectors aliases will not expand", "err", aliasErr)
+		}
+		expanded, aliasesHit := expandDisabledDetectors(combined, aliasReg)
+		emitAliasNotes(aliasReg, aliasesHit)
+
+		kept := snapshot.Signals[:0]
+		suppressed := 0
+		for _, sig := range snapshot.Signals {
+			if expanded[string(sig.Type)] {
+				suppressed++
+				continue
+			}
+			kept = append(kept, sig)
+		}
+		snapshot.Signals = kept
+		if suppressed > 0 {
+			var userList []string
+			if policyCfg != nil {
+				userList = policyCfg.Rules.DisabledDetectors
+			}
+			logging.L().Debug("disabled_detectors filter applied",
+				"suppressed", suppressed,
+				"disabled_detectors_user", userList,
+				"disabled_detectors_default", manifestDisabled)
+		}
+		signalsProduced -= suppressed
+	}
+
 	logging.L().Debug("signal detection complete", "detectors", registry.Len(), "signals", signalsProduced, "duration", time.Since(stepStart))
 	if diag != nil {
 		diag.add("signal-detection", time.Since(stepStart), signalsProduced)
@@ -688,6 +855,13 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	}
 
 	normalizeSignalMetadata(snapshot)
+
+	// Apply severity-from-lift (Tier 5.3): each signal's severity is
+	// re-evaluated against corpus evidence. Detectors with weak lift get
+	// demoted; detectors with no evidence get fail-closed-capped.
+	// Evidence-attached metadata also lands on the Signal for downstream
+	// consumers (terrain explain, etc.) to render trustfully.
+	applyEvidenceBasedSeverity(snapshot)
 
 	// Attach file-scoped signals to their corresponding test files.
 	attachSignalsToTestFiles(snapshot)
@@ -754,7 +928,21 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	// in 0.2.0.
 	applySuppressions(snapshot, root, opt.SuppressionsPath, time.Now())
 
-	// Step 10d: optional --new-findings-only filter. When the user
+	// Step 10d: update per-repo finding history. Runs BEFORE the
+	// --new-findings-only filter so chronic (repeating-across-PRs)
+	// findings actually accumulate counts under the recommended CI
+	// shape `--baseline old.json --new-findings-only`. With the
+	// filter-first ordering, chronic findings were dropped before
+	// they could be incremented, so the demote-from-inline-to-footer
+	// behavior the renderer relies on never fired for the dominant
+	// CI pattern.
+	//
+	// The PR-comment renderer consults the same store via
+	// ShouldDemote to fold chronically-firing-without-dismiss
+	// findings into the observability footer.
+	updateFindingHistory(snapshot, root)
+
+	// Step 10e: optional --new-findings-only filter. When the user
 	// supplied both --baseline and --new-findings-only, drop every
 	// signal whose FindingID already existed in the baseline so the
 	// gate fires only on net-new findings. Established repos with
@@ -783,6 +971,73 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		ArtifactDiscovery: discovery,
 		DiscoveryMessages: discoveryMessages,
 	}, nil
+}
+
+// expandDisabledDetectors takes the user's disabled_detectors set
+// (typically from policy.yaml) and produces the actual set of rule_ids
+// the engine should suppress, plus the subset of old IDs that hit an
+// alias rule (for migration NOTE emission).
+//
+// Entries with a "=" prefix are LITERAL — they are added to the
+// expanded set without consulting the alias registry. This lets a
+// user suppress JUST a back-compat shim while letting the split halves
+// fire:
+//
+//	disabled_detectors:
+//	  - "=aiHardcodedAPIKey"   # literal: only the legacy ID
+//
+// Bare entries route through aliases.ExpandOldID, so a policy on a
+// pre-split ID continues to suppress every replacement ID too.
+func expandDisabledDetectors(disabled map[string]bool, reg *aliases.Registry) (expanded, aliasesHit map[string]bool) {
+	expanded = make(map[string]bool, len(disabled))
+	aliasesHit = map[string]bool{}
+	for old := range disabled {
+		if strings.HasPrefix(old, "=") {
+			literal := strings.TrimPrefix(old, "=")
+			if literal != "" {
+				expanded[literal] = true
+			}
+			continue
+		}
+		for _, expandedID := range reg.ExpandOldID(old) {
+			expanded[expandedID] = true
+			if expandedID != old {
+				aliasesHit[old] = true
+			}
+		}
+	}
+	return expanded, aliasesHit
+}
+
+// ensureTerrainGitignore creates .terrain/ and writes a default
+// .gitignore there if neither exists. Mirrors WriteInitConfig's
+// behavior so a user who runs `terrain analyze` without first running
+// `terrain init` still gets the gitignore that excludes runtime
+// artifacts. Returns nil on success or when the file already exists;
+// returns the error only if the parent directory create fails.
+func ensureTerrainGitignore(root string) error {
+	terrainDir := filepath.Join(root, ".terrain")
+	if err := os.MkdirAll(terrainDir, 0o755); err != nil {
+		return fmt.Errorf("create .terrain/ directory: %w", err)
+	}
+	gitignorePath := filepath.Join(terrainDir, ".gitignore")
+	if _, err := os.Stat(gitignorePath); err == nil {
+		return nil // already present; leave user customizations alone
+	}
+	return os.WriteFile(gitignorePath, []byte(defaultTerrainGitignore), 0o644)
+}
+
+// mechanismsAnyNonOff reports whether any mechanism in the registry is
+// in shadow or on state. Used to decide whether to install a shadow
+// sink (a registry with everything off → no sink, no .terrain/shadow-
+// report.jsonl file created).
+func mechanismsAnyNonOff(reg *mechanisms.Registry) bool {
+	for _, m := range reg.All() {
+		if m.State != mechanisms.StateOff {
+			return true
+		}
+	}
+	return false
 }
 
 func validatePipelineOptions(root string, opt PipelineOptions) error {
@@ -1181,11 +1436,11 @@ func ingestGauntletArtifacts(paths []string) ([]*gauntlet.Artifact, error) {
 // malformed — the user explicitly asked for the comparison via
 // --baseline, so a silent fallback would mask intent.
 func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
-	// 0.2.0 final-polish: stream-decode via json.NewDecoder rather
-	// than loading the whole file into memory. A 100MB historical
-	// snapshot is tractable; multi-repo / multi-month historical
-	// snapshots can run several hundred MB and used to spike RSS by
-	// the same amount under os.ReadFile + json.Unmarshal.
+	// Stream-decode via json.NewDecoder rather than loading the whole
+	// file into memory. A 100MB historical snapshot is tractable;
+	// multi-repo / multi-month historical snapshots can run several
+	// hundred MB and used to spike RSS by the same amount under
+	// os.ReadFile + json.Unmarshal.
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("read: %w", err)
@@ -1209,35 +1464,33 @@ func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
 		return nil, fmt.Errorf("baseline appears empty (no schemaVersion, signals, testFiles, or evalRuns)")
 	}
 	// Reject snapshots from a future major version we don't understand.
-	// Pre-0.2.x this check was missing, so a 2.0.0 baseline would
-	// silently decode into the v1 struct, losing fields.
+	// Without this check a 2.0.0 baseline would silently decode into
+	// the v1 struct, losing fields.
 	if err := models.ValidateSchemaVersion(snap.SnapshotMeta.SchemaVersion); err != nil {
 		return nil, fmt.Errorf("baseline schema: %w", err)
 	}
 	// Migrate older snapshots forward in place (idempotent for current).
-	// Pre-0.2.x this call was missing, so 0.1.x baselines decoded
-	// raw and were silently compared as-if same-schema. Migration runs
-	// the same code path as cmd_compare.go uses; returned notes are
-	// discarded here (the warn is structural, not actionable for the
-	// regression detectors).
+	// Without this call older baselines decoded raw and were silently
+	// compared as-if same-schema. Migration runs the same code path
+	// as cmd_compare.go uses; returned notes are discarded here (the
+	// warn is structural, not actionable for the regression detectors).
 	_ = models.MigrateSnapshotInPlace(&snap)
 	return &snap, nil
 }
 
 // relativeArtifactPath converts a CLI-provided path into a repo-
-// relative form when possible. 0.2.0 final-polish: pre-fix the
+// relative form when possible. Before this normalization, the
 // SourcePath stamped into EvalRunEnvelope was whatever the user
-// passed on the CLI — `--promptfoo-results /Users/alice/proj/...`
+// passed on the CLI — `--promptfoo-results <repo>/eval/...`
 // produced absolute paths in SARIF output, leaking developer home
 // directories. Now `filepath.Rel(root, p)` is attempted; on failure
 // (different volume, error) we fall back to the original path.
 //
 // Result is always slash-separated. `filepath.Rel` returns native
-// separators (backslash on Windows); snapshot JSON, calibration
-// labels, and SARIF all expect forward slashes, so we normalize to
-// `/` as the final step. Without this, Windows builds produced
-// backslash-separated SourcePaths that mismatched forward-slash
-// labels in the calibration corpus.
+// separators (backslash on Windows); snapshot JSON and SARIF all
+// expect forward slashes, so we normalize to `/` as the final step.
+// Without this, Windows builds produced backslash-separated
+// SourcePaths that mismatched their forward-slash counterparts.
 func relativeArtifactPath(root, p string) string {
 	if root == "" || p == "" {
 		return filepath.ToSlash(p)

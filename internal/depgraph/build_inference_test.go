@@ -294,8 +294,8 @@ func TestAIReasoningPath(t *testing.T) {
 			{BehaviorID: "behavior:module:src/ai/prompt.ts", Label: "prompt.ts", Kind: "module", CodeSurfaceIDs: []string{"surface:src/ai/prompt.ts:buildPrompt", "surface:src/ai/prompt.ts:systemTemplate"}},
 		},
 		// Scenarios: AI eval cases that validate the code surfaces.
-		Scenarios: []models.Scenario{
-			{ScenarioID: "scenario:eval:safety-check", Name: "safety-check", Category: "safety", Path: "evals/safety.yaml", Framework: "promptfoo", CoveredSurfaceIDs: []string{"surface:src/ai/prompt.ts:buildPrompt"}, EnvironmentIDs: []string{"env:staging"}},
+		Evals: []models.Eval{
+			{EvalID: "scenario:eval:safety-check", Name: "safety-check", Category: "safety", Path: "evals/safety.yaml", Framework: "promptfoo", CoveredSurfaceIDs: []string{"surface:src/ai/prompt.ts:buildPrompt"}, EnvironmentIDs: []string{"env:staging"}},
 		},
 		// Environments: where the evals run.
 		Environments: []models.Environment{
@@ -480,8 +480,8 @@ func TestBuildAISurfaceNodes_LinksToScenarios(t *testing.T) {
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "surface:src/p.ts:buildPrompt", Name: "buildPrompt", Path: "src/p.ts", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "scenario:custom:safety", Name: "safety",
+		Evals: []models.Eval{
+			{EvalID: "scenario:custom:safety", Name: "safety",
 				CoveredSurfaceIDs: []string{"surface:src/p.ts:buildPrompt"}},
 		},
 	}
@@ -512,8 +512,8 @@ func TestBuildAISurfaceNodes_ScenarioCoverageEdgesReachAINodes(t *testing.T) {
 			{SurfaceID: "surface:src/p.ts:buildPrompt", Name: "buildPrompt", Path: "src/p.ts", Kind: models.SurfacePrompt},
 			{SurfaceID: "surface:src/data.ts:evalData", Name: "evalData", Path: "src/data.ts", Kind: models.SurfaceDataset},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "scenario:custom:qa", Name: "qa",
+		Evals: []models.Eval{
+			{EvalID: "scenario:custom:qa", Name: "qa",
 				CoveredSurfaceIDs: []string{"surface:src/p.ts:buildPrompt", "surface:src/data.ts:evalData"}},
 		},
 	}
@@ -550,11 +550,11 @@ func TestBuildAISurfaceNodes_ScenarioCoverageEdgesReachAINodes(t *testing.T) {
 func TestBuildCapabilities_CreatesNodes(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:1", Name: "s1", Capability: "search"},
-			{ScenarioID: "sc:2", Name: "s2", Capability: "search"},
-			{ScenarioID: "sc:3", Name: "s3", Capability: "billing"},
-			{ScenarioID: "sc:4", Name: "s4"}, // no capability
+		Evals: []models.Eval{
+			{EvalID: "sc:1", Name: "s1", Capability: "search"},
+			{EvalID: "sc:2", Name: "s2", Capability: "search"},
+			{EvalID: "sc:3", Name: "s3", Capability: "billing"},
+			{EvalID: "sc:4", Name: "s4"}, // no capability
 		},
 	}
 
@@ -584,8 +584,8 @@ func TestBuildCapabilities_CreatesNodes(t *testing.T) {
 func TestBuildCapabilities_ScenarioEdges(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:1", Name: "s1", Capability: "safety"},
+		Evals: []models.Eval{
+			{EvalID: "sc:1", Name: "s1", Capability: "safety"},
 		},
 	}
 
@@ -648,8 +648,8 @@ func TestBuild_GraphDeterministic_WithAINodes(t *testing.T) {
 			{SurfaceID: "s:p", Name: "prompt", Path: "src/p.ts", Kind: models.SurfacePrompt},
 			{SurfaceID: "s:d", Name: "dataset", Path: "src/d.ts", Kind: models.SurfaceDataset},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:1", Name: "s1", Capability: "search",
+		Evals: []models.Eval{
+			{EvalID: "sc:1", Name: "s1", Capability: "search",
 				CoveredSurfaceIDs: []string{"s:p", "s:d"}},
 		},
 	}
@@ -674,8 +674,8 @@ func TestBuildRAGPipeline_CreatesNodesAndEdges(t *testing.T) {
 			{SurfaceID: "surface:src/rag/retriever.ts:retriever", Name: "retriever", Path: "src/rag/retriever.ts", Kind: models.SurfaceRetrieval},
 			{SurfaceID: "surface:src/prompts/sys.ts:sysPrompt", Name: "sysPrompt", Path: "src/rag/retriever.ts", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "scenario:rag", Name: "rag-quality",
+		Evals: []models.Eval{
+			{EvalID: "scenario:rag", Name: "rag-quality",
 				CoveredSurfaceIDs: []string{"surface:src/rag/retriever.ts:retriever"}},
 		},
 		RAGPipelineSurfaces: []models.RAGPipelineSurface{
@@ -782,9 +782,9 @@ func TestBuildRAGPipeline_EmptySkipped(t *testing.T) {
 func TestBuildScenarios_ExecutableMetadata(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:exec", Name: "executable", Executable: true},
-			{ScenarioID: "sc:noexec", Name: "not-executable", Executable: false},
+		Evals: []models.Eval{
+			{EvalID: "sc:exec", Name: "executable", Executable: true},
+			{EvalID: "sc:noexec", Name: "not-executable", Executable: false},
 		},
 	}
 

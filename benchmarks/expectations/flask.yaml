@@ -1,6 +1,6 @@
 # Expectations for pallets/flask benchmark.
 # Python repo with pytest — exercises cross-language analysis.
-# Baselines from 2026-03-06 run.
+# Baselines from a recent benchmark run.
 min_test_files: 20
 min_code_units: 30
 require_posture: true

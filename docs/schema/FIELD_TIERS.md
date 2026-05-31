@@ -5,10 +5,9 @@ tiers. The tier tells adopters whether they can build long-lived
 tooling against the field, accept temporary brittleness, or treat
 the field as Terrain's internal scratch space.
 
-This is the Track 9.12 deliverable for the 0.2.0 release plan. The
-parity-plan rationale: adopters integrating Terrain into CI / IDE /
-dashboard tooling need to know which fields are safe to depend on
-and which can churn between minor releases.
+Adopters integrating Terrain into CI / IDE / dashboard tooling need
+to know which fields are safe to depend on and which can churn
+between minor releases.
 
 ## The three tiers
 
@@ -28,7 +27,7 @@ long-lived tooling against stable fields with confidence.
 - `codeUnits[].name`, `codeUnits[].path`, `codeUnits[].kind`,
   `codeUnits[].exported`, `codeUnits[].unitID`
 - `signals[].type`, `signals[].severity`, `signals[].path`
-- `findingId` on every signal (Track 4.4)
+- `findingId` on every signal
 - `aggregates.successRate` on EvalRunResult
 
 Stable fields are claimed publicly. Removing one is a major-version
@@ -39,17 +38,16 @@ breaking change with deprecation lead time.
 **Contract:** the field name and type are unlikely to change in
 the next minor release, but the *semantics* (what value Terrain
 puts into the field, when, with what precision) may evolve as
-calibration corpora arrive.
+measurement broadens.
 
 **Examples:**
 
-- `signals[].confidence` — will be calibrated against the 0.3
-  precision corpus; today's confidence values are detector self-
-  reports, not measured against ground truth
+- `signals[].confidence` — current values are detector self-reports;
+  they may be re-anchored against validation data in future releases
 - `signals[].evidence[]` — the field shape is stable; the set
   of evidence sources cited may grow per detector
-- `aiSubdomain` (Track 5.1) — vocabulary is stable for 0.2; new
-  AI signal types may add entries
+- `aiSubdomain` — vocabulary is stable; new AI signal types may add
+  entries
 - `testTypeConfidence`, `testTypeEvidence` — same shape; rule
   set may expand
 - `metadata.compatibilityNotes` — populated by the snapshot
@@ -101,7 +99,7 @@ that the contract is sustainable.
 | From → To | Trigger |
 |-----------|---------|
 | internal → beta | Field is read by at least one external integration; Terrain commits to a name + type for the next minor |
-| beta → stable | Calibration evidence + adopter usage demonstrate the semantic contract is durable; field is named in the schema's `required` block when applicable |
+| beta → stable | Measurement evidence + adopter usage demonstrate the semantic contract is durable; field is named in the schema's `required` block when applicable |
 | stable → demoted | Never within a major version. A stable field that's wrong stays through the major and changes at the next major bump. |
 
 ## What this means for `terrain analyze --json`

@@ -14,7 +14,7 @@ The migration namespace is **stable** for the Tier-1 conversion
 directions (Jest ↔ Vitest is the canonical example). Other
 directions are tagged Experimental in `terrain migrate list`
 output; their schema remains the same but conversion confidence
-ratings are still being calibrated. See
+ratings are still being tuned. See
 [`docs/release/feature-status.md`](../release/feature-status.md)
 for the current per-direction tier matrix.
 
@@ -127,8 +127,8 @@ for the current per-direction tier matrix.
   "pending":    1,     // not yet processed
   "source":     "jest",
   "target":     "vitest",
-  "startedAt":  "2026-05-04T12:00:00Z",
-  "updatedAt":  "2026-05-04T12:08:33Z",
+  "startedAt":  "2099-05-04T12:00:00Z",
+  "updatedAt":  "2099-05-04T12:08:33Z",
   "outputRoot": "converted/"
 }
 ```
@@ -158,9 +158,8 @@ for the current per-direction tier matrix.
 }
 ```
 
-The `pillars` field arrived in Track 2 (`PR #167`) and adds
-per-pillar maturity assessment alongside the legacy migration
-checks.
+The `pillars` field adds per-pillar maturity assessment alongside
+the legacy migration checks.
 
 ## Stability commitment
 
@@ -169,9 +168,8 @@ schema:
 
 - New optional fields may be added in minor releases
 - Removal requires a major version bump and a migration window
-- Confidence-score thresholds (90/70) may shift in 0.3 once the
-  conversion-corpus calibration work lands; the field shape itself
-  stays stable.
+- Confidence-score thresholds (90/70) may shift in future releases;
+  the field shape itself stays stable.
 
 ## Per-direction status
 
@@ -185,14 +183,13 @@ conversion directions. Each row carries a `tier` field:
       "from":          "jest",
       "to":            "vitest",
       "tier":          "stable",       // stable | experimental | preview
-      "description":   "...",
-      "calibrationStatus": "..."
+      "description":   "..."
     }
   ]
 }
 ```
 
-The `tier` field follows the Track 6.6 vocabulary documented in
+The `tier` field follows the vocabulary documented in
 [`docs/release/feature-status.md`](../release/feature-status.md).
 Experimental and preview directions emit a banner-warning when
 invoked via `terrain migrate run` (see `cmd/terrain/cmd_workflow.go`).
@@ -215,7 +212,6 @@ terrain migrate status --json | jq '.processed[] | select(.status=="failed")'
 ## See also
 
 - [`internal/convert/workflow.go`](../../internal/convert/workflow.go) — Go type definitions
-- [`docs/product/alignment-first-migration.md`](../product/alignment-first-migration.md) — alignment-first framing for migration as drift-reduction
 - [`docs/release/feature-status.md`](../release/feature-status.md) — per-direction tier table
 - [`docs/schema/portfolio.md`](portfolio.md) — companion contract for portfolio output
 - [`docs/schema/eval-adapters.md`](eval-adapters.md) — companion contract for AI eval ingestion

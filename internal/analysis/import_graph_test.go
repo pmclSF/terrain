@@ -3,6 +3,7 @@ package analysis
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/models"
@@ -560,5 +561,68 @@ func writeTestFile(t *testing.T, root, relPath, content string) {
 	}
 	if err := os.WriteFile(abs, []byte(content), 0o644); err != nil {
 		t.Fatalf("write %s: %v", relPath, err)
+	}
+}
+
+func TestBuildImportGraph_JavaImports_Maven(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	// Source under Maven src/main/java.
+	writeTestFile(t, dir, "src/main/java/com/example/auth/AuthService.java",
+		`package com.example.auth;
+public class AuthService { public boolean check(String token) { return true; } }`)
+	writeTestFile(t, dir, "src/main/java/com/example/auth/TokenUtil.java",
+		`package com.example.auth;
+public class TokenUtil { public static String hash(String s) { return s; } }`)
+
+	// Test under Maven src/test/java with single-class + static + wildcard imports.
+	writeTestFile(t, dir, "src/test/java/com/example/auth/AuthServiceTest.java",
+		`package com.example.auth;
+import com.example.auth.AuthService;
+import static com.example.auth.TokenUtil.hash;
+import org.junit.jupiter.api.Test;
+public class AuthServiceTest { @Test public void t() {} }`)
+
+	graph := BuildImportGraph(dir, []models.TestFile{
+		{Path: "src/test/java/com/example/auth/AuthServiceTest.java", Framework: "junit5"},
+	})
+	imports := graph.TestImports["src/test/java/com/example/auth/AuthServiceTest.java"]
+	if imports == nil {
+		t.Fatalf("expected Java test imports to be extracted; got nil")
+	}
+	if !imports["src/main/java/com/example/auth/AuthService.java"] {
+		t.Errorf("expected single-class import to resolve to AuthService.java; got %v", imports)
+	}
+	if !imports["src/main/java/com/example/auth/TokenUtil.java"] {
+		t.Errorf("expected static import to resolve to TokenUtil.java; got %v", imports)
+	}
+	// org.junit.* should be filtered as stdlib/common-external; not in repo.
+	for k := range imports {
+		if strings.Contains(k, "junit") {
+			t.Errorf("did not expect junit import to resolve to a repo file; got %s", k)
+		}
+	}
+}
+
+func TestBuildImportGraph_JavaImports_WildcardResolvesToPackageDir(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+
+	writeTestFile(t, dir, "src/main/java/com/example/util/Helper.java",
+		`package com.example.util;
+public class Helper {}`)
+	writeTestFile(t, dir, "src/test/java/com/example/AppTest.java",
+		`package com.example;
+import com.example.util.*;
+public class AppTest {}`)
+
+	graph := BuildImportGraph(dir, []models.TestFile{
+		{Path: "src/test/java/com/example/AppTest.java", Framework: "junit5"},
+	})
+	imports := graph.TestImports["src/test/java/com/example/AppTest.java"]
+	// Wildcard import resolves to the package directory.
+	if !imports["src/main/java/com/example/util"] {
+		t.Errorf("expected wildcard import to resolve to package dir; got %v", imports)
 	}
 }

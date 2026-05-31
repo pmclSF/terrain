@@ -2,6 +2,7 @@ package changescope
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -88,11 +89,11 @@ func TestMergeRecommendation(t *testing.T) {
 		findings []ChangeScopedFinding
 		wantRec  string
 	}{
-		{"well_protected", nil, "Safe to merge"},
-		{"evidence_limited", nil, "Informational only"},
-		{"partially_protected", []ChangeScopedFinding{{Severity: "high"}}, "Merge with caution"},
-		{"high_risk", []ChangeScopedFinding{{Severity: "medium"}}, "Merge blocked"},
-		{"partially_protected", []ChangeScopedFinding{{Severity: "medium"}}, "Merge with caution"},
+		{"strong", nil, "Safe to merge"},
+		{"unknown", nil, "Informational only"},
+		{"moderate", []ChangeScopedFinding{{Severity: "high"}}, "Merge with caution"},
+		{"critical", []ChangeScopedFinding{{Severity: "medium"}}, "Merge blocked"},
+		{"moderate", []ChangeScopedFinding{{Severity: "medium"}}, "Merge with caution"},
 	}
 
 	for _, tt := range tests {
@@ -112,7 +113,7 @@ func TestMergeRecommendation(t *testing.T) {
 func TestRenderPRSummaryMarkdown_EmptyPRCallout(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand:        "well_protected",
+		PostureBand:        "strong",
 		ChangedFileCount:   3,
 		ChangedSourceCount: 2,
 		ChangedTestCount:   1,
@@ -138,7 +139,7 @@ func TestRenderPRSummaryMarkdown_EmptyPRCallout(t *testing.T) {
 func TestRenderPRSummaryMarkdown_AllClearOnlyOnEmpty(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand: "weakly_protected",
+		PostureBand: "weak",
 		NewFindings: []ChangeScopedFinding{
 			{Type: "weakAssertion", Scope: "direct", Path: "src/x.ts", Severity: "high", Explanation: "self-comparison"},
 		},
@@ -204,7 +205,7 @@ func TestBuildConfidenceHistogram_GroupsAndPluralizes(t *testing.T) {
 // comment surface itself is timestamp-free.
 func TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch(t *testing.T) {
 	pr := &PRAnalysis{
-		PostureBand:        "well_protected",
+		PostureBand:        "strong",
 		ChangedFileCount:   2,
 		ChangedSourceCount: 1,
 		ChangedTestCount:   1,
@@ -233,7 +234,7 @@ func TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch(t *testing.T)
 func TestRenderPRSummaryMarkdown_Deterministic(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand:        "partially_protected",
+		PostureBand:        "moderate",
 		ChangedFileCount:   5,
 		ChangedSourceCount: 3,
 		ChangedTestCount:   2,
@@ -296,7 +297,7 @@ func TestRenderPRSummaryMarkdown_LargeTestSet_GroupsByPackage(t *testing.T) {
 	}
 
 	pr := &PRAnalysis{
-		PostureBand:      "partially_protected",
+		PostureBand:      "moderate",
 		TestSelections:   selections,
 		RecommendedTests: recommended,
 	}
@@ -328,7 +329,7 @@ func TestRenderPRSummaryMarkdown_FindingTruncation(t *testing.T) {
 	}
 
 	pr := &PRAnalysis{
-		PostureBand: "weakly_protected",
+		PostureBand: "weak",
 		NewFindings: findings,
 	}
 
@@ -337,7 +338,11 @@ func TestRenderPRSummaryMarkdown_FindingTruncation(t *testing.T) {
 	output := buf.String()
 
 	// Truncation message — italicized "...and N more (severity counts)"
-	// in the new card-style render.
+	// in the card-style render. Protection-gap findings keep the old
+	// N-cap render (each gap is a different file; per-detector
+	// collapse doesn't apply). The detector-bearing visibility floor
+	// lives in renderFindingsCardsByDetector for the slash-command
+	// surface.
 	if !strings.Contains(output, "_...and 10 more") {
 		t.Errorf("expected truncation message for >10 findings; got:\n%s", output)
 	}
@@ -367,7 +372,7 @@ func TestClassifyFindingsDetailed_ThreeWay(t *testing.T) {
 func TestRenderPRSummaryMarkdown_SuiteSizeContext(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand:      "well_protected",
+		PostureBand:      "strong",
 		TotalTestCount:   200,
 		RecommendedTests: []string{"a.test.ts", "b.test.ts"},
 		TestSelections: []TestSelection{
@@ -398,7 +403,7 @@ func TestRenderPRSummaryMarkdown_SuiteSizeContext(t *testing.T) {
 func TestRenderPRSummaryMarkdown_DirectVsIndirectSections(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand: "weakly_protected",
+		PostureBand: "weak",
 		NewFindings: []ChangeScopedFinding{
 			{Type: "protection_gap", Scope: "direct", Path: "src/a.ts", Severity: "high", Explanation: "Direct gap"},
 			{Type: "protection_gap", Scope: "indirect", Path: "src/b.ts", Severity: "medium", Explanation: "Indirect gap"},
@@ -412,23 +417,26 @@ func TestRenderPRSummaryMarkdown_DirectVsIndirectSections(t *testing.T) {
 	if !strings.Contains(output, "### Coverage gaps in changed code") {
 		t.Errorf("expected 'Coverage gaps in changed code' heading; got:\n%s", output)
 	}
-	if !strings.Contains(output, "**`src/a.ts`** [HIGH] — Direct gap") {
-		t.Errorf("expected card-shape direct finding; got:\n%s", output)
+	// PR-comment labels use the BLOCK/GATE/WATCH/NOTE vocabulary —
+	// protection-gap defaults to gate-tier; high severity + gate-tier
+	// = [GATE].
+	if !strings.Contains(output, "**`src/a.ts`** [GATE] — Direct gap") {
+		t.Errorf("expected card-shape direct finding with [GATE] label; got:\n%s", output)
 	}
 
 	// Indirect risks in collapsed section — singular "gap" for count=1.
 	if !strings.Contains(output, "1 indirectly impacted protection gap") {
 		t.Errorf("expected indirect section with count; got:\n%s", output)
 	}
-	if !strings.Contains(output, "**`src/b.ts`** [MED] — Indirect gap") {
-		t.Errorf("expected card-shape indirect finding; got:\n%s", output)
+	if !strings.Contains(output, "**`src/b.ts`** [GATE] — Indirect gap") {
+		t.Errorf("expected card-shape indirect finding with [GATE] label; got:\n%s", output)
 	}
 }
 
 func TestRenderChangeScopedReport_ShowsTestReduction(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand:      "well_protected",
+		PostureBand:      "strong",
 		TotalTestCount:   50,
 		RecommendedTests: []string{"a.test.ts"},
 		TestSelections:   []TestSelection{{Path: "a.test.ts", Confidence: "exact"}},
@@ -472,12 +480,12 @@ func TestSummarizeFindingsBySeverity(t *testing.T) {
 func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand: "partially_protected",
+		PostureBand: "moderate",
 		AI: &AIValidationSummary{
 			ImpactedCapabilities: []string{"refund-explanation", "enterprise-search"},
 			SelectedScenarios:    3,
 			TotalScenarios:       8,
-			Scenarios: []AIScenarioSummary{
+			Scenarios: []EvalSummary{
 				{Name: "refund-accuracy", Capability: "refund-explanation", Reason: "context template changed (policyBlock)"},
 				{Name: "search-citations", Capability: "enterprise-search", Reason: "retrieval config changed (chunkConfig)"},
 				{Name: "safety-guardrail", Capability: "refund-explanation", Reason: "prompt changed (safetyOverlay)"},
@@ -540,7 +548,7 @@ func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 		t.Errorf("expected advisory-finding framing for warnings; got:\n%s", output)
 	}
 	// Raw detector taxonomy should NOT appear as the bold headline.
-	// Confirm by looking for the pre-fix shape `[HIGH] **aiPromptInjectionRisk**:`.
+	// Confirm by looking for the raw shape `[HIGH] **aiPromptInjectionRisk**:`.
 	if strings.Contains(output, "**aiPromptInjectionRisk**:") {
 		t.Error("raw detector taxonomy leaked into headline; should be plain-language summary")
 	}
@@ -553,7 +561,7 @@ func TestRenderPRSummaryMarkdown_AISection(t *testing.T) {
 func TestRenderPRSummaryMarkdown_NoAISection(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand: "well_protected",
+		PostureBand: "strong",
 		// No AI field — traditional-only PR.
 	}
 
@@ -569,7 +577,7 @@ func TestRenderPRSummaryMarkdown_NoAISection(t *testing.T) {
 func TestRenderPRSummaryMarkdown_MixedTraditionalAndAI(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand:        "partially_protected",
+		PostureBand:        "moderate",
 		ChangedFileCount:   5,
 		ChangedSourceCount: 3,
 		ChangedTestCount:   2,
@@ -585,7 +593,7 @@ func TestRenderPRSummaryMarkdown_MixedTraditionalAndAI(t *testing.T) {
 			ImpactedCapabilities: []string{"search"},
 			SelectedScenarios:    1,
 			TotalScenarios:       3,
-			Scenarios: []AIScenarioSummary{
+			Scenarios: []EvalSummary{
 				{Name: "search-quality", Capability: "search", Reason: "retrieval config changed"},
 			},
 		},
@@ -614,12 +622,12 @@ func TestRenderPRSummaryMarkdown_MixedTraditionalAndAI(t *testing.T) {
 func TestRenderPRSummaryMarkdown_AISection_Deterministic(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
-		PostureBand: "well_protected",
+		PostureBand: "strong",
 		AI: &AIValidationSummary{
 			ImpactedCapabilities: []string{"billing", "auth"},
 			SelectedScenarios:    2,
 			TotalScenarios:       5,
-			Scenarios: []AIScenarioSummary{
+			Scenarios: []EvalSummary{
 				{Name: "billing-accuracy", Capability: "billing", Reason: "prompt changed"},
 				{Name: "auth-safety", Capability: "auth", Reason: "context changed"},
 			},
@@ -633,4 +641,84 @@ func TestRenderPRSummaryMarkdown_AISection_Deterministic(t *testing.T) {
 	if buf1.String() != buf2.String() {
 		t.Error("AI section rendering is not deterministic")
 	}
+}
+
+// TestRenderFindingsCardsByDetector_PerDetectorVisibilityFloor pins
+// the per-detector floor contract: every detector that fired
+// contributes at least one card, and co-fires within a detector
+// collapse to "↳ +N more".
+func TestRenderFindingsCardsByDetector_PerDetectorVisibilityFloor(t *testing.T) {
+	t.Parallel()
+
+	findings := []ChangeScopedFinding{
+		// 3 findings of the same detector (aiPromptInjection)
+		{Type: "existing_signal", SignalType: "aiPromptInjectionRisk", Path: "a.ts", Severity: "high", Explanation: "1"},
+		{Type: "existing_signal", SignalType: "aiPromptInjectionRisk", Path: "b.ts", Severity: "medium", Explanation: "2"},
+		{Type: "existing_signal", SignalType: "aiPromptInjectionRisk", Path: "c.ts", Severity: "low", Explanation: "3"},
+		// 1 finding of a different detector
+		{Type: "existing_signal", SignalType: "aiNonDeterministicEval", Path: "d.yaml", Severity: "medium", Explanation: "4"},
+	}
+
+	var lines []string
+	line := func(format string, args ...any) {
+		lines = append(lines, testFmtSprintf(format, args...))
+	}
+	renderFindingsCardsByDetector(line, findings, 1)
+
+	output := strings.Join(lines, "\n")
+
+	// Each detector contributes exactly one card.
+	if !strings.Contains(output, "aiPromptInjectionRisk") && !strings.Contains(output, "a.ts") {
+		t.Errorf("expected aiPromptInjectionRisk card; got:\n%s", output)
+	}
+	if !strings.Contains(output, "d.yaml") {
+		t.Errorf("expected aiNonDeterministicEval card; got:\n%s", output)
+	}
+	// Co-fires within prompt-injection group collapse to +2.
+	if !strings.Contains(output, "+2 more in this detector") {
+		t.Errorf("expected +2 collapse footer for prompt-injection; got:\n%s", output)
+	}
+	// Highest-severity-first ordering: high (aiPromptInjectionRisk)
+	// should appear before medium (aiNonDeterministicEval).
+	promptIdx := strings.Index(output, "a.ts")
+	nondetIdx := strings.Index(output, "d.yaml")
+	if !(promptIdx >= 0 && nondetIdx >= 0 && promptIdx < nondetIdx) {
+		t.Errorf("expected high-severity detector first; got promptIdx=%d nondetIdx=%d:\n%s", promptIdx, nondetIdx, output)
+	}
+}
+
+// TestRenderFindingsCardsByDetector_HighestSeverityIsHeadline confirms
+// that within a co-firing detector group, the displayed card is the
+// worst-severity finding.
+func TestRenderFindingsCardsByDetector_HighestSeverityIsHeadline(t *testing.T) {
+	t.Parallel()
+
+	findings := []ChangeScopedFinding{
+		{Type: "existing_signal", SignalType: "ruleA", Path: "low.ts", Severity: "low", Explanation: "low"},
+		{Type: "existing_signal", SignalType: "ruleA", Path: "critical.ts", Severity: "critical", Explanation: "critical"},
+		{Type: "existing_signal", SignalType: "ruleA", Path: "medium.ts", Severity: "medium", Explanation: "medium"},
+	}
+
+	var lines []string
+	line := func(format string, args ...any) {
+		lines = append(lines, testFmtSprintf(format, args...))
+	}
+	renderFindingsCardsByDetector(line, findings, 1)
+	output := strings.Join(lines, "\n")
+
+	// Headline card should reference critical.ts (the worst severity).
+	if !strings.Contains(output, "critical.ts") {
+		t.Errorf("expected critical-severity finding as headline; got:\n%s", output)
+	}
+	// +2 collapse for the other two.
+	if !strings.Contains(output, "+2 more in this detector") {
+		t.Errorf("expected +2 collapse; got:\n%s", output)
+	}
+}
+
+// testFmtSprintf wraps fmt.Sprintf so the renderFindingsCardsByDetector
+// tests can capture line() calls without leaking fmt usage into the
+// test file's top-level imports.
+func testFmtSprintf(format string, args ...any) string {
+	return fmt.Sprintf(format, args...)
 }

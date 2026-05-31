@@ -1,11 +1,12 @@
-# TER-GOV-001 — Policy Violation
+# terrain/governance/policy-violation — Policy Violation
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
 **Type:** `policyViolation`  
 **Domain:** governance  
 **Default severity:** high  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** gate
 
 ## Summary
 
@@ -21,6 +22,6 @@ Resolve violations or intentionally update policy thresholds.
 
 ## Confidence range
 
-Detector confidence is bracketed at [1.00, 1.00] (heuristic in 0.2; calibration in 0.3).
+Confidence interval: 1.00–1.00.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

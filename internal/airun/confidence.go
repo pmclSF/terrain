@@ -10,7 +10,7 @@ import "math"
 // CIs because it handles small samples and edge cases (p=0, p=1)
 // correctly, unlike the naive normal-approximation interval. We use
 // it to convert per-detector precision/recall numbers from the
-// calibration corpus into ConfidenceDetail.IntervalLow / IntervalHigh
+// validation set into ConfidenceDetail.IntervalLow / IntervalHigh
 // instead of hardcoded heuristic values.
 //
 // z=1.96 corresponds to a 95% confidence level. WilsonInterval95() is

@@ -15,16 +15,12 @@ import (
 // Contamination inflates eval scores because the model has effectively
 // memorised its own test set.
 //
-// 0.2 ships a narrow heuristic check: for each prompt surface, walk
+// This is a narrow heuristic check: for each prompt surface, walk
 // the scenarios that cover it and look for chunks of the scenario's
 // input text that appear verbatim in the prompt file. The detector is
 // marked experimental in the manifest because it's bound to under-
 // detect (paraphrased examples won't match) and to over-detect on
 // short inputs.
-//
-// More precise variants (token-level n-gram overlap, semantic
-// similarity scores, cross-suite leakage detection) land in 0.3 with
-// the calibration corpus calibrating the threshold.
 type FewShotContaminationDetector struct {
 	// Root is the absolute path of the repo. Snapshot paths are
 	// repo-relative.
@@ -86,7 +82,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 	// Steps are the natural candidates for "this is the test input".
 	var out []models.Signal
 	emitted := map[string]bool{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		// Build candidate input strings from the scenario.
 		var candidates []string
 		if s := strings.TrimSpace(sc.Description); s != "" {
@@ -101,12 +97,12 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 			continue
 		}
 		// Resolve which prompt surfaces this scenario should be checked
-		// against. Pre-0.2.x final-polish, this loop iterated only
-		// `sc.CoveredSurfaceIDs`; auto-derived scenarios (the dominant
-		// shape — empty CoveredSurfaceIDs) silenced the detector
-		// entirely. aiSafetyEvalMissing already shipped this same
-		// implicit-coverage fallback in 0.2; aligning here closes the
-		// gap so contamination fires on the default scenario shape too.
+		// against. An earlier revision iterated only `sc.CoveredSurfaceIDs`;
+		// auto-derived scenarios (the dominant shape — empty
+		// CoveredSurfaceIDs) silenced the detector entirely.
+		// aiSafetyEvalMissing already ships this same implicit-coverage
+		// fallback; aligning here closes the gap so contamination fires on
+		// the default scenario shape too.
 		surfaceIDs := sc.CoveredSurfaceIDs
 		if len(surfaceIDs) == 0 {
 			// Implicit coverage: check this scenario against every
@@ -129,7 +125,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 			if !match {
 				continue
 			}
-			emitKey := sc.ScenarioID + "/" + surfaceID
+			emitKey := sc.EvalID + "/" + surfaceID
 			if emitted[emitKey] {
 				continue
 			}
@@ -140,7 +136,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 				Category:    models.CategoryAI,
 				Severity:    models.SeverityMedium,
 				Confidence:  0.7,
-				Location:    models.SignalLocation{File: promptPath[surfaceID], ScenarioID: sc.ScenarioID, Symbol: sc.Name},
+				Location:    models.SignalLocation{File: promptPath[surfaceID], ScenarioID: sc.EvalID, Symbol: sc.Name},
 				Explanation: "Scenario `" + sc.Name + "` contains text that appears verbatim in prompt `" + promptPath[surfaceID] + "`. Few-shot examples that overlap with the eval test set inflate scores.",
 				SuggestedAction: "Hold the matching examples out of the prompt's few-shot block, or rewrite the eval input so it isn't a copy of an example. Re-run the eval after de-duplication.",
 
@@ -148,7 +144,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 				Actionability:   models.ActionabilityScheduled,
 				LifecycleStages: []models.LifecycleStage{models.StageTestAuthoring, models.StageMaintenance},
 				AIRelevance:     models.AIRelevanceHigh,
-				RuleID:          "TER-AI-109",
+				RuleID:          "terrain/ai/few-shot-contamination",
 				RuleURI:         "docs/rules/ai/few-shot-contamination.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{
@@ -162,7 +158,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 				EvidenceStrength: models.EvidenceModerate,
 				Metadata: map[string]any{
 					"surfaceId":         surfaceID,
-					"scenarioId":        sc.ScenarioID,
+					"scenarioId":        sc.EvalID,
 					"matchedExcerpt":    truncateExcerpt(matchedCandidate, 80),
 					"thresholdChars":    threshold,
 				},
@@ -177,13 +173,13 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 // distinct-word-count threshold and appears verbatim inside content
 // (case-insensitive).
 //
-// Pre-0.2.x this was a pure substring match with the 40-character
-// threshold. Adversarial review flagged that 40 chars of English
-// boilerplate ("Please describe the issue you're seeing") matches
-// every customer-support-style prompt by accident. The new check
-// requires the candidate to also have at least 5 distinct alphanumeric
-// tokens — short of a real n-gram overlap (planned for 0.3) but
-// substantially harder to trigger on shared boilerplate.
+// A pure substring match with the 40-character threshold is too loose:
+// 40 chars of English boilerplate ("Please describe the issue you're
+// seeing") matches every customer-support-style prompt by accident.
+// The current check requires the candidate to also have at least 5
+// distinct alphanumeric
+// tokens — short of a real n-gram overlap but substantially harder to
+// trigger on shared boilerplate.
 func findContaminationOverlap(content string, candidates []string, threshold int) (bool, string) {
 	const minDistinctWords = 5
 	for _, c := range candidates {

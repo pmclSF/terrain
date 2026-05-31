@@ -2,9 +2,9 @@
 
 > ⚠️ **[DEPRECATED — DO NOT USE FOR NEW WORK]** This document is historical
 > context describing how the current architecture relates to the original
-> JavaScript converter codebase. Use [DESIGN.md](../../DESIGN.md),
-> [docs/architecture/](../architecture/), and [docs/release/feature-status.md](../release/feature-status.md)
-> for current product direction.
+> JavaScript converter codebase. Use [DESIGN.md](../../DESIGN.md) and
+> [docs/release/feature-status.md](../release/feature-status.md) for
+> current product direction.
 
 This file describes the relationship between the legacy Terrain codebase and the current architecture.
 

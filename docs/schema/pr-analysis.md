@@ -137,7 +137,7 @@ full impact graph.
   "newInThisPR": true,
 
   // Pillar tag — currently always "gate" for findings emitted
-  // here. Stability: Stable (per Track 2 pillar markers).
+  // here. Stability: Stable.
   "pillar": "gate"
 }
 ```
@@ -208,9 +208,8 @@ schema:
 - Removal requires a major version bump and a migration window
 - Enum values may be extended in minor releases
 
-The `pillar` field across `ChangeScopedFinding` is part of the
-Track 2 pillar markers — it's always one of `understand`, `align`,
-`gate`, or empty (`omitempty`).
+The `pillar` field across `ChangeScopedFinding` is always one of
+`understand`, `align`, `gate`, or empty (`omitempty`).
 
 ## Versioning
 
@@ -231,7 +230,7 @@ terrain report pr --json | jq -e '.newFindings | length == 0'
 # All AI-flagged signals:
 terrain report pr --json | jq '.ai.blockingSignals[]'
 
-# Pillar grouping (with Track 2 pillar markers):
+# Pillar grouping:
 terrain report pr --json | jq '.newFindings | group_by(.pillar)'
 ```
 

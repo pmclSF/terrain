@@ -10,11 +10,11 @@
 #   - OPENAI_API_KEY (or your provider's key) configured as a
 #     repository secret
 #
-# Trust posture (per docs/product/ai-trust-boundary.md):
+# Trust posture (per SECURITY-DATA-HANDLING.md):
 #   - Promptfoo runs the eval (child process)
 #   - Terrain reads Promptfoo's output JSON
 #   - Terrain does not read, log, or proxy your API key
-#   - Terrain does not sandbox the eval (0.3 work)
+#   - Terrain does not sandbox the eval (future work)
 
 name: Terrain (Coverage + AI eval gate)
 

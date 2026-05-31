@@ -546,12 +546,12 @@ func buildFixtureSurfaces(g *Graph, snap *models.TestSuiteSnapshot) {
 // buildScenarios creates scenario nodes and connects them to the code
 // surfaces and behavior surfaces they validate.
 func buildScenarios(g *Graph, snap *models.TestSuiteSnapshot) {
-	if len(snap.Scenarios) == 0 {
+	if len(snap.Evals) == 0 {
 		return
 	}
 
-	for _, sc := range snap.Scenarios {
-		if sc.ScenarioID == "" {
+	for _, sc := range snap.Evals {
+		if sc.EvalID == "" {
 			continue
 		}
 
@@ -569,7 +569,7 @@ func buildScenarios(g *Graph, snap *models.TestSuiteSnapshot) {
 		}
 
 		g.AddNode(&Node{
-			ID:        sc.ScenarioID,
+			ID:        sc.EvalID,
 			Type:      NodeScenario,
 			Path:      sc.Path,
 			Name:      sc.Name,
@@ -580,7 +580,7 @@ func buildScenarios(g *Graph, snap *models.TestSuiteSnapshot) {
 		// Connect scenario to each surface it covers.
 		for _, surfaceID := range sc.CoveredSurfaceIDs {
 			g.AddEdge(&Edge{
-				From:         sc.ScenarioID,
+				From:         sc.EvalID,
 				To:           surfaceID,
 				Type:         EdgeCoversCodeSurface,
 				Confidence:   0.8,
@@ -600,7 +600,7 @@ func buildScenarios(g *Graph, snap *models.TestSuiteSnapshot) {
 			}
 			g.AddEdge(&Edge{
 				From:         ownerID,
-				To:           sc.ScenarioID,
+				To:           sc.EvalID,
 				Type:         EdgeOwns,
 				Confidence:   1.0,
 				EvidenceType: EvidenceManual,
@@ -619,9 +619,9 @@ func buildScenarios(g *Graph, snap *models.TestSuiteSnapshot) {
 func buildAISurfaceNodes(g *Graph, snap *models.TestSuiteSnapshot) {
 	// Map of surface ID → which scenarios cover it.
 	surfaceScenarios := map[string][]string{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		for _, sid := range sc.CoveredSurfaceIDs {
-			surfaceScenarios[sid] = append(surfaceScenarios[sid], sc.ScenarioID)
+			surfaceScenarios[sid] = append(surfaceScenarios[sid], sc.EvalID)
 		}
 	}
 
@@ -706,9 +706,9 @@ func buildRAGPipeline(g *Graph, snap *models.TestSuiteSnapshot) {
 
 	// Index: scenario → covered surface IDs.
 	scenarioBySurface := map[string][]string{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		for _, sid := range sc.CoveredSurfaceIDs {
-			scenarioBySurface[sid] = append(scenarioBySurface[sid], sc.ScenarioID)
+			scenarioBySurface[sid] = append(scenarioBySurface[sid], sc.EvalID)
 		}
 	}
 
@@ -815,7 +815,7 @@ func buildRAGPipeline(g *Graph, snap *models.TestSuiteSnapshot) {
 // and links scenarios to the capabilities they validate.
 func buildCapabilities(g *Graph, snap *models.TestSuiteSnapshot) {
 	seen := map[string]bool{}
-	for _, sc := range snap.Scenarios {
+	for _, sc := range snap.Evals {
 		if sc.Capability == "" {
 			continue
 		}
@@ -829,7 +829,7 @@ func buildCapabilities(g *Graph, snap *models.TestSuiteSnapshot) {
 			})
 		}
 		g.AddEdge(&Edge{
-			From:         sc.ScenarioID,
+			From:         sc.EvalID,
 			To:           capID,
 			Type:         EdgeScenarioValidatesCapability,
 			Confidence:   0.9,
@@ -1019,15 +1019,15 @@ func buildEnvironmentEdges(g *Graph, snap *models.TestSuiteSnapshot) {
 	}
 
 	// Connect scenarios to their target environments.
-	for _, sc := range snap.Scenarios {
-		if sc.ScenarioID == "" || g.Node(sc.ScenarioID) == nil {
+	for _, sc := range snap.Evals {
+		if sc.EvalID == "" || g.Node(sc.EvalID) == nil {
 			continue
 		}
 
 		for _, envID := range sc.EnvironmentIDs {
 			if g.Node(envID) != nil {
 				g.AddEdge(&Edge{
-					From:         sc.ScenarioID,
+					From:         sc.EvalID,
 					To:           envID,
 					Type:         EdgeTargetsEnvironment,
 					Confidence:   0.8,

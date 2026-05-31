@@ -24,14 +24,11 @@ import (
 const RiskModelVersion = "2.0.0"
 
 // Severity weights are the multipliers applied to each finding when summing
-// per-dimension risk. They are NOT corpus-calibrated — values were chosen by
-// hand so that one Critical finding outweighs ~1.3 High findings, and one
-// High outweighs 1.5 Medium findings, which roughly matches reviewer intuition
-// on a sample of customer repos. Calibration against a labeled corpus lands
-// in 0.3 (see docs/release/0.2.md → 0.3 plan); when it does, both these
-// weights and the band thresholds below will shift. The current values
-// represent the "best guess" that 0.1.0 shipped with; we are documenting
-// them here, not changing them, to preserve back-compat in 0.1.2.
+// per-dimension risk. Values were chosen by hand so that one Critical
+// finding outweighs ~1.3 High findings, and one High outweighs 1.5 Medium
+// findings, which roughly matches reviewer intuition. The current values
+// represent the "best guess" the engine shipped with; we are documenting
+// them here, not changing them, to preserve back-compat.
 //
 // Rationale per level:
 //   - Critical (4.0): user-facing safety/security risk; fail-the-PR severity.
@@ -59,10 +56,9 @@ var severityWeight = map[models.SignalSeverity]float64{
 //
 // These four constants are the single source of truth for the band
 // boundaries; the deadband logic in scoreToBandWithHysteresis derives its
-// hysteresis values from them. They are intentionally NOT calibrated —
-// 4 / 9 / 16 are gut-feel breakpoints chosen during 0.1.0 design and
-// preserved through 0.1.2 for back-compat. 0.3 replaces them with corpus-
-// percentile-derived values; see docs/scoring-rubric.md for the full
+// hysteresis values from them. They are intentionally hand-picked —
+// 4 / 9 / 16 are gut-feel breakpoints chosen during initial design and
+// preserved for back-compat. See docs/scoring-rubric.md for the full
 // methodology.
 const (
 	riskBandLowUpper      = 4.0  // score < 4 → Low
@@ -317,8 +313,7 @@ func computeDirectoryRisk(snap *models.TestSuiteSnapshot) []models.RiskSurface {
 //   - 9 ≤ x < 16:  High
 //   - score ≥ 16:  Critical
 //
-// These thresholds are intentionally simple and inspectable. See
-// docs/scoring-rubric.md for what changes when calibration lands in 0.3.
+// These thresholds are intentionally simple and inspectable.
 func scoreToBand(score float64) models.RiskBand {
 	switch {
 	case score >= riskBandHighUpper:
@@ -413,7 +408,7 @@ func scoreToBandWithHysteresis(score float64, previousBand models.RiskBand) mode
 //
 // Taking the max means a repo can land in High either by being densely
 // problematic or by accumulating absolute volume. Both axes are kept
-// inspectable so future calibration can adjust them independently.
+// inspectable so they can be adjusted independently.
 func computeHybridScore(totalWeight float64, signalCount, totalFiles int) float64 {
 	densityScore := totalWeight
 	if totalFiles > 0 {

@@ -329,9 +329,9 @@ func TestBuild_BehaviorSurfaces(t *testing.T) {
 func TestBuild_Scenarios(t *testing.T) {
 	t.Parallel()
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
+		Evals: []models.Eval{
 			{
-				ScenarioID:        "scenario:auth:login-flow",
+				EvalID:        "scenario:auth:login-flow",
 				Name:              "Login flow",
 				Category:          "happy_path",
 				Framework:         "deepeval",
@@ -506,8 +506,8 @@ func TestValidationTargets(t *testing.T) {
 		TestCases: []models.TestCase{
 			{TestID: "t1", TestName: "login test", FilePath: "test/auth.test.js", Framework: "jest"},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "scenario:auth:flow", Name: "auth flow", Executable: true},
+		Evals: []models.Eval{
+			{EvalID: "scenario:auth:flow", Name: "auth flow", Executable: true},
 		},
 		ManualCoverage: []models.ManualCoverageArtifact{
 			{ArtifactID: "manual:testrail:auth", Name: "auth suite", Source: "testrail"},

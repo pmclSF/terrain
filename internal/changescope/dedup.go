@@ -116,13 +116,13 @@ func MergeRecommendation(postureBand string, findings []ChangeScopedFinding) (re
 	}
 
 	switch {
-	case postureBand == "well_protected" && highCount == 0:
+	case postureBand == "strong" && highCount == 0:
 		return "Safe to merge", "All changed code is well protected by existing tests."
-	case postureBand == "evidence_limited":
+	case postureBand == "unknown":
 		return "Informational only", "Insufficient data to assess change risk confidently."
 	case highCount > 0:
 		return "Merge with caution", "High-severity gaps found in changed code."
-	case postureBand == "weakly_protected" || postureBand == "high_risk":
+	case postureBand == "weak" || postureBand == "critical":
 		return "Merge blocked", "Significant protection gaps in changed code require attention."
 	default:
 		return "Merge with caution", "Some protection gaps found. Review findings before merging."

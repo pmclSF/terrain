@@ -1,15 +1,20 @@
-# TER-AI-013 — Cost Regression
+# terrain/ai/cost-regression — Prompt Token-Cost Regression
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
-**Type:** `costRegression`  
+**Type:** `aiCostRegression`  
 **Domain:** ai  
 **Default severity:** medium  
-**Status:** planned
+**Lifecycle status:** stable  
+**Gating tier:** observability
 
-## Promotion plan
+## Summary
 
-0.3
+A prompt change increases the token count by more than 25% versus the recorded baseline.
+
+## Remediation
+
+Investigate the change for unintended bloat; bump the baseline if the increase is intentional.
 
 ## Evidence sources
 
@@ -17,6 +22,6 @@
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.85, 0.95] (heuristic in 0.2; calibration in 0.3).
+Confidence interval: 0.85–0.95.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

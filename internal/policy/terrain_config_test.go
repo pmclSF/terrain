@@ -168,7 +168,7 @@ func TestManualArtifactID_Deterministic(t *testing.T) {
 func TestToScenarios(t *testing.T) {
 	t.Parallel()
 	cfg := &TerrainConfig{
-		Scenarios: []ScenarioEntry{
+		Scenarios: []EvalEntry{
 			{
 				Name:      "safety-check",
 				Category:  "safety",
@@ -207,8 +207,8 @@ func TestToScenarios(t *testing.T) {
 	if len(sc.CoveredSurfaceIDs) != 1 {
 		t.Errorf("surfaces = %d, want 1", len(sc.CoveredSurfaceIDs))
 	}
-	if sc.ScenarioID == "" {
-		t.Error("expected non-empty scenario ID")
+	if sc.EvalID == "" {
+		t.Error("expected non-empty eval ID")
 	}
 
 	// Second scenario should default framework to "custom".

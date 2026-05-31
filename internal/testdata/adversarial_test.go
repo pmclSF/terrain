@@ -156,7 +156,7 @@ func TestAdversarial_FilterByOwner_NoMatch(t *testing.T) {
 		ImpactedTests: []impact.ImpactedTest{
 			{Path: "test/foo.test.js"},
 		},
-		Posture: impact.ChangeRiskPosture{Band: "well_protected"},
+		Posture: impact.ChangeRiskPosture{Band: "strong"},
 	}
 
 	filtered := impact.FilterByOwner(result, "nonexistent-team")
@@ -292,7 +292,7 @@ func TestAdversarial_AllSignalRendering(t *testing.T) {
 func TestAdversarial_ImpactNilGraph(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{
-		Posture: impact.ChangeRiskPosture{Band: "evidence_limited"},
+		Posture: impact.ChangeRiskPosture{Band: "unknown"},
 		Graph:   nil,
 	}
 

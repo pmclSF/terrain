@@ -39,7 +39,7 @@ const messages = [
 
 func TestParseJSPrompts_TemplateLiteral(t *testing.T) {
 	t.Parallel()
-	src := "const prompt = `You are a helpful assistant. Your role is to answer questions based on the provided context. Do not make up information. Always respond with accurate data.`;"
+	src := "import OpenAI from 'openai';\nconst prompt = `You are a helpful assistant. Your role is to answer questions based on the provided context. Do not make up information. Always respond with accurate data.`;"
 	surfaces := ParseEmbeddedPrompts("src/prompt.ts", src, "js")
 	found := false
 	for _, s := range surfaces {
@@ -58,6 +58,8 @@ func TestParseJSPrompts_TemplateLiteral(t *testing.T) {
 func TestParseJSPrompts_FewShotArray(t *testing.T) {
 	t.Parallel()
 	src := `
+import OpenAI from 'openai';
+
 const examples = [
   { input: "What is the weather?", output: "I can help with weather queries." },
   { input: "Book a flight", output: "I'll help you book a flight." },
@@ -80,7 +82,8 @@ const examples = [
 
 func TestParseJSPrompts_AssignedString(t *testing.T) {
 	t.Parallel()
-	src := `const systemMessage = "You are a helpful customer service assistant. Your task is to answer questions based on the provided documentation. Do not make up information.";`
+	src := `import OpenAI from 'openai';
+const systemMessage = "You are a helpful customer service assistant. Your task is to answer questions based on the provided documentation. Do not make up information.";`
 	surfaces := ParseEmbeddedPrompts("src/config.ts", src, "js")
 	found := false
 	for _, s := range surfaces {
@@ -146,6 +149,8 @@ messages = [
 func TestParsePythonPrompts_TripleQuote(t *testing.T) {
 	t.Parallel()
 	src := `
+import openai
+
 SYSTEM_PROMPT = """
 You are a helpful AI assistant. Your role is to answer questions
 based on the provided context. Do not make up information.
@@ -167,6 +172,8 @@ Always respond with accurate, cited data.
 func TestParsePythonPrompts_FewShot(t *testing.T) {
 	t.Parallel()
 	src := `
+import openai
+
 examples = [
     {"input": "How do I return an item?", "output": "Visit returns.example.com"},
     {"input": "What is my balance?", "output": "Check your account page"},

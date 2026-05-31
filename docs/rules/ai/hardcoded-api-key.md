@@ -1,11 +1,12 @@
-# TER-AI-103 — Hard-Coded API Key in AI Configuration
+# terrain/ai/hardcoded-api-key — Hard-Coded API Key in AI Configuration
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
 **Type:** `aiHardcodedAPIKey`  
 **Domain:** ai  
 **Default severity:** critical  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** observability
 
 ## Summary
 
@@ -15,13 +16,17 @@ API-key-shaped string appears in an eval YAML, prompt config, or agent definitio
 
 Move the secret to an environment variable or secrets store and reference it through the runner's secret-resolution path.
 
+## Promotion plan
+
+Off by default. The current literal-shape predicate is too narrow to fire reliably across typical adopter codebases; capability is preserved via the planned split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded. Opt in via .terrain/policy.yaml when the local repo shape matches the predicate.
+
 ## Evidence sources
 
 - `structural-pattern`
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.85, 0.95] (heuristic in 0.2; calibration in 0.3).
+Confidence interval: 0.85–0.95.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 
@@ -89,7 +94,7 @@ old key is forever in git history, so the only safe response is
   issue with the example so the marker list grows.
 - The provider's keys actually look this way intentionally and you've
   rotated already. Add an `expectedAbsent: aiHardcodedAPIKey` entry in
-  the calibration fixture so the false-positive rate gets measured.
+  a regression test so the false-positive rate gets measured.
 
 ## Known limitations (0.2)
 

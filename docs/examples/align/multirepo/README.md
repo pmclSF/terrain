@@ -1,14 +1,14 @@
 # Multi-repo alignment — three-repo convergence story
 
 > **Status:** illustrative example. The multi-repo manifest format
-> ships in 0.2.0 (Track 6.1, see
+> ships in 0.2.0 (see
 > [`internal/portfolio/manifest.go`](../../../../internal/portfolio/manifest.go)).
 > The cross-repo aggregator that consumes the manifest and produces
-> the unified output below is 0.2.x work (Tracks 6.2 / 6.3); until
-> it lands, this example shows the *shape* the aggregator will
-> produce, not a live binary you can run today.
+> the unified output below is in-progress; until it lands, this
+> example shows the *shape* the aggregator will produce, not a live
+> binary you can run today.
 
-This example walks through the canonical Track 6 use case: an
+This example walks through the canonical multi-repo use case: an
 engineering org with three services on partially-divergent test
 stacks, declaring a portfolio manifest, and using Terrain to
 sequence the convergence work.
@@ -129,8 +129,7 @@ The load-bearing properties of this output:
    its actual state.
 3. **Conversion-tier vocabulary matches `terrain migrate list`.**
    `[Stable]` / `[Experimental]` come from the same source helper
-   (Track 6.6) so adopters see the same trust posture in both
-   places.
+   so adopters see the same trust posture in both places.
 4. **Sunset tags are first-class.** Tagging a repo `sunset-*`
    keeps it in the inventory but excludes it from the recommended
    sequence — adopters don't have to delete the repo from the
@@ -138,10 +137,9 @@ The load-bearing properties of this output:
 
 ## Why this example matters for 0.2.0
 
-The parity plan designates Track 6 as **parallel and partial-ship-
-OK**: Align is the secondary pillar, full multi-repo work is
-explicitly emerging in 0.2.0, and the marketing claim flagged as
-Tier 3 / experimental until 0.2.x ships the aggregator.
+Multi-repo work is explicitly emerging and partial-ship-OK: Align
+is the secondary pillar and the cross-repo aggregator is flagged
+experimental until it lands.
 
 This example is the bridge:
 
@@ -170,7 +168,7 @@ docs/examples/align/multirepo/
 
 ## Related reading
 
-- [`docs/product/alignment-first-migration.md`](../../../product/alignment-first-migration.md) —
+- [`docs/PRODUCT.md`](../../../PRODUCT.md) —
   the framing this example demonstrates
 - [`internal/portfolio/manifest.go`](../../../../internal/portfolio/manifest.go) —
   the manifest schema this example exercises

@@ -1,8 +1,8 @@
 // Package cli provides the command registry that enumerates the
-// CLI surface for Terrain. Track 9.6 of the 0.2.0 release plan
-// calls for the registry as the source of truth for command names,
-// pillar mappings, and one-line descriptions — feeding `terrain
-// --help`, `terrain doctor`, and the truth-verify gate.
+// CLI surface for Terrain. The registry is the source of truth for
+// command names, pillar mappings, and one-line descriptions —
+// feeding `terrain --help`, `terrain doctor`, and the truth-verify
+// gate.
 //
 // Status in 0.2.0
 //
@@ -39,10 +39,9 @@ import (
 	"sync"
 )
 
-// Pillar names the product pillar a command belongs to. Mirrors
-// the pillars enumerated in docs/release/parity/rubric.yaml so the
-// parity gate, the registry, and `terrain doctor` all use the same
-// vocabulary.
+// Pillar names the product pillar a command belongs to. The
+// registry and `terrain doctor` share this vocabulary so users see
+// consistent grouping across the CLI.
 type Pillar string
 
 const (
@@ -64,9 +63,8 @@ const (
 	PillarMeta Pillar = "meta"
 )
 
-// Tier names the publicly-claimable tier of a command — same axis
-// the parity rubric uses for capabilities. Tier 1 is named
-// publicly in 0.2.0; Tier 2 is shipping but flagged experimental;
+// Tier names the publicly-claimable tier of a command. Tier 1 is
+// named publicly; Tier 2 is shipping but flagged experimental;
 // Tier 3 is in development.
 type Tier int
 
@@ -88,7 +86,7 @@ type Command struct {
 	// Pillar is the product pillar this command serves.
 	Pillar Pillar
 
-	// Tier is the public-claim tier per the parity plan.
+	// Tier is the public-claim tier (Stable / Experimental / Preview).
 	Tier Tier
 
 	// JourneyQuestion is the one-sentence "what does this answer"

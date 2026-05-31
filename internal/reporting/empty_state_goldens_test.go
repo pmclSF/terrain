@@ -16,7 +16,7 @@ import (
 var updateEmptyStateGoldens = flag.Bool("update-empty-state-goldens", false,
 	"regenerate empty-state golden files instead of asserting against them")
 
-// TestEmptyState_Goldens is the Track 10.8 visual regression test for
+// TestEmptyState_Goldens is the visual regression test for
 // every shipped empty state. The contract: byte-identical output
 // between `RenderEmptyState(EmptyXxx)` and the committed golden under
 // internal/reporting/testdata/empty_state_goldens/<name>.txt.

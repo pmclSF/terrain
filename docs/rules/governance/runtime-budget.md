@@ -1,11 +1,12 @@
-# TER-GOV-004 — Runtime Budget Exceeded
+# terrain/governance/runtime-budget — Runtime Budget Exceeded
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
 **Type:** `runtimeBudgetExceeded`  
 **Domain:** governance  
 **Default severity:** medium  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** gate
 
 ## Summary
 
@@ -22,6 +23,6 @@ Reduce runtime hotspots or adjust policy to reflect intentional tradeoffs.
 
 ## Confidence range
 
-Detector confidence is bracketed at [1.00, 1.00] (heuristic in 0.2; calibration in 0.3).
+Confidence interval: 1.00–1.00.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

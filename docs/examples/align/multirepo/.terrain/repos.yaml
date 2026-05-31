@@ -10,7 +10,7 @@
 #   - 0.2.x:  cross-repo aggregator + portfolio output ships
 #
 # See ../README.md for the full convergence story this manifest
-# illustrates, and docs/product/alignment-first-migration.md for
+# illustrates, and the product reference for
 # the broader framing.
 
 version: 1

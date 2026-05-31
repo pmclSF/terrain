@@ -60,10 +60,7 @@ func (a *Analyzer) AnalyzeContext(ctx context.Context) (*models.TestSuiteSnapsho
 		return nil, err
 	}
 	// Snapshot timestamp. Honour SOURCE_DATE_EPOCH so reproducible
-	// builds and byte-for-byte snapshot determinism are achievable
-	// (round-4 review pinned this; pre-0.2.x the wall clock leaked
-	// unconditionally, breaking `terrain compare` byte equality and
-	// `terrain ai replay` artifact hashing).
+	// builds and byte-for-byte snapshot determinism are achievable.
 	analyzedAt := deterministicNowUTC()
 
 	// Check context before starting work.
@@ -193,8 +190,8 @@ func (a *Analyzer) AnalyzeContext(ctx context.Context) (*models.TestSuiteSnapsho
 	// Infer test types (unit, integration, e2e, etc.) with evidence.
 	testCases = testtype.InferAll(testCases)
 
-	// Track 3.3 — Refine integration-test classification using
-	// content-based detection (supertest, httptest, MockMvc, …).
+	// Refine integration-test classification using content-based
+	// detection (supertest, httptest, MockMvc, ...).
 	// Path/suite/framework heuristics miss the common case where
 	// integration tests live in flat directories alongside unit tests
 	// and identify themselves only through HTTP-testing imports.
@@ -430,9 +427,8 @@ func gitInfo(root string) (sha, branch string) {
 // is set, in which case it returns the parsed epoch. SOURCE_DATE_EPOCH
 // is the Reproducible Builds standard (https://reproducible-builds.org)
 // — when set, every wall-clock reference in build artefacts must use
-// it instead of real time. Round-4 review flagged the snapshot's
-// generatedAt as the one place determinism leaked; this honours the
-// standard so CI snapshots can be byte-compared.
+// it instead of real time. Honouring it makes CI snapshots
+// byte-comparable.
 func deterministicNowUTC() time.Time {
 	if v := os.Getenv("SOURCE_DATE_EPOCH"); v != "" {
 		if secs, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64); err == nil {

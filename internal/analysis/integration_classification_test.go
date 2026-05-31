@@ -13,7 +13,7 @@ import (
 // TestRefineIntegrationClassification_PromotesUnitToIntegration verifies
 // that a test file initially classified as TypeUnit (via metadata) gets
 // promoted to TypeIntegration when its content imports supertest. This
-// is the common shape Track 3.3 was designed to fix.
+// is the common shape the refinement is designed to fix.
 func TestRefineIntegrationClassification_PromotesUnitToIntegration(t *testing.T) {
 	t.Parallel()
 	tmp := t.TempDir()

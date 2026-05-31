@@ -32,12 +32,12 @@ const DefaultDetectorBudget = 30 * time.Second
 // under it.
 const signalTypeDetectorBudgetExceeded = SignalDetectorBudgetExceeded
 
-// safeDetect wraps a detector call with panic recovery. Pre-0.2.x a
-// nil deref or index-out-of-range in any of ~30 detectors would
-// terminate the whole pipeline goroutine, taking down `terrain
-// analyze` and the calibration test along with the offending fixture.
-// With recovery in place, a single broken detector emits zero signals
-// for that run instead — the rest of the pipeline continues.
+// safeDetect wraps a detector call with panic recovery. Without it, a
+// nil deref or index-out-of-range in any detector terminates the whole
+// pipeline goroutine, taking down `terrain analyze` along with the
+// offending fixture. With recovery in place, a single broken detector
+// emits zero signals for that run — the rest of the pipeline
+// continues.
 //
 // When a panic is caught, we leave a marker in the returned slice
 // (Severity=Critical, Type=detectorPanic) so the user sees there was a
@@ -62,8 +62,8 @@ func safeDetect(reg DetectorRegistration, fn func() []models.Signal) (out []mode
 }
 
 // safeDetectWithBudget wraps safeDetect with a per-detector wall-
-// clock timeout. Track 9.4 — the budget protects the pipeline from
-// any single hung detector blocking the rest.
+// clock timeout. The budget protects the pipeline from any single
+// hung detector blocking the rest.
 //
 // Note: a detector that ignores ctx and runs a tight CPU loop will
 // still complete its work after the budget elapses (Go has no
@@ -107,10 +107,9 @@ func safeDetectWithBudget(reg DetectorRegistration, fn func() []models.Signal) [
 // signalTypeMissingInputDiagnostic is the marker emitted by the
 // registry when a detector's RequiresRuntime / RequiresBaseline /
 // RequiresEvalArtifact flag is set but the snapshot doesn't carry
-// the corresponding input. Track 9.3 — adopters running `terrain
-// analyze` without coverage / baseline / eval artifacts get a
-// single visible diagnostic per affected detector instead of
-// silent zero-output.
+// the corresponding input. Adopters running `terrain analyze`
+// without coverage / baseline / eval artifacts get a single visible
+// diagnostic per affected detector instead of silent zero-output.
 const signalTypeMissingInputDiagnostic = SignalDetectorMissingInput
 
 // missingInputs returns a list of human-readable input-name strings
@@ -167,10 +166,10 @@ func missingInputDiagnostic(meta DetectorMeta, missing []string) models.Signal {
 }
 
 // safeDetectChecked is the registry's canonical detector-invocation
-// path. It composes Track 9.3 (missing-input check) with Track 9.4
-// (per-detector budget) over Track 9.2's panic recovery: input
-// gates first (skip detectors that can't fire), then budget-bounded
-// invocation that delegates to safeDetect for panic handling.
+// path. It composes the missing-input check with the per-detector
+// budget over panic recovery: input gates first (skip detectors that
+// can't fire), then budget-bounded invocation that delegates to
+// safeDetect for panic handling.
 // All call sites in Run / RunWithGraph route through here.
 func safeDetectChecked(reg DetectorRegistration, snap *models.TestSuiteSnapshot, fn func() []models.Signal) []models.Signal {
 	if missing := missingInputs(reg.Meta, snap); len(missing) > 0 {
@@ -256,8 +255,8 @@ type DetectorMeta struct {
 	// Budget is the maximum wall-clock time this detector is allowed
 	// to run before the pipeline cancels it and treats it as a no-op
 	// for the run. Zero means "use the registry default" (see
-	// DefaultDetectorBudget). Track 9.4 — protects analyze runs from
-	// a single hung detector blocking the whole pipeline.
+	// DefaultDetectorBudget). Protects analyze runs from a single
+	// hung detector blocking the whole pipeline.
 	//
 	// When the budget elapses, safeDetectWithBudget emits a
 	// SignalDetectorBudgetExceeded marker so the user sees the
@@ -271,14 +270,14 @@ type DetectorMeta struct {
 	// catches accidental quadratic-or-worse code paths.
 	Budget time.Duration
 
-	// --- Track 9.1 capability metadata ---
+	// --- Capability metadata ---
 	//
 	// The fields below describe what a detector consumes beyond the
 	// in-memory snapshot. They're descriptive (so docs / `terrain
 	// doctor` can surface "this detector needs runtime data") AND
-	// load-bearing (Track 9.3 — when a required input is missing
-	// the registry emits a single per-detector missingInputDiagnostic
-	// instead of silently running a detector that can't fire).
+	// load-bearing: when a required input is missing the registry
+	// emits a single per-detector missingInputDiagnostic instead of
+	// silently running a detector that can't fire.
 	//
 	// All zero values mean "don't require this input", which keeps
 	// the existing detector roster behaving exactly as before. New
@@ -399,8 +398,8 @@ func (r *DetectorRegistry) Run(snap *models.TestSuiteSnapshot) {
 
 	// Pre-allocate results to len(r.registrations) so the per-goroutine
 	// append doesn't trigger repeated copy-grow under the mutex. Cheap
-	// micro-optimization, but useful at scale: with ~30 detectors the
-	// pre-fix slice grew through 0/1/2/4/8/16/32 reallocations.
+	// micro-optimization, but useful at scale: without this, the slice
+	// grows through 0/1/2/4/8/16/32 reallocations.
 	var (
 		wg         sync.WaitGroup
 		mu         sync.Mutex
@@ -500,10 +499,10 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 		for i, reg := range graphRegs {
 			gd, ok := reg.Detector.(GraphDetector)
 			if !ok {
-				// 0.2.0 final-polish: pre-fix this branch silently
-				// dropped the registration with no signal, no log, no
-				// diagnostic — a detector declared `RequiresGraph: true`
-				// but whose runtime type didn't satisfy the GraphDetector
+				// Previously this branch silently dropped the
+				// registration with no signal, no log, no diagnostic
+				// — a detector declared `RequiresGraph: true` but
+				// whose runtime type didn't satisfy the GraphDetector
 				// interface vanished from the pipeline entirely. Now we
 				// emit a detectorPanic-shaped diagnostic so the user
 				// sees something is wrong instead of getting a quietly
@@ -513,7 +512,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 					Category:    models.CategoryQuality,
 					Severity:    models.SeverityCritical,
 					Confidence:  1.0,
-					Explanation: fmt.Sprintf("detector %q declared RequiresGraph=true but does not implement GraphDetector — registration silently skipped pre-0.2.x; surfaced now as a configuration bug.", reg.Meta.ID),
+					Explanation: fmt.Sprintf("detector %q declared RequiresGraph=true but does not implement GraphDetector — surfaced as a configuration bug rather than silently skipped.", reg.Meta.ID),
 					SuggestedAction: "Verify that the detector's concrete type implements DetectWithGraph(*TestSuiteSnapshot, *Graph), or set RequiresGraph=false in the registration.",
 				})
 				continue

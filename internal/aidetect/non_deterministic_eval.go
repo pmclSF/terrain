@@ -6,7 +6,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/ascg"
+	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/runtimeconfig"
 	"github.com/pmclSF/terrain/internal/signals"
 	"gopkg.in/yaml.v3"
 )
@@ -35,10 +38,9 @@ type NonDeterministicEvalDetector struct {
 // formats where determinism knobs are typically declared as data
 // (YAML / JSON / TOML). Source files would need full AST analysis,
 // which is out of scope for this detector.
-// 0.2.0 final-polish: docstring (above) named TOML as in-scope but
-// the actual map didn't include it. Promptfoo and DeepEval support
-// TOML config; without `.toml` here a Promptfoo TOML config never
-// reached the detector.
+// TOML is included alongside YAML/JSON: Promptfoo and DeepEval
+// support TOML config, and omitting `.toml` would silently drop those
+// files from the detector.
 var evalConfigExts = map[string]bool{
 	".yaml": true,
 	".yml":  true,
@@ -66,28 +68,45 @@ func (d *NonDeterministicEvalDetector) Detect(snap *models.TestSuiteSnapshot) []
 	for _, relPath := range paths {
 		abs := filepath.Join(d.Root, relPath)
 		findings := analyseEvalConfig(abs)
+		// Mechanism gate: runtime_config_recognizer. When on, a finding
+		// that fires on a runtime-config (not eval-config) file is
+		// demoted to Low severity. The recognizer runs once per file.
+		demote := false
+		if rep, err := runtimeconfig.RecognizeFile(abs, d.Root); err == nil && rep != nil {
+			demote = runtimeconfig.GateDemotion(mechanisms.Default(), rep, "aiNonDeterministicEval", relPath)
+		}
 		for _, f := range findings {
+			severity := models.SeverityMedium
+			if demote {
+				severity = models.SeverityLow
+			}
+			// Mechanism gate: ascg_live_vs_catalog.
+			if ascg.GateClassifyDemote(mechanisms.Default(),
+				ascg.Location{Path: relPath},
+				"aiNonDeterministicEval") {
+				severity = demoteSeverity(severity)
+			}
 			out = append(out, models.Signal{
 				Type:        signals.SignalAINonDeterministicEval,
 				Category:    models.CategoryAI,
-				Severity:    models.SeverityMedium,
-				Confidence:  0.93,
+				Severity:    severity,
+				Confidence:  0.50,
 				Location:    models.SignalLocation{File: relPath},
 				Explanation: f.Explanation,
 				SuggestedAction: "Pin temperature: 0 and a seed in the eval config, or document the non-determinism budget alongside the scenario.",
 
-				SeverityClauses: []string{"sev-medium-003"},
+				SeverityClauses: []string{severityClauseTier(severity) + "-003"},
 				Actionability:   models.ActionabilityScheduled,
 				LifecycleStages: []models.LifecycleStage{models.StageTestAuthoring, models.StageCIRun},
 				AIRelevance:     models.AIRelevanceHigh,
-				RuleID:          "TER-AI-105",
+				RuleID:          "terrain/ai/non-deterministic-eval",
 				RuleURI:         "docs/rules/ai/non-deterministic-eval.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{
-					Value:        0.93,
-					IntervalLow:  0.88,
-					IntervalHigh: 0.97,
-					Quality:      "heuristic",
+					Value:        0.50,
+					IntervalLow:  0.50,
+					IntervalHigh: 0.50,
+					Quality:      "estimate",
 					Sources:      []models.EvidenceSource{models.SourceStructuralPattern},
 				},
 				EvidenceSource:   models.SourceStructuralPattern,
@@ -140,13 +159,13 @@ type evalFinding struct {
 // analyseEvalConfig parses the YAML/JSON file and returns one finding
 // per non-deterministic provider/test entry.
 //
-// Pre-0.2.x this scanned for the FIRST `temperature` anywhere in the
-// file and emitted one verdict total. Multi-provider configs where
-// one provider pins temperature and another doesn't got a single
-// binary verdict — the second provider's missing pin was silently
-// missed. Per-provider scoping fixes the multi-provider case while
-// retaining single-finding behavior for the common single-provider
-// shape.
+// Per-provider scoping: an earlier revision scanned for the FIRST
+// `temperature` anywhere in the file and emitted one verdict total.
+// Multi-provider configs where one provider pins temperature and
+// another doesn't would receive a single binary verdict — the second
+// provider's missing pin was silently missed. Per-provider scoping
+// fixes the multi-provider case while retaining single-finding
+// behavior for the common single-provider shape.
 func analyseEvalConfig(path string) []evalFinding {
 	raw, err := os.ReadFile(path)
 	if err != nil {

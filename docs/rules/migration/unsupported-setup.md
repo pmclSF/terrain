@@ -1,11 +1,12 @@
-# TER-MIG-006 — Unsupported Setup
+# terrain/migration/unsupported-setup — Unsupported Setup
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
 **Type:** `unsupportedSetup`  
 **Domain:** migration  
 **Default severity:** low  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** observability
 
 ## Summary
 
@@ -21,6 +22,6 @@ Refactor setup boundaries toward framework-agnostic patterns.
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.40, 0.70] (heuristic in 0.2; calibration in 0.3).
+Confidence interval: 0.40–0.70.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

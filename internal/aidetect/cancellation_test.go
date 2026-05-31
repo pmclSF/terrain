@@ -38,7 +38,7 @@ func TestDetectContext_CancellationFromCancelledContext(t *testing.T) {
 // TestDetectContext_CancellationDuringWalk verifies the in-flight
 // cancellation path: a context that gets cancelled while DetectContext
 // is mid-walk should abort cleanly. This is the regression case the
-// pre-Track 5.3 shape failed silently — a `terrain analyze` run with a
+// earlier shape failed silently — a `terrain analyze` run with a
 // 5-second budget would still wait minutes for the AI walk to finish
 // after ctx was cancelled.
 func TestDetectContext_CancellationDuringWalk(t *testing.T) {

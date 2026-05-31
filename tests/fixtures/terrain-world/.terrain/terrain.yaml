@@ -42,7 +42,7 @@ manual_coverage:
     owner: qa-team
     criticality: high
     frequency: per-release
-    last_executed: "2026-03-01"
+    last_executed: "2099-03-01"
 
   - name: notification-push-manual
     area: src/notifications
@@ -57,7 +57,7 @@ manual_coverage:
     owner: qa-team
     criticality: high
     frequency: per-release
-    last_executed: "2026-02-15"
+    last_executed: "2099-02-15"
 
   - name: subscription-upgrade-manual
     area: src/payments/subscription

@@ -5,7 +5,7 @@
   "impactedTestCount": 2,
   "impactedUnitCount": 0,
   "policyApplied": true,
-  "posture": "well_protected",
+  "posture": "strong",
   "protectionGapCount": 0,
   "selectedTestCount": 2
 }

@@ -75,7 +75,7 @@ const defaultSlowThresholdMs = 5000.0
 //	4 — AI gate block. Returned by `terrain ai run --baseline` when the
 //	     `actionBlock` decision fires (e.g., a high-severity AI signal
 //	     introduced vs. baseline). Reserved by `exitAIGateBlock` so a
-//	     standalone `terrain ai gate` command in 0.3 can use the same
+//	     standalone `terrain ai gate` command later can use the same
 //	     code without breaking CI scripts that already branch on it.
 //	5 — Not-found. Returned by `terrain show <kind> <id>` and
 //	     `terrain explain <target>` when the entity doesn't exist.
@@ -88,20 +88,20 @@ const defaultSlowThresholdMs = 5000.0
 //	     blocked us" without parsing stderr.
 //
 // Splitting code 2 cleanly into "usage" vs "policy" is a behavior-
-// breaking change that needs a migration window. The split is
-// documented as a 0.2.x → 0.3 milestone in docs/release/0.2.md.
+// breaking change that needs a migration window — deferred until that
+// runway is in place.
 const (
 	exitOK              = 0
 	exitError           = 1
 	exitUsageError      = 2
-	exitPolicyViolation = 2 // overloaded with exitUsageError until 0.2; see comment above
+	exitPolicyViolation = 2 // overloaded with exitUsageError; split deferred behind a migration window
 	exitAIGateBlock     = 4
 	// exitNotFound distinguishes "the entity you asked about does not
 	// exist in this repo" from "analysis itself failed." Used by
 	// `terrain show` and `terrain explain` so CI scripts can branch on
-	// "missing entity" without parsing stderr text. Pre-0.2.x these
-	// commands collapsed not-found into exit 1, indistinguishable from
-	// a real analysis crash.
+	// "missing entity" without parsing stderr text. Earlier revisions
+	// collapsed not-found into exit 1, indistinguishable from a real
+	// analysis crash.
 	exitNotFound = 5
 	// exitSeverityGateBlock signals that `--fail-on` blocked a
 	// successful analysis. Code 6 leaves room for code 3 (planned for
@@ -110,31 +110,57 @@ const (
 )
 
 func main() {
+	// Extract --mechanisms.<name>=<state> flags from os.Args before
+	// subcommand dispatch. Each occurrence is captured into
+	// extractedMechanismOverrides; the args slice is rewritten with the
+	// matching entries removed so subcommands don't need to know about
+	// this global flag.
+	if overrides, rest := extractMechanismOverrides(os.Args[1:]); len(overrides) > 0 {
+		extractedMechanismOverrides = overrides
+		os.Args = append([]string{os.Args[0]}, rest...)
+	}
+
 	// Parse global --log-level flag before subcommand dispatch.
 	// Accepted values: quiet, debug (default: info-level).
 	initLogging(os.Args[1:])
 
+	// No subcommand → discovery report. Friendly first-touch: scans the
+	// current directory and prints what Terrain sees (frameworks, AI
+	// surfaces, schemas, traces) plus three next-step commands.
+	// `terrain --help` still routes to printUsage() (see flag check below).
 	if len(os.Args) < 2 {
+		if err := runDiscover("."); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	// Help flags still print full usage.
+	if os.Args[1] == "--help" || os.Args[1] == "-h" || os.Args[1] == "help" {
 		printUsage()
-		os.Exit(2)
+		return
+	}
+
+	// Global --print-network flag prints the unified network of
+	// detected surfaces / evals / tests / code units and exits.
+	// Must run before subcommand dispatch.
+	if os.Args[1] == "--print-network" {
+		root := "."
+		for i := 2; i < len(os.Args)-1; i++ {
+			if os.Args[i] == "--root" {
+				root = os.Args[i+1]
+			}
+		}
+		if err := runPrintNetwork(root); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		return
 	}
 
 	switch os.Args[1] {
 	case "analyze":
-		// Helpful redirect: --base belongs on `report pr` / `report
-		// impact`. The Go stdlib flag package's default response is
-		// to dump every flag the command supports — overwhelming and
-		// unhelpful when the user just reached for the wrong command.
-		// Detect this case before flag parsing and point at the right
-		// command instead.
-		if argHasFlag(os.Args[2:], "base") {
-			fmt.Fprintln(os.Stderr, "error: --base is not a flag of `terrain analyze`.")
-			fmt.Fprintln(os.Stderr, "       Did you mean one of:")
-			fmt.Fprintln(os.Stderr, "         terrain report pr --base <ref>      gate a PR diff")
-			fmt.Fprintln(os.Stderr, "         terrain report impact --base <ref>  see what a diff impacts")
-			fmt.Fprintln(os.Stderr, "       For analyze, use --baseline <path-to-snapshot.json>.")
-			os.Exit(exitUsageError)
-		}
 		analyzeCmd := flag.NewFlagSet("analyze", flag.ExitOnError)
 		rootFlag := analyzeCmd.String("root", ".", "repository root to analyze")
 		jsonFlag := analyzeCmd.Bool("json", false, "output JSON snapshot")
@@ -155,6 +181,9 @@ func main() {
 		timeoutFlag := analyzeCmd.Duration("timeout", 0, "abort the analysis after this duration (e.g. 5m); 0 means no timeout")
 		suppressionsFlag := analyzeCmd.String("suppressions", "", "path to .terrain/suppressions.yaml (default: $root/.terrain/suppressions.yaml; missing file is fine)")
 		newOnlyFlag := analyzeCmd.Bool("new-findings-only", false, "filter signals to those NOT present in --baseline (lets established repos with debt adopt --fail-on without bricking CI)")
+		previewFlag := analyzeCmd.Bool("preview", false, "enable preview-tier AI detectors (default off; behavior may change between releases)")
+		diagFlag := analyzeCmd.Bool("diag", false, "print per-step pipeline timing diagnostics to stderr (for performance investigation)")
+		baseRefFlag := analyzeCmd.String("base", "", "git base ref enabling aiPromptSchemaDrift (e.g. main, origin/main); compares schemas at HEAD against this ref")
 		_ = analyzeCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("analyze", analyzeCmd.Args(), rootFlag)
 		gate, gateErr := parseSeverityGate(*failOnFlag)
@@ -193,6 +222,9 @@ func main() {
 			Timeout:          *timeoutFlag,
 			SuppressionsPath: *suppressionsFlag,
 			NewFindingsOnly:  *newOnlyFlag,
+			EnablePreview:    *previewFlag,
+			Diag:             *diagFlag,
+			BaseRef:          *baseRefFlag,
 		}
 		if err := runAnalyze(analyzeOpts); err != nil {
 			if errors.Is(err, errSeverityGateBlocked) {
@@ -298,6 +330,86 @@ func main() {
 
 	case "doctor":
 		os.Exit(runDoctorCLI(os.Args[2:]))
+
+	case "mechanisms":
+		// Maintainer-only inspection of detector internals. Hidden from
+		// --help and gated on TERRAIN_DEV so end-user CLI surfaces
+		// don't expose internal mechanism IDs.
+		if os.Getenv("TERRAIN_DEV") == "" {
+			fmt.Fprintln(os.Stderr, "error: unknown command \"mechanisms\"")
+			os.Exit(2)
+		}
+		if err := runMechanismsCLI(os.Args[2:]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "mcp":
+		root := "."
+		for i := 2; i < len(os.Args); i++ {
+			a := os.Args[i]
+			if a == "--root" && i+1 < len(os.Args) {
+				root = os.Args[i+1]
+				i++
+				continue
+			}
+			if len(a) > len("--root=") && a[:len("--root=")] == "--root=" {
+				root = a[len("--root="):]
+				continue
+			}
+			if isHelpArg(a) {
+				fmt.Fprintln(os.Stderr, "Usage: terrain mcp [--root <dir>]")
+				fmt.Fprintln(os.Stderr)
+				fmt.Fprintln(os.Stderr, "Starts the MCP server on stdio. Loads the most-recent")
+				fmt.Fprintln(os.Stderr, "`terrain analyze` artifacts from .terrain/ when present.")
+				return
+			}
+		}
+		if err := runMCPCommand(root); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "webhook":
+		// Self-host surface: receives GitHub webhook deliveries,
+		// parses slash commands, dispatches through a Dispatcher
+		// (default: informational, no GitHub write-back). Adopters
+		// override the dispatcher in their integration code.
+		// Gated behind TERRAIN_DEV so adopters don't accidentally run
+		// the no-write-back default in production. The error below
+		// names the gate explicitly so an adopter who's following
+		// docs/integrations/github-checks.md sees the right cause.
+		if os.Getenv("TERRAIN_DEV") == "" {
+			fmt.Fprintln(os.Stderr, "error: `terrain webhook` is opt-in. Re-run with TERRAIN_DEV=1.")
+			fmt.Fprintln(os.Stderr)
+			fmt.Fprintln(os.Stderr, "See docs/integrations/github-checks.md for the production deploy guide,")
+			fmt.Fprintln(os.Stderr, "including the Dockerfile that sets TERRAIN_DEV=1 by default.")
+			os.Exit(2)
+		}
+		addr := ":4242"
+		for i := 2; i < len(os.Args); i++ {
+			a := os.Args[i]
+			if a == "--addr" && i+1 < len(os.Args) {
+				addr = os.Args[i+1]
+				i++
+				continue
+			}
+			if len(a) > len("--addr=") && a[:len("--addr=")] == "--addr=" {
+				addr = a[len("--addr="):]
+				continue
+			}
+			if isHelpArg(a) {
+				fmt.Fprintln(os.Stderr, "Usage: terrain webhook [--addr=:4242]")
+				fmt.Fprintln(os.Stderr)
+				fmt.Fprintln(os.Stderr, "Start the GitHub webhook server.")
+				fmt.Fprintln(os.Stderr, "Requires TERRAIN_WEBHOOK_SECRET (same value GitHub uses).")
+				return
+			}
+		}
+		if err := runWebhook(addr); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
 
 	case "reset":
 		legacyDeprecationNotice("reset", "config reset")
@@ -413,24 +525,25 @@ func main() {
 
 	case "suppress":
 		// `terrain suppress <finding-id> --reason "why" [--expires YYYY-MM-DD] [--owner @who]`
-		// Track 4.7 — appends a suppression entry to .terrain/suppressions.yaml.
+		// appends a suppression entry to .terrain/suppressions.yaml.
 		// No legacy alias: this command is new in 0.2.0 and lives in the
 		// canonical surface as a Gate-pillar primitive.
 		suppressCmd := flag.NewFlagSet("suppress", flag.ExitOnError)
 		rootFlag := suppressCmd.String("root", ".", "repository root")
 		reasonFlag := suppressCmd.String("reason", "", "why this finding is being suppressed (required)")
-		expiresFlag := suppressCmd.String("expires", "", "ISO date YYYY-MM-DD when the suppression should expire (optional but recommended)")
+		expiresFlag := suppressCmd.String("expires", "", "ISO date YYYY-MM-DD when the suppression should expire (default: per-scope; instance=+90d, file=+180d, directory=+180d, repo=+365d)")
 		ownerFlag := suppressCmd.String("owner", "", "owner pointer for review (optional)")
+		scopeFlag := suppressCmd.String("scope", "", "instance | file | directory | repo (default: instance for FindingID, file otherwise)")
 		_ = suppressCmd.Parse(os.Args[2:])
 		args := suppressCmd.Args()
 		if len(args) < 1 {
-			fmt.Fprintln(os.Stderr, "Usage: terrain suppress <finding-id> --reason \"why\" [--expires YYYY-MM-DD] [--owner @who]")
+			fmt.Fprintln(os.Stderr, "Usage: terrain suppress <finding-id> --reason \"why\" [--expires YYYY-MM-DD] [--owner @who] [--scope instance|file|directory|repo]")
 			fmt.Fprintln(os.Stderr)
 			fmt.Fprintln(os.Stderr, "Find a finding's ID with: terrain explain <finding-id>")
 			os.Exit(exitUsageError)
 		}
 		findingID := args[0]
-		if err := runSuppress(findingID, *reasonFlag, *expiresFlag, *ownerFlag, *rootFlag); err != nil {
+		if err := runSuppress(findingID, *reasonFlag, *expiresFlag, *ownerFlag, *scopeFlag, *rootFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
@@ -729,6 +842,19 @@ func main() {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 				os.Exit(1)
 			}
+		case "findings":
+			aiCmd := flag.NewFlagSet("ai findings", flag.ExitOnError)
+			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
+			jsonFlag := aiCmd.Bool("json", false, "output JSON")
+			postureFlag := aiCmd.String("posture", "observability",
+				"emission posture: observability | gate")
+			ruleFlag := aiCmd.String("rule", "",
+				"rule to evaluate (default: ai.surface.missing_eval; see docs/rules/ai/)")
+			_ = aiCmd.Parse(os.Args[3:])
+			if err := runAIFindings(*rootFlag, *jsonFlag, *postureFlag, *ruleFlag); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
 		case "run":
 			aiCmd := flag.NewFlagSet("ai run", flag.ExitOnError)
 			rootFlag := aiCmd.String("root", ".", "repository root to analyze")
@@ -851,9 +977,9 @@ func main() {
 			enc.SetIndent("", "  ")
 			// schemaVersion is the snapshot-JSON contract version this
 			// binary produces; CI tooling that pins on the snapshot
-			// shape can gate on this field. Pre-0.2.x the JSON output
-			// only carried version/commit/date — consumers had to load
-			// a snapshot and read its `meta.schemaVersion` to find out.
+			// shape can gate on this field. Earlier revisions only
+			// carried version/commit/date — consumers had to load a
+			// snapshot and read its `meta.schemaVersion` to find out.
 			_ = enc.Encode(map[string]string{
 				"version":       version,
 				"commit":        commit,
@@ -873,6 +999,39 @@ func main() {
 		readOnlyFlag := serveCmd.Bool("read-only", false, "reject any non-GET/HEAD/OPTIONS request with 405 (every handler in 0.2 is read-only; this flag enforces the contract for any future state-changing endpoint)")
 		_ = serveCmd.Parse(os.Args[2:])
 		if err := runServe(*rootFlag, *portFlag, *hostFlag, *readOnlyFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "test":
+		testCmd := flag.NewFlagSet("test", flag.ExitOnError)
+		rootFlag := testCmd.String("root", ".", "repository root to analyze")
+		selectorFlag := testCmd.String("selector", "", "rule selector (e.g., 'regression/test-failed' or 'coverage/*')")
+		jsonFlag := testCmd.Bool("json", false, "emit findings.json instead of human-readable output")
+		junitFlag := testCmd.String("junit", "", "write JUnit XML to the given path")
+		summaryFlag := testCmd.String("summary", "", "write Step Summary markdown to the given path")
+		_ = testCmd.Parse(os.Args[2:])
+		if err := runTestCommand(*rootFlag, *selectorFlag, *jsonFlag, *junitFlag, *summaryFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitCodeForCLIError(err))
+		}
+
+	case "describe":
+		descCmd := flag.NewFlagSet("describe", flag.ExitOnError)
+		rootFlag := descCmd.String("root", ".", "repository root to analyze")
+		writeFlag := descCmd.Bool("write", false, "write detected surfaces into terrain.yaml (prompts for overwrite)")
+		_ = descCmd.Parse(os.Args[2:])
+		if err := runDescribeCommand(*rootFlag, *writeFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+
+	case "accept-snapshot":
+		acceptCmd := flag.NewFlagSet("accept-snapshot", flag.ExitOnError)
+		rootFlag := acceptCmd.String("root", ".", "repository root")
+		yesFlag := acceptCmd.Bool("yes", false, "skip the interactive confirmation prompt")
+		_ = acceptCmd.Parse(os.Args[2:])
+		if err := runAcceptSnapshotCommand(*rootFlag, *yesFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -915,7 +1074,8 @@ var knownCommands = []string{
 	"ai", "feedback", "telemetry",
 	"debug", "depgraph",
 	"version", "serve", "help", "--help", "-h",
-	// Phase A namespaces — added 0.2.
+	"mcp",
+	"suppress", "test", "describe", "accept-snapshot",
 	"report", "config",
 }
 
@@ -927,11 +1087,11 @@ var knownCommands = []string{
 // `--root` value. This makes `terrain <command> <path>` work alongside
 // `terrain <command> --root=<path>` for every analysis-style command.
 //
-// Pre-0.2.x, most analysis commands silently ignored positionals — a
-// user typing `terrain analyze ./myproj` got cwd analysis with no
-// warning. Adversarial review caught this on analyze, ai run, ai list,
-// ai doctor, debug graph, debug coverage, report impact, report
-// insights — fix is uniform across the family.
+// Earlier revisions had most analysis commands silently ignore
+// positionals — a user typing `terrain analyze ./myproj` got cwd
+// analysis with no warning. The fix is now uniform across the family:
+// analyze, ai run, ai list, ai doctor, debug graph, debug coverage,
+// report impact, report insights.
 //
 // Errors out with exit 2 (usage error) if more than one positional was
 // supplied. Callers must pass the FlagSet's args slice (post-Parse).
@@ -1081,14 +1241,19 @@ func isHelpArg(arg string) bool {
 }
 
 func printUsage() {
-	fmt.Fprintln(os.Stderr, "Terrain — the control plane for your test system.")
+	fmt.Fprintln(os.Stderr, "Terrain — pre-flight checks for AI/ML systems and the tests around them.")
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Maps how your unit, integration, e2e, and AI tests relate to your code,")
-	fmt.Fprintln(os.Stderr, "and lets you gate changes based on the system as a whole.")
+	fmt.Fprintln(os.Stderr, "Treats unit tests, integration tests, e2e tests, and AI/ML evals as one")
+	fmt.Fprintln(os.Stderr, "dependency graph; gates pull requests on AI-specific risks plus")
+	fmt.Fprintln(os.Stderr, "test-system regressions. No API key required.")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Run `terrain` with no arguments for a discovery report.")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Canonical commands (0.2 — recommended):")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "  analyze [path] [flags]    What is the state of our test system?")
+	fmt.Fprintln(os.Stderr, "  test [flags]              CI-mode wrapper around analyze: emits JUnit XML")
+	fmt.Fprintln(os.Stderr, "                            + step-summary markdown alongside the report")
 	fmt.Fprintln(os.Stderr, "  init [path]               set up Terrain in a repository")
 	fmt.Fprintln(os.Stderr, "  report <verb> [flags]     read-side queries: summary, insights, metrics,")
 	fmt.Fprintln(os.Stderr, "                            explain, show, impact, pr, posture, select-tests")
@@ -1099,6 +1264,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "                            baseline, replay")
 	fmt.Fprintln(os.Stderr, "  config <verb> [flags]     workspace prefs: feedback, telemetry")
 	fmt.Fprintln(os.Stderr, "  doctor [path]             diagnostics for current setup")
+	fmt.Fprintln(os.Stderr, "  mcp [--root <dir>]        start the MCP server on stdio for AI assistants")
 	fmt.Fprintln(os.Stderr, "  debug <verb> [flags]      dependency graph drill-downs:")
 	fmt.Fprintln(os.Stderr, "                            graph, coverage, fanout, duplicates, depgraph")
 	fmt.Fprintln(os.Stderr, "  portfolio [flags]         multi-repo workspace intelligence")
@@ -1112,46 +1278,23 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  4. terrain report explain <target> understand why")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Common flags (most commands):")
-	fmt.Fprintln(os.Stderr, "  --root PATH               repository root (default: current dir; positional accepted)")
-	fmt.Fprintln(os.Stderr, "  --json                    machine-readable output")
-	fmt.Fprintln(os.Stderr, "  --base REF                git base ref for diff (impact / pr / select-tests)")
-	fmt.Fprintln(os.Stderr, "  --baseline PATH           baseline snapshot for regression detectors")
-	fmt.Fprintln(os.Stderr, "  --log-level LEVEL         diagnostic verbosity: quiet, debug (default: info)")
+	fmt.Fprintln(os.Stderr, "  --root PATH                       repository root (default: current dir; positional accepted)")
+	fmt.Fprintln(os.Stderr, "  --json                            machine-readable output")
+	fmt.Fprintln(os.Stderr, "  --base REF                        git base ref for diff (impact / pr / select-tests)")
+	fmt.Fprintln(os.Stderr, "  --baseline PATH                   baseline snapshot for regression detectors")
+	fmt.Fprintln(os.Stderr, "  --log-level LEVEL                 diagnostic verbosity: quiet, debug (default: info)")
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Legacy aliases (still work in 0.2; removal in 0.3 per docs/release/0.2.md):")
-	fmt.Fprintln(os.Stderr, "  init [flags]             detect data paths and print recommended analyze command")
-	fmt.Fprintln(os.Stderr, "  convert <source> [flags] inspect or execute Go-native conversion directions")
-	fmt.Fprintln(os.Stderr, "  convert-config [flags]   convert framework config files with the Go-native runtime")
-	fmt.Fprintln(os.Stderr, "  migrate <dir> [flags]    run project-wide Go-native conversion workflow")
-	fmt.Fprintln(os.Stderr, "  estimate <dir> [flags]   estimate migration complexity without writing files")
-	fmt.Fprintln(os.Stderr, "  status [flags]           show current migration progress")
-	fmt.Fprintln(os.Stderr, "  checklist [flags]        generate the current migration checklist")
-	fmt.Fprintln(os.Stderr, "  doctor [path] [flags]    run migration diagnostics for a directory")
-	fmt.Fprintln(os.Stderr, "  reset [flags]            clear conversion migration state")
-	fmt.Fprintln(os.Stderr, "  list-conversions [flags] list supported conversion directions")
-	fmt.Fprintln(os.Stderr, "  shorthands [flags]       list shorthand conversion aliases")
-	fmt.Fprintln(os.Stderr, "  detect <file-or-dir>     detect the dominant framework for a file or directory")
-	fmt.Fprintln(os.Stderr, "  summary [flags]          executive summary with risk, trends, benchmark readiness")
-	fmt.Fprintln(os.Stderr, "  focus [flags]            prioritized next actions")
-	fmt.Fprintln(os.Stderr, "  posture [flags]          detailed posture breakdown with measurement evidence")
-	fmt.Fprintln(os.Stderr, "  portfolio [flags]        portfolio intelligence: cost, breadth, leverage, redundancy")
-	fmt.Fprintln(os.Stderr, "  select-tests [flags]     recommend protective test set for a change")
-	fmt.Fprintln(os.Stderr, "  pr [flags]               PR/change-scoped analysis")
-	fmt.Fprintln(os.Stderr, "  show <entity> <id>       drill into test, unit/codeunit, owner, or finding")
-	fmt.Fprintln(os.Stderr, "  metrics [flags]          aggregate metrics scorecard")
-	fmt.Fprintln(os.Stderr, "  compare [flags]          compare two snapshots for trend tracking")
-	fmt.Fprintln(os.Stderr, "  migration <sub> [flags]  readiness, blockers, or preview")
-	fmt.Fprintln(os.Stderr, "  policy check [flags]     evaluate local policy rules")
-	fmt.Fprintln(os.Stderr, "  export benchmark [flags] privacy-safe JSON export for benchmarking")
-	fmt.Fprintln(os.Stderr, "  serve [flags]            local HTTP server with HTML report and JSON API")
+	fmt.Fprintln(os.Stderr, "Legacy command forms (still work; will be removed in a future release):")
+	fmt.Fprintln(os.Stderr, "  Conversion subsystem: convert, convert-config, migrate <dir>, estimate,")
+	fmt.Fprintln(os.Stderr, "    status, checklist, reset, list-conversions, shorthands, detect")
+	fmt.Fprintln(os.Stderr, "  Report verbs (now under `terrain report <verb>`): summary, insights,")
+	fmt.Fprintln(os.Stderr, "    metrics, posture, focus, explain, show, impact, pr, select-tests,")
+	fmt.Fprintln(os.Stderr, "    compare, policy, export, migration")
+	fmt.Fprintln(os.Stderr, "  Config verbs (now under `terrain config <verb>`): feedback, telemetry")
+	fmt.Fprintln(os.Stderr, "  Other: depgraph")
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "  summary, insights, metrics, posture, focus, explain, show, impact,")
-	fmt.Fprintln(os.Stderr, "  pr, select-tests, compare, policy, export, convert, convert-config,")
-	fmt.Fprintln(os.Stderr, "  list, list-conversions, shorthands, detect, migrate, migration,")
-	fmt.Fprintln(os.Stderr, "  estimate, status, checklist, reset, feedback, telemetry, depgraph")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "  Set TERRAIN_LEGACY_HINT=1 to surface canonical-shape suggestions")
-	fmt.Fprintln(os.Stderr, "  on legacy invocations (default-on in 0.2.x).")
+	fmt.Fprintln(os.Stderr, "  Set TERRAIN_LEGACY_HINT=1 to surface canonical-shape suggestions on")
+	fmt.Fprintln(os.Stderr, "  legacy invocations (default: silent).")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Benchmark / validation (separate binaries):")
 	fmt.Fprintln(os.Stderr, "  terrain-bench            run benchmark suite across repos")
@@ -1189,20 +1332,28 @@ func printDebugUsage() {
 }
 
 func printAIUsage() {
-	fmt.Fprintln(os.Stderr, "Usage: terrain ai <list|run|replay|record|baseline|doctor> [flags]")
+	fmt.Fprintln(os.Stderr, "Usage: terrain ai <list|findings|run|replay|record|baseline|doctor> [flags]")
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Commands:")
+	fmt.Fprintln(os.Stderr, "Inventory + execution:")
 	fmt.Fprintln(os.Stderr, "  list       list detected AI/eval scenarios and surfaces")
 	fmt.Fprintln(os.Stderr, "  run        execute eval scenarios and collect results")
 	fmt.Fprintln(os.Stderr, "  replay     replay and verify a previous run artifact")
 	fmt.Fprintln(os.Stderr, "  record     record eval run results as a baseline snapshot")
 	fmt.Fprintln(os.Stderr, "  baseline   manage eval baselines (show, compare, promote)")
 	fmt.Fprintln(os.Stderr, "  doctor     validate AI/eval setup and surface configuration issues")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Per-rule AI findings:")
+	fmt.Fprintln(os.Stderr, "  findings   emit AI eval-gap findings for the specified rule")
+	fmt.Fprintln(os.Stderr)
+	fmt.Fprintln(os.Stderr, "Categorical AI quality checks ship via 'terrain analyze'")
+	fmt.Fprintln(os.Stderr, "and 'terrain report pr'. Run 'terrain analyze --help' for the full")
+	fmt.Fprintln(os.Stderr, "list, or browse docs/rules/ai/ for per-rule documentation.")
 }
 
 func defaultPipelineOptions() engine.PipelineOptions {
 	return engine.PipelineOptions{
-		EngineVersion: version,
+		EngineVersion:      version,
+		MechanismOverrides: mechanismOverrides(),
 	}
 }
 
@@ -1211,9 +1362,55 @@ func defaultPipelineOptions() engine.PipelineOptions {
 // suppress progress (keeps stdout clean for JSON).
 func defaultPipelineOptionsWithProgress(jsonOutput bool) engine.PipelineOptions {
 	return engine.PipelineOptions{
-		EngineVersion: version,
-		OnProgress:    newProgressFunc(jsonOutput),
+		EngineVersion:      version,
+		MechanismOverrides: mechanismOverrides(),
+		OnProgress:         newProgressFunc(jsonOutput),
 	}
+}
+
+// extractedMechanismOverrides holds parsed --mechanisms.<name>=<state>
+// CLI flag values, captured by extractMechanismOverrides at startup.
+var extractedMechanismOverrides []string
+
+func mechanismOverrides() []string {
+	if len(extractedMechanismOverrides) == 0 {
+		return nil
+	}
+	out := make([]string, len(extractedMechanismOverrides))
+	copy(out, extractedMechanismOverrides)
+	return out
+}
+
+// extractMechanismOverrides scans args for --mechanisms.<name>=<state>
+// entries (both --mechanisms.x=on and --mechanisms.x on forms),
+// captures each as "name=state", and returns the args with those
+// entries removed. Allows subcommand dispatch to remain agnostic of
+// the global mechanisms flag.
+func extractMechanismOverrides(args []string) (overrides, rest []string) {
+	const prefix = "--mechanisms."
+	rest = make([]string, 0, len(args))
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		if !strings.HasPrefix(a, prefix) {
+			rest = append(rest, a)
+			continue
+		}
+		body := a[len(prefix):]
+		if eq := strings.IndexByte(body, '='); eq >= 0 {
+			overrides = append(overrides, body)
+			continue
+		}
+		// "--mechanisms.x on" — consume the next arg as the state.
+		if i+1 < len(args) {
+			overrides = append(overrides, body+"="+args[i+1])
+			i++
+			continue
+		}
+		// Malformed — leave as-is so the runtime registry validates and
+		// surfaces the error to the user.
+		overrides = append(overrides, body+"=")
+	}
+	return overrides, rest
 }
 
 func analysisPipelineOptions(coveragePath, coverageRunLabel string, runtimePaths []string, slowThreshold float64) engine.PipelineOptions {

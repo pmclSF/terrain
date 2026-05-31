@@ -231,9 +231,9 @@ func TestEdgeCase_AIHeavyValidation(t *testing.T) {
 			{SurfaceID: "s3", Name: "load_dataset", Kind: models.SurfaceDataset, Path: "src/data/loader.py"},
 			{SurfaceID: "s4", Name: "predict", Kind: models.SurfaceFunction, Path: "src/model.py"},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc1", Name: "safety-check", Category: "safety", CoveredSurfaceIDs: []string{"s1", "s2"}},
-			{ScenarioID: "sc2", Name: "accuracy", Category: "accuracy", CoveredSurfaceIDs: []string{"s4"}},
+		Evals: []models.Eval{
+			{EvalID: "sc1", Name: "safety-check", Category: "safety", CoveredSurfaceIDs: []string{"s1", "s2"}},
+			{EvalID: "sc2", Name: "accuracy", Category: "accuracy", CoveredSurfaceIDs: []string{"s4"}},
 		},
 	}
 
@@ -344,9 +344,11 @@ func TestBuild_SchemaVersionPresent(t *testing.T) {
 
 func TestBuild_SchemaVersionStable(t *testing.T) {
 	t.Parallel()
-	// Version should be "1" — not empty, not "0".
-	if AnalyzeReportSchemaVersion != "1" {
-		t.Errorf("expected schema version '1', got %q", AnalyzeReportSchemaVersion)
+	// Lock the current schema version: bumping is intentional (each
+	// bump is paired with a doc + CHANGELOG entry), so a flag-rename
+	// or accidental edit lands here as a failure to investigate.
+	if AnalyzeReportSchemaVersion != "2" {
+		t.Errorf("expected schema version '2', got %q", AnalyzeReportSchemaVersion)
 	}
 }
 

@@ -94,24 +94,24 @@ func TestCapabilityFromSurfaces_DominantDomain(t *testing.T) {
 
 func TestInferCapabilities_Integration(t *testing.T) {
 	t.Parallel()
-	scenarios := []models.Scenario{
+	scenarios := []models.Eval{
 		{
-			ScenarioID: "s1",
+			EvalID: "s1",
 			Name:       "refund-explanation-accuracy",
 			Path:       "evals/refund/accuracy.test.ts",
 		},
 		{
-			ScenarioID: "s2",
+			EvalID: "s2",
 			Name:       "enterprise-search-eval",
 			Path:       "evals/search/retrieval.test.ts",
 		},
 		{
-			ScenarioID:        "s3",
+			EvalID:        "s3",
 			Name:              "safety-check",
 			CoveredSurfaceIDs: []string{"s1", "s2"},
 		},
 		{
-			ScenarioID: "s4",
+			EvalID: "s4",
 			Name:       "pre-set-capability",
 			Capability: "billing", // already set — should not be overridden
 		},
@@ -143,11 +143,11 @@ func TestInferCapabilities_Integration(t *testing.T) {
 
 func TestCollectImpactedCapabilities(t *testing.T) {
 	t.Parallel()
-	scenarios := []models.Scenario{
-		{ScenarioID: "s1", Capability: "refund-explanation"},
-		{ScenarioID: "s2", Capability: "enterprise-search"},
-		{ScenarioID: "s3", Capability: "refund-explanation"}, // duplicate
-		{ScenarioID: "s4", Capability: ""},                   // no capability
+	scenarios := []models.Eval{
+		{EvalID: "s1", Capability: "refund-explanation"},
+		{EvalID: "s2", Capability: "enterprise-search"},
+		{EvalID: "s3", Capability: "refund-explanation"}, // duplicate
+		{EvalID: "s4", Capability: ""},                   // no capability
 	}
 	caps := CollectImpactedCapabilities(scenarios, []string{"s1", "s2", "s3", "s4"})
 	if len(caps) != 2 {

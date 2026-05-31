@@ -14,8 +14,8 @@ func TestSafetyEvalMissing_FlagsUnprotectedPrompt(t *testing.T) {
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "surface:src/agent.py:promptBuilder", Name: "promptBuilder", Path: "src/agent.py", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "scenario:happy-1", Name: "happy path", Category: "happy_path",
+		Evals: []models.Eval{
+			{EvalID: "scenario:happy-1", Name: "happy path", Category: "happy_path",
 				CoveredSurfaceIDs: []string{"surface:src/agent.py:promptBuilder"}},
 		},
 	}
@@ -38,8 +38,8 @@ func TestSafetyEvalMissing_AcceptsExplicitSafetyCategory(t *testing.T) {
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "surface:src/agent.py:p", Name: "p", Path: "src/agent.py", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "scenario:safety-1", Name: "jailbreak attempts", Category: "safety",
+		Evals: []models.Eval{
+			{EvalID: "scenario:safety-1", Name: "jailbreak attempts", Category: "safety",
 				CoveredSurfaceIDs: []string{"surface:src/agent.py:p"}},
 		},
 	}
@@ -56,8 +56,8 @@ func TestSafetyEvalMissing_AcceptsAdversarialAlias(t *testing.T) {
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "surface:src/agent.py:p", Name: "p", Path: "src/agent.py", Kind: models.SurfaceAgent},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "scenario:adv-1", Name: "adversarial inputs", Category: "adversarial",
+		Evals: []models.Eval{
+			{EvalID: "scenario:adv-1", Name: "adversarial inputs", Category: "adversarial",
 				CoveredSurfaceIDs: []string{"surface:src/agent.py:p"}},
 		},
 	}
@@ -92,8 +92,8 @@ func TestSafetyEvalMissing_FlagsPerSurface(t *testing.T) {
 			{SurfaceID: "s2", Name: "agentB", Path: "b.py", Kind: models.SurfaceAgent},
 			{SurfaceID: "s3", Name: "toolC", Path: "c.py", Kind: models.SurfaceToolDef},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc-safety", Name: "safety covers s1", Category: "safety",
+		Evals: []models.Eval{
+			{EvalID: "sc-safety", Name: "safety covers s1", Category: "safety",
 				CoveredSurfaceIDs: []string{"s1"}},
 		},
 	}

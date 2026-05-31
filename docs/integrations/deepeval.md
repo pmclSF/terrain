@@ -51,7 +51,7 @@ Without this, baseline matching dropped into the framework-wide
 first-match fallback and could cross-attribute runs.
 
 `createdAt` accepts RFC3339, the older space-separated
-`2026-04-30 12:00:00` shape, and microsecond-fractional without
+`2099-04-30 12:00:00` shape, and microsecond-fractional without
 timezone.
 
 ## Metric name normalization
@@ -72,9 +72,7 @@ implicit baseline, or pass `--baseline path/to/old.json` explicitly.
 
 ## Calibration fixtures
 
-DeepEval-shaped fixtures haven't shipped in the 0.2 corpus (the
-0.2-known-gaps doc tracks this for 0.3). If you can contribute one,
-the format is:
+DeepEval-shaped fixtures haven't shipped in the 0.2 corpus and are future work. If you can contribute one, the format is:
 
 ```
 tests/calibration/<your-fixture>/

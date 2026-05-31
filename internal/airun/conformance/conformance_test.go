@@ -8,9 +8,9 @@
 //   1. Drop a JSON file under testdata/<framework>/.
 //   2. Add a test case below mapping the file → expected ShapeInfo.
 //
-// This is the load-bearing test suite for Track 7.1 — adapter
-// conformance fixtures per (framework × version) — and Track 7.2
-// — warn-on-shape-drift logging — of the 0.2 release plan.
+// This is the load-bearing test suite for adapter conformance
+// fixtures per (framework × version) and the warn-on-shape-drift
+// logging behavior.
 package conformance
 
 import (

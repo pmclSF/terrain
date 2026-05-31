@@ -189,7 +189,7 @@ func runConvert(source string, opts convertCommandOptions) error {
 		return cliUsageError{message: err.Error()}
 	}
 
-	// Track 10.5 — surface a TTY-aware spinner while the conversion
+	// surface a TTY-aware spinner while the conversion
 	// runs. No-op when stdout/stderr is piped, when --json suppresses
 	// progress, or when running in a Plan/DryRun mode (those are fast
 	// enough that progress would flash and disappear).
@@ -421,7 +421,7 @@ func runListConversions(jsonOutput bool) error {
 		}
 		fmt.Println()
 	}
-	fmt.Println("Tiers: Stable = conversion-corpus calibrated; Experimental = end-to-end but expect hand cleanup; Preview = next up for implementation; Cataloged = metadata only.")
+	fmt.Println("Tiers: Stable = validated; Experimental = end-to-end but expect hand cleanup; Preview = planned; Cataloged = metadata only.")
 	fmt.Println("Use `terrain convert <source> --from <framework> --to <framework>` to run a Go-native conversion, or add `--plan` to preview.")
 	return nil
 }
@@ -576,9 +576,6 @@ func resolveHistoryRoot(source string) string {
 // regardless of leading dashes, matching the POSIX convention. A nil
 // flagsWithValue is supported for callers that don't accept value-flags
 // (e.g. `terrain detect`).
-//
-// Round 1 review noted this helper as undocumented; this comment is the
-// canonical explanation.
 func reorderCLIArgs(args []string, flagsWithValue map[string]bool) []string {
 	if len(args) == 0 {
 		return nil
@@ -624,16 +621,16 @@ func humanizeGoNativeState(state conv.GoNativeState) string {
 }
 
 // tierLabelForState renders a conversion direction's GoNativeState as
-// the Tier-badge vocabulary used elsewhere in 0.2 (Stable /
-// Experimental / Preview / Cataloged). Track 6.6 of the parity plan
-// surfaces this in `terrain migrate list` so adopters see the trust
-// posture per direction at a glance, not just the raw state name.
+// the Tier-badge vocabulary used elsewhere (Stable / Experimental /
+// Preview / Cataloged). The label surfaces in `terrain migrate list`
+// so adopters see the trust posture per direction at a glance, not
+// just the raw state name.
 //
 // The mapping:
-//   - implemented → "Stable"      (top-3 + conversion-corpus calibrated)
+//   - implemented → "Stable"       (validated)
 //   - experimental → "Experimental" (works end-to-end; hand cleanup expected)
-//   - prioritized → "Preview"     (next in line for implementation)
-//   - cataloged   → "Cataloged"    (metadata only; no converter today)
+//   - prioritized → "Preview"      (planned)
+//   - cataloged   → "Cataloged"     (metadata only; no converter today)
 //
 // Returned without surrounding brackets so callers can wrap as needed
 // (the list renderer adds `[ ]`; JSON consumers get the bare label).

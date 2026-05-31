@@ -143,17 +143,12 @@ func (d *panicDetector) Detect(_ *models.TestSuiteSnapshot) []models.Signal {
 	panic(d.msg)
 }
 
-// TestRegistry_RunRecoversFromDetectorPanic_ProducesValidSnapshot is
-// the regression test for the 0.2.0 final-polish fix: pre-fix the
-// `detectorPanic` sentinel signal that safeDetect emitted on panic
-// recovery was NOT in models.SignalCatalog, so the snapshot
-// produced by the panic-recovery path failed ValidateSnapshot. The
-// "graceful degradation" promise was broken — a single broken
-// detector still tanked the run, just with a different error
-// message.
-//
-// Lock-in: panic recovery must produce a snapshot that
-// ValidateSnapshot accepts.
+// TestRegistry_RunRecoversFromDetectorPanic_ProducesValidSnapshot pins
+// that the `detectorPanic` sentinel signal safeDetect emits on panic
+// recovery is in models.SignalCatalog, so the snapshot produced by the
+// panic-recovery path passes ValidateSnapshot. Without that catalog
+// entry, "graceful degradation" was broken — a single broken detector
+// still tanked the run, just with a different error message.
 func TestRegistry_RunRecoversFromDetectorPanic_ProducesValidSnapshot(t *testing.T) {
 	t.Parallel()
 	r := NewRegistry()

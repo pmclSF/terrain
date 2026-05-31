@@ -113,6 +113,214 @@ response = client.chat.completions.create(model="gpt-4")
 	}
 }
 
+func TestDetect_ClassicalML(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, "src"), 0o755)
+
+	os.WriteFile(filepath.Join(root, "src", "train_sklearn.py"), []byte(`
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import f1_score
+import joblib
+
+clf = RandomForestClassifier(n_estimators=100)
+joblib.dump(clf, "model.joblib")
+`), 0o644)
+
+	os.WriteFile(filepath.Join(root, "src", "train_xgb.py"), []byte(`
+import xgboost as xgb
+model = xgb.XGBClassifier()
+`), 0o644)
+
+	os.WriteFile(filepath.Join(root, "src", "torch_model.py"), []byte(`
+import torch
+from torch import nn
+class Net(nn.Module): pass
+`), 0o644)
+
+	os.WriteFile(filepath.Join(root, "src", "tf_pipeline.py"), []byte(`
+import tensorflow as tf
+model = tf.keras.Sequential()
+`), 0o644)
+
+	result := Detect(root)
+	got := map[string]bool{}
+	for _, fw := range result.Frameworks {
+		got[fw.Name] = true
+	}
+	for _, want := range []string{"sklearn", "xgboost", "pytorch", "tensorflow"} {
+		if !got[want] {
+			t.Errorf("expected %s framework detected, frameworks: %v", want, frameworkNames(result.Frameworks))
+		}
+	}
+}
+
+func frameworkNames(fws []Framework) []string {
+	out := make([]string, len(fws))
+	for i, f := range fws {
+		out[i] = f.Name
+	}
+	return out
+}
+
+func TestDetect_GoAndJavaSDK(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	// Go: detection via go.mod dependency entry.
+	os.WriteFile(filepath.Join(root, "go.mod"), []byte(`module example.com/demo
+
+go 1.23
+
+require github.com/sashabaranov/go-openai v1.20.0
+`), 0o644)
+	// Java: detection via Maven pom.xml dependency entry.
+	os.WriteFile(filepath.Join(root, "pom.xml"), []byte(`<?xml version="1.0"?>
+<project>
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>com.example</groupId>
+  <artifactId>demo</artifactId>
+  <version>1.0.0</version>
+  <dependencies>
+    <dependency>
+      <groupId>com.theokanning.openai-gpt3-java</groupId>
+      <artifactId>service</artifactId>
+      <version>0.18.0</version>
+    </dependency>
+  </dependencies>
+</project>
+`), 0o644)
+
+	result := Detect(root)
+	got := map[string]bool{}
+	for _, fw := range result.Frameworks {
+		got[fw.Name] = true
+	}
+	if !got["openai-go"] {
+		t.Errorf("expected openai-go detected from go.mod, frameworks: %v", frameworkNames(result.Frameworks))
+	}
+	if !got["openai-java"] {
+		t.Errorf("expected openai-java detected from pom.xml, frameworks: %v", frameworkNames(result.Frameworks))
+	}
+}
+
+func TestDetect_HuggingFaceLLM(t *testing.T) {
+	t.Parallel()
+	// File that uses the LLM-specific entry point should fire both
+	// "huggingface" (broad) AND "huggingface-llm" (narrow).
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, "src"), 0o755)
+	os.WriteFile(filepath.Join(root, "src", "generate.py"), []byte(`
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+model = AutoModelForCausalLM.from_pretrained("mistralai/Mistral-7B-v0.1")
+tokenizer = AutoTokenizer.from_pretrained("mistralai/Mistral-7B-v0.1")
+`), 0o644)
+
+	result := Detect(root)
+	got := map[string]bool{}
+	for _, fw := range result.Frameworks {
+		got[fw.Name] = true
+	}
+	if !got["huggingface"] {
+		t.Error("expected huggingface (broad) detected")
+	}
+	if !got["huggingface-llm"] {
+		t.Errorf("expected huggingface-llm (narrow) detected, frameworks: %v", frameworkNames(result.Frameworks))
+	}
+}
+
+func TestDetect_HuggingFaceNonLLM(t *testing.T) {
+	t.Parallel()
+	// File that uses only non-LLM transformers should fire "huggingface"
+	// but NOT "huggingface-llm".
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, "src"), 0o755)
+	os.WriteFile(filepath.Join(root, "src", "embed.py"), []byte(`
+from transformers import AutoModel, AutoTokenizer
+
+model = AutoModel.from_pretrained("bert-base-uncased")
+tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
+`), 0o644)
+
+	result := Detect(root)
+	got := map[string]bool{}
+	for _, fw := range result.Frameworks {
+		got[fw.Name] = true
+	}
+	if !got["huggingface"] {
+		t.Error("expected huggingface detected for BERT embedding usage")
+	}
+	if got["huggingface-llm"] {
+		t.Errorf("did NOT expect huggingface-llm for BERT-only file, frameworks: %v", frameworkNames(result.Frameworks))
+	}
+}
+
+func TestDetect_Pydantic(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, "src"), 0o755)
+	os.WriteFile(filepath.Join(root, "src", "models.py"), []byte(`
+from pydantic import BaseModel, Field
+
+class User(BaseModel):
+    name: str = Field(min_length=1)
+    age: int
+`), 0o644)
+
+	result := Detect(root)
+	got := map[string]bool{}
+	for _, fw := range result.Frameworks {
+		got[fw.Name] = true
+	}
+	if !got["pydantic"] {
+		t.Errorf("expected pydantic detected, frameworks: %v", frameworkNames(result.Frameworks))
+	}
+}
+
+func TestDetect_CallSites_PythonAndJS(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	os.MkdirAll(filepath.Join(root, "src"), 0o755)
+
+	os.WriteFile(filepath.Join(root, "src", "inference.py"), []byte(`
+from openai import OpenAI
+client = OpenAI()
+client.chat.completions.create(model="gpt-4o-mini", messages=[])
+`), 0o644)
+
+	os.WriteFile(filepath.Join(root, "src", "agent.ts"), []byte(`
+import { Anthropic } from "@anthropic-ai/sdk";
+const ant = new Anthropic();
+ant.messages.create({ model: "claude-opus-4-7", messages: [] });
+`), 0o644)
+
+	result := Detect(root)
+	if len(result.CallSites) < 2 {
+		t.Fatalf("expected ≥2 call sites, got %d: %+v", len(result.CallSites), result.CallSites)
+	}
+
+	bySDK := map[string]int{}
+	byModel := map[string]string{}
+	for _, cs := range result.CallSites {
+		bySDK[cs.SDK]++
+		if cs.Model != "" {
+			byModel[cs.SDK] = cs.Model
+		}
+	}
+	if bySDK["openai"] == 0 {
+		t.Error("expected at least one openai call site")
+	}
+	if bySDK["anthropic"] == 0 {
+		t.Error("expected at least one anthropic call site")
+	}
+	if byModel["openai"] != "gpt-4o-mini" {
+		t.Errorf("openai model = %q, want gpt-4o-mini", byModel["openai"])
+	}
+	if byModel["anthropic"] != "claude-opus-4-7" {
+		t.Errorf("anthropic model = %q, want claude-opus-4-7", byModel["anthropic"])
+	}
+}
+
 func TestDeriveScenarios_FromEvalDir(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
@@ -141,7 +349,7 @@ def test_safe_input():
 		{Path: "tests/eval/safety/test_safety.py", Framework: "pytest"},
 	}
 
-	scenarios := DeriveScenarios(root, detection, surfaces, testFiles)
+	scenarios := DeriveEvals(root, detection, surfaces, testFiles)
 	if len(scenarios) == 0 {
 		t.Fatal("expected at least 1 auto-derived scenario")
 	}
@@ -164,7 +372,7 @@ func TestDeriveScenarios_EmptyRepo(t *testing.T) {
 	t.Parallel()
 	root := t.TempDir()
 	detection := Detect(root)
-	scenarios := DeriveScenarios(root, detection, nil, nil)
+	scenarios := DeriveEvals(root, detection, nil, nil)
 	if len(scenarios) != 0 {
 		t.Errorf("expected 0 scenarios for empty repo, got %d", len(scenarios))
 	}
@@ -204,7 +412,7 @@ export const systemPrompt = "You are a helpful assistant";
 		{SurfaceID: "surface:src/prompt.ts:systemPrompt", Name: "systemPrompt", Path: "src/prompt.ts", Kind: models.SurfacePrompt},
 	}
 
-	scenarios := DeriveScenarios(root, detection, surfaces, nil)
+	scenarios := DeriveEvals(root, detection, surfaces, nil)
 
 	// Should derive scenarios from promptfoo config descriptions.
 	promptfooScenarios := 0
@@ -262,7 +470,7 @@ describe("chat", () => {
 		{Path: "tests/unit/chat.test.ts", Framework: "jest"},
 	}
 
-	scenarios := DeriveScenarios(root, detection, surfaces, testFiles)
+	scenarios := DeriveEvals(root, detection, surfaces, testFiles)
 
 	// The test file imports "openai" but is NOT in an eval directory,
 	// so it should be picked up by deriveFromAIImports.

@@ -285,11 +285,11 @@ func checkAI(truth *AITruth, snap *models.TestSuiteSnapshot) TruthCategoryResult
 
 	// Check scenario count.
 	r.Expected++
-	if len(snap.Scenarios) == truth.ExpectedScenarios {
+	if len(snap.Evals) == truth.ExpectedScenarios {
 		r.Matched++
-		r.Details = append(r.Details, fmt.Sprintf("FOUND %d scenarios (expected %d)", len(snap.Scenarios), truth.ExpectedScenarios))
+		r.Details = append(r.Details, fmt.Sprintf("FOUND %d scenarios (expected %d)", len(snap.Evals), truth.ExpectedScenarios))
 	} else {
-		r.Missing = append(r.Missing, fmt.Sprintf("scenario count: got %d, expected %d", len(snap.Scenarios), truth.ExpectedScenarios))
+		r.Missing = append(r.Missing, fmt.Sprintf("scenario count: got %d, expected %d", len(snap.Evals), truth.ExpectedScenarios))
 	}
 	r.Found++
 
@@ -382,7 +382,7 @@ func checkImpact(truth *ImpactTruth, repoRoot string, snap *models.TestSuiteSnap
 
 		// Collect actual impacted scenario IDs.
 		actualScenarios := map[string]bool{}
-		for _, s := range result.ImpactedScenarios {
+		for _, s := range result.ImpactedEvals {
 			actualScenarios[s.Name] = true
 		}
 
@@ -411,7 +411,7 @@ func checkImpact(truth *ImpactTruth, repoRoot string, snap *models.TestSuiteSnap
 		// Check minimum impacted count.
 		if tc.ExpectedMinImpacted > 0 {
 			r.Expected++
-			total := len(result.ImpactedTests) + len(result.ImpactedScenarios)
+			total := len(result.ImpactedTests) + len(result.ImpactedEvals)
 			if total >= tc.ExpectedMinImpacted {
 				r.Matched++
 				r.Details = append(r.Details, fmt.Sprintf("FOUND min impact %s: %d >= %d", tc.Change, total, tc.ExpectedMinImpacted))
@@ -420,7 +420,7 @@ func checkImpact(truth *ImpactTruth, repoRoot string, snap *models.TestSuiteSnap
 			}
 		}
 
-		r.Found += len(result.ImpactedTests) + len(result.ImpactedScenarios)
+		r.Found += len(result.ImpactedTests) + len(result.ImpactedEvals)
 	}
 
 	computeScores(&r)

@@ -70,12 +70,10 @@ you where the package sits in the dependency stack documented at
 
 ## Status
 
-`internal/plugin/` was deleted in 0.1.2 (round 1 review confirmed it was
-dead code — no callers in `cmd/` or `internal/`). The current detector
-extension model is documented at
-[docs/engineering/detector-architecture.md](../docs/engineering/detector-architecture.md);
-a runtime plugin loader is a possible 0.3+ direction, not a current
-capability.
+`internal/plugin/` was deleted in 0.1.2 (dead code — no callers in `cmd/`
+or `internal/`). The current detector extension model is documented at
+[docs/engineering/detector-architecture.md](docs/engineering/detector-architecture.md);
+a runtime plugin loader is possible future work, not a current capability.
 
 For tests: 199 `*_test.go` files across 48 test packages (a couple of
 fixture directories add their own packages). The full release verification

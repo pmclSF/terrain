@@ -116,8 +116,15 @@ pr-gate:
 	$(MAKE) check
 	$(MAKE) test
 
+# Validate regression suites + recall harnesses for shadow→live flips.
+# Loads every YAML under harness/regression-suites/ and
+# harness/recall-harnesses/, validates schema, prints a summary.
+# Exit non-zero on any load failure.
+regression-gate:
+	go run ./cmd/internal/terrain-regression-gate
+
 # Release gate: full verification required before release
-release-gate: go-release-verify
+release-gate: go-release-verify regression-gate
 
 go-release-verify:
 	go vet $(GO_OWNED_PKGS)
@@ -140,36 +147,17 @@ extension-verify:
 # and diffs against the committed copy so CI fails when a manifest
 # change ships without the regenerated docs.
 docs-gen:
-	go run ./cmd/terrain-docs-gen
+	go run ./cmd/internal/terrain-docs-gen
 
 docs-verify:
 	@scripts/docs-verify.sh
 
-# ── Parity gate ────────────────────────────────────────────
-# Reads docs/release/parity/{rubric,scores}.yaml and emits the
-# pillar-parity matrix + verdict. Exits non-zero when any pillar
-# is below its hard-gate floor (Gate ≥ 4, Understand ≥ 3 in 0.2.0).
-# Soft gates (Align in 0.2.0) print a WARN banner but do not fail.
-# Source-of-truth doc is `docs/release/0.2.x-maturity-audit.md`.
-pillar-parity:
-	@go run ./cmd/terrain-parity-gate
-
-# JSON form for CI integration / external tooling.
-pillar-parity-json:
-	@go run ./cmd/terrain-parity-gate --json
-
-# Compact form: per-area + per-pillar floor map only.
-pillar-parity-floor:
-	@go run ./cmd/terrain-parity-gate --floor-map
-
 # `docs-linkcheck` walks docs/ and verifies that every intra-repo
 # markdown link resolves to a real file. Skips docs/internal/ and
-# docs/legacy/ by default — those subtrees hold planning notes whose
-# link discipline is inherited debt; run with -include-internal to
-# also scan them. External links (http/https/mailto) are out of
-# scope. Track 9.8 deliverable for the 0.2.0 parity plan.
+# docs/legacy/ by default; run with -include-internal to also scan
+# them. External links (http/https/mailto) are out of scope.
 docs-linkcheck:
-	@go run ./cmd/terrain-docs-linkcheck
+	@go run ./cmd/internal/terrain-docs-linkcheck
 
 # `truth-verify` cross-checks docs/release/feature-status.md against
 # the canonical signal manifest. Every signal name documented in the
@@ -177,24 +165,21 @@ docs-linkcheck:
 # don't resolve (typo, renamed, removed) fail the build. Orphan stable
 # signals (in the manifest, not in the curated doc) print as
 # advisory warnings — pass --strict-orphans to fail on them too.
-# Track 9.7 deliverable for the 0.2.0 parity plan.
 truth-verify:
-	@go run ./cmd/terrain-truth-verify
+	@go run ./cmd/internal/terrain-truth-verify
 
-# `voice-lint` enforces the voice-and-tone rules from the parity
-# plan's Track 10.7: no exclamation-mark prose (jarring), no British
-# spellings (mixed-spelling reads as under-edited). Scans Go source
-# in the user-visible code paths (signals manifest, command package,
-# reporting, changescope). Test files are skipped — tests can use any
-# prose without tripping the lint.
+# `voice-lint` enforces voice-and-tone rules: no exclamation-mark
+# prose (jarring), no British spellings (mixed-spelling reads as
+# under-edited). Scans Go source in the user-visible code paths
+# (signals manifest, command package, reporting, changescope). Test
+# files are skipped — tests can use any prose without tripping the
+# lint.
 voice-lint:
-	@go run ./cmd/terrain-voice-lint
+	@go run ./cmd/internal/terrain-voice-lint
 
-# ── Calibration corpus ──────────────────────────────────────
-# Runs the engine pipeline against every fixture under tests/calibration/
-# and prints precision/recall per detector. Today a smoke gate (advisory
-# misses); flips to a hard ≥90% precision gate once the corpus is
-# populated. See docs/calibration/CORPUS.md.
+# ── Recall-regression fixture suite ─────────────────────────
+# Runs the engine pipeline against the bundled fixture set and prints
+# per-detector recall. Any unmatched expected label fails the build.
 calibrate:
 	go test -count=1 -v -run TestCalibration ./internal/engine/...
 
@@ -212,8 +197,7 @@ bench-baseline:
 # `memory-bench` runs the memory ceiling + leak-detection tests
 # (TestMemoryCeiling_*, TestMemoryNoLeak_*). Skipped in the default
 # `go test ./...` loop because they're slow (force GC + run analysis
-# at scale) and surface ceiling regressions per the Track 9.10
-# baseline. Set TERRAIN_MEMORY_BENCH=1 inline; this target does it
+# at scale). Set TERRAIN_MEMORY_BENCH=1 inline; this target does it
 # for you.
 memory-bench:
 	@TERRAIN_MEMORY_BENCH=1 go test -v -count=1 -run 'TestMemory' ./internal/analysis/...
@@ -222,7 +206,7 @@ bench-gate:
 	@tmp=$$(mktemp) ; \
 	go test -run '^$$' -bench 'BenchmarkRunPipeline|BenchmarkSignalDetection|BenchmarkBuildImportGraph|BenchmarkRiskScore|BenchmarkExtractTestCases' \
 		-count=5 ./internal/engine ./internal/analysis ./internal/scoring ./internal/testcase > $$tmp ; \
-	go run ./cmd/terrain-bench-gate --base benchmarks/baseline.txt --head $$tmp --threshold 10 ; \
+	go run ./cmd/internal/terrain-bench-gate --base benchmarks/baseline.txt --head $$tmp --threshold 10 ; \
 	rc=$$? ; \
 	rm -f $$tmp ; \
 	exit $$rc
@@ -259,4 +243,4 @@ benchmark-summary:
 
 # Compare current Go converters against the legacy JS runtime floor.
 benchmark-convert:
-	go run ./cmd/terrain-convert-bench
+	go run ./cmd/internal/terrain-convert-bench

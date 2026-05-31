@@ -23,10 +23,9 @@ import (
 func runPortfolio(root string, jsonOutput, verbose bool) error {
 	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
-		// Audit-named gap (portfolio.P5): designed remediation
-		// when portfolio analysis fails. Most common cause is the
-		// snapshot itself failing — point at `terrain analyze` for
-		// root-cause drill-down.
+		// Designed remediation when portfolio analysis fails.
+		// Most common cause is the snapshot itself failing —
+		// point at `terrain analyze` for root-cause drill-down.
 		if !jsonOutput {
 			fmt.Fprintf(os.Stderr, "error: portfolio analysis failed: %v\n", err)
 			fmt.Fprintln(os.Stderr)
@@ -54,8 +53,7 @@ func runPortfolio(root string, jsonOutput, verbose bool) error {
 func runPosture(root string, jsonOutput, verbose bool) error {
 	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
-		// Audit-named gap (summary_posture_metrics_focus.P5):
-		// designed remediation when the underlying analyze
+		// Designed remediation when the underlying analyze
 		// pipeline fails. Reuses analyzeFailureRemediation so
 		// every read-side command emits the same shape.
 		if !jsonOutput {

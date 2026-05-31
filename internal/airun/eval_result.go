@@ -40,9 +40,8 @@ type EvalRunResult struct {
 	//
 	// Surfaced in `terrain ai run --verbose` and in the JSON
 	// envelope so adopters know when the gating decision is
-	// resting on inferred data vs. explicit upstream fields. The
-	// audit (ai_eval_ingestion.E3) called for "which fields fell
-	// back to defaults" warnings; this is that surface.
+	// resting on inferred data vs. explicit upstream fields.
+	// Surfaces "which fields fell back to defaults" warnings.
 	Diagnostics []IngestionDiagnostic `json:"diagnostics,omitempty"`
 }
 

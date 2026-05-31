@@ -142,3 +142,66 @@ func TestConfig_IsEmpty(t *testing.T) {
 		t.Error("config with a rule set should report IsEmpty=false")
 	}
 }
+
+func TestConfig_DisabledDetectorSet(t *testing.T) {
+	t.Parallel()
+
+	// nil config returns nil set
+	var nilCfg *Config
+	if got := nilCfg.DisabledDetectorSet(); got != nil {
+		t.Errorf("nil config: want nil set, got %v", got)
+	}
+
+	// empty list returns nil
+	empty := &Config{}
+	if got := empty.DisabledDetectorSet(); got != nil {
+		t.Errorf("empty config: want nil set, got %v", got)
+	}
+
+	// populated list returns lookup set
+	cfg := &Config{Rules: Rules{
+		DisabledDetectors: []string{"weakAssertion", "mockHeavyTest", "  staticSkippedTest  "},
+	}}
+	set := cfg.DisabledDetectorSet()
+	if len(set) != 3 {
+		t.Errorf("want 3 entries, got %d: %v", len(set), set)
+	}
+	if !set["weakAssertion"] || !set["mockHeavyTest"] || !set["staticSkippedTest"] {
+		t.Errorf("expected weakAssertion, mockHeavyTest, staticSkippedTest in set, got %v", set)
+	}
+	// case-sensitive: typo means no match (loud failure)
+	if set["WeakAssertion"] {
+		t.Error("set should be case-sensitive — capitalized 'WeakAssertion' should not match")
+	}
+}
+
+func TestLoad_DisabledDetectors(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	terrainDir := filepath.Join(dir, ".terrain")
+	if err := os.MkdirAll(terrainDir, 0o755); err != nil {
+		t.Fatalf("mkdir .terrain: %v", err)
+	}
+	content := `rules:
+  disabled_detectors:
+    - weakAssertion
+    - testsOnlyMocks
+`
+	if err := os.WriteFile(filepath.Join(terrainDir, "policy.yaml"), []byte(content), 0o644); err != nil {
+		t.Fatalf("write policy.yaml: %v", err)
+	}
+	result, err := Load(dir)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	if !result.Found || result.Config == nil {
+		t.Fatal("expected policy loaded")
+	}
+	disabled := result.Config.Rules.DisabledDetectors
+	if len(disabled) != 2 {
+		t.Errorf("want 2 disabled detectors, got %d: %v", len(disabled), disabled)
+	}
+	if result.Config.IsEmpty() {
+		t.Error("config with disabled_detectors should not report IsEmpty=true")
+	}
+}

@@ -13,7 +13,7 @@ func TestIngest_ValidArtifact(t *testing.T) {
 	path := writeArtifact(t, `{
 		"version": "1",
 		"provider": "gauntlet",
-		"timestamp": "2026-03-15T12:00:00Z",
+		"timestamp": "2099-03-15T12:00:00Z",
 		"scenarios": [
 			{"scenarioId": "eval:safety", "name": "safety-check", "status": "passed", "durationMs": 1200},
 			{"scenarioId": "eval:accuracy", "name": "accuracy-check", "status": "failed", "durationMs": 3000}
@@ -88,14 +88,14 @@ func TestApplyToSnapshot_MatchesScenarios(t *testing.T) {
 	t.Parallel()
 
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "eval:safety", Name: "safety-check"},
-			{ScenarioID: "eval:accuracy", Name: "accuracy-check"},
+		Evals: []models.Eval{
+			{EvalID: "eval:safety", Name: "safety-check"},
+			{EvalID: "eval:accuracy", Name: "accuracy-check"},
 		},
 	}
 
 	art := &Artifact{
-		Scenarios: []ScenarioResult{
+		Scenarios: []EvalResult{
 			{ScenarioID: "eval:safety", Name: "safety-check", Status: "passed"},
 			{ScenarioID: "eval:accuracy", Name: "accuracy-check", Status: "failed", DurationMs: 3000},
 			{ScenarioID: "eval:unknown", Name: "unknown", Status: "passed"},
@@ -123,7 +123,7 @@ func TestApplyToSnapshot_GeneratesSignals(t *testing.T) {
 
 	snap := &models.TestSuiteSnapshot{}
 	art := &Artifact{
-		Scenarios: []ScenarioResult{
+		Scenarios: []EvalResult{
 			{ScenarioID: "eval:safety", Name: "safety-check", Status: "failed", DurationMs: 1200},
 			{ScenarioID: "eval:infra", Name: "infra-check", Status: "error", DurationMs: 500},
 		},
@@ -155,7 +155,7 @@ func TestApplyToSnapshot_Regressions(t *testing.T) {
 
 	snap := &models.TestSuiteSnapshot{}
 	art := &Artifact{
-		Scenarios: []ScenarioResult{
+		Scenarios: []EvalResult{
 			{
 				ScenarioID:  "eval:accuracy",
 				Name:        "accuracy-check",
@@ -187,7 +187,7 @@ func TestApplyToSnapshot_EmptySnapshot(t *testing.T) {
 
 	snap := &models.TestSuiteSnapshot{}
 	art := &Artifact{
-		Scenarios: []ScenarioResult{
+		Scenarios: []EvalResult{
 			{ScenarioID: "eval:safety", Name: "safety-check", Status: "passed"},
 		},
 	}
@@ -234,7 +234,7 @@ func TestClassifyFailureSignal(t *testing.T) {
 		{"generic-scenario", "evalFailure"},
 	}
 	for _, tt := range tests {
-		got := classifyFailureSignal(ScenarioResult{Name: tt.name})
+		got := classifyFailureSignal(EvalResult{Name: tt.name})
 		if got != tt.want {
 			t.Errorf("classifyFailureSignal(%q) = %q, want %q", tt.name, got, tt.want)
 		}
@@ -310,9 +310,9 @@ func TestIngest_AISignalTypes(t *testing.T) {
 	}`)
 
 	snap := &models.TestSuiteSnapshot{
-		Scenarios: []models.Scenario{
-			{ScenarioID: "eval:safety-check"},
-			{ScenarioID: "eval:accuracy"},
+		Evals: []models.Eval{
+			{EvalID: "eval:safety-check"},
+			{EvalID: "eval:accuracy"},
 		},
 	}
 

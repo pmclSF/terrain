@@ -166,9 +166,9 @@ type ConfidenceDetail struct {
 	IntervalHigh float64 `json:"intervalHigh,omitempty"`
 
 	// Quality classifies how the estimate was produced.
-	//   "calibrated" — anchored to a labeled corpus precision/recall
+	//   "calibrated" — anchored to validation-set precision/recall
 	//   "heuristic"  — author-set, derived from rule structure
-	//   "estimate"   — bounded but not corpus-validated
+	//   "estimate"   — bounded but not validation-anchored
 	Quality string `json:"quality,omitempty"`
 
 	// Sources lists the EvidenceSource strings that contributed to this
@@ -212,8 +212,8 @@ type SignalReference struct {
 // SignalV2 (0.2) added the multi-axis fields below the dashed line. They
 // are all `omitempty`, so v1 producers and consumers continue to work
 // against v2 binaries — additive changes only, no migration code needed.
-// Detectors emit v2 fields opportunistically; the calibration corpus and
-// severity rubric work in 0.2 fills them in across the catalog.
+// Detectors emit v2 fields opportunistically; the severity rubric work
+// in 0.2 fills them in across the catalog.
 type Signal struct {
 	Type     SignalType     `json:"type"`
 	Category SignalCategory `json:"category"`

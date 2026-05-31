@@ -169,8 +169,7 @@ func walkPyClassBody(body *sitter.Node, src []byte, suiteStack []string, cases *
 // (a name reference, a list comprehension, a function call), returns
 // empty — callers fall back to the count-only path.
 //
-// 0.2 closes the round-4 finding "pytest parametrize value extraction
-// (currently estimates count only)".
+// Provides full pytest-parametrize value extraction (vs count-only).
 func extractParametrizeValuesFromAST(decorator *sitter.Node, src []byte) []string {
 	argList := findArgListInDecorator(decorator)
 	if argList == nil || argList.NamedChildCount() < 2 {

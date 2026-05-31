@@ -1,11 +1,12 @@
-# TER-AI-104 — Destructive Tool Without Sandbox
+# terrain/ai/tool-without-sandbox — Destructive Tool Without Sandbox
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
 **Type:** `aiToolWithoutSandbox`  
 **Domain:** ai  
 **Default severity:** high  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** gate
 
 ## Summary
 
@@ -21,7 +22,7 @@ Wrap the tool in an approval gate or restrict its capability surface to a sandbo
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.70, 0.90] (heuristic in 0.2; calibration in 0.3).
+Confidence interval: 0.70–0.90.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->
 
@@ -31,7 +32,7 @@ Detector confidence is bracketed at [0.70, 0.90] (heuristic in 0.2; calibration 
 **Domain:** AI
 **Default severity:** High
 **Severity clauses:** [`sev-high-004`](../../severity-rubric.md)
-**Status:** stable (0.2)
+**Status:** stable
 
 ## What it detects
 
@@ -40,16 +41,14 @@ path indicates an agent or MCP tool definition (`agent`, `tool`, `mcp`,
 or files named `tools.{yaml,json}`) and inspects each tool entry for
 two things:
 
-1. **A destructive verb** in the tool's `name` or `description`:
-   - delete / destroy / remove / drop / truncate / purge
-   - exec / execute / run_shell / run_command / spawn / eval
-   - write_file / overwrite_disk / replace_prod / patch_file
-   - send_email / send_payment / charge / refund / transfer
-2. **No approval marker** anywhere in the tool entry. Markers checked:
-   - `approval`, `approve`, `confirm`
-   - `human-in-the-loop` / `human_in_the_loop` / `requires_human`
-   - `sandbox`, `sandboxed`, `dry_run`, `dry-run`, `preview`
-   - `interactive: true`, `needs_approval`
+1. **A destructive verb** in the tool's `name` or `description` —
+   recognized categories include deletion / removal, shell or process
+   execution, file-write and disk-overwrite operations, and
+   financial / messaging side-effects.
+2. **No approval marker** anywhere in the tool entry. The detector
+   recognizes common approval, sandboxing, dry-run, and
+   human-in-the-loop conventions; add any clearly named field along
+   those lines to suppress.
 
 A tool that has a destructive name AND lacks an approval marker fires
 one signal at file-symbol granularity (the symbol is the tool name).
@@ -97,12 +96,11 @@ tools:
   intercepts every tool call). Add an `approval: external` field —
   the marker scan will see it.
 
-## Known limitations (0.2)
+## Known limitations
 
 - Only YAML and JSON. Python decorator-style tool definitions
   (`@tool` / `@mcp_tool`) are not yet parsed.
-- The destructive-verb list is hand-curated. False negatives on
-  domain-specific destructive verbs (`unsubscribe_*`, `revoke_*`)
-  are tracked in `tests/calibration/`.
+- The destructive-verb categories are curated; domain-specific
+  destructive verbs may not match.
 - Doesn't follow tool dispatch chains: a "router" tool that delegates
   to a destructive sub-tool isn't flagged.

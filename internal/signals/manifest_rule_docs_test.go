@@ -9,7 +9,7 @@ import (
 )
 
 // TestRuleDocs_ExistOnDisk is the drift gate that pairs with the
-// auto-stub generator in cmd/terrain-docs-gen. Every stable manifest
+// auto-stub generator in cmd/internal/terrain-docs-gen. Every stable manifest
 // entry must have its RuleURI resolved to a real file under
 // docs/rules/. Experimental and planned entries are exempt — their
 // detectors haven't shipped yet, so doc gaps are expected.

@@ -1,6 +1,6 @@
 // Package parserpool provides a per-language sync.Pool of tree-sitter
-// parsers. It eliminates the allocation churn that the round-4 review
-// flagged on 1k-file repos: each call to sitter.NewParser() allocates a
+// parsers. It eliminates allocation churn on large repos: each call
+// to sitter.NewParser() allocates a
 // CGO-backed parser context, and the existing call sites paid that cost
 // once per file. With this pool, the cost is amortised across files and
 // across concurrent workers, and parsers are returned for reuse.

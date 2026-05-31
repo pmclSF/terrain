@@ -152,13 +152,13 @@ func TestExplainScenarioRich_PromptOnly(t *testing.T) {
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "surface:src/prompt.ts:buildPrompt", Name: "buildPrompt", Path: "src/prompt.ts", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:safety", Name: "safety-check", Category: "safety", Capability: "safety",
+		Evals: []models.Eval{
+			{EvalID: "sc:safety", Name: "safety-check", Category: "safety", Capability: "safety",
 				CoveredSurfaceIDs: []string{"surface:src/prompt.ts:buildPrompt"}},
 		},
 	}
 	result := &impact.ImpactResult{
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{ScenarioID: "sc:safety", Name: "safety-check", Category: "safety",
 				ImpactConfidence: impact.ConfidenceExact, Capability: "safety",
 				CoversSurfaces: []string{"surface:src/prompt.ts:buildPrompt"},
@@ -166,7 +166,7 @@ func TestExplainScenarioRich_PromptOnly(t *testing.T) {
 		},
 	}
 
-	se, err := ExplainScenarioRich("safety-check", result, snap)
+	se, err := ExplainEvalRich("safety-check", result, snap)
 	if err != nil {
 		t.Fatalf("explain: %v", err)
 	}
@@ -195,13 +195,13 @@ func TestExplainScenarioRich_RAGSystem(t *testing.T) {
 			{SurfaceID: "s:rerank", Name: "rerankerConfig", Path: "src/rag/rerank.ts", Kind: models.SurfaceRetrieval},
 			{SurfaceID: "s:prompt", Name: "searchPrompt", Path: "src/prompts.ts", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:search", Name: "enterprise-search", Category: "accuracy", Capability: "search",
+		Evals: []models.Eval{
+			{EvalID: "sc:search", Name: "enterprise-search", Category: "accuracy", Capability: "search",
 				CoveredSurfaceIDs: []string{"s:chunk", "s:rerank", "s:prompt"}},
 		},
 	}
 	result := &impact.ImpactResult{
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{ScenarioID: "sc:search", Name: "enterprise-search", Category: "accuracy",
 				ImpactConfidence: impact.ConfidenceExact, Capability: "search",
 				CoversSurfaces: []string{"s:chunk"},
@@ -209,7 +209,7 @@ func TestExplainScenarioRich_RAGSystem(t *testing.T) {
 		},
 	}
 
-	se, err := ExplainScenarioRich("enterprise-search", result, snap)
+	se, err := ExplainEvalRich("enterprise-search", result, snap)
 	if err != nil {
 		t.Fatalf("explain: %v", err)
 	}
@@ -239,13 +239,13 @@ func TestExplainScenarioRich_ToolAgent(t *testing.T) {
 			{SurfaceID: "s:agent", Name: "agentRouter", Path: "src/agent.ts", Kind: models.SurfaceAgent},
 			{SurfaceID: "s:ctx", Name: "systemPrompt", Path: "src/context.ts", Kind: models.SurfaceContext},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:agent", Name: "agent-tool-use", Category: "accuracy",
+		Evals: []models.Eval{
+			{EvalID: "sc:agent", Name: "agent-tool-use", Category: "accuracy",
 				CoveredSurfaceIDs: []string{"s:tool", "s:agent", "s:ctx"}},
 		},
 	}
 	result := &impact.ImpactResult{
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{ScenarioID: "sc:agent", Name: "agent-tool-use", Category: "accuracy",
 				ImpactConfidence: impact.ConfidenceExact,
 				CoversSurfaces:   []string{"s:tool", "s:agent"},
@@ -253,7 +253,7 @@ func TestExplainScenarioRich_ToolAgent(t *testing.T) {
 		},
 	}
 
-	se, err := ExplainScenarioRich("agent-tool-use", result, snap)
+	se, err := ExplainEvalRich("agent-tool-use", result, snap)
 	if err != nil {
 		t.Fatalf("explain: %v", err)
 	}
@@ -278,8 +278,8 @@ func TestExplainScenarioRich_WithSignals(t *testing.T) {
 		CodeSurfaces: []models.CodeSurface{
 			{SurfaceID: "s:p", Name: "prompt", Path: "src/p.ts", Kind: models.SurfacePrompt},
 		},
-		Scenarios: []models.Scenario{
-			{ScenarioID: "sc:safe", Name: "safety", CoveredSurfaceIDs: []string{"s:p"}},
+		Evals: []models.Eval{
+			{EvalID: "sc:safe", Name: "safety", CoveredSurfaceIDs: []string{"s:p"}},
 		},
 		Signals: []models.Signal{
 			{Type: "safetyFailure", Category: models.CategoryAI, Severity: models.SeverityHigh,
@@ -291,13 +291,13 @@ func TestExplainScenarioRich_WithSignals(t *testing.T) {
 		},
 	}
 	result := &impact.ImpactResult{
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{ScenarioID: "sc:safe", Name: "safety", ImpactConfidence: impact.ConfidenceExact,
 				CoversSurfaces: []string{"s:p"}, Relevance: "prompt changed"},
 		},
 	}
 
-	se, err := ExplainScenarioRich("safety", result, snap)
+	se, err := ExplainEvalRich("safety", result, snap)
 	if err != nil {
 		t.Fatalf("explain: %v", err)
 	}
@@ -396,7 +396,7 @@ func TestExplainTest_WeakRelevance(t *testing.T) {
 func TestExplainScenario_NotFound(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{}
-	_, err := ExplainScenario("nonexistent", result)
+	_, err := ExplainEval("nonexistent", result)
 	if err == nil {
 		t.Fatal("expected error for nonexistent scenario")
 	}
@@ -404,7 +404,7 @@ func TestExplainScenario_NotFound(t *testing.T) {
 
 func TestExplainScenario_NilResult(t *testing.T) {
 	t.Parallel()
-	_, err := ExplainScenario("anything", nil)
+	_, err := ExplainEval("anything", nil)
 	if err == nil {
 		t.Fatal("expected error for nil result")
 	}
@@ -413,7 +413,7 @@ func TestExplainScenario_NilResult(t *testing.T) {
 func TestExplainScenario_FoundByName(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{
 				ScenarioID:       "sc:safety",
 				Name:             "safety-check",
@@ -427,7 +427,7 @@ func TestExplainScenario_FoundByName(t *testing.T) {
 		},
 	}
 
-	se, err := ExplainScenario("safety-check", result)
+	se, err := ExplainEval("safety-check", result)
 	if err != nil {
 		t.Fatalf("explain: %v", err)
 	}
@@ -451,7 +451,7 @@ func TestExplainScenario_FoundByName(t *testing.T) {
 func TestExplainScenario_SingleSurfaceVerdict(t *testing.T) {
 	t.Parallel()
 	result := &impact.ImpactResult{
-		ImpactedScenarios: []impact.ImpactedScenario{
+		ImpactedEvals: []impact.ImpactedEval{
 			{
 				ScenarioID:     "sc:1",
 				Name:           "test-scenario",
@@ -460,7 +460,7 @@ func TestExplainScenario_SingleSurfaceVerdict(t *testing.T) {
 		},
 	}
 
-	se, err := ExplainScenario("test-scenario", result)
+	se, err := ExplainEval("test-scenario", result)
 	if err != nil {
 		t.Fatalf("explain: %v", err)
 	}

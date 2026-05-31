@@ -1,0 +1,133 @@
+schema_version: 1
+# Detector mechanism registry. Each entry gates one detector behavior
+# change. New mechanisms start at state: shadow — they run alongside
+# the pre-existing detector code, emit shadow events, but do NOT change
+# user-visible findings until flipped to state: on.
+#
+# Live activation requires:
+#   1. Empirical validation: shadow events on representative fixtures
+#      confirm the predicate fires only on its intended FP class.
+#   2. Consumer state=on test asserting the wiring observably changes
+#      detector output as designed.
+#   3. Explicit edit of this file flipping state: shadow → state: on.
+#
+# Per-process overrides via --mechanisms.<name>=on|off|shadow.
+
+mechanisms:
+  - name: surface_literal_presence_gate
+    state: shadow
+    description: |
+      Before an AI surface-aware detector fires on a surface name,
+      require that the name literally appears as an identifier token
+      in the flagged file. Suppresses surface-hallucination findings.
+      Consumers wrap with isSyntheticIdentifier to avoid suppressing
+      constructor-derived synthetic labels.
+    consumers:
+      - aiModelDeprecationRisk
+      - aiPromptVersioning
+      - aiEmbeddingModelChange
+      - aiSafetyEvalMissing
+      - aiToolWithoutSandbox
+
+  - name: deprecated_test_pattern_trigger_gate
+    state: on
+    description: |
+      Require a structural framework-import predicate (enzyme, jest
+      setTimeout config scope) before the deprecatedTestPattern rule
+      fires. Suppresses framework-mismatch false positives such as
+      enzyme-style calls in files with no enzyme import.
+    consumers:
+      - deprecatedTestPattern
+
+  - name: a1_def_following
+    state: shadow
+    description: |
+      Intra-repo def-following for the assertion-counter family. When
+      a test body calls a helper whose definition is resolvable in-repo,
+      recurse into the helper's body and count transitive assertions.
+      The lifted AssertionCount also flows into snapshot-ratio and
+      mock-vs-assertion detectors that read it from the snapshot.
+    consumers:
+      - assertionFreeImport
+      - assertionFreeTest
+      - weakAssertion
+      - snapshotHeavyTest
+      - mockHeavyTest
+
+  - name: deps_drift_risk_split
+    state: shadow
+    description: |
+      Split depsDriftRisk into depsDriftRisk-strict-pin (bare-name /
+      unversioned) and depsDriftRisk-caret-policy (caret ranges).
+    consumers:
+      - depsDriftRisk
+
+  - name: static_skipped_test_split
+    state: shadow
+    description: |
+      Split staticSkippedTest into staticSkippedTest-unconditional and
+      staticSkippedTest-conditional-gate. Preserves conditional-skip
+      true positives that a narrower predicate would drop.
+    consumers:
+      - staticSkippedTest
+
+  - name: a7_barrel_resolver
+    state: shadow
+    description: |
+      Import-graph barrel/re-export hardening. Handles relative sibling
+      imports, @/-style path aliases, absolute-package imports,
+      Python `from x import y` namespace re-exports, and dist-path
+      indirection.
+    consumers:
+      - untestedExport
+      - orphanedTestFile
+
+  - name: a3_loop_predicate
+    state: shadow
+    description: |
+      AST loop predicate for dynamicTestGeneration: gates on
+      IsTestBuilderInLoop (for / forEach / it.each / test.each).
+    consumers:
+      - dynamicTestGeneration
+
+  - name: ehr_surfaces_covered
+    state: shadow
+    description: |
+      Eval-harness recognizer that emits surfaces_covered: [...] per
+      eval config, not just an eval-config-present boolean. Prevents
+      over-suppression when an eval covers a different surface than
+      the one a finding fires on.
+    consumers:
+      - aiSafetyEvalMissing
+
+  - name: runtime_config_recognizer
+    state: shadow
+    description: |
+      Structural primitive — any YAML/properties file with an
+      import-graph-reachable consumer that injects values into an
+      SDK client constructor. Demotes findings to observability when
+      the file looks like a runtime config rather than an eval config.
+    consumers:
+      - aiNonDeterministicEval
+
+  - name: ascg_live_vs_catalog
+    state: on
+    description: |
+      Anchored-schema configuration gate: live-config-value vs
+      catalog/example-string role pinning. Demotes findings on
+      catalog or example occurrences before they reach the
+      user-visible finding stream. The path-based classifier is
+      paired with a structural override — file body must contain
+      function/class definitions plus call sites or SDK imports —
+      so live working code under `examples/` is not wrongly demoted.
+
+      Consumer scope is narrow: this gate is wired only to detectors
+      whose findings benefit from path-based demotion (most TPs
+      reference symbols defined in the same file). Detectors whose
+      findings reference real model identifiers in code (model
+      deprecation, embedding model change) and detectors firing on
+      genuinely-deployable configs (schema drift in examples/) are
+      NOT wired through this gate; those references are TPs
+      regardless of path.
+    consumers:
+      - aiNonDeterministicEval

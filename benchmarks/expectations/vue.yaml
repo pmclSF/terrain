@@ -1,6 +1,6 @@
 # Expectations for vuejs/core benchmark.
 # TypeScript monorepo with vitest. 204+ test files.
-# Baselines from 2026-03-06 run.
+# Baselines from a recent benchmark run.
 min_test_files: 100
 min_code_units: 200
 require_posture: true

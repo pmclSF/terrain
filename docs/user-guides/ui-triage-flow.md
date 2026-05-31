@@ -23,7 +23,7 @@ The entry point is the set of `DimensionPostureResult` entries from
 `coverage_depth`, `coverage_diversity`, `structural_risk`,
 `operational_risk`) is rendered as a card showing its `Band`,
 `Explanation`, and the count of signals and risk surfaces that
-fall under it. See `docs/product/posture-model.md` for the
+fall under it. See the posture model for the
 canonical dimension definitions.
 
 Clicking a dimension opens Level 2.

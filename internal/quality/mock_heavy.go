@@ -1,6 +1,10 @@
 package quality
 
-import "github.com/pmclSF/terrain/internal/models"
+import (
+	"fmt"
+
+	"github.com/pmclSF/terrain/internal/models"
+)
 
 // MockHeavyDetector identifies test files with high mock usage relative
 // to direct assertions.
@@ -44,34 +48,32 @@ func (d *MockHeavyDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sign
 				EvidenceStrength: models.EvidenceModerate,
 				EvidenceSource:   models.SourceStructuralPattern,
 				Location:         models.SignalLocation{File: tf.Path},
-				Explanation: "Test file contains " + itoa(tf.MockCount) +
-					" mock(s) but zero assertions. Tests verify wiring only, not behavior.",
+				Explanation: fmt.Sprintf("Test file contains %d mock(s) but zero assertions. Tests verify wiring only, not behavior.", tf.MockCount),
 				SuggestedAction: "Add assertions on outputs, state changes, or side effects to validate real behavior.",
 			})
 			continue
 		}
 
 		// Mock-heavy: mocks outnumber assertions, suggesting over-isolation.
+		//
+		// Severity is Low and confidence is 0.35 because the signal has
+		// not held up as a reliable regression predictor. It remains in
+		// experimental status pending redesign; Low severity + low
+		// confidence keeps it visible in extended reports without
+		// dominating the gate.
 		if tf.MockCount > tf.AssertionCount {
-			sev := models.SeverityMedium
-			conf := 0.7
-			if tf.MockCount > 2*tf.AssertionCount {
-				sev = models.SeverityHigh
-				conf = 0.75
-			}
-
+			sev := models.SeverityLow
+			conf := 0.35
 			signals = append(signals, models.Signal{
 				Type:             "mockHeavyTest",
 				Category:         models.CategoryQuality,
 				Severity:         sev,
 				Confidence:       conf,
-				EvidenceStrength: models.EvidenceModerate,
+				EvidenceStrength: models.EvidenceWeak,
 				EvidenceSource:   models.SourceStructuralPattern,
 				Location:         models.SignalLocation{File: tf.Path},
-				Explanation: "High mock usage detected: " + itoa(tf.MockCount) +
-					" mock(s) vs " + itoa(tf.AssertionCount) +
-					" assertion(s). Test behavior may be heavily isolated behind mocks.",
-				SuggestedAction: "Consider adding assertions on real outputs or supplementing with integration coverage.",
+				Explanation: fmt.Sprintf("High mock usage detected: %d mock(s) vs %d assertion(s).", tf.MockCount, tf.AssertionCount),
+				SuggestedAction: "Consider adding assertions on real outputs or supplementing with integration coverage. Detector is experimental.",
 			})
 		}
 	}

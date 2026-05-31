@@ -6,18 +6,24 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
+	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/analyze"
+	"github.com/pmclSF/terrain/internal/budget"
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/governance"
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/policy"
+	"github.com/pmclSF/terrain/internal/promptflow"
 	"github.com/pmclSF/terrain/internal/reporting"
 	"github.com/pmclSF/terrain/internal/sarif"
+	"github.com/pmclSF/terrain/internal/terrainconfig"
 )
 
 func runInit(root string, jsonOutput bool) error {
@@ -121,14 +127,14 @@ func runInit(root string, jsonOutput bool) error {
 		fmt.Println()
 	}
 
-	// CI integration pointer — Track 8.4. Always shown so adopters
+	// CI integration pointer — . Always shown so adopters
 	// see the whole ladder from `terrain init` onwards. The trust-
 	// ladder doc explains the four-rung adoption path; the example
 	// workflow is the one canonical CI config.
 	fmt.Printf("  %d. Wire Terrain into CI (warn-only by default):\n", step)
 	fmt.Println("     Copy docs/examples/gate/github-action.yml to .github/workflows/")
-	fmt.Println("     The trust ladder (docs/product/trust-ladder.md) explains")
-	fmt.Println("     when to flip on blocking gates.")
+	fmt.Println("     Start in warn-only mode; flip on blocking gates once your")
+	fmt.Println("     team has cleared the existing findings.")
 	fmt.Println()
 
 	return nil
@@ -143,8 +149,7 @@ func relativeToRoot(path, root string) string {
 
 // analyzeRunOpts collects every input runAnalyze takes. Replaces a
 // seventeen-positional-argument signature with one struct so future
-// flag additions stop expanding the call site. Track 4.6/4.7/4.8
-// recovery (PR #140) introduced the struct; gate + timeout fields
+// flag additions stop expanding the call site. // recovery (PR #140) introduced the struct; gate + timeout fields
 // were already on the previous positional signature and are
 // preserved here.
 type analyzeRunOpts struct {
@@ -167,6 +172,13 @@ type analyzeRunOpts struct {
 	Timeout          time.Duration
 	SuppressionsPath string
 	NewFindingsOnly  bool
+	EnablePreview    bool
+	Diag             bool
+	// BaseRef, when set, enables the prompt-template/schema drift
+	// detector (aiPromptSchemaDrift). The detector compares schemas
+	// at HEAD against schemas at this ref via `git show <ref>:<path>`.
+	// Empty disables the detector.
+	BaseRef string
 }
 
 func runAnalyze(o analyzeRunOpts) error {
@@ -187,6 +199,15 @@ func runAnalyze(o analyzeRunOpts) error {
 	redactPaths := o.RedactPaths
 	gate := o.Gate
 	timeout := o.Timeout
+
+	// Load terrain.yaml (optional) and register adopter-supplied
+	// custom AI markers with the analysis package. Patterns extend
+	// the AI-context gate so private LLM SDKs corroborate detection.
+	// Missing or invalid config is non-fatal — gate falls back to
+	// the canonical marker list.
+	if cfg, err := terrainconfig.Load(filepath.Join(root, "terrain.yaml")); err == nil && cfg != nil && cfg.AI != nil && len(cfg.AI.AIMarkers) > 0 {
+		analysis.SetCustomAIMarkers(cfg.AI.AIMarkers)
+	}
 
 	parsedRuntime := parseRuntimePaths(runtimePaths)
 	parsedGauntlet := parseRuntimePaths(gauntletPaths)        // same comma-split logic
@@ -242,19 +263,26 @@ func runAnalyze(o analyzeRunOpts) error {
 	opt.BaselineSnapshotPath = baselinePath
 	opt.SuppressionsPath = o.SuppressionsPath
 	opt.NewFindingsOnly = o.NewFindingsOnly
+	opt.EnablePreviewRules = o.EnablePreview
+	opt.CollectDiagnostics = o.Diag
 	opt.OnProgress = newProgressFunc(jsonOutput)
-	// Honour Ctrl-C and the optional --timeout: pre-0.2.x analyze
-	// exited abruptly on SIGINT with no cleanup, and unbounded
-	// monorepo scans could block CI indefinitely.
+	// Honour Ctrl-C and the optional --timeout: without this, analyze
+	// exits abruptly on SIGINT with no cleanup, and unbounded
+	// monorepo scans can block CI indefinitely.
 	// runPipelineWithSignalsAndTimeout wraps RunPipelineContext with a
 	// SIGINT-aware context plus an optional deadline so in-flight
 	// detectors check ctx.Err and unwind cooperatively.
 	result, err := runPipelineWithSignalsAndTimeout(root, opt, timeout)
 	if err != nil {
-		// Audit-named gap (core_analyze.P5): designed remediation
-		// when analysis fails. Distinguishes context cancellation
-		// (timeout / Ctrl-C) from other failure modes so adopters
-		// see the right next step.
+		// Render partial diagnostics if collected — useful for
+		// debugging timeouts (shows which steps completed before
+		// the deadline). Must happen before the early-return.
+		if o.Diag && result != nil && result.Diagnostics != nil {
+			result.Diagnostics.Render(os.Stderr)
+		}
+		// Designed remediation when analysis fails. Distinguishes
+		// context cancellation (timeout / Ctrl-C) from other
+		// failure modes so adopters see the right next step.
 		if !jsonOutput {
 			analyzeFailureRemediation(err, root, timeout)
 		}
@@ -265,6 +293,24 @@ func runAnalyze(o analyzeRunOpts) error {
 	for _, msg := range result.DiscoveryMessages {
 		logging.L().Info(msg)
 	}
+
+	// Pipeline diagnostics — print to stderr so they don't pollute
+	// JSON / SARIF stdout but are visible during interactive runs.
+	if o.Diag && result.Diagnostics != nil {
+		result.Diagnostics.Render(os.Stderr)
+	}
+
+	if err := appendPromptSchemaDriftSignals(result.Snapshot, root, o.BaseRef); err != nil {
+		return err
+	}
+
+	// Per-rule findings budget. terrain.yaml `rules.<key>.max_findings`
+	// caps how many findings a single rule may emit, keeping the
+	// highest-priority subset. Heuristic-precision detectors that
+	// otherwise fire hundreds of times per run (untestedExport on Java
+	// monorepos, weakAssertion on data-science codebases) are noise
+	// past a small cap.
+	applyFindingsBudget(result.Snapshot, root, jsonOutput)
 
 	// Build discovered artifacts list for the report.
 	var discovered []analyze.DiscoveredArtifact
@@ -304,7 +350,10 @@ func runAnalyze(o analyzeRunOpts) error {
 	// stays a valid JSON document) AND the gate decision returns via
 	// the error channel (so main.go writes the gate message to stderr,
 	// not stdout).
-	gateBlocked, gateSummary := severityGateBlocked(gate, report.SignalSummary)
+	// Gate decisions use the observability-tier-excluding summary so
+	// findings from detectors that explicitly ship at observability tier
+	// stay informational and don't block CI.
+	gateBlocked, gateSummary := severityGateBlocked(gate, report.GateRelevantSummary)
 	gateErr := func() error {
 		if gateBlocked {
 			return fmt.Errorf("%w: --fail-on=%s matched %s", errSeverityGateBlocked, gate, gateSummary)
@@ -331,10 +380,10 @@ func runAnalyze(o analyzeRunOpts) error {
 	}
 
 	// `--write-snapshot` runs first so it persists regardless of the
-	// output format. Pre-0.2.x the persist call lived after the
-	// rendering switch, so `--write-snapshot --json` returned from the
-	// JSON branch before the snapshot was written — the canonical CI
-	// shape (capture JSON to stdout, save snapshot to disk) silently
+	// output format. Earlier revisions placed the persist call after
+	// the rendering switch, so `--write-snapshot --json` returned from
+	// the JSON branch before the snapshot was written — the canonical
+	// CI shape (capture JSON to stdout, save snapshot to disk) silently
 	// dropped the snapshot.
 	if writeSnap {
 		if err := persistSnapshot(result.Snapshot, root); err != nil {
@@ -382,6 +431,69 @@ func runAnalyze(o analyzeRunOpts) error {
 	return gateErr()
 }
 
+// appendPromptSchemaDriftSignals runs the prompt-template / schema
+// drift detector against the working tree at root, with the schemas
+// at baseRef as the comparison point. Findings are appended to
+// snap.Signals so every downstream surface (JSON, text, PR-comment,
+// SARIF) consumes them through the same path.
+//
+// No-op when baseRef is empty. Returns an error (rather than logging
+// a warning and continuing) when baseRef is invalid — silent failures
+// look like "all clean" runs and erode trust in the gate.
+func appendPromptSchemaDriftSignals(snap *models.TestSuiteSnapshot, root, baseRef string) error {
+	if baseRef == "" || snap == nil {
+		return nil
+	}
+	ctx, cancel := signal.NotifyContext(context.Background(),
+		os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	after, before, err := promptflow.DiscoverFromGit(ctx, root, baseRef)
+	if err != nil {
+		return fmt.Errorf("aiPromptSchemaDrift: %w", err)
+	}
+	findings, err := promptflow.Analyze(after, before)
+	if err != nil {
+		return fmt.Errorf("aiPromptSchemaDrift: %w", err)
+	}
+	if len(findings) > 0 {
+		snap.Signals = append(snap.Signals, promptflow.ToSignals(findings)...)
+	}
+	return nil
+}
+
+// applyFindingsBudget caps each rule's findings at terrain.yaml's
+// `max_findings`. Missing terrain.yaml is fine (most adopters don't
+// have one). Pruned counts surface as a one-line stderr notice when
+// rendering to humans; JSON/SARIF stay quiet so machine consumers
+// see the same shape as before.
+func applyFindingsBudget(snap *models.TestSuiteSnapshot, root string, jsonOutput bool) {
+	cfg, err := terrainconfig.Load(filepath.Join(root, "terrain.yaml"))
+	if err != nil || cfg == nil || len(cfg.Rules) == 0 {
+		return
+	}
+	budgets := map[string]int{}
+	for key, spec := range cfg.Rules {
+		if spec.Block == nil || spec.Block.MaxFindings <= 0 {
+			continue
+		}
+		// terrain.yaml uses `category/name`; engine RuleIDs are
+		// `terrain/category/name`. Normalize to the engine form.
+		budgets["terrain/"+key] = spec.Block.MaxFindings
+	}
+	if len(budgets) == 0 {
+		return
+	}
+	pruned := budget.Apply(snap, budgets)
+	if jsonOutput || len(pruned) == 0 {
+		return
+	}
+	for rule, n := range pruned {
+		fmt.Fprintf(os.Stderr,
+			"budget: %s exceeded max_findings — %d additional finding(s) suppressed\n",
+			rule, n)
+	}
+}
+
 // runPolicyCheck evaluates the repository against its local policy.
 //
 // Exit codes:
@@ -398,10 +510,10 @@ func runPolicyCheck(root string, jsonOutput bool, coveragePath, coverageRunLabel
 	// Load policy
 	policyResult, err := policy.Load(root)
 	if err != nil {
-		// Audit-named gap (policy_governance.P5): surface a
-		// designed remediation pointer instead of dumping the bare
-		// yaml error. Adopters seeing "yaml: line 5: did not find
-		// expected key" don't know that's policy.yaml's fault.
+		// Surface a designed remediation pointer instead of
+		// dumping the bare yaml error. Adopters seeing
+		// "yaml: line 5: did not find expected key" don't know
+		// that's policy.yaml's fault.
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		fmt.Fprintln(os.Stderr)
 		fmt.Fprintln(os.Stderr, "Policy file failed to load. Common causes:")
@@ -549,8 +661,6 @@ func policyStatusMessage(pass bool) string {
 //   - context cancelled (--timeout fired or Ctrl-C)
 //   - filesystem / parse error
 //   - everything else (generic remediation)
-//
-// Audit-named gap (core_analyze.P5).
 func analyzeFailureRemediation(err error, root string, timeout time.Duration) {
 	fmt.Fprintln(os.Stderr)
 	if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, context.Canceled) {

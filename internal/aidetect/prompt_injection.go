@@ -6,15 +6,16 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
 )
 
 // PromptInjectionDetector flags source patterns that concatenate
 // user-controlled input into a prompt without obvious escaping or
-// structured input boundaries. The 0.2 detector is regex-based and
-// intentionally heuristic — the round-4 review confirmed taint-flow
-// analysis is the right destination but lives in 0.3.
+// structured input boundaries. This detector is regex-based and
+// intentionally heuristic — taint-flow analysis is the right
+// destination but out of scope here.
 //
 // Detection model:
 //
@@ -26,16 +27,14 @@ import (
 //     construct on the same line
 //
 // We accept some false positives in exchange for catching the visible
-// fraction of the bug. Calibration corpus fixtures with
-// `expectedAbsent: aiPromptInjectionRisk` capture the false-positive
-// shapes worth filtering.
+// fraction of the bug.
 type PromptInjectionDetector struct {
 	Root string
 }
 
 // promptInjectionScanExts is the language allowlist. The detector is
-// pattern-based, so we keep it tight to the languages whose AI codebases
-// are visible in the calibration corpus.
+// pattern-based, so we keep it tight to the languages where AI
+// codebases commonly live.
 var promptInjectionScanExts = map[string]bool{
 	".py": true, ".js": true, ".ts": true, ".tsx": true, ".jsx": true,
 	".go": true,
@@ -45,23 +44,21 @@ var promptInjectionScanExts = map[string]bool{
 // require the identifier to be assigned, concatenated, or appended to
 // — i.e. a write context. Reading a `prompt` var is fine.
 //
-// Pre-0.2.x the assignment branch matched `[+]?=`, which also matched
-// `==` (equality) — `if prompt == user_input:` tripped a
-// High-severity false positive. The branch now uses negative lookahead
-// `=(?!=)` so equality (`==`, `===`), `!==`, `>=`, `<=` are excluded;
-// `+=` and assignment (`=`) are retained.
+// The assignment branch uses negative lookahead `=(?!=)` so equality
+// (`==`, `===`), `!==`, `>=`, `<=` are excluded; `+=` and assignment
+// (`=`) are retained. (A simpler `[+]?=` matches `==` and trips a
+// High-severity false positive on `if prompt == user_input:`.)
 var promptIdentifierPattern = regexp.MustCompile(
 	`(?i)\b(?:system_?prompt|user_?prompt|prompt|instruction|message[s]?)\s*(?:\+=|=(?:[^=]|$)|\.append\(|\.format\()`,
 )
 
 // userInputShapes is the "this looks user-controlled" half. Each entry
 // is a regex tested against the same line OR the next 1–2 lines (see
-// scanFileForPromptInjection). The 0.2.0 final-polish pass added
-// FastAPI / Flask / Django / Pyramid / gRPC shapes that the original
-// list missed — production codebases routinely route user input
-// through these framework constructs, so a list anchored on
-// `request.body`/`req.json` only saw a small slice of real-world
-// prompt-injection patterns.
+// scanFileForPromptInjection). Coverage includes FastAPI, Flask,
+// Django, Pyramid, and gRPC shapes — production codebases routinely
+// route user input through these framework constructs, so a list
+// anchored on `request.body` / `req.json` alone misses a large slice
+// of real-world prompt-injection patterns.
 var userInputShapes = []*regexp.Regexp{
 	// Express.js / Koa / generic Node web frameworks.
 	regexp.MustCompile(`\brequest\.(?:body|query|params|json|args|form|files|cookies|headers)\b`),
@@ -108,7 +105,7 @@ func (d *PromptInjectionDetector) Detect(snap *models.TestSuiteSnapshot) []model
 				Type:        signals.SignalAIPromptInjectionRisk,
 				Category:    models.CategoryAI,
 				Severity:    models.SeverityHigh,
-				Confidence:  0.7,
+				Confidence:  0.40,
 				Location:    models.SignalLocation{File: relPath, Line: h.Line},
 				Explanation: h.Explanation,
 				SuggestedAction: "Use a prompt template with explicit user-content boundaries, or run user input through a sanitizer before concatenation.",
@@ -117,14 +114,14 @@ func (d *PromptInjectionDetector) Detect(snap *models.TestSuiteSnapshot) []model
 				Actionability:   models.ActionabilityScheduled,
 				LifecycleStages: []models.LifecycleStage{models.StageDesign, models.StageTestAuthoring},
 				AIRelevance:     models.AIRelevanceHigh,
-				RuleID:          "TER-AI-102",
+				RuleID:          "terrain/ai/prompt-injection-risk",
 				RuleURI:         "docs/rules/ai/prompt-injection-risk.md",
 				DetectorVersion: "0.2.0",
 				ConfidenceDetail: &models.ConfidenceDetail{
-					Value:        0.7,
-					IntervalLow:  0.55,
-					IntervalHigh: 0.82,
-					Quality:      "heuristic",
+					Value:        0.40,
+					IntervalLow:  0.40,
+					IntervalHigh: 0.40,
+					Quality:      "estimate",
 					Sources:      []models.EvidenceSource{models.SourceStructuralPattern},
 				},
 				EvidenceSource:   models.SourceStructuralPattern,
@@ -161,16 +158,34 @@ func scanFileForPromptInjection(path string) []injectionHit {
 	if err != nil {
 		return nil
 	}
-	lines := strings.Split(string(data), "\n")
+	// Gate on per-file AI context — same shape as the
+	// uncoveredAISurface fix. Without this, the prompt-injection
+	// patterns fire on plain string-template interpolation in
+	// non-AI code (e.g. Angular tutorial code with "${user.name}"
+	// templates, or GitHub Actions deploy scripts with shell-like
+	// interpolation), all of which are non-actionable.
+	src := string(data)
+	lower := strings.ToLower(path)
+	isPython := strings.HasSuffix(lower, ".py")
+	if isPython {
+		if !analysis.HasAIContextPython(src) {
+			return nil
+		}
+	} else {
+		if !analysis.HasAIContextJS(src) {
+			return nil
+		}
+	}
+	lines := strings.Split(src, "\n")
 	if len(lines) == 0 {
 		return nil
 	}
 
-	// 0.2.0 final-polish: real-world code routinely splits prompt
-	// concatenation across multiple lines (`prompt += \n  user.input`),
-	// because Black / Prettier wrap long expressions. The pre-fix
-	// scanner only saw the prompt-write line, missed the user-input
-	// line, and emitted zero findings on the most common shape.
+	// Real-world code routinely splits prompt concatenation across
+	// multiple lines (`prompt += \n  user.input`) because Black /
+	// Prettier wrap long expressions. A single-line scanner would only
+	// see the prompt-write line, miss the user-input line, and emit
+	// zero findings on the most common shape.
 	//
 	// New approach: when the prompt-identifier pattern matches a line,
 	// the user-input scan looks at that line PLUS the next 2 lines

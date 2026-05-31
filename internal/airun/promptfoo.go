@@ -18,8 +18,8 @@ import (
 //   v4+ (newer):  top-level { evalId, results: [...], stats: {...} }
 //
 // Anything we can't recognize is returned as an error rather than
-// silently producing an empty result; the calibration corpus catches
-// adapter regressions explicitly.
+// silently producing an empty result; adapter regressions are caught
+// explicitly by the validation set.
 func ParsePromptfooJSON(data []byte) (*EvalRunResult, error) {
 	if len(data) == 0 {
 		return nil, fmt.Errorf("empty payload")
@@ -36,12 +36,11 @@ func ParsePromptfooJSON(data []byte) (*EvalRunResult, error) {
 	}
 	if raw.CreatedAt > 0 {
 		// Promptfoo's `createdAt` magnitude varies by version: v3+ writes
-		// unix-millis; some v4 CLI paths emit unix-seconds. Pre-0.2.x
-		// final-polish, the adapter assumed millis universally — a
-		// 10-digit second-epoch timestamp from 2026 silently decoded as
-		// 1970. Magnitude check: anything < 1e12 is treated as seconds
-		// (which covers the entire range from 1970 through year 33658),
-		// otherwise millis.
+		// unix-millis; some v4 CLI paths emit unix-seconds. Earlier
+		// revisions assumed millis universally — a 10-digit second-
+		// epoch timestamp silently decoded as 1970. Magnitude check:
+		// anything < 1e12 is treated as seconds (which covers the
+		// entire range from 1970 through year 33658), otherwise millis.
 		if raw.CreatedAt < 1e12 {
 			out.CreatedAt = time.Unix(raw.CreatedAt, 0).UTC()
 		} else {
@@ -93,11 +92,11 @@ func ParsePromptfooJSON(data []byte) (*EvalRunResult, error) {
 	// the aggregates from the rows. Promptfoo v3 dumps occasionally
 	// omit stats entirely on small runs.
 	//
-	// Pre-0.2.x final-polish, this loop classified every non-success
-	// row as Failure, including rows where the provider crashed
-	// (`error: "..."`). That polluted aiHallucinationRate's denominator
-	// (which excludes Errors but counts Failures). Now we route
-	// errored rows into Aggregates.Errors via promptfooRowErrored.
+	// Earlier revisions classified every non-success row as Failure,
+	// including rows where the provider crashed (`error: "..."`). That
+	// polluted aiHallucinationRate's denominator (which excludes Errors
+	// but counts Failures). Now we route errored rows into
+	// Aggregates.Errors via promptfooRowErrored.
 	if out.Aggregates.CaseCount() == 0 && len(out.Cases) > 0 {
 		out.Diagnostics = append(out.Diagnostics, IngestionDiagnostic{
 			Field:  "aggregates.{successes,failures,errors}",
@@ -300,8 +299,8 @@ type promptfooResult struct {
 	FailureReason string                   `json:"failureReason,omitempty"`
 	// Error captures provider/runtime errors (Promptfoo v4+ writes a
 	// per-row `error` string when the provider crashed, the assertion
-	// engine errored, or any non-assertion failure occurred). Pre-0.2.x
-	// final-polish, Promptfoo's `stats.errors` aggregate was wired into
+	// engine errored, or any non-assertion failure occurred). Earlier
+	// revisions wired Promptfoo's `stats.errors` aggregate into
 	// EvalAggregates.Errors, but the row-derived fallback (used when
 	// stats are absent) lumped errored rows into Failures — polluting
 	// aiHallucinationRate's `caseIsScoreable` denominator.

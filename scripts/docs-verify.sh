@@ -21,7 +21,7 @@ set -euo pipefail
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-go run ./cmd/terrain-docs-gen -out "$tmp" >/dev/null
+go run ./cmd/internal/terrain-docs-gen -out "$tmp" >/dev/null
 
 rc=0
 
@@ -51,7 +51,10 @@ if [ -d docs/rules ] ; then
       echo "::error::$rel stub block is out of sync with the manifest. Run 'make docs-gen' and commit." >&2
       rc=1
     fi
-  done < <(cd docs/rules && find . -name '*.md' | sort)
+    # Files starting with `_` are hand-authored references (e.g.,
+    # the canonical _template.md). They have no manifest entry and
+    # the generator deliberately doesn't produce them.
+  done < <(cd docs/rules && find . -name '*.md' -not -name '_*' | sort)
 fi
 
 if [ "$rc" -ne 0 ] ; then

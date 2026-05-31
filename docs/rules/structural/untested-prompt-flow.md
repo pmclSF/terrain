@@ -1,11 +1,12 @@
-# TER-STRUCT-003 — Untested Prompt Flow
+# terrain/structural/untested-prompt-flow — Untested Prompt Flow
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
 **Type:** `untestedPromptFlow`  
 **Domain:** ai  
 **Default severity:** high  
-**Status:** experimental
+**Lifecycle status:** experimental  
+**Gating tier:** observability
 
 ## Summary
 
@@ -25,6 +26,6 @@ Detection currently misses prompt flows that go through framework abstractions (
 
 ## Confidence range
 
-Detector confidence is bracketed at [0.60, 0.85] (heuristic in 0.2; calibration in 0.3).
+Confidence interval: 0.60–0.85.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

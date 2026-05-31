@@ -1,6 +1,10 @@
 """Routing agent — picks which downstream tool to invoke based on a
 classifier. Has no safety eval coverage."""
 
+from openai import OpenAI
+
+_client = OpenAI()
+
 
 def agent_router(query, available_tools):
     if "search" in query.lower():

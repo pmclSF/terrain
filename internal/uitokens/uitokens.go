@@ -3,9 +3,9 @@
 // One small palette + one symbol set + one severity-badge shape used
 // across every renderer. Terminal output, HTML report, PR-comment
 // markdown, and SARIF tags all consume from here. Ad-hoc styling
-// outside this package is a parity-gate violation (V1 axis); a
-// future linter (Track 10.2) will catch raw ANSI codes / inline
-// styles in user-visible code paths.
+// outside this package is a parity-gate violation; a future linter
+// will catch raw ANSI codes / inline styles in user-visible code
+// paths.
 //
 // Design constraints:
 //
@@ -148,8 +148,7 @@ func SeverityBadge(s Severity) string {
 // other surface where the bracket makes the badge scan more
 // reliably than color (e.g. GitHub-flavored markdown which strips
 // most ANSI color attempts). Used by internal/changescope and
-// related renderers; locked by the unified-PR-comment golden tests
-// (Track 3.5).
+// related renderers; locked by the unified-PR-comment golden tests.
 //
 // Severity strings (lowercase) map to the canonical Severity ladder
 // before rendering; unknown strings produce "[---]" so renderers
@@ -171,21 +170,75 @@ func BracketedSeverity(severity string) string {
 	}
 }
 
+// PRLabel returns the four-rung user-visible label for the
+// PR-comment surface: "BLOCK", "GATE", "WATCH", or "NOTE". An empty
+// string means the finding should NOT appear on the PR surface
+// (info-tier signals).
+//
+// The label encodes both gate-relevance and "do I act on this now?"
+// in one token, distinct from the five-rung Critical/High/Medium/Low/
+// Info severity ladder used for internal scoring and JSON output.
+//
+//	BLOCK — gate-tier, Critical severity. Required check fails.
+//	GATE  — gate-tier, High or Medium severity. Required check fails.
+//	WATCH — observability-tier, any severity (capped at Medium).
+//	        Informational check.
+//	NOTE  — Low severity, any tier. Quiet hint.
+//	(Info-tier signals drop from PR surface; JSON output retains them.)
+//
+// `tier` is "gate" or "observability". `severity` is one of
+// "critical", "high", "medium", "low", "info" (the canonical lowercase
+// strings used across the manifest). Unknown combinations return "".
+func PRLabel(tier, severity string) string {
+	severity = strings.ToLower(strings.TrimSpace(severity))
+	tier = strings.ToLower(strings.TrimSpace(tier))
+	if severity == "info" {
+		return ""
+	}
+	if severity == "low" {
+		return "NOTE"
+	}
+	// Above Low: tier decides between gate-shape and watch-shape.
+	if tier == "observability" {
+		return "WATCH"
+	}
+	// Treat empty / unrecognized tier as gate (legacy callers that
+	// don't yet thread the tier through default to the gate label).
+	switch severity {
+	case "critical":
+		return "BLOCK"
+	case "high", "medium":
+		return "GATE"
+	}
+	return ""
+}
+
+// BracketedPRLabel returns the PRLabel wrapped in `[...]` for the
+// canonical PR-comment markdown shape, or "" when the finding should
+// drop from the PR surface (info-tier).
+func BracketedPRLabel(tier, severity string) string {
+	label := PRLabel(tier, severity)
+	if label == "" {
+		return ""
+	}
+	return "[" + label + "]"
+}
+
 // BracketedVerdict returns the posture-band verdict in canonical
 // PR-comment shape. Mirrors the changescope renderer's previous
 // inline mapping; centralized here so other renderers can consume
 // the same vocabulary without duplicating the switch.
 func BracketedVerdict(band string) string {
 	switch band {
-	case "well_protected":
+	case "strong":
 		return "[PASS]"
-	case "partially_protected":
+	case "moderate":
 		return "[WARN]"
-	case "weakly_protected":
+	case "weak":
 		return "[RISK]"
-	case "high_risk":
+	case "critical":
 		return "[FAIL]"
-	case "evidence_limited":
+	case "unknown":
 		return "[INFO]"
 	default:
 		return "[????]"
@@ -223,10 +276,6 @@ func VerdictBadge(verdict string) string {
 // is color-and-symbol via the same vocabulary as VerdictBadge so
 // callsites stay consistent. `headline` is one short sentence
 // describing the verdict in plain language.
-//
-// Pre-0.2 these decisions surfaced as a single buried "Decision:
-// BLOCKED — reason" line; the audit (ai_execution_gating.V2 +
-// pr_change_scoped.V2) called for a hero block. This is that block.
 func HeroVerdict(verdict, headline string) string {
 	badge := heroVerdictBadge(verdict)
 	rule := Rule()

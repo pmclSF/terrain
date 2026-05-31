@@ -57,6 +57,12 @@
     "byCategory": {
       "health": 1,
       "quality": 3
+    },
+    "byType": {
+      "mockHeavyTest": 1,
+      "slowTest": 1,
+      "untestedExport": 1,
+      "weakAssertion": 1
     }
   },
   "hasTopInsight": true,

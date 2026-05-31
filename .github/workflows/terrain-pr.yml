@@ -11,6 +11,7 @@ concurrency:
 permissions:
   contents: read
   pull-requests: write
+  checks: write
 
 jobs:
   analyze:
@@ -110,6 +111,45 @@ jobs:
           body: |
             <!-- terrain-pr-analysis -->
             ${{ steps.terrain-comment.outputs.body }}
+
+      # ----------------------------------------------------------------
+      # Two GitHub check runs: terrain (gate) + terrain (observability)
+      # ----------------------------------------------------------------
+      # Terrain emits a JSON bundle; this workflow POSTs each half through
+      # `gh api`. The binary never makes outbound HTTP — auth + transport
+      # live in the workflow, never in terrain itself. See
+      # `docs/integrations/github-checks.md` for the full deploy story.
+      - name: Build Terrain check-runs bundle
+        id: check-runs-bundle
+        run: |
+          ./terrain report check-runs \
+            --head-sha "${{ github.event.pull_request.head.sha }}" \
+            --out /tmp/terrain-checks.json
+          # Split into two files so each `gh api --input` call gets a
+          # standalone CheckRun document. `jq` here is just a splitter —
+          # the bundle's shape is documented in internal/checkruns.
+          jq '.gate_check'          /tmp/terrain-checks.json > /tmp/check-gate.json
+          jq '.observability_check' /tmp/terrain-checks.json > /tmp/check-observability.json
+
+      - name: Post terrain (gate) check run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/check-runs" \
+            --input /tmp/check-gate.json
+
+      - name: Post terrain (observability) check run
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api \
+            --method POST \
+            -H "Accept: application/vnd.github+json" \
+            "/repos/${{ github.repository }}/check-runs" \
+            --input /tmp/check-observability.json
 
       - name: Fail if selected tests failed
         if: steps.go-tests.outcome == 'failure'

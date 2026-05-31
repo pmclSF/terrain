@@ -6,8 +6,8 @@ import (
 )
 
 // applyNewFindingsOnly filters the snapshot to keep only signals whose
-// FindingID is NOT present in the baseline snapshot. Used by Track 4.8
-// (`--new-findings-only --baseline <path>`) so established repos with
+// FindingID is NOT present in the baseline snapshot. Used by
+// `--new-findings-only --baseline <path>` so established repos with
 // existing debt can adopt strict CI gates on day one — the gate only
 // fires on findings introduced AFTER the baseline was captured.
 //

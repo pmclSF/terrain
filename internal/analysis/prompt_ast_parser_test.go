@@ -121,6 +121,7 @@ const prompt = ChatPromptTemplate.fromMessages([
 func TestASTJS_SystemPromptAssignment(t *testing.T) {
 	t.Parallel()
 	src := `
+import OpenAI from 'openai';
 const systemPrompt = "You are a helpful assistant. Your role is to answer questions accurately.";
 `
 	surfaces := ParsePromptAST("src/config.ts", src, "js")
@@ -139,7 +140,7 @@ const systemPrompt = "You are a helpful assistant. Your role is to answer questi
 
 func TestASTJS_TemplateLiteralPrompt(t *testing.T) {
 	t.Parallel()
-	src := "const chatPrompt = `You are a helpful coding assistant. Your task is to help the user write clean code.\nGiven the context, always respond with clear explanations.`;\n"
+	src := "import OpenAI from 'openai';\nconst chatPrompt = `You are a helpful coding assistant. Your task is to help the user write clean code.\nGiven the context, always respond with clear explanations.`;\n"
 
 	surfaces := ParsePromptAST("src/prompts.ts", src, "js")
 
@@ -277,6 +278,8 @@ prompt = ChatPromptTemplate.from_messages([
 func TestASTPython_TripleQuotePrompt(t *testing.T) {
 	t.Parallel()
 	src := `
+import openai
+
 system_prompt = """You are a helpful assistant.
 Your role is to answer questions accurately.
 Always respond with clear explanations.
@@ -300,6 +303,8 @@ Do not make up information."""
 func TestASTPython_FewShotArray(t *testing.T) {
 	t.Parallel()
 	src := `
+import openai
+
 examples = [
     {"input": "What is 2+2?", "output": "4"},
     {"input": "What is the capital of France?", "output": "Paris"},
@@ -323,6 +328,8 @@ examples = [
 func TestASTPython_FewShotQuestionAnswer(t *testing.T) {
 	t.Parallel()
 	src := `
+import openai
+
 qa_examples = [
     {"question": "What is gravity?", "answer": "A fundamental force of nature."},
     {"question": "What is DNA?", "answer": "Deoxyribonucleic acid."},
@@ -504,6 +511,204 @@ const msgs = [
 	}
 }
 
+// --- AI-context gate tests for the infrastructure pattern loop ---
+//
+// These tests cover the regression we found via the 80-repo non-AI
+// OSS corpus: jsStreamingPattern / pyEvalMetricPattern / etc. were
+// firing on plain HTTP streaming, statistics primitives, and schema
+// validators in non-AI code, producing 814 false-positive
+// uncoveredAISurface signals on django/angular/k8s/etc. Gate added
+// in prompt_ast_parser.go requires AI-import / SDK-call evidence
+// per file before the infrastructure loop runs.
+
+func TestASTJS_InfraGate_NoAIContext_SkipsHTTPStreaming(t *testing.T) {
+	t.Parallel()
+	// Angular-shaped fetch wrapper — uses standard Web Streams API
+	// but has zero AI SDK references. Pre-fix this emitted a
+	// "streaming_handler" surface.
+	src := `
+export class FetchBackend {
+	handle(req: HttpRequest): Observable<HttpEvent> {
+		return new Observable(observer => {
+			fetch(req.url).then(response => {
+				const reader = response.body?.getReader();
+				const stream = new ReadableStream({
+					start(controller) {
+						function pump(): Promise<void> {
+							return reader!.read().then(({ done, value }) => {
+								if (done) { controller.close(); return; }
+								controller.enqueue(value);
+								return pump();
+							});
+						}
+						return pump();
+					},
+				});
+			});
+		});
+	}
+}
+`
+	surfaces := ParsePromptAST("packages/common/http/src/fetch.ts", src, "js")
+	for _, s := range surfaces {
+		if s.Name == "streaming_handler" {
+			t.Fatalf("non-AI file emitted streaming_handler surface: %+v", s)
+		}
+	}
+}
+
+func TestASTJS_InfraGate_NoAIContext_SkipsStatisticsLib(t *testing.T) {
+	t.Parallel()
+	// Generic statistics library — F1 score, cosine similarity.
+	// Pre-fix this emitted an "eval_metric" surface.
+	src := `
+export function f1Score(predictions: number[], labels: number[]): number {
+	let tp = 0, fp = 0, fn = 0;
+	for (let i = 0; i < predictions.length; i++) {
+		if (predictions[i] === 1 && labels[i] === 1) tp++;
+		else if (predictions[i] === 1 && labels[i] === 0) fp++;
+		else if (predictions[i] === 0 && labels[i] === 1) fn++;
+	}
+	const precision = tp / (tp + fp);
+	const recall = tp / (tp + fn);
+	return 2 * (precision * recall) / (precision + recall);
+}
+
+export function cosineSimilarity(a: number[], b: number[]): number {
+	let dot = 0, magA = 0, magB = 0;
+	for (let i = 0; i < a.length; i++) {
+		dot += a[i] * b[i];
+		magA += a[i] * a[i];
+		magB += b[i] * b[i];
+	}
+	return dot / (Math.sqrt(magA) * Math.sqrt(magB));
+}
+`
+	surfaces := ParsePromptAST("src/stats.ts", src, "js")
+	for _, s := range surfaces {
+		if s.Name == "eval_metric" {
+			t.Fatalf("non-AI statistics file emitted eval_metric surface: %+v", s)
+		}
+	}
+}
+
+func TestASTJS_InfraGate_WithAIImport_EmitsStreamingHandler(t *testing.T) {
+	t.Parallel()
+	// Same streaming pattern as above, but with an OpenAI import.
+	// Gate should allow the infra detection through.
+	src := `
+import OpenAI from 'openai';
+
+const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+async function streamResponse(prompt: string) {
+	const stream = await client.chat.completions.create({
+		model: 'gpt-4',
+		messages: [{ role: 'user', content: prompt }],
+		stream: true,
+	});
+	for await (const chunk of stream) {
+		console.log(chunk.choices[0].delta.content);
+	}
+}
+`
+	surfaces := ParsePromptAST("src/llm.ts", src, "js")
+	var hasStreamingHandler bool
+	for _, s := range surfaces {
+		if s.Name == "streaming_handler" {
+			hasStreamingHandler = true
+		}
+	}
+	if !hasStreamingHandler {
+		t.Errorf("AI-context file should emit streaming_handler; got %v", surfaceNames(surfaces))
+	}
+}
+
+func TestASTPython_InfraGate_NoAIContext_SkipsRequests(t *testing.T) {
+	t.Parallel()
+	// requests-based HTTP code with iter_lines streaming — without
+	// the AI-context infra gate this would emit streaming_handler
+	// because iter_lines + for-loop matches the py streaming pattern.
+	src := `
+import requests
+
+def stream_csv(url):
+    with requests.get(url, stream=True) as r:
+        for line in r.iter_lines():
+            yield line.decode("utf-8")
+
+def compute_bleu(reference, hypothesis):
+    # generic BLEU implementation, no AI imports
+    return bleu_score(reference, hypothesis)
+`
+	surfaces := ParsePromptAST("data/csv_stream.py", src, "python")
+	for _, s := range surfaces {
+		if s.Name == "streaming_handler" || s.Name == "eval_metric" {
+			t.Fatalf("non-AI file emitted infra surface: %+v", s)
+		}
+	}
+}
+
+func TestASTPython_InfraGate_WithTransformersImport_EmitsEvalMetric(t *testing.T) {
+	t.Parallel()
+	// transformers import counts as AI context — BLEU usage in this
+	// file is therefore legitimately an eval metric.
+	src := `
+from transformers import AutoTokenizer
+
+def evaluate_translation(reference, hypothesis):
+    return bleu_score(reference, hypothesis)
+`
+	surfaces := ParsePromptAST("ml/eval.py", src, "python")
+	var hasEvalMetric bool
+	for _, s := range surfaces {
+		if s.Name == "eval_metric" {
+			hasEvalMetric = true
+		}
+	}
+	if !hasEvalMetric {
+		t.Errorf("AI-context Python file should emit eval_metric; got %v", surfaceNames(surfaces))
+	}
+}
+
+func TestASTJS_InfraGate_AcceptsLangChainImport(t *testing.T) {
+	t.Parallel()
+	// LangChain import (no SDK constructor) should still corroborate
+	// AI context for the gate.
+	src := `
+import { ChatOpenAI } from '@langchain/openai';
+
+export function buildGuardrail() {
+	return { contentFilter: true };
+}
+`
+	surfaces := ParsePromptAST("src/agent.ts", src, "js")
+	var hasGuardrail bool
+	for _, s := range surfaces {
+		if s.Name == "guardrail" {
+			hasGuardrail = true
+		}
+	}
+	if !hasGuardrail {
+		t.Errorf("LangChain import should corroborate AI context; got %v", surfaceNames(surfaces))
+	}
+}
+
+func TestASTJS_InfraGate_AcceptsRequireForm(t *testing.T) {
+	t.Parallel()
+	// CommonJS require shape: const OpenAI = require('openai');
+	src := `
+const OpenAI = require('openai');
+
+function handleStream() {
+	return new ReadableStream({ start(c) {} });
+}
+`
+	if !HasAIContextJS(src) {
+		t.Errorf("require('openai') should corroborate AI context")
+	}
+}
+
 // --- Helpers ---
 
 func findSurfaceByPrefix(surfaces []models.CodeSurface, prefix string) *models.CodeSurface {
@@ -513,4 +718,47 @@ func findSurfaceByPrefix(surfaces []models.CodeSurface, prefix string) *models.C
 		}
 	}
 	return nil
+}
+
+func TestSetCustomAIMarkers_ExtendsAIContextGate(t *testing.T) {
+	// NOTE: NOT t.Parallel — mutates package-global customAIMarkerPatterns.
+	defer SetCustomAIMarkers(nil) // reset after test
+
+	// Without custom markers: a file that uses only a private SDK is
+	// treated as non-AI, so streaming_handler is not emitted.
+	src := `
+import { LLMClient } from '@acme/llm-client';
+
+const c = new LLMClient();
+const stream = new ReadableStream();
+`
+	beforeSurfaces := ParsePromptAST("src/private.ts", src, "js")
+	for _, s := range beforeSurfaces {
+		if s.Name == "streaming_handler" {
+			t.Fatalf("pre-marker: streaming_handler unexpectedly emitted")
+		}
+	}
+
+	// Register the private import pattern as an AI marker. Now the
+	// same source is treated as AI context and the infra patterns fire.
+	SetCustomAIMarkers([]string{`@acme/llm-client`})
+	afterSurfaces := ParsePromptAST("src/private.ts", src, "js")
+	var hasStreamingHandler bool
+	for _, s := range afterSurfaces {
+		if s.Name == "streaming_handler" {
+			hasStreamingHandler = true
+		}
+	}
+	if !hasStreamingHandler {
+		t.Errorf("post-marker: expected streaming_handler emitted; got %v", surfaceNames(afterSurfaces))
+	}
+}
+
+func TestSetCustomAIMarkers_InvalidRegexIsSkipped(t *testing.T) {
+	defer SetCustomAIMarkers(nil)
+	SetCustomAIMarkers([]string{"valid_pattern", "(invalid["})
+	if !matchesCustomAIMarker("valid_pattern here") {
+		t.Errorf("valid pattern should match")
+	}
+	// Invalid regex was silently skipped; no panic, no crash.
 }

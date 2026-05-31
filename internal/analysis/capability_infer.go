@@ -20,7 +20,7 @@ import (
 //  4. Covered surface context: if all covered surfaces are in "src/billing/" → "billing"
 //
 // The inferred capability is a normalized, hyphen-separated label.
-func InferCapabilities(scenarios []models.Scenario, surfaces []models.CodeSurface) {
+func InferCapabilities(scenarios []models.Eval, surfaces []models.CodeSurface) {
 	surfaceByID := map[string]models.CodeSurface{}
 	for _, s := range surfaces {
 		surfaceByID[s.SurfaceID] = s
@@ -169,7 +169,7 @@ func capabilityFromSurfaces(surfaceIDs []string, surfaces map[string]models.Code
 // or raw vector store calls.
 //
 // Returns capabilities with their supporting evidence (surfaces + scenarios).
-func InferAICapabilities(surfaces []models.CodeSurface, scenarios []models.Scenario) []models.InferredCapability {
+func InferAICapabilities(surfaces []models.CodeSurface, scenarios []models.Eval) []models.InferredCapability {
 	// Map surface kinds to capabilities.
 	capSurfaces := map[models.AICapability][]string{}
 	capConfidence := map[models.AICapability]float64{}
@@ -194,7 +194,7 @@ func InferAICapabilities(surfaces []models.CodeSurface, scenarios []models.Scena
 		// Try to match scenario's free-text capability to a canonical one.
 		if canonical := matchCanonicalCapability(sc.Capability); canonical != "" {
 			capScenarios[models.AICapability(canonical)] = append(
-				capScenarios[models.AICapability(canonical)], sc.ScenarioID)
+				capScenarios[models.AICapability(canonical)], sc.EvalID)
 		}
 	}
 
@@ -333,7 +333,7 @@ func uniqueSorted(ss []string) []string {
 }
 
 // CollectImpactedCapabilities returns unique capability names from impacted scenarios.
-func CollectImpactedCapabilities(scenarios []models.Scenario, impactedIDs []string) []string {
+func CollectImpactedCapabilities(scenarios []models.Eval, impactedIDs []string) []string {
 	idSet := map[string]bool{}
 	for _, id := range impactedIDs {
 		idSet[id] = true
@@ -341,7 +341,7 @@ func CollectImpactedCapabilities(scenarios []models.Scenario, impactedIDs []stri
 
 	capSet := map[string]bool{}
 	for _, sc := range scenarios {
-		if idSet[sc.ScenarioID] && sc.Capability != "" {
+		if idSet[sc.EvalID] && sc.Capability != "" {
 			capSet[sc.Capability] = true
 		}
 	}

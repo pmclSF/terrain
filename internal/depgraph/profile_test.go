@@ -101,46 +101,12 @@ func TestApplyEdgeCasePolicy_NoEdgeCases(t *testing.T) {
 	}
 }
 
-func TestDetectEdgeCases_ExternalServiceHeavy(t *testing.T) {
-	t.Parallel()
-	g := buildTestGraph()
-
-	profile := RepoProfile{}
-	spd := SnapshotProfileData{ExternalServiceNodeCount: 6}
-	cases := DetectEdgeCases(profile, g, ProfileInsights{Snapshot: spd})
-
-	found := false
-	for _, c := range cases {
-		if c.Type == EdgeCaseExternalServiceHeavy {
-			found = true
-			if c.Severity != "caution" {
-				t.Errorf("expected caution severity, got %s", c.Severity)
-			}
-		}
-	}
-	if !found {
-		t.Error("expected EXTERNAL_SERVICE_HEAVY edge case when >5 external service nodes")
-	}
-}
-
-func TestDetectEdgeCases_GeneratedArtifacts(t *testing.T) {
-	t.Parallel()
-	g := buildTestGraph()
-
-	profile := RepoProfile{}
-	spd := SnapshotProfileData{GeneratedArtifactNodeCount: 1}
-	cases := DetectEdgeCases(profile, g, ProfileInsights{Snapshot: spd})
-
-	found := false
-	for _, c := range cases {
-		if c.Type == EdgeCaseGeneratedArtifacts {
-			found = true
-		}
-	}
-	if !found {
-		t.Error("expected GENERATED_ARTIFACT_CHANGES edge case when generated artifacts present")
-	}
-}
+// TestDetectEdgeCases_ExternalServiceHeavy and TestDetectEdgeCases_GeneratedArtifacts
+// were removed at 0.2.0 cleanup — the underlying SnapshotProfileData fields
+// (ExternalServiceNodeCount, GeneratedArtifactNodeCount) were never populated
+// by BuildSnapshotProfileData, so the detectors fired only in synthetic tests.
+// When proper detection lands, the detectors return via the signal pipeline
+// rather than as special-cased SnapshotProfileData fields.
 
 func TestDetectEdgeCases_MigrationOverlap(t *testing.T) {
 	t.Parallel()
@@ -395,10 +361,12 @@ func TestDetectEdgeCases_FastCIAlready(t *testing.T) {
 
 func TestApplyEdgeCasePolicy_MultipleEdgeCases(t *testing.T) {
 	t.Parallel()
+	// Use surviving edge cases (the External-service / Generated-artifact
+	// cases were removed at 0.2.0 cleanup — see profile.go).
 	cases := []EdgeCase{
 		{Type: EdgeCaseHighFlakeBurden, Severity: "caution"},
 		{Type: EdgeCaseHighFanoutFixture, Severity: "caution"},
-		{Type: EdgeCaseExternalServiceHeavy, Severity: "caution"},
+		{Type: EdgeCaseMigrationOverlap, Severity: "caution"},
 	}
 	profile := RepoProfile{}
 
@@ -407,9 +375,10 @@ func TestApplyEdgeCasePolicy_MultipleEdgeCases(t *testing.T) {
 	if !policy.RiskElevated {
 		t.Error("expected risk elevated with high flake burden")
 	}
-	// 1.0 * 0.75 * 0.7 * 0.85 = 0.44625
-	if policy.ConfidenceAdjustment > 0.45 || policy.ConfidenceAdjustment < 0.44 {
-		t.Errorf("expected confidence ~0.45, got %f", policy.ConfidenceAdjustment)
+	// 1.0 * 0.75 * 0.7 * 0.8 = 0.42 (using MigrationOverlap's 0.8 factor in
+	// place of ExternalServiceHeavy's 0.85).
+	if policy.ConfidenceAdjustment > 0.43 || policy.ConfidenceAdjustment < 0.41 {
+		t.Errorf("expected confidence ~0.42, got %f", policy.ConfidenceAdjustment)
 	}
 	if policy.FallbackLevel < FallbackPackageTests {
 		t.Errorf("expected at least PackageTests fallback, got %s", policy.FallbackLevel)

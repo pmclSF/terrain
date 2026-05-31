@@ -1,11 +1,12 @@
-# TER-GOV-003 — Skipped Tests In CI
+# terrain/governance/skipped-in-ci — Skipped Tests In CI
 
 > Auto-generated stub. Edit anything below the marker; the generator preserves it.
 
 **Type:** `skippedTestsInCI`  
 **Domain:** governance  
 **Default severity:** medium  
-**Status:** stable
+**Lifecycle status:** stable  
+**Gating tier:** gate
 
 ## Summary
 
@@ -22,6 +23,6 @@ Investigate skip conditions and re-enable tests or replace with targeted alterna
 
 ## Confidence range
 
-Detector confidence is bracketed at [1.00, 1.00] (heuristic in 0.2; calibration in 0.3).
+Confidence interval: 1.00–1.00.
 
 <!-- docs-gen: end stub. Hand-authored content below this line is preserved across regenerations. -->

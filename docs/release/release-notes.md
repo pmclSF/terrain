@@ -1,18 +1,10 @@
 # Terrain Release Notes
 
-This file is now a redirect. Per-release notes have moved to the
-canonical [CHANGELOG.md](../../CHANGELOG.md) at the repo root, which
-follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and
-is the source of truth from 0.1.2 onward.
+Per-release notes are in the canonical [CHANGELOG.md](../../CHANGELOG.md) at the repo root, which follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-For release-specific design docs, see:
+For 0.2.0 specifically, see [`RELEASE-NOTES-0.2.0.md`](RELEASE-NOTES-0.2.0.md) for the long-form release notes.
 
-- **0.2.0** — [`docs/release/0.2.md`](0.2.md), [`docs/release/0.2-known-gaps.md`](0.2-known-gaps.md)
-- **0.1.2** — [`docs/release/0.1.2.md`](0.1.2.md)
-- **Supply-chain provenance** — [`docs/release/supply-chain.md`](supply-chain.md)
-- **Feature status (current release)** — [`docs/release/feature-status.md`](feature-status.md)
+See also:
 
-The historical 0.1.0 ground-up-rewrite framing that lived in this file
-has been retired; the architectural narrative is consolidated in
-[`docs/architecture/00-overview.md`](../architecture/00-overview.md)
-and the per-topic chapters alongside it.
+- [Supply-chain provenance](supply-chain.md) — release artifacts and signing
+- [Feature status (current release)](feature-status.md) — per-capability stable / experimental / preview

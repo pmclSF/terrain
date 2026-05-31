@@ -1,3 +1,7 @@
+import OpenAI from 'openai';
+
+const _client = new OpenAI();
+
 export const trainingDataset = [
   { input: "I want to buy shoes", intent: "purchase" },
   { input: "Track my order", intent: "tracking" },

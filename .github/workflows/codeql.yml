@@ -23,7 +23,7 @@ jobs:
 
     strategy:
       fail-fast: false
-      # 0.2.0 final-polish: dropped `python` from the language matrix.
+      # `python` is intentionally excluded from the language matrix.
       # The repo has only a handful of Python helper scripts (no
       # production Python under analysis); CodeQL Python autobuild was
       # spending ~5 min/week with effectively no coverage. Re-add when
@@ -39,6 +39,7 @@ jobs:
         uses: github/codeql-action/init@v4
         with:
           languages: ${{ matrix.language }}
+          config-file: ./.github/codeql/codeql-config.yml
 
       - name: Autobuild
         uses: github/codeql-action/autobuild@v4
