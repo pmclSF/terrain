@@ -1,2 +1,2 @@
-First time here? Welcome.
-  → Try `terrain analyze` to map your test terrain.
+No test files detected. Add tests with your framework of choice, then re-run.
+  → Or run `terrain init` to scaffold `.terrain/` config, then `terrain` (no args) for a discovery report.

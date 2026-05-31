@@ -18,6 +18,33 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	line(uitokens.Header("Test Suite Analysis"))
 	blank()
 
+	// Short-circuit for empty-repo / first-run case. The full report
+	// is 70+ lines of "0 / Unknown / not present" filler when there
+	// are no test files — overwhelming for a fresh repo. The designed
+	// empty-state path delivers the headline and one next-move.
+	if r.TestsDetected.TestFileCount == 0 {
+		es := EmptyStateFor(EmptyFirstRun)
+		line("  %s", es.Header)
+		blank()
+		if es.NextMove != "" {
+			line("  %s", es.NextMove)
+			blank()
+		}
+		// Still show Data Completeness — useful even at empty state
+		// so adopters know they CAN add coverage / runtime artifacts.
+		line("Data Completeness")
+		line(uitokens.H2Sep)
+		for _, ds := range r.DataCompleteness {
+			mark := uitokens.Muted("✗")
+			if ds.Available {
+				mark = uitokens.Ok("✓")
+			}
+			line("  %s %s", mark, ds.Name)
+		}
+		blank()
+		return
+	}
+
 	// Headline — the single most important sentence.
 	if r.Headline != "" {
 		line("  %s", r.Headline)

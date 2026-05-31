@@ -14,25 +14,23 @@ import "strings"
 // hard for adopters to pattern-match the structure of one report
 // against another. This module is the single source of truth.
 
-// Width is the canonical line width for all separator rules.
-// Wide enough to keep multi-word section titles legible; narrow
-// enough to read at terminal default widths.
-const Width = 60
+// Width aliases SectionWidth (which existing surfaces like
+// HeroVerdict / Rule / SubRule already use) so the new and legacy
+// helpers share one width budget.
+const Width = SectionWidth
 
 // H1Sep is the heavyweight separator used directly under the report
-// title. Renders as a single line of U+2500 box-drawing characters
-// (lighter visually than `=`, which read as shouting).
-var H1Sep = strings.Repeat("─", Width)
+// title. Renders as a single line of U+2500 box-drawing characters.
+var H1Sep = strings.Repeat(SymRule, Width)
 
 // H2Sep is the section-divider used under in-report section titles
 // like "Key Findings", "Risk Posture", "Next steps:". Same character
 // as H1Sep — uniform texture across the report.
-var H2Sep = strings.Repeat("─", Width)
+var H2Sep = strings.Repeat(SymRule, Width)
 
-// Bullet is the standard list-item prefix for prose items
-// ("recommendations", "limitations", etc.). Avoid `*` (markdown-y)
-// and `-` (too small visually) for the human-readable surface.
-const Bullet = "•"
+// Bullet aliases SymBullet for renderers that want the constant
+// without pulling in the symbol vocabulary.
+const Bullet = SymBullet
 
 // Indent1 / Indent2 are the canonical leading-space counts for one
 // and two levels of nested item indentation. Use them rather than

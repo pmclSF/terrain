@@ -107,8 +107,8 @@ func EmptyStateFor(kind EmptyStateKind) EmptyState {
 	case EmptyFirstRun:
 		return EmptyState{
 			Kind:     kind,
-			Header:   "First time here? Welcome.",
-			NextMove: "Try `terrain analyze` to map your test terrain.",
+			Header:   "No test files detected. Add tests with your framework of choice, then re-run.",
+			NextMove: "Or run `terrain init` to scaffold `.terrain/` config, then `terrain` (no args) for a discovery report.",
 		}
 	case EmptyNoImpact:
 		return EmptyState{
