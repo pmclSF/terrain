@@ -280,7 +280,7 @@ var typeInfoBySignal = map[models.SignalType]TypeInfo{
 		Remediation: "Prioritize stabilization in the highest-instability areas.",
 	},
 	SignalMigrationBlocker: {
-		Description: "Detected patterns will complicate framework migration.",
+		Description: "Detected patterns will complicate framework framework_migration.",
 		Remediation: "Address blockers incrementally before broad migration changes.",
 	},
 	SignalDeprecatedTestPattern: {
