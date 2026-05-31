@@ -13,6 +13,7 @@ import (
 	conv "github.com/pmclSF/terrain/internal/convert"
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/reporting"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 type migrateCommandOptions struct {
@@ -348,7 +349,7 @@ func runDoctor(root string, jsonOutput, verbose bool) (conv.MigrationDoctorResul
 			"pillars": pillars,
 		})
 	}
-	fmt.Println("Terrain Doctor")
+	fmt.Println(uitokens.Header("Doctor"))
 	fmt.Println()
 	renderPillarStatuses(os.Stdout, pillars)
 	for _, check := range result.Checks {

@@ -32,7 +32,7 @@ func TestRenderSummaryReport_HealthyBalanced(t *testing.T) {
 	RenderSummaryReport(&buf, snap, h)
 	output := buf.String()
 
-	checks := []string{"Terrain Summary", "Key Numbers", "Test files:", "Frameworks:", "Next steps:"}
+	checks := []string{"Terrain · Summary", "Key Numbers", "Test files:", "Frameworks:", "Next steps:"}
 	for _, c := range checks {
 		if !strings.Contains(output, c) {
 			t.Errorf("summary report missing %q", c)
@@ -49,7 +49,7 @@ func TestRenderMetricsReport_Minimal(t *testing.T) {
 	RenderMetricsReport(&buf, ms)
 	output := buf.String()
 
-	if !strings.Contains(output, "Terrain Metrics") {
+	if !strings.Contains(output, "Terrain · Metrics") {
 		t.Error("metrics report missing header")
 	}
 	if !strings.Contains(output, "Test files:") {
@@ -70,7 +70,7 @@ func TestRenderPostureReport_Healthy(t *testing.T) {
 	RenderPostureReport(&buf, snap)
 	output := buf.String()
 
-	if !strings.Contains(output, "Terrain Posture") {
+	if !strings.Contains(output, "Terrain · Posture Report") {
 		t.Error("posture report missing header")
 	}
 	if !strings.Contains(output, "Next steps:") {
@@ -476,7 +476,7 @@ func TestRenderImpactReport_WithGaps(t *testing.T) {
 	output := buf.String()
 
 	checks := []string{
-		"Terrain Impact Analysis",
+		"Terrain · Impact Analysis",
 		"Change-Risk Posture: CRITICAL",
 		"Coverage confidence:",
 		"PR risk:",

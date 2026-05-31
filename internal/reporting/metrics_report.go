@@ -5,19 +5,19 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/metrics"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderMetricsReport writes a human-readable metrics scorecard to w.
 func RenderMetricsReport(w io.Writer, ms *metrics.Snapshot, opts ...ReportOptions) {
 	line, blank := reportHelpers(w)
 
-	line("Terrain Metrics")
-	line(strings.Repeat("=", 40))
+	line(uitokens.Header("Metrics"))
 	blank()
 
 	// Structure
 	line("Structure")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	line("  Test files:     %d", ms.Structure.TotalTestFiles)
 	if len(ms.Structure.Frameworks) > 0 {
 		line("  Frameworks:     %s", strings.Join(ms.Structure.Frameworks, ", "))
@@ -32,7 +32,7 @@ func RenderMetricsReport(w io.Writer, ms *metrics.Snapshot, opts ...ReportOption
 
 	// Health
 	line("Health")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	line("  Slow tests:     %d (%.1f%%)", ms.Health.SlowTestCount, ms.Health.SlowTestRatio*100)
 	line("  Flaky tests:    %d (%.1f%%)", ms.Health.FlakyTestCount, ms.Health.FlakyTestRatio*100)
 	line("  Skipped tests:  %d (%.1f%%)", ms.Health.SkippedTestCount, ms.Health.SkippedTestRatio*100)
@@ -43,7 +43,7 @@ func RenderMetricsReport(w io.Writer, ms *metrics.Snapshot, opts ...ReportOption
 
 	// Quality
 	line("Quality")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	line("  Weak assertions:  %d (%.1f%%)", ms.Quality.WeakAssertionCount, ms.Quality.WeakAssertionRatio*100)
 	line("  Mock-heavy tests: %d (%.1f%%)", ms.Quality.MockHeavyTestCount, ms.Quality.MockHeavyTestRatio*100)
 	if ms.Quality.UntestedExportCount > 0 {
@@ -61,7 +61,7 @@ func RenderMetricsReport(w io.Writer, ms *metrics.Snapshot, opts ...ReportOption
 		ms.Change.CustomMatcherRiskCount
 	if totalBlockers > 0 {
 		line("Change Readiness")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		if ms.Change.MigrationBlockerCount > 0 {
 			line("  Migration blockers:    %d", ms.Change.MigrationBlockerCount)
 		}
@@ -83,7 +83,7 @@ func RenderMetricsReport(w io.Writer, ms *metrics.Snapshot, opts ...ReportOption
 		ms.Governance.RuntimeBudgetExceededCount
 	if totalGov > 0 {
 		line("Governance")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		line("  Policy violations:     %d", ms.Governance.PolicyViolationCount)
 		if ms.Governance.LegacyFrameworkUsageCount > 0 {
 			line("  Legacy framework:      %d", ms.Governance.LegacyFrameworkUsageCount)
@@ -96,7 +96,7 @@ func RenderMetricsReport(w io.Writer, ms *metrics.Snapshot, opts ...ReportOption
 
 	// Risk
 	line("Risk")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	if ms.Risk.ReliabilityBand != "" {
 		line("  Reliability:    %s", ms.Risk.ReliabilityBand)
 	}
@@ -114,7 +114,7 @@ func RenderMetricsReport(w io.Writer, ms *metrics.Snapshot, opts ...ReportOption
 	// Notes
 	if len(ms.Notes) > 0 {
 		line("Notes")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, note := range ms.Notes {
 			line("  %s", note)
 		}

@@ -14,8 +14,7 @@ import (
 func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	line, blank := reportHelpers(w)
 
-	line("Terrain Impact Analysis")
-	line(strings.Repeat("=", 60))
+	line(uitokens.Header("Impact Analysis"))
 	blank()
 
 	// Designed empty-state when the change has no measurable test
@@ -108,7 +107,7 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	// Selected protective tests
 	if len(result.SelectedTests) > 0 {
 		line("Recommended Tests (%d)", len(result.SelectedTests))
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, t := range result.SelectedTests {
 			conf := ""
 			if t.ImpactConfidence != "" {
@@ -142,7 +141,7 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 		}
 
 		line("Impacted Scenarios (%d)", len(result.ImpactedEvals))
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, sc := range result.ImpactedEvals {
 			conf := ""
 			if sc.ImpactConfidence != "" {
@@ -177,7 +176,7 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	// Protection gaps
 	if len(result.ProtectionGaps) > 0 {
 		line("Protection Gaps")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, gap := range result.ProtectionGaps {
 			line("  %s %s", uitokens.BracketedSeverity(gap.Severity), gap.Explanation)
 			if gap.SuggestedAction != "" {
@@ -199,7 +198,7 @@ func RenderImpactReport(w io.Writer, result *impact.ImpactResult) {
 	// diff-scoped report.
 	if filtered := filterDiffScopedLimitations(result.Limitations); len(filtered) > 0 {
 		line("Limitations")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, lim := range filtered {
 			line("  * %s", lim)
 		}

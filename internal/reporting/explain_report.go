@@ -3,9 +3,9 @@ package reporting
 import (
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/pmclSF/terrain/internal/explain"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderTestExplanation writes a human-readable explanation of why a test
@@ -14,8 +14,7 @@ func RenderTestExplanation(w io.Writer, te *explain.TestExplanation, verbose ...
 	isVerbose := len(verbose) > 0 && verbose[0]
 	line, blank := reportHelpers(w)
 
-	line("Terrain Explain")
-	line(strings.Repeat("=", 60))
+	line(uitokens.Header("Explain"))
 	blank()
 
 	// Target metadata.
@@ -38,7 +37,7 @@ func RenderTestExplanation(w io.Writer, te *explain.TestExplanation, verbose ...
 	// Strongest path.
 	if te.StrongestPath != nil {
 		line("Strongest path (confidence: %.0f%% — %s)", te.StrongestPath.Confidence*100, te.StrongestPath.Band)
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		renderChain(w, te.StrongestPath)
 		blank()
 	}
@@ -46,7 +45,7 @@ func RenderTestExplanation(w io.Writer, te *explain.TestExplanation, verbose ...
 	// Alternative paths.
 	if len(te.AlternativePaths) > 0 {
 		line("Alternative paths (%d)", len(te.AlternativePaths))
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for i, alt := range te.AlternativePaths {
 			if i > 0 {
 				blank()
@@ -74,7 +73,7 @@ func RenderTestExplanation(w io.Writer, te *explain.TestExplanation, verbose ...
 	// Verbose: edge-level evidence detail.
 	if isVerbose {
 		line("Evidence detail")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		if te.StrongestPath != nil {
 			for _, step := range te.StrongestPath.Steps {
 				line("  Edge: %s → %s", step.From, step.To)
@@ -107,7 +106,7 @@ func RenderTestExplanation(w io.Writer, te *explain.TestExplanation, verbose ...
 	// Limitations.
 	if len(te.Limitations) > 0 {
 		line("Limitations")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, lim := range te.Limitations {
 			line("  * %s", lim)
 		}
@@ -121,8 +120,7 @@ func RenderSelectionExplanation(w io.Writer, sel *explain.SelectionExplanation, 
 	isVerbose := len(verbose) > 0 && verbose[0]
 	line, blank := reportHelpers(w)
 
-	line("Terrain Explain — Test Selection")
-	line(strings.Repeat("=", 60))
+	line(uitokens.Header("Explain — Test Selection"))
 	blank()
 
 	line("Summary: %s", sel.Summary)
@@ -203,7 +201,7 @@ func RenderSelectionExplanation(w io.Writer, sel *explain.SelectionExplanation, 
 	// Limitations.
 	if len(sel.Limitations) > 0 {
 		line("Limitations")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, lim := range sel.Limitations {
 			line("  * %s", lim)
 		}

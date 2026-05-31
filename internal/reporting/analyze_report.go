@@ -26,8 +26,7 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 	}
 
 	// Header
-	line("Terrain — Test Suite Analysis")
-	line(strings.Repeat("=", 40))
+	line(uitokens.Header("Test Suite Analysis"))
 	blank()
 
 	// Repository
@@ -56,7 +55,7 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 
 	// Data completeness
 	line("Data Completeness")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	sourceAvailable := len(snap.TestFiles) > 0 || len(snap.CodeUnits) > 0
 	coverageStatus := dataSourceStatus(snap, "coverage")
 	runtimeStatus := dataSourceStatus(snap, "runtime")
@@ -80,7 +79,7 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 
 	// Frameworks
 	line("Frameworks")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	if len(snap.Frameworks) == 0 {
 		line("  (no test frameworks detected)")
 	} else {
@@ -96,7 +95,7 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 
 	// Test files summary
 	line("Test Files")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	line("  Discovered:  %d", len(snap.TestFiles))
 	if len(snap.TestFiles) > 0 {
 		// Show a few representative examples
@@ -122,7 +121,7 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 
 	// Code unit summary
 	line("Code Units")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	line("  Extracted:   %d", len(snap.CodeUnits))
 	if len(snap.CodeUnits) == 0 {
 		line("  No source code functions/classes detected.")
@@ -132,7 +131,7 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 
 	// Signals
 	line("Signals")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	if len(snap.Signals) == 0 {
 		line("  No signals detected.")
 		line("  This often means Terrain needs more runtime/coverage data to surface issues.")
@@ -216,7 +215,7 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 
 	// What this means
 	line("What This Means")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	line("  Terrain found %d test files with %d signals.", len(snap.TestFiles), len(snap.Signals))
 	line("  Test suite status: %s", suiteStatusBand(snap))
 	blank()
@@ -224,7 +223,7 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 	// Posture (measurement layer)
 	if snap.Measurements != nil && len(snap.Measurements.Posture) > 0 {
 		line("Posture")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, p := range snap.Measurements.Posture {
 			line("  %-24s %s", p.Dimension+":", strings.ToUpper(p.Band))
 		}
@@ -233,7 +232,7 @@ func RenderAnalyzeReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...An
 
 	// Risk
 	line("Risk")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	if len(snap.Risk) == 0 {
 		line("  No risk surfaces detected.")
 	} else {

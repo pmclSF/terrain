@@ -6,19 +6,19 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/framework_migration"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderMigrationReport writes a migration readiness report to w.
 func RenderMigrationReport(w io.Writer, readiness *framework_migration.ReadinessSummary) {
 	line, blank := reportHelpers(w)
 
-	line("Terrain Migration Readiness")
-	line(strings.Repeat("=", 40))
+	line(uitokens.Header("Migration Readiness"))
 	blank()
 
 	// Frameworks
 	line("Frameworks")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	if len(readiness.Frameworks) == 0 {
 		line("  (no frameworks detected)")
 	} else {
@@ -39,7 +39,7 @@ func RenderMigrationReport(w io.Writer, readiness *framework_migration.Readiness
 
 	// Blockers
 	line("Migration Blockers: %d", readiness.TotalBlockers)
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	if readiness.TotalBlockers == 0 {
 		line("  (none detected)")
 	} else {
@@ -52,7 +52,7 @@ func RenderMigrationReport(w io.Writer, readiness *framework_migration.Readiness
 	// Representative examples
 	if len(readiness.RepresentativeBlockers) > 0 {
 		line("Representative Blockers")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, ex := range readiness.RepresentativeBlockers {
 			line("  [%s] %s", ex.Type, ex.Explanation)
 			if ex.File != "" {
@@ -65,7 +65,7 @@ func RenderMigrationReport(w io.Writer, readiness *framework_migration.Readiness
 	// Quality factors compounding migration risk
 	if len(readiness.QualityFactors) > 0 {
 		line("Quality Factors Affecting Migration")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, qf := range readiness.QualityFactors {
 			line("  %s", qf.Explanation)
 		}
@@ -75,7 +75,7 @@ func RenderMigrationReport(w io.Writer, readiness *framework_migration.Readiness
 	// Area assessments
 	if len(readiness.AreaAssessments) > 0 {
 		line("Area Assessments")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, area := range readiness.AreaAssessments {
 			badge := strings.ToUpper(area.Classification)
 			line("  [%s] %s", badge, area.Directory)
@@ -87,7 +87,7 @@ func RenderMigrationReport(w io.Writer, readiness *framework_migration.Readiness
 	// Coverage guidance
 	if len(readiness.CoverageGuidance) > 0 {
 		line("Where Additional Coverage Reduces Migration Risk")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, cg := range readiness.CoverageGuidance {
 			line("  [%s] %s", strings.ToUpper(cg.Priority), cg.Directory)
 			line("    %s", cg.Reason)
@@ -101,8 +101,7 @@ func RenderMigrationReport(w io.Writer, readiness *framework_migration.Readiness
 func RenderMigrationBlockers(w io.Writer, readiness *framework_migration.ReadinessSummary) {
 	line, blank := reportHelpers(w)
 
-	line("Terrain Migration Blockers")
-	line(strings.Repeat("=", 40))
+	line(uitokens.Header("Migration Blockers"))
 	blank()
 
 	line("Total Blockers: %d", readiness.TotalBlockers)
@@ -117,7 +116,7 @@ func RenderMigrationBlockers(w io.Writer, readiness *framework_migration.Readine
 
 	// Blockers by type
 	line("By Type")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	for bt, count := range readiness.BlockersByType {
 		line("  %-26s %d", bt, count)
 	}
@@ -126,7 +125,7 @@ func RenderMigrationBlockers(w io.Writer, readiness *framework_migration.Readine
 	// Representative examples
 	if len(readiness.RepresentativeBlockers) > 0 {
 		line("Examples")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, ex := range readiness.RepresentativeBlockers {
 			line("  [%s] %s", ex.Type, ex.Explanation)
 			if ex.File != "" {
@@ -145,7 +144,7 @@ func RenderMigrationBlockers(w io.Writer, readiness *framework_migration.Readine
 	}
 	if len(risky) > 0 {
 		line("Highest-Risk Areas")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, area := range risky {
 			badge := strings.ToUpper(area.Classification)
 			line("  [%s] %s", badge, area.Directory)
@@ -164,8 +163,7 @@ func RenderMigrationBlockers(w io.Writer, readiness *framework_migration.Readine
 func RenderMigrationPreview(w io.Writer, preview *framework_migration.PreviewResult) {
 	line, blank := reportHelpers(w)
 
-	line("Terrain Migration Preview")
-	line(strings.Repeat("=", 40))
+	line(uitokens.Header("Migration Preview"))
 	blank()
 
 	line("File: %s", preview.File)
@@ -178,7 +176,7 @@ func RenderMigrationPreview(w io.Writer, preview *framework_migration.PreviewRes
 
 	if !preview.PreviewAvailable {
 		line("Preview Not Available")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		line("  %s", preview.Explanation)
 		blank()
 		if len(preview.Limitations) > 0 {
@@ -191,14 +189,14 @@ func RenderMigrationPreview(w io.Writer, preview *framework_migration.PreviewRes
 	}
 
 	line("Assessment")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	line("  %s", preview.Explanation)
 	blank()
 
 	// Blockers
 	if len(preview.Blockers) > 0 {
 		line("Migration Blockers (%d)", len(preview.Blockers))
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, b := range preview.Blockers {
 			line("  [%s] %s", b.Type, b.Pattern)
 			line("    %s", b.Explanation)
@@ -213,7 +211,7 @@ func RenderMigrationPreview(w io.Writer, preview *framework_migration.PreviewRes
 	// Safe patterns
 	if len(preview.SafePatterns) > 0 {
 		line("Safe Patterns (should migrate cleanly)")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, p := range preview.SafePatterns {
 			line("  + %s", p)
 		}
@@ -223,7 +221,7 @@ func RenderMigrationPreview(w io.Writer, preview *framework_migration.PreviewRes
 	// Limitations
 	if len(preview.Limitations) > 0 {
 		line("Limitations")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, l := range preview.Limitations {
 			line("  - %s", l)
 		}
@@ -235,8 +233,7 @@ func RenderMigrationPreview(w io.Writer, preview *framework_migration.PreviewRes
 func RenderMigrationPreviewScope(w io.Writer, previews []*framework_migration.PreviewResult) {
 	line, blank := reportHelpers(w)
 
-	line("Terrain Migration Preview (scope)")
-	line(strings.Repeat("=", 40))
+	line(uitokens.Header("Migration Preview (scope)"))
 	blank()
 
 	if len(previews) == 0 {
@@ -271,7 +268,7 @@ func RenderMigrationPreviewScope(w io.Writer, previews []*framework_migration.Pr
 	// Show high-difficulty files first
 	if high > 0 {
 		line("High-Difficulty Files (need manual review)")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, p := range previews {
 			if p.Difficulty == "high" {
 				line("  %s (%s)", p.File, p.SourceFramework)
@@ -284,7 +281,7 @@ func RenderMigrationPreviewScope(w io.Writer, previews []*framework_migration.Pr
 	// Medium
 	if medium > 0 {
 		line("Medium-Difficulty Files")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, p := range previews {
 			if p.Difficulty == "medium" {
 				line("  %s (%s)", p.File, p.SourceFramework)
@@ -297,7 +294,7 @@ func RenderMigrationPreviewScope(w io.Writer, previews []*framework_migration.Pr
 	// Low
 	if low > 0 {
 		line("Low-Difficulty Files (good candidates to start)")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, p := range previews {
 			if p.Difficulty == "low" {
 				line("  %s (%s)", p.File, p.SourceFramework)

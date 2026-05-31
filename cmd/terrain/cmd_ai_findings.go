@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 
 	"github.com/pmclSF/terrain/internal/aipipeline"
 	"github.com/pmclSF/terrain/internal/aipiperun"
@@ -102,8 +101,7 @@ func renderFindingsJSON(findings []aipipeline.Finding) error {
 }
 
 func renderFindingsText(findings []aipipeline.Finding, posture aipipeline.Posture, verbose bool) error {
-	fmt.Println("Terrain — AI Eval-Gap Findings")
-	fmt.Println(strings.Repeat("=", 60))
+	fmt.Println(uitokens.Header("AI Eval-Gap Findings"))
 	fmt.Println()
 	if len(findings) == 0 {
 		fmt.Printf("No findings at %s posture.\n", posture)

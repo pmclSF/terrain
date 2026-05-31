@@ -7,6 +7,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/measurement"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderPostureReport writes a detailed posture breakdown with measurement
@@ -15,8 +16,7 @@ func RenderPostureReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...Re
 	verbose := isVerbose(opts)
 	line, blank := reportHelpers(w)
 
-	line("Terrain Posture Report")
-	line(strings.Repeat("=", 60))
+	line(uitokens.Header("Posture Report"))
 	blank()
 
 	if snap.Measurements == nil || len(snap.Measurements.Posture) == 0 {
@@ -32,7 +32,7 @@ func RenderPostureReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...Re
 		line("  %s", overall.explanation)
 	}
 	blank()
-	line(strings.Repeat("-", 60))
+	line(uitokens.H2Sep)
 	blank()
 
 	for _, p := range snap.Measurements.Posture {
@@ -79,7 +79,7 @@ func RenderPostureReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...Re
 			}
 		}
 		blank()
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		blank()
 	}
 

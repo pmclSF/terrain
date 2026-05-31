@@ -230,7 +230,7 @@ func TestRenderAnalyzeReportV2_AllSections(t *testing.T) {
 
 	// Verify all major sections appear.
 	sections := []string{
-		"Terrain — Test Suite Analysis",
+		"Terrain · Test Suite Analysis",
 		"Your test suite has 2 issues",
 		"Auto-detected runtime",
 		"Key Findings",

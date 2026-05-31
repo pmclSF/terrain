@@ -7,6 +7,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // ReviewGroup holds findings grouped by a common key (owner, type, directory).
@@ -112,7 +113,7 @@ func RenderReviewSections(w io.Writer, snap *models.TestSuiteSnapshot) {
 	// Top risk areas
 	if len(snap.Risk) > 0 {
 		line("Highest-Risk Areas")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		limit := 5
 		if len(snap.Risk) < limit {
 			limit = len(snap.Risk)
@@ -130,7 +131,7 @@ func RenderReviewSections(w io.Writer, snap *models.TestSuiteSnapshot) {
 	ownerGroups := GroupSignalsByOwner(snap.Signals)
 	if len(ownerGroups) > 0 {
 		line("Review by Owner")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, g := range ownerGroups {
 			line("  %-20s %d findings", g.Key, g.Count)
 		}
@@ -141,7 +142,7 @@ func RenderReviewSections(w io.Writer, snap *models.TestSuiteSnapshot) {
 	dirGroups := GroupSignalsByDirectory(snap.Signals)
 	if len(dirGroups) > 1 { // Only show if there are multiple directories
 		line("Review by Directory")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		limit := 5
 		if len(dirGroups) < limit {
 			limit = len(dirGroups)
@@ -159,7 +160,7 @@ func RenderReviewSections(w io.Writer, snap *models.TestSuiteSnapshot) {
 	blockers := MigrationBlockers(snap.Signals)
 	if len(blockers) > 0 {
 		line("Migration Blockers")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		blockerGroups := GroupSignalsByType(blockers)
 		for _, g := range blockerGroups {
 			line("  %-26s %d", g.Key, g.Count)
@@ -171,7 +172,7 @@ func RenderReviewSections(w io.Writer, snap *models.TestSuiteSnapshot) {
 	if snap.CoverageSummary != nil {
 		cs := snap.CoverageSummary
 		line("Coverage by Type")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		if cs.TotalCodeUnits > 0 {
 			line("  Total code units:          %d", cs.TotalCodeUnits)
 			line("  Covered by unit tests:     %d", cs.CoveredByUnitTests)
@@ -188,7 +189,7 @@ func RenderReviewSections(w io.Writer, snap *models.TestSuiteSnapshot) {
 	// Test identity summary
 	if len(snap.TestCases) > 0 {
 		line("Test Identity")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		typeCounts := map[string]int{}
 		for _, tc := range snap.TestCases {
 			t := tc.TestType

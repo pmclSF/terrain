@@ -15,9 +15,7 @@ import (
 func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	line, blank := reportHelpers(w)
 
-	// Header
-	line("Terrain — Test Suite Analysis")
-	line(strings.Repeat("=", 60))
+	line(uitokens.Header("Test Suite Analysis"))
 	blank()
 
 	// Headline — the single most important sentence.
@@ -37,7 +35,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// Key findings — top 3 prioritized issues, shown early for impact.
 	if len(r.KeyFindings) > 0 {
 		line("Key Findings")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for i, f := range r.KeyFindings {
 			line("  %d. %s %s", i+1, uitokens.BracketedSeverity(f.Severity), f.Title)
 		}
@@ -64,7 +62,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 
 	// Repository profile
 	line("Repository Profile")
-	line(strings.Repeat("-", 60))
+	line(uitokens.H2Sep)
 	line("  Test volume:          %s", r.RepoProfile.TestVolume)
 	line("  CI pressure:          %s", r.RepoProfile.CIPressure)
 	line("  Coverage confidence:  %s", r.RepoProfile.CoverageConfidence)
@@ -84,7 +82,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 
 	// Validation inventory
 	line("Validation Inventory")
-	line(strings.Repeat("-", 60))
+	line(uitokens.H2Sep)
 	line("  Test files:     %d", r.TestsDetected.TestFileCount)
 	line("  Test cases:     %d", r.TestsDetected.TestCaseCount)
 	line("  Code units:     %d", r.TestsDetected.CodeUnitCount)
@@ -115,7 +113,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// Coverage confidence summary
 	if r.CoverageConfidence.TotalFiles > 0 {
 		line("Coverage Confidence")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		total := r.CoverageConfidence.TotalFiles
 		line("  High:    %d (%d%%)", r.CoverageConfidence.HighCount, pct(r.CoverageConfidence.HighCount, total))
 		line("  Medium:  %d (%d%%)", r.CoverageConfidence.MediumCount, pct(r.CoverageConfidence.MediumCount, total))
@@ -126,7 +124,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// Duplicate clusters
 	if r.DuplicateClusters.ClusterCount > 0 {
 		line("Duplicate Clusters")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		line("  Clusters:        %d", r.DuplicateClusters.ClusterCount)
 		line("  Redundant tests: %d", r.DuplicateClusters.RedundantTestCount)
 		if r.DuplicateClusters.HighestSimilarity > 0 {
@@ -138,7 +136,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// High-fanout fixtures/helpers
 	if r.HighFanout.FlaggedCount > 0 {
 		line("High-Fanout Nodes")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		line("  Flagged: %d (threshold: %d)", r.HighFanout.FlaggedCount, r.HighFanout.Threshold)
 		for _, n := range r.HighFanout.TopNodes {
 			line("    %s  (%s, %d dependents)", n.Path, n.NodeType, n.TransitiveFanout)
@@ -149,7 +147,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// Skipped test burden
 	if r.SkippedTestBurden.SkippedCount > 0 {
 		line("Skipped Test Burden")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		line("  Skipped: %d / %d tests (%.0f%%)",
 			r.SkippedTestBurden.SkippedCount,
 			r.SkippedTestBurden.TotalTests,
@@ -160,7 +158,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// Weak coverage areas
 	if len(r.WeakCoverageAreas) > 0 {
 		line("Weak Coverage Areas")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, a := range r.WeakCoverageAreas {
 			if a.TestCount == 0 {
 				line("  %-40s no structural coverage", a.Path)
@@ -174,7 +172,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// CI optimization potential
 	if r.CIOptimization.Recommendation != "" {
 		line("CI Optimization Potential")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		if r.CIOptimization.DuplicateTestsRemovable > 0 {
 			line("  Duplicate tests removable:  %d", r.CIOptimization.DuplicateTestsRemovable)
 		}
@@ -191,7 +189,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// Fallback insight when no key findings were shown at the top.
 	if len(r.KeyFindings) == 0 && r.TopInsight != "" {
 		line("Top Insight")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		line("  %s", r.TopInsight)
 		blank()
 	}
@@ -200,7 +198,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// numbers sit next to their backing detail.
 	if len(r.RiskPosture) > 0 || r.SignalSummary.Total > 0 {
 		line("Risk Posture")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, d := range r.RiskPosture {
 			line("  %-24s %s", d.Dimension+":", titleCase(d.Band))
 		}
@@ -227,12 +225,15 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		blank()
 	}
 
-	// Behavior redundancy
+	// Behavior redundancy — one summary line per cluster: the kind
+	// reads as a header word, the metrics chain off it. Cleaner than
+	// the previous `[wasteful] N tests, M shared surfaces (X% confidence) [pytest]`
+	// which read as a metadata pile-on.
 	if r.BehaviorRedundancy != nil && len(r.BehaviorRedundancy.Clusters) > 0 {
 		br := r.BehaviorRedundancy
 		line("Behavior Redundancy")
-		line(strings.Repeat("-", 60))
-		line("  Redundant tests:  %d across %d clusters", br.RedundantTestCount, len(br.Clusters))
+		line(uitokens.H2Sep)
+		line("  Redundant tests:  %d across %d %s", br.RedundantTestCount, len(br.Clusters), Plural(len(br.Clusters), "cluster"))
 		if br.CrossFrameworkOverlaps > 0 {
 			line("  Cross-framework:  %d %s", br.CrossFrameworkOverlaps, Plural(br.CrossFrameworkOverlaps, "cluster"))
 		}
@@ -243,14 +244,17 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		for _, c := range br.Clusters[:limit] {
 			fwLabel := ""
 			if len(c.Frameworks) > 0 {
-				fwLabel = fmt.Sprintf(" [%s]", strings.Join(c.Frameworks, ", "))
+				fwLabel = " in " + strings.Join(c.Frameworks, ", ")
 			}
-			line("  [%s] %d tests, %d shared surfaces (%.0f%% confidence)%s",
-				c.OverlapKind, len(c.Tests), len(c.SharedSurfaces), c.Confidence*100, fwLabel)
-			line("         %s", c.Rationale)
+			line("  %s · %d %s exercise %d shared %s%s (%.0f%% confidence)",
+				titleCase(string(c.OverlapKind)),
+				len(c.Tests), Plural(len(c.Tests), "test"),
+				len(c.SharedSurfaces), Plural(len(c.SharedSurfaces), "surface"),
+				fwLabel, c.Confidence*100)
+			line("    %s", c.Rationale)
 		}
 		if len(br.Clusters) > 5 {
-			line("  ... and %d more %s", len(br.Clusters)-5, Plural(len(br.Clusters)-5, "cluster"))
+			line("  … and %d more %s", len(br.Clusters)-5, Plural(len(br.Clusters)-5, "cluster"))
 		}
 		blank()
 	}
@@ -259,7 +263,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	if r.StabilityClusters != nil && len(r.StabilityClusters.Clusters) > 0 {
 		sc := r.StabilityClusters
 		line("Stability")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		line("  Unstable tests:  %d (%d clustered around shared dependencies)", sc.UnstableTestCount, sc.ClusteredTestCount)
 		limit := 5
 		if len(sc.Clusters) < limit {
@@ -277,13 +281,13 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	} else if r.SkippedTestBurden.SkippedCount > 0 {
 		// When we have skip data but no clusters, show skip-based stability hint.
 		line("Stability")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		line("  %d skipped %s detected. Skipped tests may mask instability.", r.SkippedTestBurden.SkippedCount, Plural(r.SkippedTestBurden.SkippedCount, "test"))
 		line("  Provide --runtime artifacts to unlock flaky/slow/dead detection and root-cause clustering.")
 		blank()
 	} else if !hasDataSource(r.DataCompleteness, "runtime") {
 		line("Stability")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		line("  No runtime data provided. Static skip detection is already available.")
 		line("  Provide --runtime (JUnit XML or Jest JSON) to unlock flaky/slow/dead detection")
 		line("  and stability clustering.")
@@ -294,7 +298,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	if r.MatrixCoverage != nil && len(r.MatrixCoverage.Classes) > 0 {
 		mc := r.MatrixCoverage
 		line("Matrix Coverage")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		line("  Classes analyzed:  %d", mc.ClassesAnalyzed)
 		line("  Test files:        %d", mc.TestsAnalyzed)
 		for _, cc := range mc.Classes {
@@ -330,7 +334,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// Manual coverage overlay
 	if r.ManualCoverage != nil && r.ManualCoverage.ArtifactCount > 0 {
 		line("Manual Coverage Overlay")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		line("  Artifacts:  %d (not executable — supplements CI coverage)", r.ManualCoverage.ArtifactCount)
 		if len(r.ManualCoverage.BySource) > 0 {
 			parts := []string{}
@@ -358,7 +362,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// Edge cases
 	if len(r.EdgeCases) > 0 {
 		line("Edge Cases")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, ec := range r.EdgeCases {
 			line("  %s %s", uitokens.BracketedSeverity(string(ec.Severity)), ec.Description)
 		}
@@ -370,7 +374,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// report saying "too few tests" three times in adjacent sections).
 	if r.Policy != nil && len(r.Policy.Recommendations) > 0 && !policyDuplicatesEdgeCases(r.Policy.Recommendations, r.EdgeCases) {
 		line("Policy Recommendations")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, pr := range r.Policy.Recommendations {
 			line("  • %s", pr)
 		}
@@ -380,7 +384,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// Data completeness — ✓ / ✗ markers scan faster than
 	// [available] / [missing  ] with padded spaces inside the brackets.
 	line("Data Completeness")
-	line(strings.Repeat("-", 60))
+	line(uitokens.H2Sep)
 	for _, ds := range r.DataCompleteness {
 		mark := "✗"
 		if ds.Available {
@@ -393,7 +397,7 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 	// Limitations
 	if len(r.Limitations) > 0 {
 		line("Limitations")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, lim := range r.Limitations {
 			line("  * %s", lim)
 		}

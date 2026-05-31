@@ -6,14 +6,14 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderPortfolioReport writes a human-readable portfolio intelligence report to w.
 func RenderPortfolioReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...ReportOptions) {
 	line, blank := reportHelpers(w)
 
-	line("Terrain Portfolio Intelligence")
-	line(strings.Repeat("=", 50))
+	line(uitokens.Header("Portfolio Intelligence"))
 	blank()
 
 	p := snap.Portfolio
@@ -29,7 +29,7 @@ func RenderPortfolioReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...
 
 	// Overview
 	line("Overview")
-	line(strings.Repeat("-", 50))
+	line(uitokens.H2Sep)
 	line("  Test assets:          %d", agg.TotalAssets)
 	if agg.HasRuntimeData {
 		line("  Total runtime:        %.0fms", agg.TotalRuntimeMs)
@@ -47,7 +47,7 @@ func RenderPortfolioReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...
 		agg.LowValueHighCostCount + agg.HighLeverageCount
 	if totalFindings > 0 {
 		line("Findings")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		if agg.HighLeverageCount > 0 {
 			line("  High-leverage tests:      %d", agg.HighLeverageCount)
 		}
@@ -66,7 +66,7 @@ func RenderPortfolioReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...
 	// Top findings detail (up to 8)
 	if len(p.Findings) > 0 {
 		line("Top Findings")
-		line(strings.Repeat("-", 50))
+		line(uitokens.H2Sep)
 		limit := 8
 		if len(p.Findings) < limit {
 			limit = len(p.Findings)
@@ -90,7 +90,7 @@ func RenderPortfolioReport(w io.Writer, snap *models.TestSuiteSnapshot, opts ...
 
 	// Evidence notes
 	line("Evidence")
-	line(strings.Repeat("-", 50))
+	line(uitokens.H2Sep)
 	if agg.HasRuntimeData && agg.HasCoverageData {
 		line("  Runtime and coverage data available. Findings are high-confidence.")
 	} else if agg.HasRuntimeData {
@@ -155,7 +155,7 @@ func renderOwnerSummary(w io.Writer, p *models.PortfolioSnapshot) {
 	})
 
 	line("By Owner")
-	line(strings.Repeat("-", 50))
+	line(uitokens.H2Sep)
 	limit := 5
 	if len(entries) < limit {
 		limit = len(entries)
@@ -180,7 +180,7 @@ func RenderPortfolioSection(w io.Writer, p *models.PortfolioSnapshot) {
 		agg.LowValueHighCostCount + agg.HighLeverageCount
 
 	line("Portfolio Intelligence")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	line("  Assets: %d    Findings: %d", agg.TotalAssets, totalFindings)
 	if agg.PortfolioPostureBand != "" {
 		line("  Posture: %s", strings.ToUpper(agg.PortfolioPostureBand))

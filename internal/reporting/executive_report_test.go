@@ -56,7 +56,7 @@ func TestRenderExecutiveSummary_AllSections(t *testing.T) {
 	output := buf.String()
 
 	expected := []string{
-		"Terrain Executive Summary",
+		"Terrain · Executive Summary",
 		"Overall Posture",
 		"reliability:",
 		"change:",
@@ -124,7 +124,7 @@ func TestRenderExecutiveSummary_Empty(t *testing.T) {
 	RenderExecutiveSummary(&buf, es)
 	output := buf.String()
 
-	if !strings.Contains(output, "Terrain Executive Summary") {
+	if !strings.Contains(output, "Terrain · Executive Summary") {
 		t.Error("expected header")
 	}
 	// Should not have empty sections crashing

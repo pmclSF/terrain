@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/impact"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderImpactUnits writes a focused view of impacted code units.
@@ -12,7 +13,7 @@ func RenderImpactUnits(w io.Writer, result *impact.ImpactResult) {
 	line, blank := reportHelpers(w)
 
 	line("Impacted Code Units (%d)", len(result.ImpactedUnits))
-	line(strings.Repeat("=", 60))
+	line(uitokens.H1Sep)
 	blank()
 
 	if len(result.ImpactedUnits) == 0 {
@@ -44,7 +45,7 @@ func RenderImpactGaps(w io.Writer, result *impact.ImpactResult) {
 	line, blank := reportHelpers(w)
 
 	line("Protection Gaps (%d)", len(result.ProtectionGaps))
-	line(strings.Repeat("=", 60))
+	line(uitokens.H1Sep)
 	blank()
 
 	if len(result.ProtectionGaps) == 0 {
@@ -65,7 +66,7 @@ func RenderImpactGaps(w io.Writer, result *impact.ImpactResult) {
 			continue
 		}
 		line("  %s severity (%d)", strings.ToUpper(sev), len(gaps))
-		line("  " + strings.Repeat("-", 40))
+		line("  " + uitokens.H2Sep)
 		for _, gap := range gaps {
 			line("    [%s] %s", gap.GapType, gap.Explanation)
 			line("      Path: %s", gap.Path)
@@ -82,12 +83,12 @@ func RenderImpactTests(w io.Writer, result *impact.ImpactResult) {
 	line, blank := reportHelpers(w)
 
 	line("Impacted Tests (%d total, %d selected)", len(result.ImpactedTests), len(result.SelectedTests))
-	line(strings.Repeat("=", 60))
+	line(uitokens.H1Sep)
 	blank()
 
 	if len(result.SelectedTests) > 0 {
 		line("  Recommended (run these first)")
-		line("  " + strings.Repeat("-", 40))
+		line("  " + uitokens.H2Sep)
 		for _, t := range result.SelectedTests {
 			changed := ""
 			if t.IsDirectlyChanged {
@@ -116,7 +117,7 @@ func RenderImpactTests(w io.Writer, result *impact.ImpactResult) {
 
 	if len(other) > 0 {
 		line("  Additional relevant tests")
-		line("  " + strings.Repeat("-", 40))
+		line("  " + uitokens.H2Sep)
 		for _, t := range other {
 			line("    %s  [%s]", t.Path, t.ImpactConfidence)
 			line("      %s", t.Relevance)
@@ -135,7 +136,7 @@ func RenderImpactGraph(w io.Writer, result *impact.ImpactResult) {
 	line, blank := reportHelpers(w)
 
 	line("Impact Graph")
-	line(strings.Repeat("=", 60))
+	line(uitokens.H1Sep)
 	blank()
 
 	if result.Graph == nil {
@@ -157,7 +158,7 @@ func RenderImpactGraph(w io.Writer, result *impact.ImpactResult) {
 	// Show edges for impacted units.
 	if len(result.ImpactedUnits) > 0 {
 		line("Edges for impacted units")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, iu := range result.ImpactedUnits {
 			edges := g.EdgesForUnit(iu.UnitID)
 			if len(edges) == 0 {
@@ -181,7 +182,7 @@ func RenderProtectiveSet(w io.Writer, result *impact.ImpactResult) {
 	line, blank := reportHelpers(w)
 
 	line("Protective Test Set")
-	line(strings.Repeat("=", 60))
+	line(uitokens.H1Sep)
 	blank()
 
 	if result.ProtectiveSet == nil || len(result.ProtectiveSet.Tests) == 0 {
@@ -201,7 +202,7 @@ func RenderProtectiveSet(w io.Writer, result *impact.ImpactResult) {
 	blank()
 
 	line("Selected Tests")
-	line(strings.Repeat("-", 60))
+	line(uitokens.H2Sep)
 	for _, t := range ps.Tests {
 		changed := ""
 		if t.IsDirectlyChanged {
@@ -233,7 +234,7 @@ func RenderImpactOwners(w io.Writer, result *impact.ImpactResult) {
 	line, blank := reportHelpers(w)
 
 	line("Impacted Owners (%d)", len(result.ImpactedOwners))
-	line(strings.Repeat("=", 60))
+	line(uitokens.H1Sep)
 	blank()
 
 	if len(result.ImpactedOwners) == 0 {
@@ -253,7 +254,7 @@ func RenderImpactOwners(w io.Writer, result *impact.ImpactResult) {
 	for _, owner := range result.ImpactedOwners {
 		units := byOwner[owner]
 		line("  %s (%d %s)", owner, len(units), Plural(len(units), "unit"))
-		line("  " + strings.Repeat("-", 40))
+		line("  " + uitokens.H2Sep)
 		for _, iu := range units {
 			line("    %-30s %s  %s", iu.Name, iu.ProtectionStatus, iu.ChangeKind)
 		}

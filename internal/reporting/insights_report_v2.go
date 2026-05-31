@@ -16,8 +16,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 	line, blank := reportHelpers(w)
 
 	// Header with health grade.
-	line("Terrain — Test System Health Report")
-	line(strings.Repeat("=", 60))
+	line(uitokens.Header("Test System Health Report"))
 	blank()
 
 	line("Health Grade: %s", r.HealthGrade)
@@ -26,7 +25,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 
 	// Repository profile.
 	line("Repository Profile")
-	line(strings.Repeat("-", 60))
+	line(uitokens.H2Sep)
 	line("  Test volume:          %s", r.RepoProfile.TestVolume)
 	line("  CI pressure:          %s", r.RepoProfile.CIPressure)
 	line("  Coverage confidence:  %s", r.RepoProfile.CoverageConfidence)
@@ -64,7 +63,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 		}
 		label := categoryLabels[cat]
 		line("%s (%d)", label, cb.Count)
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 
 		for _, f := range r.Findings {
 			if f.Category != cat {
@@ -102,7 +101,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 	// Recommendations.
 	if len(r.Recommendations) > 0 {
 		line("Recommended Actions")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, rec := range r.Recommendations {
 			badge := categoryBadge(rec.Category)
 			line("  %d. [%s] %s", rec.Priority, badge, rec.Action)
@@ -143,7 +142,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 		}
 		if wasteful > 0 || br.CrossFrameworkOverlaps > 0 {
 			line("Behavior Redundancy")
-			line(strings.Repeat("-", 60))
+			line(uitokens.H2Sep)
 			if wasteful > 0 {
 				line("  %d wasteful overlap clusters — tests exercise identical behavior surfaces", wasteful)
 			}
@@ -161,7 +160,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 	if r.StabilityClusters != nil && len(r.StabilityClusters.Clusters) > 0 {
 		sc := r.StabilityClusters
 		line("Stability Clusters")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		line("  %d unstable tests cluster around %d shared dependencies",
 			sc.ClusteredTestCount, len(sc.Clusters))
 		limit := 3
@@ -182,7 +181,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 	if r.MatrixCoverage != nil && len(r.MatrixCoverage.Classes) > 0 {
 		mc := r.MatrixCoverage
 		line("Matrix Coverage")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, cc := range mc.Classes {
 			line("  [%s] %s: %d/%d covered (%.0f%%)",
 				cc.Dimension, cc.ClassName, cc.CoveredMembers, cc.TotalMembers, cc.CoverageRatio*100)
@@ -199,7 +198,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 	// Edge cases.
 	if len(r.EdgeCases) > 0 {
 		line("Edge Cases")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, ec := range r.EdgeCases {
 			line("  %s %s", uitokens.BracketedSeverity(string(ec.Severity)), ec.Description)
 		}
@@ -209,7 +208,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 	// Policy.
 	if len(r.Policy.Recommendations) > 0 {
 		line("Policy Recommendations")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, pr := range r.Policy.Recommendations {
 			line("  • %s", pr)
 		}
@@ -218,7 +217,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 
 	// Data completeness.
 	line("Data Completeness")
-	line(strings.Repeat("-", 60))
+	line(uitokens.H2Sep)
 	for _, ds := range r.DataCompleteness {
 		line("  [%-9s] %s", completenessBadge(ds.Available), ds.Name)
 	}
@@ -227,7 +226,7 @@ func RenderInsightsReport(w io.Writer, r *insights.Report, opts ...ReportOptions
 	// Limitations.
 	if len(r.Limitations) > 0 {
 		line("Limitations")
-		line(strings.Repeat("-", 60))
+		line(uitokens.H2Sep)
 		for _, lim := range r.Limitations {
 			line("  * %s", lim)
 		}

@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/comparison"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // RenderComparisonReport writes a human-readable comparison report to w.
@@ -12,7 +13,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 	line, blank := reportHelpers(w)
 
 	line("Terrain Snapshot Comparison")
-	line(strings.Repeat("=", 40))
+	line(uitokens.H1Sep)
 	blank()
 
 	// Compared
@@ -23,7 +24,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 
 	// Methodology compatibility
 	line("Methodology Compatibility")
-	line(strings.Repeat("-", 40))
+	line(uitokens.H2Sep)
 	status := "compatible"
 	if !comp.MethodologyCompatible {
 		status = "incompatible"
@@ -36,14 +37,14 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 
 	if !comp.MethodologyCompatible {
 		line("Recommended Next Steps")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		line("  1. Re-run `terrain analyze --write-snapshot` for baseline and current states with the same Terrain version.")
 		line("  2. Keep policy/runtime/coverage inputs consistent between both snapshots.")
 		line("  3. Compare the regenerated snapshots to unlock risk, posture, and measurement deltas.")
 		blank()
 	} else if len(comp.MethodologyNotes) > 0 {
 		line("Recommended Next Steps")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		line("  1. Regenerate snapshots with the current Terrain version to persist methodology fingerprints.")
 		line("  2. Continue using consistent policy/runtime/coverage inputs for trend comparisons.")
 		blank()
@@ -68,7 +69,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 	// Signal changes
 	if len(comp.SignalDeltas) > 0 {
 		line("Signal Changes")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, d := range comp.SignalDeltas {
 			sign := "+"
 			if d.Delta < 0 {
@@ -88,7 +89,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 	}
 	if len(comp.RiskDeltas) > 0 {
 		line("Risk Changes")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, r := range comp.RiskDeltas {
 			if r.Changed {
 				before := string(r.Before)
@@ -110,7 +111,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 	// Framework changes
 	if len(comp.FrameworkChanges) > 0 {
 		line("Framework Changes")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, fc := range comp.FrameworkChanges {
 			line("  %s %s (%d files)", fc.Change, fc.Name, fc.Files)
 		}
@@ -120,7 +121,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 	// Representative changes
 	if len(comp.NewSignalExamples) > 0 {
 		line("New Findings")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, ex := range comp.NewSignalExamples {
 			loc := ex.File
 			if loc == "" {
@@ -133,7 +134,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 
 	if len(comp.ResolvedSignalExamples) > 0 {
 		line("Resolved")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, ex := range comp.ResolvedSignalExamples {
 			loc := ex.File
 			if loc == "" {
@@ -149,7 +150,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 		tcd := comp.TestCaseDeltas
 		if tcd.Added > 0 || tcd.Removed > 0 {
 			line("Test Identity Changes")
-			line(strings.Repeat("-", 40))
+			line(uitokens.H2Sep)
 			line("  Added:   %d", tcd.Added)
 			line("  Removed: %d", tcd.Removed)
 			line("  Stable:  %d", tcd.Stable)
@@ -178,7 +179,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 
 		if hasDelta {
 			line("Coverage Trend")
-			line(strings.Repeat("-", 40))
+			line(uitokens.H2Sep)
 			if cd.LineCoverageDelta != 0 {
 				sign := "+"
 				if cd.LineCoverageDelta < 0 {
@@ -202,7 +203,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 	// Posture trend
 	if len(comp.PostureDeltas) > 0 {
 		line("Posture Changes")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, pd := range comp.PostureDeltas {
 			before := pd.Before
 			if before == "" {
@@ -225,7 +226,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 			limit = len(comp.MeasurementDeltas)
 		}
 		line("Measurement Changes")
-		line(strings.Repeat("-", 40))
+		line(uitokens.H2Sep)
 		for _, md := range comp.MeasurementDeltas[:limit] {
 			sign := "+"
 			if md.Delta < 0 {
@@ -247,7 +248,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 		od := comp.OwnershipDelta
 		if od.OwnerCountBefore != od.OwnerCountAfter || od.OwnedFilesBefore != od.OwnedFilesAfter {
 			line("Ownership Trend")
-			line(strings.Repeat("-", 40))
+			line(uitokens.H2Sep)
 			if od.OwnerCountBefore != od.OwnerCountAfter {
 				line("  Distinct owners:     %d → %d", od.OwnerCountBefore, od.OwnerCountAfter)
 			}
