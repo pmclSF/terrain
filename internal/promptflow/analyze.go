@@ -74,8 +74,13 @@ func Analyze(after Discoveries, before map[string][]byte) ([]Finding, error) {
 			renderedAfter, _ := tf.Tpl.Render(afterVars)
 			for _, r := range risks {
 				findings = append(findings, Finding{
-					TemplatePath:   tf.Path,
-					SchemaPath:     schema.Path,
+					// Normalize paths to forward slashes so the
+					// emitted Finding shape is identical on Linux,
+					// macOS, and Windows — downstream consumers
+					// (test assertions, JSON output, markdown
+					// rendering) get one canonical separator.
+					TemplatePath:   filepath.ToSlash(tf.Path),
+					SchemaPath:     filepath.ToSlash(schema.Path),
 					Risk:           r,
 					RenderedBefore: renderedBefore,
 					RenderedAfter:  renderedAfter,
