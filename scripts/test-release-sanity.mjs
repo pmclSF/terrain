@@ -17,14 +17,14 @@ async function readText(relPath) {
   return fs.readFile(path.join(rootDir, relPath), 'utf8');
 }
 
-test('release package versions are aligned to 0.3.0', async () => {
+test('release package versions are aligned to 0.3.1', async () => {
   const rootPackage = await readJSON('package.json');
   const rootLock = await readJSON('package-lock.json');
   const extensionPackage = await readJSON('extension/vscode/package.json');
   const extensionLock = await readJSON('extension/vscode/package-lock.json');
   const legacyVSCodePackage = await readJSON('vscode/package.json');
 
-  assert.equal(rootPackage.version, '0.3.0');
+  assert.equal(rootPackage.version, '0.3.1');
   assert.equal(rootLock.version, rootPackage.version);
   assert.equal(rootLock.packages[''].version, rootPackage.version);
   assert.equal(extensionPackage.version, rootPackage.version);

@@ -3,7 +3,7 @@
   "displayName": "Terrain",
   "description": "Legacy Terrain Problems-pane prototype retained for reference; the 0.3.0 extension alpha lives under extension/vscode.",
   "publisher": "pmclSF",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

@@ -1,6 +1,6 @@
 {
   "name": "mapterrain",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Terrain test intelligence CLI.",
   "type": "module",
   "bin": {

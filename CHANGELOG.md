@@ -5,6 +5,16 @@ All notable changes to Terrain are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] — Homebrew tap auto-update
+
+### Fixed
+
+- **The Homebrew tap now updates automatically when a release is cut.**
+  The tap-update workflow previously ran only on `release: published`,
+  an event the release pipeline's token cannot emit, so the formula had
+  to be bumped by hand after each release. It now also runs on `v*` tag
+  pushes, so tagging a release updates the formula without manual steps.
+
 ## [0.3.0] — PR surface upgrade + adopter scaffolding
 
 ### Added
