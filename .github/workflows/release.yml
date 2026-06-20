@@ -344,7 +344,7 @@ jobs:
         ARCHIVE="terrain_${VERSION}_${{ matrix.name }}.${{ matrix.archive_ext }}"
 
         echo "Downloading $ARCHIVE from release $TAG..."
-        gh release download "$TAG" --pattern "$ARCHIVE" --clobber
+        gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$ARCHIVE" --clobber
 
         echo "Extracting..."
         tar -xzf "$ARCHIVE"
@@ -373,7 +373,7 @@ jobs:
         $ARCHIVE = "terrain_${VERSION}_${{ matrix.name }}.${{ matrix.archive_ext }}"
 
         Write-Host "Downloading $ARCHIVE from release $TAG..."
-        gh release download $TAG --pattern $ARCHIVE --clobber
+        gh release download $TAG --repo $env:GITHUB_REPOSITORY --pattern $ARCHIVE --clobber
 
         Write-Host "Extracting..."
         Expand-Archive -Path $ARCHIVE -DestinationPath . -Force
