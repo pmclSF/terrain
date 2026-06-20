@@ -354,7 +354,7 @@ jobs:
         OUTPUT=$(./${{ matrix.binary }} version --json)
         echo "$OUTPUT"
 
-        REPORTED=$(echo "$OUTPUT" | grep -oE '"version"\s*:\s*"[^"]+"' | head -1 | sed -E 's/.*"version"\s*:\s*"([^"]+)".*/\1/')
+        REPORTED=$(echo "$OUTPUT" | grep -oE '"version"[[:space:]]*:[[:space:]]*"[^"]+"' | head -1 | sed -E 's/.*"version"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/')
         if [ "$REPORTED" != "$VERSION" ]; then
           echo "❌ Version mismatch: archive reports '$REPORTED', expected '$VERSION'" >&2
           exit 1
