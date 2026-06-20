@@ -109,7 +109,6 @@ func (fc *FileCache) ReadFile(relPath string) (string, bool) {
 	fc.mu.Lock()
 	fc.misses++
 	if err != nil {
-		fc.contents[relPath] = fileCacheEntry{ok: false}
 		fc.mu.Unlock()
 		return "", false
 	}
@@ -280,8 +279,14 @@ func (fc *FileCache) InvalidateStale() []string {
 	if len(stale) > 0 {
 		fc.mu.Lock()
 		for _, p := range stale {
+			if entry, ok := fc.contents[p]; ok {
+				fc.totalContentBytes -= int64(len(entry.content))
+			}
 			delete(fc.contents, p)
 			delete(fc.goASTs, p)
+		}
+		if fc.totalContentBytes < 0 {
+			fc.totalContentBytes = 0
 		}
 		fc.mu.Unlock()
 	}

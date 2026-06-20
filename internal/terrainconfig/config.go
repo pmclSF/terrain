@@ -12,6 +12,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -244,6 +245,21 @@ func Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("terrainconfig: read %s: %w", path, err)
 	}
 	return Parse(data)
+}
+
+// LoadForRoot reads the preferred repository config location
+// `.terrain/terrain.yaml`, falling back to a legacy top-level
+// `terrain.yaml`. Missing config is not an error.
+func LoadForRoot(root string) (*Config, error) {
+	preferred := filepath.Join(root, ".terrain", FileName)
+	cfg, err := Load(preferred)
+	if err != nil {
+		return nil, err
+	}
+	if cfg != nil {
+		return cfg, nil
+	}
+	return Load(filepath.Join(root, FileName))
 }
 
 // Parse decodes yaml bytes into a Config and validates it.

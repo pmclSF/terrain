@@ -62,7 +62,7 @@ The rule fires on eval / inference / training paths only — application config 
   - `os.environ["KEY"]` and `environ["KEY"]` subscript form
   - `os.environ.get("KEY")` / `environ.get("KEY")` / `os.getenv("KEY")` / `getenv("KEY")` without default
 - **Suppression:** the `get()` / `getenv()` calls suppress when a second positional argument or a `default="..."` kwarg is present.
-- **Edge cases NOT handled at 0.2.0:** envs read into a config object that's later consulted; the rule only fires at the read site.
+- **Edge cases NOT handled in 0.3.0:** envs read into a config object that's later consulted; the rule only fires at the read site.
 
 ## 6. Worked example
 
@@ -104,7 +104,7 @@ ignore:
 
 - **Env read in a settings module that's imported by the eval file** — the rule fires at the read site (the settings module), which is correct but may not match where the eval author wants to suppress. Mitigation: move the env read into the eval file with an explicit default, or ignore via path.
 - **Env vars read via `os.environ.get` with a runtime-computed default** — typically a `dict.get(...)` lookup. Not suppressed (the rule needs a literal). Mitigation: inline the literal.
-- **Measured FP rate at last validation:** see the per-rule readiness card.
+- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 

@@ -11,9 +11,10 @@ import (
 
 // HallucinationRateDetector flags eval runs whose hallucination-shaped
 // failure rate exceeds the configured threshold. This is the first
-// detector that consumes snap.EvalRuns (populated by the Promptfoo
-// adapter today; DeepEval / Ragas adapters will populate the same
-// shape).
+// detector that consumes snap.EvalRuns (populated by Promptfoo,
+// DeepEval, Ragas, Great Expectations, and future adapters). Only
+// cases with hallucination- or grounding-shaped metadata affect the
+// rate.
 //
 // A case is considered hallucination-shaped when any of the following
 // is true:

@@ -1,6 +1,6 @@
 # Terrain Quickstart
 
-Five minutes from install to three actionable insights on your repo. No config, no setup, no test execution required.
+Five minutes from install to an answer to: what protects this repo, where is that protection weak, and what will this PR put at risk? No config, no setup, no test execution required.
 
 ## Install
 
@@ -73,7 +73,7 @@ terrain compare        # later
       --summary "$GITHUB_STEP_SUMMARY"
 ```
 
-The `--summary` value is the file Terrain writes; `$GITHUB_STEP_SUMMARY` is the file GitHub Actions reads. Set them equal and findings appear on the run page automatically. Full templates in [`docs/examples/gate/`](examples/gate/).
+The `--summary` value is the file Terrain writes; `$GITHUB_STEP_SUMMARY` is the file GitHub Actions reads. Set them equal and findings appear on the run page automatically. Full templates in [`docs/examples/gate/`](examples/gate/README.md).
 
 ## AI surfaces
 
@@ -106,12 +106,12 @@ Default output is pytest; use `--lang typescript` for vitest.
 
 ## Downstream tooling handoff
 
-Every `terrain analyze` writes a canonical `.terrain/findings.json` (schema version 1). `terrain mcp` reads it; IDE plugins consume it; SARIF uploaders transform it.
+Every `terrain analyze` and `terrain test` run writes a canonical `.terrain/findings.json` (schema version 1). `terrain mcp` reads it; IDE plugins consume it; SARIF uploaders transform it.
 
 ## Next
 
 - [CLI specification](cli-spec.md) — every command, every flag
 - [Compatibility](compatibility.md) — supported frameworks, languages, schemas, eval tools, pipelines
-- [Example reports](examples/) — full sample outputs for analyze / impact / insights / explain
+- [Example reports](examples/README.md) — full sample outputs for analyze / impact / insights / explain
 - [Signal catalog](signal-catalog.md) — every detector and what it fires on
 - [Contributing](contributing/adding-a-measurement.md) — extending Terrain

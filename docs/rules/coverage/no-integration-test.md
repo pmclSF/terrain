@@ -54,7 +54,7 @@ Unit tests are fast and catch logic errors; integration tests catch wiring error
 
 - **Approach:** graph traversal. Find SurfaceHandler / SurfaceRoute nodes; for each, walk reachable code units (the handler's logic); check whether any test reaches both the entry point AND the unit.
 - **Inputs:** ImpactGraph edges + TestFile classification (`testtype.IsIntegration`).
-- **0.2.0 scope:** flagged when no edge exists from any integration test to the entry-point surface.
+- **0.3.0 scope:** flagged when no edge exists from any integration test to the entry-point surface.
 
 ## 6. Worked example
 

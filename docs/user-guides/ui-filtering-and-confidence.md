@@ -1,8 +1,10 @@
 # UI Filtering, Scoping, and Confidence Cues
 
-Design specification for the Terrain extension UI's filtering system and
-confidence communication. This document describes views and interaction
-patterns, not implementation.
+Design specification for future Terrain extension filtering and confidence
+communication. This document describes intended views and interaction
+patterns, not 0.3.0 shipped behavior or implementation. The 0.3.0 extension
+alpha renders sidebar tree views from CLI JSON as documented in
+[`../vscode-extension.md`](../vscode-extension.md).
 
 ## Overview
 

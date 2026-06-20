@@ -50,7 +50,7 @@ How the rule identifies its target. Transparent so engineering teams trust it.
 - **Inputs consumed:** file types, configs, graph nodes
 - **Outputs:** a `Finding` per match, with primary_loc / cause_loc / cause_path / evidence
 - **Edge cases handled:** how the rule treats ambiguous matches
-- **Edge cases NOT handled at 0.2.0:** what's deferred to a later release
+- **Edge cases NOT handled in the current release:** what's deferred to a later release
 
 ## 6. Worked example
 
@@ -110,9 +110,9 @@ Known patterns where the rule trips falsely, and how to handle them.
 
 - **Pattern A:** [describe]. **Why it's a false positive:** [reason]. **How to handle:** [path-ignore, severity downgrade, or fix-the-detection-mechanism-in-Nth-release].
 - **Pattern B:** [describe]. [same shape]
-- **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag.
+- **Measurement status:** link the measured per-rule readiness card when one exists for the release; otherwise state that no measured card has been published yet.
 
-Stable rules must clear the FP-rate bar set in the release readiness criteria. If you encounter a sustained FP pattern outside the documented ones, file a GitHub issue with a reproducer.
+When a measured readiness card is published for this rule, it carries the FP-rate evidence for the release. If you encounter a sustained FP pattern outside the documented ones, file a GitHub issue with a reproducer.
 
 ## 9. Reproducibility
 

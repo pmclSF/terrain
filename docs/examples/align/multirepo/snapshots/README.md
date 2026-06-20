@@ -19,10 +19,9 @@ For this example we ship the manifest with `path:` only — every
 repo gets walked fresh. Real portfolios with > 5 repos should
 adopt the snapshot-path pattern.
 
-## Future fixture shape
+## Fixture shape
 
-When the aggregator lands in 0.2.x and a runnable demo becomes
-useful, this directory will hold:
+When this example grows saved snapshots, this directory will hold:
 
 ```
 snapshots/
@@ -33,10 +32,8 @@ snapshots/
 ```
 
 …and the manifest's repo entries gain `snapshotPath: snapshots/<name>.json`
-fields. We don't ship these snapshots today because:
+fields. We don't ship these snapshots today because the live `path:`
+entries keep the example tied to real repo scans rather than frozen
+fixture payloads.
 
-- The schema is still settling within the 0.2.x window; freezing a
-  snapshot now would create maintenance churn as fields stabilize
-- The aggregator binary doesn't exist yet to consume them
-
-When both conditions clear, this fixture lights up end-to-end.
+Until then, the manifest's `path:` entries exercise the live-scan path.

@@ -304,10 +304,10 @@ func generatePolicyYAMLExample(path string) error {
 #                               # fails closed today.
 
 # ── Source-content redaction ───────────────────────────────────
-# redact_source: false          # When true, elides code excerpts from
-#                               # emitted artifacts. CURRENTLY INERT:
-#                               # parsed but no emission path consumes
-#                               # it today. See docs/LIMITATIONS.md.
+# redact_source: false          # Reserved for future source-content
+#                               # redaction. CURRENTLY INERT: parsed
+#                               # but no emission path consumes it today.
+#                               # See docs/LIMITATIONS.md.
 
 # ── Slash-command authorization (webhook receiver) ─────────────
 # slash:

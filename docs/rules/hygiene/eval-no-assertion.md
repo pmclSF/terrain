@@ -61,7 +61,7 @@ The rule fires on the structural shape, not on the runtime result. A test that f
 - **Inputs consumed:** source bytes of files in eval-like paths.
 - **Assertion vocabulary recognized:** Python `assert` statements (AST-level), unittest `self.assert*` methods, pytest `pytest.fail` / `pytest.skip`, framework calls `evaluator.score`, `deepeval.assert_*`, `ragas.evaluate`, `expect(...)`, `.score`, `metric.*`, `should.*`, `.toBe` / `.toEqual` for cross-framework JS-style helpers, `promptfoo` markers, `assert_response`.
 - **Edge cases handled:** assertions inside helper functions called from the test count (the text-match path catches them); raw `assert` statements caught at the AST level so string literals containing `assert` don't trip the suppression.
-- **Edge cases NOT handled at 0.2.0:** Python tests outside the eval path conventions; non-Python eval tests (Jest, Vitest under `evals/`) are future work for a JS/TS detector.
+- **Edge cases NOT handled in 0.3.0:** Python tests outside the eval path conventions; non-Python eval tests (Jest, Vitest under `evals/`) are future work for a JS/TS detector.
 
 ## 6. Worked example
 
@@ -113,7 +113,7 @@ ignore:
 - **Tests that delegate to a `validate(...)` helper** — the helper does the assertion but the test body doesn't. Mitigation: inline an `assert validate(...)` so the test body carries the assertion shape, or accept the warning.
 - **Tests under `eval/` that aren't actually evals** (utility / fixture builders named `test_*`) — rename them to a non-`test_*` prefix, or move them out of the eval path.
 - **Snapshot-based evals** that compare output against a recorded file via a framework helper Terrain doesn't recognize — extend `assertionShapes` or downgrade the rule.
-- **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag.
+- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 

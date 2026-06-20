@@ -116,13 +116,56 @@ func TestLoadRepoManifest_RejectsDuplicateName(t *testing.T) {
 	_, err := ParseRepoManifest([]byte(`
 version: 1
 repos:
-  - name: app
+  - name: " app "
     path: /tmp/a
   - name: app
     path: /tmp/b
 `), "test")
 	if err == nil || !strings.Contains(err.Error(), "duplicate name") {
 		t.Errorf("expected duplicate-name error, got: %v", err)
+	}
+}
+
+func TestLoadRepoManifest_RejectsUnsafeRepoName(t *testing.T) {
+	t.Parallel()
+	_, err := ParseRepoManifest([]byte(`
+version: 1
+repos:
+  - name: ../secret
+    path: /tmp/a
+`), "test")
+	if err == nil || !strings.Contains(err.Error(), "safe path segment") {
+		t.Errorf("expected unsafe-name error, got: %v", err)
+	}
+}
+
+func TestLoadRepoManifest_NormalizesRepoMetadata(t *testing.T) {
+	t.Parallel()
+	m, err := ParseRepoManifest([]byte(`
+version: 1
+description: "  Acme portfolio  "
+repos:
+  - name: " api "
+    path: " ../api "
+    owner: " backend-team "
+    frameworksOfRecord: [" Jest ", jest, "PYTEST", ""]
+    tags: [" tier-1 ", "", api, tier-1]
+`), "test")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	repo := m.Repos[0]
+	if m.Description != "Acme portfolio" {
+		t.Fatalf("description = %q", m.Description)
+	}
+	if repo.Name != "api" || repo.Path != "../api" || repo.Owner != "backend-team" {
+		t.Fatalf("repo metadata not trimmed: %+v", repo)
+	}
+	if !stringSlicesEqual(repo.FrameworksOfRecord, []string{"jest", "pytest"}) {
+		t.Fatalf("frameworksOfRecord = %+v", repo.FrameworksOfRecord)
+	}
+	if !stringSlicesEqual(repo.Tags, []string{"tier-1", "api"}) {
+		t.Fatalf("tags = %+v", repo.Tags)
 	}
 }
 

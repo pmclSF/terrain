@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/pmclSF/terrain/internal/atomicfile"
 )
 
 // runAcceptSnapshotCommand implements `terrain accept-snapshot`.
@@ -77,7 +79,7 @@ func runAcceptSnapshotCommand(root string, yes bool) error {
 	if err != nil {
 		return fmt.Errorf("marshal: %w", err)
 	}
-	if err := os.WriteFile(baselinePath, data, 0o644); err != nil {
+	if err := atomicfile.WriteFile(baselinePath, data, 0o644); err != nil {
 		return fmt.Errorf("write baseline: %w", err)
 	}
 	fmt.Printf("Wrote %s\n", baselinePath)

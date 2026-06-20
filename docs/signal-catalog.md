@@ -9,7 +9,10 @@ Signals are discovered progressively as more data becomes available:
 - **Tier 1** requires only source code (always available on every `terrain analyze` run)
 - **Tier 2** requires test execution data (JUnit XML, Jest JSON — provide via `--runtime`)
 - **Tier 3** is automatic (dependency graph analysis runs alongside Tier 1)
-- **Tier 4** requires AI evaluation artifacts (Gauntlet format — provide via `--gauntlet`)
+- **Tier 4** requires AI evaluation artifacts (Gauntlet via
+  `--gauntlet`, or eval-run adapters via `--promptfoo-results`,
+  `--deepeval-results`, `--ragas-results`,
+  `--great-expectations-results`)
 
 Most teams get value from Tier 1 alone. Tiers 2–4 add depth without requiring additional setup.
 
@@ -353,7 +356,7 @@ Remediation: Add eval scenarios that exercise this capability to ensure behavior
 
 ## Tier 4: AI/Eval Signals (24 types)
 
-Emitted when Gauntlet evaluation artifacts are provided. These signals represent observed evaluation failures and regressions from actual AI system execution. They cannot be produced by static analysis.
+Emitted when AI/eval artifacts are provided. Gauntlet artifacts produce scenario execution signals; eval-run adapters populate `EvalRuns` so axis-specific detectors can use cost, hallucination, retrieval, or pass/fail metadata when present. These signals represent observed evaluation failures and regressions from actual AI system execution. They cannot be produced by static analysis alone.
 
 **Eval execution:**
 `evalFailure`, `evalRegression`, `accuracyRegression`

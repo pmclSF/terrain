@@ -36,10 +36,10 @@ An eval metric (rubric score, accuracy, F1, AUC, RMSE, calibration error, etc.) 
 
 ## 2. Severity & status
 
-- **Tier:** stable
-- **Default severity:** error
-- **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — threshold, sample count, seed strategy, base-comparison strategy all tunable (see [configuration.md](../../configuration.md))
+- **Tier:** experimental
+- **Default severity:** high
+- **0.3.0 status:** detector function exists in `internal/regression/eval_regression.go`, but the standalone `evalRegression` rule is not yet wired through the engine registry. Terrain 0.3.0 does ingest eval artifacts into `EvalRuns`, and the eval-data-aware AI detectors consume that envelope.
+- **Configuration:** threshold tuning for the standalone rule lands with registry integration; do not treat this rule as a default-on 0.3.0 gate.
 
 ## 3. What this catches
 
@@ -59,18 +59,13 @@ The rule's hardest case is *stochastic* evals: LLM-driven evals whose results va
 
 ## 5. Detection mechanism
 
-The rule's lifecycle is **read base + head → compare via configured strategy → threshold check**.
+The planned standalone rule lifecycle is **read baseline + current eval run → compare by case/run metric → threshold check**. In 0.3.0, the parser and comparison function exist, while engine-registry invocation remains pending.
 
-- **Approach:** eval-framework-adapter invocation at two SHAs (or cached baseline + head re-run); statistical comparison; threshold gate
-- **Adapters supported:** promptfoo, deepeval, ragas, Great Expectations; gauntlet via JSON-format-compatible ingestion path (see `docs/integrations/gauntlet.md`)
-- **Inputs consumed:** the configured eval-framework's output JSON at base and head SHAs; the rule's `threshold` configuration
-- **Base-SHA strategy:** three options via `base_strategy` config:
-  - `cached` (default): read the baseline from `.terrain/baselines/`, populated by the previous main-branch run. Best for stochastic evals; deterministic across PR runs.
-  - `rerun`: re-run the eval at the base SHA in CI. Doubles compute; only safe for deterministic evals (e.g., sklearn test-set evaluation with fixed seed).
-  - `from-ci-artifact`: fetch the eval output from a previous CI run's artifact storage. Cheap if the platform supports cross-run artifact retrieval; requires adopter wiring.
-- **Statistical comparison:** for stochastic evals (`samples_per_run > 1`), the rule runs the eval N times at head and compares to N samples at base via the chosen `confidence_alpha`. A 95% confidence interval (default α=0.05) that excludes the threshold-crossing region fires the rule; an overlapping interval does not.
-- **Edge cases handled:** missing baseline → fires `regression/baseline-not-set` sibling rule instead; eval-framework error → reported as a separate rule failure with the framework's error attached
-- **Edge cases NOT handled at 0.2.0:** multi-metric weighted comparison (e.g., "fire if accuracy AND F1 both drop"); cross-eval correlation analysis. Adopters needing these compose multiple rule instances via separate eval definitions.
+- **0.3.0 artifact inputs:** promptfoo (`--promptfoo-results`), deepeval (`--deepeval-results`), ragas (`--ragas-results`), Great Expectations (`--great-expectations-results`); gauntlet via JSON-format-compatible ingestion path (see `docs/integrations/gauntlet.md`)
+- **0.3.0 consumers:** `aiCostRegression`, `aiHallucinationRate`, and `aiRetrievalRegression` consume `EvalRuns` envelopes where their required cost / grounding / retrieval axes are present.
+- **Planned standalone approach:** compare current and baseline `EvalRun` records case-by-case, then run-level when case IDs do not match.
+- **Planned base strategy:** cached snapshot first, with future support for rerun and CI-artifact strategies once stochastic-eval handling is calibrated.
+- **Edge cases NOT handled in 0.3.0:** standalone `evalRegression` engine invocation, multi-metric weighted comparison, stochastic confidence intervals, and cross-eval correlation analysis.
 
 ## 6. Worked example
 
@@ -147,7 +142,7 @@ ignore:
 - **Baseline drift** — if the cached baseline in `.terrain/baselines/` represents a known-bad state (because the adopter accepted a regression previously without updating the baseline), the rule won't fire on subsequent PRs. Mitigation: `terrain accept-snapshot <baseline-id> --yes` per accepted baseline, deliberately.
 - **Eval framework non-determinism** — some frameworks return slightly different results on re-runs even with `temperature: 0` (e.g., due to model serving non-determinism upstream). Adopters affected should switch to `base_strategy: cached` to compare against a pinned baseline rather than re-running.
 - **Threshold set too tight** — adopters with high-variance evals who set a 1% threshold will see frequent false positives. Default 5% is conservative; adopters tune up or down per eval characteristics.
-- **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag.
+- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 
@@ -165,11 +160,11 @@ The local diagnostic output is byte-equivalent to the CI surface (local-CI parit
 
 ## 10. Stability commitment
 
-This rule's ID, default severity, behavior, and tunable-config schema are stable from v0.2.0. Per the deprecation contract:
+This rule's ID is reserved and stable. Default severity, behavior, and tunable-config schema remain experimental until engine-registry integration lands. Once the rule is wired as a gate, changes follow the normal deprecation contract:
 
 - **Renames:** one-cycle deprecation. None planned.
-- **Default threshold change** (currently 5%): treated as breaking; deprecation-cycled.
-- **`base_strategy` default change**: breaking; deprecation-cycled. (Default `cached` is the safest for stochastic evals.)
+- **Default threshold change:** treated as breaking after the first wired gate release.
+- **`base_strategy` default change:** treated as breaking after the first wired gate release.
 - **Adapter additions** (new eval-framework adapters): additive; documented in `CHANGELOG.md`.
 - **Tunable-config additions** (new optional keys on the rule block): additive; `terrain.yaml` parsers tolerate unknown optional keys per the schema.
 

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/analyze"
+	"github.com/pmclSF/terrain/internal/models"
 )
 
 func TestParseSeverityGate(t *testing.T) {
@@ -142,6 +143,48 @@ func TestRunAnalyze_WritesFindingsJSON(t *testing.T) {
 	}
 }
 
+func TestApplyFindingsBudgetLoadsDotTerrainConfig(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, ".terrain"), 0o755); err != nil {
+		t.Fatalf("mkdir .terrain: %v", err)
+	}
+	cfg := `version: 1
+rules:
+  hygiene/weak-assertion:
+    max_findings: 1
+`
+	if err := os.WriteFile(filepath.Join(root, ".terrain", "terrain.yaml"), []byte(cfg), 0o644); err != nil {
+		t.Fatalf("write terrain config: %v", err)
+	}
+
+	snap := &models.TestSuiteSnapshot{
+		Signals: []models.Signal{
+			{
+				Type:       "weakAssertion",
+				RuleID:     "terrain/hygiene/weak-assertion",
+				Severity:   "medium",
+				Confidence: 0.9,
+				Location:   models.SignalLocation{File: "a.test.ts"},
+			},
+			{
+				Type:       "weakAssertion",
+				RuleID:     "terrain/hygiene/weak-assertion",
+				Severity:   "high",
+				Confidence: 0.5,
+				Location:   models.SignalLocation{File: "b.test.ts"},
+			},
+		},
+	}
+
+	applyFindingsBudget(snap, root, true)
+	if len(snap.Signals) != 1 {
+		t.Fatalf("signals after budget = %d, want 1", len(snap.Signals))
+	}
+	if snap.Signals[0].Severity != "high" {
+		t.Fatalf("budget should keep highest severity signal, got %+v", snap.Signals[0])
+	}
+}
+
 func TestRunAnalyze_GateBlocksOnFixture(t *testing.T) {
 	root := fixtureRoot(t)
 
@@ -202,6 +245,103 @@ func TestRunAnalyze_JSONStdoutPurity(t *testing.T) {
 	var parsed map[string]any
 	if jsonErr := json.Unmarshal(stdout, &parsed); jsonErr != nil {
 		t.Errorf("stdout is not valid JSON (gate message leaked into JSON?): %v\nstdout:\n%s", jsonErr, stdout)
+	}
+}
+
+func TestRunTestCommand_JSONStdoutPurityAndGate(t *testing.T) {
+	root := fixtureRoot(t)
+
+	stdout, err := captureRun(func() error {
+		return runTestCommand(testRunOpts{
+			Root:       root,
+			JSONOutput: true,
+			Gate:       severityGateLow,
+		})
+	})
+
+	if !errors.Is(err, errSeverityGateBlocked) {
+		t.Fatalf("expected errSeverityGateBlocked, got %v", err)
+	}
+
+	var parsed map[string]any
+	if jsonErr := json.Unmarshal(stdout, &parsed); jsonErr != nil {
+		t.Errorf("terrain test JSON stdout is not valid JSON: %v\nstdout:\n%s", jsonErr, stdout)
+	}
+	if parsed["findings"] == nil {
+		t.Errorf("terrain test JSON missing findings array: %v", parsed)
+	}
+}
+
+func TestRunTestCommand_WritesFindingsJSON(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "main.py"),
+		[]byte("def add(a, b):\n    return a + b\n"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	_, err := captureRun(func() error {
+		return runTestCommand(testRunOpts{Root: root})
+	})
+	if err != nil {
+		t.Fatalf("terrain test failed: %v", err)
+	}
+
+	data, err := os.ReadFile(filepath.Join(root, ".terrain", "findings.json"))
+	if err != nil {
+		t.Fatalf("terrain test should write .terrain/findings.json: %v", err)
+	}
+	var doc struct {
+		Version  int              `json:"version"`
+		Findings []map[string]any `json:"findings"`
+	}
+	if err := json.Unmarshal(data, &doc); err != nil {
+		t.Fatalf("findings.json should be parseable JSON: %v\n%s", err, data)
+	}
+	if doc.Version != 1 {
+		t.Errorf("findings.json version = %d, want 1", doc.Version)
+	}
+}
+
+func TestRunTestCommand_JSONSurfacesPipelineFailure(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "main.py"),
+		[]byte("def add(a, b):\n    return a + b\n"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	badBaseline := filepath.Join(root, "baseline.json")
+	if err := os.WriteFile(badBaseline, []byte("{not json"), 0o644); err != nil {
+		t.Fatalf("write bad baseline: %v", err)
+	}
+
+	stdout, err := captureRun(func() error {
+		return runTestCommand(testRunOpts{
+			Root:         root,
+			JSONOutput:   true,
+			BaselinePath: badBaseline,
+		})
+	})
+
+	if err == nil {
+		t.Fatal("expected analyze pipeline failure for missing root")
+	}
+	if !strings.Contains(err.Error(), "analyze pipeline failed") {
+		t.Fatalf("error should describe pipeline failure, got %v", err)
+	}
+	if len(stdout) != 0 {
+		t.Fatalf("stdout should be empty on pipeline failure, got:\n%s", stdout)
+	}
+}
+
+func TestRunTestCommand_NewFindingsOnlyRequiresBaseline(t *testing.T) {
+	err := runTestCommand(testRunOpts{
+		Root:            t.TempDir(),
+		NewFindingsOnly: true,
+	})
+	if err == nil {
+		t.Fatal("expected --new-findings-only without --baseline to fail")
+	}
+	if !strings.Contains(err.Error(), "--new-findings-only requires --baseline") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 

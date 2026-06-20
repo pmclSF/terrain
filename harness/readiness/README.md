@@ -1,6 +1,10 @@
 # Per-rule readiness cards
 
-Per-rule quality cards, committed alongside every release tag.
+Per-rule quality-card template and publication contract.
+
+Terrain 0.3.0 does not include measured per-rule readiness cards. A release only
+claims published cards when `harness/readiness/v<release>/` contains generated
+cards from the validation harness.
 
 ## Format
 
@@ -29,6 +33,6 @@ Notes:
 
 ## Cadence
 
-- New card per stable rule at each release tag
+- New card per stable rule when the validation harness has measured that rule for the release
 - Preview rules get partial cards (no FP / recall target binding, marked "preview — pending validation")
 - Cards from prior releases stay in their release directory; not overwritten

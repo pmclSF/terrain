@@ -120,7 +120,7 @@ func DetectPromptfooShape(data []byte) ShapeInfo {
 	return info
 }
 
-// DetectDeepEvalShape inspects a DeepEval `--export` JSON payload.
+// DetectDeepEvalShape inspects a DeepEval result JSON payload.
 //
 // Detection rules — DeepEval 1.x:
 //   - top-level `{ testCases: [...] }` or `[ ... ]` (some versions

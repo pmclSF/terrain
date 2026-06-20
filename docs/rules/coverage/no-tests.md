@@ -73,7 +73,7 @@ The rule's lifecycle is **enumerate code units → query graph for covering test
 - **What counts as a "test":** any node classified as a test by `internal/testtype/`; unit / integration / e2e / component / smoke all count
 - **What counts as a "code unit":** function / method / class as enumerated by per-language AST extraction; trivially-named items (`init`, `main`, generated identifiers) are excluded via the filter list in `internal/analysis/code_unit.go`
 - **Edge cases handled:** generated code (e.g., `*_pb.go`, `dist/`, `__generated__/`) excluded via path-default ignore; private/unexported items excluded by default at first ship (configurable; some adopters want private-method coverage as well)
-- **Edge cases NOT handled at 0.2.0:** symbol-level coverage for languages with limited AST extraction (Java's reflection-heavy code paths can hide covering tests behind dynamic dispatch). Falls back to file-level "test imports source file" linkage in those cases; findings may be noisier on such codebases.
+- **Edge cases NOT handled in 0.3.0:** symbol-level coverage for languages with limited AST extraction (Java's reflection-heavy code paths can hide covering tests behind dynamic dispatch). Falls back to file-level "test imports source file" linkage in those cases; findings may be noisier on such codebases.
 
 ## 6. Worked example
 
@@ -147,7 +147,7 @@ rules:
 - **Code tested via integration tests that don't import the function directly** — the function is exercised but no test's import graph reaches it. The rule fires correctly per its mechanism (no incoming "covers" edge). Mitigation: either add a unit test, or accept the warning if integration-test-only coverage is the adopter's policy. The `coverage/no-integration-test` rule provides the complementary view.
 - **Generated code** — Terrain excludes common generated-path patterns (`__generated__/`, `*.pb.go`, etc.) by default; uncommon generators may need explicit per-path ignores.
 - **Code that's only reachable via reflection / dynamic dispatch** — the import-graph cannot trace dynamic dispatch. Such code may show as "no tests" even when invoked by tests at runtime. Mitigation: declare the surface in `terrain.yaml` `surfaces:` to make Terrain aware of the dynamic reachability, or accept the warning.
-- **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag (`harness/readiness/v0.2.0/coverage-no-tests.md`). Coverage rules typically have higher FP/false-relevance rates than detection rules; the 5% target FP-rate may be relaxed for this category — see the readiness card for measured values.
+- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet. Coverage rules typically have higher FP/false-relevance rates than detection rules; use the documented false-positive patterns and release feature status until a measured card exists.
 
 ## 9. Reproducibility
 

@@ -54,7 +54,7 @@ Scores can mask behavior changes: two outputs scoring 0.9 may behave differently
 
 - **Approach:** for each case matched by ID across baseline and current, compare `Reason` fields. When they diverge (and aren't both empty), fire.
 - **Inputs:** EvalRun.Cases.Reason populated by adapters from `gradingResult.reason` / `failure_reason` / equivalent.
-- **0.2.0 scope:** comparison uses the Reason proxy. Richer per-case output capture (full response text snapshots) is followup work that requires snapshot files alongside the eval results JSON.
+- **0.3.0 scope:** comparison uses the Reason proxy. Richer per-case output capture (full response text snapshots) is followup work that requires snapshot files alongside the eval results JSON.
 
 ## 6. Worked example
 

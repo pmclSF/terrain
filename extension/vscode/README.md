@@ -1,6 +1,6 @@
 # Terrain Test Intelligence
 
-Understand your test system without leaving your editor. Terrain analyzes your repository's test structure, coverage, and quality — then surfaces findings directly in the VS Code sidebar.
+Explore Terrain's pre-flight graph without leaving your editor. The extension runs the Terrain CLI, then renders repository posture, findings, migration readiness, and review context directly in the VS Code sidebar.
 
 ## Features
 
@@ -12,7 +12,7 @@ Understand your test system without leaving your editor. Terrain analyzes your r
 - **Migration** — framework readiness, blockers, area assessments
 - **Review** — all medium+ findings grouped by category and severity
 
-**Zero Configuration** — the extension invokes the `terrain` CLI on your workspace and renders the results. No setup files, no config, no test execution required.
+**Zero Configuration** — the extension invokes the `terrain` CLI on your workspace and renders the results. No setup files, no policy file, no test execution required.
 
 **Click to Navigate** — findings link directly to the source files they reference. Click any finding to jump to the relevant code.
 
@@ -79,4 +79,4 @@ npm test
 
 - [Terrain CLI](https://github.com/pmclSF/terrain) — the analysis engine
 - [Quickstart Guide](https://github.com/pmclSF/terrain/blob/main/docs/quickstart.md) — get started in 5 minutes
-- [Signal Catalog](https://github.com/pmclSF/terrain/blob/main/docs/signal-catalog.md) — all 22+ signal types
+- [Signal Catalog](https://github.com/pmclSF/terrain/blob/main/docs/signal-catalog.md) — detector and signal reference

@@ -66,7 +66,7 @@ The rule fires once per file at the first un-seeded call. It's a structural chec
 - **Seed primitives recognized:** `np.random.seed`, `numpy.random.seed`, `torch.manual_seed`, `torch.cuda.manual_seed*`, `random.seed`, `tf.random.set_seed`, `tensorflow.random.set_seed`, HuggingFace `set_seed` (covers numpy / torch / random).
 - **Stochastic primitives recognized:** `np.random.*`, `numpy.random.*`, `torch.rand` / `torch.randn` / `torch.randint`, `random.random` / `random.choice` / `random.uniform`, `tf.random.*` / `tensorflow.random.*`.
 - **Edge cases handled:** `transformers.set_seed()` is treated as setting numpy / torch / random simultaneously; one signal per file at the first un-seeded site.
-- **Edge cases NOT handled at 0.2.0:** seed calls inside pytest fixtures whose autouse scope covers the test function — flagged with a false positive; suppress via `# terrain:disable` or accept the warning.
+- **Edge cases NOT handled in 0.3.0:** seed calls inside pytest fixtures whose autouse scope covers the test function — flagged with a false positive; suppress via `# terrain:disable` or accept the warning.
 
 ## 6. Worked example
 
@@ -114,7 +114,7 @@ ignore:
 - **Pytest autouse fixture seeds the RNG** — the rule doesn't trace fixture scope; mitigation is to add a module-scope seed redundantly, or accept.
 - **Cryptographic randomness** (`secrets`, `os.urandom`) — not flagged; the rule's vocabulary deliberately excludes crypto sources.
 - **Notebooks vs scripts** — notebooks under `/notebooks/` are flagged. Adopters who treat notebooks as exploratory ignore via path.
-- **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag.
+- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 

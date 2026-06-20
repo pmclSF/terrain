@@ -27,7 +27,8 @@ you where the package sits in the dependency stack documented at
 | [`testtype`](testtype) | Static Analysis | Test-type classification (unit / integration / e2e / contract). |
 | [`coverage`](coverage) | Static Analysis | LCOV / Istanbul coverage ingestion. |
 | [`runtime`](runtime) | Runtime Ingestion | JUnit XML / Jest JSON parsing for runtime-backed health signals. |
-| [`gauntlet`](gauntlet) | Runtime Ingestion | AI eval artifact ingestion (Promptfoo / DeepEval / Ragas — full integration is 0.2). |
+| [`gauntlet`](gauntlet) | Runtime Ingestion | Gauntlet JSON artifact ingestion and signal application. |
+| [`evaladapter`](evaladapter) | Runtime Ingestion | Promptfoo / DeepEval / Ragas / Great Expectations artifact adapters. |
 | [`aidetect`](aidetect) | Inference | AI framework detection (LangChain, LlamaIndex, OpenAI, etc.) and scenario derivation. |
 | [`airun`](airun) | Inference | Eval execution and replay artifact bookkeeping. |
 | [`depgraph`](depgraph) | Graph | Dependency-graph analysis: duplicates, fanout, redundancy. |

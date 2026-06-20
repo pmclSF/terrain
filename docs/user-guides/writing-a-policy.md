@@ -190,8 +190,8 @@ Suppressions ship in 0.2: `terrain suppress <id> --reason "<why>" --expires <dat
   wanting "block when X but not Y", that's a sign the rule needs
   splitting at the detector level, not policy expressivity.
 - **Not centralized.** Each repo owns its own policy file.
-  Cross-repo policy aggregation is future work and depends on the
-  multi-repo aggregator maturing.
+  Cross-repo policy enforcement is future work; `terrain portfolio --from`
+  aggregates posture and drift, but gates still evaluate per repo.
 - **Not a security control.** Policy gates a CI build. It does
   not stop a determined developer from merging. Combine with
   branch protection rules.

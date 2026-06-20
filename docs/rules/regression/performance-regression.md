@@ -36,9 +36,10 @@ An ML model's performance metric (accuracy / F1 / AUC / RMSE / etc.) regressed p
 
 ## 2. Severity & status
 
-- **Tier:** stable
-- **Default severity:** high (critical at ≥25% drop)
-- **Stable since:** v0.2.0
+- **Tier:** experimental
+- **Default severity:** high
+- **0.3.0 status:** detector function exists in `internal/regression/performance_regression.go`, but the standalone `performanceRegression` rule is not yet wired through the engine registry.
+- **Configuration:** threshold tuning lands with registry integration; do not treat this rule as a default-on 0.3.0 gate.
 
 ## 3. What this catches
 
@@ -52,8 +53,9 @@ Classical ML systems regress the same way LLM systems do — a feature change, a
 
 ## 5. Detection mechanism
 
-- **Approach:** identical to `regression/eval-regression`. The distinction is the rule ID — `eval-regression` is used by promptfoo / deepeval / ragas (LLM evals); `performance-regression` is used by Great Expectations and custom classical-ML reporters that surface accuracy / F1 / AUC / RMSE through the EvalRun shape.
-- **Inputs:** EvalRun.Stats.PrimaryMetric and per-case Score (Score holds the chosen metric).
+- **Planned approach:** identical to `regression/eval-regression`. The distinction is the rule ID — `eval-regression` is used for LLM eval scores; `performance-regression` is used for Great Expectations and custom classical-ML reporters that surface accuracy / F1 / AUC / RMSE through the EvalRun shape.
+- **0.3.0 inputs parsed:** Great Expectations Validation Result JSON can enter the snapshot via `--great-expectations-results`. The standalone performance-regression detector does not yet run from that snapshot envelope.
+- **Planned inputs:** EvalRun.Stats.PrimaryMetric and per-case Score (Score holds the chosen metric).
 
 ## 6. Worked example
 
@@ -81,7 +83,7 @@ terrain test --selector regression/performance-regression
 
 ## 10. Stability commitment
 
-Default threshold and severity ladder stable from v0.2.0.
+The rule ID is reserved and stable. Threshold behavior and configuration remain experimental until engine-registry integration lands.
 
 ## 11. Related rules
 

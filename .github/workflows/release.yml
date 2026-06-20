@@ -18,7 +18,7 @@ concurrency:
 permissions:
   contents: write
   id-token: write       # required for npm provenance + Sigstore keyless signing
-  attestations: write   # 0.2: SLSA L2 build-provenance attestations
+  attestations: write   # SLSA build-provenance attestations
 
 jobs:
   # Gate: single source of truth — same script locally and in CI.
@@ -152,18 +152,21 @@ jobs:
           esac
 
           archive_base="terrain_${VERSION}_${goos}_${goarch}"
+          stage="$(mktemp -d)"
+          cp "$binary_path" "$stage/$bin_name"
+          cp "${GITHUB_WORKSPACE}/README.md" "$stage/README.md"
+          cp "${GITHUB_WORKSPACE}/LICENSE" "$stage/LICENSE"
           if [[ "$goos" == "windows" ]]; then
             archive="${archive_base}.zip"
-            # 7z is preinstalled on GitHub-hosted Windows runners. cd into
-            # the binary dir so the zip contains terrain.exe at the root
-            # (not <id>/terrain.exe). Use DIST_ABS captured before any cd
-            # since OLDPWD inside the subshell would point at the prior
-            # parent, not the dist root.
-            (cd "$binary_dir" && 7z a "${DIST_ABS}/${archive}" "$bin_name" > /dev/null)
+            # 7z is preinstalled on GitHub-hosted Windows runners. Stage the
+            # binary plus README/LICENSE so the zip root matches goreleaser's
+            # documented archive contents.
+            (cd "$stage" && 7z a "${DIST_ABS}/${archive}" "$bin_name" README.md LICENSE > /dev/null)
           else
             archive="${archive_base}.tar.gz"
-            tar -czf "$archive" -C "$binary_dir" "$bin_name"
+            tar -czf "$archive" -C "$stage" "$bin_name" README.md LICENSE
           fi
+          rm -rf "$stage"
           echo "  archived: $archive"
         done < <(find . -maxdepth 2 -type f \( -name terrain -o -name terrain.exe \))
 
@@ -176,8 +179,31 @@ jobs:
           echo "  sbom: $archive → ${archive}.cdx.json + ${archive}.spdx.json"
         done
 
+        echo "=== Generating checksums ==="
+        checksum_files=()
+        for pattern in *.tar.gz *.zip *.cdx.json *.spdx.json; do
+          for f in $pattern; do
+            [ -f "$f" ] && checksum_files+=("$f")
+          done
+        done
+        if command -v sha256sum >/dev/null 2>&1; then
+          sha256sum "${checksum_files[@]}" > checksums.txt
+        elif command -v shasum >/dev/null 2>&1; then
+          shasum -a 256 "${checksum_files[@]}" > checksums.txt
+        else
+          python3 - "${checksum_files[@]}" > checksums.txt <<'PY'
+        import hashlib
+        import sys
+
+        for name in sys.argv[1:]:
+            with open(name, "rb") as fh:
+                print(f"{hashlib.sha256(fh.read()).hexdigest()}  {name}")
+        PY
+        fi
+        echo "  checksum: checksums.txt"
+
         echo "=== Signing artifacts (cosign keyless, Sigstore OIDC) ==="
-        for f in *.tar.gz *.zip *.cdx.json *.spdx.json; do
+        for f in *.tar.gz *.zip *.cdx.json *.spdx.json checksums.txt; do
           [ -f "$f" ] || continue
           cosign sign-blob --yes \
             --output-signature="${f}.sig" \
@@ -248,7 +274,7 @@ jobs:
       # cosign 2.x makes keyless the default and emits a deprecation
       # notice when the env var is set, so it is intentionally omitted.
 
-    # SLSA L2 build-provenance attestation (0.2). actions/attest-build-provenance
+    # SLSA L2 build-provenance attestation. actions/attest-build-provenance
     # signs a SLSA-compliant in-toto statement against every binary archive
     # using the workflow's OIDC identity. The attestation is uploaded to
     # GitHub's attestations API and downloadable via `gh attestation verify`.
@@ -375,7 +401,7 @@ jobs:
   # macos runner of artifacts that already exist in the GitHub release.
 
   npm-release:
-    needs: [verify, go-release-publish]
+    needs: [verify, go-release-publish, release-smoke]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -391,7 +417,7 @@ jobs:
     # Go is required because `prepublishOnly` runs `npm test` which
     # invokes `scripts/verify-pack.js`, which calls `go build` to
     # exercise the binary path through `npm pack`. Without Go, the
-    # publish fails with `go: not found`. Found in the 0.2.0 final
+    # publish fails with `go: not found`. Found in the final
     # polish review — the previous shape would have crashed on first
     # release attempt.
     - uses: actions/setup-go@v6

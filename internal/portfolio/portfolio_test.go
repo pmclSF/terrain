@@ -1,6 +1,7 @@
 package portfolio
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/models"
@@ -31,6 +32,18 @@ func withCodeUnits(units ...models.CodeUnit) func(*models.TestSuiteSnapshot) {
 	return func(snap *models.TestSuiteSnapshot) {
 		snap.CodeUnits = units
 	}
+}
+
+func stringSlicesEqual(got, want []string) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // --- BuildAssets tests ---
@@ -633,6 +646,253 @@ func TestToModel_Basic(t *testing.T) {
 	}
 	if model.Findings[0].Confidence != "high" {
 		t.Errorf("expected confidence high, got %s", model.Findings[0].Confidence)
+	}
+}
+
+func TestAggregateManifest_PrefixesAssetsAndDetectsFrameworkDrift(t *testing.T) {
+	t.Parallel()
+
+	manifest := &RepoManifest{
+		Version:     1,
+		Description: "Acme portfolio",
+		Repos: []RepoEntry{
+			{
+				Name:               "web-app",
+				Path:               "../web-app",
+				Owner:              "web-team",
+				FrameworksOfRecord: []string{"jest"},
+				Tags:               []string{"tier-1"},
+			},
+			{
+				Name:               "api-service",
+				SnapshotPath:       "snapshots/api.json",
+				Owner:              "backend-team",
+				FrameworksOfRecord: []string{"jest"},
+				Tags:               []string{"tier-1", "api"},
+			},
+		},
+	}
+	web := makeSnap(withTestFiles(
+		models.TestFile{Path: "tests/home.test.js", Framework: "jest", TestCount: 2},
+	))
+	web.Portfolio = Analyze(web).ToModel()
+
+	api := makeSnap(withTestFiles(
+		models.TestFile{Path: "test/auth.spec.js", Framework: "mocha", TestCount: 4},
+		models.TestFile{Path: "test/payments.spec.js", Framework: "mocha", TestCount: 3},
+	))
+	api.Portfolio = Analyze(api).ToModel()
+
+	got, err := AggregateManifest(manifest, []RepoPortfolioInput{
+		{Entry: manifest.Repos[0], Snapshot: web, ResolvedPath: "/work/web-app"},
+		{Entry: manifest.Repos[1], Snapshot: api, ResolvedSnapshotPath: "/work/snaps/api.json", LoadedFromSnapshot: true},
+	})
+	if err != nil {
+		t.Fatalf("AggregateManifest: %v", err)
+	}
+
+	if got.Scope != ScopeMultiRepo {
+		t.Fatalf("Scope = %q, want %q", got.Scope, ScopeMultiRepo)
+	}
+	if got.Aggregates.TotalRepos != 2 {
+		t.Errorf("TotalRepos = %d, want 2", got.Aggregates.TotalRepos)
+	}
+	if got.Aggregates.TotalAssets != 3 {
+		t.Errorf("TotalAssets = %d, want 3", got.Aggregates.TotalAssets)
+	}
+	if got.Aggregates.FrameworkDriftCount != 1 {
+		t.Errorf("FrameworkDriftCount = %d, want 1", got.Aggregates.FrameworkDriftCount)
+	}
+	if len(got.Repositories) != 2 {
+		t.Fatalf("repositories = %d, want 2", len(got.Repositories))
+	}
+	if got.Repositories[1].Status != "drift" {
+		t.Errorf("api-service status = %q, want drift", got.Repositories[1].Status)
+	}
+	if len(got.Repositories[1].DriftFrameworks) != 1 || got.Repositories[1].DriftFrameworks[0].Name != "mocha" {
+		t.Fatalf("api-service drift frameworks = %+v, want mocha", got.Repositories[1].DriftFrameworks)
+	}
+
+	var apiAssetFound bool
+	for _, asset := range got.Assets {
+		if asset.Path == "api-service/test/auth.spec.js" {
+			apiAssetFound = true
+			if asset.Repo != "api-service" {
+				t.Errorf("asset repo = %q, want api-service", asset.Repo)
+			}
+			if asset.Owner != "backend-team" {
+				t.Errorf("asset owner = %q, want backend-team", asset.Owner)
+			}
+			if len(asset.Tags) != 2 {
+				t.Errorf("asset tags = %+v, want manifest tags", asset.Tags)
+			}
+		}
+	}
+	if !apiAssetFound {
+		t.Fatalf("expected prefixed api asset, got %+v", got.Assets)
+	}
+
+	var driftFindingFound bool
+	for _, finding := range got.Findings {
+		if finding.Type == FindingFrameworkDrift && finding.Repo == "api-service" {
+			driftFindingFound = true
+			if finding.Owner != "backend-team" {
+				t.Errorf("drift owner = %q, want backend-team", finding.Owner)
+			}
+			if finding.Metadata["frameworksOfRecord"] == nil {
+				t.Errorf("drift metadata missing frameworksOfRecord: %+v", finding.Metadata)
+			}
+		}
+	}
+	if !driftFindingFound {
+		t.Fatalf("expected framework drift finding, got %+v", got.Findings)
+	}
+}
+
+func TestAggregateManifest_RejectsOutOfOrderInputs(t *testing.T) {
+	t.Parallel()
+
+	manifest := &RepoManifest{
+		Version: 1,
+		Repos: []RepoEntry{
+			{Name: "web-app", Path: "../web-app"},
+			{Name: "api-service", SnapshotPath: "snapshots/api.json"},
+		},
+	}
+
+	snap := makeSnap(withTestFiles(models.TestFile{
+		Path:      "tests/home.test.js",
+		Framework: "jest",
+		TestCount: 1,
+	}))
+	snap.Portfolio = Analyze(snap).ToModel()
+
+	_, err := AggregateManifest(manifest, []RepoPortfolioInput{
+		{Entry: manifest.Repos[1], Snapshot: snap},
+		{Entry: manifest.Repos[0], Snapshot: snap},
+	})
+	if err == nil {
+		t.Fatal("AggregateManifest succeeded with out-of-order inputs")
+	}
+	if !strings.Contains(err.Error(), `repo input #1 is for "api-service", expected "web-app"`) {
+		t.Fatalf("error = %q, want manifest order mismatch", err)
+	}
+}
+
+func TestAggregateManifest_SanitizesRepoPrefixedPathsAndTags(t *testing.T) {
+	t.Parallel()
+
+	manifest := &RepoManifest{
+		Version: 1,
+		Repos: []RepoEntry{
+			{
+				Name:         "api-service",
+				SnapshotPath: "snapshots/api.json",
+				Owner:        "backend-team",
+				Tags:         []string{"tier-1", " tier-1 ", "", "api"},
+			},
+		},
+	}
+	repoPortfolio := &models.PortfolioSnapshot{
+		Assets: []models.PortfolioAsset{
+			{
+				Path:  "../outside.test.js",
+				Owner: "unknown",
+				Tags:  []string{"asset", "", "tier-1"},
+			},
+			{
+				Path:  "/abs/path.test.js",
+				Owner: "backend-team",
+				Tags:  []string{" api "},
+			},
+		},
+		Findings: []models.PortfolioFinding{
+			{
+				Type:         FindingOverbroad,
+				Path:         "../outside.test.js",
+				RelatedPaths: []string{"../related.test.js", "/abs/path.test.js"},
+				Owner:        "unowned",
+			},
+		},
+		Aggregates: models.PortfolioAggregates{TotalAssets: 2},
+	}
+	snap := makeSnap()
+	snap.Portfolio = repoPortfolio
+
+	got, err := AggregateManifest(manifest, []RepoPortfolioInput{
+		{Entry: manifest.Repos[0], Snapshot: snap, ResolvedSnapshotPath: "/work/snaps/api.json", LoadedFromSnapshot: true},
+	})
+	if err != nil {
+		t.Fatalf("AggregateManifest: %v", err)
+	}
+
+	paths := make([]string, 0, len(got.Assets))
+	for _, asset := range got.Assets {
+		paths = append(paths, asset.Path)
+		if !strings.HasPrefix(asset.Path, "api-service/") {
+			t.Fatalf("asset path %q is not repo-prefixed", asset.Path)
+		}
+		if strings.Contains(asset.Path, "..") {
+			t.Fatalf("asset path %q preserved traversal segments", asset.Path)
+		}
+		if asset.Path == "api-service/outside.test.js" {
+			want := []string{"asset", "tier-1", "api"}
+			if !stringSlicesEqual(asset.Tags, want) {
+				t.Fatalf("asset tags = %+v, want %+v", asset.Tags, want)
+			}
+			if asset.Owner != "backend-team" {
+				t.Fatalf("asset owner = %q, want backend-team", asset.Owner)
+			}
+		}
+	}
+	if !stringSlicesEqual(paths, []string{"api-service/abs/path.test.js", "api-service/outside.test.js"}) {
+		t.Fatalf("asset paths = %+v, want sanitized repo-prefixed paths", paths)
+	}
+
+	if len(got.Findings) != 1 {
+		t.Fatalf("findings = %+v, want one finding", got.Findings)
+	}
+	finding := got.Findings[0]
+	if finding.Path != "api-service/outside.test.js" {
+		t.Fatalf("finding path = %q, want sanitized repo-prefixed path", finding.Path)
+	}
+	if !stringSlicesEqual(finding.RelatedPaths, []string{"api-service/related.test.js", "api-service/abs/path.test.js"}) {
+		t.Fatalf("related paths = %+v, want sanitized repo-prefixed paths", finding.RelatedPaths)
+	}
+	if finding.Owner != "backend-team" {
+		t.Fatalf("finding owner = %q, want backend-team", finding.Owner)
+	}
+}
+
+func TestAggregateManifest_RepairsStaleRepoAssetCount(t *testing.T) {
+	t.Parallel()
+
+	manifest := &RepoManifest{
+		Version: 1,
+		Repos: []RepoEntry{
+			{Name: "web-app", SnapshotPath: "snapshots/web.json"},
+		},
+	}
+	snap := makeSnap()
+	snap.Portfolio = &models.PortfolioSnapshot{
+		Assets: []models.PortfolioAsset{
+			{Path: "tests/home.test.js"},
+			{Path: "tests/settings.test.js"},
+		},
+		Aggregates: models.PortfolioAggregates{TotalAssets: 0},
+	}
+
+	got, err := AggregateManifest(manifest, []RepoPortfolioInput{
+		{Entry: manifest.Repos[0], Snapshot: snap, ResolvedSnapshotPath: "/work/snaps/web.json", LoadedFromSnapshot: true},
+	})
+	if err != nil {
+		t.Fatalf("AggregateManifest: %v", err)
+	}
+	if got.Repositories[0].AssetCount != 2 {
+		t.Fatalf("repo asset count = %d, want 2", got.Repositories[0].AssetCount)
+	}
+	if got.Aggregates.TotalAssets != 2 {
+		t.Fatalf("aggregate total assets = %d, want 2", got.Aggregates.TotalAssets)
 	}
 }
 

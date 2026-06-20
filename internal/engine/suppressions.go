@@ -130,9 +130,9 @@ func warnIfFindingIDIsAliased(e suppression.Entry, reg *aliases.Registry) {
 // CI users believe their suppressions are active when they're not.
 //
 // Called from RunPipelineContext after FindingID assignment.
-func applySuppressions(snap *models.TestSuiteSnapshot, root, override string, now time.Time) {
+func applySuppressions(snap *models.TestSuiteSnapshot, root, override string, now time.Time) error {
 	if snap == nil {
-		return
+		return nil
 	}
 	path := override
 	if path == "" {
@@ -140,24 +140,20 @@ func applySuppressions(snap *models.TestSuiteSnapshot, root, override string, no
 	}
 	result, err := suppression.Load(path)
 	if err != nil {
-		// Malformed file — log and skip, but emit a signal so the
-		// user sees it in the report. Don't fail the whole pipeline:
-		// CI users who fat-finger a YAML edit shouldn't lose their
-		// analysis.
 		logging.L().Warn("could not load suppressions",
 			"path", path,
 			"error", err.Error(),
 		)
-		return
+		return fmt.Errorf("load suppressions %s: %w", path, err)
 	}
 	if result == nil || (len(result.Entries) == 0 && len(result.Warnings) == 0) {
-		return
+		return nil
 	}
 	for _, w := range result.Warnings {
 		logging.L().Warn("suppressions: " + w)
 	}
 	if len(result.Entries) == 0 {
-		return
+		return nil
 	}
 
 	// Expand aliases so suppressions on pre-split rule_ids continue to
@@ -210,4 +206,5 @@ func applySuppressions(snap *models.TestSuiteSnapshot, root, override string, no
 			"expired", len(expired),
 		)
 	}
+	return nil
 }

@@ -67,11 +67,14 @@ func TestHardcodedAPIKey_IgnoresPlaceholders(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
+	openAIPlaceholder := "sk-" + "fake-key-do-not-use-replace-with-real"
+	awsPlaceholder := "AKIA" + "XXXXXXXXXXXXXXXX"
+	githubPlaceholder := "ghp_" + "exampleexampleexampleexampleexample"
 	rel := writeFile(t, root, "evals/example.yaml", `
 provider:
-  api_key: sk-fake-key-do-not-use-replace-with-real
-  another:  AKIAXXXXXXXXXXXXXXXX
-  also:     ghp_exampleexampleexampleexampleexample
+  api_key: `+openAIPlaceholder+`
+  another:  `+awsPlaceholder+`
+  also:     `+githubPlaceholder+`
 `)
 	snap := &models.TestSuiteSnapshot{
 		TestFiles: []models.TestFile{{Path: rel}},

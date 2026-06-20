@@ -43,9 +43,9 @@ An eval-directory file contains PII-shaped values — emails, phone numbers, SSN
 
 ## 3. What this catches
 
-- A `.csv` under `evals/` whose rows include `alice@example.com` / `555-12-3456` / `555-867-5309`
-- A `.jsonl` eval fixture with `{"input": "Send a receipt to alice@example.com"}`
-- A `.yaml` eval scenario whose expected output replays a real customer support ticket containing PII
+- A `.csv` under `evals/` whose rows include email-, SSN-, or phone-shaped values copied from production
+- A `.jsonl` eval fixture whose prompt asks the model to send a receipt to a real user address
+- A `.yaml` eval scenario whose expected output replays a production support ticket containing PII
 - A Python docstring example in `evals/regression.py` that embeds a phone number
 
 ## 4. Why this matters
@@ -59,14 +59,14 @@ The rule fires on a structural fact — PII-shaped values in eval-directory file
 - **Approach:** path filter (eval directories) + content scan with PII regex vocabulary.
 - **Paths considered:** `/eval/`, `/evals/`, `/evaluations/`, `/__evals__/`.
 - **File types scanned:** `.yaml`, `.yml`, `.json`, `.jsonl`, `.csv`, `.tsv`, `.txt`, `.py`, `.md`. Binary / model artifact extensions skipped.
-- **PII vocabulary at 0.2.0:**
+- **PII vocabulary in 0.3.0:**
   - Email — `local@domain.tld`
   - US SSN — 3-2-4 digit groups with leading digit ≠ 9
   - US phone — NPA-NXX-XXXX with optional `+1` and any separator
   - IPv4 — dotted-quad
   - Credit card — 13-19 digit run with optional separators, leading digit 3/4/5/6
 - **Confidence ladder:** single PII kind = 0.75; two kinds = 0.88; three or more = 0.95. Multi-kind matches are harder to explain as false positives.
-- **Edge cases NOT handled at 0.2.0:** Microsoft Presidio integration for richer NER (names, addresses, custom entity types). Track follow-up: `internal/security/presidio_adapter.go` opt-in path.
+- **Edge cases NOT handled in 0.3.0:** Microsoft Presidio integration for richer NER (names, addresses, custom entity types). Track follow-up: `internal/security/presidio_adapter.go` opt-in path.
 
 ## 6. Worked example
 
@@ -82,7 +82,7 @@ critical[terrain/security/pii-in-eval]: eval-directory file contains PII-shaped 
 ```
 # evals/customer_support.csv
 ticket_id,subject,body
-1234,Account help,"Hi, this is Alice at alice@example.com, phone 555-867-5309, SSN 555-12-3456"
+1234,Account help,"<production message containing email, phone, and SSN-shaped values>"
 ```
 
 **After:**
@@ -90,7 +90,7 @@ ticket_id,subject,body
 ```
 # evals/customer_support.csv
 ticket_id,subject,body
-1234,Account help,"Hi, this is Customer at user@example.com, phone 555-000-0000, SSN redacted"
+1234,Account help,"Synthetic customer fixture with email, phone, and SSN fields redacted or generated from a faker library"
 ```
 
 ## 7. Configuration
@@ -106,12 +106,12 @@ ignore:
 
 ## 8. False-positive characterization
 
-- **Synthetic data that happens to match a PII regex** (e.g., `555-867-5309` is a famously-fictitious phone number that still matches the US phone pattern). Mitigation: ignore via path, or downgrade to high.
+- **Synthetic data that happens to match a PII regex** (for example, famously fictitious phone-number values can still match the US phone pattern). Mitigation: ignore via path, or downgrade to high.
 - **Email-shaped strings in code samples** (e.g., `email_regex = r"[A-Za-z0-9._%+\-]+@..."`). The rule scans line-by-line and doesn't distinguish a regex literal from data. Mitigation: ignore the file, or move the example out of `/evals/`.
 - **Test fixtures intentionally using `example.com` / `noreply@example.com`** — `example.com` is RFC-2606 reserved for examples but the regex matches. Mitigation: same.
-- **Measured FP rate at last validation:** see the per-rule readiness card.
+- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
-Stable rules must clear the FP-rate bar set in the release readiness criteria. Adopters report false positives via the GitHub issue tracker with the originating snippet.
+When a measured readiness card is published for this rule, it carries the FP-rate evidence for the release. Adopters report false positives via the GitHub issue tracker with the originating snippet.
 
 ## 9. Reproducibility
 
@@ -121,7 +121,7 @@ terrain test --selector security/pii-in-eval
 
 ## 10. Stability commitment
 
-Rule ID, severity, and the PII vocabulary at 0.2.0 (email / SSN / phone-us / IPv4 / credit-card) are stable. Adding new entity types is additive and documented in CHANGELOG; removing types from the default set is deprecation-cycled.
+Rule ID, severity, and the current PII vocabulary (email / SSN / phone-us / IPv4 / credit-card) are stable from v0.2.0. Adding new entity types is additive and documented in CHANGELOG; removing types from the default set is deprecation-cycled.
 
 ## 11. Related rules
 

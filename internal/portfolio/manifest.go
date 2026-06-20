@@ -14,21 +14,13 @@ import (
 // declaration that lets Terrain aggregate over more than one
 // repository. The manifest enumerates each repo Terrain should
 // aggregate over, plus per-repo metadata that the cross-repo
-// aggregator (when fully shipped) uses to compute portfolio-level
-// posture.
+// aggregator uses to compute portfolio-level posture.
 //
-// Status: **Tier 3 / experimental.** The schema is locked, but the
-// cross-repo aggregation engine is partial and the public claim
-// ("multi-repo control plane") is explicitly marked emerging in the
-// README + feature-status doc. Adopters who hand-roll a `repos.yaml`
-// today get a forward-compatible file format.
-//
-// Pillar-priority: Align is a secondary pillar with floor ≥ 3 soft
-// (warn-only). Shipping the manifest format without the full
-// aggregator is acceptable provided the marketing reflects that —
-// which `docs/release/feature-status.md` does.
+// Status: stable in 0.3.0. The schema supports live repo paths and
+// saved snapshot paths; aggregate JSON fields may still grow additively
+// under the normal Terrain schema compatibility rules.
 type RepoManifest struct {
-	// Version is the manifest schema version. 0.2 ships v1; later
+	// Version is the manifest schema version. 0.3 ships v1; later
 	// schema changes that aren't strictly additive will bump this.
 	// A loader that finds an unrecognized version refuses to load
 	// rather than guessing.
@@ -131,8 +123,9 @@ func validateRepoManifest(m *RepoManifest) error {
 	if m == nil {
 		return errors.New("manifest is nil")
 	}
+	m.Description = strings.TrimSpace(m.Description)
 	if m.Version == 0 {
-		return errors.New("manifest 'version' field is required (use 'version: 1' for 0.2)")
+		return errors.New("manifest 'version' field is required (use 'version: 1' for 0.3)")
 	}
 	if m.Version != supportedManifestVersion {
 		return fmt.Errorf("unsupported manifest version %d (this build supports version %d)",
@@ -145,8 +138,19 @@ func validateRepoManifest(m *RepoManifest) error {
 	seenNames := map[string]int{}
 	for i, repo := range m.Repos {
 		idx := i + 1
-		if strings.TrimSpace(repo.Name) == "" {
+		repo.Name = strings.TrimSpace(repo.Name)
+		repo.Path = strings.TrimSpace(repo.Path)
+		repo.SnapshotPath = strings.TrimSpace(repo.SnapshotPath)
+		repo.Owner = strings.TrimSpace(repo.Owner)
+		repo.FrameworksOfRecord = normalizeManifestList(repo.FrameworksOfRecord, true)
+		repo.Tags = normalizeManifestList(repo.Tags, false)
+		m.Repos[i] = repo
+
+		if repo.Name == "" {
 			return fmt.Errorf("repo #%d: 'name' is required", idx)
+		}
+		if !isSafeRepoName(repo.Name) {
+			return fmt.Errorf("repo #%d: name %q must be a safe path segment (no slashes, backslashes, '.' or '..')", idx, repo.Name)
 		}
 		if dup, ok := seenNames[repo.Name]; ok {
 			return fmt.Errorf("repo #%d: duplicate name %q (already used at #%d)",
@@ -154,11 +158,35 @@ func validateRepoManifest(m *RepoManifest) error {
 		}
 		seenNames[repo.Name] = idx
 
-		if strings.TrimSpace(repo.Path) == "" && strings.TrimSpace(repo.SnapshotPath) == "" {
+		if repo.Path == "" && repo.SnapshotPath == "" {
 			return fmt.Errorf("repo %q: must set 'path' or 'snapshotPath'", repo.Name)
 		}
 	}
 	return nil
+}
+
+func isSafeRepoName(name string) bool {
+	if name == "" || name == "." || name == ".." {
+		return false
+	}
+	return !strings.ContainsAny(name, `/\`)
+}
+
+func normalizeManifestList(values []string, lower bool) []string {
+	seen := map[string]bool{}
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if lower {
+			value = strings.ToLower(value)
+		}
+		if value == "" || seen[value] {
+			continue
+		}
+		seen[value] = true
+		out = append(out, value)
+	}
+	return out
 }
 
 // ResolveRepoPath resolves a RepoEntry's on-disk path or snapshot

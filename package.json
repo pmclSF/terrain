@@ -1,6 +1,6 @@
 {
   "name": "mapterrain",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Terrain test intelligence CLI.",
   "type": "module",
   "bin": {
@@ -24,7 +24,7 @@
   "scripts": {
     "postinstall": "node bin/postinstall.js",
     "test": "npm run test:unit && node scripts/verify-pack.js",
-    "test:unit": "node --test scripts/test-installer-marker.mjs",
+    "test:unit": "node --test scripts/test-installer-marker.mjs scripts/test-release-sanity.mjs",
     "lint": "eslint \"bin/*.js\" \"scripts/*.js\" \"scripts/*.mjs\"",
     "format": "prettier --write \"bin/*.js\" \"scripts/*.js\" \"scripts/*.mjs\"",
     "format:check": "prettier --check \"bin/*.js\" \"scripts/*.js\" \"scripts/*.mjs\"",

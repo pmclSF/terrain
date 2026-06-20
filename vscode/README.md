@@ -1,17 +1,19 @@
-# Terrain — VS Code
+# Terrain — legacy VS Code prototype
 
-Surfaces findings from the most recent `terrain analyze` run in the VS Code Problems pane, with click-to-navigate and hover diagnostics.
+This directory contains an older VS Code diagnostics prototype kept for reference. The shipped 0.3.0 extension alpha lives in [`extension/vscode/`](../extension/vscode/), and its public behavior is documented in [`docs/vscode-extension.md`](../docs/vscode-extension.md).
+
+This prototype is not published to the VS Code Marketplace, not part of `make extension-verify`, and not the release extension.
 
 ## Setup
 
 1. Install [Terrain](https://github.com/pmclSF/terrain).
-2. Install this extension from the Marketplace.
+2. Build or package this prototype locally if you need to inspect the older diagnostics experiment.
 3. Run `terrain analyze` (or any subcommand that emits findings.json) in your repo. The extension auto-loads `.terrain/findings.json`.
 
-## Features
+## Prototype capabilities
 
-- **Problems pane integration** — Every Finding shows up with severity (error / warning / notice) and a clickable rule ID linking to the canonical docs.
-- **Click-to-navigate** — Click a Finding in Problems and jump to its `primary_loc`.
+- **Diagnostic rendering experiment** — Findings render with severity and a clickable rule ID linking to the canonical docs.
+- **Click-to-navigate** — Click a Finding and jump to its `primary_loc`.
 - **Hover diagnostics** — Hover the underlined source location to see the long message, cause-path chain, and the exact CLI command to reproduce locally.
 - **Auto-refresh** — The extension watches `.terrain/findings.json` and refreshes when it changes.
 
@@ -34,5 +36,4 @@ npm run compile
 npm run package
 ```
 
-The packaged `.vsix` can be installed locally or published with `vsce publish`.
-
+The packaged `.vsix` can be installed locally for prototype testing. The 0.3.0 release does not publish this package.

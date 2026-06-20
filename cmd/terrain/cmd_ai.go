@@ -2,17 +2,21 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/pmclSF/terrain/internal/aidetect"
 	"github.com/pmclSF/terrain/internal/airun"
+	"github.com/pmclSF/terrain/internal/atomicfile"
 	"github.com/pmclSF/terrain/internal/comparison"
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/impact"
@@ -349,6 +353,14 @@ type aiRunSignalEntry = airun.SignalEntry
 type aiRunDecision = airun.Decision
 
 func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) error {
+	return runAIRunWithTimeout(root, jsonOutput, baseRef, full, dryRun, 0)
+}
+
+func runAIRunWithTimeout(root string, jsonOutput bool, baseRef string, full, dryRun bool, timeout time.Duration) error {
+	if timeout < 0 {
+		return fmt.Errorf("timeout must be non-negative (got %s)", timeout)
+	}
+
 	// Step 1: Run pipeline.
 	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
@@ -439,15 +451,7 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	var execErr error
 	var stderrBuf bytes.Buffer
 	if !dryRun && len(cmdArgs) > 0 {
-		execCmd := exec.Command(cmdArgs[0], cmdArgs[1:]...)
-		execCmd.Dir = root
-		if jsonOutput {
-			execCmd.Stderr = &stderrBuf
-		} else {
-			execCmd.Stdout = os.Stdout
-			execCmd.Stderr = os.Stderr
-		}
-		execErr = execCmd.Run()
+		execErr = runEvalCommand(root, cmdArgs, jsonOutput, timeout, &stderrBuf)
 	}
 
 	// Step 5b: If the framework wrote structured results, parse them
@@ -471,7 +475,7 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 				fmt.Fprintln(os.Stderr, "  - Output format changed across Promptfoo majors (v3 vs v4 nest results differently)")
 				fmt.Fprintln(os.Stderr, "  - The CLI didn't write the file (check the exit code of the eval command)")
 			case "deepeval":
-				fmt.Fprintln(os.Stderr, "  - DeepEval was invoked without --export <path>")
+				fmt.Fprintln(os.Stderr, "  - DeepEval did not write the expected JSON run artifact")
 				fmt.Fprintln(os.Stderr, "  - Output JSON has no `testCases` array (empty run?)")
 			case "ragas":
 				fmt.Fprintln(os.Stderr, "  - Ragas write step truncated; expected a `results` / `evaluation_results` / `scores` array")
@@ -590,8 +594,13 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	}
 
 	if dryRun {
-		fmt.Println("[dry-run] Would execute:")
-		fmt.Printf("  %s\n", strings.Join(cmdArgs, " "))
+		if len(cmdArgs) > 0 {
+			fmt.Println("[dry-run] Would execute:")
+			fmt.Printf("  %s\n", strings.Join(cmdArgs, " "))
+		} else {
+			fmt.Println("[dry-run] No executable eval command inferred.")
+			fmt.Println("Use artifact ingestion flags such as --promptfoo-results, --deepeval-results, --ragas-results, or --great-expectations-results with terrain analyze when your framework needs a custom wrapper.")
+		}
 		fmt.Println()
 		fmt.Println("No execution performed.")
 		return nil
@@ -643,6 +652,45 @@ func runAIRun(root string, jsonOutput bool, baseRef string, full, dryRun bool) e
 	return nil
 }
 
+func runEvalCommand(root string, cmdArgs []string, jsonOutput bool, timeout time.Duration, stderrBuf *bytes.Buffer) error {
+	if len(cmdArgs) == 0 {
+		return nil
+	}
+	if timeout < 0 {
+		return fmt.Errorf("timeout must be non-negative (got %s)", timeout)
+	}
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	if timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+
+	execCmd := exec.CommandContext(ctx, cmdArgs[0], cmdArgs[1:]...)
+	execCmd.Dir = root
+	configureEvalCommandForCancellation(execCmd)
+	execCmd.WaitDelay = 2 * time.Second
+	if jsonOutput {
+		if stderrBuf != nil {
+			execCmd.Stderr = stderrBuf
+		}
+	} else {
+		execCmd.Stdout = os.Stdout
+		execCmd.Stderr = os.Stderr
+	}
+
+	err := execCmd.Run()
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		if timeout > 0 && ctxErr == context.DeadlineExceeded {
+			return fmt.Errorf("eval command timed out after %s: %w", timeout, ctxErr)
+		}
+		return fmt.Errorf("eval command cancelled: %w", ctxErr)
+	}
+	return err
+}
+
 // aiRunHeroLines maps the (action, reason, signalCount) triple to
 // the verdict + headline pair the hero block renders. Centralized so
 // the same wording flows into JSON output, terminal output, and
@@ -677,7 +725,37 @@ func aiRunHeroLines(action, reason string, signalCount int) (verdict, headline s
 // be asked to write its result to. Each terrain ai run owns its own
 // temp file; cleanup happens after parse.
 func newEvalOutputPath(framework string) string {
-	return filepath.Join(os.TempDir(), fmt.Sprintf("terrain-ai-run-%s-%d.json", framework, os.Getpid()))
+	safeFramework := sanitizeEvalOutputComponent(framework)
+	f, err := os.CreateTemp("", "terrain-ai-run-"+safeFramework+"-*.json")
+	if err != nil {
+		return filepath.Join(os.TempDir(), fmt.Sprintf("terrain-ai-run-%s-%d-%d.json", safeFramework, os.Getpid(), time.Now().UnixNano()))
+	}
+	path := f.Name()
+	_ = f.Close()
+	_ = os.Remove(path)
+	return path
+}
+
+func sanitizeEvalOutputComponent(value string) string {
+	safe := strings.Map(func(r rune) rune {
+		switch {
+		case r >= 'a' && r <= 'z':
+			return r
+		case r >= 'A' && r <= 'Z':
+			return r
+		case r >= '0' && r <= '9':
+			return r
+		case r == '-' || r == '_':
+			return r
+		default:
+			return '-'
+		}
+	}, value)
+	safe = strings.Trim(safe, "-")
+	if safe == "" {
+		return "eval"
+	}
+	return safe
 }
 
 // loadEvalRunByFramework picks the right airun adapter for the
@@ -724,24 +802,39 @@ func buildEvalCommandWithOutput(framework string, det *aidetect.DetectResult, se
 	case "deepeval":
 		return []string{"deepeval", "test", "run"}, ""
 	case "ragas":
-		return []string{"python", "-m", "ragas", "evaluate"}, ""
+		return buildGenericEvalCommand(selected, snap, true), ""
 	case "langsmith":
 		return []string{"langsmith", "test", "run"}, ""
 	}
 
-	// Generic: run eval files with detected test runner.
+	return buildGenericEvalCommand(selected, snap, false), ""
+}
+
+// buildGenericEvalCommand runs selected eval files through the repo's known
+// test runner. For Ragas, prefer a single Python script fallback over inventing
+// a framework CLI command that may not exist for the user's project shape.
+func buildGenericEvalCommand(selected []aiRunScenario, snap *models.TestSuiteSnapshot, preferSinglePythonScript bool) []string {
 	var evalFiles []string
+	seen := map[string]bool{}
 	for _, sc := range selected {
-		if sc.Path != "" {
+		if sc.Path != "" && !seen[sc.Path] {
+			seen[sc.Path] = true
 			evalFiles = append(evalFiles, sc.Path)
 		}
 	}
 	if len(evalFiles) == 0 {
-		return nil, ""
+		return nil
 	}
 
+	selectedPaths := map[string]bool{}
+	for _, p := range evalFiles {
+		selectedPaths[p] = true
+	}
 	runner := []string{"npx", "vitest", "run"}
 	for _, tf := range snap.TestFiles {
+		if len(selectedPaths) > 0 && tf.Path != "" && !selectedPaths[tf.Path] {
+			continue
+		}
 		if tf.Framework == "pytest" {
 			runner = []string{"pytest"}
 			break
@@ -751,7 +844,17 @@ func buildEvalCommandWithOutput(framework string, det *aidetect.DetectResult, se
 			break
 		}
 	}
-	return append(runner, evalFiles...), ""
+
+	if preferSinglePythonScript && len(runner) >= 1 && runner[0] == "pytest" {
+		return append(runner, evalFiles...)
+	}
+	if preferSinglePythonScript && len(evalFiles) == 1 && filepath.Ext(evalFiles[0]) == ".py" {
+		return []string{"python", evalFiles[0]}
+	}
+	if preferSinglePythonScript {
+		return nil
+	}
+	return append(runner, evalFiles...)
 }
 
 func evaluateAIRunDecision(snap *models.TestSuiteSnapshot, result *engine.PipelineResult) aiRunDecision {
@@ -848,7 +951,7 @@ func runAIRecord(root string, jsonOutput bool) error {
 		return fmt.Errorf("encoding baseline: %w", err)
 	}
 	blPath := filepath.Join(baselineDir, "latest.json")
-	if err := os.WriteFile(blPath, data, 0o644); err != nil {
+	if err := atomicfile.WriteFile(blPath, data, 0o644); err != nil {
 		return fmt.Errorf("writing baseline: %w", err)
 	}
 

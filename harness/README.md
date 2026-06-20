@@ -10,7 +10,7 @@ harness/
 ├── corpora/             — hand-labeled PR corpora
 ├── runner/              — entry points that invoke Terrain on each labeled PR
 ├── validators/          — automated checks (FP rate, recall, schema, runtime, etc.)
-├── readiness/           — per-rule readiness cards per release
+├── readiness/           — readiness-card template and future per-release measured cards
 ├── canary/              — sealed canary set for PR-scoped false-positive measurement
 ├── recall-harnesses/    — per-mechanism recall accounting
 ├── regression-suites/   — frozen TP suites per shared module

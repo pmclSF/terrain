@@ -97,15 +97,19 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -o /out/terrain ./cmd/terrain
+RUN CGO_ENABLED=1 go build -o /out/terrain ./cmd/terrain
 
-FROM gcr.io/distroless/static-debian12:nonroot
+FROM gcr.io/distroless/cc-debian12:nonroot
 COPY --from=build /out/terrain /usr/local/bin/terrain
 EXPOSE 8080
 ENV TERRAIN_DEV=1
 USER nonroot
 ENTRYPOINT ["/usr/local/bin/terrain", "webhook", "--addr=:8080"]
 ```
+
+Terrain uses CGO-backed tree-sitter parsers, so source builds need a C
+compiler and the runtime image must include the C runtime. The
+pre-built release archives already include the compiled binary.
 
 `TERRAIN_WEBHOOK_SECRET` is set in the deploy environment (Cloud Run
 secret, Fly secret, Kubernetes Secret) — never in the image, never

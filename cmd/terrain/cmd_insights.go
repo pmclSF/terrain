@@ -15,12 +15,22 @@ import (
 	"github.com/pmclSF/terrain/internal/insights"
 	"github.com/pmclSF/terrain/internal/matrix"
 	"github.com/pmclSF/terrain/internal/metrics"
+	"github.com/pmclSF/terrain/internal/models"
+	portfoliolib "github.com/pmclSF/terrain/internal/portfolio"
 	"github.com/pmclSF/terrain/internal/reporting"
 	"github.com/pmclSF/terrain/internal/stability"
 	"github.com/pmclSF/terrain/internal/summary"
 )
 
 func runPortfolio(root string, jsonOutput, verbose bool) error {
+	return runPortfolioWithManifest(root, "", jsonOutput, verbose)
+}
+
+func runPortfolioWithManifest(root, manifestPath string, jsonOutput, verbose bool) error {
+	if manifestPath != "" {
+		return runPortfolioManifest(manifestPath, jsonOutput, verbose)
+	}
+
 	result, err := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOutput))
 	if err != nil {
 		// Designed remediation when portfolio analysis fails.
@@ -34,7 +44,7 @@ func runPortfolio(root string, jsonOutput, verbose bool) error {
 			fmt.Fprintln(os.Stderr, "  - --root path is not a git repository (some detectors need git history)")
 			fmt.Fprintln(os.Stderr, "  - Permission errors walking the repo tree")
 			fmt.Fprintln(os.Stderr)
-			fmt.Fprintln(os.Stderr, "Multi-repo workflows: see docs/schema/portfolio.md for the .terrain/repos.yaml shape (currently experimental in 0.2.0).")
+			fmt.Fprintln(os.Stderr, "Multi-repo workflows: use `terrain portfolio --from .terrain/repos.yaml` to aggregate a manifest.")
 		}
 		return fmt.Errorf("analysis failed: %w", err)
 	}
@@ -46,6 +56,66 @@ func runPortfolio(root string, jsonOutput, verbose bool) error {
 	}
 
 	reporting.RenderPortfolioReport(os.Stdout, result.Snapshot, reporting.ReportOptions{Verbose: verbose})
+	return nil
+}
+
+func runPortfolioManifest(manifestPath string, jsonOutput, verbose bool) error {
+	absManifest, err := filepath.Abs(manifestPath)
+	if err != nil {
+		return fmt.Errorf("resolve manifest path: %w", err)
+	}
+	manifest, err := portfoliolib.LoadRepoManifest(absManifest)
+	if err != nil {
+		return err
+	}
+	manifestDir := filepath.Dir(absManifest)
+	inputs := make([]portfoliolib.RepoPortfolioInput, 0, len(manifest.Repos))
+	for _, repo := range manifest.Repos {
+		repoPath := ""
+		if repo.Path != "" {
+			repoPath = portfoliolib.ResolveRepoPath(manifestDir, portfoliolib.RepoEntry{Path: repo.Path})
+		}
+		snapshotPath := portfoliolib.ResolveSnapshotPath(manifestDir, repo)
+
+		var snapshot *models.TestSuiteSnapshot
+		if snapshotPath != "" {
+			snap, err := loadSnapshot(snapshotPath)
+			if err != nil {
+				return fmt.Errorf("repo %q: load snapshot %s: %w", repo.Name, snapshotPath, err)
+			}
+			snapshot = snap
+		} else {
+			if repoPath == "" {
+				return fmt.Errorf("repo %q: path is required when snapshotPath is not set", repo.Name)
+			}
+			result, err := runPipelineWithSignals(repoPath, defaultPipelineOptionsWithProgress(jsonOutput))
+			if err != nil {
+				return fmt.Errorf("repo %q: analysis failed for %s: %w", repo.Name, repoPath, err)
+			}
+			snapshot = result.Snapshot
+		}
+
+		inputs = append(inputs, portfoliolib.RepoPortfolioInput{
+			Entry:                repo,
+			Snapshot:             snapshot,
+			ResolvedPath:         repoPath,
+			ResolvedSnapshotPath: snapshotPath,
+			LoadedFromSnapshot:   snapshotPath != "",
+		})
+	}
+
+	aggregate, err := portfoliolib.AggregateManifest(manifest, inputs)
+	if err != nil {
+		return err
+	}
+
+	if jsonOutput {
+		enc := json.NewEncoder(os.Stdout)
+		enc.SetIndent("", "  ")
+		return enc.Encode(aggregate)
+	}
+
+	reporting.RenderMultiRepoPortfolioReport(os.Stdout, aggregate, reporting.ReportOptions{Verbose: verbose})
 	return nil
 }
 

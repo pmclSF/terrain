@@ -11,7 +11,8 @@ import (
 // delta exceeds threshold, optional run-level signal); different
 // rule ID and signal type so consumers can branch the rendering.
 //
-// Routing convention at 0.2.0:
+// Planned routing once the standalone regression detectors are wired
+// through the engine registry:
 //
 //   - EvalRun.Framework == promptfoo / deepeval / ragas → use
 //     DetectEvalRegression (LLM rubric scores).

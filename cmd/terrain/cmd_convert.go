@@ -53,6 +53,9 @@ func (e cliExitError) Error() string {
 }
 
 func exitCodeForCLIError(err error) int {
+	if errors.Is(err, errSeverityGateBlocked) {
+		return exitSeverityGateBlock
+	}
 	var exitErr cliExitError
 	if errors.As(err, &exitErr) {
 		return exitErr.code

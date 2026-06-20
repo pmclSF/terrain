@@ -4,17 +4,17 @@ Terrain includes opt-in, local-only telemetry. It is **disabled by default**.
 
 ## What is collected
 
-When enabled, each command invocation appends one JSON line to `~/.terrain/telemetry.jsonl`:
+When enabled, instrumented command paths append JSON lines to `~/.terrain/telemetry.jsonl`:
 
 | Field | Example | Purpose |
 |-------|---------|---------|
 | `ts` | `2099-03-31T12:00:00Z` | When the command ran |
-| `version` | `0.2.0` | Terrain version |
+| `version` | `0.3.0` | Terrain version |
 | `command` | `analyze` | Which command was run |
-| `sizeBand` | `medium` | Test file count band (small/medium/large) |
-| `languages` | `["js","go"]` | Detected languages |
-| `signals` | `12` | Number of signals detected |
 | `durationMs` | `1450` | Execution time |
+| `sizeBand` | `medium` | Optional test file count band (small/medium/large) |
+| `languages` | `["js","go"]` | Optional detected language list |
+| `signals` | `12` | Optional number of signals detected |
 
 ## What is NOT collected
 

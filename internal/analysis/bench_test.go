@@ -210,6 +210,57 @@ func TestFileCache_InvalidateStale(t *testing.T) {
 	}
 }
 
+func TestFileCache_ReadFailureIsNotCached(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+
+	fc := NewFileCache(root)
+	if content, ok := fc.ReadFile("src/later.ts"); ok || content != "" {
+		t.Fatalf("missing file read = (%q, %v), want empty/false", content, ok)
+	}
+
+	writeTempFile(t, root, "src/later.ts", "export const later = true")
+	content, ok := fc.ReadFile("src/later.ts")
+	if !ok {
+		t.Fatal("expected second read to hit disk after the file appears")
+	}
+	if content != "export const later = true" {
+		t.Errorf("content = %q, want newly written file", content)
+	}
+}
+
+func TestFileCache_InvalidateStaleUpdatesByteAccounting(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	writeTempFile(t, root, "src/a.ts", "export function a() {}")
+
+	fc := NewFileCache(root)
+	if _, ok := fc.ReadFile("src/a.ts"); !ok {
+		t.Fatal("expected successful read")
+	}
+
+	fc.mu.RLock()
+	before := fc.totalContentBytes
+	fc.mu.RUnlock()
+	if before <= 0 {
+		t.Fatalf("expected positive byte accounting, got %d", before)
+	}
+
+	time.Sleep(10 * time.Millisecond)
+	writeTempFile(t, root, "src/a.ts", "export function a_v2() {}")
+	stale := fc.InvalidateStale()
+	if len(stale) != 1 || stale[0] != "src/a.ts" {
+		t.Fatalf("stale = %v, want [src/a.ts]", stale)
+	}
+
+	fc.mu.RLock()
+	after := fc.totalContentBytes
+	fc.mu.RUnlock()
+	if after != 0 {
+		t.Errorf("totalContentBytes after invalidation = %d, want 0", after)
+	}
+}
+
 // TestIncrementalState_CarryForward verifies carry-forward logic.
 func TestIncrementalState_CarryForward(t *testing.T) {
 	t.Parallel()

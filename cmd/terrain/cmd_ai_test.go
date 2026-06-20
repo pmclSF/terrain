@@ -1,7 +1,13 @@
 package main
 
 import (
+	"bytes"
+	"errors"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/pmclSF/terrain/internal/aidetect"
 	"github.com/pmclSF/terrain/internal/engine"
@@ -183,14 +189,46 @@ func TestBuildEvalCommand_Deepeval(t *testing.T) {
 	}
 }
 
-func TestBuildEvalCommand_Ragas(t *testing.T) {
+func TestBuildEvalCommand_Ragas_NoScenariosNoCommand(t *testing.T) {
 	t.Parallel()
 	det := &aidetect.DetectResult{}
 	snap := &models.TestSuiteSnapshot{}
 
 	cmd := buildEvalCommand("ragas", det, nil, snap)
-	if len(cmd) != 4 || cmd[0] != "python" {
-		t.Errorf("cmd = %v, want [python -m ragas evaluate]", cmd)
+	if cmd != nil {
+		t.Errorf("expected nil for ragas without selected scenario paths, got %v", cmd)
+	}
+}
+
+func TestBuildEvalCommand_Ragas_SinglePythonScript(t *testing.T) {
+	t.Parallel()
+	det := &aidetect.DetectResult{}
+	snap := &models.TestSuiteSnapshot{}
+	scenarios := []aiRunScenario{
+		{Path: "evals/ragas_eval.py"},
+	}
+
+	cmd := buildEvalCommand("ragas", det, scenarios, snap)
+	if len(cmd) != 2 || cmd[0] != "python" || cmd[1] != "evals/ragas_eval.py" {
+		t.Errorf("cmd = %v, want [python evals/ragas_eval.py]", cmd)
+	}
+}
+
+func TestBuildEvalCommand_Ragas_UsesPytestWhenDetected(t *testing.T) {
+	t.Parallel()
+	det := &aidetect.DetectResult{}
+	snap := &models.TestSuiteSnapshot{
+		TestFiles: []models.TestFile{
+			{Path: "tests/test_ragas_eval.py", Framework: "pytest"},
+		},
+	}
+	scenarios := []aiRunScenario{
+		{Path: "tests/test_ragas_eval.py"},
+	}
+
+	cmd := buildEvalCommand("ragas", det, scenarios, snap)
+	if len(cmd) != 2 || cmd[0] != "pytest" || cmd[1] != "tests/test_ragas_eval.py" {
+		t.Errorf("cmd = %v, want [pytest tests/test_ragas_eval.py]", cmd)
 	}
 }
 
@@ -262,6 +300,85 @@ func TestBuildEvalCommand_Unknown_DetectsJest(t *testing.T) {
 	if cmd[0] != "npx" || cmd[1] != "jest" {
 		t.Errorf("expected jest runner, got %v", cmd[:2])
 	}
+}
+
+func TestRunEvalCommand_Timeout(t *testing.T) {
+	t.Parallel()
+
+	var stderr bytes.Buffer
+	err := runEvalCommand(t.TempDir(), helperTestCommand("terrain-helper-sleep"), true, 20*time.Millisecond, &stderr)
+	if err == nil {
+		t.Fatal("expected timeout error")
+	}
+	if !strings.Contains(err.Error(), "timed out") {
+		t.Fatalf("error should mention timeout, got %v", err)
+	}
+}
+
+func TestRunEvalCommand_JSONCapturesStderr(t *testing.T) {
+	t.Parallel()
+
+	var stderr bytes.Buffer
+	err := runEvalCommand(t.TempDir(), helperTestCommand("terrain-helper-stderr"), true, time.Second, &stderr)
+	if err == nil {
+		t.Fatal("expected command failure")
+	}
+	if !strings.Contains(stderr.String(), "helper stderr") {
+		t.Fatalf("stderr should be captured in JSON mode, got %q", stderr.String())
+	}
+}
+
+func TestNewEvalOutputPath_IsUniqueAndSanitized(t *testing.T) {
+	t.Parallel()
+
+	first := newEvalOutputPath("prompt/foo")
+	second := newEvalOutputPath("prompt/foo")
+	if first == second {
+		t.Fatalf("expected unique paths, got %q twice", first)
+	}
+	base := filepath.Base(first)
+	if strings.ContainsAny(base, `/\`) {
+		t.Fatalf("path base should not contain separators: %q", first)
+	}
+	if !strings.Contains(base, "prompt-foo") {
+		t.Fatalf("path should include sanitized framework name, got %q", first)
+	}
+	if _, err := os.Stat(first); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("newEvalOutputPath should reserve and remove the temp path, stat err=%v", err)
+	}
+}
+
+func TestRunEvalCommand_HelperSleep(t *testing.T) {
+	if !helperMarkerPresent("terrain-helper-sleep") {
+		t.Skip("helper process only")
+	}
+	time.Sleep(5 * time.Second)
+}
+
+func TestRunEvalCommand_HelperStderr(t *testing.T) {
+	if !helperMarkerPresent("terrain-helper-stderr") {
+		t.Skip("helper process only")
+	}
+	_, _ = os.Stderr.WriteString("helper stderr\n")
+	os.Exit(7)
+}
+
+func helperTestCommand(marker string) []string {
+	return []string{
+		os.Args[0],
+		"-test.run=^TestRunEvalCommand_Helper",
+		"--",
+		marker,
+	}
+}
+
+func helperMarkerPresent(marker string) bool {
+	for _, arg := range os.Args {
+		if arg == marker {
+			return true
+		}
+	}
+	return false
 }
 
 // ---------------------------------------------------------------------------
@@ -489,5 +606,13 @@ func TestCliExitError_CarriesCode(t *testing.T) {
 	}
 	if err.Error() != "blocked" {
 		t.Errorf("Error() = %q, want %q", err.Error(), "blocked")
+	}
+}
+
+func TestAIGateBlockExitCodeIsPreserved(t *testing.T) {
+	t.Parallel()
+	err := cliExitError{code: exitAIGateBlock, message: "critical AI signal"}
+	if got := exitCodeForCLIError(err); got != exitAIGateBlock {
+		t.Errorf("exitCodeForCLIError = %d, want AI gate exit code %d", got, exitAIGateBlock)
 	}
 }

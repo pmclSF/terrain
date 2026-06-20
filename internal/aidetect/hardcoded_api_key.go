@@ -337,7 +337,7 @@ func isPlaceholder(match string) bool {
 		}
 	}
 	// Detect "all the same character / mostly zeros" patterns common
-	// in docs (e.g. AKIAXXXXXXXXXXXXXXXX).
+	// in docs, including AWS-key-shaped placeholders.
 	if hasLowEntropy(match) {
 		return true
 	}
@@ -345,7 +345,7 @@ func isPlaceholder(match string) bool {
 }
 
 // hasLowEntropy returns true when the string is dominated by a single
-// repeated character (e.g. "AKIAXXXXXXXXXXXXXXXX"). Real keys are
+// repeated character. Real keys are
 // pseudo-random and never look like this.
 func hasLowEntropy(s string) bool {
 	if len(s) < 12 {

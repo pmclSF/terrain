@@ -144,20 +144,34 @@ func TestNewWithConfig_DefaultsApplied(t *testing.T) {
 	if s.cfg.Port != DefaultPort {
 		t.Errorf("default Port = %d, want %d", s.cfg.Port, DefaultPort)
 	}
+	if !s.readOnly() {
+		t.Error("default ReadOnly should be true")
+	}
 }
 
 func TestNewWithConfig_HonoursOverrides(t *testing.T) {
 	t.Parallel()
 
-	s := NewWithConfig(".", Config{Host: "0.0.0.0", Port: 9999, ReadOnly: true})
+	readOnly := true
+	s := NewWithConfig(".", Config{Host: "0.0.0.0", Port: 9999, ReadOnly: &readOnly})
 	if s.cfg.Host != "0.0.0.0" {
 		t.Errorf("Host override not applied: got %q", s.cfg.Host)
 	}
 	if s.cfg.Port != 9999 {
 		t.Errorf("Port override not applied: got %d", s.cfg.Port)
 	}
-	if !s.cfg.ReadOnly {
+	if !s.readOnly() {
 		t.Errorf("ReadOnly override not applied")
+	}
+}
+
+func TestNewWithConfig_AllowsReadOnlyOptOut(t *testing.T) {
+	t.Parallel()
+
+	readOnly := false
+	s := NewWithConfig(".", Config{ReadOnly: &readOnly})
+	if s.readOnly() {
+		t.Error("explicit ReadOnly=false should opt out of method rejection")
 	}
 }
 
@@ -172,6 +186,9 @@ func TestNew_BackwardCompat(t *testing.T) {
 	}
 	if s.cfg.Port != DefaultPort {
 		t.Errorf("New(\".\", 0).Port = %d, want %d", s.cfg.Port, DefaultPort)
+	}
+	if !s.readOnly() {
+		t.Error("New(\".\", 0) should default to read-only mode")
 	}
 }
 
@@ -259,6 +276,52 @@ func TestSecurityMiddleware_BlocksHostileOrigin(t *testing.T) {
 	}
 	if strings.Contains(w.Body.String(), "inner") {
 		t.Errorf("hostile-origin should not reach the inner handler")
+	}
+}
+
+func TestSecurityMiddleware_ReadOnlyDefaultBlocksMutatingMethods(t *testing.T) {
+	t.Parallel()
+
+	s := NewWithConfig(".", Config{Host: "127.0.0.1", Port: 8421})
+	handler := s.withSecurity(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("inner"))
+	}))
+
+	req := httptest.NewRequest("POST", "/api/analyze", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusMethodNotAllowed {
+		t.Errorf("read-only POST status = %d, want 405", w.Code)
+	}
+	if strings.Contains(w.Body.String(), "inner") {
+		t.Errorf("read-only POST should not reach the inner handler")
+	}
+	if got := w.Header().Get("Allow"); got != "GET, HEAD, OPTIONS" {
+		t.Errorf("Allow header = %q, want GET, HEAD, OPTIONS", got)
+	}
+}
+
+func TestSecurityMiddleware_ReadOnlyOptOutAllowsMethods(t *testing.T) {
+	t.Parallel()
+
+	readOnly := false
+	s := NewWithConfig(".", Config{Host: "127.0.0.1", Port: 8421, ReadOnly: &readOnly})
+	handler := s.withSecurity(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("inner"))
+	}))
+
+	req := httptest.NewRequest("POST", "/api/analyze", nil)
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("read-only opt-out POST status = %d, want 200", w.Code)
+	}
+	if !strings.Contains(w.Body.String(), "inner") {
+		t.Errorf("read-only opt-out POST should reach the inner handler")
 	}
 }
 

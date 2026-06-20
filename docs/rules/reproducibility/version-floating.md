@@ -73,7 +73,7 @@ The rule consumes parsed dependency manifests from `internal/manifest/` and read
   - `PinningExact` → suppressed
 - **Section step-down:** runtime deps fire at the severity listed above; dev / build / optional deps fire one step lower.
 - **Edge cases handled:** `#egg=` URL fragments preserved as locator metadata; PEP-508 environment markers (`; python_version >= '3.10'`) noted on the dependency but don't change classification
-- **Edge cases NOT handled at 0.2.0:** lockfile-aware suppression (when `package-lock.json` / `poetry.lock` is present, range pins are effectively pinned). Lockfile-aware suppression is future work.
+- **Edge cases NOT handled in 0.3.0:** lockfile-aware suppression (when `package-lock.json` / `poetry.lock` is present, range pins are effectively pinned). Lockfile-aware suppression is future work.
 
 ## 6. Worked example
 
@@ -131,10 +131,10 @@ rules:
 
 ## 8. False-positive characterization
 
-- **Dependencies with a lockfile** — the most common pattern. A range pin in `package.json` is effectively pinned when `package-lock.json` is committed. 0.2.0 doesn't read lockfiles; lockfile-aware suppression is future work. Mitigation today: downgrade severity to `low` and rely on the lockfile for actual reproducibility.
+- **Dependencies with a lockfile** — the most common pattern. A range pin in `package.json` is effectively pinned when `package-lock.json` is committed. 0.3.0 doesn't read lockfiles; lockfile-aware suppression is future work. Mitigation today: downgrade severity to `low` and rely on the lockfile for actual reproducibility.
 - **Git-tag pins** — `git+https://github.com/foo/bar.git@v1.0.0` looks like a moving reference but tags are usually immutable in practice. The rule fires; mitigation is to use a commit SHA, or accept the medium severity.
 - **Editable installs of in-repo packages** — `-e ./path/to/local-pkg` flags as PinningPath and fires at low severity. Generally accurate (the local checkout is what changes), but adopters can ignore via path.
-- **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag.
+- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 

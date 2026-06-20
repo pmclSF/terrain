@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -76,5 +77,34 @@ func TestReportNamespace_ExplainRequiresPositional(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for explain without target, got nil")
+	}
+}
+
+func TestReportNamespace_PRNewFindingsOnlyRequiresBaseline(t *testing.T) {
+	t.Parallel()
+
+	err := runCaptured(func() error {
+		return runReportNamespaceCLI([]string{"pr", "--new-findings-only"})
+	})
+	if err == nil {
+		t.Fatal("expected error for --new-findings-only without --baseline")
+	}
+	if !strings.Contains(err.Error(), "--new-findings-only requires --baseline") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestRunPR_NewFindingsOnlyRequiresBaseline(t *testing.T) {
+	t.Parallel()
+
+	err := runPR(prRunOpts{
+		Root:            t.TempDir(),
+		NewFindingsOnly: true,
+	})
+	if err == nil {
+		t.Fatal("expected error for --new-findings-only without --baseline")
+	}
+	if !strings.Contains(err.Error(), "--new-findings-only requires --baseline") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

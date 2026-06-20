@@ -613,7 +613,7 @@
       ],
       "ruleId": "terrain/structural/uncovered-ai-surface",
       "ruleUri": "docs/rules/structural/uncovered-ai-surface.md",
-      "promotionPlan": "Coverage attribution depends on .terrain/terrain.yaml scenario declarations; precision/recall calibrated in 0.2 against the AI fixture corpus."
+      "promotionPlan": "Coverage attribution depends on .terrain/terrain.yaml scenario declarations. Precision/recall measurement remains a promotion prerequisite for 0.3.x."
     },
     {
       "type": "phantomEvalScenario",

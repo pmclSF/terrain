@@ -2,6 +2,8 @@
 
 **Pre-flight checks for AI/ML systems and the tests around them.**
 
+Terrain shows whether the code, prompt, schema, eval, data, and test surfaces protecting an AI/ML system still line up before a PR merges.
+
 ## Get started
 
 - [Quickstart](quickstart.md) — first report in five minutes
@@ -26,13 +28,14 @@
 - [Glossary](glossary.md) — Terrain-specific vocabulary
 - [Versioning](versioning.md) — semantic-versioning contract
 - [Compatibility](compatibility.md) — platforms, frameworks, languages
-- [Limitations](LIMITATIONS.md) — what 0.2.0 does not do
+- [Limitations](LIMITATIONS.md) — what the current release does not do
 
 ## Integrations
 
 - [Promptfoo](integrations/promptfoo.md)
 - [DeepEval](integrations/deepeval.md)
 - [Ragas](integrations/ragas.md)
+- [Great Expectations](integrations/great-expectations.md)
 - [Gauntlet](integrations/gauntlet.md)
 - [MCP server](integrations/mcp.md)
 
@@ -58,7 +61,8 @@ Per-rule docs live under `docs/rules/<category>/<rule-name>.md`. Each shipped ru
 
 - [Release Process](releasing.md) — versioning and release workflow
 - [Feature Status](release/feature-status.md) — per-capability stable / experimental / preview status
-- [Release Notes — 0.2.0](release/RELEASE-NOTES-0.2.0.md) — long-form release notes
+- [Release Notes](release/release-notes.md) — current release notes and changelog pointers
+- [Release Notes — 0.2.0](release/RELEASE-NOTES-0.2.0.md) — historical long-form release notes
 - [Supply-chain provenance](release/supply-chain.md) — release artifacts and signing
 
 ## Schema reference

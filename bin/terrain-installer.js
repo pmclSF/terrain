@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { execFileSync, spawn } from 'child_process';
+import { createHash } from 'crypto';
 import { createWriteStream, existsSync } from 'fs';
 import fs from 'fs/promises';
 import https from 'https';
@@ -17,6 +18,7 @@ const packageJson = JSON.parse(
 
 const GITHUB_OWNER = 'pmclSF';
 const GITHUB_REPO = 'terrain';
+const DOWNLOAD_TIMEOUT_MS = 120000;
 
 // installFailureMarkerPath returns the path where a failed install
 // records its error. The CLI trampoline checks this before retrying
@@ -83,7 +85,18 @@ async function readInstallFailureMarker() {
   }
 }
 
-function currentTarget() {
+const SUPPORTED_TARGETS = new Set([
+  'darwin/amd64',
+  'darwin/arm64',
+  'linux/amd64',
+  'linux/arm64',
+  'windows/amd64',
+]);
+
+export function targetForPlatform(
+  platform = process.platform,
+  arch = process.arch
+) {
   const goosMap = {
     darwin: 'darwin',
     linux: 'linux',
@@ -94,12 +107,20 @@ function currentTarget() {
     arm64: 'arm64',
   };
 
-  const goos = goosMap[process.platform];
-  const goarch = goarchMap[process.arch];
+  const goos = goosMap[platform];
+  const goarch = goarchMap[arch];
   if (!goos || !goarch) {
     throw new Error(
-      `Unsupported platform ${process.platform}/${process.arch}. ` +
-        'Install Terrain manually from GitHub Releases or via Homebrew.'
+      `Unsupported platform ${platform}/${arch}. ` +
+        'Install Terrain manually from GitHub Releases, Homebrew on macOS/Linux, or source.'
+    );
+  }
+  if (!SUPPORTED_TARGETS.has(`${goos}/${goarch}`)) {
+    throw new Error(
+      `Unsupported prebuilt Terrain target ${goos}/${goarch}. ` +
+        'Published npm-install binaries are available for ' +
+        `${Array.from(SUPPORTED_TARGETS).sort().join(', ')}. ` +
+        'Install Terrain manually from source with `go install github.com/pmclSF/terrain/cmd/terrain@latest`.'
     );
   }
 
@@ -109,6 +130,10 @@ function currentTarget() {
     archiveExt: goos === 'windows' ? 'zip' : 'tar.gz',
     binaryName: goos === 'windows' ? 'terrain.exe' : 'terrain',
   };
+}
+
+function currentTarget() {
+  return targetForPlatform();
 }
 
 function isDevelopmentCheckout(rootDir = packageRoot) {
@@ -136,11 +161,15 @@ function archiveFileName(version) {
   return `terrain_${version}_${target.goos}_${target.goarch}.${target.archiveExt}`;
 }
 
-function archiveDownloadUrl(version) {
+function releaseDownloadBaseUrl(version) {
   const baseUrl =
     process.env.TERRAIN_INSTALLER_BASE_URL ||
     `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/download`;
-  return `${baseUrl}/v${version}/${archiveFileName(version)}`;
+  return `${baseUrl}/v${version}`;
+}
+
+function archiveDownloadUrl(version) {
+  return `${releaseDownloadBaseUrl(version)}/${archiveFileName(version)}`;
 }
 
 function signatureDownloadUrl(version) {
@@ -149,6 +178,10 @@ function signatureDownloadUrl(version) {
 
 function certificateDownloadUrl(version) {
   return `${archiveDownloadUrl(version)}.pem`;
+}
+
+function checksumDownloadUrl(version) {
+  return `${releaseDownloadBaseUrl(version)}/checksums.txt`;
 }
 
 function expectedSignerIdentity(version) {
@@ -172,9 +205,62 @@ function isCosignAvailable() {
   }
 }
 
+export function checksumFromManifest(manifestText, archiveName) {
+  for (const rawLine of manifestText.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) {
+      continue;
+    }
+    const match = line.match(/^([a-fA-F0-9]{64})\s+(.+)$/);
+    if (!match) {
+      continue;
+    }
+    const candidate = path.basename(match[2].replace(/^\*/, '').trim());
+    if (candidate === archiveName) {
+      return match[1].toLowerCase();
+    }
+  }
+  return null;
+}
+
+export function verifyChecksumDigest(manifestText, archiveName, actualDigest) {
+  const expected = checksumFromManifest(manifestText, archiveName);
+  if (!expected) {
+    throw new Error(
+      `checksums.txt did not contain an entry for ${archiveName}`
+    );
+  }
+  const actual = actualDigest.toLowerCase();
+  if (actual !== expected) {
+    throw new Error(
+      `checksum mismatch for ${archiveName}: expected ${expected}, got ${actual}`
+    );
+  }
+  return expected;
+}
+
+async function sha256File(filePath) {
+  const hash = createHash('sha256');
+  hash.update(await fs.readFile(filePath));
+  return hash.digest('hex');
+}
+
+async function verifyChecksum({ archivePath, version, tempDir, quiet }) {
+  const checksumsPath = path.join(tempDir, 'checksums.txt');
+  await downloadFile(checksumDownloadUrl(version), checksumsPath);
+
+  const archiveName = path.basename(archivePath);
+  const manifest = await fs.readFile(checksumsPath, 'utf8');
+  const actual = await sha256File(archivePath);
+  verifyChecksumDigest(manifest, archiveName, actual);
+
+  log(`Checksum verified for ${archiveName}`, quiet);
+  return { verified: true, reason: 'checksum' };
+}
+
 // Sigstore signature verification.
 //
-// 0.2.x policy: Sigstore verification is MANDATORY by default. If
+// 0.3.x policy: Sigstore verification is MANDATORY by default. If
 // `cosign` is not available on the host, the install fails with a
 // clear remediation pointer. The escape for trusted/CI/air-gapped
 // environments is the documented opt-out
@@ -223,7 +309,7 @@ async function verifySignatureBestEffort({
           '(https://github.com/sigstore/cosign) and reinstall.',
         quiet
       );
-      return { verified: false, reason: 'cosign-missing-allowed' };
+      return await verifyChecksum({ archivePath, version, tempDir, quiet });
     }
     throw new Error(
       'cosign is required to verify the Sigstore signature on the Terrain ' +
@@ -247,7 +333,7 @@ async function verifySignatureBestEffort({
     await downloadFile(signatureDownloadUrl(version), sigPath);
     await downloadFile(certificateDownloadUrl(version), certPath);
   } catch (error) {
-    // Hard error in 0.2: if cosign is present, the signature download
+    // Hard error in 0.3: if cosign is present, the signature download
     // is required. The release pipeline produces signatures for every
     // archive; their absence is a real failure mode worth surfacing.
     throw new Error(
@@ -280,7 +366,7 @@ async function verifySignatureBestEffort({
     );
     return { verified: true, reason: 'ok' };
   } catch (error) {
-    // Hard error in 0.2: a verify-blob failure means the archive on disk
+    // Hard error in 0.3: a verify-blob failure means the archive on disk
     // does NOT match the signed certificate. Aborting the install is
     // strictly safer than silently continuing.
     const detail = error.stderr
@@ -382,6 +468,13 @@ async function downloadFile(
       }
     );
 
+    request.setTimeout(DOWNLOAD_TIMEOUT_MS, () => {
+      request.destroy(
+        new Error(
+          `download timed out after ${DOWNLOAD_TIMEOUT_MS / 1000}s for ${url}`
+        )
+      );
+    });
     request.on('error', reject);
   });
 }

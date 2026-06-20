@@ -28,22 +28,30 @@ git tag vX.Y.Z && git push origin vX.Y.Z
     │                 ├── npm --prefix extension/vscode ci
     │                 ├── npm --prefix extension/vscode run compile
     │                 └── npm --prefix extension/vscode test
-    ├── go-release job (needs: verify):
-    │     ├── goreleaser release --clean
-    │     ├── Create GitHub Release with binaries + SBOMs + checksums
-    │     └── Update Homebrew tap formula in pmclSF/homebrew-terrain
-    └── npm-release job (needs: verify + go-release):
+    ├── go-release-build job (needs: verify):
+    │     ├── goreleaser build --clean (matrixed by OS)
+    │     └── Archive binaries with README/LICENSE, SBOMs, signatures
+    ├── go-release-publish job (needs: go-release-build):
+    │     ├── Create one GitHub Release with binaries + SBOMs + checksums
+    │     └── Attach SLSA provenance attestations
+    ├── release-smoke job (needs: go-release-publish):
+    │     └── Download representative published archives and verify version
+    └── npm-release job (needs: verify + go-release-publish + release-smoke):
           ├── npm ci
           └── npm publish --provenance (NPM_TOKEN secret)
 ```
 
-A single workflow (`release.yml`) handles the full pipeline: verify → GitHub/Homebrew release → npm release. The npm package publishes only after the GitHub release artifacts exist, because the `mapterrain` npm package installs the Go CLI from those tagged assets.
+A single workflow (`release.yml`) handles the release pipeline: verify → GitHub release → smoke test → npm release. The Homebrew tap update is handled by `.github/workflows/homebrew-update.yml` after the GitHub release is published. The npm package publishes only after representative GitHub release archives pass smoke tests, because the `mapterrain` npm package installs the Go CLI from those tagged assets.
 
 ### Go Binary Release
 
-The `go-release` job uses [GoReleaser](https://goreleaser.com/) to build
-multi-platform binaries (Linux/macOS/Windows × amd64/arm64) and attach them
-to the GitHub Release. Configuration lives in `.goreleaser.yaml`.
+The `go-release-build` job uses [GoReleaser](https://goreleaser.com/) to build
+multi-platform binaries (Linux/macOS amd64+arm64, Windows amd64). The workflow then
+archives each binary with `README.md` and `LICENSE`, generates per-archive SBOMs,
+and signs the artifacts. The `go-release-publish` job merges matrix artifacts,
+recomputes a single `checksums.txt`, signs it, attaches SLSA provenance, and
+creates the GitHub Release. Build configuration lives in `.goreleaser.yaml`;
+Homebrew publishing is intentionally handled by `homebrew-update.yml`.
 
 Binaries are stamped with version, commit, and build date via ldflags:
 ```

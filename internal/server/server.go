@@ -64,12 +64,13 @@ type Config struct {
 	// Port is the bind port. Defaults to DefaultPort.
 	Port int
 
-	// ReadOnly, when true, rejects any non-GET/HEAD/OPTIONS request with
-	// HTTP 405 in the security middleware. Every endpoint shipped in 0.2
-	// is read-only (GET-only routes), so this is a contract gate for
-	// future state-changing endpoints rather than a behavior change for
-	// today's traffic.
-	ReadOnly bool
+	// ReadOnly, when nil or true, rejects any non-GET/HEAD/OPTIONS request
+	// with HTTP 405 in the security middleware. Set to false explicitly to
+	// opt out for local experiments. Every endpoint shipped today is
+	// read-only (GET-only routes), so this is a contract gate for future
+	// state-changing endpoints rather than a behavior change for today's
+	// traffic.
+	ReadOnly *bool
 }
 
 // Server is a local HTTP server for Terrain analysis.
@@ -89,7 +90,7 @@ type Server struct {
 }
 
 // New creates a new Server for the given repository root with default
-// configuration (DefaultHost, DefaultPort, read-only off).
+// configuration (DefaultHost, DefaultPort, read-only on).
 //
 // Existing callers that pass a port positionally continue to work; for
 // finer-grained control use NewWithConfig.
@@ -107,6 +108,10 @@ func NewWithConfig(root string, cfg Config) *Server {
 		cfg.Port = DefaultPort
 	}
 	return &Server{root: root, cfg: cfg}
+}
+
+func (s *Server) readOnly() bool {
+	return s.cfg.ReadOnly == nil || *s.cfg.ReadOnly
 }
 
 // ListenAndServe starts the HTTP server and blocks until the context is canceled.
@@ -165,7 +170,7 @@ func (s *Server) withSecurity(next http.Handler) http.Handler {
 		// they ticked the box for, even though every current handler
 		// is GET. Any future state-changing endpoint will be rejected
 		// here without the handler needing per-route logic.
-		if s.cfg.ReadOnly {
+		if s.readOnly() {
 			switch r.Method {
 			case http.MethodGet, http.MethodHead, http.MethodOptions:
 				// allowed

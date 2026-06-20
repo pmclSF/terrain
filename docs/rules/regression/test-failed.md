@@ -56,7 +56,7 @@ The foundational rule in the regression family: "tests we picked for this change
 
 - **Approach:** Impact analysis selects tests touching the diff via `internal/impact/findImpactedTests`; the test runner executes them; JUnit XML output is parsed into per-test pass/fail; failures emit this signal.
 - **Languages supported:** Go (`go test`), JS/TS (jest, vitest, mocha, playwright, cypress), Python (pytest, unittest), Java (JUnit 4, JUnit 5, TestNG).
-- **0.2.0 implementation:** consumes existing JUnit ingestion. Per-case parameterized enumeration is followup work (template-level only at 0.2.0).
+- **0.3.0 implementation:** consumes existing JUnit ingestion. Per-case parameterized enumeration is followup work (template-level only in 0.3.0).
 
 ## 6. Worked example
 

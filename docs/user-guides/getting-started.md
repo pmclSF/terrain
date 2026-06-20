@@ -24,7 +24,8 @@ brew install pmclSF/terrain/mapterrain
 go install github.com/pmclSF/terrain/cmd/terrain@latest
 ```
 
-Node-20 compat for the npm path is on the 0.3 roadmap.
+Node-20 compatibility for the npm path is future work; use Homebrew
+or `go install` if your CI image must stay on Node 20.
 
 ### Cosign (npm path only)
 

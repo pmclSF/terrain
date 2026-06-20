@@ -35,7 +35,7 @@ Tier 1 means a pre-built binary ships and `go test ./...` runs in CI on every PR
 | RSpec | Ruby | Tier 2 |
 | Karma, Jasmine, Tap, AVA, WebdriverIO, Puppeteer | JS/TS | Tier 2 |
 
-Tier 1 = stable detector + structural model + at least one recall-regression fixture. Tier 2 = detected and counted with shallower structural modeling.
+Tier 1 = stable detector + structural model + at least one recall-regression fixture. Tier 2 = detected and counted with shallower structural modeling. Tier 2 framework support does not imply full source-language analysis: RSpec/Ruby artifacts are detected and counted, but Ruby source is not analyzed in 0.3.0.
 
 ## AI eval frameworks
 
@@ -44,8 +44,9 @@ Tier 1 = stable detector + structural model + at least one recall-regression fix
 | Promptfoo | v3 (nested) + v4+ (flat) results |
 | DeepEval | testCases shape (older) + runId shape (1.x) |
 | Ragas | results / evaluation_results / scores; ≥0.1.0 modern metrics |
+| Great Expectations | Validation Result JSON with `results[]` and optional `statistics` |
 
-Per-case score, cost, and failure-reason data flow into the snapshot's `EvalRuns` envelope and feed `aiCostRegression` / `aiHallucinationRate` / `aiRetrievalRegression`.
+Per-case score and failure-reason data flow into the snapshot's `EvalRuns` envelope. Axis-specific detectors (`aiCostRegression`, `aiHallucinationRate`, `aiRetrievalRegression`) fire only when the artifact provides the cost, hallucination, or retrieval metadata those detectors require.
 
 ## Schemas + ORMs
 
@@ -72,7 +73,7 @@ The cross-language graph resolves prompt / RAG / API references across language 
 
 ## CI providers
 
-Any CI that runs a binary and can read git history. GitHub Actions templates ship in [`docs/examples/gate/`](examples/gate/). Dedicated guides for GitLab CI, CircleCI, Jenkins, and pre-commit hooks will follow as adopters request them.
+Any CI that runs a binary and can read git history. GitHub Actions templates ship in [`docs/examples/gate/`](examples/gate/README.md). Dedicated guides for GitLab CI, CircleCI, Jenkins, and pre-commit hooks will follow as adopters request them.
 
 ## Snapshot schema compatibility
 

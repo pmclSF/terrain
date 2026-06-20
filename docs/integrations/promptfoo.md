@@ -34,12 +34,11 @@ Then run Terrain:
 terrain analyze --promptfoo-results promptfoo.json
 ```
 
-You can pass the flag multiple times for multiple suites:
+For multiple suites, pass a comma-separated list:
 
 ```bash
 terrain analyze \
-  --promptfoo-results suite-rag.json \
-  --promptfoo-results suite-classifier.json
+  --promptfoo-results suite-rag.json,suite-classifier.json
 ```
 
 ## Baseline comparison

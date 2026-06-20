@@ -676,7 +676,7 @@ var allSignalManifest = []ManifestEntry{
 		RuleID:          "terrain/structural/uncovered-ai-surface",
 		RuleURI:         "docs/rules/structural/uncovered-ai-surface.md",
 		PromotionPlan: "Coverage attribution depends on .terrain/terrain.yaml scenario " +
-			"declarations; precision/recall calibrated in 0.2 against the AI fixture corpus.",
+			"declarations. Precision/recall measurement remains a promotion prerequisite for 0.3.x.",
 		Tier: TierObservability,
 	},
 	{

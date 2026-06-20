@@ -152,7 +152,7 @@ isn't there:
   Promptfoo (a child process Terrain optionally spawns). Terrain
   does not read, log, or proxy the key. See
   [`SECURITY-DATA-HANDLING.md`](../../../../SECURITY-DATA-HANDLING.md).
-- **Doesn't sandbox eval execution.** Sandboxing is future work. If your prompts include tool-call shapes that touch filesystem or network, the sandbox is the eval framework's responsibility in 0.2.
+- **Doesn't sandbox eval execution.** Sandboxing is future work. If your prompts include tool-call shapes that touch filesystem or network, the sandbox is the eval framework's responsibility in 0.3.0.
 - **Doesn't replace Lakera / Guardrails.** Those are
   request-time AI safety services. Terrain solves the structural
   / pre-deploy / inventory side. Both can coexist.

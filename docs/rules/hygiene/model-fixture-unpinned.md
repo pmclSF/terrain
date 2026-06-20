@@ -65,7 +65,7 @@ Model weights are the AI system's behavioral substrate. Two engineers running th
 - **Pinning suppression:**
   - HuggingFace: `revision="<value>"` kwarg where value is NOT `main` / `master` / `latest` / `head` (case-insensitive).
   - Path-based loaders: first positional argument is a string literal that looks pinned (has a 7+-hex segment, a `v<major>.<minor>` version, or ends in `.safetensors`).
-- **Edge cases NOT handled at 0.2.0:** revision passed via a variable rather than a literal (the rule can't prove the variable's value statically); custom loader wrappers that the rule doesn't recognize.
+- **Edge cases NOT handled in 0.3.0:** revision passed via a variable rather than a literal (the rule can't prove the variable's value statically); custom loader wrappers that the rule doesn't recognize.
 
 ## 6. Worked example
 
@@ -109,7 +109,7 @@ ignore:
 
 - **Internal model registry that bypasses HuggingFace conventions** — if the load goes through a wrapper the detector doesn't recognize, it doesn't fire (false negative side). Mitigation: extend the wrapper to call the recognized primitive directly, or accept.
 - **Variable-bound revision** — `revision=cfg.model_revision` doesn't statically resolve; the rule fires. Mitigation: inline the literal at the call site, or ignore via path.
-- **Measured FP rate at last validation:** see the per-rule readiness card.
+- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 

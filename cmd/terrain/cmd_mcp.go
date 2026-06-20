@@ -57,7 +57,7 @@ func loadMCPArtifacts(root string) *mcp.Artifacts {
 	}
 
 	// terrain.yaml surfaces.
-	if cfg, err := terrainconfig.Load(filepath.Join(root, "terrain.yaml")); err == nil && cfg != nil {
+	if cfg, err := terrainconfig.LoadForRoot(root); err == nil && cfg != nil {
 		for name, s := range cfg.Surfaces {
 			out.Surfaces[name] = mcp.SurfaceDescriptor{
 				Name:        name,

@@ -197,10 +197,32 @@ func applyImpactPolicy(impactResult *impact.ImpactResult, result *engine.Pipelin
 	}
 }
 
-func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGate) error {
-	impactResult, result, err := runImpactPipeline(root, baseRef, defaultPipelineOptionsWithProgress(jsonOutput))
+type prRunOpts struct {
+	Root            string
+	BaseRef         string
+	JSONOutput      bool
+	Format          string
+	Gate            severityGate
+	BaselinePath    string
+	NewFindingsOnly bool
+}
+
+func runPR(o prRunOpts) error {
+	if o.BaselinePath != "" {
+		if err := validateExistingPaths("--baseline", []string{o.BaselinePath}); err != nil {
+			return err
+		}
+	}
+	if o.NewFindingsOnly && o.BaselinePath == "" {
+		return fmt.Errorf("--new-findings-only requires --baseline <path>")
+	}
+
+	pipelineOpts := defaultPipelineOptionsWithProgress(o.JSONOutput)
+	pipelineOpts.BaselineSnapshotPath = o.BaselinePath
+	pipelineOpts.NewFindingsOnly = o.NewFindingsOnly
+	impactResult, result, err := runImpactPipeline(o.Root, o.BaseRef, pipelineOpts)
 	if err == nil && result != nil && result.Snapshot != nil {
-		if appendErr := appendPromptSchemaDriftSignals(result.Snapshot, root, baseRef); appendErr != nil {
+		if appendErr := appendPromptSchemaDriftSignals(result.Snapshot, o.Root, o.BaseRef); appendErr != nil {
 			err = appendErr
 		}
 	}
@@ -210,7 +232,7 @@ func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGa
 		// missing git history, no base ref, unparseable diff,
 		// analysis crash. Wrap with a hint about the most
 		// adopter-actionable cause.
-		if !jsonOutput {
+		if !o.JSONOutput {
 			fmt.Fprintf(os.Stderr, "error: report pr failed: %v\n", err)
 			fmt.Fprintln(os.Stderr)
 			fmt.Fprintln(os.Stderr, "Common causes:")
@@ -251,15 +273,15 @@ func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGa
 			severities = append(severities, s.Severity)
 		}
 	}
-	gateBlocked, gateSummary := severityGateBlocked(gate, prSeverityBreakdown(severities))
+	gateBlocked, gateSummary := severityGateBlocked(o.Gate, prSeverityBreakdown(severities))
 	gateErr := func() error {
 		if gateBlocked {
-			return fmt.Errorf("%w: --fail-on=%s matched %s", errSeverityGateBlocked, gate, gateSummary)
+			return fmt.Errorf("%w: --fail-on=%s matched %s", errSeverityGateBlocked, o.Gate, gateSummary)
 		}
 		return nil
 	}
 
-	if jsonOutput {
+	if o.JSONOutput {
 		enc := json.NewEncoder(os.Stdout)
 		enc.SetIndent("", "  ")
 		if err := enc.Encode(pr); err != nil {
@@ -273,13 +295,13 @@ func runPR(root, baseRef string, jsonOutput bool, format string, gate severityGa
 	// observability footer. Missing file → empty store, the correct
 	// first-run behavior. Other errors are non-fatal: log + render
 	// without history rather than block the comment.
-	hist, histErr := engine.LoadFindingHistory(root)
+	hist, histErr := engine.LoadFindingHistory(o.Root)
 	if histErr != nil {
 		logging.L().Debug("finding history: load failed at render", "err", histErr)
 		hist = nil
 	}
 
-	switch format {
+	switch o.Format {
 	case "markdown", "md":
 		if hist != nil {
 			changescope.RenderPRSummaryMarkdownWithHistory(os.Stdout, pr, hist)

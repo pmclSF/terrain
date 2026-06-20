@@ -15,11 +15,11 @@ Go CLI entry point for the Terrain test system intelligence platform.
 
 | Command | Purpose |
 |---------|---------|
-| `terrain init` | Detect data files and print recommended analyze command |
+| `terrain init` | Detect frameworks/artifacts and scaffold `.terrain/` config |
 | `terrain summary` | Executive summary with risk, trends, benchmark readiness |
 | `terrain focus` | Prioritized next actions |
 | `terrain posture` | Detailed posture breakdown with measurement evidence |
-| `terrain portfolio` | Portfolio intelligence: cost, breadth, leverage, redundancy |
+| `terrain portfolio` | Portfolio intelligence: cost, breadth, leverage, redundancy, and multi-repo framework drift via `--from` |
 | `terrain metrics` | Aggregate metrics scorecard |
 | `terrain compare` | Compare two snapshots for trend tracking |
 | `terrain select-tests` | Recommend protective test set for a change |
@@ -50,6 +50,6 @@ terrain impact --base main               # see what a change affects
 terrain explain src/auth/login.test.ts   # understand why
 ```
 
-This flow maps to the canonical product journeys documented in [docs/product/canonical-user-journeys.md](../../docs/product/canonical-user-journeys.md).
+This flow maps to the product journeys documented in [docs/PRODUCT.md](../../docs/PRODUCT.md).
 
-All commands support `--root PATH` and `--json` flags. See [docs/cli-spec.md](../../docs/cli-spec.md) for the full CLI specification.
+Most report and analysis commands support `--root PATH` and `--json`; generator, version, and help commands have their own smaller flag sets. See [docs/cli-spec.md](../../docs/cli-spec.md) for the full CLI specification.

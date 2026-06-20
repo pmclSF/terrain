@@ -6,9 +6,21 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/findings"
+	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
 )
+
+type testRunOpts struct {
+	Root            string
+	Selector        string
+	JSONOutput      bool
+	JUnitPath       string
+	SummaryPath     string
+	Gate            severityGate
+	BaselinePath    string
+	NewFindingsOnly bool
+}
 
 // runTestCommand implements `terrain test`. The canonical CI-mode
 // wrapper around analyze: runs the analyze pipeline and emits the
@@ -21,10 +33,25 @@ import (
 // manifest RuleIDs (everything after `terrain/`). Without --selector,
 // every signal flows through to the artifacts.
 //
-// When the analyze pipeline can't run (e.g., the root isn't a git
-// checkout), the command surfaces the failure and exits non-zero —
-// CI runs need an actionable failure, not a silent degradation.
-func runTestCommand(root, selector string, jsonOut bool, junitPath, summaryPath string) error {
+// When the analyze pipeline can't run (e.g., the root isn't readable),
+// the command surfaces the failure and exits non-zero — CI runs need
+// an actionable failure, not a silent degradation.
+func runTestCommand(o testRunOpts) error {
+	root := o.Root
+	selector := o.Selector
+	jsonOut := o.JSONOutput
+	junitPath := o.JUnitPath
+	summaryPath := o.SummaryPath
+
+	if o.BaselinePath != "" {
+		if err := validateExistingPaths("--baseline", []string{o.BaselinePath}); err != nil {
+			return err
+		}
+	}
+	if o.NewFindingsOnly && o.BaselinePath == "" {
+		return fmt.Errorf("--new-findings-only requires --baseline <path>")
+	}
+
 	// Map signal type → ruleID for the findings converter.
 	typeToRuleID := map[models.SignalType]string{}
 	for _, entry := range signals.Manifest() {
@@ -54,8 +81,14 @@ func runTestCommand(root, selector string, jsonOut bool, junitPath, summaryPath 
 
 	// Run the analyze pipeline.
 	var filtered []models.Signal
-	result, perr := runPipelineWithSignals(root, defaultPipelineOptionsWithProgress(jsonOut || junitPath != "" || summaryPath != ""))
-	if perr == nil && result != nil && result.Snapshot != nil {
+	pipelineOpts := defaultPipelineOptionsWithProgress(jsonOut || junitPath != "" || summaryPath != "")
+	pipelineOpts.BaselineSnapshotPath = o.BaselinePath
+	pipelineOpts.NewFindingsOnly = o.NewFindingsOnly
+	result, perr := runPipelineWithSignals(root, pipelineOpts)
+	if perr != nil {
+		return fmt.Errorf("analyze pipeline failed: %w", perr)
+	}
+	if result != nil && result.Snapshot != nil {
 		for _, s := range result.Snapshot.Signals {
 			if wantRule == nil {
 				filtered = append(filtered, s)
@@ -71,6 +104,20 @@ func runTestCommand(root, selector string, jsonOut bool, junitPath, summaryPath 
 		return typeToRuleID[t]
 	})
 	art := findings.NewArtifact(fxs)
+
+	if result != nil && result.Snapshot != nil {
+		if err := writeFindingsJSON(root, filtered); err != nil {
+			logging.L().Warn("terrain test: writing .terrain/findings.json", "err", err)
+		}
+	}
+
+	gateBlocked, gateSummary := severityGateBlocked(o.Gate, signalSeverityBreakdown(filtered))
+	gateErr := func() error {
+		if gateBlocked {
+			return fmt.Errorf("%w: --fail-on=%s matched %s", errSeverityGateBlocked, o.Gate, gateSummary)
+		}
+		return nil
+	}
 
 	if junitPath != "" {
 		if err := writeFile(junitPath, func(f *os.File) error {
@@ -94,13 +141,10 @@ func runTestCommand(root, selector string, jsonOut bool, junitPath, summaryPath 
 		}
 	}
 	if jsonOut {
-		return art.WriteJSON(os.Stdout)
-	}
-
-	// Surface analyze failures as actionable errors — CI needs to
-	// fail clearly when the analyze pipeline broke.
-	if perr != nil {
-		return fmt.Errorf("analyze pipeline failed: %w", perr)
+		if err := art.WriteJSON(os.Stdout); err != nil {
+			return err
+		}
+		return gateErr()
 	}
 
 	// Human-readable summary. Optimized for CI logs: one line at the
@@ -134,7 +178,7 @@ func runTestCommand(root, selector string, jsonOut bool, junitPath, summaryPath 
 			fmt.Printf("  [%s] %s  %s\n", s.Severity, s.Type, loc)
 		}
 	}
-	return nil
+	return gateErr()
 }
 
 // Plural is a tiny pluralizer for the terrain test output.

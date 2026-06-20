@@ -8,7 +8,13 @@
 
 Terrain treats unit tests, integration tests, e2e tests, and AI/ML evals as nodes in a single dependency graph. A frontend developer learns in their PR if their change will degrade a downstream AI model's behavior. An ML engineer learns which upstream code paths their prompt edit affects. The analysis spans code, prompt, schema, and eval boundaries.
 
-It is **not** an eval framework — it integrates with promptfoo, deepeval, ragas, and Great Expectations. It is **not** a code-review bot — its output is failing test cases in the platform's Tests tab, not narrative comments on PRs. It is **not** a hosted service — it is OSS that runs in the adopter's CI; no data leaves the adopter's infrastructure by default.
+Terrain is the layer that connects existing evidence: it ingests Promptfoo, DeepEval, Ragas, Great Expectations, Gauntlet, coverage, runtime, schema, and source signals, then renders them as deterministic findings, CI test cases, explainable impact reports, MCP context, and portfolio rollups. It is OSS that runs in the adopter's CI; no data leaves the adopter's infrastructure by default.
+
+## The problem Terrain solves
+
+Modern AI/ML repos no longer have one test surface. They have unit tests, integration tests, eval suites, prompt templates, schemas, retrievers, datasets, pipelines, and generated artifacts. A change in one layer can invalidate protection in another, but most tools report only their own slice.
+
+Terrain makes that protection graph visible before merge. It tells a team where validation is missing, which tests or evals a PR affects, and why a finding should block or warn in CI.
 
 ## Who it's for
 
@@ -16,21 +22,22 @@ It is **not** an eval framework — it integrates with promptfoo, deepeval, raga
 |---|---|
 | **Frontend developer** | Learn before merge if a UI change breaks a downstream AI contract |
 | **Backend / platform engineer** | Learn which models are affected by a schema or API change |
-| **ML engineer (classical ML)** | Regression detection on test-set metrics, drift, fairness; train/test integrity checks |
-| **ML engineer (LLMs)** | Scenario-based eval regression detection across prompts, models, and RAG components |
-| **Senior decision-maker** | Public per-rule readiness cards and reproducible benchmarks — auditable trust profile |
+| **ML engineer (classical ML)** | Signals for test-set quality, drift/fairness preview coverage, train/test integrity, and data validation |
+| **ML engineer (LLMs)** | Eval coverage, prompt/schema drift, retrieval quality, model-risk, and scenario-aware gate evidence |
+| **Senior decision-maker** | Release status, limitations, supply-chain artifacts, and reproducible checks — auditable trust profile |
 
-## What 0.2.0 ships
+## What 0.3.0 ships
 
-- **Detection rules across ten categories** — regression, coverage, hygiene, reproducibility, security, performance, fairness, data, lifecycle, and documentation. Stable rules ship default-on at measured quality; preview rules ship default-off and graduate as their false-positive rate and triage time clear the quality bars.
+- **Detection rules across ten categories** — regression, coverage, hygiene, reproducibility, security, performance, fairness, data, lifecycle, and documentation. Stable rules ship default-on when implemented, documented, and covered by tests; preview rules ship default-off while precision measurement and adopter feedback are still in progress.
 - **Three surfaces** for the same diagnostic artifact: CI (status check + JUnit + GitHub annotations + Step Summary), CLI (`terrain test` / `terrain explain`), and an MCP server for AI assistants (Claude Code, Cursor).
 - **Unified graph** that crosses language boundaries: TS/JS ↔ Python/Go/Java via OpenAPI / tRPC / gRPC / GraphQL / HTTP-route inference, plus database schema awareness (Postgres / MySQL / sqlc / gorm / prisma / sqlalchemy) and pipeline awareness (dbt / Airflow / Prefect).
-- **Public quality artifacts:** per-rule readiness cards (measured false-positive rate) published with every release.
-- **VS Code Marketplace extension** (alpha) reading the artifact format; renders findings in the IDE Problems pane.
+- **Multi-repo portfolio aggregation** via `terrain portfolio --from .terrain/repos.yaml`, with manifest-backed repo rollups, owner/tag propagation, snapshot-backed inputs, and framework-of-record drift detection.
+- **Public quality artifacts:** feature-status, limitations, signed release artifacts, docs verification, and benchmark gates. Per-rule readiness cards are harness infrastructure and are not published for 0.3.0 unless a measured `harness/readiness/v0.3.0/` card set is present.
+- **VS Code extension alpha** reading CLI JSON artifacts; renders findings in sidebar tree views with file reveal. Source and package metadata ship in the repo; Marketplace publication is future work.
 
 ## The trust profile
 
-What Terrain commits to at the 0.2.0 release tag:
+What Terrain commits to from the 0.2.0 stable-contract release onward:
 
 | Surface | Contract |
 |---|---|
@@ -38,33 +45,35 @@ What Terrain commits to at the 0.2.0 release tag:
 | **JSON output schema** | `version: 1`; one-cycle deprecation cycle on changes |
 | **`terrain.yaml` schema** | Versioned `v1`; closed enumeration for surface types; one-cycle deprecation on changes |
 | **CLI flags** | Stable from 0.2.0; same deprecation contract |
-| **Telemetry** | **None by default.** No phone home, no usage stats, no crash reports unless opted in. Verifiable via `terrain --print-network` (which lists every external call Terrain would make under the current config — `none` for templates-only operation) |
-| **Data flow** | Templates tier: zero network calls. Optional LLM tiers: Ollama (local; no data leaves machine) is the documented default; alternatives are explicit adopter choices |
-| **Quality** | Load-bearing quality bars measured per release; readiness cards published per stable rule |
+| **Telemetry** | **No remote telemetry.** No phone home and no crash reports. Optional local-only telemetry writes to `~/.terrain/telemetry.jsonl` when explicitly enabled. Verifiable via `terrain --print-network` (which lists every external call Terrain would make under the current config — none for 0.3.0 analysis) |
+| **Data flow** | Templates tier: zero network calls. LLM provider config is parsed but inactive in 0.3.0; external enrichment is future work and must remain explicit adopter choice when it ships |
+| **Quality** | Release verification, docs consistency checks, fixture coverage, and benchmark gates run per release; per-rule readiness cards remain planned measured artifacts until generated |
 | **License** | Apache 2.0 |
 
-## What 0.2.0 deliberately does *not* do
+## What 0.3.0 deliberately does *not* do
 
 See `docs/LIMITATIONS.md` for the comprehensive list. The major items:
 
-- **VS Code extension is alpha** — Marketplace-published, reads artifacts and renders findings in the Problems pane; full LSP / JetBrains / Neovim integration is future work
-- **Single-repo analysis only** — adopters with FE/BE in separate repos run Terrain on each independently; cross-repo edges are future work
+- **VS Code extension is alpha** — renders sidebar tree views from CLI JSON and supports file reveal; Marketplace publication, Problems-pane diagnostics, full LSP, JetBrains, and Neovim integration are future work
+- **No cross-repo dependency graph edges** — `terrain portfolio --from` aggregates repo-level portfolio data, but gate decisions and code/eval dependency tracing remain per-repo
 - **No observability-tool ingestion** — Honeycomb / Datadog / production-metric-based rules are not in scope today
-- **No marketplace listings** — GitHub Action / Claude Skill / OpenAI listings are not yet published
-- **Analyzed languages** — Go, JavaScript, TypeScript, Python, Java. Ruby, Rust, Kotlin, Swift, Scala, and C# are not analyzed in 0.2.x
+- **No marketplace listings** — GitHub Marketplace Action, VS Code Marketplace extension, Claude Skill, and OpenAI listings are not yet published
+- **Analyzed languages** — Go, JavaScript, TypeScript, Python, Java. Ruby, Rust, Kotlin, Swift, Scala, and C# are not analyzed in 0.3.x
 
-## What adopting 0.2.0 requires
+These boundaries do not reduce the core value proposition: 0.3.0 is already a local, CI-ready pre-flight check for AI/ML test systems, with stable CLI/schema contracts, signed release artifacts, and documented integration paths.
+
+## What adopting 0.3.0 requires
 
 | Step | Effort |
 |---|---|
 | Install Terrain (Homebrew / npm / `go install`) | Minutes |
 | Run `terrain init` to scaffold `terrain.yaml` | Minutes |
-| Run `terrain describe --write` to populate surface descriptions (optional; can skip and write by hand) | 10–30 min one-time, depending on surface count |
-| Wire `terrain test` into CI (GitHub Actions or GitLab CI workflow snippet provided) | 10–30 min |
+| Run `terrain describe --write` to generate starter surface declarations (optional; can skip and write by hand) | 10–30 min one-time, depending on surface count |
+| Wire `terrain test` into CI (GitHub Actions template provided; other CI can invoke the CLI and consume JUnit) | 10–30 min |
 | Make `terrain/tests` a required branch-protection check (optional, recommended) | Minutes |
 | Per stable rule that fires unexpectedly: triage as TP or FP, suppress via path-level ignore or severity downgrade in `terrain.yaml` | 60–120 sec per finding (target) |
 
-No proprietary services to sign up for. No data leaves the adopter's infrastructure unless they explicitly enable an external-LLM tier.
+No proprietary services to sign up for. Terrain itself makes no LLM provider calls in 0.3.0; CI artifacts go only where the adopter's CI workflow publishes them.
 
 ## The maintenance commitment
 
@@ -73,7 +82,7 @@ What adopting Terrain costs the adopter team ongoing:
 - **Per release of Terrain:** read the `CHANGELOG.md` for deprecations; rule-ID renames carry one-cycle warnings before removal.
 - **Per failed gate:** triage the finding. Most stable rules target ≤60 sec; some categories target ≤90–180 sec for fix-direction.
 - **Per false positive pattern:** path-level ignore or severity downgrade in `terrain.yaml`. If the FP is systematic, file a GitHub issue; the project commits to acknowledgment within 48 hours for stable-rule FP reports.
-- **Per new surface (AI/ML component added to the codebase):** declare it in `terrain.yaml` `surfaces:` block. Adopters can run `terrain describe` to auto-generate descriptions if they want narrative diagnostics.
+- **Per new surface (AI/ML component added to the codebase):** declare it in `terrain.yaml` `surfaces:` block. Adopters can run `terrain describe` to generate starter declarations, then edit descriptions by hand.
 
 ## What could break under the stability contract
 
@@ -87,7 +96,7 @@ Adopters should know:
 
 ## How to evaluate before adopting
 
-An unfamiliar senior engineer / engineering manager / PM reading this overview, sample readiness cards, and `docs/LIMITATIONS.md` should be able to answer: (1) what category of tool is this? (2) what trust profile does it commit to? (3) what would adopting it require of my team? (4) what could break under the stability contract?
+An unfamiliar senior engineer / engineering manager / PM reading this overview, `docs/release/feature-status.md`, and `docs/LIMITATIONS.md` should be able to answer: (1) what category of tool is this? (2) what trust profile does it commit to? (3) what would adopting it require of my team? (4) what could break under the stability contract?
 
 For a deeper read:
 - `docs/PRODUCT.md` — product reference (mission, principles, scope, stability commitments)
@@ -110,16 +119,16 @@ Terrain sits in the gap between these — integrates with the eval frameworks an
 
 ## Decision criteria
 
-Adopt Terrain at 0.2.0 if:
+Adopt Terrain at 0.3.0 if:
 
 - You have AI or ML in production and care about regressions
 - You want failing tests as the gate signal, not bot comments
-- You can run a Go binary in CI and (optionally) Ollama locally for diagnostic enrichment
+- You can run a Go binary in CI without adding a hosted service or LLM API key
 - You're comfortable with a 0.x release (pre-1.0; stable APIs from 0.2.0 forward but the project is still maturing)
 
 Hold off if:
 
-- You need full IDE-integrated AI testing today (current VS Code alpha is Problems-pane only)
+- You need full IDE-integrated AI testing today (current VS Code alpha is sidebar tree views only)
 - Your code lives in separate FE/BE repos and you need cross-repo cause attribution
 - Your eval framework isn't in the supported list (promptfoo / deepeval / ragas / Great Expectations; gauntlet supported via JSON-format-compatible ingestion). You can adopt with one of those, or write a custom adapter and contribute it back.
 

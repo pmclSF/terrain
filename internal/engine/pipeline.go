@@ -21,6 +21,7 @@ import (
 	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/coverage"
 	"github.com/pmclSF/terrain/internal/depgraph"
+	"github.com/pmclSF/terrain/internal/evaladapter"
 	"github.com/pmclSF/terrain/internal/gauntlet"
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/measurement"
@@ -90,7 +91,7 @@ type PipelineOptions struct {
 	// SignalV2 0.2 field — see internal/airun/promptfoo.go.
 	PromptfooPaths []string
 
-	// DeepEvalPaths are paths to DeepEval `--export` JSON files.
+	// DeepEvalPaths are paths to DeepEval result JSON files.
 	// Same destination as PromptfooPaths: each result lands in
 	// snap.EvalRuns through internal/airun/deepeval.go.
 	DeepEvalPaths []string
@@ -98,6 +99,11 @@ type PipelineOptions struct {
 	// RagasPaths are paths to Ragas eval result JSON files.
 	// Same destination as PromptfooPaths / DeepEvalPaths.
 	RagasPaths []string
+
+	// GreatExpectationsPaths are paths to Great Expectations
+	// Validation Result JSON files. Same EvalRuns destination as
+	// PromptfooPaths / DeepEvalPaths / RagasPaths.
+	GreatExpectationsPaths []string
 
 	// BaselineSnapshotPath, when set, points at a previous snapshot
 	// JSON file. The pipeline loads it and attaches the result to
@@ -327,6 +333,8 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		deepevalIngestErr  error
 		ragasEnvelopes     []models.EvalRunEnvelope
 		ragasIngestErr     error
+		geEnvelopes        []models.EvalRunEnvelope
+		geIngestErr        error
 
 		staticAnalysisDuration  time.Duration
 		policyLoadDuration      time.Duration
@@ -457,6 +465,15 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 				return err
 			}
 			ragasEnvelopes, ragasIngestErr = ingestRagasArtifacts(root, opt.RagasPaths)
+			return nil
+		})
+	}
+	if len(opt.GreatExpectationsPaths) > 0 {
+		startTask(&prepWG, func(taskCtx context.Context) error {
+			if err := taskCtx.Err(); err != nil {
+				return err
+			}
+			geEnvelopes, geIngestErr = ingestGreatExpectationsArtifacts(root, opt.GreatExpectationsPaths)
 			return nil
 		})
 	}
@@ -708,6 +725,27 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		}
 	}
 
+	// Step 4d-quater: Apply Great Expectations validation results.
+	// Great Expectations is parsed through internal/evaladapter, then
+	// converted to the same airun envelope shape the AI detectors read.
+	if len(opt.GreatExpectationsPaths) > 0 {
+		if geIngestErr != nil {
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "great-expectations",
+				Status: models.DataSourceError,
+				Detail: geIngestErr.Error(),
+				Impact: "Great Expectations validation results are unavailable. Per-expectation pass/fail data will not feed eval-data-aware detectors.",
+			})
+		} else {
+			snapshot.EvalRuns = append(snapshot.EvalRuns, geEnvelopes...)
+			snapshot.DataSources = append(snapshot.DataSources, models.DataSource{
+				Name:   "great-expectations",
+				Status: models.DataSourceAvailable,
+				Detail: fmt.Sprintf("%d artifact(s) ingested", len(opt.GreatExpectationsPaths)),
+			})
+		}
+	}
+
 	// Step 4e: Load baseline snapshot when --baseline was provided.
 	// Attaches the parsed result to snap.Baseline so regression-aware
 	// detectors can compare current vs baseline. Failure is loud
@@ -926,7 +964,9 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 	// `suppressionExpired` warning signals so silent rot doesn't
 	// accumulate. Missing file is fine — most users won't have one
 	// in 0.2.0.
-	applySuppressions(snapshot, root, opt.SuppressionsPath, time.Now())
+	if err := applySuppressions(snapshot, root, opt.SuppressionsPath, time.Now()); err != nil {
+		return nil, err
+	}
 
 	// Step 10d: update per-repo finding history. Runs BEFORE the
 	// --new-findings-only filter so chronic (repeating-across-PRs)
@@ -1571,6 +1611,82 @@ func ingestRagasArtifacts(root string, paths []string) ([]models.EvalRunEnvelope
 		out = append(out, env)
 	}
 	return out, nil
+}
+
+// ingestGreatExpectationsArtifacts parses Great Expectations Validation
+// Result JSON files and converts the evaladapter shape into the
+// EvalRunEnvelope consumed by the pipeline's eval-data-aware detectors.
+func ingestGreatExpectationsArtifacts(root string, paths []string) ([]models.EvalRunEnvelope, error) {
+	out := make([]models.EvalRunEnvelope, 0, len(paths))
+	adapter := evaladapter.GreatExpectationsAdapter{}
+	for _, p := range paths {
+		run, err := adapter.Ingest(p)
+		if err != nil {
+			return nil, fmt.Errorf("great expectations artifact %s: %w", p, err)
+		}
+		result := evalAdapterRunToEvalRunResult(run)
+		env, err := result.ToEnvelope(relativeArtifactPath(root, p))
+		if err != nil {
+			return nil, fmt.Errorf("great expectations envelope for %s: %w", p, err)
+		}
+		out = append(out, env)
+	}
+	return out, nil
+}
+
+func evalAdapterRunToEvalRunResult(run *evaladapter.EvalRun) *airun.EvalRunResult {
+	out := &airun.EvalRunResult{}
+	if run == nil {
+		return out
+	}
+	out.Framework = string(run.Framework)
+	out.RunID = filepath.Base(run.Source)
+	if t, err := time.Parse(time.RFC3339, run.Timestamp); err == nil {
+		out.CreatedAt = t.UTC()
+	} else if strings.TrimSpace(run.Timestamp) != "" {
+		out.Diagnostics = append(out.Diagnostics, airun.IngestionDiagnostic{
+			Field:  "createdAt",
+			Kind:   "default-applied",
+			Detail: "Great Expectations run_time present but unparseable; defaulted to zero time",
+		})
+	}
+	out.Cases = make([]airun.EvalCase, 0, len(run.Cases))
+	for _, c := range run.Cases {
+		description := c.Name
+		if description == "" {
+			description = c.ID
+		}
+		out.Cases = append(out.Cases, airun.EvalCase{
+			CaseID:        c.ID,
+			Description:   description,
+			Success:       c.Success,
+			Score:         c.Score,
+			NamedScores:   c.Metrics,
+			FailureReason: c.Reason,
+		})
+	}
+	out.Aggregates.Successes = run.Stats.Successes
+	out.Aggregates.Failures = run.Stats.Failures
+	if out.Aggregates.Successes == 0 && out.Aggregates.Failures == 0 && len(run.Cases) > 0 {
+		out.Diagnostics = append(out.Diagnostics, airun.IngestionDiagnostic{
+			Field:  "aggregates.{successes,failures}",
+			Kind:   "computed",
+			Detail: "Great Expectations statistics block missing or all-zero; aggregates summed from per-expectation rows",
+		})
+		for _, c := range run.Cases {
+			if c.Success {
+				out.Aggregates.Successes++
+			} else {
+				out.Aggregates.Failures++
+			}
+		}
+	}
+	out.Diagnostics = append(out.Diagnostics, airun.IngestionDiagnostic{
+		Field:  "cases[].score",
+		Kind:   "computed",
+		Detail: "Great Expectations produces pass/fail expectations; Terrain maps pass to 1.0 and fail to 0.0",
+	})
+	return out
 }
 
 func applyCoverageArtifacts(snapshot *models.TestSuiteSnapshot, artifacts []coverage.CoverageArtifact) {

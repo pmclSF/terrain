@@ -42,6 +42,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	conv "github.com/pmclSF/terrain/internal/convert"
 	"github.com/pmclSF/terrain/internal/engine"
@@ -124,6 +125,17 @@ func main() {
 	// Accepted values: quiet, debug (default: info-level).
 	initLogging(os.Args[1:])
 
+	startedAt := time.Now()
+	commandForTelemetry := telemetryCommandName(os.Args)
+	defer func() {
+		telemetry.Record(telemetry.Event{
+			Timestamp:  startedAt.UTC(),
+			Version:    version,
+			Command:    commandForTelemetry,
+			DurationMs: time.Since(startedAt).Milliseconds(),
+		})
+	}()
+
 	// No subcommand → discovery report. Friendly first-touch: scans the
 	// current directory and prints what Terrain sees (frameworks, AI
 	// surfaces, schemas, traces) plus three next-step commands.
@@ -172,8 +184,9 @@ func main() {
 		runtimeFlag := analyzeCmd.String("runtime", "", "path to runtime artifact (JUnit XML, Jest JSON); comma-separated for multiple")
 		gauntletFlag := analyzeCmd.String("gauntlet", "", "path to Gauntlet eval result artifact (JSON); comma-separated for multiple")
 		promptfooFlag := analyzeCmd.String("promptfoo-results", "", "path to Promptfoo --output result file(s); comma-separated for multiple")
-		deepevalFlag := analyzeCmd.String("deepeval-results", "", "path to DeepEval --export result file(s); comma-separated for multiple")
+		deepevalFlag := analyzeCmd.String("deepeval-results", "", "path to DeepEval result JSON file(s); comma-separated for multiple")
 		ragasFlag := analyzeCmd.String("ragas-results", "", "path to Ragas eval result file(s); comma-separated for multiple")
+		greatExpectationsFlag := analyzeCmd.String("great-expectations-results", "", "path to Great Expectations validation result JSON file(s); comma-separated for multiple")
 		baselineFlag := analyzeCmd.String("baseline", "", "path to a previous snapshot JSON file; enables regression-aware detectors and --new-findings-only filtering")
 		slowThreshold := analyzeCmd.Float64("slow-threshold", defaultSlowThresholdMs, "slow test threshold in ms")
 		redactPathsFlag := analyzeCmd.Bool("redact-paths", false, "rewrite absolute paths in --format=sarif output to repo-relative form (or basename if outside repo)")
@@ -203,28 +216,29 @@ func main() {
 			os.Exit(exitUsageError)
 		}
 		analyzeOpts := analyzeRunOpts{
-			Root:             *rootFlag,
-			JSONOutput:       *jsonFlag,
-			Format:           *formatFlag,
-			Verbose:          *verboseFlag,
-			WriteSnapshot:    *writeSnapshot,
-			CoveragePath:     *coverageFlag,
-			CoverageRunLabel: *coverageRunLabelFlag,
-			RuntimePaths:     *runtimeFlag,
-			GauntletPaths:    *gauntletFlag,
-			PromptfooPaths:   *promptfooFlag,
-			DeepEvalPaths:    *deepevalFlag,
-			RagasPaths:       *ragasFlag,
-			BaselinePath:     *baselineFlag,
-			SlowThreshold:    *slowThreshold,
-			RedactPaths:      *redactPathsFlag,
-			Gate:             gate,
-			Timeout:          *timeoutFlag,
-			SuppressionsPath: *suppressionsFlag,
-			NewFindingsOnly:  *newOnlyFlag,
-			EnablePreview:    *previewFlag,
-			Diag:             *diagFlag,
-			BaseRef:          *baseRefFlag,
+			Root:                   *rootFlag,
+			JSONOutput:             *jsonFlag,
+			Format:                 *formatFlag,
+			Verbose:                *verboseFlag,
+			WriteSnapshot:          *writeSnapshot,
+			CoveragePath:           *coverageFlag,
+			CoverageRunLabel:       *coverageRunLabelFlag,
+			RuntimePaths:           *runtimeFlag,
+			GauntletPaths:          *gauntletFlag,
+			PromptfooPaths:         *promptfooFlag,
+			DeepEvalPaths:          *deepevalFlag,
+			RagasPaths:             *ragasFlag,
+			GreatExpectationsPaths: *greatExpectationsFlag,
+			BaselinePath:           *baselineFlag,
+			SlowThreshold:          *slowThreshold,
+			RedactPaths:            *redactPathsFlag,
+			Gate:                   gate,
+			Timeout:                *timeoutFlag,
+			SuppressionsPath:       *suppressionsFlag,
+			NewFindingsOnly:        *newOnlyFlag,
+			EnablePreview:          *previewFlag,
+			Diag:                   *diagFlag,
+			BaseRef:                *baseRefFlag,
 		}
 		if err := runAnalyze(analyzeOpts); err != nil {
 			if errors.Is(err, errSeverityGateBlocked) {
@@ -483,11 +497,12 @@ func main() {
 		legacyDeprecationNotice("portfolio", "report portfolio")
 		portfolioCmd := flag.NewFlagSet("portfolio", flag.ExitOnError)
 		rootFlag := portfolioCmd.String("root", ".", "repository root to analyze")
+		fromFlag := portfolioCmd.String("from", "", "multi-repo manifest path (.terrain/repos.yaml)")
 		jsonFlag := portfolioCmd.Bool("json", false, "output JSON portfolio snapshot")
 		verboseFlag := portfolioCmd.Bool("verbose", false, "show per-asset details")
 		_ = portfolioCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("portfolio", portfolioCmd.Args(), rootFlag)
-		if err := runPortfolio(*rootFlag, *jsonFlag, *verboseFlag); err != nil {
+		if err := runPortfolioWithManifest(*rootFlag, *fromFlag, *jsonFlag, *verboseFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
@@ -663,6 +678,8 @@ func main() {
 		jsonFlag := prCmd.Bool("json", false, "output JSON PR analysis")
 		formatFlag := prCmd.String("format", "", "output format: markdown, comment, annotation")
 		failOnFlag := prCmd.String("fail-on", "", "exit "+fmt.Sprintf("%d", exitSeverityGateBlock)+" when at least one finding (NewFindings + AI BlockingSignals) is at or above this severity (critical|high|medium)")
+		baselineFlag := prCmd.String("baseline", "", "path to a previous snapshot JSON file; enables --new-findings-only filtering")
+		newOnlyFlag := prCmd.Bool("new-findings-only", false, "filter signals to those NOT present in --baseline before PR analysis")
 		_ = prCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("pr", prCmd.Args(), rootFlag)
 		gate, gateErr := parseSeverityGate(*failOnFlag)
@@ -670,7 +687,19 @@ func main() {
 			fmt.Fprintf(os.Stderr, "error: %v\n", gateErr)
 			os.Exit(exitUsageError)
 		}
-		if err := runPR(*rootFlag, *baseRef, *jsonFlag, *formatFlag, gate); err != nil {
+		if *newOnlyFlag && *baselineFlag == "" {
+			fmt.Fprintln(os.Stderr, "error: --new-findings-only requires --baseline <path>")
+			os.Exit(exitUsageError)
+		}
+		if err := runPR(prRunOpts{
+			Root:            *rootFlag,
+			BaseRef:         *baseRef,
+			JSONOutput:      *jsonFlag,
+			Format:          *formatFlag,
+			Gate:            gate,
+			BaselinePath:    *baselineFlag,
+			NewFindingsOnly: *newOnlyFlag,
+		}); err != nil {
 			if errors.Is(err, errSeverityGateBlocked) {
 				fmt.Fprintf(os.Stderr, "%v\n", err)
 				os.Exit(exitSeverityGateBlock)
@@ -882,10 +911,15 @@ func main() {
 			baseRef := aiCmd.String("base", "", "git base ref for impact-based scenario selection")
 			fullFlag := aiCmd.Bool("full", false, "run all scenarios (skip impact selection)")
 			dryRunFlag := aiCmd.Bool("dry-run", false, "show what would run without executing")
+			timeoutFlag := aiCmd.Duration("timeout", 0, "abort eval execution after this duration (e.g. 10m); 0 means no timeout")
 			_ = aiCmd.Parse(os.Args[3:])
-			if err := runAIRun(*rootFlag, *jsonFlag, *baseRef, *fullFlag, *dryRunFlag); err != nil {
+			if *timeoutFlag < 0 {
+				fmt.Fprintf(os.Stderr, "error: --timeout must be non-negative (got %s)\n", *timeoutFlag)
+				os.Exit(exitUsageError)
+			}
+			if err := runAIRunWithTimeout(*rootFlag, *jsonFlag, *baseRef, *fullFlag, *dryRunFlag, *timeoutFlag); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-				os.Exit(1)
+				os.Exit(exitCodeForCLIError(err))
 			}
 		case "replay":
 			aiCmd := flag.NewFlagSet("ai replay", flag.ExitOnError)
@@ -962,8 +996,9 @@ func main() {
 			fmt.Println("  terrain telemetry --off    disable local telemetry")
 			fmt.Println("  terrain telemetry --status show current state")
 			fmt.Println()
-			fmt.Println("Telemetry records command name, repo size band, languages,")
-			fmt.Println("signal count, and duration to ~/.terrain/telemetry.jsonl.")
+			fmt.Println("Telemetry records command name and duration.")
+			fmt.Println("Some commands may add repo size band, languages, and signal count.")
+			fmt.Println("Events are written to ~/.terrain/telemetry.jsonl.")
 			fmt.Println("No file paths, repo URLs, or PII are recorded.")
 			fmt.Println("Override with TERRAIN_TELEMETRY=on|off environment variable.")
 			return
@@ -1016,7 +1051,7 @@ func main() {
 		rootFlag := serveCmd.String("root", ".", "repository root to analyze")
 		portFlag := serveCmd.Int("port", server.DefaultPort, "port to listen on")
 		hostFlag := serveCmd.String("host", server.DefaultHost, "bind host (default 127.0.0.1; non-localhost values are unauthenticated and warned about)")
-		readOnlyFlag := serveCmd.Bool("read-only", false, "reject any non-GET/HEAD/OPTIONS request with 405 (every handler in 0.2 is read-only; this flag enforces the contract for any future state-changing endpoint)")
+		readOnlyFlag := serveCmd.Bool("read-only", true, "reject any non-GET/HEAD/OPTIONS request with 405; pass --read-only=false to opt out for local experiments")
 		_ = serveCmd.Parse(os.Args[2:])
 		if err := runServe(*rootFlag, *portFlag, *hostFlag, *readOnlyFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -1030,8 +1065,29 @@ func main() {
 		jsonFlag := testCmd.Bool("json", false, "emit findings.json instead of human-readable output")
 		junitFlag := testCmd.String("junit", "", "write JUnit XML to the given path")
 		summaryFlag := testCmd.String("summary", "", "write Step Summary markdown to the given path (set to $GITHUB_STEP_SUMMARY in GitHub Actions)")
+		failOnFlag := testCmd.String("fail-on", "", "exit "+fmt.Sprintf("%d", exitSeverityGateBlock)+" when at least one finding is at or above this severity (critical|high|medium)")
+		baselineFlag := testCmd.String("baseline", "", "path to a previous snapshot JSON file; enables --new-findings-only filtering")
+		newOnlyFlag := testCmd.Bool("new-findings-only", false, "filter signals to those NOT present in --baseline before gating")
 		_ = testCmd.Parse(os.Args[2:])
-		if err := runTestCommand(*rootFlag, *selectorFlag, *jsonFlag, *junitFlag, *summaryFlag); err != nil {
+		gate, gateErr := parseSeverityGate(*failOnFlag)
+		if gateErr != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", gateErr)
+			os.Exit(exitUsageError)
+		}
+		if *newOnlyFlag && *baselineFlag == "" {
+			fmt.Fprintln(os.Stderr, "error: --new-findings-only requires --baseline <path>")
+			os.Exit(exitUsageError)
+		}
+		if err := runTestCommand(testRunOpts{
+			Root:            *rootFlag,
+			Selector:        *selectorFlag,
+			JSONOutput:      *jsonFlag,
+			JUnitPath:       *junitFlag,
+			SummaryPath:     *summaryFlag,
+			Gate:            gate,
+			BaselinePath:    *baselineFlag,
+			NewFindingsOnly: *newOnlyFlag,
+		}); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
 		}
@@ -1098,6 +1154,22 @@ var knownCommands = []string{
 	"suppress", "test", "describe", "accept-snapshot",
 	"report", "config",
 	"plugins", "inject", "scaffold",
+}
+
+func telemetryCommandName(args []string) string {
+	if len(args) < 2 {
+		return "discover"
+	}
+	cmd := args[1]
+	for _, known := range knownCommands {
+		if cmd == known {
+			return cmd
+		}
+	}
+	if cmd == "--print-network" {
+		return cmd
+	}
+	return "unknown"
 }
 
 // didYouMean returns up to maxResults command names from knownCommands
@@ -1270,7 +1342,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "Run `terrain` with no arguments for a discovery report.")
 	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Canonical commands (0.2 — recommended):")
+	fmt.Fprintln(os.Stderr, "Canonical commands (recommended):")
 	fmt.Fprintln(os.Stderr)
 	fmt.Fprintln(os.Stderr, "  analyze [path] [flags]    What is the state of our test system?")
 	fmt.Fprintln(os.Stderr, "  test [flags]              CI-mode wrapper around analyze: emits JUnit XML")
@@ -1288,7 +1360,7 @@ func printUsage() {
 	fmt.Fprintln(os.Stderr, "  mcp [--root <dir>]        start the MCP server on stdio for AI assistants")
 	fmt.Fprintln(os.Stderr, "  debug <verb> [flags]      dependency graph drill-downs:")
 	fmt.Fprintln(os.Stderr, "                            graph, coverage, fanout, duplicates, depgraph")
-	fmt.Fprintln(os.Stderr, "  portfolio [flags]         multi-repo workspace intelligence")
+	fmt.Fprintln(os.Stderr, "  portfolio [flags]         test portfolio intelligence; --from aggregates repos")
 	fmt.Fprintln(os.Stderr, "  serve [flags]             local HTTP server with HTML report + JSON API")
 	fmt.Fprintln(os.Stderr, "  version                   print version info")
 	fmt.Fprintln(os.Stderr)

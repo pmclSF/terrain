@@ -1,9 +1,9 @@
 {
   "name": "terrain",
   "displayName": "Terrain",
-  "description": "Unified AI/ML testing in CI — surfaces findings from the latest Terrain run in the Problems pane with click-to-navigate and hover diagnostics.",
+  "description": "Legacy Terrain Problems-pane prototype retained for reference; the 0.3.0 extension alpha lives under extension/vscode.",
   "publisher": "pmclSF",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

@@ -1,7 +1,7 @@
 # Portfolio Schema Contract
 
-The canonical shape that `terrain portfolio` emits and that
-multi-repo aggregator tooling parses against.
+The canonical shape that `terrain portfolio` emits and that multi-repo
+aggregator tooling parses against.
 
 This is the audit-named gap (`portfolio.E4`) for "Schema for
 portfolio output not documented" — published here as a stable
@@ -9,18 +9,28 @@ contract.
 
 ## Status
 
-`terrain portfolio --from <manifest>` is **experimental** in 0.2.0
-(Tier 3 in the capability map). The schema documented below is the
-shape of the partial-shipping work in 0.2.0; multi-repo aggregation
-matures in 0.2.x. Single-repo portfolio output is stable; the
-multi-repo `--from <manifest>` shape may evolve before 0.3.
+Single-repo `terrain portfolio` output and multi-repo aggregation via
+`terrain portfolio --from <manifest>` are stable in 0.3.0. Multi-repo
+output supports manifest `path` and `snapshotPath` inputs, repo-level
+rollups, owner/tag propagation, and framework-of-record drift findings.
+The cross-repo dependency graph itself remains future work.
 
 ## Top-level: `PortfolioSummary`
 
 ```jsonc
 {
+  // "multi_repo" for manifest-backed aggregation. Omitted for older
+  // single-repo snapshots. Stability: Stable.
+  "scope": "multi_repo",
+
+  // Manifest description, when present. Stability: Stable.
+  "description": "Acme Corp engineering portfolio",
+
+  // Per-repo rollups for manifest-backed output. Stability: Stable.
+  "repositories": [ /* PortfolioRepositorySummary, see below */ ],
+
   // Per-asset breakdown. One TestAsset per detected test file.
-  // Stability: Stable (single-repo); Experimental (multi-repo).
+  // Stability: Stable.
   "assets": [ /* TestAsset, see below */ ],
 
   // Portfolio findings — redundancy candidates, overbroad tests,
@@ -38,6 +48,10 @@ multi-repo `--from <manifest>` shape may evolve before 0.3.
 
 ```jsonc
 {
+  // Manifest repo name for multi-repo output. Omitted for single-repo.
+  // Stability: Stable.
+  "repo": "api-server",
+
   // Repo-relative path to the test file. Stability: Stable.
   "path": "tests/auth/login_test.go",
 
@@ -51,6 +65,10 @@ multi-repo `--from <manifest>` shape may evolve before 0.3.
   // Empty when no ownership data exists.
   // Stability: Stable.
   "owner": "@platform-team",
+
+  // Manifest tags propagated to assets in multi-repo output.
+  // Stability: Stable.
+  "tags": [ "tier-1" ],
 
   // Number of test cases detected in this file. Stability: Stable.
   "testCount": 12,
@@ -120,8 +138,14 @@ multi-repo `--from <manifest>` shape may evolve before 0.3.
   //                             suggests it tests too much
   //   "low_value_high_cost"   — slow runtime + low coverage
   //   "high_leverage"         — fast + high coverage
+  //   "framework_drift"       — multi-repo only; observed frameworks
+  //                             differ from frameworksOfRecord
   // Stability: Stable.
-  "type": "redundancy_candidate",
+  "type": "framework_drift",
+
+  // Manifest repo name for multi-repo output. Omitted for single-repo.
+  // Stability: Stable.
+  "repo": "api-server",
 
   // Primary test file path for this finding. Stability: Stable.
   "path": "tests/auth/login_v1_test.go",
@@ -152,6 +176,10 @@ multi-repo `--from <manifest>` shape may evolve before 0.3.
 
 ```jsonc
 {
+  // Total repos in manifest-backed multi-repo output.
+  // Stability: Stable.
+  "totalRepos": 3,
+
   // Total test files in the portfolio. Stability: Stable.
   "totalAssets": 472,
 
@@ -177,6 +205,7 @@ multi-repo `--from <manifest>` shape may evolve before 0.3.
   "overbroadCount": 5,
   "lowValueHighCostCount": 8,
   "highLeverageCount": 23,
+  "frameworkDriftCount": 1,
 
   // Per-owner aggregation. Stability: Stable.
   "byOwner": [
@@ -193,6 +222,36 @@ multi-repo `--from <manifest>` shape may evolve before 0.3.
 }
 ```
 
+## `PortfolioRepositorySummary` — per-repo rollup
+
+```jsonc
+{
+  "name": "api-server",
+  "path": "../api-server",
+  "snapshotPath": "../api-server/.terrain/snapshots/latest.json",
+  "owner": "@platform-team",
+  "tags": [ "tier-1" ],
+  "frameworksOfRecord": [ "go-test" ],
+  "observedFrameworks": [
+    { "name": "go-test", "testFiles": 42 }
+  ],
+  "driftFrameworks": [
+    { "name": "mocha", "testFiles": 12 }
+  ],
+  "status": "drift",
+  "assetCount": 42,
+  "findingCount": 3,
+  "totalRuntimeMs": 12100,
+  "hasRuntimeData": true,
+  "hasCoverageData": false,
+  "postureBand": "moderate"
+}
+```
+
+`status` is `of_record`, `drift`, or `unconfigured` depending on
+whether `frameworksOfRecord` is present and whether any observed test
+framework falls outside it.
+
 ## Multi-repo manifest contract: `.terrain/repos.yaml`
 
 The companion manifest format consumed by
@@ -201,7 +260,7 @@ The companion manifest format consumed by
 canonical YAML shape:
 
 ```yaml
-# Schema version. 0.2 ships v1.
+# Schema version. 0.3 ships v1.
 version: 1
 
 # Optional human-readable label for the manifest.
@@ -235,11 +294,10 @@ Loader semantics in [`internal/portfolio/manifest.go`](../../internal/portfolio/
 
 ## Stability commitment
 
-All fields named "Stability: Stable" above are part of the
-long-lived schema for **single-repo portfolio output**. The
-multi-repo aggregate output (`--from <manifest>`) is
-**experimental** in 0.2.0 — its shape may evolve in 0.2.x as
-the aggregator matures.
+All fields named "Stability: Stable" above are part of the long-lived
+schema for portfolio output. Future releases may add fields
+additively, but removing or renaming fields follows Terrain's normal
+schema compatibility and deprecation rules.
 
 ## Consuming the JSON
 
@@ -251,7 +309,10 @@ terrain portfolio --json | jq '.aggregates.byOwner[] | {owner, assetCount}'
 terrain portfolio --json | jq '.findings[] | select(.type=="redundancy_candidate")'
 
 # Tag-filtered roll-up (if tags are set in the manifest):
-terrain portfolio --json | jq '.assets[] | select(.tags | contains(["tier-1"]))'
+terrain portfolio --from .terrain/repos.yaml --json | jq '.assets[] | select(.tags | contains(["tier-1"]))'
+
+# Multi-repo roll-up:
+terrain portfolio --from .terrain/repos.yaml --json | jq '.repositories[] | {name, status, assetCount}'
 ```
 
 ## See also

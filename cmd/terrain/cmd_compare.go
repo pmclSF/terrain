@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/atomicfile"
 	"github.com/pmclSF/terrain/internal/benchmark"
 	"github.com/pmclSF/terrain/internal/comparison"
 	"github.com/pmclSF/terrain/internal/framework_migration"
@@ -206,13 +207,13 @@ func persistSnapshot(snapshot *models.TestSuiteSnapshot, root string) error {
 	}
 
 	latestPath := filepath.Join(dir, "latest.json")
-	if err := os.WriteFile(latestPath, data, 0o644); err != nil {
+	if err := atomicfile.WriteFile(latestPath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write snapshot: %w", err)
 	}
 
 	ts := snapshot.GeneratedAt.UTC().Format("2006-01-02T15-04-05Z")
 	archivePath := filepath.Join(dir, ts+".json")
-	if err := os.WriteFile(archivePath, data, 0o644); err != nil {
+	if err := atomicfile.WriteFile(archivePath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write archive snapshot: %w", err)
 	}
 

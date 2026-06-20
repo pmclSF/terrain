@@ -7,11 +7,12 @@ cmd/internal/terrain-precision/
 
 # scripts/ is local-only by default, except for the bench + verification
 # helpers that the public Makefile + npm packaging tasks reference.
-scripts/
+scripts/*
 !scripts/benchmarks/
 !scripts/benchmarks/**
 !scripts/docs-verify.sh
 !scripts/test-installer-marker.mjs
+!scripts/test-release-sanity.mjs
 !scripts/verify-pack.js
 !scripts/verify_copy_policy.py
 !scripts/_checkpoint.py
@@ -145,21 +146,7 @@ terrain-pipeline
 # === Corpus research data — NEVER publish ===
 # tier-4/ contains the harvested graph: PR walks, boundary edges,
 # labels, per-repo signal data. This is research scratch, kept local.
-# Allowlist the small artifacts that ARE legitimate documentation
-# (markdown reports, hand-labeled TSVs, repo URL lists).
-tier-4/*.jsonl
-tier-4/*.jsonl.gz
-tier-4/*.json
-tier-4/*.json.gz
-tier-4/streams/
-tier-4/expand-streams/
-tier-4/expand2-streams/
-tier-4/bnd-rescan-streams/
-tier-4/track2-ablation/
-tier-4/logs/
-!tier-4/**/*.tsv
-!tier-4/**/*.md
-!tier-4/ai-repos-to-reclone.txt
+# Do not allowlist files from this tree in public commits.
 
 # === Local snapshot scratch ===
 .terrain/snapshots/

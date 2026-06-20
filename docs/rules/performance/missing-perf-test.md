@@ -57,7 +57,7 @@ Latency / throughput regressions ship silently when no benchmark guards the path
 - **Approach:** graph traversal. For each surface kind in the latency-critical set, check whether any test reaching the surface is in a benchmark-shaped path.
 - **Latency-critical surface kinds:** SurfacePrompt, SurfaceRetrieval, SurfaceAgent, SurfaceModel, SurfaceHandler, SurfaceRoute.
 - **Benchmark-test paths:** `/bench/`, `/benchmarks/`, `/perf/`, `/performance/`, `/load/`, `/loadtest/`, `/__benchmarks__/`.
-- **0.2.0 silence rule:** if the repo has no benchmark tests anywhere, the rule stays silent — otherwise the first run would flag every surface and overwhelm adopters.
+- **0.3.0 silence rule:** if the repo has no benchmark tests anywhere, the rule stays silent — otherwise the first run would flag every surface and overwhelm adopters.
 
 ## 6. Worked example
 

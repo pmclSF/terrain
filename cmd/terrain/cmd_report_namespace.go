@@ -217,13 +217,26 @@ func runReportPRCLI(args []string) error {
 	jsonOut := fs.Bool("json", false, "output JSON PR analysis")
 	format := fs.String("format", "", "output format: markdown, comment, annotation")
 	failOn := fs.String("fail-on", "", "exit non-zero when a finding at or above this severity is present (critical|high|medium)")
+	baseline := fs.String("baseline", "", "path to a previous snapshot JSON file; enables --new-findings-only filtering")
+	newOnly := fs.Bool("new-findings-only", false, "filter signals to those NOT present in --baseline before PR analysis")
 	_ = fs.Parse(args)
 	mountPositionalAsRoot("report pr", fs.Args(), root)
 	gate, err := parseSeverityGate(*failOn)
 	if err != nil {
 		return err
 	}
-	return runPR(*root, *baseRef, *jsonOut, *format, gate)
+	if *newOnly && *baseline == "" {
+		return fmt.Errorf("--new-findings-only requires --baseline <path>")
+	}
+	return runPR(prRunOpts{
+		Root:            *root,
+		BaseRef:         *baseRef,
+		JSONOutput:      *jsonOut,
+		Format:          *format,
+		Gate:            gate,
+		BaselinePath:    *baseline,
+		NewFindingsOnly: *newOnly,
+	})
 }
 
 // runReportCheckRunsCLI emits structured JSON for two GitHub Checks-

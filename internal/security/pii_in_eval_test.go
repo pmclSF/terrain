@@ -3,6 +3,7 @@ package security
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -18,7 +19,9 @@ func TestDetectPIIInEval_EmailFires(t *testing.T) {
 	dir := t.TempDir()
 	_ = os.MkdirAll(filepath.Join(dir, "evals"), 0o755)
 	path := filepath.Join(dir, "evals", "users.csv")
-	writeFile(t, path, "name,email\nAlice,alice@example.com\nBob,bob@example.com\n")
+	emailA := "alice" + "@" + "example.test"
+	emailB := "bob" + "@" + "example.test"
+	writeFile(t, path, "name,email\nAlice,"+emailA+"\nBob,"+emailB+"\n")
 
 	sigs := DetectPIIInEval(path)
 	if len(sigs) != 1 {
@@ -41,7 +44,10 @@ func TestDetectPIIInEval_MultipleKindsRaisesConfidence(t *testing.T) {
 	dir := t.TempDir()
 	_ = os.MkdirAll(filepath.Join(dir, "evals"), 0o755)
 	path := filepath.Join(dir, "evals", "leak.txt")
-	writeFile(t, path, "Contact alice@example.com or 555-867-5309 about SSN 555-12-3456")
+	email := "alice" + "@" + "example.test"
+	phone := strings.Join([]string{"555", "867", "5309"}, "-")
+	ssn := strings.Join([]string{"555", "12", "3456"}, "-")
+	writeFile(t, path, "Contact "+email+" or "+phone+" about SSN "+ssn)
 
 	sigs := DetectPIIInEval(path)
 	if len(sigs) != 1 {
@@ -68,7 +74,7 @@ func TestDetectPIIInEval_NonScanCandidateExt(t *testing.T) {
 	dir := t.TempDir()
 	_ = os.MkdirAll(filepath.Join(dir, "evals"), 0o755)
 	path := filepath.Join(dir, "evals", "model.bin")
-	writeFile(t, path, "alice@example.com")
+	writeFile(t, path, "alice"+"@"+"example.test")
 	sigs := DetectPIIInEval(path)
 	if len(sigs) != 0 {
 		t.Errorf("non-text ext should be skipped, got %+v", sigs)

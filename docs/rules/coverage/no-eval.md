@@ -90,7 +90,7 @@ ignore:
 - **Eval declares coverage via folder convention but not in `CoveredSurfaceIDs`** — the inference layer (`internal/aidetect/DeriveEvals`) usually populates this from co-location; when it doesn't, the eval's `terrain.yaml` declaration is the source of truth. Mitigation: list the surface in the eval's YAML.
 - **Indirect coverage** (eval exercises a pipeline that internally invokes the surface) — not credited today; explicit declaration is required. Transitive propagation is planned.
 - **Vendored / experimental surfaces** — ignore via path.
-- **Measured FP rate at last validation:** see the per-rule readiness card.
+- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 

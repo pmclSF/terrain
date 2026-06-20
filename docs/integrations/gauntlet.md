@@ -2,7 +2,7 @@
 
 > **Status:** Implemented (artifact ingestion)
 > **Repository:** github.com/pmclsf/gauntlet
-> **Purpose:** Gauntlet is Terrain's first AI execution provider. It runs eval scenarios deterministically and produces structured result artifacts that Terrain ingests for reasoning, coverage analysis, and baseline comparison.
+> **Purpose:** Gauntlet is an external AI execution provider. It runs eval scenarios deterministically and produces structured result artifacts that Terrain ingests for eval-execution signals.
 
 ## Responsibility Split
 
@@ -115,7 +115,7 @@ terrain impact --base main
 
 When a Gauntlet artifact is ingested:
 
-1. **Scenario matching** — Each `scenarioId` in the artifact is matched to Terrain's Scenario inventory. Matched scenarios receive execution metadata.
+1. **Scenario matching** — Each `scenarioId` in the artifact is matched to Terrain's Scenario inventory. The apply result tracks matched and unmatched scenario IDs.
 
 2. **Signal generation** — Failed scenarios generate signals:
    - `"failed"` → medium-severity signal with metric details
@@ -124,12 +124,17 @@ When a Gauntlet artifact is ingested:
 
 3. **Data completeness** — The snapshot's `DataSources` includes a `"gauntlet"` entry tracking ingestion status.
 
-4. **Coverage enrichment** — Scenario execution results improve coverage confidence for the code surfaces those scenarios validate.
-
 ## Graph integration
 
-Gauntlet results attach to the AI reasoning graph through `CodeSurface ← Scenario ← ExecutionRun`. When `terrain explain <scenario-id>` runs, the trace includes Gauntlet execution status, metric values, and baseline comparisons.
+Gauntlet result signals carry the artifact's `scenarioId` in
+`Signal.Location.ScenarioID` and use `eval-execution` as the evidence
+source. In 0.3.0 Terrain does not create a separate `ExecutionRun`
+graph node or persist per-scenario execution metadata beyond the
+signals emitted from the artifact.
 
 ## `terrain ai run` workflow
 
-`terrain ai run` selects scenarios based on `terrain impact`, invokes Gauntlet as the execution backend, and ingests the results via `--gauntlet results.json`. The interface is the artifact JSON described above — Terrain writes a scenario selection file, Gauntlet executes, Terrain ingests.
+`terrain ai run` does not invoke Gauntlet in 0.3.0. Use
+`terrain ai list` / `terrain impact` to understand which scenarios are
+relevant, run Gauntlet with your normal Gauntlet command, then ingest
+the resulting JSON with `terrain analyze --gauntlet results.json`.

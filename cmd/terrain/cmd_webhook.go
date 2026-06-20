@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -90,7 +89,7 @@ func runWebhook(addr string) error {
 // slash package's DismissPolicy shape. Missing terrain.yaml and missing
 // sections both produce the zero-value (deny-all) policy.
 func loadDismissPolicy(root string) slash.DismissPolicy {
-	cfg, err := terrainconfig.Load(filepath.Join(root, "terrain.yaml"))
+	cfg, err := terrainconfig.LoadForRoot(root)
 	if err != nil || cfg == nil || cfg.Slash == nil || cfg.Slash.Dismiss == nil {
 		return slash.DismissPolicy{}
 	}

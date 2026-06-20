@@ -1,4 +1,4 @@
-// Terrain VS Code extension.
+// Terrain VS Code legacy prototype.
 //
 // Reads .terrain/findings.json from the active workspace and surfaces
 // every Finding in the Problems pane with the appropriate severity.
@@ -6,7 +6,8 @@
 // long_message, cause-path summary, reproduction command, and docs
 // link.
 //
-// Minimum capability set for 0.2.0:
+// Prototype capability set. The 0.3.0 extension alpha lives under
+// extension/vscode and renders sidebar tree views from CLI JSON.
 //   - artifacts → Problems pane
 //   - click-to-navigate
 //   - hover diagnostics

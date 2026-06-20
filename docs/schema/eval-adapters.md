@@ -1,8 +1,10 @@
 # Eval Adapter Schema Contract
 
 Documents the canonical shape every eval-framework adapter
-(Promptfoo, DeepEval, Ragas, Gauntlet) emits into Terrain's
-normalized `EvalRunResult` envelope.
+(Promptfoo, DeepEval, Ragas, Great Expectations) emits into Terrain's
+normalized `EvalRunResult` envelope. Gauntlet has a separate
+JSON-compatible ingestion contract documented in
+[`docs/integrations/gauntlet.md`](../integrations/gauntlet.md).
 
 This is the contract downstream detectors (aiCostRegression,
 aiHallucinationRate, aiRetrievalRegression) consume. Adapter

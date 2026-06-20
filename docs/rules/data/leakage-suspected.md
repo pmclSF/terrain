@@ -58,7 +58,7 @@ Companion rule: `terrain/data/missing-train-test-split` fires when no split exis
 - **Path filter:** only training-pathed files (`/train/`, `/training/`, `/models/`, `/notebooks/`, `/experiments/`, `/ml/`, `/pipelines/`).
 - **Pattern: preprocessing leakage.** A `.fit_transform()` / `.fit()` call on a preprocessing class (`StandardScaler` / `MinMaxScaler` / `OneHotEncoder` / `TfidfVectorizer` / `SimpleImputer` / `PowerTransformer` / etc., or a variable named `scaler.` / `encoder.` / `vectorizer.` / `imputer.` / `transformer.`) appears BEFORE the first `train_test_split` call.
 - **Pattern: temporal leakage.** The file has time-series indicators (`pd.to_datetime`, `DatetimeIndex`, `time_series`, `timestamp`, LSTM imports, `.resample(`, `freq=`) AND uses `train_test_split(` AND does NOT use `TimeSeriesSplit(` or `shuffle=False`.
-- **Edge cases NOT handled at 0.2.0:** target leakage (a derived feature column directly mirrors the target), group leakage (rows from the same user split across train/test), nested cross-validation leakage.
+- **Edge cases NOT handled in 0.3.0:** target leakage (a derived feature column directly mirrors the target), group leakage (rows from the same user split across train/test), nested cross-validation leakage.
 
 ## 6. Worked example
 

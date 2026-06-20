@@ -120,7 +120,11 @@ func TestCLISmoke_PRCommand(t *testing.T) {
 	root := fixtureRoot(t)
 
 	out, err := captureRun(func() error {
-		return runPR(root, "HEAD~1", true, "", severityGateNone)
+		return runPR(prRunOpts{
+			Root:       root,
+			BaseRef:    "HEAD~1",
+			JSONOutput: true,
+		})
 	})
 	if err != nil {
 		t.Errorf("pr failed: %v", err)

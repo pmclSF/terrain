@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/analyze"
+	"github.com/pmclSF/terrain/internal/atomicfile"
 	"github.com/pmclSF/terrain/internal/budget"
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/findings"
@@ -159,27 +161,28 @@ func relativeToRoot(path, root string) string {
 // were already on the previous positional signature and are
 // preserved here.
 type analyzeRunOpts struct {
-	Root             string
-	JSONOutput       bool
-	Format           string
-	Verbose          bool
-	WriteSnapshot    bool
-	CoveragePath     string
-	CoverageRunLabel string
-	RuntimePaths     string
-	GauntletPaths    string
-	PromptfooPaths   string
-	DeepEvalPaths    string
-	RagasPaths       string
-	BaselinePath     string
-	SlowThreshold    float64
-	RedactPaths      bool
-	Gate             severityGate
-	Timeout          time.Duration
-	SuppressionsPath string
-	NewFindingsOnly  bool
-	EnablePreview    bool
-	Diag             bool
+	Root                   string
+	JSONOutput             bool
+	Format                 string
+	Verbose                bool
+	WriteSnapshot          bool
+	CoveragePath           string
+	CoverageRunLabel       string
+	RuntimePaths           string
+	GauntletPaths          string
+	PromptfooPaths         string
+	DeepEvalPaths          string
+	RagasPaths             string
+	GreatExpectationsPaths string
+	BaselinePath           string
+	SlowThreshold          float64
+	RedactPaths            bool
+	Gate                   severityGate
+	Timeout                time.Duration
+	SuppressionsPath       string
+	NewFindingsOnly        bool
+	EnablePreview          bool
+	Diag                   bool
 	// BaseRef, when set, enables the prompt-template/schema drift
 	// detector (aiPromptSchemaDrift). The detector compares schemas
 	// at HEAD against schemas at this ref via `git show <ref>:<path>`.
@@ -200,6 +203,7 @@ func runAnalyze(o analyzeRunOpts) error {
 	promptfooPaths := o.PromptfooPaths
 	deepevalPaths := o.DeepEvalPaths
 	ragasPaths := o.RagasPaths
+	greatExpectationsPaths := o.GreatExpectationsPaths
 	baselinePath := o.BaselinePath
 	slowThreshold := o.SlowThreshold
 	redactPaths := o.RedactPaths
@@ -211,7 +215,7 @@ func runAnalyze(o analyzeRunOpts) error {
 	// the AI-context gate so private LLM SDKs corroborate detection.
 	// Missing or invalid config is non-fatal — gate falls back to
 	// the canonical marker list.
-	if cfg, err := terrainconfig.Load(filepath.Join(root, "terrain.yaml")); err == nil && cfg != nil && cfg.AI != nil && len(cfg.AI.AIMarkers) > 0 {
+	if cfg, err := terrainconfig.LoadForRoot(root); err == nil && cfg != nil && cfg.AI != nil && len(cfg.AI.AIMarkers) > 0 {
 		analysis.SetCustomAIMarkers(cfg.AI.AIMarkers)
 	}
 
@@ -220,6 +224,7 @@ func runAnalyze(o analyzeRunOpts) error {
 	parsedPromptfoo := parseRuntimePaths(promptfooPaths) // same comma-split logic
 	parsedDeepEval := parseRuntimePaths(deepevalPaths)   // same comma-split logic
 	parsedRagas := parseRuntimePaths(ragasPaths)         // same comma-split logic
+	parsedGreatExpectations := parseRuntimePaths(greatExpectationsPaths)
 	if err := validateCommandInputs(root, coveragePath, parsedRuntime, parsedGauntlet); err != nil {
 		return err
 	}
@@ -230,6 +235,9 @@ func runAnalyze(o analyzeRunOpts) error {
 		return err
 	}
 	if err := validateExistingPaths("--ragas-results", parsedRagas); err != nil {
+		return err
+	}
+	if err := validateExistingPaths("--great-expectations-results", parsedGreatExpectations); err != nil {
 		return err
 	}
 	if baselinePath != "" {
@@ -266,6 +274,7 @@ func runAnalyze(o analyzeRunOpts) error {
 	opt.PromptfooPaths = parsedPromptfoo
 	opt.DeepEvalPaths = parsedDeepEval
 	opt.RagasPaths = parsedRagas
+	opt.GreatExpectationsPaths = parsedGreatExpectations
 	opt.BaselineSnapshotPath = baselinePath
 	opt.SuppressionsPath = o.SuppressionsPath
 	opt.NewFindingsOnly = o.NewFindingsOnly
@@ -473,13 +482,12 @@ func writeFindingsJSON(root string, sigs []models.Signal) error {
 	if err := os.MkdirAll(terrainDir, 0o755); err != nil {
 		return fmt.Errorf("create .terrain/: %w", err)
 	}
-	path := filepath.Join(terrainDir, "findings.json")
-	f, err := os.Create(path)
-	if err != nil {
-		return fmt.Errorf("create %s: %w", path, err)
+	var buf bytes.Buffer
+	if err := art.WriteJSON(&buf); err != nil {
+		return err
 	}
-	defer f.Close()
-	return art.WriteJSON(f)
+	path := filepath.Join(terrainDir, "findings.json")
+	return atomicfile.WriteFile(path, buf.Bytes(), 0o644)
 }
 
 // appendPromptSchemaDriftSignals runs the prompt-template / schema
@@ -518,7 +526,7 @@ func appendPromptSchemaDriftSignals(snap *models.TestSuiteSnapshot, root, baseRe
 // rendering to humans; JSON/SARIF stay quiet so machine consumers
 // see the same shape as before.
 func applyFindingsBudget(snap *models.TestSuiteSnapshot, root string, jsonOutput bool) {
-	cfg, err := terrainconfig.Load(filepath.Join(root, "terrain.yaml"))
+	cfg, err := terrainconfig.LoadForRoot(root)
 	if err != nil || cfg == nil || len(cfg.Rules) == 0 {
 		return
 	}

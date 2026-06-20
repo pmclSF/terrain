@@ -1,8 +1,10 @@
 package engine
 
 import (
+	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -45,7 +47,9 @@ suppressions:
 		},
 	}
 
-	applySuppressions(snap, tmp, "", time.Now())
+	if err := applySuppressions(snap, tmp, "", time.Now()); err != nil {
+		t.Fatalf("apply suppressions: %v", err)
+	}
 
 	if len(snap.Signals) != 1 {
 		t.Fatalf("expected 1 surviving signal, got %d", len(snap.Signals))
@@ -86,7 +90,9 @@ suppressions:
 	}
 
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	applySuppressions(snap, tmp, "", now)
+	if err := applySuppressions(snap, tmp, "", now); err != nil {
+		t.Fatalf("apply suppressions: %v", err)
+	}
 
 	// Original signal should have survived (expired suppression is
 	// not in effect) AND a `suppressionExpired` warning signal appears.
@@ -120,13 +126,15 @@ func TestApplySuppressions_MissingFileNoOp(t *testing.T) {
 			{Type: "weakAssertion", FindingID: "w@x:y#z"},
 		},
 	}
-	applySuppressions(snap, tmp, "", time.Now())
+	if err := applySuppressions(snap, tmp, "", time.Now()); err != nil {
+		t.Fatalf("missing file should be a no-op, got %v", err)
+	}
 	if len(snap.Signals) != 1 {
 		t.Errorf("missing file should be a no-op; got %d signals", len(snap.Signals))
 	}
 }
 
-func TestApplySuppressions_MalformedFileLogsAndContinues(t *testing.T) {
+func TestApplySuppressions_MalformedFileFailsClosed(t *testing.T) {
 	t.Parallel()
 
 	tmp := t.TempDir()
@@ -142,12 +150,38 @@ func TestApplySuppressions_MalformedFileLogsAndContinues(t *testing.T) {
 			{Type: "weakAssertion", FindingID: "w@x:y#z"},
 		},
 	}
-	applySuppressions(snap, tmp, "", time.Now())
-	// Signals should be untouched; we don't fail the pipeline on
-	// malformed files (CI users who fat-finger a YAML edit shouldn't
-	// lose their analysis).
+	err := applySuppressions(snap, tmp, "", time.Now())
+	if err == nil {
+		t.Fatal("expected malformed suppressions to fail")
+	}
+	if !strings.Contains(err.Error(), "load suppressions") {
+		t.Fatalf("error should name suppressions load failure, got %v", err)
+	}
 	if len(snap.Signals) != 1 {
 		t.Errorf("malformed file should leave signals intact; got %d", len(snap.Signals))
+	}
+}
+
+func TestRunPipeline_MalformedSuppressionsFailsClosed(t *testing.T) {
+	t.Parallel()
+
+	tmp := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmp, ".terrain"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, ".terrain", "suppressions.yaml"), []byte("not: [valid yaml"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(tmp, "main.py"), []byte("def add(a, b):\n    return a + b\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	_, err := RunPipelineContext(context.Background(), tmp, PipelineOptions{})
+	if err == nil {
+		t.Fatal("expected pipeline to fail closed on malformed suppressions")
+	}
+	if !strings.Contains(err.Error(), "load suppressions") {
+		t.Fatalf("error should mention suppressions, got %v", err)
 	}
 }
 
@@ -170,7 +204,9 @@ suppressions:
 			{Type: "weakAssertion", FindingID: id},
 		},
 	}
-	applySuppressions(snap, tmp, custom, time.Now())
+	if err := applySuppressions(snap, tmp, custom, time.Now()); err != nil {
+		t.Fatalf("apply suppressions: %v", err)
+	}
 	if len(snap.Signals) != 0 {
 		t.Errorf("override path should suppress; got %d signals", len(snap.Signals))
 	}

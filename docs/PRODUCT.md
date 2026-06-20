@@ -20,7 +20,7 @@ Terrain serves five personas working in the same repository:
 - **ML engineer (LLMs).** Edits prompts, RAG pipelines, or model fixtures; needs scenario-based regression detection.
 - **Senior decision-maker (CTO, Principal Engineer, PM).** Evaluating Terrain for adoption; needs to understand scope, trust, false-positive cost, and stability guarantees.
 
-The first four interact with Terrain through failing tests and PR diagnostics. The fifth reads the docs and the readiness cards.
+The first four interact with Terrain through failing tests and PR diagnostics. The fifth reads the docs, feature-status table, limitations, and release artifacts.
 
 ### Languages analyzed
 
@@ -28,18 +28,18 @@ Terrain's detector engines analyze: **Python, TypeScript, JavaScript, Go, Java**
 
 ## 3. Three co-equal product goals
 
-Terrain commits to three goals as load-bearing, all measured at every release:
+Terrain commits to three goals as load-bearing, with the current release status and measurement evidence documented per release:
 
 1. **Unified graph.** Code, tests, AI surfaces, evals, and data live in one dependency graph. Cross-language edges (TS/JS ↔ Python/Go/Java) via OpenAPI / tRPC / gRPC / GraphQL / HTTP-route inference, plus database schema and pipeline awareness.
 2. **Real CI gate.** Output is failing test cases in the platform's Tests tab — not narrative review comments. Blocks merge on the same primitive as any other test runner.
-3. **Auditable quality.** Per-rule readiness cards measure false-positive rate and triage time on representative repositories and are published with each release.
+3. **Auditable quality.** Public release artifacts document feature status, limitations, supply-chain provenance, verification gates, and benchmark methodology. Per-rule readiness cards are planned measured harness outputs; they are only claimable for a release once generated under `harness/readiness/v<release>/`.
 
 ## 4. Non-goals
 
 These will not be added to Terrain. Adopters needing them should look elsewhere.
 
 - **Hosted SaaS.** Terrain is OSS that runs in the adopter's CI and on developer machines. No hosted-service version. No paid tier.
-- **Telemetry by default.** Terrain does not phone home. Future opt-in telemetry, if added, will require explicit `terrain.yaml` enablement and will be documented in `SECURITY-DATA-HANDLING.md`.
+- **No remote telemetry.** Terrain does not phone home. Optional local telemetry exists for adopters who explicitly enable it with `terrain config telemetry --on`; it writes JSONL to the adopter's own `~/.terrain/` directory and is never sent by Terrain.
 - **Vulnerability scanning** beyond the in-scope `security/*` rules. Terrain does not duplicate Snyk / Trivy / Dependabot / FOSSA; adopters integrate those independently.
 - **License compliance scanning.** Same — integrate with FOSSA or equivalent.
 - **General code-review commentary.** Terrain's output is failing test cases with structured diagnostics, not narrative reviews.
@@ -52,7 +52,7 @@ These will not be added to Terrain. Adopters needing them should look elsewhere.
 | **Signal** | Atomic observation emitted by a detector (e.g., "test file imports framework X"). |
 | **Finding** | A signal raised to merge-gate visibility, with severity + cause path + reproduction command. |
 | **Rule** | Configurable detection capability with stable ID (`terrain/<category>/<rule>`), severity default, and doc page. |
-| **Lifecycle status** | `stable`, `experimental`, or `planned`. Stable rules have shipped detectors with adopter-tested precision; experimental rules ship default-off as scope-under-evaluation; planned rules reserve the rule_id ahead of the detector landing. |
+| **Lifecycle status** | `stable`, `experimental`, or `planned`. Stable rules have shipped detectors with implementation tests and public documentation; experimental rules ship default-off as scope-under-evaluation; planned rules reserve the rule_id ahead of the detector landing. Published readiness cards, when present, carry the separate precision/triage measurement evidence. |
 | **Gating tier** | `gate` or `observability`. Gate-tier findings count toward `--fail-on=*` exit codes and gate CI; observability-tier findings always emit but never block CI. Tier is mandatory on every detector — no implicit default. |
 | **Surface** | A code or AI target: prompt, agent, tool, context, scenario, code unit, test file. |
 | **Cause path** | Chain of graph nodes from a finding's primary location back to the change in the PR that caused it. |
@@ -61,11 +61,11 @@ These will not be added to Terrain. Adopters needing them should look elsewhere.
 
 ## 6. Principles
 
-- **Measurement over intuition.** Every shipped rule's false-positive rate is measured before it is promoted from preview to stable.
-- **Local-first, no required keys.** Every gate finding, every detector, every PR-comment surface must work without an LLM API key. Optional LLM-enhanced features layer on when a user brings their own key — never gating core value.
+- **Measurement over intuition.** Rules should graduate from preview to stable only with precision evidence. When that evidence is not published for a release, the feature-status and rule docs must say so directly rather than implying a measured false-positive rate.
+- **Local-first, no required keys.** Every gate finding, every detector, every PR-comment surface must work without an LLM API key. In 0.3.0, provider config is parsed for forward compatibility but no shipped command contacts an LLM provider.
 - **Stability is a public contract.** Rule IDs, JSON output schema, `terrain.yaml` schema, and CLI flags are stable from 0.2.0 forward. Changes follow a one-cycle deprecation with stderr warnings.
 - **Detectors are redesigned, not retired.** Low-precision detectors enter redesign. The observability tier is the safety net; the gate set earns its place via measurement.
-- **Failures are loud.** When Terrain itself crashes or errors mid-run, the gate fails closed (status check red) and emits a clear annotation. Adopters who can't tolerate this set `on_terrain_error: pass` in `terrain.yaml`.
+- **Failures are loud.** When Terrain itself crashes or errors mid-run, the gate fails closed (status check red) and emits a clear annotation. The `on_terrain_error: pass` field is parsed but inactive in 0.3.0; fail-open wiring is future work.
 - **Findings carry evidence.** Every finding includes a cause path, the signals that produced it, and a reproduction command. `terrain explain` surfaces this directly.
 
 ## 7. Architecture — three-surface model
@@ -96,9 +96,9 @@ See the [finding schema](../schemas/finding.v1.json) for the formal contract.
 
 ## 9. Rule catalog
 
-0.2.0 ships rules across ten categories: regression, coverage, hygiene, reproducibility, data, performance, fairness, security, lifecycle, and documentation. Stable rules ship default-on; preview rules ship default-off and graduate as their false-positive rate and triage time clear the load-bearing quality bars.
+0.3.0 ships rules across ten categories: regression, coverage, hygiene, reproducibility, data, performance, fairness, security, lifecycle, and documentation. Stable rules ship default-on when they are implemented and covered by tests; preview rules ship default-off while precision measurement and adopter feedback are still in progress.
 
-Per-rule documentation lives in [`docs/rules/<category>/<rule-name>.md`](rules/).
+Per-rule documentation lives under `docs/rules/<category>/<rule-name>.md`; see the [documentation index](README.md#per-rule-documentation).
 
 ## 10. Configuration
 
@@ -132,14 +132,14 @@ The `surfaces:` `type:` enumeration is closed (`llm | classical_ml | deep_learni
 | JSON output schema | `version: 1`; one-cycle deprecation cycle on changes |
 | `terrain.yaml` schema | Versioned `v1`; closed enumeration for surface types; one-cycle deprecation on changes |
 | CLI flags | Stable from 0.2.0; same deprecation contract |
-| Telemetry | None by default. No phone home, no usage stats. Verifiable via `terrain --print-network`. |
-| Data flow | Templates tier: zero outbound network calls. Optional local-LLM tier (Ollama) is the documented default; other LLM tiers are explicit adopter choices. |
+| Telemetry | No remote telemetry. Optional local telemetry is disabled by default, writes only to `~/.terrain/telemetry.jsonl`, and makes no network calls. Verifiable via `terrain --print-network`. |
+| Data flow | Templates tier: zero outbound network calls. LLM provider config is parsed but inactive in 0.3.0; future LLM enrichment must remain explicit adopter choice when it ships. |
 
 For the data-handling contract in full, see [`../SECURITY-DATA-HANDLING.md`](../SECURITY-DATA-HANDLING.md).
 
 ## 12. Quality
 
-Each stable rule's measured false-positive rate and median triage time are published as readiness cards alongside the release tag.
+The 0.3.0 release publishes feature status, limitations, verification checks, signed artifacts, and benchmark methodology. Per-rule false-positive and median-triage measurements are readiness-card outputs and should not be represented as published for a release unless the measured cards exist under `harness/readiness/v<release>/`.
 
 ## 13. License
 
@@ -154,7 +154,7 @@ Semantic versioning, with explicit pre-1.0 stability commitments:
 
 See [versioning.md](versioning.md) for the full contract.
 
-## 15. Beyond 0.2.0
+## 15. Beyond 0.3.0
 
 Subsequent releases are *additive* — they extend coverage, add surfaces, graduate preview rules, and broaden ecosystem reach. No foundational architecture work is deferred to subsequent releases.
 
@@ -169,8 +169,8 @@ Out-of-scope integrations (explicit non-goals across all future releases):
 - [`OVERVIEW.md`](OVERVIEW.md) — evaluator-focused summary.
 - [`quickstart.md`](quickstart.md) — first report in five minutes.
 - [`cli-spec.md`](cli-spec.md) — canonical CLI surface.
-- [`LIMITATIONS.md`](LIMITATIONS.md) — what 0.2.0 does not do.
+- [`LIMITATIONS.md`](LIMITATIONS.md) — what the current release does not do.
 - [`severity-rubric.md`](severity-rubric.md) — severity labels and configuration.
 - [`../DESIGN.md`](../DESIGN.md) — technical architecture.
 - [`../CHANGELOG.md`](../CHANGELOG.md) — release history.
-- [`rules/`](rules/) — per-rule documentation.
+- [`signal-catalog.md`](signal-catalog.md) — detector catalog and links to per-rule documentation.

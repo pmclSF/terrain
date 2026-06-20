@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pmclSF/terrain/internal/airun"
 	"github.com/pmclSF/terrain/internal/policy"
 )
 
@@ -152,6 +153,101 @@ func TestIngestGauntletArtifacts_ValidArtifact(t *testing.T) {
 	}
 	if len(arts) != 1 {
 		t.Errorf("expected 1 artifact, got %d", len(arts))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// ingestGreatExpectationsArtifacts
+// ---------------------------------------------------------------------------
+
+func TestIngestGreatExpectationsArtifacts_ValidArtifact(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	artifactPath := filepath.Join(root, "evals", "ge-results.json")
+	if err := os.MkdirAll(filepath.Dir(artifactPath), 0o755); err != nil {
+		t.Fatalf("mkdir fixture dir: %v", err)
+	}
+	data := []byte(`{
+  "success": false,
+  "meta": {
+    "great_expectations_version": "0.18.0",
+    "run_id": {"run_time": "2099-01-01T00:00:00Z"}
+  },
+  "statistics": {
+    "evaluated_expectations": 2,
+    "successful_expectations": 1,
+    "unsuccessful_expectations": 1,
+    "success_percent": 50.0
+  },
+  "results": [
+    {
+      "success": true,
+      "expectation_config": {
+        "expectation_type": "expect_table_row_count_to_be_between",
+        "kwargs": {}
+      }
+    },
+    {
+      "success": false,
+      "expectation_config": {
+        "expectation_type": "expect_column_values_to_not_be_null",
+        "kwargs": {"column": "email"}
+      },
+      "result": {
+        "unexpected_count": 3,
+        "unexpected_percent": 12.5
+      }
+    }
+  ]
+}`)
+	if err := os.WriteFile(artifactPath, data, 0o644); err != nil {
+		t.Fatalf("write GE artifact: %v", err)
+	}
+
+	envs, err := ingestGreatExpectationsArtifacts(root, []string{artifactPath})
+	if err != nil {
+		t.Fatalf("ingest GE artifact: %v", err)
+	}
+	if len(envs) != 1 {
+		t.Fatalf("expected 1 envelope, got %d", len(envs))
+	}
+	env := envs[0]
+	if env.Framework != "great_expectations" {
+		t.Fatalf("framework = %q, want great_expectations", env.Framework)
+	}
+	if env.SourcePath != "evals/ge-results.json" {
+		t.Fatalf("sourcePath = %q, want evals/ge-results.json", env.SourcePath)
+	}
+	if env.Aggregates.Successes != 1 || env.Aggregates.Failures != 1 {
+		t.Fatalf("aggregates = %+v, want 1 success and 1 failure", env.Aggregates)
+	}
+	result, err := airun.ParseEvalRunPayload(env)
+	if err != nil {
+		t.Fatalf("parse envelope payload: %v", err)
+	}
+	if len(result.Cases) != 2 {
+		t.Fatalf("cases = %d, want 2", len(result.Cases))
+	}
+	failed := result.Cases[1]
+	if failed.CaseID != "expect_column_values_to_not_be_null:email" {
+		t.Fatalf("failed case ID = %q", failed.CaseID)
+	}
+	if failed.Success {
+		t.Fatal("expected second GE expectation to fail")
+	}
+	if failed.Score != 0 {
+		t.Fatalf("failed score = %v, want 0", failed.Score)
+	}
+	if failed.FailureReason == "" {
+		t.Fatal("expected failure reason from unexpected_count metadata")
+	}
+}
+
+func TestIngestGreatExpectationsArtifacts_InvalidPath(t *testing.T) {
+	t.Parallel()
+	_, err := ingestGreatExpectationsArtifacts(t.TempDir(), []string{"/nonexistent/ge.json"})
+	if err == nil {
+		t.Fatal("expected error for nonexistent GE artifact")
 	}
 }
 

@@ -4,14 +4,14 @@
 // never sent anywhere without explicit user action. Users can opt in/out
 // via `terrain telemetry --on|--off` or the TERRAIN_TELEMETRY env var.
 //
-// What is recorded (per command invocation):
+// What is recorded:
 //   - Command name (e.g., "analyze", "impact")
-//   - Repository size band (small/medium/large — never the path)
-//   - Languages detected
-//   - Signal count
 //   - Execution duration
 //   - Terrain version
 //   - Timestamp
+//   - Optional command-provided fields such as repository size band,
+//     languages, and signal count when a caller has that data without
+//     exposing paths or content.
 //
 // What is NOT recorded:
 //   - File paths, file contents, repo URLs

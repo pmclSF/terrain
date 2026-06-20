@@ -108,6 +108,17 @@ func TestOllamaProvider_RejectsTools(t *testing.T) {
 	}
 }
 
+func TestToolCallsNotImplementedMessageNamesCurrentRelease(t *testing.T) {
+	t.Parallel()
+	msg := ErrToolCallsNotImplemented.Error()
+	if !strings.Contains(msg, "0.3.0") {
+		t.Fatalf("message %q does not name current release", msg)
+	}
+	if strings.Contains(msg, "0.2.0") {
+		t.Fatalf("message %q still names the previous release", msg)
+	}
+}
+
 func TestOpenAIProvider_ToolCalls(t *testing.T) {
 	t.Parallel()
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

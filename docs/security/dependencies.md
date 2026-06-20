@@ -80,7 +80,7 @@ in-toto statement that records:
 Verify against a downloaded archive:
 
 ```bash
-gh attestation verify terrain_0.2.0_linux_amd64.tar.gz \
+gh attestation verify terrain_0.3.0_linux_amd64.tar.gz \
   --owner pmclSF
 ```
 

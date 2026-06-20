@@ -83,8 +83,9 @@ func runConfigTelemetryCLI(args []string) error {
 		fmt.Println("  terrain config telemetry --off    disable local telemetry")
 		fmt.Println("  terrain config telemetry --status show current state")
 		fmt.Println()
-		fmt.Println("Telemetry records command name, repo size band, languages,")
-		fmt.Println("signal count, and duration to ~/.terrain/telemetry.jsonl.")
+		fmt.Println("Telemetry records command name and duration.")
+		fmt.Println("Some commands may add repo size band, languages, and signal count.")
+		fmt.Println("Events are written to ~/.terrain/telemetry.jsonl.")
 		fmt.Println("No file paths, repo URLs, or PII are recorded.")
 		fmt.Println("Override with TERRAIN_TELEMETRY=on|off environment variable.")
 		return nil

@@ -70,19 +70,36 @@ jobs:
           echo "blocking=$BLOCKING" >> "$GITHUB_OUTPUT"
           echo "uncovered=$UNCOVERED" >> "$GITHUB_OUTPUT"
 
-      - name: Run selected eval scenarios (dry-run)
+      - name: Run selected eval scenarios
         id: ai-run
         if: steps.ai-check.outputs.skip != 'true'
-        continue-on-error: true
         run: |
+          set +e
           ./terrain ai run \
             --base "${{ github.event.pull_request.base.sha }}" \
-            --json > /tmp/ai-run.json 2>&1
+            --timeout 15m \
+            --json > /tmp/ai-run.json 2> /tmp/ai-run.stderr
+          STATUS=$?
+          set -e
+          if [ "$STATUS" -ne 0 ]; then
+            cat /tmp/ai-run.stderr >&2 || true
+          fi
 
-          ACTION=$(jq -r '.decision.action' /tmp/ai-run.json)
-          REASON=$(jq -r '.decision.reason' /tmp/ai-run.json)
-          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
-          echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+          if jq -e '.decision.action' /tmp/ai-run.json >/dev/null 2>&1; then
+            ACTION=$(jq -r '.decision.action' /tmp/ai-run.json)
+            REASON=$(jq -r '.decision.reason // ""' /tmp/ai-run.json)
+          else
+            ACTION=block
+            REASON=$(cat /tmp/ai-run.stderr 2>/dev/null || echo "terrain ai run failed before writing a decision artifact")
+          fi
+
+          {
+            echo "action=$ACTION"
+            echo "reason<<TERRAIN_AI_REASON"
+            echo "$REASON"
+            echo "TERRAIN_AI_REASON"
+            echo "exit_code=$STATUS"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Generate AI risk review comment
         id: ai-comment

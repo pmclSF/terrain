@@ -12,6 +12,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/pmclSF/terrain/internal/atomicfile"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -48,7 +49,8 @@ type Artifact struct {
 	// Decision is the CI decision summary.
 	Decision Decision `json:"decision"`
 
-	// ExitCode is the process exit code (0 = pass, 1 = block).
+	// ExitCode is the process exit code (0 = pass, 4 = AI gate block,
+	// 1 = eval execution/runtime error).
 	ExitCode int `json:"exitCode"`
 
 	// EvalRun is the parsed result of the eval framework's structured
@@ -257,7 +259,7 @@ func SaveArtifact(root string, art *Artifact) (string, error) {
 		return "", err
 	}
 	path := filepath.Join(dir, "ai-run-latest.json")
-	return path, os.WriteFile(path, data, 0o644)
+	return path, atomicfile.WriteFile(path, data, 0o644)
 }
 
 // --- Helpers ---

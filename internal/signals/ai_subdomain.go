@@ -45,8 +45,8 @@ const (
 	AISubdomainHygiene AISubdomain = "hygiene"
 
 	// AISubdomainRegression covers signals that depend on the
-	// presence of eval artifacts (Promptfoo / DeepEval / Ragas
-	// outputs) to fire: cost trends, hallucination-rate changes,
+	// presence of eval artifacts (Promptfoo / DeepEval / Ragas /
+	// Great Expectations outputs) to fire: cost trends, hallucination-rate changes,
 	// retrieval drift, embedding-model swaps. Medium-trust because
 	// the underlying eval framework's metadata is the source of
 	// truth and Terrain just reads it.
@@ -98,7 +98,8 @@ var aiSubdomainBySignal = map[models.SignalType]AISubdomain{
 	SignalWrongSourceSelected:    AISubdomainRegression,
 
 	// All eval-output-driven detectors fire only when an eval
-	// framework artifact is present (Promptfoo / DeepEval / Ragas).
+	// framework artifact is present (Promptfoo / DeepEval / Ragas /
+	// Great Expectations).
 	// Track these uniformly under regression so the trust posture
 	// matches the data-quality lever (eval framework metadata).
 	SignalAccuracyRegression:     AISubdomainRegression,

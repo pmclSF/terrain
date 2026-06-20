@@ -18,7 +18,7 @@ Add eval scenarios that exercise this AI surface — untested prompts and tools 
 
 ## Promotion plan
 
-Coverage attribution depends on .terrain/terrain.yaml scenario declarations; precision/recall calibrated in 0.2 against the AI fixture corpus.
+Coverage attribution depends on .terrain/terrain.yaml scenario declarations. Precision/recall measurement remains a promotion prerequisite for 0.3.x.
 
 ## Evidence sources
 

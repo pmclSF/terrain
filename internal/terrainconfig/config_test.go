@@ -237,6 +237,42 @@ func TestLoad_HappyPath(t *testing.T) {
 	}
 }
 
+func TestLoadForRoot_PrefersDotTerrainConfig(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(dir, ".terrain"), 0o755); err != nil {
+		t.Fatalf("mkdir .terrain: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "terrain.yaml"), []byte("version: 1\non_terrain_error: pass\n"), 0o644); err != nil {
+		t.Fatalf("write root config: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".terrain", "terrain.yaml"), []byte("version: 1\non_terrain_error: block\n"), 0o644); err != nil {
+		t.Fatalf("write preferred config: %v", err)
+	}
+	c, err := LoadForRoot(dir)
+	if err != nil {
+		t.Fatalf("LoadForRoot: %v", err)
+	}
+	if c.OnTerrainError != "block" {
+		t.Errorf("LoadForRoot should prefer .terrain/terrain.yaml, got on_terrain_error=%q", c.OnTerrainError)
+	}
+}
+
+func TestLoadForRoot_FallsBackToRootConfig(t *testing.T) {
+	t.Parallel()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "terrain.yaml"), []byte("version: 1\non_terrain_error: pass\n"), 0o644); err != nil {
+		t.Fatalf("write root config: %v", err)
+	}
+	c, err := LoadForRoot(dir)
+	if err != nil {
+		t.Fatalf("LoadForRoot: %v", err)
+	}
+	if c.OnTerrainError != "pass" {
+		t.Errorf("LoadForRoot fallback on_terrain_error=%q, want pass", c.OnTerrainError)
+	}
+}
+
 func TestSeverityFor(t *testing.T) {
 	t.Parallel()
 	c, _ := Parse([]byte(`

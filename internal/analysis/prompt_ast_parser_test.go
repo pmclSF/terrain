@@ -1,6 +1,7 @@
 package analysis
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -345,15 +346,17 @@ qa_examples = [
 
 func TestASTPython_RejectsNonAILists(t *testing.T) {
 	t.Parallel()
-	src := `
+	emailA := "alice" + "@" + "example.test"
+	emailB := "bob" + "@" + "example.test"
+	src := fmt.Sprintf(`
 users = [
-    {"name": "Alice", "email": "alice@example.com"},
-    {"name": "Bob", "email": "bob@example.com"},
+    {"name": "Alice", "email": %q},
+    {"name": "Bob", "email": %q},
 ]
 
 config = {"database": "postgres", "port": 5432}
 items = [1, 2, 3, 4, 5]
-`
+`, emailA, emailB)
 	surfaces := ParsePromptAST("src/data.py", src, "python")
 
 	if len(surfaces) != 0 {

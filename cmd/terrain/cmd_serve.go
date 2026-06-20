@@ -24,7 +24,7 @@ import (
 //	--root      repository root to analyze
 //	--port      bind port (default 8421)
 //	--host      bind host (default 127.0.0.1; opt-in for non-localhost)
-//	--read-only enforce HTTP 405 on state-changing endpoints (active in 0.2)
+//	--read-only enforce HTTP 405 on state-changing endpoints (default true)
 func runServe(root string, port int, host string, readOnly bool) error {
 	absRoot, err := filepath.Abs(root)
 	if err != nil {
@@ -37,7 +37,7 @@ func runServe(root string, port int, host string, readOnly bool) error {
 	srv := server.NewWithConfig(absRoot, server.Config{
 		Host:     host,
 		Port:     port,
-		ReadOnly: readOnly,
+		ReadOnly: &readOnly,
 	})
 	return srv.ListenAndServe(ctx)
 }

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// ParseDeepEvalJSON parses a DeepEval `--export results.json` payload
+// ParseDeepEvalJSON parses a DeepEval result JSON payload
 // into a normalized EvalRunResult. Pairs with ParsePromptfooJSON; both
 // adapters emit the same shape so the runtime-aware AI detectors
 // (aiHallucinationRate, aiCostRegression, aiRetrievalRegression) work

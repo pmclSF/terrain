@@ -71,6 +71,27 @@ func TestLoadSnapshot_MigratesLegacyFields(t *testing.T) {
 	}
 }
 
+func TestTelemetryCommandNameDoesNotRecordArbitraryPaths(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		args []string
+		want string
+	}{
+		{[]string{"terrain"}, "discover"},
+		{[]string{"terrain", "analyze", "/private/repo"}, "analyze"},
+		{[]string{"terrain", "report", "pr"}, "report"},
+		{[]string{"terrain", "/private/repo"}, "unknown"},
+		{[]string{"terrain", "--help"}, "--help"},
+		{[]string{"terrain", "--print-network"}, "--print-network"},
+	}
+	for _, tt := range tests {
+		if got := telemetryCommandName(tt.args); got != tt.want {
+			t.Errorf("telemetryCommandName(%v) = %q, want %q", tt.args, got, tt.want)
+		}
+	}
+}
+
 func TestInitLogging_ParsesFlag(t *testing.T) {
 	// Not parallel: modifies global logging state.
 	initLogging([]string{"analyze", "--log-level=debug", "--root", "."})

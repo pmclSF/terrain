@@ -63,10 +63,11 @@ build.
 ## Eval run
 
 A single execution of an AI evaluation framework (Promptfoo,
-DeepEval, Ragas), captured as an `EvalRunEnvelope` inside the
-snapshot. Eval-data-aware detectors (`aiCostRegression`,
-`aiHallucinationRate`, `aiRetrievalRegression`) read these
-envelopes.
+DeepEval, Ragas, Great Expectations), captured as an
+`EvalRunEnvelope` inside the snapshot. Eval-data-aware detectors
+(`aiCostRegression`, `aiHallucinationRate`,
+`aiRetrievalRegression`) read these envelopes when their required
+cost, hallucination, or retrieval axes are present.
 
 ## Baseline
 

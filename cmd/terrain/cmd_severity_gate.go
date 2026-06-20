@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/analyze"
+	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/signals"
 )
 
 // errSeverityGateBlocked is the sentinel returned by runAnalyze and
@@ -44,6 +46,21 @@ func prSeverityBreakdown(severities []string) analyze.SignalBreakdown {
 		}
 	}
 	return b
+}
+
+// signalSeverityBreakdown converts raw pipeline signals into the same
+// gate summary used by analyze/report-pr. Observability-tier signals
+// are intentionally excluded so `terrain test --fail-on` blocks on the
+// same release-quality surface as `terrain analyze --fail-on`.
+func signalSeverityBreakdown(sigs []models.Signal) analyze.SignalBreakdown {
+	severities := make([]string, 0, len(sigs))
+	for _, s := range sigs {
+		if !signals.IsGateRelevant(s.Type) {
+			continue
+		}
+		severities = append(severities, string(s.Severity))
+	}
+	return prSeverityBreakdown(severities)
 }
 
 // severityGate represents the threshold for `--fail-on`. Findings at

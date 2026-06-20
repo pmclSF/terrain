@@ -153,7 +153,7 @@ func printMigrateNamespaceUsage(name string) {
 	fmt.Fprintln(w, "  blockers    enumerate migration blockers")
 	fmt.Fprintln(w, "  preview     dry-run a single file or scope")
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "Legacy shapes still work in 0.2:")
+	fmt.Fprintln(w, "Legacy shapes still work:")
 	if name == "convert" {
 		fmt.Fprintln(w, "  terrain convert <file> --from <fw> --to <fw>")
 	} else {

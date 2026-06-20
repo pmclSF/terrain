@@ -63,8 +63,8 @@ The rule fires at the source-level call site rather than at runtime because the 
 - **Suppression rules:**
   - `torch.load(path, weights_only=True)` → suppressed (PyTorch ≥2.0)
   - `yaml.load(stream, Loader=yaml.SafeLoader)` or `Loader=SafeLoader` / `CSafeLoader` → suppressed
-- **Edge cases handled:** suppression is statically resolvable — adopters who pass the safe option literally get the suppression; runtime-only safety options (e.g., a variable that holds `weights_only=True`) aren't recognized at 0.2.0.
-- **Edge cases NOT handled at 0.2.0:** non-Python deserialization (`Marshal.load` in Ruby, `JSON.parse` reviver functions in JS) — deferred to language-specific detectors.
+- **Edge cases handled:** suppression is statically resolvable — adopters who pass the safe option literally get the suppression; runtime-only safety options (e.g., a variable that holds `weights_only=True`) aren't recognized in 0.3.0.
+- **Edge cases NOT handled in 0.3.0:** non-Python deserialization (`Marshal.load` in Ruby, `JSON.parse` reviver functions in JS) — deferred to language-specific detectors.
 
 ## 6. Worked example
 
@@ -124,7 +124,7 @@ ignore:
 - **Calls that read from a hardcoded, content-addressed local path** — technically the rule fires, but the practical risk is zero. Mitigation: ignore the specific file.
 - **Test fixtures that build pickle fixtures intentionally** — `pickle.dumps` doesn't fire (it's the read side that's dangerous), but tests sometimes round-trip through `pickle.loads` deliberately. Suppress with a per-test ignore.
 - **Suppression by runtime variable** — `torch.load(path, weights_only=safe_flag)` where `safe_flag` is True at runtime isn't recognized; the rule fires because static analysis can't prove the value. Mitigation: inline the constant.
-- **Measured FP rate at last validation:** see the per-rule readiness card published with the release tag.
+- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 

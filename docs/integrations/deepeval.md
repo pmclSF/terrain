@@ -16,24 +16,25 @@ Promptfoo data also consume DeepEval data:
 
 ## Wiring it up
 
-DeepEval writes results to `~/.deepeval/test_results.json` by
-default. Either point Terrain at that file, or write to a custom
-location via DeepEval's Python API and pass the path explicitly:
+DeepEval result persistence depends on how the suite is executed and
+configured. For CI, configure DeepEval to write a JSON run artifact
+(for example with `DEEPEVAL_RESULTS_FOLDER`, or with your Python
+evaluation code) and pass that generated file to Terrain:
 
 ```bash
-# Default location
-terrain analyze --deepeval-results ~/.deepeval/test_results.json
+# Example: run DeepEval, then point Terrain at the generated JSON file
+DEEPEVAL_RESULTS_FOLDER=out/deepeval deepeval test run tests/eval
+terrain analyze --deepeval-results out/deepeval/<generated-run>.json
 
-# Custom location
+# Custom location from your own wrapper/API code
 terrain analyze --deepeval-results path/to/deepeval-out.json
 ```
 
-Multiple suites:
+For multiple suites, pass a comma-separated list:
 
 ```bash
 terrain analyze \
-  --deepeval-results out/deepeval-rag.json \
-  --deepeval-results out/deepeval-agent.json
+  --deepeval-results out/deepeval-rag.json,out/deepeval-agent.json
 ```
 
 ## Schema versions accepted

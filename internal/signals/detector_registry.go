@@ -130,7 +130,7 @@ func missingInputs(meta DetectorMeta, snap *models.TestSuiteSnapshot) []string {
 		missing = append(missing, "baseline snapshot (--baseline path/to/old-snapshot.json)")
 	}
 	if meta.RequiresEvalArtifact && len(snap.EvalRuns) == 0 {
-		missing = append(missing, "eval-framework artifact (--promptfoo-results / --deepeval-results / --ragas-results)")
+		missing = append(missing, "eval-framework artifact (--promptfoo-results / --deepeval-results / --ragas-results / --great-expectations-results)")
 	}
 	return missing
 }
@@ -299,10 +299,10 @@ type DetectorMeta struct {
 	RequiresBaseline bool
 
 	// RequiresEvalArtifact indicates the detector reads EvalRuns
-	// from the snapshot (populated by Promptfoo / DeepEval / Ragas
-	// adapter ingestion). Without an artifact path passed via the
-	// `--{promptfoo,deepeval,ragas}-results` flags, the snapshot's
-	// EvalRuns is empty and these detectors can't fire.
+	// from the snapshot (populated by Promptfoo / DeepEval / Ragas /
+	// Great Expectations adapter ingestion). Without an artifact path
+	// passed via one of the eval-result flags, the snapshot's EvalRuns
+	// is empty and these detectors can't fire.
 	RequiresEvalArtifact bool
 
 	// ContextAware reports whether the detector honors ctx.Err() in

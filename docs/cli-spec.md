@@ -23,7 +23,7 @@ Canonical commands route through namespace dispatchers (`terrain report`, `terra
 | `terrain config <verb>` | Workspace prefs: `feedback`, `telemetry` |
 | `terrain doctor [path]` | Diagnostics for current setup. Surfaces registry, alias-registry, gitignore, and per-rule policy-override state. |
 | `terrain mcp [--root <dir>]` | Start the [Model Context Protocol](https://modelcontextprotocol.io) server on stdio for AI coding assistants. Reads `.terrain/findings.json` from the last analyze run. |
-| `terrain portfolio` | Single-repo (stable) and multi-repo manifest (experimental) portfolio analysis |
+| `terrain portfolio` | Portfolio analysis. Single-repo output and `terrain portfolio --from <manifest>` multi-repo aggregation are stable in 0.3.0. |
 | `terrain serve` | Local HTTP server with HTML report + JSON API (default port 8421, 127.0.0.1 only) |
 | `terrain version` | Version, commit, build date, snapshot schema version |
 
@@ -59,6 +59,10 @@ Flags:
 - `--coverage-run-label LABEL` — `unit`, `integration`, or `e2e`.
 - `--runtime PATH` — runtime artifact (JUnit XML or Jest JSON); comma-separated for multiple.
 - `--gauntlet PATH` — Gauntlet AI eval result artifact (JSON); comma-separated for multiple.
+- `--promptfoo-results PATH` — Promptfoo `--output` result JSON file; comma-separated for multiple.
+- `--deepeval-results PATH` — DeepEval result JSON file; comma-separated for multiple.
+- `--ragas-results PATH` — Ragas eval result JSON file; comma-separated for multiple.
+- `--great-expectations-results PATH` — Great Expectations Validation Result JSON file; comma-separated for multiple.
 - `--slow-threshold MS` — slow-test threshold in milliseconds (default: 5000).
 - `--fail-on=LEVEL` — gate the build; exits code 6 when any finding meets the threshold. `LEVEL` ∈ `low | medium | high | critical`.
 - `--baseline PATH` + `--new-findings-only` — filter to regressions only (onboarding pattern for repos with existing debt).
@@ -145,6 +149,12 @@ Where to concentrate testing effort, ranked by risk + coverage gaps + recent cha
 
 Treats the test suite as a portfolio of investments: coverage breadth, test-type distribution, risk allocation. `--verbose` adds per-asset detail.
 
+Flags:
+- `--root PATH` — analyze one repository.
+- `--from PATH` — multi-repo manifest aggregation. The manifest is typically `.terrain/repos.yaml`; each repo entry can point at a live `path` or a saved `snapshotPath`.
+- `--json` — output the portfolio JSON contract.
+- `--verbose` — show per-asset detail in text mode.
+
 ### `terrain metrics`
 
 Aggregate benchmark-ready scorecard. `--verbose` adds metric breakdowns.
@@ -205,6 +215,7 @@ Notable flags:
 - `terrain ai run --base REF` — impact-based scenario selection
 - `terrain ai run --full` — skip impact selection, run everything
 - `terrain ai run --dry-run` — preview without executing
+- `terrain ai run --timeout 10m` — abort the eval framework child process after the duration
 - `terrain ai findings --posture=gate` — gate-tier filter (default: observability)
 
 ---
@@ -311,12 +322,12 @@ terrain estimate <dir> --from <framework> --to <framework>
 Local HTTP server: HTML report at `/`, JSON API at `/api/analyze` and `/api/health`. The HTML view auto-refreshes every 30 seconds. Intended for single-developer local exploration; a richer dashboard with embedded charts is reserved for a future release.
 
 ```
-terrain serve [--port N] [--host HOST] [--read-only]
+terrain serve [--port N] [--host HOST] [--read-only[=true|false]]
 ```
 
 Flags:
 - `--port N` (default 8421), `--host HOST` (default `127.0.0.1`; setting any other value emits a stderr warning — the server has no built-in auth).
-- `--read-only` — reject non-GET/HEAD/OPTIONS with HTTP 405. Every handler today is GET-only, so this gates against any future state-changing endpoint.
+- `--read-only` — reject non-GET/HEAD/OPTIONS with HTTP 405. Defaults to `true`; pass `--read-only=false` to opt out for local experiments. Every handler today is GET-only, so this gates against any future state-changing endpoint.
 
 Security defaults: binds to localhost; CSP + `X-Frame-Options: DENY` + `X-Content-Type-Options: nosniff` + `Referrer-Policy: no-referrer` on every response; cross-origin browser requests rejected with 403 (empty `Origin`/`Referer` headers from curl / server-to-server are allowed). Reads from disk; never writes.
 
@@ -326,7 +337,7 @@ For multi-developer hosts, use an SSH tunnel rather than binding to a non-localh
 
 ## GitHub Actions templates
 
-Two opt-in workflow templates ship in [`.github/workflows/`](../.github/workflows/):
+Two opt-in workflow templates ship in [`.github/workflows/`](../.github/workflows/terrain-pr.yml):
 
 - **`terrain-pr.yml`** — runs on every PR; analyzes impact, selects relevant tests, runs them, posts a unified PR comment.
 - **`terrain-ai.yml`** — runs on every PR; checks AI surface coverage, runs impact-scoped eval scenario selection, posts a PR comment summarizing the AI risk review. Blocks the PR when the gate returns "block" (uncovered safety-critical surfaces, accuracy regressions, etc.).

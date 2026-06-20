@@ -122,6 +122,27 @@ func TestValidateCommandInputs_ValidGauntlet(t *testing.T) {
 	}
 }
 
+func TestValidateExistingPaths_InvalidGreatExpectationsPath(t *testing.T) {
+	t.Parallel()
+	err := validateExistingPaths("--great-expectations-results", []string{"/nonexistent/ge.json"})
+	if err == nil {
+		t.Fatal("expected error for nonexistent Great Expectations path")
+	}
+}
+
+func TestValidateExistingPaths_ValidGreatExpectationsPath(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	gePath := filepath.Join(root, "ge.json")
+	if err := os.WriteFile(gePath, []byte(`{"statistics":{"evaluated_expectations":0}}`), 0o644); err != nil {
+		t.Fatalf("write GE file: %v", err)
+	}
+	err := validateExistingPaths("--great-expectations-results", []string{gePath})
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+}
+
 func TestPolicyStatusMessage(t *testing.T) {
 	t.Parallel()
 	if got := policyStatusMessage(true); got != "Policy checks passed." {

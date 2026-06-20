@@ -3,6 +3,7 @@ package hygiene
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -17,8 +18,9 @@ func writeTmp(t *testing.T, path, content string) string {
 func TestDetectSecretsInPrompt_OpenAIKey(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
+	apiKey := "sk-" + strings.Repeat("a", 30)
 	path := writeTmp(t, filepath.Join(dir, "summarize.txt"),
-		"You are a helpful assistant. Use API key sk-abcdefghijklmnopqrstuvwxyz123456 to call the model.")
+		"You are a helpful assistant. Use API key "+apiKey+" to call the model.")
 	sigs := DetectSecretsInPrompt([]string{path})
 	if len(sigs) != 1 {
 		t.Fatalf("expected 1 signal, got %d", len(sigs))
@@ -32,8 +34,9 @@ func TestDetectSecretsInPrompt_OpenAIKey(t *testing.T) {
 func TestDetectSecretsInPrompt_GitHubToken(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
+	token := "ghp_" + strings.Repeat("a", 38)
 	path := writeTmp(t, filepath.Join(dir, "deploy.txt"),
-		"Authenticate with token ghp_abcdefghijklmnopqrstuvwxyz0123456789AB then deploy.")
+		"Authenticate with token "+token+" then deploy.")
 	sigs := DetectSecretsInPrompt([]string{path})
 	if len(sigs) != 1 {
 		t.Fatalf("expected 1 signal, got %d", len(sigs))
@@ -65,8 +68,9 @@ func TestDetectSecretsInPrompt_CleanPromptSuppressed(t *testing.T) {
 func TestDetectSecretsInPrompt_AWSKey(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
+	awsKey := "AKIA" + "IOSFODNN7EXAMPLE"
 	path := writeTmp(t, filepath.Join(dir, "p.txt"),
-		"Configure AWS with AKIAIOSFODNN7EXAMPLE and the secret key from env.")
+		"Configure AWS with "+awsKey+" and the secret key from env.")
 	sigs := DetectSecretsInPrompt([]string{path})
 	if len(sigs) != 1 {
 		t.Fatalf("expected AWS key detection, got %+v", sigs)
@@ -76,10 +80,12 @@ func TestDetectSecretsInPrompt_AWSKey(t *testing.T) {
 func TestDetectSecretsInPrompt_MultipleKinds(t *testing.T) {
 	t.Parallel()
 	dir := t.TempDir()
+	openAIKey := "sk-" + strings.Repeat("a", 30)
+	awsKey := "AKIA" + "IOSFODNN7EXAMPLE"
 	path := writeTmp(t, filepath.Join(dir, "p.txt"), `
 Configure with:
-  OPENAI_KEY=sk-abcdefghijklmnopqrstuvwxyz123456
-  AWS_KEY=AKIAIOSFODNN7EXAMPLE
+  OPENAI_KEY=`+openAIKey+`
+  AWS_KEY=`+awsKey+`
 `)
 	sigs := DetectSecretsInPrompt([]string{path})
 	if len(sigs) != 1 {
