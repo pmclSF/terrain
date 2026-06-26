@@ -28,6 +28,11 @@ type FSResolver struct {
 	dirCache    map[string]map[string]struct{}
 	pkgCache    map[string]bool
 	maxFileSize int64
+
+	// evalRefs is the lazily-built set of repo-relative surface paths that
+	// an eval under a recognized eval directory references via file://.
+	evalRefsOnce sync.Once
+	evalRefs     map[string]bool
 }
 
 // NewFSResolver creates a resolver anchored at repoRoot. The root is
@@ -61,6 +66,59 @@ func (r *FSResolver) SiblingHasEvalMarker(repoRelativePath string) bool {
 		}
 	}
 	return false
+}
+
+var fileURLRefRE = regexp.MustCompile(`file://([^\s"']+)`)
+
+// SurfaceReferencedByEval reports whether any promptfoo-shaped eval under a
+// recognized eval directory references repoRelativePath via a file:// URL.
+// This links an eval to the surface it protects across directory trees — the
+// sibling/package marker checks only see same-dir/same-package evals, so a
+// generated eval under evals/promptfoo/ would otherwise never count.
+func (r *FSResolver) SurfaceReferencedByEval(repoRelativePath string) bool {
+	r.evalRefsOnce.Do(r.buildEvalRefs)
+	return r.evalRefs[normalizeEvalRef(repoRelativePath)]
+}
+
+func (r *FSResolver) buildEvalRefs() {
+	refs := map[string]bool{}
+	_ = filepath.WalkDir(r.root, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return nil
+		}
+		ext := strings.ToLower(filepath.Ext(path))
+		if ext != ".yaml" && ext != ".yml" {
+			return nil
+		}
+		rel, relErr := filepath.Rel(r.root, path)
+		if relErr != nil || !underEvalDir(rel) {
+			return nil
+		}
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			return nil
+		}
+		for _, m := range fileURLRefRE.FindAllStringSubmatch(string(data), -1) {
+			refs[normalizeEvalRef(m[1])] = true
+		}
+		return nil
+	})
+	r.evalRefs = refs
+}
+
+// underEvalDir reports whether rel sits within a recognized eval directory.
+func underEvalDir(rel string) bool {
+	for _, p := range strings.Split(strings.ToLower(filepath.ToSlash(rel)), "/") {
+		switch p {
+		case "eval", "evals", "evaluations", "__evals__", "benchmarks":
+			return true
+		}
+	}
+	return false
+}
+
+func normalizeEvalRef(p string) string {
+	return strings.TrimPrefix(filepath.ToSlash(strings.TrimSpace(p)), "./")
 }
 
 // markersInDir returns the set of file basenames in `dir` that import
