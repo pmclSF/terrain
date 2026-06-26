@@ -261,8 +261,8 @@ func TestRenderPRSummaryMarkdown_Deterministic(t *testing.T) {
 	}
 
 	output := buf1.String()
-	if !strings.Contains(output, "Merge with caution") {
-		t.Error("expected merge recommendation in output")
+	if !strings.Contains(output, "this merge") {
+		t.Error("expected the Swiss verdict line in output")
 	}
 	if !strings.Contains(output, "Coverage gaps in changed code") {
 		t.Error("expected direct risks section")

@@ -124,16 +124,20 @@ func TestRenderPRSummaryMarkdown_UnifiedShape(t *testing.T) {
 	// deliberate UX choice — section-level grouping is documented in
 	// `docs/product/unified-pr-comment.md`.
 	// PR-comment vocabulary: coverage cards carry BLOCK/GATE/WATCH/NOTE
-	// labels; the header posture badge still uses PASS/WARN/RISK/FAIL/INFO.
-	bracketBadge := regexp.MustCompile(`\[(PASS|WARN|RISK|FAIL|INFO|BLOCK|GATE|WATCH|NOTE|----?)\]`)
+	// labels. The header is the Swiss verdict line, not a posture badge.
+	bracketBadge := regexp.MustCompile(`\[(BLOCK|GATE|WATCH|NOTE|----?)\]`)
 	matches := bracketBadge.FindAllString(output, -1)
-	if len(matches) < 3 {
-		t.Errorf("gate 1 (unified badge shape): expected at least 3 [LABEL] badges (header + per-coverage-gap), got %d:\n%s", len(matches), output)
+	if len(matches) < 2 {
+		t.Errorf("gate 1 (badge shape): expected at least 2 [LABEL] badges on coverage-gap cards, got %d:\n%s", len(matches), output)
 	}
 
-	// The header should carry a posture badge.
-	if !regexp.MustCompile(`## \[(PASS|WARN|RISK|FAIL|INFO)\] Terrain`).MatchString(output) {
-		t.Errorf("gate 1 (header badge): header verdict should use [LABEL] shape; got:\n%s", firstNLines(output, 3))
+	// The header is the Swiss verdict (email-survivable first line), not a
+	// bracketed posture badge.
+	if !strings.Contains(output, "**Terrain** · pre-flight") {
+		t.Errorf("gate 1 (header): expected the Swiss kicker; got:\n%s", firstNLines(output, 3))
+	}
+	if !strings.Contains(output, "this merge") {
+		t.Errorf("gate 1 (header verdict): expected the Swiss verdict line; got:\n%s", firstNLines(output, 5))
 	}
 
 	// Coverage-gap cards should carry [GATE] (gate-tier finding,
@@ -224,7 +228,7 @@ func TestRenderPRSummaryMarkdown_ConsistentSectionOrder(t *testing.T) {
 
 	// Canonical order: header → metrics table → coverage gaps →
 	// recommended tests → AI risk.
-	headerIdx := strings.Index(output, "## ")
+	headerIdx := strings.Index(output, "**Terrain** · pre-flight")
 	gapsIdx := strings.Index(output, "### Coverage gaps in changed code")
 	testsIdx := strings.Index(output, "### Recommended tests")
 	aiIdx := strings.Index(output, "### AI Risk Review")
