@@ -16,5 +16,17 @@ import (
 // RenderRegressionComment writes the outreach comment for a repo's validated
 // regressions to w.
 func RenderRegressionComment(w io.Writer, regressions []findings.Finding) {
+	fmt.Fprintln(w, regressionVerdict(len(regressions)))
+	fmt.Fprintln(w)
 	fmt.Fprintln(w, render.ProvenanceFooter(""))
+}
+
+// regressionVerdict is the bold, count-bearing lead line, in the design
+// system's verdict-first style.
+func regressionVerdict(n int) string {
+	noun := "regressions"
+	if n == 1 {
+		noun = "regression"
+	}
+	return fmt.Sprintf("**Terrain found %d %s in this repo.**", n, noun)
 }
