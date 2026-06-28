@@ -10,9 +10,18 @@ import (
 	"io"
 
 	"github.com/pmclSF/terrain/internal/findings"
+	"github.com/pmclSF/terrain/internal/remediate"
 	"github.com/pmclSF/terrain/internal/render"
 	"github.com/pmclSF/terrain/internal/uitokens"
 )
+
+// RenderShareableComment is the public entry point: it selects only the
+// shareable findings (validated regressions with validated remediations)
+// from a head scan and renders the comment. The safety gate runs here so no
+// caller can post a finding Terrain hasn't proven on both axes.
+func RenderShareableComment(w io.Writer, base, head []findings.Finding, reg *remediate.ValidityRegistry) {
+	RenderRegressionComment(w, SelectShareable(base, head, reg))
+}
 
 // RenderRegressionComment writes the outreach comment for a repo's validated
 // regressions to w.
