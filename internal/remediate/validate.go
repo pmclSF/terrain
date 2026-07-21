@@ -230,7 +230,12 @@ func applyNewFile(root string, fix findings.Fix) (func() error, bool, error) {
 // repo-relative path. It is a lexical check only — it does NOT resolve
 // symlinks; callers that touch the filesystem must go through safeAbs.
 func safeRel(p string) (string, error) {
-	if filepath.IsAbs(p) {
+	// filepath.IsAbs is not portable enough on its own: "/etc/passwd" is not
+	// absolute on Windows, so a leading-slash rooted path would slip through
+	// there. Reject platform-absolute paths, a Windows volume (C:...), and any
+	// leading slash or backslash so the guard rejects rooted paths identically
+	// on every OS.
+	if filepath.IsAbs(p) || filepath.VolumeName(p) != "" || strings.HasPrefix(p, "/") || strings.HasPrefix(p, `\`) {
 		return "", fmt.Errorf("remediate: fix path %q must be repo-relative", p)
 	}
 	clean := filepath.Clean(p)
