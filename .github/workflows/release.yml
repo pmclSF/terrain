@@ -425,6 +425,13 @@ jobs:
         go-version-file: go.mod
         cache: true
 
+    # cosign must be on PATH: `prepublishOnly` runs verify-pack.js, which
+    # installs the packed package and exercises the installer's Sigstore
+    # signature verification. The runner image no longer pre-ships cosign,
+    # so — like the publish + smoke jobs — this job installs it explicitly.
+    - name: Install cosign
+      uses: sigstore/cosign-installer@v3
+
     - name: Install dependencies
       run: npm ci
 
