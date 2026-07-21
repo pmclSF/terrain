@@ -11,8 +11,7 @@ import (
 )
 
 // DetectJavaAISurfaces parses a Java source buffer and emits AI SDK
-// call sites. Closes the deferred Java AST follow-up from #30 and
-// brings Java in line with Python, JS/TS, and Go detectors.
+// call sites, bringing Java in line with the Python, JS/TS, and Go detectors.
 //
 // Java imports bind a class name (the last component of the qualified
 // path) to a package. We classify the package through classifyJavaPackage.

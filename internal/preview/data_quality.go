@@ -6,10 +6,10 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"github.com/pmclSF/terrain/internal/signals"
 )
 
@@ -91,7 +91,7 @@ func DetectDuplicateEvalRows(evalFiles []string, threshold float64) []models.Sig
 	}
 	var out []models.Signal
 	for _, path := range evalFiles {
-		data, err := os.ReadFile(path)
+		data, err := saferead.ReadFile(path)
 		if err != nil {
 			continue
 		}

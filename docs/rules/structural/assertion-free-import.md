@@ -16,10 +16,6 @@ Test files import production code but contain zero assertions — exercising cod
 
 Add assertions to validate behavior or remove tests that verify nothing.
 
-## Promotion plan
-
-Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role test gate, cross-file inherited-assertion resolution, and framing-stable evaluation.
-
 ## Evidence sources
 
 - `graph-traversal`

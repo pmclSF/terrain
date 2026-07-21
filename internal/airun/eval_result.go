@@ -8,11 +8,9 @@ import "time"
 // detectors and reports consume EvalRunResult without caring which
 // framework produced it.
 //
-// The 0.2 milestone calls for adapters under internal/airun/ that
-// populate this struct. The 6 still-planned AI detectors
-// (aiCostRegression, aiHallucinationRate, aiRetrievalRegression in
-// particular) will consume EvalRunResult against a baseline to detect
-// regressions.
+// Regression-aware detectors consume EvalRunResult against a baseline
+// to detect cost, hallucination-rate, and retrieval-quality regressions
+// without caring which framework produced the run.
 type EvalRunResult struct {
 	// Framework is the source adapter ("promptfoo" / "deepeval" / "ragas"
 	// / "custom"). Lowercased canonical form.

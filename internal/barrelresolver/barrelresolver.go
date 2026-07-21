@@ -4,20 +4,19 @@
 // that drives orphanedTestFile, untestedExport, assertionFreeImport,
 // and assertionFreeTest.
 //
-// The existing internal/analysis/import_graph.go handles the common
-// JS/TS cases: relative imports, tsconfig `paths` aliases, package.json
-// `imports` aliases, monorepo workspace packages. This package adds
-// the FP sub-classes that the legacy resolver misses:
+// internal/analysis/import_graph.go resolves the common JS/TS cases:
+// relative imports, tsconfig `paths` aliases, package.json `imports`
+// aliases, monorepo workspace packages. This package resolves the
+// additional import-alias and re-export shapes beyond those:
 //
-//  1. relative sibling — already handled by import_graph.go; preserved
-//     here for API completeness.
+//  1. relative sibling — the relative-import shape, resolved here for
+//     API completeness.
 //  2. `@/`-style path alias from `jest.config.{js,ts,json}`
 //     `moduleNameMapper` — a Jest-specific alias surface that lives
 //     alongside tsconfig but uses regex-string mapping instead of the
-//     tsconfig paths shape. Missing from the legacy resolver, so test
-//     files using `import {X} from '@/foo'` resolved via jest.config
-//     appeared orphaned.
-//  3. absolute-package import — already handled.
+//     tsconfig paths shape. Resolves test files that import via
+//     `import {X} from '@/foo'` mapped through jest.config.
+//  3. absolute-package import — the bare-package-name shape.
 //  4. `from x import y` namespace re-export — Python re-export chain:
 //     `pkg/__init__.py` writes `from .impl import Helper`, and the test
 //     imports `from pkg import Helper`. Without tracking that the name
@@ -27,11 +26,9 @@
 //     repo imports the package by name, the resolver must follow the
 //     dist→src mapping to reach the actual implementation file.
 //
-// The package is gated by the `a7_barrel_resolver` mechanism. When
-// state=off, callers get an empty result and fall back to the legacy
-// resolver. When state=shadow, the new resolver runs and emits a
-// would-add event for every match the legacy resolver missed. When
-// state=on, the new resolutions feed the import-graph directly.
+// The package is gated by the `barrel_resolver` mechanism. When the
+// mechanism is off, callers get an empty result and fall back to the
+// baseline resolver; otherwise these resolutions feed the import graph.
 package barrelresolver
 
 import (
@@ -45,11 +42,12 @@ import (
 	"sync"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"github.com/pmclSF/terrain/internal/shadow"
 )
 
 // MechanismName is the canonical name in mechanisms.yaml.
-const MechanismName = "a7_barrel_resolver"
+const MechanismName = "barrel_resolver"
 
 // Resolver is the hardened import resolver. Construct once per repo
 // scan via New; reuse across detector calls. The Resolver is safe for
@@ -143,8 +141,8 @@ func loadJestModuleNameMappers(root string) []moduleNameMapper {
 	var out []moduleNameMapper
 	for _, name := range candidates {
 		path := filepath.Join(root, name)
-		data, err := os.ReadFile(path)
-		if err != nil {
+		data, ok := saferead.File(path, saferead.SourceCap)
+		if !ok {
 			continue
 		}
 		switch {
@@ -353,8 +351,8 @@ func loadDistMappings(root string) []distMapping {
 		if info.Name() != "package.json" {
 			return nil
 		}
-		data, err := os.ReadFile(path)
-		if err != nil {
+		data, ok := saferead.File(path, saferead.SourceCap)
+		if !ok {
 			return nil
 		}
 		var doc struct {
@@ -479,8 +477,8 @@ func (r *Resolver) buildPyReexportsOnce() {
 		if filepath.Base(path) != "__init__.py" {
 			return nil
 		}
-		data, err := os.ReadFile(path)
-		if err != nil {
+		data, ok := saferead.File(path, saferead.SourceCap)
+		if !ok {
 			return nil
 		}
 		rel, _ := filepath.Rel(r.root, filepath.Dir(path))

@@ -4,7 +4,7 @@
 // endpoints at /api/*. By default it binds to localhost only (127.0.0.1)
 // and is intended for local development use, not production deployment.
 //
-// Security posture (0.2.0):
+// Security posture:
 //
 //   - **No authentication.** Security relies entirely on localhost-only
 //     binding plus origin/referer validation. Adopters running on
@@ -28,8 +28,8 @@
 //     analysis continues for any other waiters. (A future iteration
 //     could ref-count waiters and cancel when none remain.)
 //
-// Sandboxing AI eval execution and an actual auth model are 0.3 work;
-// until then, this is a *local development tool*, not a team dashboard.
+// This is a local development tool, not a team dashboard: it has no
+// authentication and does not sandbox eval execution.
 package server
 
 import (
@@ -164,12 +164,9 @@ func (s *Server) ListenAndServe(ctx context.Context) error {
 // fetch() calls to 127.0.0.1) are rejected with 403.
 func (s *Server) withSecurity(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// ReadOnly enforcement: when set, only GET / HEAD / OPTIONS are
-		// allowed. 0.2.0 promotes this from "reserved no-op" to active
-		// enforcement so users who set --read-only get the contract
-		// they ticked the box for, even though every current handler
-		// is GET. Any future state-changing endpoint will be rejected
-		// here without the handler needing per-route logic.
+		// ReadOnly enforcement: when set, only GET/HEAD/OPTIONS are
+		// allowed; any other method is rejected here so per-route
+		// handlers need no method logic.
 		if s.readOnly() {
 			switch r.Method {
 			case http.MethodGet, http.MethodHead, http.MethodOptions:
@@ -190,10 +187,9 @@ func (s *Server) withSecurity(next http.Handler) http.Handler {
 			return
 		}
 
-		// Standard hardening headers. CSP is intentionally strict — the
+		// Standard hardening headers. CSP is intentionally strict; the
 		// HTML report currently contains an inline reload script which we
-		// permit via the script-src 'unsafe-inline'; the broader plan in
-		// 0.2 is to extract that to an external file and tighten further.
+		// permit via the script-src 'unsafe-inline'.
 		w.Header().Set(
 			"Content-Security-Policy",
 			"default-src 'self'; script-src 'self' 'unsafe-inline'; "+

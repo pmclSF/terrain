@@ -111,6 +111,31 @@ var modelMatchPatterns = func() []*regexp.Regexp {
 	return out
 }()
 
+// modelKeyPatterns detect a deprecated tag used as a MAPPING KEY
+// (`"gpt-4": "gpt-4o-mini"`) rather than a live model value — the shape of a
+// deprecation/remediation map, where flagging the key is inverted.
+var modelKeyPatterns = func() []*regexp.Regexp {
+	out := make([]*regexp.Regexp, 0, len(modelDeprecationList))
+	for _, r := range modelDeprecationList {
+		out = append(out, regexp.MustCompile(`(?i)["']?`+regexp.QuoteMeta(r.Match)+`["']?\s*:`))
+	}
+	return out
+}()
+
+// docExampleLine reports whether a line is a doctest / REPL example
+// (`>>> model="gpt-4"` or its `...` continuation) or a prose enumeration
+// (`Model name (e.g., 'gpt-4', ...)`, `such as gpt-4`) — illustrative mentions,
+// not a live model configuration.
+func docExampleLine(text string) bool {
+	t := strings.TrimSpace(text)
+	if strings.HasPrefix(t, ">>>") || strings.HasPrefix(t, "...") {
+		return true
+	}
+	low := strings.ToLower(t)
+	return strings.Contains(low, "e.g.") || strings.Contains(low, "e.g ") ||
+		strings.Contains(low, "such as") || strings.Contains(low, "for example")
+}
+
 // modelScanExts narrows the file scan to text formats where model
 // identifiers typically live: configs and source files.
 var modelScanExts = map[string]bool{
@@ -139,10 +164,23 @@ func isDeprecationFixturePath(relPath string) bool {
 		strings.HasPrefix(lower, "changelog") {
 		return true
 	}
+	// Test-file naming conventions across ecosystems (JS/TS __tests__ and
+	// .test/.spec suffixes; pytest test_*/ *_test; Go _test.go). Test files pin
+	// specific model tags on purpose, so a deprecated tag there is not a
+	// production usage.
+	bn := lower
+	if i := strings.LastIndex(bn, "/"); i >= 0 {
+		bn = bn[i+1:]
+	}
+	if strings.HasPrefix(bn, "test_") ||
+		strings.Contains(bn, ".test.") || strings.Contains(bn, ".spec.") ||
+		strings.Contains(bn, "_test.") || strings.Contains(bn, "_spec.") {
+		return true
+	}
 	// Substring matches (monorepo / nested).
 	subs := []string{
-		"/test/", "/tests/", "/docs/", "/doc/",
-		"/.github/", "/examples/",
+		"/test/", "/tests/", "/__tests__/", "/__test__/", "/spec/", "/specs/",
+		"/docs/", "/doc/", "/.github/", "/examples/", "/example/", "/fixtures/",
 		"/changelog", "/CHANGELOG",
 	}
 	for _, s := range subs {
@@ -272,6 +310,11 @@ type modelHit struct {
 // pattern, deduplicating multiple hits on the same line for the same
 // rule. Files that fail to open are silently skipped.
 func scanFileForModelTags(path string) []modelHit {
+	// Refuse symlinks/devices/FIFOs before opening; Lstat inspects the
+	// link itself so it is never followed to an unbounded target.
+	if fi, statErr := os.Lstat(path); statErr != nil || !fi.Mode().IsRegular() {
+		return nil
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil
@@ -298,8 +341,18 @@ func scanFileForModelTags(path string) []modelHit {
 		if commentLooksLikeChangeLog(text) {
 			continue
 		}
+		// Skip doctest / REPL / prose-example lines — the model name there is
+		// illustrative, not a live configuration.
+		if docExampleLine(text) {
+			continue
+		}
 		for i, rx := range modelMatchPatterns {
 			if !rx.MatchString(text) {
+				continue
+			}
+			// Skip when the deprecated tag is a mapping KEY (`"gpt-4": ...`) —
+			// a deprecation/remediation map, not a live model call.
+			if modelKeyPatterns[i].MatchString(text) {
 				continue
 			}
 			rule := modelDeprecationList[i]

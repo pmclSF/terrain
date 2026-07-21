@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/pmclSF/terrain/internal/analysis"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 const (
@@ -754,7 +755,7 @@ func estimateCandidate(candidate migrationCandidate, direction Direction) (Migra
 		ValidationMode: string(ValidationModeStrict),
 	}
 
-	input, err := os.ReadFile(candidate.AbsPath)
+	input, err := saferead.ReadFile(candidate.AbsPath)
 	if err != nil {
 		record.Status = "failed"
 		record.Error = fmt.Sprintf("read source: %v", err)

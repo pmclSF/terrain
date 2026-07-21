@@ -42,11 +42,11 @@ func commandLines() []commandHelp {
 		{"/terrain explain <rule-id>", "Long-form explanation of a rule (what it catches, why, how to fix)."},
 		{"/terrain why <rule-id>", "One-paragraph rationale for why a rule exists."},
 		{"/terrain show <id>", "Render one finding by its ID."},
-		{"/terrain expand", "Expand a collapsed `+N more` block inline."},
-		{"/terrain refresh", "Re-run analyze and update this PR comment."},
-		{"/terrain escalate", "Promote a finding from observability to gate for this PR only."},
+		{"/terrain expand", "Show the full findings list behind a collapsed `+N more` block."},
+		{"/terrain refresh", "Re-run analyze and update this PR comment. (Planned — not yet active.)"},
+		{"/terrain escalate", "Promote a finding from observability to gate for this PR only. (Planned — not yet active.)"},
 		{"/terrain scaffold accept", "Accept the test scaffold this finding suggested."},
-		{"/terrain bench <id>", "Run a benchmark suite by ID against this PR."},
+		{"/terrain bench <id>", "Run a benchmark suite by ID against this PR. (Planned — not yet active; run locally with `terrain ai run`.)"},
 		{"/terrain commands", "Re-print this command list."},
 	}
 }

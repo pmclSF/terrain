@@ -16,10 +16,6 @@ A call into an unsafe deserialization primitive (pickle.load, torch.load without
 
 Switch to a safe format (JSON, msgpack, safetensors, ONNX). When the primitive is unavoidable, declare the explicit safe option (weights_only=True for torch.load, Loader=SafeLoader for yaml.load).
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/security/insecure_deserialization.go (DetectInsecureDeserialization). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -36,9 +32,9 @@ A call into an unsafe deserialization primitive — `pickle.load`, `torch.load` 
 
 ## 2. Severity & status
 
-- **Tier:** stable
+Experimental — off by default; enable in `terrain.yaml`.
+
 - **Default severity:** critical
-- **Stable since:** v0.2.0
 - **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
 
 ## 3. What this catches
@@ -63,8 +59,8 @@ The rule fires at the source-level call site rather than at runtime because the 
 - **Suppression rules:**
   - `torch.load(path, weights_only=True)` → suppressed (PyTorch ≥2.0)
   - `yaml.load(stream, Loader=yaml.SafeLoader)` or `Loader=SafeLoader` / `CSafeLoader` → suppressed
-- **Edge cases handled:** suppression is statically resolvable — adopters who pass the safe option literally get the suppression; runtime-only safety options (e.g., a variable that holds `weights_only=True`) aren't recognized in 0.3.0.
-- **Edge cases NOT handled in 0.3.0:** non-Python deserialization (`Marshal.load` in Ruby, `JSON.parse` reviver functions in JS) — deferred to language-specific detectors.
+- **Edge cases handled:** suppression is statically resolvable — adopters who pass the safe option literally get the suppression; runtime-only safety options (e.g., a variable that holds `weights_only=True`) aren't recognized.
+- **Edge cases not handled:** non-Python deserialization (`Marshal.load` in Ruby, `JSON.parse` reviver functions in JS).
 
 ## 6. Worked example
 
@@ -124,7 +120,6 @@ ignore:
 - **Calls that read from a hardcoded, content-addressed local path** — technically the rule fires, but the practical risk is zero. Mitigation: ignore the specific file.
 - **Test fixtures that build pickle fixtures intentionally** — `pickle.dumps` doesn't fire (it's the read side that's dangerous), but tests sometimes round-trip through `pickle.loads` deliberately. Suppress with a per-test ignore.
 - **Suppression by runtime variable** — `torch.load(path, weights_only=safe_flag)` where `safe_flag` is True at runtime isn't recognized; the rule fires because static analysis can't prove the value. Mitigation: inline the constant.
-- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 
@@ -134,7 +129,7 @@ terrain test --selector security/insecure-deserialization
 
 ## 10. Stability commitment
 
-Rule ID, severity, and recognized-primitive list are stable from v0.2.0. Adding new primitives (`pickle5.load`, etc.) is additive and not deprecation-cycled.
+Rule ID, severity, and recognized-primitive list are stable. Adding new primitives (`pickle5.load`, etc.) is additive and not deprecation-cycled.
 
 ## 11. Related rules
 

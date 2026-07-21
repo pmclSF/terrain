@@ -16,10 +16,6 @@ An eval case's recorded output snapshot diverged from baseline to current. Catch
 
 Inspect the diff for prompt / model / retrieval changes affecting the case. If the new output is correct, accept it via `terrain ai record`.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/regression/snapshot_mismatch.go (DetectSnapshotMismatch). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `eval-execution`
@@ -36,9 +32,7 @@ An eval case's recorded output snapshot (or framework failure reason) diverged f
 
 ## 2. Severity & status
 
-- **Tier:** stable
-- **Default severity:** medium
-- **Stable since:** v0.2.0
+Experimental — off by default; enable in `terrain.yaml`. Default severity: medium.
 
 ## 3. What this catches
 
@@ -54,7 +48,7 @@ Scores can mask behavior changes: two outputs scoring 0.9 may behave differently
 
 - **Approach:** for each case matched by ID across baseline and current, compare `Reason` fields. When they diverge (and aren't both empty), fire.
 - **Inputs:** EvalRun.Cases.Reason populated by adapters from `gradingResult.reason` / `failure_reason` / equivalent.
-- **0.3.0 scope:** comparison uses the Reason proxy. Richer per-case output capture (full response text snapshots) is followup work that requires snapshot files alongside the eval results JSON.
+- **Scope:** comparison uses the Reason proxy. Richer per-case output capture (full response text snapshots) requires snapshot files alongside the eval results JSON.
 
 ## 6. Worked example
 
@@ -82,7 +76,7 @@ terrain test --selector regression/snapshot-mismatch
 
 ## 10. Stability commitment
 
-Rule ID and severity stable from v0.2.0. Richer snapshot comparison (full output text vs. just reason field) is additive.
+Rule ID and severity are stable. Richer snapshot comparison (full output text vs. just reason field) is additive.
 
 ## 11. Related rules
 

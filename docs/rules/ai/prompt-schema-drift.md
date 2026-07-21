@@ -6,7 +6,7 @@
 **Domain:** ai  
 **Default severity:** high  
 **Lifecycle status:** stable  
-**Gating tier:** observability
+**Gating tier:** gate
 
 ## Summary
 
@@ -15,10 +15,6 @@ A prompt template references a schema field that this PR removed or whose declar
 ## Remediation
 
 Update the template to use the new schema field, restore the old field, or remove the variable reference.
-
-## Promotion plan
-
-Ships at observability tier. Stays at observability until adopter-corpus measurement confirms gate-readiness.
 
 ## Evidence sources
 
@@ -49,12 +45,9 @@ missing-ness is visible in the diff.
 
 ## Tuning
 
-The detector ships at observability tier. To opt into gate
-behavior on a repo where the precision is high enough, set:
-
-```yaml
-# .terrain/policy.yaml
-detectors:
-  aiPromptSchemaDrift:
-    tier: gate
-```
+The detector ships at **gate** tier. Under the default trust floor it fails the
+build only when its correct-side fix is validated (a prompt reference that is a
+typo of a real schema field); a structural mismatch with no confident fix
+surfaces as advisory. To gate on every drift finding regardless of fix
+validation, run with `--no-trust-floor` (or set `trust_floor: false` in
+`.terrain/terrain.yaml`).

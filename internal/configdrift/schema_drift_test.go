@@ -280,3 +280,106 @@ func severityRank(s models.SignalSeverity) int {
 	}
 	return 0
 }
+
+func cdDetect(t *testing.T, path, content string) []models.Signal {
+	t.Helper()
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, path), content)
+	return (&SchemaDriftDetector{Root: root}).Detect(&models.TestSuiteSnapshot{})
+}
+
+func oneFinding(t *testing.T, sigs []models.Signal) models.Signal {
+	t.Helper()
+	if len(sigs) != 1 {
+		t.Fatalf("want exactly 1 finding, got %d: %+v", len(sigs), sigs)
+	}
+	return sigs[0]
+}
+
+func hazardsOf(sig models.Signal) []string {
+	h, _ := sig.Metadata["hazards"].([]string)
+	return h
+}
+
+func hasHazard(hs []string, want string) bool {
+	for _, h := range hs {
+		if h == want {
+			return true
+		}
+	}
+	return false
+}
+
+// CD8: severity scales with the NUMBER OF DISTINCT hazards in a file —
+// 1→Low, 2→Medium, ≥3→High. The original severity test never asserts severity.
+func TestSchemaDriftDetector_SeverityByHazardCount(t *testing.T) {
+	t.Parallel()
+	one := oneFinding(t, cdDetect(t, "docker-compose.yml",
+		"version: '3'\nservices:\n  web:\n    image: nginx:latest\n"))
+	if one.Severity != models.SeverityLow {
+		t.Errorf("1 hazard (latest) → Low, got %v", one.Severity)
+	}
+	two := oneFinding(t, cdDetect(t, "docker-compose.yml",
+		"version: '3'\nservices:\n  web:\n    image: nginx:latest\n  db:\n    image: postgres\n"))
+	if two.Severity != models.SeverityMedium {
+		t.Errorf("2 hazards (latest+untagged) → Medium, got %v", two.Severity)
+	}
+	three := oneFinding(t, cdDetect(t, "docker-compose.yml",
+		"version: '2'\nservices:\n  web:\n    image: nginx:latest\n  db:\n    image: postgres\n"))
+	if three.Severity != models.SeverityHigh {
+		t.Errorf("3 hazards (v2+latest+untagged) → High, got %v", three.Severity)
+	}
+}
+
+// CD2: multiple :latest images collapse to ONE hazard tag (not per-occurrence).
+func TestSchemaDriftDetector_HazardDedup(t *testing.T) {
+	t.Parallel()
+	sig := oneFinding(t, cdDetect(t, "docker-compose.yml",
+		"version: '3'\nservices:\n  a:\n    image: nginx:latest\n  b:\n    image: redis:latest\n  c:\n    image: app:latest\n"))
+	n := 0
+	for _, h := range hazardsOf(sig) {
+		if h == "docker:latest-tag" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("3 :latest images must dedup to a single hazard tag, got %d (%v)", n, hazardsOf(sig))
+	}
+	if sig.Severity != models.SeverityLow {
+		t.Errorf("1 distinct hazard → Low, got %v", sig.Severity)
+	}
+}
+
+// CD4: version: "2" (double quotes) flags compose-v2-schema like single quotes.
+func TestSchemaDriftDetector_ComposeV2DoubleQuote(t *testing.T) {
+	t.Parallel()
+	sig := oneFinding(t, cdDetect(t, "docker-compose.yml",
+		"version: \"2\"\nservices:\n  web:\n    image: nginx:1.0\n"))
+	if !hasHazard(hazardsOf(sig), "docker:compose-v2-schema") {
+		t.Errorf("version: \"2\" must flag compose-v2-schema; hazards=%v", hazardsOf(sig))
+	}
+}
+
+// CD1: an action ref with no @ at all is a mutable ref.
+func TestSchemaDriftDetector_GHActionUntaggedRef(t *testing.T) {
+	t.Parallel()
+	sig := oneFinding(t, cdDetect(t, ".github/workflows/ci.yml",
+		"name: ci\non: [push]\njobs:\n  j:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout\n"))
+	if !hasHazard(hazardsOf(sig), "gh-actions:mutable-ref") {
+		t.Errorf("untagged action ref must flag mutable-ref; hazards=%v", hazardsOf(sig))
+	}
+}
+
+// CD3: a registry:port image WITH a tag is not flagged untagged; only the
+// genuinely untagged image is (the port colon must not be mistaken for a tag).
+func TestSchemaDriftDetector_PortAwareUntagged(t *testing.T) {
+	t.Parallel()
+	sig := oneFinding(t, cdDetect(t, "docker-compose.yml",
+		"version: '3'\nservices:\n  a:\n    image: localhost:5000/myapp:v1.0\n  b:\n    image: localhost:5000/other\n"))
+	if !hasHazard(hazardsOf(sig), "docker:untagged-image") {
+		t.Errorf("localhost:5000/other (no tag) must be flagged untagged; hazards=%v", hazardsOf(sig))
+	}
+	if sig.Severity != models.SeverityLow {
+		t.Errorf("only one image is genuinely untagged → 1 hazard → Low, got %v", sig.Severity)
+	}
+}

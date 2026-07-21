@@ -16,10 +16,6 @@ Test files contain mock setup but zero assertions, verifying wiring only.
 
 Add assertions on outputs, state changes, or side effects to validate real behavior.
 
-## Promotion plan
-
-Observability tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting.
-
 ## Evidence sources
 
 - `structural-pattern`

@@ -16,7 +16,7 @@ func TestDetectEvalRegression_CaseDropExceedsThreshold(t *testing.T) {
 			{ID: "safety-1", Name: "safety", Score: 0.95},
 			{ID: "safety-2", Name: "borderline", Score: 0.80},
 		},
-		Stats: evaladapter.EvalRunStats{Total: 2, PrimaryMetric: 0.875},
+		Stats: evaladapter.EvalRunStats{Total: 2, PrimaryMetric: 0.875, HasPrimaryMetric: true},
 	}
 	current := &evaladapter.EvalRun{
 		Framework: evaladapter.FrameworkPromptfoo,
@@ -25,7 +25,7 @@ func TestDetectEvalRegression_CaseDropExceedsThreshold(t *testing.T) {
 			{ID: "safety-1", Name: "safety", Score: 0.50, Reason: "safety check failed on adversarial input"},
 			{ID: "safety-2", Name: "borderline", Score: 0.80},
 		},
-		Stats: evaladapter.EvalRunStats{Total: 2, PrimaryMetric: 0.65},
+		Stats: evaladapter.EvalRunStats{Total: 2, PrimaryMetric: 0.65, HasPrimaryMetric: true},
 	}
 	sigs := DetectEvalRegression(baseline, current, DefaultEvalRegressionConfig())
 	if len(sigs) < 1 {
@@ -121,11 +121,11 @@ func TestDetectEvalRegression_RunLevelOnly(t *testing.T) {
 	// detector still surfaces a run-level signal.
 	baseline := &evaladapter.EvalRun{
 		Cases: []evaladapter.EvalCaseResult{{ID: "x", Score: 0.95}},
-		Stats: evaladapter.EvalRunStats{PrimaryMetric: 0.95},
+		Stats: evaladapter.EvalRunStats{PrimaryMetric: 0.95, HasPrimaryMetric: true},
 	}
 	current := &evaladapter.EvalRun{
 		Cases: []evaladapter.EvalCaseResult{{ID: "x", Score: 0.95}},
-		Stats: evaladapter.EvalRunStats{PrimaryMetric: 0.70},
+		Stats: evaladapter.EvalRunStats{PrimaryMetric: 0.70, HasPrimaryMetric: true},
 	}
 	sigs := DetectEvalRegression(baseline, current, DefaultEvalRegressionConfig())
 	if len(sigs) != 1 {
@@ -133,6 +133,25 @@ func TestDetectEvalRegression_RunLevelOnly(t *testing.T) {
 	}
 	if sigs[0].Metadata["scope"] != "run" {
 		t.Errorf("expected run-scope, got %v", sigs[0].Metadata["scope"])
+	}
+}
+
+// TestDetectEvalRegression_RunMeanToZero guards the worst-case run-level
+// regression: the current run mean collapses to exactly 0.0. A guard that
+// required the current metric to be > 0 would silently skip this; gating on
+// HasPrimaryMetric keeps it reported.
+func TestDetectEvalRegression_RunMeanToZero(t *testing.T) {
+	baseline := &evaladapter.EvalRun{
+		Cases: []evaladapter.EvalCaseResult{{ID: "x", Score: 0.90}},
+		Stats: evaladapter.EvalRunStats{PrimaryMetric: 0.90, HasPrimaryMetric: true},
+	}
+	current := &evaladapter.EvalRun{
+		Cases: []evaladapter.EvalCaseResult{{ID: "x", Score: 0.90}},
+		Stats: evaladapter.EvalRunStats{PrimaryMetric: 0.0, HasPrimaryMetric: true},
+	}
+	sigs := DetectEvalRegression(baseline, current, DefaultEvalRegressionConfig())
+	if findRegressionByScope(sigs, "run") == nil {
+		t.Fatal("run mean 0.9 -> 0.0 must produce a run-level regression signal")
 	}
 }
 

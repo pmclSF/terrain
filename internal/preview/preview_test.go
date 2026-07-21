@@ -143,6 +143,35 @@ func TestDetectDuplicateEvalRows(t *testing.T) {
 	}
 }
 
+// TestDetectDuplicateEvalRows_Negatives locks the two suppression guards: a
+// dataset whose duplicate rate is below threshold, and a dataset with fewer
+// than 10 rows (too small to judge), must both stay silent.
+func TestDetectDuplicateEvalRows_Negatives(t *testing.T) {
+	t.Parallel()
+	t.Run("below-threshold", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		path := filepath.Join(dir, "distinct.csv")
+		// 12 distinct rows -> duplicate rate 0, below the 0.05 threshold.
+		body := "a,1\nb,2\nc,3\nd,4\ne,5\nf,6\ng,7\nh,8\ni,9\nj,10\nk,11\nl,12\n"
+		_ = os.WriteFile(path, []byte(body), 0o644)
+		if sigs := DetectDuplicateEvalRows([]string{path}, 0.05); len(sigs) != 0 {
+			t.Errorf("distinct rows should not fire, got %d: %+v", len(sigs), sigs)
+		}
+	})
+	t.Run("too-few-rows", func(t *testing.T) {
+		t.Parallel()
+		dir := t.TempDir()
+		path := filepath.Join(dir, "small.csv")
+		// 6 rows, heavily duplicated, but total < 10 -> not enough to judge.
+		body := "a,1\na,1\na,1\nb,2\nb,2\nb,2\n"
+		_ = os.WriteFile(path, []byte(body), 0o644)
+		if sigs := DetectDuplicateEvalRows([]string{path}, 0.05); len(sigs) != 0 {
+			t.Errorf("small dataset should not fire, got %d: %+v", len(sigs), sigs)
+		}
+	})
+}
+
 func TestDetectSchemaDrift(t *testing.T) {
 	t.Parallel()
 	base := map[string][]string{

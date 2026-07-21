@@ -16,10 +16,6 @@ Measured coverage falls below configured thresholds.
 
 Target low-coverage, high-risk areas and raise meaningful coverage first.
 
-## Promotion plan
-
-Severity flips at hard 100%-gap boundary; a smooth gradient lands in a future release per docs/scoring-rubric.md.
-
 ## Evidence sources
 
 - `coverage`

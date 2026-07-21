@@ -25,9 +25,8 @@ func (f Finding) ToSignal() models.Signal {
 		// AST/JSON parsing with no heuristics, so false positives
 		// require either a malformed schema or a template that names
 		// the field by coincidence. The number is the floor of the
-		// manifest's declared confidence range; raise it (with
-		// rationale in the commit body) once adopter-corpus precision
-		// data confirms the practical FP rate.
+		// manifest's declared confidence range; raise it only with
+		// recorded precision evidence.
 		Confidence:  0.85,
 		Location:    models.SignalLocation{File: f.TemplatePath},
 		Explanation: explanationFor(f),

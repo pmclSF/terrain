@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // PolicyFileName is the expected policy file path relative to repo root.
@@ -33,7 +35,7 @@ type LoadResult struct {
 func Load(repoRoot string) (*LoadResult, error) {
 	path := filepath.Join(repoRoot, PolicyFileName)
 
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return &LoadResult{Found: false}, nil
@@ -41,6 +43,11 @@ func Load(repoRoot string) (*LoadResult, error) {
 		return nil, fmt.Errorf("failed to read policy file %s: %w", path, err)
 	}
 
+	// NOTE: NOT a strict (KnownFields) decode. policy.yaml accepts rule keys at
+	// the ROOT as well as under `rules:` (via Config's custom unmarshaler), so
+	// KnownFields would reject valid root-level-key policy files. Catching a
+	// typo'd rule key here needs schema-aware unknown-key detection, not
+	// struct-field strictness.
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("malformed policy file %s: %w", path, err)

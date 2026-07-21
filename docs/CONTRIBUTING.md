@@ -20,7 +20,7 @@ Significant changes go through GitHub RFCs in the `rfcs/` directory at the repo 
 - New integrations beyond bug fixes to existing ones
 - New required dependencies
 - Changes to quality bars
-- Changes to validation-corpus scope
+- Changes to how rule maturity is evaluated
 
 **"Trivial" — does *not* require an RFC:**
 - Typo fixes; doc updates that don't change committed semantics
@@ -93,15 +93,15 @@ Disagreements are resolved by the maintainer. Pre-1.0, the maintainer's decision
 
 ### Default tier for new rules
 
-New rules ship as **preview** by default. Preview status is not a quality slight — preview rules ship with full detection implementations and short-form documentation. The distinction is whether triage time, false-positive rate, and recall have been measured at the target bar against representative repos. Preview rules are scope-under-evaluation; their reports from opt-in adopters feed graduation to stable.
+New rules ship as **preview** by default. Preview status is not a quality slight — preview rules ship with full detection implementations and short-form documentation. The distinction is whether the rule has been exercised enough to ship default-on with confidence. Preview rules are scope-under-evaluation; their reports from opt-in adopters help decide whether they graduate to stable.
 
 ### Graduation to stable
 
 A preview rule graduates to stable when:
 
-1. The validation harness measures the rule against representative repos and the rule clears the published quality bars (triage time, false-positive rate, and recall on the seeded-failure corpus).
+1. The rule has been exercised enough to ship default-on with confidence, and its documented maturity reflects that.
 2. The rule's doc page is filled to full stable-tier (sections 1–11, ~800–1500 words)
-3. A graduation RFC is filed (lightweight; the RFC is mostly the measured-numbers report from the harness)
+3. A graduation RFC is filed (lightweight)
 4. Maintainer accepts the graduation
 
 Graduations are batched per release. Some rules may never graduate (their fundamental mechanism stays imprecise or category remains experimental); the project documents this rather than holding releases.
@@ -139,10 +139,9 @@ For everything else (development environment, building, running tests, linting, 
 ## What contributions are most needed
 
 - **Bug reports with reproducers.** A reproducer is worth a thousand prose descriptions of "X is broken."
-- **Real-world failure-mode documentation.** If you hit a Terrain rule with a counterexample (true FP or true FN), file an issue with the input — these directly feed corpus labeling.
-- **Adopter feedback on preview rules.** Opt into a preview rule, run it on real code, report what you see. This is the primary signal that feeds graduation.
+- **Real-world failure-mode documentation.** If you hit a Terrain rule with a counterexample (a false positive or a missed detection), file an issue with the input — these directly help improve the rule.
+- **Adopter feedback on preview rules.** Opt into a preview rule, run it on real code, report what you see. This is the primary signal that helps a rule graduate.
 - **Eval-framework adapter contributions.** If you use an eval framework not yet supported and want Terrain to consume its output, an RFC-then-adapter contribution is welcome.
-- **Validation-corpus contributions.** If you have a willing OSS repo whose shape would expand validation coverage, propose it via RFC.
 
 ## What contributions are unlikely to be accepted
 

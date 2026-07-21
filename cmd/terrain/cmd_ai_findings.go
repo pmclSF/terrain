@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"sort"
 
 	"github.com/pmclSF/terrain/internal/aipipeline"
 	"github.com/pmclSF/terrain/internal/aipiperun"
+	"github.com/pmclSF/terrain/internal/terrainconfig"
 	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
@@ -44,8 +46,21 @@ func runAIFindings(root string, jsonOutput, verbose bool, posture string, rule s
 		return findings[i].Path < findings[j].Path
 	})
 
+	redactSource := false
+	cfg, cfgErr := terrainconfig.LoadForRoot(root)
+	switch {
+	case cfgErr != nil:
+		// Fail closed: a malformed terrain.yaml must not silently disable a
+		// privacy control the user may have enabled. Redact and warn rather
+		// than risk emitting source excerpts the config meant to hide.
+		fmt.Fprintf(os.Stderr, "terrain: could not load config (%v); redacting source excerpts to be safe\n", cfgErr)
+		redactSource = true
+	case cfg != nil:
+		redactSource = cfg.RedactSource
+	}
+
 	if jsonOutput {
-		return renderFindingsJSON(findings)
+		return renderFindingsJSON(os.Stdout, findings, redactSource)
 	}
 	return renderFindingsText(findings, post, verbose)
 }
@@ -70,7 +85,7 @@ type atomJSON struct {
 	Span   string  `json:"span,omitempty"`
 }
 
-func renderFindingsJSON(findings []aipipeline.Finding) error {
+func renderFindingsJSON(w io.Writer, findings []aipipeline.Finding, redactSource bool) error {
 	cal := aipipeline.DefaultCalibration()
 	out := make([]findingJSON, 0, len(findings))
 	for _, f := range findings {
@@ -84,18 +99,22 @@ func renderFindingsJSON(findings []aipipeline.Finding) error {
 			FixScaffold: f.FixScaffold,
 		}
 		for _, a := range f.Atoms {
+			span := a.Span.Snippet
+			if redactSource {
+				span = ""
+			}
 			fj.Evidence = append(fj.Evidence, atomJSON{
 				Kind:   string(a.Kind),
 				RuleID: a.RuleID,
 				Weight: a.Weight,
 				Source: a.Source,
 				Line:   a.Span.Line,
-				Span:   a.Span.Snippet,
+				Span:   span,
 			})
 		}
 		out = append(out, fj)
 	}
-	enc := json.NewEncoder(os.Stdout)
+	enc := json.NewEncoder(w)
 	enc.SetIndent("", "  ")
 	return enc.Encode(out)
 }

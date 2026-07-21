@@ -85,6 +85,10 @@ func TestIsGateRelevant(t *testing.T) {
 		{"untestedExport (gate)", SignalUntestedExport, true},
 		{"mockHeavyTest (observability)", SignalMockHeavyTest, false},
 		{"unknown type (legacy gate)", models.SignalType("foo"), true},
+		// prompt-schema-drift was promoted to gate tier after a large real-world
+		// corpus confirmed gate-ready precision; under the default trust floor it
+		// still blocks CI only when its remediation is closed-loop validated.
+		{"aiPromptSchemaDrift (promoted to gate)", SignalAIPromptSchemaDrift, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

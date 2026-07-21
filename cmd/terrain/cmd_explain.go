@@ -15,6 +15,7 @@ import (
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/reporting"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // jsonOut writes v to stdout as indented JSON.
@@ -310,21 +311,9 @@ func renderFindingExplanation(s models.Signal, id string, snap *models.TestSuite
 	}
 
 	if ev := explain.DetectorEvidenceFor(string(s.Type)); ev != nil {
-		var lines []string
 		if line := ev.FormatTrustLine(); line != "" {
-			lines = append(lines, line)
-		}
-		// Surface corpus-lift inline even when trust-line picked hand-
-		// validated precision — precision alone doesn't tell users
-		// whether the firing predicts regression risk.
-		if line := ev.FormatLiftLine(); line != "" {
-			lines = append(lines, line)
-		}
-		if len(lines) > 0 {
-			fmt.Println("Detector evidence:")
-			for _, line := range lines {
-				fmt.Printf("  %s\n", line)
-			}
+			fmt.Println("Detector confidence:")
+			fmt.Printf("  %s\n", line)
 			fmt.Println()
 		}
 	}
@@ -339,7 +328,7 @@ func renderFindingExplanation(s models.Signal, id string, snap *models.TestSuite
 			if r.Location.Symbol != "" && r.Location.Symbol != s.Location.Symbol {
 				loc += " :: " + r.Location.Symbol
 			}
-			fmt.Printf("  • %s (%s) — %s\n", r.Type, strings.ToUpper(string(r.Severity)), loc)
+			fmt.Printf("  %s %s (%s) %s %s\n", uitokens.GlyphBullet(), r.Type, strings.ToUpper(string(r.Severity)), uitokens.GlyphDash(), loc)
 		}
 		fmt.Println()
 	}
@@ -372,7 +361,7 @@ func renderFindingExplanation(s models.Signal, id string, snap *models.TestSuite
 			if e.Symbol != "" {
 				loc += " :: " + e.Symbol
 			}
-			fmt.Printf("  • %s — %s\n", e.Repo, loc)
+			fmt.Printf("  %s %s %s %s\n", uitokens.GlyphBullet(), e.Repo, uitokens.GlyphDash(), loc)
 		}
 		fmt.Println()
 	}
@@ -744,11 +733,6 @@ func renderRuleExplanation(entry signals.ManifestEntry, root string, jsonOutput 
 	if entry.Remediation != "" {
 		fmt.Println("Remediation")
 		fmt.Println(entry.Remediation)
-		fmt.Println()
-	}
-	if entry.PromotionPlan != "" {
-		fmt.Println("Promotion plan")
-		fmt.Println(entry.PromotionPlan)
 		fmt.Println()
 	}
 	if entry.RuleURI != "" {

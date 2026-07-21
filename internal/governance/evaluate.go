@@ -127,6 +127,10 @@ func checkDisallowedFrameworks(snap *models.TestSuiteSnapshot, cfg *policy.Confi
 	var signals []models.Signal
 	for _, fw := range snap.Frameworks {
 		if disallowed[strings.ToLower(fw.Name)] {
+			noun, verb := "test files", "were"
+			if fw.FileCount == 1 {
+				noun, verb = "test file", "was"
+			}
 			signals = append(signals, models.Signal{
 				Type:       sigtypes.SignalLegacyFrameworkUsage,
 				Category:   models.CategoryGovernance,
@@ -136,8 +140,8 @@ func checkDisallowedFrameworks(snap *models.TestSuiteSnapshot, cfg *policy.Confi
 					Repository: snap.Repository.Name,
 				},
 				Explanation: fmt.Sprintf(
-					"Policy disallows framework '%s', but %d test files were detected.",
-					fw.Name, fw.FileCount,
+					"Policy disallows framework '%s', but %d %s %s detected.",
+					fw.Name, fw.FileCount, noun, verb,
 				),
 				SuggestedAction: fmt.Sprintf(
 					"Migrate or remove '%s' framework usage.", fw.Name,
@@ -438,8 +442,11 @@ func checkAIPolicy(snap *models.TestSuiteSnapshot, cfg *policy.Config) []models.
 		}
 	}
 
-	// Rule: warn on latency regression.
-	if ai.WarnOnLatencyRegression == nil || *ai.WarnOnLatencyRegression {
+	// Rule: warn on latency regression. Opt-in (like every other AI rule): an
+	// unset value must NOT default this on, or an adopter who configured only
+	// (say) block_on_safety_failure silently gets a policy violation that can
+	// trip --fail-on — a gate they never asked for.
+	if ai.WarnOnLatencyRegression != nil && *ai.WarnOnLatencyRegression {
 		if count := aiSignalCounts[sigtypes.SignalLatencyRegression]; count > 0 {
 			signals = append(signals, models.Signal{
 				Type:       sigtypes.SignalPolicyViolation,
@@ -459,8 +466,8 @@ func checkAIPolicy(snap *models.TestSuiteSnapshot, cfg *policy.Config) []models.
 		}
 	}
 
-	// Rule: warn on cost regression.
-	if ai.WarnOnCostRegression == nil || *ai.WarnOnCostRegression {
+	// Rule: warn on cost regression. Opt-in, for the same reason as latency.
+	if ai.WarnOnCostRegression != nil && *ai.WarnOnCostRegression {
 		if count := aiSignalCounts[sigtypes.SignalCostRegression]; count > 0 {
 			signals = append(signals, models.Signal{
 				Type:       sigtypes.SignalPolicyViolation,

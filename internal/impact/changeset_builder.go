@@ -16,6 +16,14 @@ import (
 // It resolves SHAs, detects shallow clones, infers packages and services,
 // and degrades gracefully when history is limited.
 func ChangeSetFromGitDiff(repoRoot, baseRef string) (*models.ChangeSet, error) {
+	// Validate the ref before it reaches `git diff`. Without this a `--base`
+	// value like `--output=<path>` is parsed by git as a flag, giving an
+	// arbitrary-file write/truncate primitive outside the repo. ChangeScope's
+	// sibling path already validates; this one (used by report impact / explain)
+	// did not.
+	if err := ValidateBaseRef(baseRef); err != nil {
+		return nil, err
+	}
 	cs := &models.ChangeSet{
 		Repository: repoRoot,
 		BaseRef:    baseRef,

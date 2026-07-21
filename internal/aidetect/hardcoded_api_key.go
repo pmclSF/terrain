@@ -2,7 +2,6 @@ package aidetect
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -24,12 +23,12 @@ import (
 // downstream filtering.
 var aiAPIKeyPatterns = []apiKeyRule{
 	{
-		Name:    "openai",
-		Pattern: regexp.MustCompile(`\bsk-(?:proj-|live-|test-)?[A-Za-z0-9_-]{20,}`),
-	},
-	{
 		Name:    "anthropic",
 		Pattern: regexp.MustCompile(`\bsk-ant-[a-z0-9_-]{20,}`),
+	},
+	{
+		Name:    "openai",
+		Pattern: regexp.MustCompile(`\bsk-(?:proj-|live-|test-)?[A-Za-z0-9_-]{20,}`),
 	},
 	{
 		Name:    "google",
@@ -81,9 +80,10 @@ var placeholderMarkers = []string{
 //
 // Coverage includes real-world key-leak surfaces beyond the obvious
 // YAML/JSON: .properties (Java configs), .tfvars (Terraform), .sh
-// (env-export shell scripts), .config (.NET/generic), and
-// .dockerfile/Dockerfile — polyglot AI infra repos commonly stash
-// keys in these.
+// (env-export shell scripts), .config (.NET/generic), and the
+// .dockerfile extension — polyglot AI infra repos commonly stash
+// keys in these. (Extensionless files such as a bare Dockerfile are
+// matched by extension only and so are not covered here.)
 var configFileExts = map[string]bool{
 	".yaml":       true,
 	".yml":        true,
@@ -277,6 +277,11 @@ type keyHit struct {
 // can't be opened is silently skipped — gathering errors here would
 // drown the user in I/O noise on partial checkouts and node_modules.
 func scanFileForAPIKeys(path string) []keyHit {
+	// Refuse symlinks/devices/FIFOs before opening; Lstat inspects the
+	// link itself so it is never followed to an unbounded target.
+	if fi, statErr := os.Lstat(path); statErr != nil || !fi.Mode().IsRegular() {
+		return nil
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil
@@ -291,27 +296,38 @@ func scanFileForAPIKeys(path string) []keyHit {
 	sc.Buffer(buf, maxLine)
 
 	line := 0
-	// Track which (line, provider) we've already emitted so a config
+	// Track the character spans already claimed on a line so a config
 	// that lists `openai_key=... aws_key=...` on a single line emits
-	// both findings — earlier revisions used a per-line `break` after
-	// the first match that swallowed the second key.
-	emitted := map[string]bool{}
+	// both findings, while a single key that satisfies more than one
+	// rule (e.g. an `sk-ant-` key also matching the broader openai
+	// shape) is attributed to exactly one provider. Rules are tried in
+	// declaration order, so the more-specific rule claims the span
+	// first and the broader rule is skipped for that span.
 	for sc.Scan() {
 		line++
 		text := sc.Text()
+		type span struct{ lo, hi int }
+		var claimed []span
 		for _, rule := range aiAPIKeyPatterns {
-			match := rule.Pattern.FindString(text)
-			if match == "" {
+			idx := rule.Pattern.FindStringIndex(text)
+			if idx == nil {
 				continue
 			}
+			match := text[idx[0]:idx[1]]
 			if isPlaceholder(match) {
 				continue
 			}
-			key := fmt.Sprintf("%d:%s", line, rule.Name)
-			if emitted[key] {
+			overlap := false
+			for _, s := range claimed {
+				if idx[0] < s.hi && s.lo < idx[1] {
+					overlap = true
+					break
+				}
+			}
+			if overlap {
 				continue
 			}
-			emitted[key] = true
+			claimed = append(claimed, span{idx[0], idx[1]})
 			hits = append(hits, keyHit{Provider: rule.Name, Line: line})
 		}
 	}

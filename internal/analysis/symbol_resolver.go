@@ -4,13 +4,13 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // SymbolLink represents a resolved reference from a test file to a specific
@@ -190,7 +190,7 @@ var (
 )
 
 func resolveJSSymbolLinks(root, testPath string, candidates []models.CodeUnit) []SymbolLink {
-	content, err := os.ReadFile(filepath.Join(root, testPath))
+	content, err := saferead.ReadFile(filepath.Join(root, testPath))
 	if err != nil {
 		return nil
 	}
@@ -251,7 +251,7 @@ var (
 )
 
 func resolvePythonSymbolLinks(root, testPath string, candidates []models.CodeUnit) []SymbolLink {
-	content, err := os.ReadFile(filepath.Join(root, testPath))
+	content, err := saferead.ReadFile(filepath.Join(root, testPath))
 	if err != nil {
 		return nil
 	}
@@ -343,7 +343,7 @@ func matchCandidatesByName(testPath, src string, candidates []models.CodeUnit, i
 
 // resolveByNameMatch is a fallback when AST parsing fails.
 func resolveByNameMatch(root, testPath string, candidates []models.CodeUnit) []SymbolLink {
-	content, err := os.ReadFile(filepath.Join(root, testPath))
+	content, err := saferead.ReadFile(filepath.Join(root, testPath))
 	if err != nil {
 		return nil
 	}

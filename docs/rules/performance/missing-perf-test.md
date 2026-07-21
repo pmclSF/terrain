@@ -16,10 +16,6 @@ A latency-critical AI surface (prompt / retrieval / agent / model / handler / ro
 
 Add a benchmark under benchmarks/ or perf/ that records P50 / P95 latency for the surface.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/performance/missing_perf_test.go (DetectMissingPerfTest). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `graph-traversal`
@@ -36,9 +32,7 @@ A latency-critical AI surface (prompt / retrieval / agent / model / handler / ro
 
 ## 2. Severity & status
 
-- **Tier:** stable
-- **Default severity:** low
-- **Stable since:** v0.2.0
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 
@@ -57,7 +51,7 @@ Latency / throughput regressions ship silently when no benchmark guards the path
 - **Approach:** graph traversal. For each surface kind in the latency-critical set, check whether any test reaching the surface is in a benchmark-shaped path.
 - **Latency-critical surface kinds:** SurfacePrompt, SurfaceRetrieval, SurfaceAgent, SurfaceModel, SurfaceHandler, SurfaceRoute.
 - **Benchmark-test paths:** `/bench/`, `/benchmarks/`, `/perf/`, `/performance/`, `/load/`, `/loadtest/`, `/__benchmarks__/`.
-- **0.3.0 silence rule:** if the repo has no benchmark tests anywhere, the rule stays silent — otherwise the first run would flag every surface and overwhelm adopters.
+- **Silence rule:** if the repo has no benchmark tests anywhere, the rule stays silent — otherwise the first run would flag every surface and overwhelm adopters.
 
 ## 6. Worked example
 
@@ -85,11 +79,7 @@ ignore:
 terrain test --selector performance/missing-perf-test
 ```
 
-## 10. Stability commitment
-
-Latency-critical surface set and benchmark-path vocabulary are stable from v0.2.0.
-
-## 11. Related rules
+## 10. Related rules
 
 - `terrain/regression/performance-regression` — fires when a benchmark exists and the metric regressed
 - `terrain/coverage/no-eval` — adjacent: surfaces without any eval coverage

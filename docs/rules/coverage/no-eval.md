@@ -16,10 +16,6 @@ An AI-typed CodeSurface (prompt / context / dataset / tool / retrieval / agent /
 
 Add an eval scenario that exercises the surface and asserts on its output / metric / shape.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/coverage/no_eval.go (DetectNoEvalForAISurface). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `graph-traversal`
@@ -34,12 +30,9 @@ Confidence interval: 0.80–0.95.
 
 An AI-typed CodeSurface (prompt / context / dataset / tool / retrieval / agent / eval_definition / model) has no Eval that claims to cover it.
 
-## 2. Severity & status
+## 2. Status
 
-- **Tier:** stable
-- **Default severity:** high
-- **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
+Experimental — off by default; enable in terrain.yaml. Configurable via `terrain.yaml` — see [configuration.md](../../configuration.md).
 
 ## 3. What this catches
 
@@ -59,7 +52,7 @@ AI surfaces are the production system's behavioral substrate. Prompts, model wei
 - **AI surface kinds covered:** SurfacePrompt, SurfaceContext, SurfaceDataset, SurfaceToolDef, SurfaceRetrieval, SurfaceAgent, SurfaceEvalDef, SurfaceModel.
 - **Inputs consumed:** `TestSuiteSnapshot.CodeSurfaces` and `TestSuiteSnapshot.Evals`.
 - **Edge cases handled:** non-AI surface kinds (function, method, handler, route, class, fixture) are skipped entirely.
-- **Edge cases NOT handled today:** transitive coverage — an eval that covers a downstream surface doesn't suppress the rule for an upstream surface even when the downstream's behavior depends on the upstream. Transitive coverage propagation through the impact graph is planned.
+- **Edge cases not handled:** transitive coverage — an eval that covers a downstream surface doesn't suppress the rule for an upstream surface even when the downstream's behavior depends on the upstream.
 
 ## 6. Worked example
 
@@ -87,10 +80,9 @@ ignore:
 
 ## 8. False-positive characterization
 
-- **Eval declares coverage via folder convention but not in `CoveredSurfaceIDs`** — the inference layer (`internal/aidetect/DeriveEvals`) usually populates this from co-location; when it doesn't, the eval's `terrain.yaml` declaration is the source of truth. Mitigation: list the surface in the eval's YAML.
-- **Indirect coverage** (eval exercises a pipeline that internally invokes the surface) — not credited today; explicit declaration is required. Transitive propagation is planned.
+- **Eval declares coverage via folder convention but not in `CoveredSurfaceIDs`** — coverage is usually inferred from co-location; when it isn't, the eval's `terrain.yaml` declaration is the source of truth. Mitigation: list the surface in the eval's YAML.
+- **Indirect coverage** (eval exercises a pipeline that internally invokes the surface) — not credited; explicit declaration is required.
 - **Vendored / experimental surfaces** — ignore via path.
-- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 
@@ -98,12 +90,8 @@ ignore:
 terrain test --selector coverage/no-eval
 ```
 
-## 10. Stability commitment
-
-Rule ID, severity, and the set of AI surface kinds it fires on are stable from v0.2.0. New surface kinds added to `internal/models/code_surface.go` are additive and not deprecation-cycled.
-
 ## 11. Related rules
 
 - `terrain/coverage/no-tests` — same shape for code units rather than AI surfaces
-- `terrain/structural/uncovered-ai-surface` — preview-tier sibling that uses different attribution heuristics
+- `terrain/structural/uncovered-ai-surface` — sibling that uses different attribution heuristics
 - `terrain/structural/phantom-eval` — fires when an eval CLAIMS coverage but the import graph doesn't support the claim

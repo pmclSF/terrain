@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // RagasAdapter ingests ragas evaluation output. ragas doesn't ship a
@@ -54,7 +55,7 @@ func (RagasAdapter) CanIngest(path string) bool {
 	if !strings.HasSuffix(strings.ToLower(path), ".json") {
 		return false
 	}
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return false
 	}
@@ -96,7 +97,7 @@ func hasRagasMetric(rec map[string]interface{}) bool {
 
 // Ingest implements Adapter.
 func (RagasAdapter) Ingest(path string) (*EvalRun, error) {
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("ragas: read %s: %w", path, err)
 	}
@@ -137,14 +138,13 @@ func (RagasAdapter) Ingest(path string) (*EvalRun, error) {
 		// recorded for this case in declaration order.
 		var primary float64
 		var primaryName string
+		hasPrimary := false
 		if v, ok := metrics["faithfulness"]; ok {
-			primary = v
-			primaryName = "faithfulness"
+			primary, primaryName, hasPrimary = v, "faithfulness", true
 		} else {
 			for _, name := range ragasMetricNames {
 				if v, ok := metrics[name]; ok {
-					primary = v
-					primaryName = name
+					primary, primaryName, hasPrimary = v, name, true
 					break
 				}
 			}
@@ -152,10 +152,9 @@ func (RagasAdapter) Ingest(path string) (*EvalRun, error) {
 		_ = primaryName // reserved for future per-rule annotation
 
 		// ragas doesn't carry per-case pass/fail — that decision is made
-		// at the adopter's threshold-evaluation step. We surface
-		// Success=true and let the regression rule compare scores.
-		// Future: if the record has a `passed` field (some adopter
-		// pipelines add one) honor it.
+		// at the adopter's threshold-evaluation step. Default Success to
+		// true and let the regression rule compare scores. If the record
+		// carries a `passed` field (some adopter pipelines add one), honor it.
 		success := true
 		if p, ok := rec["passed"].(bool); ok {
 			success = p
@@ -169,7 +168,11 @@ func (RagasAdapter) Ingest(path string) (*EvalRun, error) {
 			Metrics: metrics,
 		})
 
-		if !math.IsNaN(primary) {
+		// Only average cases that actually carry a numeric primary metric. A
+		// case whose metrics are all null (ragas emits null for an uncomputable
+		// metric) must NOT be counted as a 0.0 score — that would deflate the
+		// run mean and manufacture a false eval-regression.
+		if hasPrimary && !math.IsNaN(primary) {
 			primarySum += primary
 			primaryCount++
 		}
@@ -183,8 +186,14 @@ func (RagasAdapter) Ingest(path string) (*EvalRun, error) {
 			run.Stats.Failures++
 		}
 	}
-	if primaryCount == len(run.Cases) && primaryCount > 0 {
+	// Average over the cases that carry a numeric primary metric. A run
+	// where some cases lack a computable primary metric (ragas emits null
+	// for uncomputable metrics) must still report the mean over the cases
+	// that do have one, rather than suppressing run-level regression
+	// detection entirely.
+	if primaryCount > 0 {
 		run.Stats.PrimaryMetric = primarySum / float64(primaryCount)
+		run.Stats.HasPrimaryMetric = true
 	}
 
 	return run, nil

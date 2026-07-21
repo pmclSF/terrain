@@ -16,10 +16,6 @@ User-controlled input is concatenated into a prompt without escaping, system-pro
 
 Use a prompt template with explicit user-content boundaries, or run user input through a sanitizer.
 
-## Promotion plan
-
-Off by default. The current pattern-matching predicate over-fires on non-injection prompt templates; the rule will be re-enabled when a structurally precise taint-flow predicate replaces it. Opt in via .terrain/policy.yaml only when an adopter has confirmed the local signal is useful.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -36,7 +32,7 @@ Confidence interval: 0.60–0.85.
 **Domain:** AI
 **Default severity:** High
 **Severity clauses:** [`sev-high-003`](../../severity-rubric.md)
-**Status:** experimental. Promotes to stable when AST-precise taint-flow analysis lands.
+**Status:** Experimental — off by default; enable in `terrain.yaml`.
 
 ## What it detects
 
@@ -115,8 +111,7 @@ prompt = (
 
 ## Known limitations
 
-- Regex-based; cannot follow data flow across function boundaries.
-  An AST-precise taint-flow upgrade is planned.
+- Pattern-based; cannot follow data flow across function boundaries.
 - Skips comment-only lines. A genuinely vulnerable line that ends
   with a trailing `# explanatory comment` is still flagged.
 - Doesn't recognize framework-specific sanitizers — your

@@ -1,18 +1,14 @@
-// Package pathnoise consolidates corpus-validated false-positive
-// path patterns into one canonical filter every detector can consult.
+// Package pathnoise consolidates known false-positive path patterns
+// into one canonical filter every detector can consult.
 //
-// Background: every detector that scans files has historically built
-// its own ad-hoc list of "skip these paths" — generated code, test
+// Background: every detector that scans files historically built its
+// own ad-hoc list of "skip these paths" — generated code, test
 // fixtures, vendored deps, CI tooling. Each detector reinvented the
-// list, accumulated different gaps, and drifted over time. Hand-
-// validated corpus reviews this session surfaced FP shapes that
-// would have been caught earlier if every detector consulted a
-// shared filter.
+// list, accumulated different gaps, and drifted over time. A shared
+// filter avoids that drift.
 //
 // This package is the canonical implementation. Detectors should
 // prefer `pathnoise.IsToolingPath(p)` over inline path matching.
-//
-// The patterns here are all validated against the calibration set.
 package pathnoise
 
 import (
@@ -128,9 +124,9 @@ var fileSuffixes = regexp.MustCompile(
 		`\.vsix` +
 		`)$`)
 
-// IsToolingPath returns true when the path is in a corpus-validated
-// noise location: CI/build tools, generated code, test fixtures,
-// vendored deps, benchmarks, or examples.
+// IsToolingPath returns true when the path is a known noise location:
+// CI/build tools, generated code, test fixtures, vendored deps,
+// benchmarks, or examples.
 //
 // Detectors should consult this filter before emitting findings.
 // Skipping a tooling-path firing is almost always correct.

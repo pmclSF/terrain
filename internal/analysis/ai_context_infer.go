@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // InferAIContextSurfaces performs content-based detection of AI context surfaces
@@ -49,8 +50,8 @@ func InferAIContextSurfacesFromList(root string, testFiles []models.TestFile, ex
 			continue
 		}
 
-		content, err := os.ReadFile(filepath.Join(root, relPath))
-		if err != nil {
+		content, ok := saferead.File(filepath.Join(root, relPath), saferead.SourceCap)
+		if !ok {
 			continue
 		}
 		src := string(content)
@@ -65,13 +66,22 @@ func InferAIContextSurfacesFromList(root string, testFiles []models.TestFile, ex
 		surfaces = appendNew(surfaces, existingIDs, ParseEmbeddedPrompts(relPath, src, lang))
 
 		// Pass 1b: Structured RAG pipeline parsing (vector stores, splitters, etc.).
-		surfaces = appendNew(surfaces, existingIDs, ParseRAGPipeline(relPath, src, lang))
+		// Gate on file-level AI context: bare word matches on Chroma / Milvus /
+		// similarity_search otherwise collide with unrelated code (a chroma.js
+		// color library, a numpy similarity_search, a metrics Milvus class). A
+		// real RAG pipeline imports an AI SDK, so it still passes this gate. The
+		// framework-content inference (Pass 1d) shares the same collision risk.
+		if hasAIContext(src, lang) {
+			surfaces = appendNew(surfaces, existingIDs, ParseRAGPipeline(relPath, src, lang))
+		}
 
 		// Pass 1c: Structured schema/contract parsing (Zod, Pydantic, OpenAI tools).
 		surfaces = appendNew(surfaces, existingIDs, ParseToolSchemas(relPath, src, lang))
 
 		// Pass 1d: Framework-aware content inference (LangChain, LlamaIndex, etc.).
-		surfaces = appendNew(surfaces, existingIDs, inferFromContent(relPath, src, lang))
+		if hasAIContext(src, lang) {
+			surfaces = appendNew(surfaces, existingIDs, inferFromContent(relPath, src, lang))
+		}
 	}
 
 	// Pass 2: Detect AI template files by extension + content.
@@ -308,10 +318,7 @@ func detectTemplateFiles(root string, existingIDs map[string]bool) []models.Code
 	_ = filepath.Walk(root, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			if info != nil && info.IsDir() {
-				// Use the same canonical skip set as discoverTestFiles.
-				// Earlier revisions inlined a list that omitted .terrain,
-				// dist, build, target, .next, .venv, etc., causing extra
-				// walks on dirs other walkers correctly avoid.
+				// Canonical skip set; see discoverTestFiles.
 				if skipDirs[filepath.Base(path)] {
 					return filepath.SkipDir
 				}
@@ -327,8 +334,8 @@ func detectTemplateFiles(root string, existingIDs map[string]bool) []models.Code
 		relPath, _ := filepath.Rel(root, path)
 		relPath = filepath.ToSlash(relPath)
 
-		content, err := os.ReadFile(path)
-		if err != nil || len(content) == 0 {
+		content, ok := saferead.File(path, saferead.SourceCap)
+		if !ok || len(content) == 0 {
 			return nil
 		}
 		src := string(content)
@@ -412,8 +419,8 @@ func detectRAGConfigFiles(root string, existingIDs map[string]bool) []models.Cod
 			return nil
 		}
 
-		content, err := os.ReadFile(path)
-		if err != nil || len(content) == 0 {
+		content, ok := saferead.File(path, saferead.SourceCap)
+		if !ok || len(content) == 0 {
 			return nil
 		}
 		src := string(content)

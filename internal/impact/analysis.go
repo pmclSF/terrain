@@ -77,13 +77,12 @@ func buildUnitLookupContext(snap *models.TestSuiteSnapshot) *unitLookupContext {
 //
 // Per-unit coverage lookups (covering tests, coverage-type classification, unit
 // protection status) traverse the typed ImpactGraph rather than direct-scanning
-// snap.TestFiles[].LinkedCodeUnits. This is the audit-CH5 fix per PRODUCT.md
-// §16; the graph is built first in analyzeFromScope and passed through.
+// snap.TestFiles[].LinkedCodeUnits. The graph is built first in analyzeFromScope
+// and passed through.
 //
-// Behavior is preserved: the graph itself is built from LinkedCodeUnits, so
-// findings are equivalent. The fix is architectural — coverage queries now
-// consult the integration-boundary primitive (the graph), making the unified-
-// graph architectural claim structurally true.
+// Behavior is preserved: the graph is built from LinkedCodeUnits, so findings are
+// equivalent; coverage queries now traverse the graph rather than re-scanning
+// LinkedCodeUnits.
 func mapChangedUnits(scope *ChangeScope, snap *models.TestSuiteSnapshot, graph *ImpactGraph) []ImpactedCodeUnit {
 	// Build code-unit index by file path.
 	unitsByFile := map[string][]models.CodeUnit{}

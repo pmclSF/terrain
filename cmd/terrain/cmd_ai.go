@@ -276,7 +276,7 @@ func runAIList(root string, jsonOutput, verbose bool) error {
 		for _, sc := range scenarios {
 			capLabel := ""
 			if sc.Capability != "" {
-				capLabel = " → " + sc.Capability
+				capLabel = " " + uitokens.GlyphArrow() + " " + sc.Capability
 			}
 			surfLabel := ""
 			if sc.Surfaces > 0 {
@@ -585,7 +585,7 @@ func runAIRunWithTimeout(root string, jsonOutput bool, baseRef string, full, dry
 		for _, sc := range selected {
 			capLabel := ""
 			if sc.Capability != "" {
-				capLabel = " → " + sc.Capability
+				capLabel = " " + uitokens.GlyphArrow() + " " + sc.Capability
 			}
 			fmt.Printf("  %s%s\n", sc.Name, capLabel)
 			fmt.Printf("    reason: %s\n", sc.Reason)
@@ -686,7 +686,7 @@ func runEvalCommand(root string, cmdArgs []string, jsonOutput bool, timeout time
 		if timeout > 0 && ctxErr == context.DeadlineExceeded {
 			return fmt.Errorf("eval command timed out after %s: %w", timeout, ctxErr)
 		}
-		return fmt.Errorf("eval command cancelled: %w", ctxErr)
+		return fmt.Errorf("eval command canceled: %w", ctxErr)
 	}
 	return err
 }
@@ -1127,7 +1127,7 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 	fmt.Println("Terrain AI Baseline Comparison")
 	fmt.Println(uitokens.H1Sep)
 	fmt.Printf("Baseline recorded: %s\n", baseline.RecordedAt)
-	fmt.Printf("Scenarios: %d → %d", len(baseline.Scenarios), len(result.Snapshot.Evals))
+	fmt.Printf("Scenarios: %d %s %d", len(baseline.Scenarios), uitokens.GlyphArrow(), len(result.Snapshot.Evals))
 	if diff := len(result.Snapshot.Evals) - len(baseline.Scenarios); diff > 0 {
 		fmt.Printf(" (+%d)\n", diff)
 	} else if diff < 0 {
@@ -1155,16 +1155,16 @@ func runAIBaselineCompare(root string, jsonOutput bool) error {
 		for _, d := range deltas {
 			marker := "  "
 			if d.IsRegression {
-				marker = "▼ "
+				marker = uitokens.GlyphDown() + " "
 				regressionCount++
 			} else {
-				marker = "▲ "
+				marker = uitokens.GlyphUp() + " "
 			}
-			fmt.Printf("  %s%-30s %-20s %.4f → %.4f (%+.4f)\n",
-				marker, d.ScenarioID, d.MetricName, d.FromValue, d.ToValue, d.Delta)
+			fmt.Printf("  %s%-30s %-20s %.4f %s %.4f (%+.4f)\n",
+				marker, d.ScenarioID, d.MetricName, d.FromValue, uitokens.GlyphArrow(), d.ToValue, d.Delta)
 		}
 		if regressionCount > 0 {
-			fmt.Printf("\n⚠ %d %s detected\n", regressionCount, reporting.Plural(regressionCount, "regression"))
+			fmt.Printf("\n%s %d %s detected\n", uitokens.GlyphWarn(), regressionCount, reporting.Plural(regressionCount, "regression"))
 		}
 	} else if len(baselineMetrics) == 0 {
 		fmt.Println("\nNo baseline metrics recorded. Re-run `terrain ai record` with --gauntlet to capture metrics.")
@@ -1198,7 +1198,7 @@ func runAIReplay(root string, jsonOutput bool, artifactPath string) error {
 	fmt.Println(uitokens.H1Sep)
 	fmt.Println()
 	fmt.Printf("Artifact:    %s\n", artifactPath)
-	fmt.Printf("Scenarios:   %d original → %d current\n", replayResult.OriginalScenarios, replayResult.CurrentScenarios)
+	fmt.Printf("Scenarios:   %d original %s %d current\n", replayResult.OriginalScenarios, uitokens.GlyphArrow(), replayResult.CurrentScenarios)
 	hashCount := replayResult.CurrentHashes.TotalHashCount()
 	fmt.Printf("Hashes:      %d %s tracked\n", hashCount, reporting.Plural(hashCount, "surface"))
 	fmt.Println()
@@ -1217,7 +1217,7 @@ func runAIReplay(root string, jsonOutput bool, artifactPath string) error {
 				fmt.Printf("    surface: %s\n", m.Surface)
 			}
 			if m.Original != "" && m.Current != "" {
-				fmt.Printf("    original: %s → current: %s\n", m.Original, m.Current)
+				fmt.Printf("    original: %s %s current: %s\n", m.Original, uitokens.GlyphArrow(), m.Current)
 			}
 		}
 	}

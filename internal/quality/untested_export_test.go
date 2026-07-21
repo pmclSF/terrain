@@ -1,6 +1,7 @@
 package quality
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/models"
@@ -86,9 +87,8 @@ func TestUntestedExportDetector_NoCodeUnits(t *testing.T) {
 
 func TestUntestedExportDetector_SkipsToolingPaths(t *testing.T) {
 	t.Parallel()
-	// Verified-on-corpus FP: Angular's .github/actions/deploy-docs-site/
-	// flagged for "untested" exports. Detector now skips these paths
-	// by default — deploy scripts don't need unit-test coverage.
+	// Tooling paths under .github/actions/ (deploy/CI scripts) must not
+	// be flagged as untested exports; they don't need unit-test coverage.
 	snap := &models.TestSuiteSnapshot{
 		TestFiles: []models.TestFile{
 			{Path: "src/__tests__/auth.test.js"},
@@ -179,4 +179,151 @@ func signalSymbols(sigs []models.Signal) []string {
 		out = append(out, s.Location.Symbol)
 	}
 	return out
+}
+
+func firedSymbolSet(sigs []models.Signal) map[string]bool {
+	m := make(map[string]bool, len(sigs))
+	for _, s := range sigs {
+		m[s.Location.Symbol] = true
+	}
+	return m
+}
+
+// U5: test-infrastructure filenames are not flagged as untested exports.
+func TestUntestedExportDetector_SkipsTestInfraFilenames(t *testing.T) {
+	t.Parallel()
+	got := firedSymbolSet((&UntestedExportDetector{}).Detect(&models.TestSuiteSnapshot{
+		CodeUnits: []models.CodeUnit{
+			{Name: "setupAuth", Path: "src/test-helpers.ts", Kind: models.CodeUnitKindFunction, Exported: true},
+			{Name: "mockDB", Path: "src/internal-for-testing.go", Kind: models.CodeUnitKindFunction, Exported: true},
+			{Name: "makeFix", Path: "src/data-fixture.ts", Kind: models.CodeUnitKindFunction, Exported: true},
+			{Name: "fetchUser", Path: "src/services/user.ts", Kind: models.CodeUnitKindFunction, Exported: true}, // control
+		},
+	}))
+	for _, skip := range []string{"setupAuth", "mockDB", "makeFix"} {
+		if got[skip] {
+			t.Errorf("%s lives in a test-infra file and must be skipped", skip)
+		}
+	}
+	if !got["fetchUser"] {
+		t.Error("control fetchUser (real export) must fire")
+	}
+}
+
+// U6: Go Test* functions are not flagged.
+func TestUntestedExportDetector_SkipsGoTestFunctions(t *testing.T) {
+	t.Parallel()
+	got := firedSymbolSet((&UntestedExportDetector{}).Detect(&models.TestSuiteSnapshot{
+		CodeUnits: []models.CodeUnit{
+			{Name: "TestAuth", Path: "src/auth_test.go", Kind: models.CodeUnitKindFunction, Exported: true},
+			{Name: "TestValidate", Path: "src/validators.go", Kind: models.CodeUnitKindFunction, Exported: true},
+			{Name: "ProcessData", Path: "src/data.go", Kind: models.CodeUnitKindFunction, Exported: true}, // control
+		},
+	}))
+	if got["TestAuth"] || got["TestValidate"] {
+		t.Error("Go Test* functions must be skipped")
+	}
+	if !got["ProcessData"] {
+		t.Error("control ProcessData must fire")
+	}
+}
+
+// U7: JVM override methods (toString/hashCode/equals/...) are not flagged.
+func TestUntestedExportDetector_SkipsJVMOverrides(t *testing.T) {
+	t.Parallel()
+	got := firedSymbolSet((&UntestedExportDetector{}).Detect(&models.TestSuiteSnapshot{
+		CodeUnits: []models.CodeUnit{
+			{Name: "toString", Path: "src/Entity.java", Kind: models.CodeUnitKindMethod, Exported: true},
+			{Name: "hashCode", Path: "src/Value.kt", Kind: models.CodeUnitKindMethod, Exported: true},
+			{Name: "processPayment", Path: "src/Pay.java", Kind: models.CodeUnitKindMethod, Exported: true}, // control
+		},
+	}))
+	if got["toString"] || got["hashCode"] {
+		t.Error("JVM override methods must be skipped")
+	}
+	if !got["processPayment"] {
+		t.Error("control processPayment must fire")
+	}
+}
+
+// U8: TS/JS type/schema declarations (UppercaseFooSchema/Props/Type/...) skipped.
+func TestUntestedExportDetector_SkipsTypeSchemaDeclarations(t *testing.T) {
+	t.Parallel()
+	got := firedSymbolSet((&UntestedExportDetector{}).Detect(&models.TestSuiteSnapshot{
+		CodeUnits: []models.CodeUnit{
+			{Name: "UserSchema", Path: "src/user.ts", Kind: models.CodeUnitKindUnknown, Exported: true},
+			{Name: "ButtonProps", Path: "src/Button.tsx", Kind: models.CodeUnitKindUnknown, Exported: true},
+			{Name: "validateUser", Path: "src/validators.ts", Kind: models.CodeUnitKindFunction, Exported: true}, // control (camelCase)
+		},
+	}))
+	if got["UserSchema"] || got["ButtonProps"] {
+		t.Error("uppercase *Schema/*Props declarations must be skipped")
+	}
+	if !got["validateUser"] {
+		t.Error("control validateUser must fire")
+	}
+}
+
+// U9/U12: an import-graph link suppresses the export, and findings produced
+// when an import graph is consulted carry the higher 0.7/Moderate confidence.
+func TestUntestedExportDetector_ImportGraphSuppressesAndRaisesConfidence(t *testing.T) {
+	t.Parallel()
+	// The test file's stem ("runner") and dir ("test") deliberately match
+	// neither export, so the ONLY thing that can suppress fetchUser is the
+	// import-graph link — isolating that clause from the proximity heuristic.
+	signals := (&UntestedExportDetector{}).Detect(&models.TestSuiteSnapshot{
+		TestFiles: []models.TestFile{{Path: "test/runner.spec.ts"}},
+		CodeUnits: []models.CodeUnit{
+			{Name: "fetchUser", Path: "src/api.ts", Kind: models.CodeUnitKindFunction, Exported: true},   // imported → suppressed
+			{Name: "fetchPost", Path: "lib/posts.ts", Kind: models.CodeUnitKindFunction, Exported: true}, // not imported → fires
+		},
+		ImportGraph: map[string]map[string]bool{
+			"test/runner.spec.ts": {"src/api.ts": true},
+		},
+	})
+	got := firedSymbolSet(signals)
+	if got["fetchUser"] {
+		t.Error("fetchUser is imported by a test → must be suppressed")
+	}
+	if !got["fetchPost"] {
+		t.Fatal("fetchPost is not imported → must fire")
+	}
+	for _, s := range signals {
+		if s.Location.Symbol == "fetchPost" {
+			if s.Confidence != 0.7 {
+				t.Errorf("import-graph confidence: want 0.7, got %v", s.Confidence)
+			}
+			if s.EvidenceStrength != models.EvidenceModerate {
+				t.Errorf("import-graph evidence: want Moderate, got %v", s.EvidenceStrength)
+			}
+		}
+	}
+}
+
+// U12/U13: strengthen the original test (which asserts only Type+Symbol) — pin
+// the category/severity/confidence/evidence and that the explanation names the
+// symbol, on the heuristic (no import graph) path.
+func TestUntestedExportDetector_SignalShape(t *testing.T) {
+	t.Parallel()
+	signals := (&UntestedExportDetector{}).Detect(&models.TestSuiteSnapshot{
+		CodeUnits: []models.CodeUnit{
+			{Name: "uploadFile", Path: "src/upload.ts", Kind: models.CodeUnitKindFunction, Exported: true},
+		},
+	})
+	if len(signals) != 1 {
+		t.Fatalf("want 1 signal, got %d", len(signals))
+	}
+	s := signals[0]
+	if s.Category != models.CategoryQuality {
+		t.Errorf("category: want Quality, got %v", s.Category)
+	}
+	if s.Severity != models.SeverityMedium {
+		t.Errorf("severity: want Medium, got %v", s.Severity)
+	}
+	if s.Confidence != 0.5 || s.EvidenceStrength != models.EvidenceWeak {
+		t.Errorf("heuristic path: want 0.5/Weak, got %v/%v", s.Confidence, s.EvidenceStrength)
+	}
+	if !strings.Contains(s.Explanation, "uploadFile") {
+		t.Errorf("explanation must name the symbol; got %q", s.Explanation)
+	}
 }

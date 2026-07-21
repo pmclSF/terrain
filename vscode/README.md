@@ -1,6 +1,6 @@
 # Terrain — legacy VS Code prototype
 
-This directory contains an older VS Code diagnostics prototype kept for reference. The shipped 0.3.0 extension alpha lives in [`extension/vscode/`](../extension/vscode/), and its public behavior is documented in [`docs/vscode-extension.md`](../docs/vscode-extension.md).
+This directory contains an older VS Code diagnostics prototype kept for reference. The shipped extension alpha lives in [`extension/vscode/`](../extension/vscode/), and its public behavior is documented in [`docs/vscode-extension.md`](../docs/vscode-extension.md).
 
 This prototype is not published to the VS Code Marketplace, not part of `make extension-verify`, and not the release extension.
 
@@ -36,4 +36,4 @@ npm run compile
 npm run package
 ```
 
-The packaged `.vsix` can be installed locally for prototype testing. The 0.3.0 release does not publish this package.
+The packaged `.vsix` can be installed locally for prototype testing. The current release does not publish this package.

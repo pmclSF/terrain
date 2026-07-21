@@ -32,6 +32,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // MaxFileBytes is the upper bound for files the gate will read. Beyond
@@ -135,7 +137,7 @@ func cachedStripped(path string, info os.FileInfo) ([]byte, error) {
 	if ok && entry.modTime.Equal(info.ModTime()) && entry.size == info.Size() {
 		return entry.body, nil
 	}
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

@@ -128,13 +128,13 @@ When a Gauntlet artifact is ingested:
 
 Gauntlet result signals carry the artifact's `scenarioId` in
 `Signal.Location.ScenarioID` and use `eval-execution` as the evidence
-source. In 0.3.0 Terrain does not create a separate `ExecutionRun`
+source. In 0.4.0 Terrain does not create a separate `ExecutionRun`
 graph node or persist per-scenario execution metadata beyond the
 signals emitted from the artifact.
 
 ## `terrain ai run` workflow
 
-`terrain ai run` does not invoke Gauntlet in 0.3.0. Use
+`terrain ai run` does not invoke Gauntlet in 0.4.0. Use
 `terrain ai list` / `terrain impact` to understand which scenarios are
 relevant, run Gauntlet with your normal Gauntlet command, then ingest
 the resulting JSON with `terrain analyze --gauntlet results.json`.

@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** observability
 
-## Promotion plan
-
-Fires when per-run token cost exceeds the configured ceiling.
-
 ## Evidence sources
 
 - `runtime`
@@ -28,9 +24,7 @@ The total token cost of an eval run exceeds the configured ceiling, indicating p
 
 ## 2. Severity & status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 

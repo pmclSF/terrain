@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/astguard"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -33,6 +34,9 @@ import (
 // includes form schemas, HTTP response types, auto-generated SDK
 // types, and internal API contracts.
 func ParseToolSchemas(relPath, src, lang string) []models.CodeSurface {
+	if astguard.LooksPathologicalString(src) {
+		return nil
+	}
 	switch lang {
 	case "js":
 		if !HasAIContextJS(src) {

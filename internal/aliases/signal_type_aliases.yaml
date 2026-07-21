@@ -34,10 +34,10 @@ aliases:
     deprecated_in: "next"
     removal_target: "future"
     why: |
-      Split into unconditional (skip is permanent, no surrounding gate)
-      and conditional-gate (skip is wrapped by an environment, feature-
-      flag, or platform predicate). Each half carries its own
-      remediation guidance.
+      This rule now maps to two more specific rules: one for a permanent
+      skip, and one for a skip guarded by an environment, feature-flag, or
+      platform condition. Point your policy or suppression at whichever
+      applies.
 
   depsDriftRisk:
     replaces_with:
@@ -46,9 +46,9 @@ aliases:
     deprecated_in: "next"
     removal_target: "future"
     why: |
-      Split into strict-pin (bare name or unversioned spec) and
-      caret-policy (caret-range usage). Each half can carry its own
-      threshold and suppression target.
+      This rule now maps to two more specific rules: one for a bare or
+      unversioned spec, and one for a caret range. Point your policy or
+      suppression at whichever applies.
 
   aiHardcodedAPIKey:
     replaces_with:
@@ -57,7 +57,5 @@ aliases:
     deprecated_in: "next"
     removal_target: "future"
     why: |
-      Structurally-motivated split. Literal-shape retains the in-repo
-      key-shaped-string detection capability; coverage-degraded flags
-      the secret-scanner CI-integration gap. Underlying capability is
-      preserved across the split.
+      This rule now maps to updated rule IDs. Update any policy or
+      suppression that referenced the old ID to the listed replacements.

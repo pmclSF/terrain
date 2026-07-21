@@ -104,11 +104,39 @@ var seedCallClassifiers = []struct {
 
 func classifyCallText(text string) (seedCall, bool) {
 	for _, c := range seedCallClassifiers {
-		if strings.Contains(text, c.pattern) {
-			return seedCall{library: c.library, isSeed: c.isSeed, isStochastic: !c.isSeed}, true
+		if !containsAtCallBoundary(text, c.pattern) {
+			continue
 		}
+		return seedCall{library: c.library, isSeed: c.isSeed, isStochastic: !c.isSeed}, true
 	}
 	return seedCall{}, false
+}
+
+// containsAtCallBoundary reports whether pattern appears in text with a
+// non-identifier character immediately before it (or at the start of a
+// segment). This keeps a bare-function marker like `set_seed(` from
+// matching user functions such as `reset_seed(` / `preset_seed(` while
+// still matching dotted forms like `foo.set_seed(`.
+func containsAtCallBoundary(text, pattern string) bool {
+	from := 0
+	for {
+		i := strings.Index(text[from:], pattern)
+		if i < 0 {
+			return false
+		}
+		abs := from + i
+		if abs == 0 || !isIdentChar(text[abs-1]) {
+			return true
+		}
+		from = abs + 1
+	}
+}
+
+func isIdentChar(b byte) bool {
+	return b == '_' ||
+		(b >= 'a' && b <= 'z') ||
+		(b >= 'A' && b <= 'Z') ||
+		(b >= '0' && b <= '9')
 }
 
 // analyzeSeedingFile walks the tree in order and tracks which libraries

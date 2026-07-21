@@ -14,9 +14,8 @@
 //     ColorEnabled to false and assert output is plain text.
 //   - Cheap. No dependencies. Pure constants + small helpers.
 //   - TTY-aware. Color suppressed when stdout is piped, when NO_COLOR
-//     is set (https://no-color.org/), or when the user passes --quiet.
-//   - Idiomatic. Plain English, confident, no hedging — the V3
-//     "fun-to-use polish" axis lives partly in the wording choices
+//     is set (https://no-color.org/), or when TERM=dumb.
+//   - Idiomatic. Plain English, confident, no hedging in the wording
 //     baked into this package.
 package uitokens
 
@@ -37,7 +36,8 @@ const (
 	colorReset = "\x1b[0m"
 
 	colorMuted  = "\x1b[90m" // dim gray; less-important context
-	colorAccent = "\x1b[36m" // cyan; the one accent color
+	colorAccent = "\x1b[36m" // cyan; the value you'd copy (a field, a fix)
+	colorLink   = "\x1b[34m" // blue; a command you can run next
 	colorOk     = "\x1b[32m" // green; PASS / OK / Strong
 	colorWarn   = "\x1b[33m" // yellow; WARN / Moderate
 	colorAlert  = "\x1b[31m" // red; FAIL / Critical / High
@@ -58,9 +58,15 @@ var ColorEnabled = detectColorEnabled()
 // like timestamps or path prefixes).
 func Muted(s string) string { return wrap(colorMuted, s) }
 
-// Accent wraps text in the single accent color. Used sparingly — the
-// product is mostly monochrome.
+// Accent wraps text in the accent color — the one value on a line a
+// reader would copy or type: a field name, a fix, an interpolated var.
+// Used sparingly; the product is mostly monochrome.
 func Accent(s string) string { return wrap(colorAccent, s) }
+
+// Link wraps text in the link color — a command the reader can run
+// next (`terrain fix`, `terrain report`). Distinct from Accent so a
+// runnable next step never reads as a value to copy into code.
+func Link(s string) string { return wrap(colorLink, s) }
 
 // Ok wraps text in the success color. Use for PASS verdicts, "✓"
 // markers, and Strong band labels.
@@ -87,8 +93,10 @@ func wrap(open, s string) string {
 
 // ── Symbol set ──────────────────────────────────────────────────────
 //
-// One vocabulary of markers used across every renderer. ASCII fallbacks
-// kick in when the locale doesn't support UTF-8 (rare; mostly defensive).
+// One vocabulary of markers used across every renderer. These constants
+// are the canonical Unicode forms; render them through the Glyph*
+// accessors (below) so they degrade to an ASCII floor on terminals that
+// can't display UTF-8.
 
 const (
 	SymOK     = "✓"
@@ -103,7 +111,73 @@ const (
 	// Box-drawing for section rules.
 	SymRule    = "─"
 	SymSubrule = "·"
+
+	// Design glyph set — the small fixed vocabulary the CLI renders.
+	// These are the canonical Unicode forms; render them through the
+	// capability-aware Glyph* accessors below so they degrade to an
+	// ASCII floor on terminals that can't display them.
+	SymFinding    = "●" // a finding; a filled meter cell
+	SymMeterEmpty = "○" // an empty meter cell
+	SymChevron    = "›" // a suggestion / next step
+	SymRelates    = "↔" // relates-to (a contract between two things)
 )
+
+// ── Unicode capability + ASCII floor ────────────────────────────────
+//
+// The glyph set has an ASCII floor: on a terminal that can't display
+// U+25CF ("●"), U+2192 ("→"), etc., every glyph degrades to a plain
+// ASCII form so output is legible instead of mojibake. This is the one
+// source of truth for that decision — callers must route glyphs through
+// the Glyph* accessors rather than embedding the raw Sym* constants.
+
+// UnicodeEnabled controls whether glyphs render in their Unicode form.
+// Conservative by default: Unicode is emitted only when a locale env
+// var actively advertises UTF-8. Windows conhost, dumb terminals, and
+// CI runners without locale config get the ASCII floor. Callers (mainly
+// tests) may flip it to force one path.
+//
+// Set false when:
+//   - TERRAIN_ASCII=1 is set, or
+//   - none of LC_ALL / LC_CTYPE / LANG advertises UTF-8.
+var UnicodeEnabled = detectUnicodeEnabled()
+
+func detectUnicodeEnabled() bool {
+	if os.Getenv("TERRAIN_ASCII") == "1" {
+		return false
+	}
+	for _, env := range []string{"LC_ALL", "LC_CTYPE", "LANG"} {
+		v := strings.ToUpper(os.Getenv(env))
+		if strings.Contains(v, "UTF-8") || strings.Contains(v, "UTF8") {
+			return true
+		}
+	}
+	return false
+}
+
+// glyph returns unicode when UnicodeEnabled, else the ascii floor.
+func glyph(unicode, ascii string) string {
+	if UnicodeEnabled {
+		return unicode
+	}
+	return ascii
+}
+
+// Capability-aware glyph accessors. Each pairs the canonical Unicode
+// form with the ASCII floor documented in docs/cli-design-tokens.md.
+func GlyphOK() string         { return glyph(SymOK, "ok") }        // ✓ | ok
+func GlyphFail() string       { return glyph(SymFail, "x") }       // ✗ | x
+func GlyphWarn() string       { return glyph(SymWarn, "!") }       // ⚠ | !
+func GlyphFinding() string    { return glyph(SymFinding, "*") }    // ● | *
+func GlyphMeterFull() string  { return glyph(SymFinding, "#") }    // ● | #
+func GlyphMeterEmpty() string { return glyph(SymMeterEmpty, "-") } // ○ | -
+func GlyphChevron() string    { return glyph(SymChevron, ">") }    // › | >
+func GlyphArrow() string      { return glyph(SymArrow, "->") }     // → | ->
+func GlyphRelates() string    { return glyph(SymRelates, "<->") }  // ↔ | <->
+func GlyphDot() string        { return glyph(SymDot, "-") }        // · | -  (item separator)
+func GlyphBullet() string     { return glyph(SymBullet, "*") }     // • | *  (list bullet)
+func GlyphDash() string       { return glyph(SymDash, "-") }       // — | -  (prose dash)
+func GlyphUp() string         { return glyph("▲", "^") }           // ▲ | ^  (metric improved)
+func GlyphDown() string       { return glyph("▼", "v") }           // ▼ | v  (metric regressed)
 
 // ── Severity model ──────────────────────────────────────────────────
 
@@ -258,11 +332,11 @@ func BracketedVerdict(band string) string {
 func VerdictBadge(verdict string) string {
 	switch strings.ToUpper(strings.TrimSpace(verdict)) {
 	case "PASS":
-		return Ok(SymOK + " PASS")
+		return Ok(GlyphOK() + " PASS")
 	case "WARN":
-		return Warn(SymWarn + " WARN")
+		return Warn(GlyphWarn() + " WARN")
 	case "FAIL":
-		return Alert(SymFail + " FAIL")
+		return Alert(GlyphFail() + " FAIL")
 	default:
 		return verdict
 	}
@@ -325,11 +399,11 @@ func HeroVerdictMarkdown(verdict, headline, reason string) string {
 func heroVerdictBadge(verdict string) string {
 	switch strings.ToUpper(strings.TrimSpace(verdict)) {
 	case "BLOCKED", "BLOCK", "FAIL":
-		return Alert("[" + SymFail + " BLOCKED]")
+		return Alert("[" + GlyphFail() + " BLOCKED]")
 	case "WARN", "WARNING":
-		return Warn("[" + SymWarn + " WARN]")
+		return Warn("[" + GlyphWarn() + " WARN]")
 	case "PASS", "OK":
-		return Ok("[" + SymOK + " PASS]")
+		return Ok("[" + GlyphOK() + " PASS]")
 	default:
 		return "[" + strings.ToUpper(verdict) + "]"
 	}
@@ -357,6 +431,54 @@ func bracketVerdict(verdict string) string {
 // indentation. All renderers should use this so headings line up
 // visually across commands.
 const SectionWidth = 60
+
+// minWidth / maxWidth bound the detected terminal width so a stray
+// COLUMNS value can't produce a degenerate or runaway layout.
+const (
+	minWidth = 40
+	maxWidth = 200
+)
+
+// TerminalWidth returns the usable column count for layout, clamped to
+// [minWidth, maxWidth]. It reads the COLUMNS environment variable — set
+// by interactive shells — and falls back to 80 (the classic default)
+// when COLUMNS is absent or unparseable, which is the right assumption
+// for a pipe, a CI log, or a redirect. Renderers should size wide
+// content (the map line, bars, tables) against this rather than
+// assuming a fixed width, so output never overflows a narrow terminal.
+func TerminalWidth() int {
+	return clampWidth(parseColumns(os.Getenv("COLUMNS")))
+}
+
+// parseColumns returns the integer value of a COLUMNS string, or 80 when
+// it is empty or not a positive integer.
+func parseColumns(s string) int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 80
+	}
+	n := 0
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return 80
+		}
+		n = n*10 + int(r-'0')
+	}
+	if n <= 0 {
+		return 80
+	}
+	return n
+}
+
+func clampWidth(n int) int {
+	if n < minWidth {
+		return minWidth
+	}
+	if n > maxWidth {
+		return maxWidth
+	}
+	return n
+}
 
 // Rule renders a section separator at the standard width.
 func Rule() string { return strings.Repeat(SymRule, SectionWidth) }

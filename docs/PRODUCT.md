@@ -28,11 +28,11 @@ Terrain's detector engines analyze: **Python, TypeScript, JavaScript, Go, Java**
 
 ## 3. Three co-equal product goals
 
-Terrain commits to three goals as load-bearing, with the current release status and measurement evidence documented per release:
+Terrain commits to three goals as load-bearing, with the current release status documented per release:
 
-1. **Unified graph.** Code, tests, AI surfaces, evals, and data live in one dependency graph. Cross-language edges (TS/JS ↔ Python/Go/Java) via OpenAPI / tRPC / gRPC / GraphQL / HTTP-route inference, plus database schema and pipeline awareness.
+1. **Unified graph.** Code, tests, AI surfaces, evals, and data live in one dependency graph. Schema↔prompt drift correlates a schema field with the prompt-template variable that references it across files and languages, on top of schema-code-test relationships and database-schema/pipeline awareness. General cross-language API-spec edges (OpenAPI / tRPC / gRPC / GraphQL / HTTP-route inference) are planned, not yet shipped.
 2. **Real CI gate.** Output is failing test cases in the platform's Tests tab — not narrative review comments. Blocks merge on the same primitive as any other test runner.
-3. **Auditable quality.** Public release artifacts document feature status, limitations, supply-chain provenance, verification gates, and benchmark methodology. Per-rule readiness cards are planned measured harness outputs; they are only claimable for a release once generated under `harness/readiness/v<release>/`.
+3. **Auditable quality.** Public release artifacts document feature status, limitations, supply-chain provenance, and verification gates. Per-rule readiness cards are planned artifacts; they are only claimable for a release once generated under `harness/readiness/v<release>/`.
 
 ## 4. Non-goals
 
@@ -52,20 +52,20 @@ These will not be added to Terrain. Adopters needing them should look elsewhere.
 | **Signal** | Atomic observation emitted by a detector (e.g., "test file imports framework X"). |
 | **Finding** | A signal raised to merge-gate visibility, with severity + cause path + reproduction command. |
 | **Rule** | Configurable detection capability with stable ID (`terrain/<category>/<rule>`), severity default, and doc page. |
-| **Lifecycle status** | `stable`, `experimental`, or `planned`. Stable rules have shipped detectors with implementation tests and public documentation; experimental rules ship default-off as scope-under-evaluation; planned rules reserve the rule_id ahead of the detector landing. Published readiness cards, when present, carry the separate precision/triage measurement evidence. |
+| **Lifecycle status** | `stable`, `experimental`, or `planned`. Stable rules have shipped detectors with implementation tests and public documentation; experimental rules ship default-off as scope-under-evaluation; planned rules reserve the rule_id ahead of the detector landing. Published readiness cards, when present, carry the separate published quality figures. |
 | **Gating tier** | `gate` or `observability`. Gate-tier findings count toward `--fail-on=*` exit codes and gate CI; observability-tier findings always emit but never block CI. Tier is mandatory on every detector — no implicit default. |
 | **Surface** | A code or AI target: prompt, agent, tool, context, scenario, code unit, test file. |
 | **Cause path** | Chain of graph nodes from a finding's primary location back to the change in the PR that caused it. |
-| **Unified graph** | Dependency graph spanning code, tests, surfaces, evals, data, and cross-language edges. |
+| **Unified graph** | Dependency graph spanning code, tests, surfaces, evals, and data, with schema-code-test and schema↔prompt relationships. |
 | **Posture** | Five-dimension band (health, coverage depth, coverage diversity, structural risk, operational risk) computed per repo. |
 
 ## 6. Principles
 
-- **Measurement over intuition.** Rules should graduate from preview to stable only with precision evidence. When that evidence is not published for a release, the feature-status and rule docs must say so directly rather than implying a measured false-positive rate.
-- **Local-first, no required keys.** Every gate finding, every detector, every PR-comment surface must work without an LLM API key. In 0.3.0, provider config is parsed for forward compatibility but no shipped command contacts an LLM provider.
+- **Evidence over intuition.** Rules should graduate from preview to stable only once they have been exercised enough to ship default-on with confidence. When published quality figures are not available for a release, the feature-status and rule docs must say so directly rather than implying them.
+- **Local-first, no required keys.** Every gate finding, every detector, every PR-comment surface must work without an LLM API key. Provider config is parsed for forward compatibility but no shipped command contacts an LLM provider.
 - **Stability is a public contract.** Rule IDs, JSON output schema, `terrain.yaml` schema, and CLI flags are stable from 0.2.0 forward. Changes follow a one-cycle deprecation with stderr warnings.
-- **Detectors are redesigned, not retired.** Low-precision detectors enter redesign. The observability tier is the safety net; the gate set earns its place via measurement.
-- **Failures are loud.** When Terrain itself crashes or errors mid-run, the gate fails closed (status check red) and emits a clear annotation. The `on_terrain_error: pass` field is parsed but inactive in 0.3.0; fail-open wiring is future work.
+- **Detectors are redesigned, not retired.** Imprecise detectors enter redesign. The observability tier is the safety net; the gate set earns its place before it blocks merges.
+- **Failures are loud.** When Terrain itself crashes or errors mid-run, the gate fails closed (status check red) and emits a clear annotation. The `on_terrain_error: pass` field is parsed but inactive; fail-open wiring is future work.
 - **Findings carry evidence.** Every finding includes a cause path, the signals that produced it, and a reproduction command. `terrain explain` surfaces this directly.
 
 ## 7. Architecture — three-surface model
@@ -96,7 +96,7 @@ See the [finding schema](../schemas/finding.v1.json) for the formal contract.
 
 ## 9. Rule catalog
 
-0.3.0 ships rules across ten categories: regression, coverage, hygiene, reproducibility, data, performance, fairness, security, lifecycle, and documentation. Stable rules ship default-on when they are implemented and covered by tests; preview rules ship default-off while precision measurement and adopter feedback are still in progress.
+Terrain ships rules across ten categories: regression, coverage, hygiene, reproducibility, data, performance, fairness, security, lifecycle, and documentation. Stable rules ship default-on when they are implemented and covered by tests; preview rules ship default-off while they are still being exercised and adopter feedback is still coming in.
 
 Per-rule documentation lives under `docs/rules/<category>/<rule-name>.md`; see the [documentation index](README.md#per-rule-documentation).
 
@@ -133,13 +133,13 @@ The `surfaces:` `type:` enumeration is closed (`llm | classical_ml | deep_learni
 | `terrain.yaml` schema | Versioned `v1`; closed enumeration for surface types; one-cycle deprecation on changes |
 | CLI flags | Stable from 0.2.0; same deprecation contract |
 | Telemetry | No remote telemetry. Optional local telemetry is disabled by default, writes only to `~/.terrain/telemetry.jsonl`, and makes no network calls. Verifiable via `terrain --print-network`. |
-| Data flow | Templates tier: zero outbound network calls. LLM provider config is parsed but inactive in 0.3.0; future LLM enrichment must remain explicit adopter choice when it ships. |
+| Data flow | Templates tier: zero outbound network calls. LLM provider config is parsed but inactive; future LLM enrichment must remain explicit adopter choice when it ships. |
 
 For the data-handling contract in full, see [`../SECURITY-DATA-HANDLING.md`](../SECURITY-DATA-HANDLING.md).
 
 ## 12. Quality
 
-The 0.3.0 release publishes feature status, limitations, verification checks, signed artifacts, and benchmark methodology. Per-rule false-positive and median-triage measurements are readiness-card outputs and should not be represented as published for a release unless the measured cards exist under `harness/readiness/v<release>/`.
+The release publishes feature status, limitations, verification checks, and signed artifacts. Per-rule quality figures are readiness-card outputs and should not be represented as published for a release unless the cards exist under `harness/readiness/v<release>/`.
 
 ## 13. License
 
@@ -154,7 +154,7 @@ Semantic versioning, with explicit pre-1.0 stability commitments:
 
 See [versioning.md](versioning.md) for the full contract.
 
-## 15. Beyond 0.3.0
+## 15. Beyond the current release
 
 Subsequent releases are *additive* — they extend coverage, add surfaces, graduate preview rules, and broaden ecosystem reach. No foundational architecture work is deferred to subsequent releases.
 

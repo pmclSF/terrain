@@ -16,10 +16,6 @@ Inferred AI capabilities have no eval scenarios validating them.
 
 Add eval scenarios that exercise this capability to ensure behavioral regression detection.
 
-## Promotion plan
-
-Capability inference is heuristic; will be promoted once the AI taxonomy supports explicit capability tags and precision is validated.
-
 ## Evidence sources
 
 - `graph-traversal`

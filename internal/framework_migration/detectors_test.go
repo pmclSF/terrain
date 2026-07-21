@@ -145,7 +145,7 @@ func TestDeprecatedPatternDetector_EnzymeGate(t *testing.T) {
 }
 
 // TestDynamicTestGenerationDetector_LoopPredicate_On_KeepsTruePositive
-// proves the a3_loop_predicate gate doesn't suppress legitimate
+// proves the loop_predicate gate doesn't suppress legitimate
 // dynamicTestGeneration findings when the AST confirms the regex
 // match IS inside a loop. The FP-suppression half of the contract
 // (regex match where the AST disagrees) is rare in practice because
@@ -181,7 +181,7 @@ func TestDynamicTestGenerationDetector_LoopPredicate_On_KeepsTruePositive(t *tes
 	}
 
 	// On → AST agrees in-loop, gate keeps the finding.
-	if err := reg.ApplyCLIOverrides([]string{"a3_loop_predicate=on"}); err != nil {
+	if err := reg.ApplyCLIOverrides([]string{"loop_predicate=on"}); err != nil {
 		t.Fatalf("override: %v", err)
 	}
 	if got := d.Detect(snap); len(got) != 1 {

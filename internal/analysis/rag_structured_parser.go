@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/astguard"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -29,6 +30,9 @@ const (
 //   - Cross-reference to CodeSurface IDs for graph linkage
 //   - RAGPipelineSurface nodes with structured config metadata
 func ParseRAGStructured(relPath, src, lang string) []models.RAGPipelineSurface {
+	if astguard.LooksPathologicalString(src) {
+		return nil
+	}
 	switch lang {
 	case "js":
 		return parseRAGStructuredJS(relPath, src)

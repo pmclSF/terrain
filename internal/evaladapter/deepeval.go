@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // DeepevalAdapter ingests deepeval test-run JSON output, the artifact
@@ -33,7 +34,7 @@ func (DeepevalAdapter) CanIngest(path string) bool {
 	if !strings.HasSuffix(strings.ToLower(path), ".json") {
 		return false
 	}
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return false
 	}
@@ -57,7 +58,7 @@ func (DeepevalAdapter) CanIngest(path string) bool {
 
 // Ingest implements Adapter.
 func (DeepevalAdapter) Ingest(path string) (*EvalRun, error) {
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("deepeval: read %s: %w", path, err)
 	}
@@ -164,6 +165,7 @@ func (DeepevalAdapter) Ingest(path string) (*EvalRun, error) {
 	}
 	if primaryCount == len(run.Cases) && primaryCount > 0 {
 		run.Stats.PrimaryMetric = primarySum / float64(primaryCount)
+		run.Stats.HasPrimaryMetric = true
 	}
 
 	return run, nil

@@ -33,7 +33,7 @@ import (
 //   - Code tested via integration tests in a different directory may be flagged
 //     unless the import graph captures the linkage.
 type UntestedExportDetector struct {
-	// RepoRoot enables the a7_barrel_resolver mechanism. When set, the
+	// RepoRoot enables the barrel-resolver mechanism. When set, the
 	// detector consults barrelresolver to follow re-export / barrel
 	// indirection that the legacy import graph misses (Jest path
 	// aliases, dist-path indirection, Python namespace re-exports).
@@ -112,6 +112,14 @@ func isToolingPath(path string) bool {
 }
 
 // Detect scans code units for untested exports.
+//
+// Contract:
+//
+//	U1.   Exported, untested code units fire; unexported never fire.
+//	U4-8. Tooling paths, test-infra filenames, Go Test*, JVM override methods,
+//	      and TS/JS uppercase *Schema/*Props/... declarations are filtered out.
+//	U9.   An import-graph link suppresses the export; consulting the graph
+//	      raises confidence to 0.7/Moderate (else heuristic 0.5/Weak).
 func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
 	var signals []models.Signal
 
@@ -128,7 +136,7 @@ func (d *UntestedExportDetector) Detect(snap *models.TestSuiteSnapshot) []models
 			}
 		}
 	}
-	// Mechanism gate: a7_barrel_resolver. Routed through
+	// Mechanism gate: the barrel-resolver mechanism. Routed through
 	// mechanisms.GateAdd so shadow mode runs the resolver and emits
 	// would-add events without changing user-visible behavior; state=on
 	// merges the resolved paths into importedModules.

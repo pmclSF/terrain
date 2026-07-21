@@ -9,9 +9,8 @@ import (
 // Calibration carries per-rule, per-cohort base rates, per-atom weight
 // overrides, severity declarations, and posture thresholds.
 //
-// The current implementation uses hand-tuned weights. Future revisions
-// may fit weights from a labeled sample via logistic regression; for
-// now this table reflects the heuristic baseline.
+// Weights are hand-tuned log-odds; this table is the calibration
+// baseline the composer consumes.
 type Calibration struct {
 	// BaseRates maps (cohort, rule) → base log-odds. Cohort "unknown"
 	// is the fallback when cohort detection didn't fire.
@@ -25,14 +24,10 @@ type Calibration struct {
 	// Severities maps rule → declared severity.
 	Severities map[string]Severity
 
-	// Preview marks rules that ship but haven't cleared the empirical
-	// bar for "stable" — typically because validation hasn't yet
-	// observed enough TPs of that rule's shape to give a meaningful
-	// precision floor. Preview rules are not in the default rule set;
-	// users must opt in via --rule.
-	// The findings renderer surfaces a [preview] tag so the calling
-	// engineer knows the confidence number is not yet
-	// corpus-validated.
+	// Preview marks rules that ship but are not in the default rule
+	// set; users must opt in via --rule. The findings renderer
+	// surfaces a [preview] tag so the calling engineer knows the
+	// confidence number is heuristic.
 	Preview map[string]bool
 
 	// Thresholds maps (posture, rule) → confidence threshold.
@@ -92,15 +87,11 @@ func DefaultCalibration() *Calibration {
 					"regex.openai.call":      +1.6,
 					"regex.anthropic.import": +0.6,
 					"regex.anthropic.call":   +1.4,
-					// langchain/llama_index/langgraph atoms are corpus-
-					// misaligned: marginal lift is below 1.0 (often
-					// near 0). The labeler sees one file at a time
-					// and tags langchain-flavored files FP-eval-
-					// elsewhere because the eval lives in a sibling.
-					// Cross-file Stage 4 will recover the real signal
-					// in production; for now, hold these atoms below
-					// neutral so they don't push files over the
-					// emission threshold on their own.
+					// Framework atoms are held below neutral so a lone
+					// framework import or call does not, on its own, push
+					// a single file over the emission threshold; the
+					// intended signal for these cases is sibling-eval
+					// evidence rather than the framework reference itself.
 					"regex.langchain.import":     -0.8,
 					"regex.langchain.call":       -0.3,
 					"regex.langgraph.import":     -0.6,
@@ -115,9 +106,8 @@ func DefaultCalibration() *Calibration {
 					"regex.openai_compat.call":   +1.0,
 					"regex.generic_sdk.import":   -0.2,
 					"regex.generic_sdk.call":     +0.4,
-					// Training-detector atoms — calibration keys now
-					// match the emitted atom IDs (previous keys were
-					// `regex.sklearn.train` etc., which never resolved).
+					// Training-detector atoms — calibration keys match
+					// the emitted atom IDs.
 					"regex.sklearn_train.import":      +0.4,
 					"regex.sklearn_train.call":        +1.2,
 					"regex.xgb_lgb_cat_train.import":  +0.4,
@@ -129,15 +119,9 @@ func DefaultCalibration() *Calibration {
 					"regex.transformers_train.import": +0.4,
 					"regex.transformers_train.call":   +1.4,
 
-					// Structural positives — AST confirmed.
-					// The fit found ast.bound_call's marginal lift is
-					// partly double-counting regex anchors; pure
-					// conditional weight is ~0. We keep +2.0 because
-					// at the 0.40 observability threshold this is the
-					// signal that lifts openai-anchored TPs over the
-					// emit bar. Documented honestly: the +2.0 number
-					// reflects threshold-coupled tuning, not the fit's
-					// pure conditional estimate.
+					// Structural positives — AST confirmed. ast.bound_call
+					// carries weight at the 0.40 observability threshold so
+					// it lifts SDK-anchored positives over the emit bar.
 					"ast.bound_call":         +2.0,
 					"ast.module_level_call":  +1.0,
 					"ast.real_training_call": +2.0,
@@ -184,14 +168,12 @@ func DefaultCalibration() *Calibration {
 					"regex.scheduling_decorator":    0.0,
 					"regex.model_registry_register": 0.0,
 				},
-				// Per-rule override for ai.train.missing_tracker. The
-				// training detector at face value has very low precision
-				// — most training-anchored files are tutorials, kaggle
-				// exports, or research scripts that don't *need*
-				// tracking. Production-context atoms are the signal
-				// that distinguishes "real production training that
-				// should track" from "early-dev that's expected to
-				// skip tracking."
+				// Per-rule override for ai.train.missing_tracker.
+				// Many training-anchored files are tutorials or
+				// research scripts that do not need tracking;
+				// production-context atoms are the signal that
+				// distinguishes production training that should track
+				// from early-dev that is expected to skip tracking.
 				"ai.train.missing_tracker": {
 					"regex.production_ml_sdk":       +1.8,
 					"regex.scheduling_decorator":    +1.5,
@@ -207,16 +189,12 @@ func DefaultCalibration() *Calibration {
 			"ai.uncovered_surface":        SeverityMedium,
 		},
 
-		// Preview rules — calibration ships and behavior is wired but
-		// the precision floor is not yet validated. Rules listed here
-		// are opt-in only (not in the default rule set) and findings
-		// carry a [preview] tag so callers know the confidence number
-		// is heuristic.
+		// Preview rules are opt-in only (not in the default rule set);
+		// their findings carry a [preview] tag so callers know the
+		// confidence number is heuristic.
 		Preview: map[string]bool{
-			// Preview only — too few true positives to bound precision
-			// on a labeled sample. Production-context gating
-			// (regex.production_ml_sdk etc.) is architecturally right
-			// but unvalidated.
+			// Production-context gating (regex.production_ml_sdk etc.)
+			// is the intended signal for ai.train.missing_tracker.
 			"ai.train.missing_tracker": true,
 		},
 

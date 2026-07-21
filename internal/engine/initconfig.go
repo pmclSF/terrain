@@ -230,13 +230,14 @@ func generatePolicyYAMLExample(path string) error {
 # every run. Edit ` + "`.terrain/policy.yaml`" + ` (or a top-level ` + "`terrain.yaml`" + `)
 # directly; this example is read-only reference.
 #
-# Every option below is commented out by default. Uncomment what you
-# need. Adopters with stringent gating land here first to see what's
-# available; new options gain a one-line description here whenever
-# they ship.
+# Every option below — except the required schema version — is commented
+# out by default. Uncomment what you need. Adopters with stringent gating
+# land here first to see what's available; new options gain a one-line
+# description here whenever they ship.
 
-# ── Schema version ─────────────────────────────────────────────
-# version: 1
+# ── Schema version (required) ──────────────────────────────────
+# This line must stay uncommented: terrain.yaml is rejected without it.
+version: 1
 
 # ── Severity gating ────────────────────────────────────────────
 # rules:
@@ -397,6 +398,11 @@ func generateTerrainYAML(path string, result *InitResult) error {
 	}
 	b.WriteString("#\n")
 	b.WriteString("# See: docs/examples/manual-coverage.md\n\n")
+
+	// Required schema version. Must be a real (uncommented) line — terrain.yaml
+	// is rejected without `version: 1`, which would otherwise force source
+	// redaction on and ignore the rest of this file on every subsequent run.
+	b.WriteString("version: 1\n\n")
 
 	// Manual coverage section (commented template).
 	b.WriteString("# manual_coverage:\n")

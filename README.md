@@ -28,7 +28,7 @@ The result is faster review, fewer broad reruns, clearer fixes, and fewer regres
 
 Bring your own stack. Terrain reads what teams already use: `pytest`, `jest`, `go test`, Playwright, Promptfoo, DeepEval, Ragas, Great Expectations, Gauntlet-style eval-result JSON, JUnit, LCOV, Istanbul, and repository metadata. It does not replace those tools; it unifies their evidence into one local, deterministic CI gate.
 
-Project status: Terrain is pre-1.0 and actively developed. In 0.3.0, the stable path is the CLI, local/CI artifact contract, GitHub Actions flow, AI/eval artifact ingestion, and portfolio aggregation. The VS Code extension is alpha; marketplace listings, full LSP integration, the plugin runtime, and some preview rules are future work.
+Project status: Terrain is pre-1.0 and actively developed. The stable path is the CLI, local/CI artifact contract, GitHub Actions flow with the default-on trust-floor gate, AI/eval artifact ingestion, and portfolio aggregation. The VS Code extension is alpha; marketplace listings, full LSP integration, the plugin runtime, and some preview rules are future work.
 
 ## Install
 
@@ -51,21 +51,25 @@ Package names vary by distribution, but the installed CLI is always `terrain`. T
 
 ```bash
 cd your-repo
+terrain                 # First run: a map of your AI system + the few things worth a look
 terrain analyze         # What's the state of our AI + test system?
+terrain fix             # Preview the fixes Terrain can prove (add --apply to write them)
 terrain report pr       # What does this change put at risk?
 ```
 
-Source analysis covers Python, TypeScript/JavaScript, Go, and Java in 0.3.0. Ruby source is not analyzed in 0.3.0, but Ruby/RSpec and other ecosystems can still contribute dependency, runtime, coverage, and eval artifacts, so mixed-language repos get useful signal. No config required; optional artifacts sharpen findings when present.
+Run `terrain` with no arguments for a fast, read-only first-run report: what prompts, schemas, and evals Terrain sees, the handful of issues actually worth acting on, and a health readout — not a wall of findings.
+
+Source analysis covers Python, TypeScript/JavaScript, Go, and Java. Ruby source is not analyzed, but Ruby/RSpec and other ecosystems can still contribute dependency, runtime, coverage, and eval artifacts, so mixed-language repos get useful signal. No config required; optional artifacts sharpen findings when present.
 
 ## What it catches
 
 Terrain models the AI surface alongside the test surface and looks for drift across them:
 
 - **Prompt-schema drift** — prompts that reference fields renamed in a schema living in a different language
-- **Hardcoded API keys** — provider-shaped secrets in source (OpenAI, Anthropic, AWS, GCP, etc.)
+- **Hardcoded secrets in configs** — provider-shaped API keys inlined in eval and config files (opt-in)
 - **Eval coverage gaps** — AI surfaces (prompts, agents, RAG pipelines) with no scenario covering them
 - **Model deprecations** — deprecated model IDs lingering in production paths
-- **Cross-language edges** — TS/JS ↔ Python/Go/Java via OpenAPI, tRPC, gRPC, GraphQL, HTTP routes
+- **Cross-boundary drift** — a schema field renamed in one language linked to the prompt template that still references it, plus schema-code-test relationships across the AI-surface dependency graph
 - **Framework-migration blockers** — Jest ↔ Vitest, JUnit 4 ↔ 5, Cypress ↔ Playwright
 - **Portfolio drift across repos** — manifest-backed `terrain portfolio --from` rollups show framework-of-record drift across a polyrepo
 - **Untested exports + weak assertions** — public API surfaces with no covering test; assertions that pass on too much
@@ -102,7 +106,9 @@ Risk Posture
 
 | Command | Question |
 |---------|----------|
+| `terrain` | First-run report: what Terrain sees + the few things worth a look |
 | `terrain analyze` | What is the state of our test system? |
+| `terrain fix` | Apply the fixes Terrain can prove (dry-run by default; `--apply` writes) |
 | `terrain report pr` | What does this change put at risk? |
 | `terrain report insights` | What should we fix? |
 | `terrain report impact` | What validations matter for this change? |
@@ -134,7 +140,7 @@ jobs:
 
 `terrain test` is the CI-mode wrapper. The JUnit XML lets your CI render Terrain findings as test cases; setting `--summary "$GITHUB_STEP_SUMMARY"` makes them appear on the workflow run page automatically.
 
-For a blocking gate, add `--fail-on=high` (or `--fail-on=critical` for the strictest threshold). For onboarding a repo with existing debt, pair with `--new-findings-only --baseline <path>` so only regressions block the build. To restrict the gate to AI-related changes, add a `paths:` filter on prompt / schema / Python / TS file globs (see [docs/examples/gate/](docs/examples/gate/) for the full templates).
+For a blocking gate, add `--fail-on=high` (or `--fail-on=critical` for the strictest threshold). By default a **trust floor** governs the gate: failing tests, regressions, security/safety leaks, your own `policy.yaml` violations, and any Critical always fail the build, while a *heuristic* AI finding is held back until Terrain can prove a fix for it (so a build never breaks on a low-confidence finding). The run prints a one-line notice when anything is held back; pass `--no-trust-floor` to gate every finding on severity. For onboarding a repo with existing debt, pair with `--new-findings-only --baseline <path>` so only regressions block the build. To restrict the gate to AI-related changes, add a `paths:` filter on prompt / schema / Python / TS file globs (see [docs/examples/gate/](docs/examples/gate/) for the full templates).
 
 ## Boundaries
 

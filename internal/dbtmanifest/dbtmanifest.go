@@ -17,6 +17,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // Manifest is the normalized shape of dbt's target/manifest.json.
@@ -102,12 +104,13 @@ type Source struct {
 // not a failure — callers should check the return.
 func Load(root string) (*Manifest, error) {
 	manifestPath := filepath.Join(root, "target", "manifest.json")
-	data, err := os.ReadFile(manifestPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, fmt.Errorf("dbtmanifest: read %s: %w", manifestPath, err)
+	// DataCap: a real dbt manifest.json is routinely multi-MB. saferead rejects
+	// a manifest symlinked to a device or an oversize blob before the read; a
+	// missing or unreadable manifest is not a failure (the project may not have
+	// compiled), so both collapse to "no usable manifest".
+	data, ok := saferead.File(manifestPath, saferead.DataCap)
+	if !ok {
+		return nil, nil
 	}
 	return Parse(data)
 }

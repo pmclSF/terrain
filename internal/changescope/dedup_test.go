@@ -105,11 +105,10 @@ func TestMergeRecommendation(t *testing.T) {
 	}
 }
 
-// TestRenderPRSummaryMarkdown_EmptyPRCallout locks the
-// pr_change_scoped.V3 audit lift: a clean PR (no findings, no AI
-// risk, no protection gaps) renders an "All clear" callout
-// before the footer instead of falling through to a thin comment
-// that reads as broken.
+// TestRenderPRSummaryMarkdown_EmptyPRCallout locks that a clean PR
+// (no findings, no AI risk, no protection gaps) renders an "All clear"
+// callout before the footer instead of falling through to a thin
+// comment that reads as broken.
 func TestRenderPRSummaryMarkdown_EmptyPRCallout(t *testing.T) {
 	t.Parallel()
 	pr := &PRAnalysis{
@@ -152,10 +151,10 @@ func TestRenderPRSummaryMarkdown_AllClearOnlyOnEmpty(t *testing.T) {
 	}
 }
 
-// TestBuildConfidenceHistogram_GroupsAndPluralizes locks the
-// pr_change_scoped.E3 audit lift: a one-line summary showing how
-// the recommended test set distributes by confidence. Stable order
-// (first-seen) keeps the output deterministic across runs.
+// TestBuildConfidenceHistogram_GroupsAndPluralizes locks a one-line
+// summary showing how the recommended test set distributes by
+// confidence. Stable order (first-seen) keeps the output
+// deterministic across runs.
 func TestBuildConfidenceHistogram_GroupsAndPluralizes(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -197,12 +196,11 @@ func TestBuildConfidenceHistogram_GroupsAndPluralizes(t *testing.T) {
 	}
 }
 
-// TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch
-// locks the pr_change_scoped.E6 audit lift: byte-identical output
-// when SOURCE_DATE_EPOCH varies. The PR comment shouldn't carry any
-// timestamp that drifts between runs of the same snapshot — every
-// finding has its own timing data inside the snapshot, but the
-// comment surface itself is timestamp-free.
+// TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch locks
+// byte-identical output when SOURCE_DATE_EPOCH varies. The PR comment
+// shouldn't carry any timestamp that drifts between runs of the same
+// snapshot — every finding has its own timing data inside the
+// snapshot, but the comment surface itself is timestamp-free.
 func TestRenderPRSummaryMarkdown_DeterministicUnderSourceDateEpoch(t *testing.T) {
 	pr := &PRAnalysis{
 		PostureBand:        "strong",
@@ -261,8 +259,8 @@ func TestRenderPRSummaryMarkdown_Deterministic(t *testing.T) {
 	}
 
 	output := buf1.String()
-	if !strings.Contains(output, "Merge with caution") {
-		t.Error("expected merge recommendation in output")
+	if !strings.Contains(output, "this merge") {
+		t.Error("expected the Swiss verdict line in output")
 	}
 	if !strings.Contains(output, "Coverage gaps in changed code") {
 		t.Error("expected direct risks section")

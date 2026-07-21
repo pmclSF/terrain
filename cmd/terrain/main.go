@@ -47,6 +47,7 @@ import (
 	conv "github.com/pmclSF/terrain/internal/convert"
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/logging"
+	"github.com/pmclSF/terrain/internal/mcp"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/server"
 	"github.com/pmclSF/terrain/internal/telemetry"
@@ -159,9 +160,14 @@ func main() {
 	// Must run before subcommand dispatch.
 	if os.Args[1] == "--print-network" {
 		root := "."
-		for i := 2; i < len(os.Args)-1; i++ {
-			if os.Args[i] == "--root" {
+		for i := 2; i < len(os.Args); i++ {
+			if os.Args[i] == "--root" && i+1 < len(os.Args) {
 				root = os.Args[i+1]
+			} else if strings.HasPrefix(os.Args[i], "--root=") {
+				// The `--root=<dir>` form must be honored too: silently auditing
+				// the CWD while reporting success would undermine the very
+				// zero-outbound-network claim this command exists to verify.
+				root = strings.TrimPrefix(os.Args[i], "--root=")
 			}
 		}
 		if err := runPrintNetwork(root); err != nil {
@@ -172,6 +178,17 @@ func main() {
 	}
 
 	switch os.Args[1] {
+	case "fix":
+		fixCmd := flag.NewFlagSet("fix", flag.ExitOnError)
+		rootFlag := fixCmd.String("root", ".", "repository root to fix")
+		applyFlag := fixCmd.Bool("apply", false, "write the validated fixes to disk (default: dry-run — show the diff, change nothing)")
+		_ = fixCmd.Parse(os.Args[2:])
+		mountPositionalAsRoot("fix", fixCmd.Args(), rootFlag)
+		if err := runFix(*rootFlag, *applyFlag); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(exitError)
+		}
+
 	case "analyze":
 		analyzeCmd := flag.NewFlagSet("analyze", flag.ExitOnError)
 		rootFlag := analyzeCmd.String("root", ".", "repository root to analyze")
@@ -197,6 +214,8 @@ func main() {
 		previewFlag := analyzeCmd.Bool("preview", false, "enable preview-tier AI detectors (default off; behavior may change between releases)")
 		diagFlag := analyzeCmd.Bool("diag", false, "print per-step pipeline timing diagnostics to stderr (for performance investigation)")
 		baseRefFlag := analyzeCmd.String("base", "", "git base ref enabling aiPromptSchemaDrift (e.g. main, origin/main); compares schemas at HEAD against this ref")
+		trustFloorFlag := analyzeCmd.Bool("trust-floor", false, "force the remediation-validity gate ON (it is the default): only findings whose remediation is closed-loop validated block CI (--fail-on)")
+		noTrustFloorFlag := analyzeCmd.Bool("no-trust-floor", false, "opt out of the default remediation-validity gate: restore severity-only gating so any --fail-on match blocks CI. Also settable via trust_floor: false in terrain.yaml")
 		_ = analyzeCmd.Parse(os.Args[2:])
 		mountPositionalAsRoot("analyze", analyzeCmd.Args(), rootFlag)
 		gate, gateErr := parseSeverityGate(*failOnFlag)
@@ -239,6 +258,8 @@ func main() {
 			EnablePreview:          *previewFlag,
 			Diag:                   *diagFlag,
 			BaseRef:                *baseRefFlag,
+			TrustFloor:             *trustFloorFlag,
+			NoTrustFloor:           *noTrustFloorFlag,
 		}
 		if err := runAnalyze(analyzeOpts); err != nil {
 			if errors.Is(err, errSeverityGateBlocked) {
@@ -367,13 +388,13 @@ func main() {
 	case "inject":
 		if err := runInject(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
+			os.Exit(exitCodeForCLIError(err))
 		}
 
 	case "scaffold":
 		if err := runScaffold(os.Args[2:]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			os.Exit(1)
+			os.Exit(exitCodeForCLIError(err))
 		}
 
 	case "mcp":
@@ -397,6 +418,9 @@ func main() {
 				return
 			}
 		}
+		// Report the real build version in the MCP handshake (the package
+		// default is a stale placeholder; ldflags set only main.version).
+		mcp.ServerVersion = version
 		if err := runMCPCommand(root); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -566,16 +590,33 @@ func main() {
 		reasonFlag := suppressCmd.String("reason", "", "why this finding is being suppressed (required)")
 		expiresFlag := suppressCmd.String("expires", "", "ISO date YYYY-MM-DD when the suppression should expire (default: per-scope; instance=+90d, file=+180d, directory=+180d, repo=+365d)")
 		ownerFlag := suppressCmd.String("owner", "", "owner pointer for review (optional)")
-		scopeFlag := suppressCmd.String("scope", "", "instance | file | directory | repo (default: instance for FindingID, file otherwise)")
-		_ = suppressCmd.Parse(os.Args[2:])
-		args := suppressCmd.Args()
-		if len(args) < 1 {
+		scopeFlag := suppressCmd.String("scope", "", "instance | file | directory | repo (default: instance)")
+		// Go's flag package stops at the first non-flag token, so the
+		// `suppress <finding-id> --reason "..."` order would silently drop the
+		// flags. Extract the leading finding-id positional, then parse the rest.
+		rawArgs := os.Args[2:]
+		var findingID string
+		flagArgs := make([]string, 0, len(rawArgs))
+		for _, a := range rawArgs {
+			if findingID == "" && a != "" && !strings.HasPrefix(a, "-") {
+				findingID = a
+				continue
+			}
+			flagArgs = append(flagArgs, a)
+		}
+		_ = suppressCmd.Parse(flagArgs)
+		if findingID == "" {
+			// fall back to any positional that survived (e.g. flags-first order)
+			if rest := suppressCmd.Args(); len(rest) > 0 {
+				findingID = rest[0]
+			}
+		}
+		if findingID == "" {
 			fmt.Fprintln(os.Stderr, "Usage: terrain suppress <finding-id> --reason \"why\" [--expires YYYY-MM-DD] [--owner @who] [--scope instance|file|directory|repo]")
 			fmt.Fprintln(os.Stderr)
 			fmt.Fprintln(os.Stderr, "Find a finding's ID with: terrain explain <finding-id>")
 			os.Exit(exitUsageError)
 		}
-		findingID := args[0]
 		if err := runSuppress(findingID, *reasonFlag, *expiresFlag, *ownerFlag, *scopeFlag, *rootFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
@@ -974,7 +1015,7 @@ func main() {
 		default:
 			fmt.Fprintf(os.Stderr, "error: unknown ai subcommand: %q\n\n", aiSub)
 			printAIUsage()
-			os.Exit(1)
+			os.Exit(exitUsageError)
 		}
 
 	case "feedback":
@@ -1068,6 +1109,7 @@ func main() {
 		failOnFlag := testCmd.String("fail-on", "", "exit "+fmt.Sprintf("%d", exitSeverityGateBlock)+" when at least one finding is at or above this severity (critical|high|medium)")
 		baselineFlag := testCmd.String("baseline", "", "path to a previous snapshot JSON file; enables --new-findings-only filtering")
 		newOnlyFlag := testCmd.Bool("new-findings-only", false, "filter signals to those NOT present in --baseline before gating")
+		noTrustFloorFlag := testCmd.Bool("no-trust-floor", false, "opt out of the default remediation-validity gate: any --fail-on match blocks CI (matches terrain analyze --no-trust-floor)")
 		_ = testCmd.Parse(os.Args[2:])
 		gate, gateErr := parseSeverityGate(*failOnFlag)
 		if gateErr != nil {
@@ -1087,6 +1129,7 @@ func main() {
 			Gate:            gate,
 			BaselinePath:    *baselineFlag,
 			NewFindingsOnly: *newOnlyFlag,
+			NoTrustFloor:    *noTrustFloorFlag,
 		}); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(exitCodeForCLIError(err))
@@ -1097,6 +1140,7 @@ func main() {
 		rootFlag := descCmd.String("root", ".", "repository root to analyze")
 		writeFlag := descCmd.Bool("write", false, "write detected surfaces into terrain.yaml (prompts for overwrite)")
 		_ = descCmd.Parse(os.Args[2:])
+		mountPositionalAsRoot("describe", descCmd.Args(), rootFlag)
 		if err := runDescribeCommand(*rootFlag, *writeFlag); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -1153,7 +1197,7 @@ var knownCommands = []string{
 	"mcp", "webhook",
 	"suppress", "test", "describe", "accept-snapshot",
 	"report", "config",
-	"plugins", "inject", "scaffold",
+	"plugins", "inject", "scaffold", "fix",
 }
 
 func telemetryCommandName(args []string) string {
@@ -1334,68 +1378,64 @@ func isHelpArg(arg string) bool {
 }
 
 func printUsage() {
-	fmt.Fprintln(os.Stderr, "Terrain — pre-flight checks for AI/ML systems and the tests around them.")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Treats unit tests, integration tests, e2e tests, and AI/ML evals as one")
-	fmt.Fprintln(os.Stderr, "dependency graph; gates pull requests on AI-specific risks plus")
-	fmt.Fprintln(os.Stderr, "test-system regressions. No API key required.")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Run `terrain` with no arguments for a discovery report.")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Canonical commands (recommended):")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "  analyze [path] [flags]    What is the state of our test system?")
-	fmt.Fprintln(os.Stderr, "  test [flags]              CI-mode wrapper around analyze: emits JUnit XML")
-	fmt.Fprintln(os.Stderr, "                            + step-summary markdown alongside the report")
-	fmt.Fprintln(os.Stderr, "  init [path]               set up Terrain in a repository")
-	fmt.Fprintln(os.Stderr, "  report <verb> [flags]     read-side queries: summary, insights, metrics,")
-	fmt.Fprintln(os.Stderr, "                            explain, show, impact, pr, posture, select-tests")
-	fmt.Fprintln(os.Stderr, "  migrate <verb> [flags]    framework conversion + migration:")
-	fmt.Fprintln(os.Stderr, "                            run, config, list, detect, shorthands, estimate,")
-	fmt.Fprintln(os.Stderr, "                            status, checklist, readiness, blockers, preview")
-	fmt.Fprintln(os.Stderr, "  ai <verb> [flags]         eval scenarios: list, run, doctor, record,")
-	fmt.Fprintln(os.Stderr, "                            baseline, replay")
-	fmt.Fprintln(os.Stderr, "  config <verb> [flags]     workspace prefs: feedback, telemetry")
-	fmt.Fprintln(os.Stderr, "  doctor [path]             diagnostics for current setup")
-	fmt.Fprintln(os.Stderr, "  mcp [--root <dir>]        start the MCP server on stdio for AI assistants")
-	fmt.Fprintln(os.Stderr, "  debug <verb> [flags]      dependency graph drill-downs:")
-	fmt.Fprintln(os.Stderr, "                            graph, coverage, fanout, duplicates, depgraph")
-	fmt.Fprintln(os.Stderr, "  portfolio [flags]         test portfolio intelligence; --from aggregates repos")
-	fmt.Fprintln(os.Stderr, "  serve [flags]             local HTTP server with HTML report + JSON API")
-	fmt.Fprintln(os.Stderr, "  version                   print version info")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Typical flow:")
-	fmt.Fprintln(os.Stderr, "  1. terrain analyze                 understand your test system")
-	fmt.Fprintln(os.Stderr, "  2. terrain report insights         find what to improve")
-	fmt.Fprintln(os.Stderr, "  3. terrain report impact --base=main  see what a PR affects")
-	fmt.Fprintln(os.Stderr, "  4. terrain report explain <target> understand why")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Common flags (most commands):")
-	fmt.Fprintln(os.Stderr, "  --root PATH                       repository root (default: current dir; positional accepted)")
-	fmt.Fprintln(os.Stderr, "  --json                            machine-readable output")
-	fmt.Fprintln(os.Stderr, "  --base REF                        git base ref for diff (impact / pr / select-tests)")
-	fmt.Fprintln(os.Stderr, "  --baseline PATH                   baseline snapshot for regression detectors")
-	fmt.Fprintln(os.Stderr, "  --log-level LEVEL                 diagnostic verbosity: quiet, debug (default: info)")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Legacy command forms (still work; will be removed in a future release):")
-	fmt.Fprintln(os.Stderr, "  Conversion subsystem: convert, convert-config, migrate <dir>, estimate,")
-	fmt.Fprintln(os.Stderr, "    status, checklist, reset, list-conversions, shorthands, detect")
-	fmt.Fprintln(os.Stderr, "  Report verbs (now under `terrain report <verb>`): summary, insights,")
-	fmt.Fprintln(os.Stderr, "    metrics, posture, focus, explain, show, impact, pr, select-tests,")
-	fmt.Fprintln(os.Stderr, "    compare, policy, export, migration")
-	fmt.Fprintln(os.Stderr, "  Config verbs (now under `terrain config <verb>`): feedback, telemetry")
-	fmt.Fprintln(os.Stderr, "  Other: depgraph")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "  Set TERRAIN_LEGACY_HINT=1 to surface canonical-shape suggestions on")
-	fmt.Fprintln(os.Stderr, "  legacy invocations (default: silent).")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Benchmark / validation (separate binaries):")
-	fmt.Fprintln(os.Stderr, "  terrain-bench            run benchmark suite across repos")
-	fmt.Fprintln(os.Stderr, "  terrain-convert-bench    Go converter perf vs JS floor")
-	fmt.Fprintln(os.Stderr, "  terrain-truthcheck       validate output against ground truth")
-	fmt.Fprintln(os.Stderr)
-	fmt.Fprintln(os.Stderr, "Docs: docs/examples/{analyze,summary,insights,explain,focus,impact}-report.md")
-	fmt.Fprintln(os.Stderr, "      docs/release/feature-status.md  full per-feature status")
+	fmt.Fprintln(os.Stdout, "Terrain — pre-flight checks for AI/ML systems and the tests around them.")
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, "Treats unit tests, integration tests, e2e tests, and AI/ML evals as one")
+	fmt.Fprintln(os.Stdout, "dependency graph; gates pull requests on AI-specific risks plus")
+	fmt.Fprintln(os.Stdout, "test-system regressions. No API key required.")
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, "Run `terrain` with no arguments for a discovery report.")
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, "Canonical commands (recommended):")
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, "  analyze [path] [flags]    What is the state of our test system?")
+	fmt.Fprintln(os.Stdout, "  test [flags]              CI-mode wrapper around analyze: emits JUnit XML")
+	fmt.Fprintln(os.Stdout, "                            + step-summary markdown alongside the report")
+	fmt.Fprintln(os.Stdout, "  fix [path] [--apply]      apply validated remediations (dry-run by default)")
+	fmt.Fprintln(os.Stdout, "  init [path]               set up Terrain in a repository")
+	fmt.Fprintln(os.Stdout, "  report <verb> [flags]     read-side queries: summary, insights, metrics,")
+	fmt.Fprintln(os.Stdout, "                            explain, show, impact, pr, posture, select-tests")
+	fmt.Fprintln(os.Stdout, "  migrate <verb> [flags]    framework conversion + migration:")
+	fmt.Fprintln(os.Stdout, "                            run, config, list, detect, shorthands, estimate,")
+	fmt.Fprintln(os.Stdout, "                            status, checklist, readiness, blockers, preview")
+	fmt.Fprintln(os.Stdout, "  ai <verb> [flags]         eval scenarios: list, run, doctor, record,")
+	fmt.Fprintln(os.Stdout, "                            baseline, replay")
+	fmt.Fprintln(os.Stdout, "  config <verb> [flags]     workspace prefs: feedback, telemetry")
+	fmt.Fprintln(os.Stdout, "  doctor [path]             diagnostics for current setup")
+	fmt.Fprintln(os.Stdout, "  mcp [--root <dir>]        start the MCP server on stdio for AI assistants")
+	fmt.Fprintln(os.Stdout, "  debug <verb> [flags]      dependency graph drill-downs:")
+	fmt.Fprintln(os.Stdout, "                            graph, coverage, fanout, duplicates, depgraph")
+	fmt.Fprintln(os.Stdout, "  portfolio [flags]         test portfolio intelligence; --from aggregates repos")
+	fmt.Fprintln(os.Stdout, "  serve [flags]             local HTTP server with HTML report + JSON API")
+	fmt.Fprintln(os.Stdout, "  version                   print version info")
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, "Typical flow:")
+	fmt.Fprintln(os.Stdout, "  1. terrain analyze                 understand your test system")
+	fmt.Fprintln(os.Stdout, "  2. terrain report insights         find what to improve")
+	fmt.Fprintln(os.Stdout, "  3. terrain report impact --base=main  see what a PR affects")
+	fmt.Fprintln(os.Stdout, "  4. terrain report explain <target> understand why")
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, "Common flags (most commands):")
+	fmt.Fprintln(os.Stdout, "  --root PATH                       repository root (default: current dir; positional accepted)")
+	fmt.Fprintln(os.Stdout, "  --json                            machine-readable output")
+	fmt.Fprintln(os.Stdout, "  --base REF                        git base ref for diff (impact / pr / select-tests)")
+	fmt.Fprintln(os.Stdout, "  --baseline PATH                   baseline snapshot for regression detectors")
+	fmt.Fprintln(os.Stdout, "  --log-level LEVEL                 diagnostic verbosity: quiet, debug (default: info)")
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, "Legacy command forms (still work; will be removed in a future release):")
+	fmt.Fprintln(os.Stdout, "  Conversion subsystem: convert, convert-config, migrate <dir>, estimate,")
+	fmt.Fprintln(os.Stdout, "    status, checklist, reset, list-conversions, shorthands, detect")
+	fmt.Fprintln(os.Stdout, "  Report verbs (now under `terrain report <verb>`): summary, insights,")
+	fmt.Fprintln(os.Stdout, "    metrics, posture, focus, explain, show, impact, pr, select-tests,")
+	fmt.Fprintln(os.Stdout, "    compare, policy, export, migration")
+	fmt.Fprintln(os.Stdout, "  Config verbs (now under `terrain config <verb>`): feedback, telemetry")
+	fmt.Fprintln(os.Stdout, "  Other: depgraph")
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, "  Set TERRAIN_LEGACY_HINT=1 to surface canonical-shape suggestions on")
+	fmt.Fprintln(os.Stdout, "  legacy invocations (default: silent).")
+	fmt.Fprintln(os.Stdout)
+	fmt.Fprintln(os.Stdout, "Docs: docs/examples/{analyze,summary,insights,explain,focus,impact}-report.md")
+	fmt.Fprintln(os.Stdout, "      docs/release/feature-status.md  full per-feature status")
 }
 
 func printMigrationUsage() {

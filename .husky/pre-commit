@@ -2,12 +2,9 @@
 
 # Block accidental commits of large files, binaries, and likely secrets.
 #
-# Round 1/2 review confirmed that prebuilt `terrain` and `terrain-bench`
-# binaries had been seen sitting in the working tree (gitignored, but
-# easy to add by mistake). 0.2 expands the hook to also block secrets-
-# shaped files and archive blobs, since the pasted-token incident in
-# the 0.1.2 release cycle (npm token in chat history) made the cost of
-# accidental commits visible.
+# Prebuilt binaries (terrain, terrain-bench) are gitignored but easy to add by
+# mistake; secrets-shaped files and archive blobs must never land in git.
+# Release artefacts ship through goreleaser, not commits.
 #
 # Rules:
 #

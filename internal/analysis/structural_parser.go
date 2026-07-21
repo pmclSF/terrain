@@ -5,6 +5,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/pmclSF/terrain/internal/astguard"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -35,6 +36,9 @@ const (
 
 // ParseStructural performs bracket-aware detection of AI prompts/contexts.
 func ParseStructural(relPath, src, lang string) []models.CodeSurface {
+	if astguard.LooksPathologicalString(src) {
+		return nil
+	}
 	switch lang {
 	case "js":
 		return parseStructuralJS(relPath, src)

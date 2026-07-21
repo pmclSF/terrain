@@ -2,7 +2,6 @@ package quality
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // SplitMechanismName is the canonical mechanism name that toggles the
@@ -26,8 +26,9 @@ const SplitMechanismName = "static_skipped_test_split"
 //   - Python: @pytest.mark.skip, @unittest.skip, pytest.skip()
 //   - Java: @Disabled, @Ignore
 //
-// This closes the P0 gap where docs promise skip detection from `terrain analyze`
-// but the runtime-based SkippedTestDetector requires --runtime artifacts.
+// Because it works from source markers alone, skip detection is available
+// from `terrain analyze` without the --runtime artifacts that the
+// runtime-based SkippedTestDetector requires.
 type StaticSkipDetector struct {
 	// RepoRoot is used to read file contents for the conditional-gate
 	// classification when the static_skipped_test_split mechanism is on.
@@ -36,6 +37,15 @@ type StaticSkipDetector struct {
 }
 
 // Detect scans test files for static skip patterns.
+//
+// Contract:
+//
+//	SS2. No skips or no tests → no signal.
+//	SS3. A repo-level aggregate signal plus one signal per file with skips.
+//	SS4. Severity by skip ratio: >50% High, >20% Medium, else Low (repo + per-file).
+//	SS6. With the split mechanism on, each per-file signal is classified
+//	     conditional-gate vs unconditional, with comments stripped before the
+//	     gate-predicate check.
 func (d *StaticSkipDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
 	var signals []models.Signal
 	totalSkipped := 0
@@ -183,7 +193,7 @@ func (d *StaticSkipDetector) fileHasGatePredicate(relPath string) bool {
 		root = "."
 	}
 	abs := filepath.Join(root, relPath)
-	data, err := os.ReadFile(abs)
+	data, err := saferead.ReadFile(abs)
 	if err != nil {
 		// Unreadable file — fail open to the more conservative
 		// "unconditional" classification, since we can't confirm a

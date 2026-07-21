@@ -16,10 +16,6 @@ A data pipeline file (ETL / dbt model / training data loader) has no data-valida
 
 Add data validation (GE expectations, pandera schemas, dbt-expectations tests) on the pipeline's output. Run the validation in CI on a fixed sample.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/coverage/no_data_validation.go (DetectNoDataValidation). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -34,11 +30,9 @@ Confidence interval: 0.75–0.90.
 
 A data pipeline file (ETL / dbt model / training data loader) has no data-validation library import (Great Expectations, pandera, dbt-expectations, soda). Pipeline outputs may drift in schema or distribution without anyone noticing.
 
-## 2. Severity & status
+## 2. Status
 
-- **Tier:** stable
-- **Default severity:** medium
-- **Stable since:** v0.2.0
+Experimental — off by default; enable in terrain.yaml.
 
 ## 3. What this catches
 
@@ -82,10 +76,6 @@ ignore:
 ```bash
 terrain test --selector coverage/no-data-validation
 ```
-
-## 10. Stability commitment
-
-Rule ID, severity, recognized-validation-library set, and pipeline-path markers are stable from v0.2.0.
 
 ## 11. Related rules
 

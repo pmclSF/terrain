@@ -16,10 +16,6 @@ A prompt-classified file contains embedded credentials (OpenAI / Anthropic / Git
 
 Rotate the leaked credential immediately, then move it to an environment variable or secret manager.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/hygiene/secrets_in_prompt.go (DetectSecretsInPrompt). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -36,9 +32,8 @@ A prompt-classified file contains an embedded credential. Anyone with read acces
 
 ## 2. Severity & status
 
-- **Tier:** stable
+- **Status:** experimental — off by default; enable in `terrain.yaml`.
 - **Default severity:** critical
-- **Stable since:** v0.2.0
 
 ## 3. What this catches
 
@@ -54,7 +49,7 @@ Prompts ship to the model and may be persisted in logs, traces, telemetry, or me
 ## 5. Detection mechanism
 
 - **Approach:** scan files classified as SurfacePrompt for high-signal credential shapes.
-- **Patterns in 0.3.0** (Go-native regex defaults):
+- **Patterns recognized** (Go-native regex defaults):
   - OpenAI API key: `sk-[A-Za-z0-9]{20+}`
   - Anthropic API key: `sk-ant-[A-Za-z0-9_-]{30+}`
   - GitHub token: `gh[psour]_[A-Za-z0-9]{36+}`
@@ -63,7 +58,6 @@ Prompts ship to the model and may be persisted in logs, traces, telemetry, or me
   - JWT: `eyJ...\.eyJ...\..*`
   - Bearer token in authorization-like context
 - **Suppression:** none at the detector level. Adopters who deliberately include example-shaped values (for example, AWS-access-key-shaped placeholders) must ignore the path in terrain.yaml.
-- **0.3.0 deferred:** gitleaks library integration for the broader vocabulary of detectable secrets (database URLs, generic high-entropy strings with context).
 
 ## 6. Worked example
 
@@ -91,7 +85,7 @@ terrain test --selector hygiene/secrets-in-prompt
 
 ## 10. Stability commitment
 
-Rule ID, severity, and the current credential vocabulary are stable from v0.2.0. Adding new token shapes is additive.
+Rule ID, severity, and the current credential vocabulary are stable in the current release. Adding new token shapes is additive.
 
 ## 11. Related rules
 

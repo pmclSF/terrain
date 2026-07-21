@@ -3,21 +3,20 @@
 // for database tables — the model class names, field names, and
 // constraints declared in code parallel the SQL schema declared in
 // migrations. Pairing the two unlocks column-to-surface propagation
-// for R3-I5 field-level narrowing.
+// for field-level narrowing.
 //
-// 0.2.0 supports Prisma (schema.prisma — a single declarative file).
-// gorm / sqlc / sqlalchemy parsers are designed against the same
-// Schema / Model / Field shape and arrive as follow-ups when consumed
-// by specific rules.
+// Currently parses Prisma (schema.prisma — a single declarative file) into
+// the Schema / Model / Field shape.
 package ormschema
 
 import (
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // ORMKind identifies the schema source.
@@ -137,9 +136,9 @@ var skipDirs = map[string]bool{
 
 // ParsePrismaFile reads a schema.prisma file.
 func ParsePrismaFile(path string) (*Schema, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("ormschema: read %s: %w", path, err)
+	data, ok := saferead.File(path, saferead.SourceCap)
+	if !ok {
+		return nil, fmt.Errorf("ormschema: %s is not a readable regular file within the size limit", path)
 	}
 	s := ParsePrisma(string(data))
 	if s == nil {

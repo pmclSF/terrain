@@ -206,6 +206,9 @@ func TestRenderPRSummaryMarkdown(t *testing.T) {
 	if !strings.Contains(output, "merge") && !strings.Contains(output, "Merge") {
 		t.Error("expected merge recommendation")
 	}
+	if !strings.Contains(output, "no API key") {
+		t.Error("expected provenance footer (ran locally · no API key · no network)")
+	}
 }
 
 func TestRenderPRCommentConcise(t *testing.T) {

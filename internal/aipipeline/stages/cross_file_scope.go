@@ -35,6 +35,12 @@ type CrossFileResolver interface {
 	// catches the case where the evals live in a parallel tests/
 	// directory at the package root rather than inline.
 	PackageHasEvalMarker(repoRelativePath string) bool
+
+	// SurfaceReferencedByEval returns true when a promptfoo-shaped eval under
+	// a recognized eval directory references the candidate surface by path
+	// (file://<path>). This is coverage the sibling/package checks miss
+	// because the eval and the surface live in different directory trees.
+	SurfaceReferencedByEval(repoRelativePath string) bool
 }
 
 // CrossFileScope is Stage 4: cross-file eval-presence detection. It
@@ -64,6 +70,16 @@ func (s *CrossFileScope) Run(_ context.Context, c *aipipeline.Candidate) aipipel
 		return aipipeline.StageResult{Continue: true}
 	}
 	if c.Path == "" {
+		return aipipeline.StageResult{Continue: true}
+	}
+	if s.Resolver.SurfaceReferencedByEval(c.Path) {
+		c.AddAtom(aipipeline.EvidenceAtom{
+			Kind:   aipipeline.EvidenceScope,
+			RuleID: "scope.eval_references_surface",
+			Source: "cross-file-scope",
+			Weight: -1.8,
+			Span:   aipipeline.Span{Snippet: c.Path},
+		})
 		return aipipeline.StageResult{Continue: true}
 	}
 	if s.Resolver.SiblingHasEvalMarker(c.Path) {

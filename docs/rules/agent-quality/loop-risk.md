@@ -8,10 +8,6 @@
 **Lifecycle status:** stable  
 **Gating tier:** gate
 
-## Promotion plan
-
-Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; validated against documented public agent-loop incidents.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -26,11 +22,9 @@ Confidence interval: 0.70–0.85.
 
 An agent flow has no `max_iterations` / `max_turns` / equivalent bound, leaving it free to loop indefinitely on adversarial input.
 
-## 2. Severity & status
+## 2. Status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Stable — on by default; configurable in `terrain.yaml`.
 
 ## 3. What this catches
 

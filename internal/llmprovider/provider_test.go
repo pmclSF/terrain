@@ -108,14 +108,16 @@ func TestOllamaProvider_RejectsTools(t *testing.T) {
 	}
 }
 
-func TestToolCallsNotImplementedMessageNamesCurrentRelease(t *testing.T) {
+func TestToolCallsNotImplementedMessageIsClearAndVersionFree(t *testing.T) {
 	t.Parallel()
 	msg := ErrToolCallsNotImplemented.Error()
-	if !strings.Contains(msg, "0.3.0") {
-		t.Fatalf("message %q does not name current release", msg)
+	if !strings.Contains(msg, "tool calls not implemented") {
+		t.Fatalf("message %q should clearly describe the limitation", msg)
 	}
-	if strings.Contains(msg, "0.2.0") {
-		t.Fatalf("message %q still names the previous release", msg)
+	// A version number in an error string is a maintenance trap (it goes stale
+	// every release); the message must not embed one.
+	if strings.Contains(msg, "0.") {
+		t.Fatalf("message %q must not embed a version number", msg)
 	}
 }
 

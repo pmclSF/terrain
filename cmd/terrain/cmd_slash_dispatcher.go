@@ -10,6 +10,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/engine"
 	"github.com/pmclSF/terrain/internal/findinghistory"
+	"github.com/pmclSF/terrain/internal/findings"
 	"github.com/pmclSF/terrain/internal/identity"
 	"github.com/pmclSF/terrain/internal/scaffold"
 	"github.com/pmclSF/terrain/internal/slash"
@@ -51,6 +52,15 @@ func newRealDispatcher(repoRoot string) *realDispatcher {
 }
 
 // Handle implements slash.Dispatcher.
+//
+// Contract:
+//
+//	D1. dismiss / show / explain / why / scaffold / commands / expand
+//	    execute their real behavior (not placeholders).
+//	D2. refresh / escalate / bench return an "acknowledged … deferred"
+//	    reply, never a dispatcher error (the webhook must not 500 on a
+//	    known-but-unimplemented verb).
+//	D3. User-input errors surface as a polite markdown reply, not an error.
 func (d *realDispatcher) Handle(ev slash.WebhookEvent, cmd *slash.Command) (string, error) {
 	if cmd == nil {
 		return "", fmt.Errorf("nil command")
@@ -129,7 +139,7 @@ func (d *realDispatcher) Handle(ev slash.WebhookEvent, cmd *slash.Command) (stri
 		return "_/terrain refresh acknowledged — full re-analyze + comment-edit is deferred to a future release; the existing PR check-run already re-runs on push._", nil
 
 	case slash.VerbExpand:
-		return "_/terrain expand acknowledged — inline expansion of `+N more` blocks is deferred to a future release._", nil
+		return d.handleExpand()
 
 	case slash.VerbEscalate:
 		return "_/terrain escalate acknowledged — per-PR tier override is deferred to a future release._", nil
@@ -219,6 +229,36 @@ func isUserInputError(err error) bool {
 	return false
 }
 
+// handleExpand renders the full findings list behind a collapsed
+// `+N more` block by reading the canonical .terrain/findings.json
+// artifact written by the last analyze run. Missing/empty artifact is
+// reported politely rather than as a dispatcher error.
+func (d *realDispatcher) handleExpand() (string, error) {
+	path := filepath.Join(d.repoRoot, ".terrain", "findings.json")
+	f, err := os.Open(path)
+	if err != nil {
+		return "_No `.terrain/findings.json` yet — run `terrain analyze` first, then `/terrain expand`._", nil
+	}
+	defer func() { _ = f.Close() }()
+	art, err := findings.ReadArtifact(f)
+	if err != nil {
+		return fmt.Sprintf("_Could not read findings.json: %s._", err.Error()), nil
+	}
+	if art == nil || len(art.Findings) == 0 {
+		return "_No findings — nothing to expand._", nil
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "**All %d findings** (the full list behind `+N more`):\n\n", len(art.Findings))
+	for _, fnd := range art.Findings {
+		loc := fnd.PrimaryLoc.Path
+		if fnd.PrimaryLoc.Line > 0 {
+			loc = fmt.Sprintf("%s:%d", loc, fnd.PrimaryLoc.Line)
+		}
+		fmt.Fprintf(&b, "- **[%s] %s** `%s` — %s\n", fnd.Severity, fnd.RuleID, loc, fnd.ShortMessage)
+	}
+	return strings.TrimRight(b.String(), "\n"), nil
+}
+
 // handleScaffold runs the mutation-test scaffold generator from a
 // slash invocation. Keyword args:
 //
@@ -287,6 +327,21 @@ func safeJoin(root, rel string) (string, error) {
 	}
 	if !strings.HasPrefix(resolvedAbs+string(filepath.Separator), rootAbs+string(filepath.Separator)) && resolvedAbs != rootAbs {
 		return "", fmt.Errorf("path escapes repo root")
+	}
+	// A lexical check alone is not enough: a symlink inside the repo can
+	// point outside it, so re-verify containment against the fully
+	// symlink-resolved path. When the target does not exist yet,
+	// EvalSymlinks errors — the lexical check above already rejected ".."
+	// escapes, and the later ReadFile surfaces the not-found error.
+	realRoot, err := filepath.EvalSymlinks(rootAbs)
+	if err != nil {
+		realRoot = rootAbs
+	}
+	realResolved, err := filepath.EvalSymlinks(resolvedAbs)
+	if err == nil {
+		if !strings.HasPrefix(realResolved+string(filepath.Separator), realRoot+string(filepath.Separator)) && realResolved != realRoot {
+			return "", fmt.Errorf("path escapes repo root")
+		}
 	}
 	return resolvedAbs, nil
 }

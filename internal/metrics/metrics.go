@@ -6,14 +6,13 @@
 //   - explainable (clear derivation from snapshot data)
 //   - privacy-conscious (no raw source, file paths, or symbol names)
 //   - locally useful as a repo health scorecard
-//   - future-safe for hosted benchmarking aggregation
+//   - stable and forward-compatible in schema
 //
 // Privacy boundary:
 //
 //	The metrics artifact intentionally excludes raw file paths, symbol names,
 //	source code snippets, and user identity information. It contains only
-//	aggregate counts, ratios, and qualitative bands. This makes it safe
-//	for future anonymous aggregation without exposing proprietary code.
+//	aggregate counts, ratios, and qualitative bands.
 package metrics
 
 import (
@@ -28,8 +27,8 @@ import (
 // a TestSuiteSnapshot.
 //
 // This is intentionally separate from the rich local snapshot to
-// maintain a clear privacy boundary between local analysis data
-// and data suitable for future aggregation.
+// maintain a clear privacy boundary: local analysis data stays local,
+// while this artifact carries only aggregate, non-identifying values.
 type Snapshot struct {
 	// GeneratedAt is when this metrics snapshot was created.
 	GeneratedAt time.Time `json:"generatedAt"`
@@ -140,7 +139,7 @@ func Derive(snap *models.TestSuiteSnapshot) *Snapshot {
 	// internal/testdata/adversarial_test.go enforces this contract.
 	if snap == nil {
 		return &Snapshot{
-			GeneratedAt:     time.Now().UTC(),
+			GeneratedAt:     models.DeterministicNowUTC(),
 			AnalysisVersion: "signal-first",
 		}
 	}
@@ -157,7 +156,7 @@ func Derive(snap *models.TestSuiteSnapshot) *Snapshot {
 	}
 
 	ms := &Snapshot{
-		GeneratedAt:     time.Now().UTC(),
+		GeneratedAt:     models.DeterministicNowUTC(),
 		AnalysisVersion: "signal-first",
 	}
 

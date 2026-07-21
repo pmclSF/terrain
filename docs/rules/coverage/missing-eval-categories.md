@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** observability
 
-## Promotion plan
-
-Fires when an eval suite has happy-path coverage but no adversarial or edge-case categories.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -26,11 +22,9 @@ Confidence interval: 0.65–0.80.
 
 An eval suite has cases tagged `happy_path` but no `adversarial` / `edge_case` / `safety` categories. The suite's reported coverage may be misleading.
 
-## 2. Severity & status
+## 2. Status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Experimental — off by default; enable in terrain.yaml.
 
 ## 3. What this catches
 

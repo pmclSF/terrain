@@ -1,13 +1,13 @@
 package aidetect
 
 import (
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"github.com/pmclSF/terrain/internal/signals"
 )
 
@@ -34,10 +34,12 @@ type PromptInjectionDetector struct {
 
 // promptInjectionScanExts is the language allowlist. The detector is
 // pattern-based, so we keep it tight to the languages where AI
-// codebases commonly live.
+// codebases commonly live. Go is intentionally excluded: the
+// per-file AI-context gate (HasAIContextJS / HasAIContextPython)
+// recognises only JS/Python SDK shapes, so a .go file would never
+// clear the gate — listing it here would be dead scope.
 var promptInjectionScanExts = map[string]bool{
 	".py": true, ".js": true, ".ts": true, ".tsx": true, ".jsx": true,
-	".go": true,
 }
 
 // promptIdentifierPattern is the "this looks prompt-related" half. We
@@ -154,7 +156,7 @@ type injectionHit struct {
 }
 
 func scanFileForPromptInjection(path string) []injectionHit {
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return nil
 	}

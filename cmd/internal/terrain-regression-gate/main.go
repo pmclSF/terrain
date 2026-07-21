@@ -1,9 +1,8 @@
 // Command terrain-regression-gate loads every regression suite and
 // recall harness from harness/regression-suites and harness/recall-
 // harnesses, validates them, and prints a summary. Used as a CI step
-// before any mechanism flip from shadow → on; ensures the suite files
-// parse and that mechanism state changes are accompanied by actual
-// regression coverage.
+// that ensures the regression-suite files parse and that changes are
+// accompanied by actual regression coverage.
 //
 // Exit codes:
 //
@@ -11,10 +10,9 @@
 //	1 — at least one suite or harness failed validation
 //	2 — usage error (missing directory, etc.)
 //
-// Today the suites and harnesses ship empty (the placeholders in
-// harness/{regression-suites,recall-harnesses}/_README.md). The target
-// validates the loader machinery itself plus the YAML schema so the
-// first non-empty suite added by a feature author lands clean.
+// The command validates the loader machinery and the YAML schema so any
+// suite or harness added under harness/{regression-suites,recall-harnesses}
+// parses and validates cleanly.
 package main
 
 import (
@@ -35,13 +33,15 @@ func main() {
 	suiteDir := filepath.Join(*root, "harness", "regression-suites")
 	harnessDir := filepath.Join(*root, "harness", "recall-harnesses")
 
-	if _, err := os.Stat(suiteDir); err != nil {
-		fmt.Fprintf(os.Stderr, "regression-suites dir missing: %v\n", err)
-		os.Exit(2)
+	// harness/ holds internal validation data and is not tracked in the
+	// public repo; when it is absent there is nothing to validate.
+	if _, err := os.Stat(suiteDir); os.IsNotExist(err) {
+		fmt.Println("harness/ not present in this checkout; nothing to validate.")
+		return
 	}
-	if _, err := os.Stat(harnessDir); err != nil {
-		fmt.Fprintf(os.Stderr, "recall-harnesses dir missing: %v\n", err)
-		os.Exit(2)
+	if _, err := os.Stat(harnessDir); os.IsNotExist(err) {
+		fmt.Println("harness/ not present in this checkout; nothing to validate.")
+		return
 	}
 
 	suites, err := regressionsuite.LoadAll(suiteDir)

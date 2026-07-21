@@ -16,10 +16,6 @@ Few-shot examples in a prompt overlap verbatim with the inputs of eval scenarios
 
 Hold out the contaminated examples from the prompt's few-shot block, or rewrite the eval input so it isn't a copy of an example. Re-run the eval after de-duplication.
 
-## Promotion plan
-
-Substring-overlap detector ships today; promotes to stable once broader validation tunes the threshold and adds token-level n-gram + semantic-similarity passes.
-
 ## Evidence sources
 
 - `structural-pattern`

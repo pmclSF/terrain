@@ -10,6 +10,14 @@ import (
 	"github.com/pmclSF/terrain/internal/parserpool"
 )
 
+// maxASTWalkDepth bounds recursive tree-sitter traversal depth. Real source
+// nests imports, calls, and prompt strings a few dozen levels deep at most; a
+// file with thousands of nested brackets is crafted, not real, and would
+// otherwise make the per-node CGO descent spin for seconds. Stopping at this
+// depth loses nothing on real code (the generous margin is ~40x typical) while
+// bounding a hostile file's parse cost.
+const maxASTWalkDepth = 2000
+
 // AICallSite is a single AI SDK invocation discovered by AST traversal.
 // One instance per call expression — multiple invocations in the same
 // file produce multiple records.
@@ -114,9 +122,9 @@ type aiImportBinding struct {
 func collectPythonAIImports(root *sitter.Node, src []byte) map[string]aiImportBinding {
 	bindings := map[string]aiImportBinding{}
 
-	var walk func(n *sitter.Node)
-	walk = func(n *sitter.Node) {
-		if n == nil {
+	var walk func(n *sitter.Node, depth int)
+	walk = func(n *sitter.Node, depth int) {
+		if n == nil || depth > maxASTWalkDepth {
 			return
 		}
 		switch n.Type() {
@@ -146,10 +154,10 @@ func collectPythonAIImports(root *sitter.Node, src []byte) map[string]aiImportBi
 			}
 		}
 		for i := 0; i < int(n.ChildCount()); i++ {
-			walk(n.Child(i))
+			walk(n.Child(i), depth+1)
 		}
 	}
-	walk(root)
+	walk(root, 0)
 
 	return bindings
 }

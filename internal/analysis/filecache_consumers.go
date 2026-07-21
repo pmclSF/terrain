@@ -1,11 +1,11 @@
 package analysis
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // extractCodeUnitsCached is like extractExportedCodeUnitsFromList but reads
@@ -82,7 +82,7 @@ func detectAITemplateFiles(root string, existingIDs map[string]bool) []models.Co
 		if !templateExts[ext] {
 			return false
 		}
-		data, err := os.ReadFile(filepath.Join(root, relPath))
+		data, err := saferead.ReadFile(filepath.Join(root, relPath))
 		if err != nil {
 			return false
 		}

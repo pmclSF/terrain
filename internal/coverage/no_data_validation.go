@@ -84,7 +84,8 @@ var validationImportPatterns = []string{
 	"from pandera",
 	"import soda",
 	"from soda",
-	"data_diff",
+	"import data_diff",
+	"from data_diff",
 	"dbt-expectations",
 	"dbt_expectations",
 }

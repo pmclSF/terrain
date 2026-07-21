@@ -1,16 +1,9 @@
 // Package aiclassify holds shared classification helpers for AI/ML
 // asset detection — prompt files, eval files, code-gen templates, etc.
 //
-// Purpose: consolidate the prompt-detection heuristic that previously
-// lived only in cmd/terrain-corpus/harvest_boundaries.go. The analyzer's
-// CodeSurface extractor (internal/analysis/analyzer.go via
-// inferCodeSurfacesCachedCtx) currently has its own prompt-detection
-// path; that path will be migrated to consume these helpers in a
-// follow-up so both surfaces agree on "what counts as a prompt file."
-//
-// Calibration surfaced a real divergence where the boundary scanner
-// detected a prompt file but the analyzer's surface extractor did
-// not. That kind of drift is what this package exists to prevent.
+// It centralizes the definition of "what counts as a prompt file" so
+// that every caller classifying prompt assets uses one shared,
+// consistent heuristic rather than diverging path-detection logic.
 package aiclassify
 
 import (
@@ -91,8 +84,8 @@ func hasSegment(p, name string) bool {
 // programming-language extension, or files under known code-gen
 // directories (`_templates/`, `generators/`).
 //
-// Refined against the calibration set, where code-gen jinja templates
-// produced a meaningful share of boundary false positives.
+// Code-gen jinja templates are excluded because they generate source,
+// not prompts.
 func IsCodeGenTemplate(rel string) bool {
 	low := strings.ToLower(rel)
 

@@ -16,10 +16,6 @@ A training call (.fit() / .train() / .partial_fit()) appears in a training file 
 
 Split the dataset before training (sklearn.model_selection.train_test_split, KFold for general use, TimeSeriesSplit for temporal data).
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/data/missing_train_test_split.go (DetectMissingTrainTestSplit). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -36,10 +32,7 @@ A training call (`.fit()` / `.train()` / `.partial_fit()`) appears in a training
 
 ## 2. Severity & status
 
-- **Tier:** stable
-- **Default severity:** high
-- **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
+Experimental — off by default; enable in `terrain.yaml`. Configurable — see [configuration.md](../../configuration.md).
 
 ## 3. What this catches
 
@@ -59,7 +52,7 @@ The rule is a pre-merge guard. It doesn't measure leakage at runtime (that's `te
 - **Approach:** file-level scan + AST walk. The file is considered when its path includes a training-shaped segment (`/train/`, `/training/`, `/models/`, `/notebooks/`, `/experiments/`, `/ml/`, `/pipelines/`). Within the file we look for any of the split-vocabulary primitives; if any are present, the rule is suppressed. Otherwise, the first `.fit()` / `.train()` / `.partial_fit()` / `.fit_transform()` / `.fit_one_cycle()` call fires the signal.
 - **Split-vocabulary recognized:** `train_test_split`, `StratifiedKFold`, `KFold`, `GroupKFold`, `TimeSeriesSplit`, `StratifiedShuffleSplit`, `ShuffleSplit`, `LeaveOneOut`, `LeavePOut`, `.cv_results_`, `cross_val_score`, `cross_validate`, `GridSearchCV`, `RandomizedSearchCV`.
 - **Edge cases handled:** notebook files (`.ipynb` exported to `.py`); files using cross_val_score without a manual split (suppressed correctly).
-- **Edge cases NOT handled in 0.3.0:** holdout sets computed manually (e.g., `X_train = X[:8000]`) without using any sklearn helper. The rule flags this as a false positive; mitigation is to use `train_test_split` or accept and ignore.
+- **Edge cases not handled:** holdout sets computed manually (e.g., `X_train = X[:8000]`) without using any sklearn helper. The rule flags this as a false positive; mitigation is to use `train_test_split` or accept and ignore.
 
 ## 6. Worked example
 
@@ -109,7 +102,6 @@ ignore:
 
 - **Manual slicing** (`X[:8000]` for train, `X[8000:]` for test) — not recognized. Mitigation: use `train_test_split` or accept.
 - **Cross-language pipelines** where the split happens upstream (in a separate Python file) — the rule fires on the file with `.fit()` regardless of whether a sibling file splits. Mitigation: include a no-op `from sklearn.model_selection import train_test_split` for the rule's benefit (ugly), or split in the training file itself, or ignore.
-- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 
@@ -119,7 +111,7 @@ terrain test --selector data/missing-train-test-split
 
 ## 10. Stability commitment
 
-Rule ID, severity, path conventions, and split / fit vocabulary are stable from v0.2.0.
+Rule ID, severity, path conventions, and split / fit vocabulary are stable.
 
 ## 11. Related rules
 

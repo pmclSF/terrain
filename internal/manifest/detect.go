@@ -15,8 +15,7 @@ import (
 // non-nil Manifest indicates whether parsing succeeded.
 //
 // Common vendored / generated paths are skipped (vendor/, node_modules/,
-// .venv/, __pycache__/, dist/, build/, .git/). Adopters can override
-// via filter when this becomes part of the public detection pipeline.
+// .venv/, __pycache__/, dist/, build/, .git/).
 func Detect(root string) ([]*Manifest, []error) {
 	var manifests []*Manifest
 	var errs []error

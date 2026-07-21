@@ -11,17 +11,10 @@ import (
 // delta exceeds threshold, optional run-level signal); different
 // rule ID and signal type so consumers can branch the rendering.
 //
-// Planned routing once the standalone regression detectors are wired
-// through the engine registry:
-//
-//   - EvalRun.Framework == promptfoo / deepeval / ragas → use
-//     DetectEvalRegression (LLM rubric scores).
-//   - EvalRun.Framework == great_expectations or framework annotation
-//     indicates classical ML metric (accuracy / F1 / AUC / RMSE) →
-//     use DetectPerformanceRegression.
-//
-// The split serves rule-layer downstream code that wants to display
-// "performance regression in `RandomForestClassifier`" differently
+// Callers select the detector by metric kind: LLM-rubric eval runs use
+// DetectEvalRegression; classical-ML metric runs (accuracy / F1 / AUC /
+// RMSE) use DetectPerformanceRegression. The split lets downstream code
+// render "performance regression in `RandomForestClassifier`" differently
 // from "eval regression in `summarize_refusal`."
 func DetectPerformanceRegression(baseline, current *evaladapter.EvalRun, cfg EvalRegressionConfig) []models.Signal {
 	sigs := DetectEvalRegression(baseline, current, cfg)

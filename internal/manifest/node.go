@@ -3,9 +3,10 @@ package manifest
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // ParsePackageJSON parses a Node.js package.json. Surfaces dependencies,
@@ -15,7 +16,7 @@ import (
 // peerDependencies are classified as SectionOptional since they declare
 // what the consumer must provide rather than what this package installs.
 func ParsePackageJSON(path string) (*Manifest, error) {
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("package.json: open %s: %w", path, err)
 	}

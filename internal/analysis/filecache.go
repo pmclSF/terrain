@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // FileCache provides thread-safe, shared-nothing caching of file contents
@@ -47,6 +49,17 @@ type FileCache struct {
 }
 
 const (
+	// fileCacheMaxReadBytes caps the bytes read for any single file. A file
+	// above this is skipped entirely (ReadFile returns ok=false), not just left
+	// uncached. The cap serves two ends: it bounds memory (a symlink to
+	// /dev/zero or a multi-gigabyte blob can't be read into RAM), and it bounds
+	// downstream parse cost — tree-sitter time grows superlinearly with input,
+	// so a multi-MB file (invariably generated, vendored, or hostile — real
+	// hand-written source with prompts and schemas is a few KB) would otherwise
+	// freeze the scan for minutes. 1 MB is generous headroom over any real
+	// source file while keeping the worst-case parse to a few seconds.
+	fileCacheMaxReadBytes int64 = 1024 * 1024 // 1 MB
+
 	// fileCacheMaxFileBytes caps the size of any single file we will cache.
 	// Files above this are read directly on every call.
 	fileCacheMaxFileBytes int64 = 8 * 1024 * 1024 // 8 MB
@@ -102,13 +115,15 @@ func (fc *FileCache) ReadFile(relPath string) (string, bool) {
 		return entry.content, entry.ok
 	}
 
-	// Cache miss — read from disk.
+	// Cache miss — read from disk. saferead rejects non-regular files (a
+	// symlink to /dev/zero, a device, a FIFO) using Lstat so the link is never
+	// followed, and enforces the read cap before pulling bytes into memory.
 	absPath := filepath.Join(fc.root, relPath)
-	data, err := os.ReadFile(absPath)
+	data, ok := saferead.File(absPath, fileCacheMaxReadBytes)
 
 	fc.mu.Lock()
 	fc.misses++
-	if err != nil {
+	if !ok {
 		fc.mu.Unlock()
 		return "", false
 	}

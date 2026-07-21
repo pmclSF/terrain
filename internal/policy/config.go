@@ -9,9 +9,7 @@
 //   - no central management
 //   - no complex DSL
 //
-// Future stages may layer centralized or organization-wide policy on top
-// of this local model, but the local file remains the ground truth for
-// any single repository.
+// The local policy file is the ground truth for a single repository.
 package policy
 
 import "strings"

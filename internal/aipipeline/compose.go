@@ -28,6 +28,11 @@ type Finding struct {
 	// fixscaffold package. Empty when the rule has no scaffold producer.
 	FixScaffold string
 
+	// FixScaffoldPath is the repo-relative path the scaffold should be
+	// written to (e.g. evals/promptfoo/<surface>.yaml). Empty when no
+	// scaffold producer ran. Lets `scaffold accept` materialize the fix.
+	FixScaffoldPath string
+
 	// Suppressed reports whether posture-specific gates rejected the
 	// finding (e.g. uncalibrated finding in Gate mode). Useful for
 	// surfacing "would-fire-in-other-mode" diagnostics.
@@ -132,15 +137,24 @@ func (c *Composer) Compose(cand *Candidate) Finding {
 	return finding
 }
 
+// attachScaffold attaches a fix-scaffold to f when one is registered.
+//
+// Contract:
+//
+//	S1. c.Scaffolds == nil               → FixScaffold/FixScaffoldPath empty.
+//	S2. rule has no registered generator → empty (body=="" short-circuits).
+//	S3. rule has a generator             → FixScaffold=body,
+//	                                       FixScaffoldPath=target.
 func (c *Composer) attachScaffold(cand *Candidate, f *Finding) {
 	if c.Scaffolds == nil {
 		return
 	}
-	body, _, _ := c.Scaffolds.GenerateScaffold(cand.RuleID, cand.Path, cand.Lang)
+	body, target, _ := c.Scaffolds.GenerateScaffold(cand.RuleID, cand.Path, cand.Lang)
 	if body == "" {
 		return
 	}
 	f.FixScaffold = body
+	f.FixScaffoldPath = target
 }
 
 // ThresholdFor returns the posture-specific confidence threshold below
@@ -188,6 +202,14 @@ func (c *Composer) severityFor(rule string, conf float64) Severity {
 
 func (c *Composer) applyPostureGates(f *Finding) {
 	if c.Posture != PostureGate {
+		return
+	}
+	// Preview rules never block a merge — they have not earned the right to
+	// gate (earn-the-right-to-block). They still surface in observability
+	// posture; in gate posture they are suppressed like any unproven signal.
+	if c.Calibration != nil && c.Calibration.IsPreview(f.RuleID) {
+		f.Suppressed = true
+		f.SuppressedReason = "preview rule (not gate-eligible until precision is measured)"
 		return
 	}
 	// In Gate posture, AST-unavailable and uncalibrated findings are

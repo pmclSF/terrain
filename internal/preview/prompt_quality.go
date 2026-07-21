@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"github.com/pmclSF/terrain/internal/signals"
 )
 
@@ -74,7 +75,7 @@ func DetectPromptWithoutTemperature(callSites []CallSite, sourcePaths map[string
 		if mapped, ok := sourcePaths[path]; ok {
 			path = mapped
 		}
-		data, err := os.ReadFile(path)
+		data, err := saferead.ReadFile(path)
 		if err != nil {
 			continue
 		}
@@ -179,7 +180,7 @@ func DetectPromptVersionSkew(promptFiles []string) []models.Signal {
 	}
 	entries := make([]entry, 0, len(promptFiles))
 	for _, p := range promptFiles {
-		data, err := os.ReadFile(p)
+		data, err := saferead.ReadFile(p)
 		if err != nil || len(data) < 200 {
 			continue
 		}

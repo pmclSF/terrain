@@ -16,10 +16,6 @@ A code unit reachable from a production entry point (handler / route) has no int
 
 Add an integration test that exercises the handler / route end-to-end. The unit test stays as a fast inner-loop check; the integration test ensures the cross-stack contract holds.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/coverage/no_integration_test.go (DetectNoIntegrationTest). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `graph-traversal`
@@ -34,11 +30,9 @@ Confidence interval: 0.80–0.95.
 
 A code unit reachable from a production entry point (HTTP handler, route, or RPC method) has no integration test exercising it through that entry point. Unit tests cover the unit in isolation, but the cross-stack path is unguarded.
 
-## 2. Severity & status
+## 2. Status
 
-- **Tier:** stable
-- **Default severity:** medium
-- **Stable since:** v0.2.0
+Experimental — off by default; enable in terrain.yaml.
 
 ## 3. What this catches
 
@@ -53,8 +47,8 @@ Unit tests are fast and catch logic errors; integration tests catch wiring error
 ## 5. Detection mechanism
 
 - **Approach:** graph traversal. Find SurfaceHandler / SurfaceRoute nodes; for each, walk reachable code units (the handler's logic); check whether any test reaches both the entry point AND the unit.
-- **Inputs:** ImpactGraph edges + TestFile classification (`testtype.IsIntegration`).
-- **0.3.0 scope:** flagged when no edge exists from any integration test to the entry-point surface.
+- **Inputs:** ImpactGraph edges + integration-test classification.
+- **Scope:** flagged when no edge exists from any integration test to the entry-point surface.
 
 ## 6. Worked example
 
@@ -82,10 +76,6 @@ ignore:
 ```bash
 terrain test --selector coverage/no-integration-test
 ```
-
-## 10. Stability commitment
-
-Rule ID, severity, and the entry-point surface set are stable from v0.2.0.
 
 ## 11. Related rules
 

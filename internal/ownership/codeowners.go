@@ -45,6 +45,14 @@ var codeownersLocations = []string{
 func ParseCodeownersFile(absPath, repoRelPath string) *CodeownersFile {
 	cf := &CodeownersFile{Path: repoRelPath}
 
+	if fi, statErr := os.Lstat(absPath); statErr != nil || !fi.Mode().IsRegular() {
+		cf.Diagnostics = append(cf.Diagnostics, Diagnostic{
+			Level:   "warning",
+			Message: "could not open CODEOWNERS file: not a regular file",
+			Source:  repoRelPath,
+		})
+		return cf
+	}
 	f, err := os.Open(absPath)
 	if err != nil {
 		cf.Diagnostics = append(cf.Diagnostics, Diagnostic{

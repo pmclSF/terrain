@@ -15,35 +15,31 @@ import (
 // for the given finding ID. The flow is:
 //
 //  1. Validate the finding ID parses (format).
-//  2. Resolve the scope (default: instance for FindingID).
-//  3. Compute the content hash when scope=instance and the file+line
-//     are available, so the suppression invalidates if the line
-//     changes.
-//  4. Apply a per-scope default expiry when --expires is not passed
+//  2. Resolve the scope (default: instance for FindingID). A
+//     finding_id entry always matches exactly one finding, so
+//     repo/file/directory scopes are rejected (they must be expressed
+//     as signal_type entries).
+//  3. Apply a per-scope default expiry when --expires is not passed
 //     (instance=+90d, file=+180d, directory=+180d, repo=+365d).
-//  5. Load the existing suppressions file (or create an empty one).
-//  6. Refuse to add a duplicate entry — if one already exists, print
+//  4. Load the existing suppressions file (or create an empty one).
+//  5. Refuse to add a duplicate entry — if one already exists, print
 //     a helpful message pointing at the existing reason and exit.
-//  7. Append the new entry.
-//  8. Write back, preserving comments and ordering of existing
+//  6. Append the new entry.
+//  7. Write back, preserving comments and ordering of existing
 //     entries via simple text-append (we deliberately don't round-trip
 //     through YAML because goccy/go-yaml's comment preservation is
-//     uneven; appending text is the safer 0.2.0 shape).
+//     uneven; appending text is safer).
 //
-// Result: a schema-v2 suppression entry with reason + optional
-// expires + owner + scope + content_hash, ready for the next
-// `terrain analyze` run to honor.
+// Result: a suppression entry with reason + optional expires + owner +
+// scope, ready for the next `terrain analyze` run to honor.
 func runSuppress(findingID, reason, expires, owner, scope, root string) error {
 	if findingID == "" {
 		return fmt.Errorf("missing finding ID — usage: terrain suppress <finding-id> --reason \"why\"")
 	}
-	_, filePath, anchor, _, ok := identity.ParseFindingID(findingID)
+	detector, path, _, _, ok := identity.ParseFindingID(findingID)
 	if !ok {
 		return fmt.Errorf("invalid finding ID format %q — expected detector@path:anchor#hash", findingID)
 	}
-	// Anchor is either a symbol (e.g. "TestLogin"), "L<line>", or "_".
-	// Extract line when present so we can hash the context window.
-	line := lineFromAnchor(anchor)
 	if strings.TrimSpace(reason) == "" {
 		return fmt.Errorf("--reason is required (every suppression must justify itself)")
 	}
@@ -61,6 +57,24 @@ func runSuppress(findingID, reason, expires, owner, scope, root string) error {
 		return fmt.Errorf("invalid --scope %q (expected: instance, file, directory, repo)", scope)
 	}
 
+	// A finding_id entry always matches exactly one finding: the matcher
+	// (internal/suppression matches()) keys on FindingID equality and never
+	// consults Scope. Repo/file/directory breadth must be expressed as a
+	// signal_type entry, so reject those scopes here rather than writing a
+	// finding_id entry that would silently behave as instance-only.
+	if resolvedScope == suppression.ScopeRepo ||
+		resolvedScope == suppression.ScopeFile ||
+		resolvedScope == suppression.ScopeDirectory {
+		return fmt.Errorf(
+			"--scope %s cannot be applied to a single finding ID; it would only "+
+				"suppress this one finding.\n"+
+				"To suppress %q repo-wide or across paths, add a signal_type entry to %s, e.g.:\n"+
+				"  - signal_type: %q\n"+
+				"    scope: repo            # (or:  file: %q  for a single file, or a glob for a directory)\n"+
+				"    reason: %q",
+			resolvedScope, detector, suppression.DefaultPath, detector, path, reason)
+	}
+
 	// Auto-apply per-scope default expiry if the user didn't pass one.
 	// Adopters who want a permanent waiver can pass --expires=never
 	// (rejected by looksLikeISODate; they'll need to edit the file
@@ -72,23 +86,6 @@ func runSuppress(findingID, reason, expires, owner, scope, root string) error {
 	// Light sanity-check on `expires`.
 	if !looksLikeISODate(expires) {
 		return fmt.Errorf("--expires %q does not look like YYYY-MM-DD", expires)
-	}
-
-	// Compute content_hash when scope=instance and we can locate the
-	// finding's source line. The hash anchors the suppression to the
-	// surrounding 5-line context window so it invalidates when the
-	// line itself changes (typical signal: the user fixed the issue).
-	var contentHash string
-	if resolvedScope == suppression.ScopeInstance && filePath != "" && line > 0 {
-		absPath := filepath.Join(root, filePath)
-		h, herr := suppression.ContextHash(absPath, line)
-		if herr != nil {
-			return fmt.Errorf("compute content hash for %s:%d: %w", filePath, line, herr)
-		}
-		// h may be empty when the file doesn't exist (e.g., user passed
-		// a stale FindingID). In that case fall back to no hash;
-		// matcher will use signal_type + file alone.
-		contentHash = h
 	}
 
 	suppPath := filepath.Join(root, suppression.DefaultPath)
@@ -138,7 +135,7 @@ func runSuppress(findingID, reason, expires, owner, scope, root string) error {
 			"suppressions:\n"
 	}
 
-	entry := buildSuppressionYAML(findingID, reason, expires, owner, resolvedScope, contentHash)
+	entry := buildSuppressionYAML(findingID, reason, expires, owner, resolvedScope)
 
 	out := header
 	if len(body) > 0 {
@@ -176,7 +173,7 @@ func runSuppress(findingID, reason, expires, owner, scope, root string) error {
 	return nil
 }
 
-func buildSuppressionYAML(findingID, reason, expires, owner string, scope suppression.Scope, contentHash string) string {
+func buildSuppressionYAML(findingID, reason, expires, owner string, scope suppression.Scope) string {
 	var b strings.Builder
 	b.WriteString("  - finding_id: ")
 	b.WriteString(findingID)
@@ -187,11 +184,6 @@ func buildSuppressionYAML(findingID, reason, expires, owner string, scope suppre
 	if scope != "" {
 		b.WriteString("    scope: ")
 		b.WriteString(string(scope))
-		b.WriteString("\n")
-	}
-	if contentHash != "" {
-		b.WriteString("    content_hash: ")
-		b.WriteString(contentHash)
 		b.WriteString("\n")
 	}
 	if expires != "" {
@@ -217,26 +209,8 @@ func yamlInlineString(s string) string {
 	return `"` + s + `"`
 }
 
-// lineFromAnchor returns the line number encoded in a FindingID
-// anchor, or 0 when the anchor is a symbol name / placeholder.
-// Anchor shapes are "L<line>" (line-only), "<symbol>" (symbol-only),
-// or "_" (neither).
-func lineFromAnchor(anchor string) int {
-	if len(anchor) > 1 && anchor[0] == 'L' {
-		n := 0
-		for i := 1; i < len(anchor); i++ {
-			if anchor[i] < '0' || anchor[i] > '9' {
-				return 0
-			}
-			n = n*10 + int(anchor[i]-'0')
-		}
-		return n
-	}
-	return 0
-}
-
 func looksLikeISODate(s string) bool {
-	// Cheap shape check: 10 chars in YYYY-MM-DD layout.
+	// Shape check: 10 chars in YYYY-MM-DD layout.
 	if len(s) != 10 {
 		return false
 	}
@@ -250,6 +224,12 @@ func looksLikeISODate(s string) bool {
 		if r < '0' || r > '9' {
 			return false
 		}
+	}
+	// Validate it is a real calendar date, so a well-shaped but impossible
+	// value (e.g. 2026-13-45) fails loudly at write time rather than being
+	// silently downgraded to no-expiry at load time.
+	if _, err := time.Parse("2006-01-02", s); err != nil {
+		return false
 	}
 	return true
 }

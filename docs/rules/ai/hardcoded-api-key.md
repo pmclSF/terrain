@@ -16,10 +16,6 @@ API-key-shaped string appears in an eval YAML, prompt config, or agent definitio
 
 Move the secret to an environment variable or secrets store and reference it through the runner's secret-resolution path.
 
-## Promotion plan
-
-Off by default. The current literal-shape predicate is too narrow to fire reliably across typical adopter codebases; capability is preserved via the planned split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded. Opt in via .terrain/policy.yaml when the local repo shape matches the predicate.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -36,7 +32,7 @@ Confidence interval: 0.85–0.95.
 **Domain:** AI
 **Default severity:** Critical
 **Severity clauses:** [`sev-critical-001`](../../severity-rubric.md)
-**Status:** stable (0.2)
+**Status:** Stable — on by default; configurable in `terrain.yaml`.
 
 ## What it detects
 
@@ -94,14 +90,13 @@ old key is forever in git history, so the only safe response is
   issue with the example so the marker list grows.
 - The provider's keys actually look this way intentionally and you've
   rotated already. Add an `expectedAbsent: aiHardcodedAPIKey` entry in
-  a regression test so the false-positive rate gets measured.
+  a regression test.
 
-## Known limitations (0.2)
+## Known limitations
 
-- Detector only inspects files already in the snapshot's TestFiles or
-  Scenarios. Files outside the analysis surface are not scanned.
+- The detector only inspects files already in the analysis surface.
+  Files outside that surface are not scanned.
 - Regexes target the most common providers; less common ones (Azure
-  OpenAI, Cohere, Replicate, etc.) will be added as the calibration
-  corpus grows.
+  OpenAI, Cohere, Replicate, etc.) may not be recognized.
 - Long YAML lines beyond 1 MiB are silently truncated — pathological
   test data should not be embedded inline.

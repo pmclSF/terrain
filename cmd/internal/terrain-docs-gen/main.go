@@ -184,9 +184,6 @@ func renderRuleStub(e signals.ManifestEntry) string {
 	if e.Status == signals.StatusPlanned {
 		fmt.Fprintf(&b, "## Status: planned\n\n")
 		fmt.Fprintf(&b, "This rule's identifier (`%s`) is reserved in the manifest so adopters can write forward-compatible policy and suppressions. **No detector for this rule ships yet** — runs will never emit signals of this type until the detector lands.\n\n", e.Type)
-		if e.PromotionPlan != "" {
-			fmt.Fprintf(&b, "## Promotion plan\n\n%s\n", e.PromotionPlan)
-		}
 		return b.String()
 	}
 
@@ -195,9 +192,6 @@ func renderRuleStub(e signals.ManifestEntry) string {
 	}
 	if e.Remediation != "" {
 		fmt.Fprintf(&b, "## Remediation\n\n%s\n\n", e.Remediation)
-	}
-	if e.PromotionPlan != "" {
-		fmt.Fprintf(&b, "## Promotion plan\n\n%s\n\n", e.PromotionPlan)
 	}
 	if len(e.EvidenceSources) > 0 {
 		fmt.Fprintf(&b, "## Evidence sources\n\n")

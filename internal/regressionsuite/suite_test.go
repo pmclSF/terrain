@@ -1,6 +1,7 @@
 package regressionsuite
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -9,7 +10,7 @@ import (
 func TestParseSuite_Valid(t *testing.T) {
 	yaml := []byte(`
 schema_version: 1
-module: A7-barrel-resolver
+module: barrel-resolver
 max_tp_loss: 10
 consumer_detectors:
   - untestedExport
@@ -27,7 +28,7 @@ frozen_tps:
 	if err != nil {
 		t.Fatalf("ParseSuite: %v", err)
 	}
-	if s.Module != "A7-barrel-resolver" {
+	if s.Module != "barrel-resolver" {
 		t.Errorf("Module = %q", s.Module)
 	}
 	if s.MaxTPLoss != 10 {
@@ -226,6 +227,9 @@ func TestLoadAll_EmptyDirIsOK(t *testing.T) {
 func TestLoadAll_SkipsUnderscoreFiles(t *testing.T) {
 	// Verifies _README.md doesn't trip the YAML loader.
 	dir := filepath.Join("..", "..", "harness", "regression-suites")
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		t.Skip("harness/ is internal-only and not tracked in the public repo")
+	}
 	suites, err := LoadAll(dir)
 	if err != nil {
 		t.Fatalf("LoadAll on real dir: %v", err)

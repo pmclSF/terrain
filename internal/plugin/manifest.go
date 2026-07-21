@@ -19,7 +19,7 @@
 //     reads from the adopter's env. Empty by default.
 //   - MechanismClass: every detector declares its mechanism shape so
 //     terrain can refuse plugins that ship literal-string or regex
-//     primitives — those violate Rule 3 (class-level rules only).
+//     primitives — those must clear a class, not a cell.
 package plugin
 
 import (
@@ -115,8 +115,9 @@ type DetectorSpec struct {
 //   - literal-string (regex over source text)
 //   - curated-allowlist (per-name list of known-bad/good values)
 //
-// Both fail the binding rule that every rule must clear a class, not
-// a cell.
+// Both are excluded because they match on individual source strings
+// rather than the structural, class-level code shapes this package
+// requires.
 var AllowedMechanismClasses = []string{
 	"structural-ast",  // AST predicate (e.g. "imports-from(<module>)")
 	"import-graph",    // multi-file import-reach over the typed graph
@@ -188,11 +189,14 @@ func Validate(m *Manifest) error {
 		seenType[d.SignalType] = true
 		if !isAllowedMechanismClass(d.MechanismClass) {
 			return fmt.Errorf("detectors[%d].mechanism_class=%q not in the allowed list %v "+
-				"(literal-string and regex primitives are not permitted — every rule must "+
-				"clear a class, not a cell)", i, d.MechanismClass, AllowedMechanismClasses)
+				"(literal-string and regex primitives are not permitted; a detector "+
+				"must use a structural mechanism class)", i, d.MechanismClass, AllowedMechanismClasses)
 		}
 		if d.DefaultSeverity == "" {
 			return fmt.Errorf("detectors[%d].default_severity is required (critical / high / medium / low / info)", i)
+		}
+		if !isAllowedSeverity(d.DefaultSeverity) {
+			return fmt.Errorf("detectors[%d].default_severity=%q must be one of critical / high / medium / low / info", i, d.DefaultSeverity)
 		}
 		switch d.Tier {
 		case "", "observability", "gate":
@@ -206,6 +210,19 @@ func Validate(m *Manifest) error {
 func isAllowedMechanismClass(c string) bool {
 	for _, allowed := range AllowedMechanismClasses {
 		if c == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+// allowedSeverities is the vocabulary a detector's default_severity may
+// declare, matching the value set advertised in the validation error.
+var allowedSeverities = []string{"critical", "high", "medium", "low", "info"}
+
+func isAllowedSeverity(s string) bool {
+	for _, allowed := range allowedSeverities {
+		if s == allowed {
 			return true
 		}
 	}

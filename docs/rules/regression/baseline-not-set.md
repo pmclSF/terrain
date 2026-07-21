@@ -16,10 +16,6 @@ An EvalRun exists for the current PR but no baseline is recorded. Eval-regressio
 
 Run `terrain ai record` on the current main-branch state to lock the baseline. Subsequent PRs will be compared against it.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/regression/baseline_not_set.go (DetectBaselineNotSet). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `eval-execution`
@@ -36,9 +32,7 @@ An EvalRun exists for the current PR but no baseline is recorded. Eval-regressio
 
 ## 2. Severity & status
 
-- **Tier:** stable
-- **Default severity:** medium
-- **Stable since:** v0.2.0
+Experimental — off by default; enable in `terrain.yaml`. Default severity: medium.
 
 ## 3. What this catches
 
@@ -53,7 +47,7 @@ Without a baseline, the `eval-regression`, `pass-rate-drop`, and `snapshot-misma
 ## 5. Detection mechanism
 
 - **Approach:** check that the current EvalRun has cases AND the baseline EvalRun is nil or empty.
-- **Inputs:** EvalRun records produced by `internal/evaladapter/`.
+- **Inputs:** EvalRun records produced from ingested eval artifacts.
 - **Fires:** once per current run when no comparable baseline exists.
 
 ## 6. Worked example
@@ -80,7 +74,7 @@ terrain test --selector regression/baseline-not-set
 
 ## 10. Stability commitment
 
-Rule ID and severity are stable from v0.2.0.
+Rule ID and severity are stable.
 
 ## 11. Related rules
 

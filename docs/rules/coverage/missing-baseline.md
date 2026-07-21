@@ -16,10 +16,6 @@ The repository has eval surfaces but no `.terrain/baselines/` directory exists. 
 
 Run `terrain ai record` to create the baseline directory. Commit `.terrain/baselines/latest.json` so subsequent PRs compare against it.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/coverage/missing_baseline.go (DetectMissingBaseline). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `static`
@@ -34,11 +30,9 @@ Confidence interval: 1.00–1.00.
 
 The repository has eval surfaces (prompts / models / retrievers) but no `.terrain/baselines/` directory exists. Eval regression detection is disabled at the coverage layer.
 
-## 2. Severity & status
+## 2. Status
 
-- **Tier:** stable
-- **Default severity:** medium
-- **Stable since:** v0.2.0
+Experimental — off by default; enable in terrain.yaml.
 
 ## 3. What this catches
 
@@ -76,10 +70,6 @@ rules:
 ```bash
 terrain test --selector coverage/missing-baseline
 ```
-
-## 10. Stability commitment
-
-Rule ID and severity stable from v0.2.0.
 
 ## 11. Related rules
 

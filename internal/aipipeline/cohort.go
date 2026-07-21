@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // Cohort labels a repository by its product shape. Cohort selection
@@ -230,7 +232,7 @@ func DetectCohortFromDir(root string) (Cohort, RepoShape, error) {
 			shape.HasSetupPy = true
 		case "pyproject.toml":
 			shape.HasPyproject = true
-			if data, err := os.ReadFile(filepath.Join(root, name)); err == nil {
+			if data, err := saferead.ReadFile(filepath.Join(root, name)); err == nil {
 				if strings.Contains(string(data), "[project]") &&
 					strings.Contains(string(data), "name") {
 					shape.HasPyprojectName = true
@@ -240,7 +242,7 @@ func DetectCohortFromDir(root string) (Cohort, RepoShape, error) {
 		// Node manifests
 		case "package.json":
 			shape.HasPackageJson = true
-			if data, err := os.ReadFile(filepath.Join(root, name)); err == nil {
+			if data, err := saferead.ReadFile(filepath.Join(root, name)); err == nil {
 				text := string(data)
 				if strings.Contains(text, `"name"`) {
 					shape.HasPackageJsonName = true
@@ -254,7 +256,7 @@ func DetectCohortFromDir(root string) (Cohort, RepoShape, error) {
 		// Go manifests
 		case "go.mod":
 			shape.HasGoMod = true
-			if data, err := os.ReadFile(filepath.Join(root, name)); err == nil {
+			if data, err := saferead.ReadFile(filepath.Join(root, name)); err == nil {
 				if strings.Contains(string(data), "module ") {
 					shape.HasGoModule = true
 				}

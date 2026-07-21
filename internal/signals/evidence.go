@@ -8,40 +8,17 @@ import (
 	"github.com/pmclSF/terrain/internal/models"
 )
 
-// Evidence captures the corpus-measured evidence for one detector.
-// Mirrors the structure of `internal/explain/data/detector-evidence.json`
-// but with only the fields severity-from-lift actually consumes.
+// Evidence captures the confidence signal for one detector. Mirrors the
+// embedded confidence file, keeping only the interval the severity ladder
+// reads.
 type Evidence struct {
-	HandPrecision *EvidenceCI    `json:"heuristic_precision,omitempty"`
-	HandValidated *HandValidated `json:"hand_validated,omitempty"`
-	GlobalLift    *EvidenceCI    `json:"global_lift,omitempty"`
+	GlobalLift *EvidenceCI `json:"global_lift,omitempty"`
 }
 
-// EvidenceCI is a point estimate with a 95% CI.
+// EvidenceCI is a 95% confidence interval.
 type EvidenceCI struct {
-	Point  float64 `json:"point,omitempty"`
-	Lift   float64 `json:"lift,omitempty"`
 	Low95  float64 `json:"low_95,omitempty"`
 	High95 float64 `json:"high_95,omitempty"`
-	Sample int     `json:"sample_size,omitempty"`
-}
-
-// HandValidated is the result of a sampled review against a labeled
-// subset.
-type HandValidated struct {
-	TruePositives  int     `json:"tp,omitempty"`
-	FalsePositives int     `json:"fp,omitempty"`
-	Unknown        int     `json:"unknown,omitempty"`
-	PointPrecision float64 `json:"point_precision,omitempty"`
-}
-
-// LiftPoint returns the lift value, preferring the explicit Lift field
-// over the Point field (different JSON shapes use one or the other).
-func (e EvidenceCI) LiftPoint() float64 {
-	if e.Lift != 0 {
-		return e.Lift
-	}
-	return e.Point
 }
 
 //go:embed evidence_data.json

@@ -40,6 +40,12 @@ func ValidateBaseRef(ref string) error {
 	if ref == "" {
 		return nil
 	}
+	// Reject a leading '-' outright: even a dash-only value like `--patch`
+	// passes the character-class check below but git would parse it as a flag
+	// (argument injection). No real ref starts with '-'.
+	if strings.HasPrefix(ref, "-") {
+		return fmt.Errorf("invalid --base ref %q: must not start with '-'", ref)
+	}
 	if !validBaseRefPattern.MatchString(ref) {
 		return fmt.Errorf(
 			"invalid --base ref %q: only alphanumerics, dots, slashes, dashes, "+
@@ -147,9 +153,17 @@ func parseGitDiffOutput(output, repoRoot string) *ChangeScope {
 }
 
 func gitDiffNameStatus(repoRoot, baseRef string) ([]byte, error) {
-	args := []string{"diff", "--name-status"}
+	// -M forces rename detection regardless of the user's `diff.renames` git
+	// config, so a `git mv` is reported as a rename (preserving the old path)
+	// instead of add+delete on machines where that config is off.
+	args := []string{"diff", "--name-status", "-M"}
 	if baseRef != "" {
-		args = append(args, baseRef)
+		// Three-dot: diff the MERGE BASE of baseRef and HEAD against HEAD — i.e.
+		// exactly what this branch changed since it diverged, which is GitHub PR
+		// semantics. Two-dot (`git diff <base>`) would also attribute commits
+		// the base advanced by after the branch point to this PR as phantom
+		// changes (e.g. a file main deleted showing up as this PR's deletion).
+		args = append(args, baseRef+"...HEAD")
 	}
 	cmd := exec.Command("git", args...)
 	cmd.Dir = repoRoot

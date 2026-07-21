@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -133,6 +134,9 @@ func runDoctorCLI(args []string) int {
 	verboseFlag := fs.Bool("verbose", false, "show extra detail for each check")
 	if err := fs.Parse(reorderCLIArgs(args, nil)); err != nil {
 		printDoctorUsage()
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		return 2
 	}
@@ -162,6 +166,9 @@ func runResetCLI(args []string) error {
 	jsonFlag := fs.Bool("json", false, "JSON output")
 	if err := fs.Parse(reorderCLIArgs(args, workflowSimpleFlagsWithValue)); err != nil {
 		printResetUsage()
+		if errors.Is(err, flag.ErrHelp) {
+			return nil
+		}
 		return cliUsageError{message: err.Error()}
 	}
 	return runReset(*dirFlag, *yesFlag, *jsonFlag)
@@ -377,7 +384,11 @@ func runDoctor(root string, jsonOutput, verbose bool) (conv.MigrationDoctorResul
 		}
 	}
 	fmt.Println()
-	fmt.Printf("  %d checks: %d passed, %d warnings, %d failed\n", result.Summary.Total, result.Summary.Pass, result.Summary.Warn, result.Summary.Fail)
+	fmt.Printf("  %d %s: %d passed, %d %s, %d failed\n",
+		result.Summary.Total, plural(result.Summary.Total, "check"),
+		result.Summary.Pass,
+		result.Summary.Warn, plural(result.Summary.Warn, "warning"),
+		result.Summary.Fail)
 	return result, nil
 }
 

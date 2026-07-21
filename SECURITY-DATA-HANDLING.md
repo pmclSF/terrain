@@ -9,7 +9,7 @@ This document covers **what data Terrain processes, where that data goes, and wh
 - **Default configuration:** Terrain operates fully offline. Zero outbound network calls. Verifiable by running `terrain --print-network`.
 - **All data Terrain processes stays on the adopter's machine / CI runner unless the adopter publishes CI artifacts through their CI provider.**
 - **No remote telemetry.** Terrain does not phone home or report crashes. Optional local-only telemetry can be enabled with `terrain config telemetry --on`; it writes JSONL to `~/.terrain/telemetry.jsonl` and Terrain never sends it anywhere.
-- **No LLM provider is contacted in 0.3.0.** The `explain:` provider block is parsed for forward compatibility, but it is not consumed by `terrain explain`, `terrain mcp`, or CI.
+- **No LLM provider is contacted in 0.4.0.** The `explain:` provider block is parsed for forward compatibility, but it is not consumed by `terrain explain`, `terrain mcp`, or CI.
 
 ## What Terrain does
 
@@ -27,7 +27,7 @@ Terrain reads source code, configuration files, eval definitions, and (where pre
 
 **Zero outbound network calls in default configuration.**
 
-Verifiable: run `terrain --print-network` — for 0.3.0 operation, the active endpoint audit lists `(none)`. If a future-facing provider setting is present in `terrain.yaml`, the command reports it as configured-but-inactive rather than as an endpoint Terrain contacts.
+Verifiable: run `terrain --print-network` — for 0.4.0 operation, the active endpoint audit lists `(none)`. If a future-facing provider setting is present in `terrain.yaml`, the command reports it as configured-but-inactive rather than as an endpoint Terrain contacts.
 
 Build-time dependencies (Go module fetching, etc.) are not at runtime; they're at install/build time and follow standard Go toolchain behavior.
 
@@ -50,7 +50,7 @@ For air-gapped installations or organizations that mirror their own binaries, do
 
 ## What changes when each optional feature is enabled
 
-Terrain has deterministic templates by default. LLM provider configuration exists as a reserved schema surface in 0.3.0, but no shipped command contacts an LLM provider.
+Terrain has deterministic templates by default. LLM provider configuration exists as a reserved schema surface in 0.4.0, but no shipped command contacts an LLM provider.
 
 ### Templates tier (always-on; this is the default)
 
@@ -69,9 +69,9 @@ Generates starter surface declarations for `terrain.yaml`. Runs on developer mac
 
 ### Reserved LLM provider config (`explain:`)
 
-- **0.3.0 behavior:** `explain.provider` parses and validates, but no shipped command calls it. `terrain explain`, `terrain mcp`, and `terrain test` remain template-only.
-- **Network calls:** none in 0.3.0.
-- **Data leaving the adopter machine / CI runner:** none through this config in 0.3.0.
+- **0.4.0 behavior:** `explain.provider` parses and validates, but no shipped command calls it. `terrain explain`, `terrain mcp`, and `terrain test` remain template-only.
+- **Network calls:** none in 0.4.0.
+- **Data leaving the adopter machine / CI runner:** none through this config in 0.4.0.
 - **Why it exists:** the schema reserves provider names (`ollama`, `openai`, `anthropic`, `custom`, `none`) so future LLM enrichment can land without a config-schema migration.
 
 ## Reserved LLM provider matrix
@@ -84,7 +84,7 @@ Generates starter surface declarations for `terrain.yaml`. Runs on developer mac
 | **Anthropic** (via OpenAI-compatible proxy) | Anthropic's API endpoint | Adopter's Anthropic account | Same shape as OpenAI |
 | **Other OpenAI-compatible providers** | Provider-specific | Adopter's provider account | Each adopter validates per their provider's data handling policy |
 
-The matrix above describes the reserved provider families, not active 0.3.0 data flow. When a future LLM consumer is wired, the data leaving the adopter machine will be documented here before the feature is marked shipped.
+The matrix above describes the reserved provider families, not active 0.4.0 data flow. When a future LLM consumer is wired, the data leaving the adopter machine will be documented here before the feature is marked shipped.
 
 ## What data leaves the adopter machine via the CI provider
 
@@ -104,7 +104,7 @@ Beyond reserved LLM provider config, Terrain emits artifacts that are consumed b
 - Code excerpts at cause-path locations (sourced from the adopter's repo at the head SHA)
 - Eval names, metric deltas, before/after IO examples (for regression rules)
 
-**Mitigation for highly-sensitive repos:** source-content redaction is not active in 0.3.0. The `redact_source: true` config option parses successfully for forward compatibility, but no emission path consumes it yet. Adopters with stringent code-confidentiality requirements should avoid publishing diagnostic artifacts that include source excerpts until redaction wiring lands.
+**Mitigation for highly-sensitive repos:** source-content redaction is not active in 0.4.0. The `redact_source: true` config option parses successfully for forward compatibility, but no emission path consumes it yet. Adopters with stringent code-confidentiality requirements should avoid publishing diagnostic artifacts that include source excerpts until redaction wiring lands.
 
 The CI provider's own data handling (retention, indexing, access control) is the adopter's responsibility to evaluate. Terrain emits the artifacts; the platform stores them.
 
@@ -118,8 +118,8 @@ If your security team requires a checklist:
 
 - [ ] Templates tier (default) operates fully offline — verified by running `terrain --print-network` and observing zero entries
 - [ ] No remote telemetry — verified by inspecting `go.mod` for known telemetry libraries (none expected) and by `terrain --print-network` showing no telemetry endpoint
-- [ ] Source code stays in the adopter's boundary by default — no LLM provider contacted; source-content redaction is reserved but inactive in 0.3.0
-- [ ] `explain:` provider config is parsed but inactive in 0.3.0 — verified by `terrain --print-network` showing no active endpoints and, when configured, a configured-but-inactive entry
+- [ ] Source code stays in the adopter's boundary by default — no LLM provider contacted; source-content redaction is reserved but inactive in 0.4.0
+- [ ] `explain:` provider config is parsed but inactive in 0.4.0 — verified by `terrain --print-network` showing no active endpoints and, when configured, a configured-but-inactive entry
 - [ ] CI-provider artifact emissions are documented — see "What data leaves via the CI provider" above
 - [ ] License: Apache 2.0 (Terrain itself), CC-BY 4.0 (corpus) — verified in `LICENSE` and corpus repository
 - [ ] No mandatory cloud services — Terrain works fully offline against a local repo

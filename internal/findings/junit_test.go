@@ -72,7 +72,7 @@ func TestWriteJUnit_FailureBodyIncludesCauseAndRepro(t *testing.T) {
 				{Path: "backend/api/summarize.py", Line: 18, NodeKind: "handler"},
 				{Path: "api/test_summarize.py", Line: 42, NodeKind: "test"},
 			},
-			DocsURL:      "https://terrain.dev/rules/regression/test-failed",
+			DocsURL:      "https://github.com/pmclSF/terrain/blob/main/docs/rules/regression/test-failed.md",
 			Reproduction: "terrain test --selector regression/test-failed --filter test_summarize",
 		},
 	})
@@ -88,7 +88,7 @@ func TestWriteJUnit_FailureBodyIncludesCauseAndRepro(t *testing.T) {
 		"3. api/test_summarize.py:42",
 		"Reproduce locally:",
 		"terrain test --selector regression/test-failed",
-		"Docs: https://terrain.dev/rules/regression/test-failed",
+		"Docs: https://github.com/pmclSF/terrain/blob/main/docs/rules/regression/test-failed.md",
 	} {
 		if !strings.Contains(out, expected) {
 			t.Errorf("missing %q in body:\n%s", expected, out)

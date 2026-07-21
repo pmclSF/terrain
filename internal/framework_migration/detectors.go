@@ -10,7 +10,6 @@ package framework_migration
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -19,6 +18,7 @@ import (
 	"github.com/pmclSF/terrain/internal/looppredicate"
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"github.com/pmclSF/terrain/internal/triggergate"
 )
 
@@ -259,7 +259,7 @@ func (d *DynamicTestGenerationDetector) Detect(snap *models.TestSuiteSnapshot) [
 		}
 
 		if line, isTableTest, ok := dynamicTestGenerationLine(content); ok {
-			// Mechanism gate: a3_loop_predicate. The gate's AST
+			// Mechanism gate: loop_predicate. The gate's AST
 			// predicate suppresses only the FP class — regex matches
 			// where the test builder isn't inside a loop construct.
 			// Table-test matches (it.each / test.each) are themselves
@@ -455,7 +455,7 @@ func hasCustomMatchers(content string) bool {
 }
 
 func readFile(root, relPath string) string {
-	data, err := os.ReadFile(filepath.Join(root, relPath))
+	data, err := saferead.ReadFile(filepath.Join(root, relPath))
 	if err != nil {
 		return ""
 	}

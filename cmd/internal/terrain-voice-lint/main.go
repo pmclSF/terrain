@@ -9,6 +9,12 @@
 //  2. No British spellings. Pick one English; we use American.
 //     Surfaced as a release-blocker because mixed spellings make
 //     the product feel under-edited.
+//  3. No privacy-leak phrases. The repo is public; user-visible strings
+//     must not carry internal methodology (corpus references, sample
+//     sizes, precision/recall thresholds), perf measurements, internal
+//     tooling names, or launch/marketing framing. This is the mechanical
+//     enforcement of the public-code privacy bar across the manifest's
+//     Description / Remediation / PromotionPlan fields and CLI output.
 //
 // Scope:
 //
@@ -28,7 +34,7 @@
 //	1 — violations found (per-line offender output)
 //	2 — invocation error (cannot read filesystem)
 //
-// Wired into the release-readiness pipeline as `make voice-lint`.
+// Run via `make voice-lint`.
 package main
 
 import (
@@ -88,10 +94,27 @@ var britishSpellingPattern = regexp.MustCompile(
 // outside the rule's scope.
 var exclamationPattern = regexp.MustCompile(`[A-Za-z]!`)
 
+// privacyLeakPatterns matches internal framing that must never appear in a
+// user-visible string in this public repo. The set is deliberately specific —
+// unambiguous compound phrases and stat/timing shapes, not broad single words
+// like "corpus" or "precision" that can appear in legitimate prose — so the
+// lint stays a release-blocker without generating noise. Extend it as new leak
+// shapes are found; allow-list a genuine false positive in filter().
+var privacyLeakPatterns = []*regexp.Regexp{
+	regexp.MustCompile(`(?i)\bdata-agent\b`),                              // internal tooling name
+	regexp.MustCompile(`(?i)\bPR-lift\b`),                                 // internal methodology
+	regexp.MustCompile(`(?i)\blaunch-readiness\b`),                        // internal process
+	regexp.MustCompile(`(?i)\bthe pitch\b`),                               // marketing framing
+	regexp.MustCompile(`(?i)fixture corpus|on the corpus|adopter-corpus`), // corpus methodology
+	regexp.MustCompile(`(?i)\brecall (?:>=|≥|of |measures)`),              // recall thresholds
+	regexp.MustCompile(`\bn=\d`),                                          // sample-size stats
+	regexp.MustCompile(`\b\d+m\d{2}s\b`),                                  // wall-clock perf timings (e.g. 4m23s)
+}
+
 type violation struct {
 	file   string
 	line   int
-	rule   string // "exclamation" | "british-spelling"
+	rule   string // "exclamation" | "british-spelling" | "privacy-leak"
 	detail string // the offending text
 	value  string // the full string literal
 }
@@ -109,6 +132,9 @@ func main() {
 			"cmd/terrain",
 			"internal/reporting",
 			"internal/changescope",
+			// Trust-floor surfaces that render user-visible finding text.
+			"internal/promptflow",
+			"internal/findingbridge",
 		}
 	}
 
@@ -239,6 +265,20 @@ func scanFile(path string) ([]violation, error) {
 				detail: m,
 				value:  val,
 			})
+		}
+
+		// Privacy-leak rule.
+		for _, p := range privacyLeakPatterns {
+			if m := p.FindString(val); m != "" {
+				out = append(out, violation{
+					file:   path,
+					line:   pos.Line,
+					rule:   "privacy-leak",
+					detail: m,
+					value:  val,
+				})
+				break
+			}
 		}
 
 		return true

@@ -11,7 +11,7 @@ import (
 // the same shape as ParseOpenAPI / ParseGraphQL — gRPC services are
 // the third major cross-stack contract format, and consuming them
 // through the same Operation type lets impact analysis treat REST,
-// GraphQL, and gRPC equivalently for R3-I5 field-level narrowing.
+// GraphQL, and gRPC equivalently for field-level narrowing.
 //
 // Parsing handles proto3 + proto2 syntax. The targets are `service`
 // declarations and their `rpc` methods; `message` definitions are

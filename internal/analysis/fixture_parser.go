@@ -1,12 +1,12 @@
 package analysis
 
 import (
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // ExtractFixtures scans test files and returns detected fixture surfaces.
@@ -16,7 +16,7 @@ func ExtractFixtures(root string, testFiles []models.TestFile) []models.FixtureS
 	results := make([][]models.FixtureSurface, len(testFiles))
 	parallelForEachIndex(len(testFiles), func(i int) {
 		tf := &testFiles[i]
-		content, err := os.ReadFile(filepath.Join(root, tf.Path))
+		content, err := saferead.ReadFile(filepath.Join(root, tf.Path))
 		if err != nil {
 			return
 		}

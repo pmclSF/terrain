@@ -140,15 +140,35 @@ type HistoryStore interface {
 // and fail the required CI check. That contradiction is the symptom
 // this function exists to prevent.
 func BuildBundleWithHistory(snap *models.TestSuiteSnapshot, headSHA string, hist HistoryStore) CheckRunsBundle {
+	// Default gate threshold is Medium, preserving the historical behavior for
+	// callers that don't specify one.
+	return BuildBundleAt(snap, headSHA, hist, models.SeverityMedium)
+}
+
+// BuildBundleAt is the threshold-aware form of BuildBundleWithHistory: a
+// gate-tier finding at or above blockAt fails the required gate check. Callers
+// thread the same --fail-on the CLI gate uses, so the required GitHub check and
+// the CLI exit code agree on the merge verdict. An empty or unrecognized
+// blockAt means the gate check never fails (no threshold configured).
+func BuildBundleAt(snap *models.TestSuiteSnapshot, headSHA string, hist HistoryStore, blockAt models.SignalSeverity) CheckRunsBundle {
+	return BuildBundleAtWithGate(snap, headSHA, hist, blockAt, nil)
+}
+
+// BuildBundleAtWithGate is BuildBundleAt plus the trust-floor predicate: a
+// gate-tier signal for which blockable returns false is demoted to the
+// observability check (it still surfaces, but cannot fail the required gate),
+// matching `terrain analyze --fail-on` under the default trust floor. Pass nil
+// for blockable to gate on tier + severity alone (trust floor off).
+func BuildBundleAtWithGate(snap *models.TestSuiteSnapshot, headSHA string, hist HistoryStore, blockAt models.SignalSeverity, blockable func(models.Signal) bool) CheckRunsBundle {
 	if snap == nil {
 		return CheckRunsBundle{}
 	}
-	gateSignals, obsSignals := splitByTierWithHistory(snap.Signals, hist)
+	gateSignals, obsSignals := splitByTierWithHistory(snap.Signals, hist, blockable)
 
 	// The gate set is what survived demotion — every signal here is
 	// gate-tier per the manifest AND not demoted by history. Its
 	// effective tier is "gate".
-	gateOut := buildGateOutput(gateSignals)
+	gateOut := buildGateOutput(gateSignals, blockAt)
 	// The obs set is the union of manifest-observability signals AND
 	// demoted gate signals. We need to know per-signal which is which
 	// so the per-detector block renders the right [WATCH] vs [BLOCK]
@@ -156,7 +176,7 @@ func BuildBundleWithHistory(snap *models.TestSuiteSnapshot, headSHA string, hist
 	obsOut := buildObservabilityOutputWithHistory(obsSignals, hist)
 
 	gateConclusion := "success"
-	if hasBlockingFinding(gateSignals) {
+	if hasBlockingFinding(gateSignals, blockAt) {
 		gateConclusion = "failure"
 	}
 
@@ -183,7 +203,7 @@ func BuildBundleWithHistory(snap *models.TestSuiteSnapshot, headSHA string, hist
 // gate-relevant (legacy behavior; runtime/ingestion-derived signals
 // keep the previous "treat as gate" semantics).
 func splitByTier(in []models.Signal) (gate, obs []models.Signal) {
-	return splitByTierWithHistory(in, nil)
+	return splitByTierWithHistory(in, nil, nil)
 }
 
 // splitByTierWithHistory is the history-aware partition. When `hist`
@@ -191,7 +211,7 @@ func splitByTier(in []models.Signal) (gate, obs []models.Signal) {
 // the store reports as ShouldDemote is moved to the observability
 // set. Empty Type or empty File pairs cannot match a history entry,
 // so they always follow the manifest tier.
-func splitByTierWithHistory(in []models.Signal, hist HistoryStore) (gate, obs []models.Signal) {
+func splitByTierWithHistory(in []models.Signal, hist HistoryStore, blockable func(models.Signal) bool) (gate, obs []models.Signal) {
 	for _, s := range in {
 		if signals.IsObservabilityTier(s.Type) {
 			obs = append(obs, s)
@@ -202,29 +222,63 @@ func splitByTierWithHistory(in []models.Signal, hist HistoryStore) (gate, obs []
 			obs = append(obs, s)
 			continue
 		}
+		// Trust-floor demotion: a gate-tier signal whose remediation is not
+		// closed-loop validated cannot fail the required check — it routes to the
+		// observability set, matching what `terrain analyze --fail-on` does. When
+		// blockable is nil (trust floor off) every gate-tier signal stays gating.
+		if blockable != nil && !blockable(s) {
+			obs = append(obs, s)
+			continue
+		}
 		gate = append(gate, s)
 	}
 	return gate, obs
 }
 
-// hasBlockingFinding returns true if any signal in the gate set has
-// a severity at or above Medium (the "would fail --fail-on=medium or
-// stricter" threshold). Info-tier signals don't block; Low/Medium/
-// High/Critical do.
-func hasBlockingFinding(gate []models.Signal) bool {
+// hasBlockingFinding returns true if any gate-set signal is at or above the
+// blockAt severity — the configured --fail-on threshold, so the required check
+// matches the CLI verdict. An empty or unrecognized blockAt (rank 0) configures
+// no threshold and the gate check never fails.
+func hasBlockingFinding(gate []models.Signal, blockAt models.SignalSeverity) bool {
+	min := severityRank(blockAt)
+	if min == 0 {
+		return false
+	}
 	for _, s := range gate {
-		sev := strings.ToLower(string(s.Severity))
-		switch sev {
-		case "critical", "high", "medium":
+		if severityRank(s.Severity) >= min {
 			return true
 		}
 	}
 	return false
 }
 
+// isAtOrAbove reports whether sev meets the blockAt threshold. An empty
+// or unrecognized blockAt (rank 0) configures no threshold, so nothing
+// blocks — mirroring hasBlockingFinding.
+func isAtOrAbove(sev, blockAt models.SignalSeverity) bool {
+	min := severityRank(blockAt)
+	if min == 0 {
+		return false
+	}
+	return severityRank(sev) >= min
+}
+
+// countAtOrAbove counts signals at or above the blockAt threshold.
+func countAtOrAbove(in []models.Signal, blockAt models.SignalSeverity) int {
+	n := 0
+	for _, s := range in {
+		if isAtOrAbove(s.Severity, blockAt) {
+			n++
+		}
+	}
+	return n
+}
+
 // buildGateOutput renders the gate check's title, summary, text, and
-// annotations.
-func buildGateOutput(gate []models.Signal) Output {
+// annotations. blockAt is the configured --fail-on threshold: findings
+// below it are surfaced but cannot fail the check, so the title and
+// annotation severities are clamped to that decision.
+func buildGateOutput(gate []models.Signal, blockAt models.SignalSeverity) Output {
 	if len(gate) == 0 {
 		return Output{
 			Title:   "No gate-tier findings",
@@ -234,8 +288,16 @@ func buildGateOutput(gate []models.Signal) Output {
 
 	groups := groupByDetector(gate)
 
-	// Title: short headline with finding count.
-	title := fmt.Sprintf("%d gate %s", len(gate), pluralize(len(gate), "finding", "findings"))
+	// Title: reflect the gate decision so the headline reconciles with
+	// the check conclusion. Count only findings at/above the block
+	// threshold; when none block, say so explicitly.
+	blocking := countAtOrAbove(gate, blockAt)
+	var title string
+	if blocking == 0 {
+		title = fmt.Sprintf("No blocking findings (%d below threshold)", len(gate))
+	} else {
+		title = fmt.Sprintf("%d blocking gate %s", blocking, pluralize(blocking, "finding", "findings"))
+	}
 
 	// Summary: severity-bucketed counts.
 	var summary strings.Builder
@@ -268,7 +330,7 @@ func buildGateOutput(gate []models.Signal) Output {
 		if head.Location.File == "" {
 			continue
 		}
-		ann = append(ann, signalToAnnotation(head, len(g.signals)-1))
+		ann = append(ann, signalToAnnotation(head, len(g.signals)-1, blockAt))
 	}
 	ann = capAnnotations(ann)
 
@@ -450,7 +512,12 @@ func renderDetectorBlockWithHistory(g detectorGroup, hist HistoryStore) string {
 // `extraCount` is the count of additional co-firing signals; folded
 // into the annotation message so the inline diff annotation
 // acknowledges the +N collapse the Text section shows.
-func signalToAnnotation(s models.Signal, extraCount int) Annotation {
+//
+// blockAt is the configured --fail-on threshold. A finding below it
+// cannot fail the check, so its annotation level is capped at
+// "warning" rather than "failure" — keeping the inline diff
+// consistent with the "success" conclusion.
+func signalToAnnotation(s models.Signal, extraCount int, blockAt models.SignalSeverity) Annotation {
 	line := s.Location.Line
 	if line == 0 {
 		line = 1 // Checks API requires start_line ≥ 1
@@ -462,18 +529,24 @@ func signalToAnnotation(s models.Signal, extraCount int) Annotation {
 	if extraCount > 0 {
 		msg += fmt.Sprintf("\n\n(+%d more co-firing in this detector)", extraCount)
 	}
+	level := annotationLevel(string(s.Severity))
+	// A finding below the block threshold concludes "success"; a
+	// "failure"-level annotation would contradict that, so cap it.
+	if level == "failure" && !isAtOrAbove(s.Severity, blockAt) {
+		level = "warning"
+	}
 	return Annotation{
 		Path:            s.Location.File,
 		StartLine:       line,
 		EndLine:         line,
-		AnnotationLevel: annotationLevel(string(s.Severity)),
+		AnnotationLevel: level,
 		Title:           string(s.Type),
 		Message:         msg,
 	}
 }
 
 func signalToAnnotationNotice(s models.Signal) Annotation {
-	a := signalToAnnotation(s, 0)
+	a := signalToAnnotation(s, 0, "")
 	a.AnnotationLevel = "notice" // observability findings are never warning/failure
 	return a
 }

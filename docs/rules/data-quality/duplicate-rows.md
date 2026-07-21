@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** observability
 
-## Promotion plan
-
-Fires when an eval dataset has more than 5% duplicate input rows.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -28,9 +24,7 @@ An eval dataset has more than 5% duplicate input rows, inflating apparent covera
 
 ## 2. Severity & status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 

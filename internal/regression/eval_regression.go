@@ -78,8 +78,10 @@ func DetectEvalRegression(baseline, current *evaladapter.EvalRun, cfg EvalRegres
 		out = append(out, buildEvalRegressionSignal(base, cur, delta, current, "case"))
 	}
 
-	// Run-level comparison.
-	if baseline.Stats.PrimaryMetric > 0 && current.Stats.PrimaryMetric > 0 {
+	// Run-level comparison. Gate on presence of a computed metric, not on
+	// value > 0, so a catastrophic regression of the run mean to exactly 0.0
+	// is still reported.
+	if baseline.Stats.HasPrimaryMetric && current.Stats.HasPrimaryMetric {
 		delta := baseline.Stats.PrimaryMetric - current.Stats.PrimaryMetric
 		if delta >= cfg.Threshold && delta >= cfg.MinDelta {
 			out = append(out, buildRunLevelRegressionSignal(baseline, current, delta))

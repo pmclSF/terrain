@@ -1,13 +1,13 @@
 package testcase
 
 import (
-	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/identity"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // Extraction confidence levels: how reliable the test case identification is
@@ -30,7 +30,7 @@ const (
 // Extract discovers individual test cases from a file and assigns stable IDs.
 func Extract(root, relPath, framework string) []TestCase {
 	absPath := filepath.Join(root, relPath)
-	content, err := os.ReadFile(absPath)
+	content, err := saferead.ReadFile(absPath)
 	if err != nil {
 		return nil
 	}

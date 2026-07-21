@@ -1,8 +1,7 @@
 # internal/
 
-Go engine packages. See [docs/architecture.md](../docs/architecture.md) for
-the layer model and [docs/architecture/](../docs/architecture/) for
-deeper-dive design notes per area.
+Go engine packages. See [docs/OVERVIEW.md](../docs/OVERVIEW.md) for the layer
+model and how the packages below fit together.
 
 This README was last regenerated for **0.1.2**. The package listing is
 the canonical source of truth for the public claim "Terrain consists of
@@ -14,8 +13,8 @@ vocabulary drift; a similar gate for package layout is queued for 0.2.
 ## Packages
 
 Grouped by layer. Each row links the directory; the layer column tells
-you where the package sits in the dependency stack documented at
-`docs/architecture.md`.
+you where the package sits in the dependency stack documented in
+`docs/OVERVIEW.md`.
 
 | Package | Layer | Purpose |
 |---|---|---|
@@ -41,16 +40,16 @@ you where the package sits in the dependency stack documented at
 | [`stability`](stability) | Impact | Stability cluster detection. |
 | [`quality`](quality) | Detectors | Quality detectors: weak assertions, mock-heavy, untested exports, snapshot-heavy. |
 | [`health`](health) | Detectors | Health detectors: slow, flaky, skipped, dead, unstable. |
-| [`migration`](migration) | Detectors | Migration detectors: blockers, deprecated patterns, dynamic generation, custom matchers. |
+| [`framework_migration`](framework_migration) | Detectors | Migration detectors: blockers, deprecated patterns, dynamic generation, custom matchers. |
 | [`governance`](governance) | Detectors | Governance detectors: policy violations, legacy usage, runtime budget. |
 | [`policy`](policy) | Risk Engine | Policy model and local-policy evaluation. |
-| [`scoring`](scoring) | Risk Engine | Risk-band assignment: reliability, change, speed, governance dimensions (see [scoring rubric](../docs/scoring-rubric.md)). |
+| [`scoring`](scoring) | Risk Engine | Risk-band assignment: reliability, change, speed, governance dimensions (see [severity rubric](../docs/severity-rubric.md)). |
 | [`measurement`](measurement) | Risk Engine | 18 measurements across 5 posture dimensions. |
 | [`metrics`](metrics) | Risk Engine | Aggregate metrics scorecard. |
 | [`portfolio`](portfolio) | Risk Engine | Portfolio intelligence (cost, breadth, leverage, redundancy). |
 | [`ownership`](ownership) | Risk Engine | Code-ownership resolution from CODEOWNERS / .terrain config. |
 | [`heatmap`](heatmap) | Reporting | Risk-heatmap data for the summary view. |
-| [`insights`](insights) | Reporting | `terrain insights` recommendations and Health Grade derivation (see [health-grade rubric](../docs/health-grade-rubric.md)). |
+| [`insights`](insights) | Reporting | `terrain insights` recommendations and Health Grade derivation (see [severity rubric](../docs/severity-rubric.md)). |
 | [`explain`](explain) | Reporting | `terrain explain` reasoning chains. |
 | [`analyze`](analyze) | Reporting | `terrain analyze` report assembly. |
 | [`summary`](summary) | Reporting | Executive summary rendering. |
@@ -73,7 +72,7 @@ you where the package sits in the dependency stack documented at
 
 `internal/plugin/` was deleted in 0.1.2 (dead code — no callers in `cmd/`
 or `internal/`). The current detector extension model is documented at
-[docs/engineering/detector-architecture.md](docs/engineering/detector-architecture.md);
+[docs/contributing/writing-a-detector.md](../docs/contributing/writing-a-detector.md);
 a runtime plugin loader is possible future work, not a current capability.
 
 For tests: 199 `*_test.go` files across 48 test packages (a couple of

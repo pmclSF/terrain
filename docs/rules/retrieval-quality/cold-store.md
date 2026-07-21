@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** observability
 
-## Promotion plan
-
-Fires when a vector store is initialized but no index-population call exists in the same module.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -28,9 +24,9 @@ A vector store is initialized but no index-population call exists in the same mo
 
 ## 2. Severity & status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Experimental — off by default; enable in `terrain.yaml`.
+
+- **Default severity:** low
 
 ## 3. What this catches
 

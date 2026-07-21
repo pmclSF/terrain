@@ -7,6 +7,66 @@ import (
 	"testing"
 )
 
+func TestArtifact_RedactSource(t *testing.T) {
+	t.Parallel()
+	art := &Artifact{Findings: []Finding{
+		{RuleID: "r1", Evidence: &Evidence{
+			CodeExcerpt: "api_key = \"sk-secret\"",
+			IOExamples:  []IOExample{{Input: "x", Expected: "y"}},
+		}},
+		{RuleID: "r2", Evidence: nil}, // nil evidence must be safe
+	}}
+	art.RedactSource()
+	if got := art.Findings[0].Evidence.CodeExcerpt; got != "" {
+		t.Errorf("code excerpt not redacted: %q", got)
+	}
+	// Non-source eval data is preserved; redact_source is about code only.
+	if len(art.Findings[0].Evidence.IOExamples) != 1 {
+		t.Errorf("io examples should be preserved, got %d", len(art.Findings[0].Evidence.IOExamples))
+	}
+	if art.Findings[1].Evidence != nil {
+		t.Errorf("nil evidence should remain nil")
+	}
+}
+
+// TestReadArtifact_RoundTripsWriteJSON pins the contract that ReadArtifact
+// inverts WriteJSON: a written artifact decodes back to the same findings,
+// including nested evidence — so downstream consumers (e.g. /terrain expand)
+// read exactly what was written. TestArtifact_RoundTrip uses raw
+// json.Unmarshal and does NOT exercise ReadArtifact.
+func TestReadArtifact_RoundTripsWriteJSON(t *testing.T) {
+	t.Parallel()
+	in := []Finding{{
+		Version:      1,
+		RuleID:       "terrain/ai/missing-eval",
+		Severity:     SeverityWarning,
+		PrimaryLoc:   Location{Path: "prompts/main.md", Line: 7},
+		ShortMessage: "no eval covers this prompt",
+		Evidence:     &Evidence{CodeExcerpt: "render(prompt)"},
+	}}
+	var buf bytes.Buffer
+	if err := NewArtifact(in).WriteJSON(&buf); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+	got, err := ReadArtifact(&buf)
+	if err != nil {
+		t.Fatalf("ReadArtifact: %v", err)
+	}
+	if len(got.Findings) != 1 {
+		t.Fatalf("findings = %d, want 1", len(got.Findings))
+	}
+	f := got.Findings[0]
+	if f.RuleID != "terrain/ai/missing-eval" || f.ShortMessage != "no eval covers this prompt" {
+		t.Errorf("round-trip lost finding fields: %+v", f)
+	}
+	if f.PrimaryLoc.Path != "prompts/main.md" || f.PrimaryLoc.Line != 7 {
+		t.Errorf("round-trip lost location: %+v", f.PrimaryLoc)
+	}
+	if f.Evidence == nil || f.Evidence.CodeExcerpt != "render(prompt)" {
+		t.Errorf("round-trip lost nested evidence: %+v", f.Evidence)
+	}
+}
+
 func TestArtifact_RoundTrip(t *testing.T) {
 	t.Parallel()
 	in := []Finding{
@@ -17,7 +77,7 @@ func TestArtifact_RoundTrip(t *testing.T) {
 			Tier:         TierStable,
 			PrimaryLoc:   Location{Path: "src/auth.go", Line: 42, NodeKind: "code_unit"},
 			ShortMessage: "untested code unit",
-			DocsURL:      "https://terrain.dev/rules/coverage/no-tests",
+			DocsURL:      "https://github.com/pmclSF/terrain/blob/main/docs/rules/coverage/no-tests.md",
 			Reproduction: "terrain test --selector coverage/no-tests",
 		},
 	}

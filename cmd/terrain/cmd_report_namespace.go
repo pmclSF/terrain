@@ -80,7 +80,7 @@ func runReportNamespaceCLI(args []string) error {
 		return runReportCheckRunsCLI(rest)
 	default:
 		printReportUsage()
-		return fmt.Errorf("unknown report verb %q (valid: %s)", verb, strings.Join(reportVerbs, ", "))
+		return cliUsageError{message: fmt.Sprintf("unknown report verb %q (valid: %s)", verb, strings.Join(reportVerbs, ", "))}
 	}
 }
 
@@ -219,6 +219,7 @@ func runReportPRCLI(args []string) error {
 	failOn := fs.String("fail-on", "", "exit non-zero when a finding at or above this severity is present (critical|high|medium)")
 	baseline := fs.String("baseline", "", "path to a previous snapshot JSON file; enables --new-findings-only filtering")
 	newOnly := fs.Bool("new-findings-only", false, "filter signals to those NOT present in --baseline before PR analysis")
+	noTrustFloor := fs.Bool("no-trust-floor", false, "opt out of the default remediation-validity gate (matches terrain analyze/test --no-trust-floor)")
 	_ = fs.Parse(args)
 	mountPositionalAsRoot("report pr", fs.Args(), root)
 	gate, err := parseSeverityGate(*failOn)
@@ -233,6 +234,7 @@ func runReportPRCLI(args []string) error {
 		BaseRef:         *baseRef,
 		JSONOutput:      *jsonOut,
 		Format:          *format,
+		NoTrustFloor:    *noTrustFloor,
 		Gate:            gate,
 		BaselinePath:    *baseline,
 		NewFindingsOnly: *newOnly,
@@ -253,12 +255,17 @@ func runReportCheckRunsCLI(args []string) error {
 	root := fs.String("root", ".", "repository root to analyze")
 	headSHA := fs.String("head-sha", "", "HEAD commit SHA (required; the check runs target this commit)")
 	out := fs.String("out", "", "write the JSON bundle to this path instead of stdout")
+	failOn := fs.String("fail-on", "medium", "fail the gate check when a finding is at or above this severity (critical|high|medium|low); pass the same value as your `terrain test --fail-on` so the required check and the CLI agree")
+	noTrustFloor := fs.Bool("no-trust-floor", false, "opt out of the default remediation-validity gate (matches terrain analyze/test --no-trust-floor)")
 	_ = fs.Parse(args)
 	mountPositionalAsRoot("report check-runs", fs.Args(), root)
 	if *headSHA == "" {
 		return fmt.Errorf("--head-sha is required (the check-run target commit; typically $GITHUB_SHA)")
 	}
-	return runCheckRuns(*root, *headSHA, *out)
+	if _, err := parseSeverityGate(*failOn); err != nil {
+		return err
+	}
+	return runCheckRuns(*root, *headSHA, *out, *failOn, *noTrustFloor)
 }
 
 func runReportPostureCLI(args []string) error {

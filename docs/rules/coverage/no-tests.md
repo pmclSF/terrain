@@ -16,10 +16,6 @@ A code unit (exported function / method / class) exists in the codebase but no t
 
 Add a test that imports the code unit and exercises its observable behavior. The rule defaults to exported symbols only; configure `include_private: true` to widen coverage.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/coverage/no_tests.go (DetectNoTestsForCodeUnit). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `graph-traversal`
@@ -34,12 +30,9 @@ Confidence interval: 0.85–0.95.
 
 A code unit exists in the codebase but no test in the snapshot's dependency graph covers it.
 
-## 2. Severity & status
+## 2. Status
 
-- **Tier:** stable
-- **Default severity:** warning
-- **Stable since:** v0.2.0
-- **Configurable via `terrain.yaml`:** yes — severity adjustment and per-path ignores supported (see [configuration.md](../../configuration.md))
+Experimental — off by default; enable in terrain.yaml. Severity adjustment and per-path ignores are configurable via `terrain.yaml` (see [configuration.md](../../configuration.md)).
 
 ## 3. What this catches
 
@@ -66,14 +59,14 @@ Adopters who want stricter behavior (e.g., "new public function must ship with a
 
 The rule's lifecycle is **enumerate code units → query graph for covering tests → emit findings for the empty set**.
 
-- **Approach:** graph traversal — code units (`internal/models/code_unit.go`) with no incoming `covered_by_test` edge
-- **Languages supported:** Go, JS/TS, Python, Java (per Terrain's `internal/testcase/` AST coverage; depends on Java import-graph linkage landing in Tier 0 to be honest for Java code)
-- **Inputs consumed:** the snapshot's `CodeUnits[]`; the `ImpactGraph`'s reverse adjacency (which tests reach this unit)
-- **Edge type queried:** `EdgeBucketCoverage` (test → code unit) and `EdgeExactCoverage` (test → specific symbol); reverse direction
-- **What counts as a "test":** any node classified as a test by `internal/testtype/`; unit / integration / e2e / component / smoke all count
-- **What counts as a "code unit":** function / method / class as enumerated by per-language AST extraction; trivially-named items (`init`, `main`, generated identifiers) are excluded via the filter list in `internal/analysis/code_unit.go`
-- **Edge cases handled:** generated code (e.g., `*_pb.go`, `dist/`, `__generated__/`) excluded via path-default ignore; private/unexported items excluded by default at first ship (configurable; some adopters want private-method coverage as well)
-- **Edge cases NOT handled in 0.3.0:** symbol-level coverage for languages with limited AST extraction (Java's reflection-heavy code paths can hide covering tests behind dynamic dispatch). Falls back to file-level "test imports source file" linkage in those cases; findings may be noisier on such codebases.
+- **Approach:** graph traversal — code units with no incoming `covered_by_test` edge
+- **Languages supported:** Go, JS/TS, Python, Java (Java coverage depends on import-graph linkage and may be less precise on reflection-heavy code)
+- **Inputs consumed:** the snapshot's code units; the impact graph's reverse adjacency (which tests reach this unit)
+- **Edge type queried:** bucket coverage (test → code unit) and exact coverage (test → specific symbol); reverse direction
+- **What counts as a "test":** any node classified as a test; unit / integration / e2e / component / smoke all count
+- **What counts as a "code unit":** function / method / class as enumerated by per-language AST extraction; trivially-named items (`init`, `main`, generated identifiers) are excluded
+- **Edge cases handled:** generated code (e.g., `*_pb.go`, `dist/`, `__generated__/`) excluded via path-default ignore; private/unexported items excluded by default (configurable; some adopters want private-method coverage as well)
+- **Edge cases not handled:** symbol-level coverage for languages with limited AST extraction (Java's reflection-heavy code paths can hide covering tests behind dynamic dispatch). Falls back to file-level "test imports source file" linkage in those cases; findings may be noisier on such codebases.
 
 ## 6. Worked example
 
@@ -147,7 +140,6 @@ rules:
 - **Code tested via integration tests that don't import the function directly** — the function is exercised but no test's import graph reaches it. The rule fires correctly per its mechanism (no incoming "covers" edge). Mitigation: either add a unit test, or accept the warning if integration-test-only coverage is the adopter's policy. The `coverage/no-integration-test` rule provides the complementary view.
 - **Generated code** — Terrain excludes common generated-path patterns (`__generated__/`, `*.pb.go`, etc.) by default; uncommon generators may need explicit per-path ignores.
 - **Code that's only reachable via reflection / dynamic dispatch** — the import-graph cannot trace dynamic dispatch. Such code may show as "no tests" even when invoked by tests at runtime. Mitigation: declare the surface in `terrain.yaml` `surfaces:` to make Terrain aware of the dynamic reachability, or accept the warning.
-- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet. Coverage rules typically have higher FP/false-relevance rates than detection rules; use the documented false-positive patterns and release feature status until a measured card exists.
 
 ## 9. Reproducibility
 
@@ -160,14 +152,6 @@ The rule fires on the entire repo's code units, not just changed ones. To scope 
 ```bash
 terrain test --selector coverage/no-tests
 ```
-
-## 10. Stability commitment
-
-This rule's ID, default severity (warning), and behavior are stable from v0.2.0. Per the deprecation contract:
-
-- **Severity default change from warning to error** would be breaking; deprecation-cycled. None planned.
-- **What counts as a "test"** is governed by `internal/testtype/`'s classification; expanding this (e.g., adding a new test-type taxonomy) is additive and reduces findings — not a breaking change.
-- **What counts as a "code unit"** is governed by per-language AST extractors; expanding coverage (e.g., adding new language support) is additive and may increase findings on previously-unscanned files; this is treated as a precision improvement, documented in `CHANGELOG.md`, not deprecation-cycled.
 
 ## 11. Related rules
 

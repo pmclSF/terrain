@@ -16,10 +16,6 @@ Detected patterns will complicate framework framework_migration.
 
 Address blockers incrementally before broad migration changes.
 
-## Promotion plan
-
-Observability-tier. Refresh the trigger set to living migration patterns and drop the enzyme sub-rule once base rates are confirmed.
-
 ## Evidence sources
 
 - `structural-pattern`

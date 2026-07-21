@@ -17,10 +17,10 @@
 package ownership
 
 import (
-	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/saferead"
 	"gopkg.in/yaml.v3"
 )
 
@@ -194,7 +194,7 @@ func (r *Resolver) HasCodeowners() bool {
 
 func (r *Resolver) loadExplicitConfig(root string) {
 	path := filepath.Join(root, ".terrain", "ownership.yaml")
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return
 	}

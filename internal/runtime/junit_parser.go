@@ -3,10 +3,11 @@ package runtime
 import (
 	"encoding/xml"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // JUnit XML schema types.
@@ -68,7 +69,7 @@ type junitSkipped struct {
 //     duplicate reporting rather than retries
 //   - no support for custom properties or attachments
 func ParseJUnitXML(path string) (*IngestionResult, error) {
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFileCap(path, saferead.DataCap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read JUnit XML: %w", err)
 	}

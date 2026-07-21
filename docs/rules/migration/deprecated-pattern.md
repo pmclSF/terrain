@@ -16,10 +16,6 @@ Deprecated test patterns increase migration and maintenance risk.
 
 Replace deprecated APIs with supported alternatives.
 
-## Promotion plan
-
-Observability-tier. Drop the enzyme sub-rule, refresh the trigger set, and add a scope gate distinguishing jest.setTimeout from bare setTimeout in a test body.
-
 ## Evidence sources
 
 - `structural-pattern`

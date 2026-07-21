@@ -10,6 +10,7 @@ import (
 	"github.com/pmclSF/terrain/internal/deffollowing"
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // defFollowingCounter is the per-root cache of deffollowing.Counter
@@ -36,7 +37,7 @@ func counterFor(root string) *deffollowing.Counter {
 // and returns the file content string for reuse by downstream stages.
 func analyzeTestFileContentCached(tf *models.TestFile, root string) string {
 	absPath := filepath.Join(root, tf.Path)
-	content, err := os.ReadFile(absPath)
+	content, err := saferead.ReadFile(absPath)
 	if err != nil {
 		return ""
 	}
@@ -44,7 +45,7 @@ func analyzeTestFileContentCached(tf *models.TestFile, root string) string {
 
 	tf.TestCount = countTests(src, tf.Framework)
 	immediate := countAssertions(src, tf.Framework)
-	// Mechanism gate: a1_def_following. When on, the per-file
+	// Mechanism gate: def_following. When on, the per-file
 	// assertion count is lifted to include transitive assertions
 	// inside in-repo helper bodies that the test calls. When off, the
 	// immediate count is preserved.
@@ -273,7 +274,7 @@ var (
 )
 
 func extractJSExports(root, relPath string) []models.CodeUnit {
-	content, err := os.ReadFile(filepath.Join(root, relPath))
+	content, err := saferead.ReadFile(filepath.Join(root, relPath))
 	if err != nil {
 		return nil
 	}
@@ -372,7 +373,7 @@ func buildUnitID(path, name, parent string) string {
 }
 
 func extractGoExports(root, relPath string) []models.CodeUnit {
-	content, err := os.ReadFile(filepath.Join(root, relPath))
+	content, err := saferead.ReadFile(filepath.Join(root, relPath))
 	if err != nil {
 		return nil
 	}
@@ -421,7 +422,7 @@ func extractGoExportsFromLines(relPath string, lines []string) []models.CodeUnit
 }
 
 func extractPythonExports(root, relPath string) []models.CodeUnit {
-	content, err := os.ReadFile(filepath.Join(root, relPath))
+	content, err := saferead.ReadFile(filepath.Join(root, relPath))
 	if err != nil {
 		return nil
 	}
@@ -476,7 +477,7 @@ func pythonAllExports(src string) map[string]bool {
 }
 
 func extractJavaExports(root, relPath string) []models.CodeUnit {
-	content, err := os.ReadFile(filepath.Join(root, relPath))
+	content, err := saferead.ReadFile(filepath.Join(root, relPath))
 	if err != nil {
 		return nil
 	}

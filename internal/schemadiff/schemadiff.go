@@ -89,6 +89,15 @@ func normalizeType(raw json.RawMessage) string {
 	return ""
 }
 
+// NormalizeType renders a JSON-Schema `type` value (the raw bytes of
+// `properties.<field>.type`) as a stable string, accepting both the string
+// form and the nullable/union array form. Exported so consumers that parse the
+// same property shape (e.g. promptflow's value synthesis) reuse one parser
+// instead of a divergent second one.
+func NormalizeType(raw json.RawMessage) string {
+	return normalizeType(raw)
+}
+
 // DiffJSONSchema returns the field-level changes between oldDoc and
 // newDoc. Both must be JSON Schema documents whose top-level shape
 // includes a `properties` map. Results are sorted by Field for stable

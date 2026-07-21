@@ -14,10 +14,9 @@ import (
 // and emits a Signal for any without a benchmark / load-test reaching
 // them. Implements terrain/performance/missing-perf-test.
 //
-// "Latency-critical" at 0.2.0 = any AI surface; future versions
-// narrow to surfaces explicitly tagged in terrain.yaml. The
-// conservative default is to flag every uncovered surface so adopters
-// see the gap; they can ignore via path.
+// "Latency-critical" means any AI surface. The conservative default
+// flags every uncovered surface so adopters see the gap; they can
+// ignore individual surfaces via path.
 //
 // "Benchmark / load test" = test file whose path contains /bench/,
 // /benchmarks/, /perf/, /performance/, /load/, /loadtest/,

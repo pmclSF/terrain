@@ -2,13 +2,13 @@ package analysis
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"gopkg.in/yaml.v3"
 )
 
@@ -146,7 +146,7 @@ func parsePlaywrightConfig(root string, result *FrameworkMatrixResult) {
 
 	var content string
 	for _, p := range configPaths {
-		data, err := os.ReadFile(filepath.Join(root, p))
+		data, err := saferead.ReadFile(filepath.Join(root, p))
 		if err == nil {
 			content = string(data)
 			break
@@ -268,7 +268,7 @@ func parsePytestIni(root string, result *FrameworkMatrixResult) {
 	}
 
 	for _, p := range configPaths {
-		data, err := os.ReadFile(p)
+		data, err := saferead.ReadFile(p)
 		if err != nil {
 			continue
 		}
@@ -330,7 +330,7 @@ func parsePytestParametrize(root string, testFiles []models.TestFile, result *Fr
 		if !strings.HasSuffix(tf.Path, ".py") {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(root, tf.Path))
+		data, err := saferead.ReadFile(filepath.Join(root, tf.Path))
 		if err != nil {
 			continue
 		}
@@ -411,7 +411,7 @@ func parseBrowserStackConfig(root string, result *FrameworkMatrixResult) {
 
 	var data []byte
 	for _, p := range paths {
-		d, err := os.ReadFile(p)
+		d, err := saferead.ReadFile(p)
 		if err == nil {
 			data = d
 			break
@@ -505,7 +505,7 @@ func parseAppiumConfig(root string, result *FrameworkMatrixResult) {
 	}
 
 	for _, p := range paths {
-		data, err := os.ReadFile(p)
+		data, err := saferead.ReadFile(p)
 		if err != nil {
 			continue
 		}
@@ -580,7 +580,7 @@ func parseSauceLabsConfig(root string, result *FrameworkMatrixResult) {
 
 	var data []byte
 	for _, p := range paths {
-		d, err := os.ReadFile(p)
+		d, err := saferead.ReadFile(p)
 		if err == nil {
 			data = d
 			break
@@ -669,7 +669,7 @@ func parseSauceLabsConfig(root string, result *FrameworkMatrixResult) {
 // --- Firebase Test Lab ---
 
 func parseFirebaseTestLabConfig(root string, result *FrameworkMatrixResult) {
-	data, err := os.ReadFile(filepath.Join(root, "firebase.json"))
+	data, err := saferead.ReadFile(filepath.Join(root, "firebase.json"))
 	if err != nil {
 		return
 	}

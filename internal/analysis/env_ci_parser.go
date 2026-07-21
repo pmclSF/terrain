@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"gopkg.in/yaml.v3"
 )
 
@@ -62,7 +63,7 @@ func parseGitHubActions(root string, result *CIMatrixResult) {
 		if ext != ".yml" && ext != ".yaml" {
 			continue
 		}
-		data, err := os.ReadFile(filepath.Join(workflowDir, entry.Name()))
+		data, err := saferead.ReadFile(filepath.Join(workflowDir, entry.Name()))
 		if err != nil {
 			continue
 		}
@@ -162,7 +163,7 @@ func extractRunsOn(v interface{}) string {
 // --- GitLab CI ---
 
 func parseGitLabCI(root string, result *CIMatrixResult) {
-	data, err := os.ReadFile(filepath.Join(root, ".gitlab-ci.yml"))
+	data, err := saferead.ReadFile(filepath.Join(root, ".gitlab-ci.yml"))
 	if err != nil {
 		return
 	}
@@ -256,7 +257,7 @@ func isGitLabKeyword(name string) bool {
 // --- CircleCI ---
 
 func parseCircleCI(root string, result *CIMatrixResult) {
-	data, err := os.ReadFile(filepath.Join(root, ".circleci", "config.yml"))
+	data, err := saferead.ReadFile(filepath.Join(root, ".circleci", "config.yml"))
 	if err != nil {
 		return
 	}
@@ -358,7 +359,7 @@ func parseBuildkite(root string, result *CIMatrixResult) {
 	var data []byte
 	var provFile string
 	for _, p := range paths {
-		d, err := os.ReadFile(p)
+		d, err := saferead.ReadFile(p)
 		if err == nil {
 			data = d
 			provFile = strings.TrimPrefix(p, root+string(filepath.Separator))

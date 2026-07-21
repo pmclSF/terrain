@@ -1,11 +1,12 @@
 package aidetect
 
 import (
-	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"github.com/pmclSF/terrain/internal/signals"
 )
 
@@ -66,7 +67,7 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 			continue
 		}
 		abs := filepath.Join(d.Root, surface.Path)
-		data, err := os.ReadFile(abs)
+		data, err := saferead.ReadFile(abs)
 		if err != nil {
 			continue
 		}
@@ -115,6 +116,9 @@ func (d *FewShotContaminationDetector) Detect(snap *models.TestSuiteSnapshot) []
 					surfaceIDs = append(surfaceIDs, surfaceID)
 				}
 			}
+			// The fallback iterates a map, so sort the collected IDs to
+			// keep the emitted-signal order deterministic across runs.
+			sort.Strings(surfaceIDs)
 		}
 		for _, surfaceID := range surfaceIDs {
 			content, ok := promptContent[surfaceID]

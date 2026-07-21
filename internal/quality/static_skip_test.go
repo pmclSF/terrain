@@ -3,11 +3,67 @@ package quality
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 )
+
+// SS8: stripLineComments removes //, #, and /* */ comments so a gate pattern
+// hidden in a comment is NOT mistaken for a real runtime gate (the false-
+// positive guard for conditional-vs-unconditional skip classification). It
+// was completely untested.
+func TestStripLineComments(t *testing.T) {
+	t.Parallel()
+	cases := []struct{ name, in, mustNotContain, mustContain string }{
+		{"c-line", "code(); // process.env.CI", "process.env.CI", "code()"},
+		{"py-line", "skip()  # os.getenv('X')", "os.getenv", "skip()"},
+		{"block", "a /* os.getenv */ b", "os.getenv", "a"},
+	}
+	for _, c := range cases {
+		got := stripLineComments(c.in)
+		if strings.Contains(got, c.mustNotContain) {
+			t.Errorf("%s: comment not stripped; %q still present in %q", c.name, c.mustNotContain, got)
+		}
+		if !strings.Contains(got, c.mustContain) {
+			t.Errorf("%s: stripped too much; %q missing from %q", c.name, c.mustContain, got)
+		}
+	}
+}
+
+// SS4/SS11: per-file signals carry severity derived from each file's OWN skip
+// ratio, plus accurate metadata. The existing severity test only checks the
+// repo-level aggregate signal.
+func TestStaticSkipDetector_PerFileSeverity(t *testing.T) {
+	t.Parallel()
+	snap := &models.TestSuiteSnapshot{TestFiles: []models.TestFile{
+		{Path: "high.test.ts", Framework: "jest", TestCount: 10, SkipCount: 7}, // 70% → High
+		{Path: "low.test.ts", Framework: "jest", TestCount: 10, SkipCount: 1},  // 10% → Low
+	}}
+	sigs := (&StaticSkipDetector{}).Detect(snap)
+	var high, low *models.Signal
+	for i := range sigs {
+		switch sigs[i].Location.File {
+		case "high.test.ts":
+			high = &sigs[i]
+		case "low.test.ts":
+			low = &sigs[i]
+		}
+	}
+	if high == nil || low == nil {
+		t.Fatalf("expected per-file signals for both files; got %+v", sigs)
+	}
+	if high.Severity != models.SeverityHigh {
+		t.Errorf("high.test.ts (70%% skipped): want High, got %v", high.Severity)
+	}
+	if low.Severity != models.SeverityLow {
+		t.Errorf("low.test.ts (10%% skipped): want Low, got %v", low.Severity)
+	}
+	if high.Metadata["skippedCount"] != 7 {
+		t.Errorf("skippedCount metadata: want 7, got %v", high.Metadata["skippedCount"])
+	}
+}
 
 func TestStaticSkipDetector_JSSkipPatterns(t *testing.T) {
 	t.Parallel()

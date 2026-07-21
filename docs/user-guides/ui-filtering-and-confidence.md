@@ -2,7 +2,7 @@
 
 Design specification for future Terrain extension filtering and confidence
 communication. This document describes intended views and interaction
-patterns, not 0.3.0 shipped behavior or implementation. The 0.3.0 extension
+patterns, not current shipped behavior or implementation. The extension
 alpha renders sidebar tree views from CLI JSON as documented in
 [`../vscode-extension.md`](../vscode-extension.md).
 

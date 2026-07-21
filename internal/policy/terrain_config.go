@@ -11,6 +11,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // TerrainConfigFileName is the expected config file path relative to repo root.
@@ -100,10 +101,10 @@ type ManualCoverageEntry struct {
 func LoadTerrainConfig(repoRoot string) (*TerrainConfig, error) {
 	// Check .terrain/terrain.yaml first (preferred), then root terrain.yaml.
 	path := filepath.Join(repoRoot, ".terrain", TerrainConfigFileName)
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil && errors.Is(err, os.ErrNotExist) {
 		path = filepath.Join(repoRoot, TerrainConfigFileName)
-		data, err = os.ReadFile(path)
+		data, err = saferead.ReadFile(path)
 	}
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -112,6 +113,10 @@ func LoadTerrainConfig(repoRoot string) (*TerrainConfig, error) {
 		return nil, fmt.Errorf("failed to read terrain config %s: %w", path, err)
 	}
 
+	// NOTE: intentionally NOT strict — this is a PARTIAL reader of terrain.yaml
+	// (manual_coverage/scenarios/ci_duration_seconds); terrainconfig.Config reads
+	// the rest. Strict decoding here would reject a valid terrain.yaml that uses
+	// rules/ai/trust_floor keys. See terrainconfig.Parse for the same note.
 	var cfg TerrainConfig
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("malformed terrain config %s: %w", path, err)

@@ -179,6 +179,11 @@ func filenameLooksVersioned(path string) bool {
 // those placeholder tokens explicitly so a comment like
 // `version: "TODO"` doesn't silence the detector.
 func fileHasInlineVersion(absPath string) bool {
+	// Refuse symlinks/devices/FIFOs before opening; Lstat inspects the
+	// link itself so it is never followed to an unbounded target.
+	if fi, statErr := os.Lstat(absPath); statErr != nil || !fi.Mode().IsRegular() {
+		return false
+	}
 	f, err := os.Open(absPath)
 	if err != nil {
 		return false

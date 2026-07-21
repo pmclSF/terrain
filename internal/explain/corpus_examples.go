@@ -6,13 +6,9 @@ import (
 	"sync"
 )
 
-// Real-world OSS examples surfaced by `terrain explain` to anchor
-// findings. The JSON ships embedded in the binary so there's no
-// network or filesystem dependency at runtime.
-//
-// The embedded examples are generated from an internal public-OSS
-// corpus build step; only the resulting JSON is part of the public
-// distribution.
+// Real-world examples surfaced by `terrain explain` to anchor findings.
+// The JSON ships embedded in the binary so there's no network or
+// filesystem dependency at runtime.
 
 //go:embed data/corpus-examples.json
 var corpusExamplesJSON []byte

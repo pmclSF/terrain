@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** observability
 
-## Promotion plan
-
-Fires when prompt token count exceeds the configured budget.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -28,10 +24,7 @@ A prompt template's token count exceeds the configured budget, inflating per-cal
 
 ## 2. Severity & status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in via `terrain.yaml`)
-- **Status:** preview — pending validation
-- **Graduation criteria:** false-positive rate ≤ 5%; recall ≥ 80%.
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 
@@ -56,5 +49,3 @@ warning[terrain/prompt-quality/prompt-bloat]: prompt "summarize" is 4823 tokens 
 ```bash
 terrain test --selector prompt-quality/prompt-bloat
 ```
-
-Preview rules ship default-off; enable in `terrain.yaml` to surface findings.

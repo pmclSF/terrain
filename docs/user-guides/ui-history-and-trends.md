@@ -1,8 +1,8 @@
 # UI History, Trends, and Snapshot Browser
 
 Design specification for future Terrain extension longitudinal views. This
-document describes intended views and data access patterns, not 0.3.0 shipped
-behavior or implementation. The 0.3.0 extension alpha renders sidebar tree
+document describes intended views and data access patterns, not currently
+shipped behavior or implementation. The extension alpha renders sidebar tree
 views from CLI JSON as documented in [`../vscode-extension.md`](../vscode-extension.md).
 
 ## Overview

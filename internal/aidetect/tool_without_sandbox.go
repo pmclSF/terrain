@@ -1,13 +1,13 @@
 package aidetect
 
 import (
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"github.com/pmclSF/terrain/internal/signals"
 	"github.com/pmclSF/terrain/internal/surfacelit"
 	"gopkg.in/yaml.v3"
@@ -73,7 +73,7 @@ var destructiveVerbs = []*regexp.Regexp{
 var approvalMarkers = []string{
 	"approval", "approve", "confirm", "human-in-the-loop", "human_in_the_loop",
 	"sandbox", "sandboxed", "dry_run", "dry-run", "preview",
-	"requires_human", "interactive: true", "needs_approval",
+	"requires_human", "interactive", "needs_approval",
 }
 
 // toolConfigMarkers identify config files we'll inspect for tool defs.
@@ -188,7 +188,7 @@ type toolFinding struct {
 // analyseToolConfig parses a YAML/JSON config and returns a finding per
 // destructive-named tool entry that lacks an approval marker.
 func analyseToolConfig(path string) []toolFinding {
-	raw, err := os.ReadFile(path)
+	raw, err := saferead.ReadFile(path)
 	if err != nil {
 		return nil
 	}

@@ -25,7 +25,7 @@ import (
 )
 
 // MechanismName is the canonical name in mechanisms.yaml.
-const MechanismName = "a3_loop_predicate"
+const MechanismName = "loop_predicate"
 
 // IsTestBuilderInLoop reports whether the source line is wrapped by a
 // loop construct. Returns false on unreadable or empty files.

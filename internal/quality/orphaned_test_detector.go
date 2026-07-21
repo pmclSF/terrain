@@ -18,7 +18,7 @@ import (
 // This is a static detector: it uses structural analysis data (linked code
 // units), requiring no runtime or coverage artifacts.
 type OrphanedTestDetector struct {
-	// RepoRoot enables the a7_barrel_resolver mechanism. When set, the
+	// RepoRoot enables the barrel-resolver mechanism. When set, the
 	// detector consults barrelresolver to follow re-export indirection
 	// when claiming a test file has no linked source code units.
 	RepoRoot string
@@ -49,7 +49,7 @@ func (d *OrphanedTestDetector) Detect(snap *models.TestSuiteSnapshot) []models.S
 	}
 	var candidates []candidate
 
-	// Mechanism gate: a7_barrel_resolver. Build the resolver in
+	// Mechanism gate: the barrel-resolver mechanism. Build the resolver in
 	// shadow + on so shadow mode can emit would-add events for tests
 	// whose orphan claim the resolver would rescue.
 	var resolver *barrelresolver.Resolver

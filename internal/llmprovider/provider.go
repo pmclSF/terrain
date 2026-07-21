@@ -9,10 +9,10 @@
 //   - Custom OpenAI-compatible endpoint (internal LLM gateways,
 //     vLLM / TGI deployments)
 //
-// The package is intentionally narrow: chat completions only in
-// 0.3.0, plus a placeholder for tool calls (returned as
-// ErrToolCallsNotImplemented until the consumer wires through). LLM
-// enrichment is a CLI luxury; the CI gate works without it.
+// The package is intentionally narrow: chat completions only, plus a
+// placeholder for tool calls (returned as ErrToolCallsNotImplemented
+// until the consumer wires through). LLM enrichment is optional;
+// terrain runs without it.
 package llmprovider
 
 import (
@@ -27,9 +27,9 @@ import (
 var ErrProviderDisabled = errors.New("llmprovider: disabled (provider=none)")
 
 // ErrToolCallsNotImplemented signals that the configured provider
-// adapter doesn't expose tool-calling yet. Chat completions work;
-// tool-calling lands as a followup.
-var ErrToolCallsNotImplemented = errors.New("llmprovider: tool calls not implemented for this provider in 0.3.0")
+// adapter doesn't expose tool-calling. Chat completions work; a
+// provider that supports tool calls populates ChatResponse.ToolCalls.
+var ErrToolCallsNotImplemented = errors.New("llmprovider: tool calls not implemented for this provider")
 
 // Message is one entry in a chat conversation.
 type Message struct {
@@ -44,9 +44,9 @@ type ChatRequest struct {
 	Temperature float64   `json:"temperature,omitempty"`
 	MaxTokens   int       `json:"max_tokens,omitempty"`
 
-	// Tools is reserved for the tool-calling extension. In 0.3.0,
-	// providers may return ErrToolCallsNotImplemented when this is
-	// non-empty.
+	// Tools carries tool specs for providers that support tool calls.
+	// Providers that do not may return ErrToolCallsNotImplemented when
+	// this is non-empty.
 	Tools []ToolSpec `json:"tools,omitempty"`
 }
 

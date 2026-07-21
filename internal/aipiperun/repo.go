@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/aipipeline"
+	"github.com/pmclSF/terrain/internal/aipipeline/fixscaffold"
 	"github.com/pmclSF/terrain/internal/aipipeline/stages"
 )
 
@@ -45,6 +46,13 @@ func RunRepo(ctx context.Context, repoRoot string, rules []string, posture aipip
 
 	cal := aipipeline.DefaultCalibration()
 	comp := aipipeline.NewComposer(cal, posture)
+	// Attach the fix-scaffold registry so every emitted finding carries a
+	// runnable protection patch (e.g. an eval-coverage scaffold for
+	// ai.surface.missing_eval) plus the path to write it. This turns a
+	// finding from a diagnostic into something actionable — and once the
+	// scaffold is written and references the surface, the next run resolves
+	// the finding (the closed loop).
+	comp.Scaffolds = fixscaffold.NewRegistryAdapter(fixscaffold.NewRegistry())
 	pipeline := aipipeline.NewPipeline(comp,
 		stages.NewPathPrefilter(),
 		stages.NewRegexFastscan(),
@@ -75,7 +83,10 @@ func RunRepo(ctx context.Context, repoRoot string, rules []string, posture aipip
 			return nil
 		}
 		info, statErr := d.Info()
-		if statErr != nil || info.Size() > maxRepoFileSize {
+		// !IsRegular rejects a symlink on its own type: without it, a symlink to
+		// /dev/zero passes the size check (the link is tiny) and ReadFile then
+		// follows it and grows the buffer unbounded.
+		if statErr != nil || !info.Mode().IsRegular() || info.Size() > maxRepoFileSize {
 			return nil
 		}
 		src, readErr := os.ReadFile(path)

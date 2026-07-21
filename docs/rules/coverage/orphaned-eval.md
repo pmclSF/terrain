@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** observability
 
-## Promotion plan
-
-Fires when an eval has no CoveredSurfaceIDs (references no surface).
-
 ## Evidence sources
 
 - `graph-traversal`
@@ -28,9 +24,7 @@ An Eval has no `CoveredSurfaceIDs` — it references no AI surface. The eval run
 
 ## 2. Severity & status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 

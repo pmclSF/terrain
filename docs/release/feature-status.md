@@ -1,6 +1,6 @@
-# Feature Status — 0.3.0
+# Feature Status — 0.4.0
 
-Single source of truth for what ships in 0.3.0. Every public claim should map back to a status here. Drift is treated as a release blocker.
+Single source of truth for what ships in the current release. Every public claim should map back to a status here. Drift is treated as a release blocker.
 
 Each shipping capability has three tags:
 
@@ -34,7 +34,7 @@ If a feature is **planned**, no detector emits its signals today.
 | `terrain report pr` | Gate | 1 | stable | PR-scoped report + comment template. `--fail-on / --new-findings-only` parity with `analyze`. |
 | `terrain report select-tests` | Align | 2 | experimental | Recommended protective test set. |
 | `terrain report show <kind> <id>` | Understand | 1 | stable | Drill into test, unit, owner, or finding. |
-| `terrain compare` | Understand | 1 | experimental | Snapshots over time. Output format may shift across 0.3.x as adopters report friction; the JSON envelope remains forward-compatible. |
+| `terrain compare` | Understand | 1 | experimental | Snapshots over time. Output format may shift across patch releases as adopters report friction; the JSON envelope remains forward-compatible. |
 | `terrain migrate <verb>` | Align | 1 | stable | Per-direction tier badges added in 0.2. `terrain convert` retains per-file fall-through. |
 | `terrain policy check` | Gate | 1 | stable | Local policy enforcement. `terrain init` emits a starter policy template. |
 | `terrain config <verb>` | cross-cutting | 1 | stable | feedback, telemetry. |
@@ -46,15 +46,16 @@ If a feature is **planned**, no detector emits its signals today.
 | `terrain ai run` | Gate | 2 | stable | Executes detected eval-framework commands, captures Promptfoo structured output when available, and records an AI-run artifact. AI-gate exit code 4 on `actionBlock`; `--timeout` bounds child-process execution. Trust-boundary doc clarifies parses-vs-executes. |
 | `terrain ai run` + `terrain ai record` / `terrain ai baseline compare` | Gate | 2 | stable | Regression-aware AI gate: `ai record` snapshots a known-good run; `ai baseline compare` flags regressions. |
 | `terrain ai record / baseline / replay` | Gate | 2 | stable | Baseline lifecycle. |
-| `terrain portfolio` | Align | 1 | stable | Single-repo portfolio analysis and multi-repo aggregation via `terrain portfolio --from <manifest>` are stable in 0.3.0: supports manifest `path` and `snapshotPath`, per-repo rollups, owner/tag propagation, and framework drift findings. |
+| `terrain portfolio` | Align | 1 | stable | Single-repo portfolio analysis and multi-repo aggregation via `terrain portfolio --from <manifest>` are stable: supports manifest `path` and `snapshotPath`, per-repo rollups, owner/tag propagation, and framework drift findings. |
+| `terrain fix` | Gate | 1 | stable | Applies closed-loop-validated remediations (today, prompt→schema drift corrections). Dry-run by default; `--apply` writes to disk. |
 | `terrain explain finding <id>` | Gate | 1 | stable | Resolve a stable finding ID back to its evidence. |
 | `terrain suppress <id>` | Gate | 1 | stable | Write a suppression entry. |
 
 ## Detectors / signal types
 
-The full inventory is in `internal/signals/manifest.go` and the generated public manifest at [`docs/signals/manifest.json`](../signals/manifest.json). The table below is a curated view of the current 0.3.0 signal surface, not an exhaustive list.
+The full inventory is in `internal/signals/manifest.go` and the generated public manifest at [`docs/signals/manifest.json`](../signals/manifest.json). The table below is a curated view of the current signal surface, not an exhaustive list.
 
-### Stable in 0.3
+### Stable
 
 | Signal | Detector | Notes |
 |---|---|---|
@@ -91,33 +92,33 @@ _…plus the long-standing structural / quality / migration / governance signals
 
 Additional stable signals surfaced in the full manifest: `agentLoopRisk`, `aiPromptSchemaDrift`, `assertionFreeTest`, `blastRadiusHotspot`, `coverageBlindSpot`, `customMatcherRisk`, `deprecatedTestPattern`, `dynamicTestGeneration`, `fixtureFragilityHotspot`, `legacyFrameworkUsage`, `migrationBlocker`, `orphanedTestFile`, `runtimeBudgetExceeded`, `skippedTestsInCI`, `snapshotHeavyTest`, `testsOnlyMocks`, `unsupportedSetup`.
 
-### Experimental in 0.3
+### Experimental
 
 | Signal | Notes |
 |---|---|
 | `aiPromptInjectionRisk` | Pattern-based; assignment-anchored; 3-line concatenation window so multi-line concatenation is caught. User-input shapes cover Express/Koa, FastAPI typed params, Flask, Django, Pyramid, gRPC, CLI args. AST-precise taint-flow analysis is future work. |
 | `aiFewShotContamination` | Substring overlap with minimum-chunk + distinct-word guards; implicit path-based coverage matches auto-derived scenarios. Full n-gram overlap is future work. |
-| AI surface inference (`SurfacePrompt`, `SurfaceContext`, `SurfaceDataset`, `SurfaceToolDef`, `SurfaceRetrieval`) | Detection works; precision/recall not yet measured. |
-| Risk band + Health Grade thresholds | Code is deterministic but thresholds are author-set. A future scoring revision will re-anchor them against representative repository data. |
+| AI surface inference (`SurfacePrompt`, `SurfaceContext`, `SurfaceDataset`, `SurfaceToolDef`, `SurfaceRetrieval`) | Detection works; published quality figures not yet available. |
+| Risk band + Health Grade thresholds | Code is deterministic but thresholds are author-set and may be revised in a future release. |
 | `terrain compare` snapshot diff | Implemented; output format may shift. |
 
 ### Planned (referenced in docs but not yet implemented)
 
-Several detector entries (xfail accumulation, statistical flaky-test rate, additional regression and quality detectors) are referenced in the design but not implemented at 0.3.0. They will appear in future releases.
+Several detector entries (xfail accumulation, statistical flaky-test rate, additional regression and quality detectors) are referenced in the design but not yet implemented. They will appear in future releases.
 
 ## Performance claims
 
-| Claim | Reality in 0.3 |
+| Claim | Reality |
 |---|---|
 | "Understand your test system in 30 seconds" | Holds on small/medium repos (≤ ~1,000 test files). Self-analyze on the terrain repo (~2,000 source files): ~99s. Benchmark suite ships; broader workload gating is future work. |
 | "Useful on a single machine, without accounts, SaaS, or network access" | True. Telemetry is opt-in and local-only. |
 
 ## Distribution claims
 
-| Claim | Reality in 0.3 |
+| Claim | Reality |
 |---|---|
 | Homebrew install on macOS | Goreleaser pipeline builds darwin amd64 + arm64; brew tap publish runs post-release. |
-| `npm install -g mapterrain` | Works on darwin/linux amd64+arm64, and windows amd64. Windows arm64 is not published in 0.3. |
+| `npm install -g mapterrain` | Works on darwin/linux amd64+arm64, and windows amd64. Windows arm64 is not published. |
 | Signed binaries | Cosign signatures attached to archives, SBOMs, and checksums. SLSA L2 build provenance attestation per archive. |
 | Cosign verification on npm install | **Mandatory** by default. Missing cosign aborts the install with a clear remediation block. Escapes: `TERRAIN_INSTALLER_ALLOW_MISSING_COSIGN=1` (verify the archive against `checksums.txt`) and `TERRAIN_INSTALLER_SKIP_VERIFY=1` (skip entirely). Installer redirect chain capped at 5 hops; downloads time out after 120 seconds. |
 
@@ -130,7 +131,7 @@ Several detector entries (xfail accumulation, statistical flaky-test rate, addit
 
 ## CLI restructure
 
-The 0.2 release introduced namespace dispatchers (`report`, `migrate`, `config`, `debug`, `ai`) alongside the historical 32 top-level commands. The canonical 14-command shape remains the recommended surface in 0.3; legacy commands keep working as aliases with optional deprecation hints (`TERRAIN_LEGACY_HINT=1`). See [`docs/cli-spec.md`](../cli-spec.md) for the full surface.
+The 0.2 release introduced namespace dispatchers (`report`, `migrate`, `config`, `debug`, `ai`) alongside the historical 32 top-level commands. The canonical 14-command shape remains the recommended surface; legacy commands keep working as aliases with optional deprecation hints (`TERRAIN_LEGACY_HINT=1`). See [`docs/cli-spec.md`](../cli-spec.md) for the full surface.
 
 ---
 

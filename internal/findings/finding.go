@@ -48,6 +48,12 @@ type Finding struct {
 	// RuleID is the canonical rule identifier (terrain/<category>/<rule>).
 	RuleID string `json:"rule_id"`
 
+	// FindingID is the canonical per-finding identifier
+	// (detector@path:anchor#hash) that suppressions, `terrain explain
+	// finding`, and the MCP/webhook surfaces all reference. Optional:
+	// present when the artifact was built from a located signal.
+	FindingID string `json:"finding_id,omitempty"`
+
 	// Severity classifies the outcome.
 	Severity Severity `json:"severity"`
 
@@ -129,6 +135,45 @@ type Suggestion struct {
 	Text      string    `json:"text"`
 	AppliesTo *Location `json:"applies_to,omitempty"`
 	Command   string    `json:"command,omitempty"`
+
+	// Fix, when present, is a mechanically-applicable remediation that the
+	// closed-loop validator can apply and re-verify. Absent for judge-only
+	// suggestions whose application requires human work (e.g. "write a test
+	// exercising Foo"); those carry Text only.
+	Fix *Fix `json:"fix,omitempty"`
+}
+
+// FixKind enumerates the mechanically-applicable remediation shapes. The
+// closed-loop validator switches on Kind to apply a Fix, then re-runs to
+// confirm the finding clears. New kinds are added as detector families gain
+// applicable remediations.
+type FixKind string
+
+const (
+	// FixNewFile writes Content to Path. Path must not already exist; the
+	// applier treats a pre-existing file as a no-op (the fix is already in
+	// place). Covers scaffold-style remediations (eval YAML, tracker stub).
+	FixNewFile FixKind = "new_file"
+
+	// FixEditInPlace replaces the entire contents of an existing Path with
+	// Content. The applier restores the prior contents on revert. Covers
+	// whole-file rewrites such as pinning a manifest's moving-target deps.
+	FixEditInPlace FixKind = "edit_in_place"
+)
+
+// Fix is a structured, mechanically-applicable remediation. It carries
+// enough to apply the change without an LLM, so the gate path stays
+// key-free; the closed-loop validator applies it and asserts the finding
+// clears with no new findings.
+type Fix struct {
+	// Kind selects the applier.
+	Kind FixKind `json:"kind"`
+
+	// Path is the repo-relative file the fix targets.
+	Path string `json:"path"`
+
+	// Content is the file body (FixNewFile) or replacement text.
+	Content string `json:"content,omitempty"`
 }
 
 // Artifact is the top-level findings.json shape: a version field plus
@@ -155,6 +200,34 @@ func NewArtifact(findings []Finding) *Artifact {
 		return out[i].PrimaryLoc.Line < out[j].PrimaryLoc.Line
 	})
 	return &Artifact{Version: SchemaVersion, Findings: out}
+}
+
+// RedactSource blanks source-code excerpts from every finding so emitted
+// artifacts carry no code content (terrain.yaml redact_source). Positional
+// data — paths and line numbers — is preserved so findings stay navigable.
+func (a *Artifact) RedactSource() {
+	for i := range a.Findings {
+		if a.Findings[i].Evidence != nil {
+			a.Findings[i].Evidence.CodeExcerpt = ""
+		}
+	}
+}
+
+// ReadArtifact decodes a findings artifact previously written by WriteJSON.
+//
+// Artifact contract:
+//
+//	A1. NewArtifact sorts findings deterministically (rule_id, path, line).
+//	A2. WriteJSON emits stable JSON; ReadArtifact inverts it, including
+//	    nested evidence.
+//	A3. RedactSource blanks every finding's Evidence.CodeExcerpt and leaves
+//	    all other fields intact.
+func ReadArtifact(r io.Reader) (*Artifact, error) {
+	var a Artifact
+	if err := json.NewDecoder(r).Decode(&a); err != nil {
+		return nil, fmt.Errorf("findings: decode artifact: %w", err)
+	}
+	return &a, nil
 }
 
 // WriteJSON marshals the artifact to JSON with stable indentation.

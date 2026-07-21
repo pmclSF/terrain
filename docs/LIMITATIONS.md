@@ -1,4 +1,4 @@
-# Limitations — what Terrain 0.3.0 does *not* do
+# Limitations — what Terrain 0.4.0 does *not* do
 
 > *Honest public list. Adopters should read this before deciding to adopt. Updated per release.*
 
@@ -15,37 +15,37 @@ These will not be added to Terrain. Adopters needing them should look elsewhere.
 - **General code-review commentary.** Terrain's output is failing test cases with structured diagnostics, not narrative reviews. Adopters wanting code-quality narrative use CodeRabbit / Greptile / similar.
 - **Generic-purpose AI tooling.** Terrain integrates with eval frameworks but is not itself one. It does not author evals, manage prompts, or run experiments.
 
-## Capabilities not in 0.3.0
+## Capabilities not yet shipped
 
-These capabilities are not in scope for 0.3.0. They may land in future releases as priorities and adopter feedback warrant. The list below is illustrative of common asks, not a roadmap commitment.
+These capabilities are not in scope for the current release. They may land in future releases as priorities and adopter feedback warrant. The list below is illustrative of common asks, not a roadmap commitment.
 
 **IDE and editor integrations**
-- Full LSP-server mode, Problems-pane diagnostics, JetBrains, Neovim, Helix. 0.3.0 includes a VS Code extension alpha that renders sidebar tree views from CLI JSON and supports file reveal; Marketplace publication is future work.
+- Full LSP-server mode, Problems-pane diagnostics, JetBrains, Neovim, Helix. Terrain includes a VS Code extension alpha that renders sidebar tree views from CLI JSON and supports file reveal; Marketplace publication is future work.
 
 **Languages beyond Go, JS/TS, Python, Java**
-- Ruby, Rust, Kotlin, Swift, Scala, C# are not analyzed in 0.3.0.
+- Ruby, Rust, Kotlin, Swift, Scala, C# are not analyzed.
 
 **Multi-repo / polyrepo analysis**
-- 0.3.0 ships portfolio aggregation via `terrain portfolio --from .terrain/repos.yaml`, including repo rollups, owner/tag propagation, snapshot-backed inputs, and framework-of-record drift findings. It does **not** compute cross-repo import/eval dependency edges; adopters with FE/BE in separate repos should still run Terrain on each repo independently for gate decisions.
+- Terrain ships portfolio aggregation via `terrain portfolio --from .terrain/repos.yaml`, including repo rollups, owner/tag propagation, snapshot-backed inputs, and framework-of-record drift findings. It does **not** compute cross-repo import/eval dependency edges; adopters with FE/BE in separate repos should still run Terrain on each repo independently for gate decisions.
 
 **Marketplace listings**
-- GitHub Marketplace Action / VS Code Marketplace extension / Claude Skill / OpenAI Apps SDK listings are not yet published. 0.3.0 ships Terrain as a binary invoked directly from CI, with workflow templates under `docs/examples/gate/`; the MCP server is also shipped.
+- GitHub Marketplace Action / VS Code Marketplace extension / Claude Skill / OpenAI Apps SDK listings are not yet published. Terrain ships as a binary invoked directly from CI, with workflow templates under `docs/examples/gate/`; the MCP server is also shipped.
 
 **Additional eval, data, and ML platform adapters**
-- 0.3.0 includes promptfoo, deepeval, ragas, Great Expectations (plus gauntlet via JSON-compatible ingestion). Other eval frameworks (Evidently, deepchecks, Fairlearn, NannyML), data-observability tools, ML registries beyond MLflow/W&B, deeper dbt and GraphQL runtime integration are not in scope at 0.3.0.
+- Terrain includes promptfoo, deepeval, ragas, Great Expectations (plus gauntlet via JSON-compatible ingestion). Other eval frameworks (Evidently, deepchecks, Fairlearn, NannyML), data-observability tools, ML registries beyond MLflow/W&B, deeper dbt and GraphQL runtime integration are not in scope.
 
 **Observability and production-signal ingestion**
-- Honeycomb, Datadog, New Relic, Sentry, Grafana, Prometheus, LLM-observability platforms, cost-tracking platforms. Production-aware rules that depend on these are not implemented at 0.3.0.
+- Honeycomb, Datadog, New Relic, Sentry, Grafana, Prometheus, LLM-observability platforms, cost-tracking platforms. Production-aware rules that depend on these are not implemented.
 
 **Deeper data-flow analysis**
-- Intra-procedural data-flow tracing is not in 0.3.0. `security/insecure-deserialization` is structural-only as a result (any unguarded `pickle.load` / `joblib.load` / `torch.load` / `yaml.load` is flagged).
+- Intra-procedural data-flow tracing is not yet shipped. `security/insecure-deserialization` is structural-only as a result (any unguarded `pickle.load` / `joblib.load` / `torch.load` / `yaml.load` is flagged).
 
 **CI templates beyond GitHub Actions**
-- GitLab CI, Bitbucket Pipelines, Jenkins, Azure Pipelines, Buildkite, TeamCity are not packaged with first-class templates at 0.3.0. They can still run the Terrain CLI and consume JUnit/SARIF-style artifacts where the platform supports them.
+- GitLab CI, Bitbucket Pipelines, Jenkins, Azure Pipelines, Buildkite, TeamCity are not packaged with first-class templates. They can still run the Terrain CLI and consume JUnit/SARIF-style artifacts where the platform supports them.
 
-## Rules in *preview* at 0.3.0 (not default-on)
+## Rules in *preview* (not default-on)
 
-A subset of rules ship as preview — fully implemented and documented in short-form, but default-off because triage time and false-positive rate have not been measured at the target bar at release time. Adopters can opt in via `terrain.yaml`; their feedback feeds graduation to stable.
+A subset of rules ship as preview — fully implemented and documented in short-form, but default-off because they are less battle-tested than the default-on set. Adopters can opt in via `terrain.yaml`; their feedback helps these rules graduate to stable.
 
 The largest preview categories:
 
@@ -54,16 +54,16 @@ The largest preview categories:
 - **Lifecycle** (6) — `model-not-registered`, `missing-monitoring`, `orphaned-artifact`, `no-rollback-plan`, `missing-shadow-mode`, `no-deprecation-path`. Stay preview until cross-system registry integrations land.
 - **Performance** (5) — `latency-regression`, `throughput-regression`, `memory-regression`, `cost-regression`, `training-time-regression`. Stay preview until observability ingestion lands.
 
-## Specific known limitations at 0.3.0
+## Specific known limitations
 
-These are not "deferred to later" — they are explicit limitations of how 0.3.0 capabilities are *bounded*.
+These are not "deferred to later" — they are explicit limitations of how current capabilities are *bounded*.
 
-- **Cross-language API edges are inferred at route granularity** for HTTP routes without schema. OpenAPI / tRPC / gRPC / GraphQL get field-level narrowing (the `fields_read` set); raw HTTP routes don't. Adopters with substantial untyped HTTP traffic between languages will see `regression/test-failed` over-select tests on FE changes touching those routes.
-- **`data/leakage-suspected` covers row-overlap and temporal leakage only** at 0.3.0. Feature leakage (column derived from label) and group leakage (same entity in both splits) are preview rules `data/feature-leakage` and `data/group-leakage`.
-- **`security/insecure-deserialization` is structural at 0.3.0** — flags any unguarded `pickle.load` / `joblib.load` / `torch.load` / `yaml.load` regardless of whether the path resolves to user-controlled input. Higher FP rate on legitimate trusted-load patterns; adopters can suppress via path-level ignore. Content-aware refinement lands with future intra-procedural data-flow tracing.
+- **General cross-language API-spec edges are not yet shipped.** The cross-boundary capability is schema↔prompt drift: a schema field is correlated with the prompt-template variable that references it across files and languages. Resolving general API references (OpenAPI / tRPC / gRPC / GraphQL / HTTP routes) into the dependency graph — including any field-level narrowing of impacted tests — is planned, not implemented. HTTP route strings are not resolved to downstream code, so a FE change that only touches an untyped route does not yet select the backend tests behind it.
+- **`data/leakage-suspected` covers row-overlap and temporal leakage only.** Feature leakage (column derived from label) and group leakage (same entity in both splits) are preview rules `data/feature-leakage` and `data/group-leakage`.
+- **`security/insecure-deserialization` is structural** — flags any unguarded `pickle.load` / `joblib.load` / `torch.load` / `yaml.load` regardless of whether the path resolves to user-controlled input. Higher FP rate on legitimate trusted-load patterns; adopters can suppress via path-level ignore. Content-aware refinement lands with future intra-procedural data-flow tracing.
 - **MCP spec version is pinned to 2025-11-25.** Newer MCP spec versions adopt via the one-cycle deprecation contract; adopters using newer MCP clients should consult `docs/integrations/mcp.md` for compatibility notes.
-- **VS Code extension is alpha.** Source and package metadata ship in the repo, but it is not Marketplace-published in 0.3.0. It renders sidebar tree views from CLI JSON and supports click-to-navigate. No Problems-pane diagnostics, inline squigglies, or real-time analysis. Full extension capability is future work.
-- **Measured readiness cards are not published for every rule in 0.3.0.** Harness infrastructure exists, but false-positive rate, triage time, and recall should only be represented as published for rules with generated cards under `harness/readiness/v0.3.0/`. Until then, rule docs and feature status describe known false-positive patterns and measurement status rather than measured adopter-specific quality.
+- **VS Code extension is alpha.** Source and package metadata ship in the repo, but it is not Marketplace-published. It renders sidebar tree views from CLI JSON and supports click-to-navigate. No Problems-pane diagnostics, inline squigglies, or real-time analysis. Full extension capability is future work.
+- **Readiness cards are not published for every rule.** A rule's quality is only represented as published for rules with generated cards under the release's `harness/readiness/` card set. Until then, rule docs and feature status describe known false-positive patterns and maturity status rather than published quality figures.
 - **A few `terrain.yaml` fields parse but are inert today.** `redact_source: true`, `on_terrain_error: pass`, the `ai.framework / scenarios_dir / baselines_dir` block, the `ml.registry / artifacts_dir` block, and the `explain` block all parse cleanly but are not yet read by any emission or analyze path. Adopters who set them get the documented schema (no error on load) and no observable behavior change. The field names are reserved so future wiring lands without a config-schema migration.
 - **Remote telemetry does not exist.** Optional local telemetry can be enabled explicitly, but it remains a local JSONL file. The project cannot tell how many adopters use Terrain or which rules they've configured unless an adopter deliberately shares that local file or a summary.
 

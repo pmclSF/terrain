@@ -7,8 +7,7 @@
 // Contract: when `(repo, rule_id, file_path)` fires ≥3 times across
 // PRs without `/dismiss`, switch that rule+file from inline-comment
 // to observability-footer for that file. Detector still fires;
-// visibility learns. No LLM. Compounds across weeks of use — the
-// strongest single thing that prevents long-tail fatigue.
+// visibility learns. No LLM.
 //
 // Storage: a single YAML file at `.terrain/finding-history.yaml` in
 // the repo. Schema v1. The pipeline reads on each run and writes

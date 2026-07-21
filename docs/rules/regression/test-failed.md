@@ -16,10 +16,6 @@ A test selected by impact analysis as relevant to the current change failed. The
 
 Reproduce locally with `terrain test --selector regression/test-failed`. Fix the failure or, if the test is stale, update it deliberately.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/regression/test_failed.go (DetectTestFailed). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `runtime`
@@ -37,15 +33,13 @@ A test selected by impact analysis as relevant to the current change failed. The
 
 ## 2. Severity & status
 
-- **Tier:** stable
-- **Default severity:** high
-- **Stable since:** v0.2.0
+Experimental — off by default; enable in `terrain.yaml`. Default severity: high.
 
 ## 3. What this catches
 
 - A unit test in the code unit a PR modifies fails when run on the head SHA
 - An integration test whose imported code path is touched by the PR fails
-- A test reachable via the cross-language API graph (Python backend exercised by a changed TS frontend) fails
+- A test reachable via a schema↔prompt or schema-code-test edge (a schema field a changed surface depends on) fails
 - A test selected by directory-proximity fallback (no exact edge) fails
 
 ## 4. Why this matters
@@ -54,9 +48,9 @@ The foundational rule in the regression family: "tests we picked for this change
 
 ## 5. Detection mechanism
 
-- **Approach:** Impact analysis selects tests touching the diff via `internal/impact/findImpactedTests`; the test runner executes them; JUnit XML output is parsed into per-test pass/fail; failures emit this signal.
+- **Approach:** impact analysis selects tests touching the diff; the test runner executes them; JUnit XML output is parsed into per-test pass/fail; failures emit this signal.
 - **Languages supported:** Go (`go test`), JS/TS (jest, vitest, mocha, playwright, cypress), Python (pytest, unittest), Java (JUnit 4, JUnit 5, TestNG).
-- **0.3.0 implementation:** consumes existing JUnit ingestion. Per-case parameterized enumeration is followup work (template-level only in 0.3.0).
+- **Implementation:** consumes JUnit ingestion. Per-case parameterized enumeration is template-level.
 
 ## 6. Worked example
 
@@ -85,7 +79,7 @@ terrain test --selector regression/test-failed
 
 ## 10. Stability commitment
 
-Rule ID, severity, and the impact-then-run-then-surface lifecycle are stable from v0.2.0.
+Rule ID, severity, and the impact-then-run-then-surface lifecycle are stable.
 
 ## 11. Related rules
 

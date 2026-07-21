@@ -34,4 +34,15 @@ ai:
     - "@acme/llm-client"
 ```
 
-Run `terrain init` to generate starter Terrain files, or `terrain describe --write` to generate a starter surface declaration.
+## Gate behavior — the trust floor
+
+The `--fail-on` gate runs with a **trust floor** by default: a *heuristic* AI finding fails the build only when Terrain can prove a fix for it, so CI never breaks on a low-confidence finding. Failing tests, regressions, security/safety leaks, `policy.yaml` violations, and any Critical always gate regardless. Turn it off (gate every finding on severity) per-repo:
+
+```yaml
+version: 1
+trust_floor: false
+```
+
+Omit the key (or set `true`) to keep the default. The CLI `--no-trust-floor` / `--trust-floor` flags on `terrain analyze`, `terrain test`, and `terrain report pr` / `check-runs` override the config per-invocation.
+
+Run `terrain init` to generate starter Terrain files, or `terrain describe --write` to generate a starter surface declaration. Run `terrain fix` to apply the validated remediations Terrain can prove (dry-run by default; `--apply` writes them).

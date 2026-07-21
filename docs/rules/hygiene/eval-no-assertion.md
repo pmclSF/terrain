@@ -16,10 +16,6 @@ An eval test function runs to completion without any assertion / score / metric 
 
 Add an assert / score check that fails when the eval output deviates from expectations.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/hygiene/eval_no_assertion.go (DetectEvalNoAssertion). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -36,9 +32,8 @@ An eval test function runs to completion without any assertion / score / metric 
 
 ## 2. Severity & status
 
-- **Tier:** stable
+- **Status:** experimental — off by default; enable in `terrain.yaml`.
 - **Default severity:** high
-- **Stable since:** v0.2.0
 - **Configurable via `terrain.yaml`:** yes — severity downgrade and path-level ignores supported (see [configuration.md](../../configuration.md))
 
 ## 3. What this catches
@@ -61,7 +56,7 @@ The rule fires on the structural shape, not on the runtime result. A test that f
 - **Inputs consumed:** source bytes of files in eval-like paths.
 - **Assertion vocabulary recognized:** Python `assert` statements (AST-level), unittest `self.assert*` methods, pytest `pytest.fail` / `pytest.skip`, framework calls `evaluator.score`, `deepeval.assert_*`, `ragas.evaluate`, `expect(...)`, `.score`, `metric.*`, `should.*`, `.toBe` / `.toEqual` for cross-framework JS-style helpers, `promptfoo` markers, `assert_response`.
 - **Edge cases handled:** assertions inside helper functions called from the test count (the text-match path catches them); raw `assert` statements caught at the AST level so string literals containing `assert` don't trip the suppression.
-- **Edge cases NOT handled in 0.3.0:** Python tests outside the eval path conventions; non-Python eval tests (Jest, Vitest under `evals/`) are future work for a JS/TS detector.
+- **Edge cases not handled:** Python tests outside the eval path conventions; non-Python eval tests (Jest, Vitest under `evals/`).
 
 ## 6. Worked example
 
@@ -112,8 +107,7 @@ ignore:
 
 - **Tests that delegate to a `validate(...)` helper** — the helper does the assertion but the test body doesn't. Mitigation: inline an `assert validate(...)` so the test body carries the assertion shape, or accept the warning.
 - **Tests under `eval/` that aren't actually evals** (utility / fixture builders named `test_*`) — rename them to a non-`test_*` prefix, or move them out of the eval path.
-- **Snapshot-based evals** that compare output against a recorded file via a framework helper Terrain doesn't recognize — extend `assertionShapes` or downgrade the rule.
-- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
+- **Snapshot-based evals** that compare output against a recorded file via a framework helper Terrain doesn't recognize — extend the recognized assertion vocabulary or downgrade the rule.
 
 ## 9. Reproducibility
 
@@ -123,7 +117,7 @@ terrain test --selector hygiene/eval-no-assertion
 
 ## 10. Stability commitment
 
-This rule's ID, default severity, and detection mechanism are stable from v0.2.0.
+This rule's ID, default severity, and detection mechanism are stable in the current release.
 
 ## 11. Related rules
 

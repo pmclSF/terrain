@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // ProjectContext holds project-level framework detection results.
@@ -180,7 +182,7 @@ func detectPythonProjectFrameworks(root string, ctx *ProjectContext) {
 		if _, err := os.Stat(p); err == nil {
 			// For pyproject.toml, check for [tool.pytest] section.
 			if f == "pyproject.toml" {
-				content, err := os.ReadFile(p)
+				content, err := saferead.ReadFile(p)
 				if err != nil || !strings.Contains(string(content), "[tool.pytest") {
 					continue
 				}
@@ -217,7 +219,7 @@ func detectJavaProjectFrameworks(root string, ctx *ProjectContext) {
 	// Check pom.xml or build.gradle for junit/testng dependencies.
 	for _, buildFile := range []string{"pom.xml", "build.gradle", "build.gradle.kts"} {
 		p := filepath.Join(root, buildFile)
-		content, err := os.ReadFile(p)
+		content, err := saferead.ReadFile(p)
 		if err != nil {
 			continue
 		}
@@ -260,7 +262,7 @@ func readDevDependencies(path string) map[string]interface{} {
 
 // readPackageJSON reads and parses a package.json file.
 func readPackageJSON(path string) map[string]interface{} {
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return map[string]interface{}{}
 	}

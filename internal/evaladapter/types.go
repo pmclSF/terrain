@@ -3,11 +3,12 @@
 // normalizes them into a single EvalRun shape that Terrain's rules
 // layer consumes.
 //
-// The plan §10 names these four adapters as 0.2.0 must-ship; gauntlet
-// is ingested through a JSON-compatible path rather than a named
-// adapter. The shared shape lets the regression/eval-regression rule
-// fire on any adopter's framework without coupling the rule to that
-// framework's specific output schema.
+// Adapters for promptfoo, deepeval, ragas, and Great Expectations are
+// registered as named adapters; gauntlet artifacts are ingested
+// through a JSON-compatible path rather than a named adapter. The
+// shared shape lets the regression/eval-regression rule fire on any
+// adopter's framework without coupling the rule to that framework's
+// specific output schema.
 package evaladapter
 
 // Framework identifies one of the supported eval-framework families.
@@ -93,6 +94,11 @@ type EvalRunStats struct {
 	// where every case has a Score; zero otherwise. Lets the regression
 	// rule do quick run-vs-run comparison without re-aggregating.
 	PrimaryMetric float64
+
+	// HasPrimaryMetric is true when PrimaryMetric was computed from a
+	// complete set of case scores (or pass rate). Distinguishes a
+	// legitimate 0.0 mean from "no comparable metric available".
+	HasPrimaryMetric bool
 }
 
 // Adapter reads one eval framework's output artifact and produces an

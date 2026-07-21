@@ -17,6 +17,7 @@ import (
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/reporting"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/terrainconfig"
 )
 
 // runImpactPipeline runs the analysis pipeline, computes a git diff changeset,
@@ -69,9 +70,9 @@ func runImpact(root, baseRef string, jsonOutput bool, show, ownerFilter string, 
 		impactResult = impact.FilterByOwner(impactResult, ownerFilter)
 	}
 
-	// `--explain-selection` defends the pitch claim
-	// "see which tests matter for a PR — and why". Surfaces
-	// the structured reason chains that internal/explain produces and
+	// `--explain-selection` surfaces the structured reason chains that
+	// answer "which tests matter for this PR, and why" — the chains that
+	// internal/explain produces and
 	// renders them via the existing RenderSelectionExplanation. Passes
 	// `verbose=true` so per-test evidence (selection reasons, code unit
 	// matches, confidence) is included; that's the whole point of the
@@ -205,6 +206,9 @@ type prRunOpts struct {
 	Gate            severityGate
 	BaselinePath    string
 	NewFindingsOnly bool
+	// NoTrustFloor opts out of the default remediation-validity gate, matching
+	// `terrain analyze/test --no-trust-floor`, so all CI surfaces gate alike.
+	NoTrustFloor bool
 }
 
 func runPR(o prRunOpts) error {
@@ -222,9 +226,10 @@ func runPR(o prRunOpts) error {
 	pipelineOpts.NewFindingsOnly = o.NewFindingsOnly
 	impactResult, result, err := runImpactPipeline(o.Root, o.BaseRef, pipelineOpts)
 	if err == nil && result != nil && result.Snapshot != nil {
-		if appendErr := appendPromptSchemaDriftSignals(result.Snapshot, o.Root, o.BaseRef); appendErr != nil {
-			err = appendErr
-		}
+		// Same drift detectors every other surface runs, via the shared helper —
+		// so PR drift carries the metadata its fix producer needs and the PR
+		// surface agrees with analyze/test/check-runs on what drift blocks.
+		err = appendDriftSignals(result.Snapshot, o.Root, o.BaseRef)
 	}
 	if err != nil {
 		// The impact pipeline can fail for half a dozen
@@ -251,12 +256,42 @@ func runPR(o prRunOpts) error {
 	// Compute the gate decision BEFORE rendering so the report renders
 	// for every output format (json, markdown, comment, annotation,
 	// default text), AND the gate error returns through the same code
-	// path. Mirrors the pattern used by `runAnalyze` after the JSON-
-	// stdout-purity bug fix in PR #134 — the renderer always completes
-	// before the exit decision is made.
+	// path. The renderer always completes (stdout stays a valid document)
+	// before the exit decision is made, so every output format is rendered
+	// and the gate returns through the error channel.
+	// Trust floor (default on): a gate-tier detector finding may fail the build
+	// only when its remediation is closed-loop validated — the same rule
+	// `terrain analyze/test --fail-on` applies, so the surfaces never disagree.
+	// The raw snapshot signals carry the metadata the fix producers need; a
+	// change-scoped finding without a proven fix still SHOWS in the comment, it
+	// just doesn't count toward the gate.
+	cfg, _ := terrainconfig.LoadForRoot(o.Root)
+	trustFloor := resolveTrustFloor(false, o.NoTrustFloor, cfg)
+	blockableTypeFile := map[string]bool{}
+	if blockable := gateBlockable(o.Root, trustFloor); blockable != nil {
+		for _, s := range result.Snapshot.Signals {
+			if blockable(s) {
+				blockableTypeFile[string(s.Type)+"\x00"+s.Location.File] = true
+			}
+		}
+	}
+	// gateCounts reports whether a change-scoped detector finding may fail the
+	// build. Trust floor off → gate-relevance alone decides (unchanged). Trust
+	// floor on → only when a validated-fix signal of the same (type, file) exists.
+	gateCounts := func(sigType, path string) bool {
+		if !trustFloor {
+			return true
+		}
+		return blockableTypeFile[sigType+"\x00"+path]
+	}
+
 	// Collect severities for the gate decision, filtering out
 	// observability-tier findings so they don't block CI.
 	severities := make([]string, 0, len(pr.NewFindings))
+	// Track which (signal type, file) findings the change-scoped and AI loops
+	// already counted, so the raw-snapshot loop below can skip them instead of
+	// counting the same finding twice toward the displayed BlockingCount.
+	countedTypeFile := map[string]bool{}
 	for _, f := range pr.NewFindings {
 		// SignalType is empty for protection_gap entries (always gate-
 		// relevant). For existing_signal entries, skip when the
@@ -264,16 +299,55 @@ func runPR(o prRunOpts) error {
 		if f.SignalType != "" && !signals.IsGateRelevant(models.SignalType(f.SignalType)) {
 			continue
 		}
+		// Under the trust floor, a gate-tier detector finding blocks only when
+		// its remediation is validated (protection_gap entries, SignalType "",
+		// are a changescope construct with no detector fix — left as-is).
+		if f.SignalType != "" && !gateCounts(f.SignalType, f.Path) {
+			continue
+		}
 		severities = append(severities, f.Severity)
+		if f.SignalType != "" {
+			countedTypeFile[f.SignalType+"\x00"+f.Path] = true
+		}
 	}
 	if pr.AI != nil {
-		// BlockingSignals already exclude observability-tier per
-		// changescope.AnalyzePR, so append verbatim.
 		for _, s := range pr.AI.BlockingSignals {
+			if !gateCounts(s.Type, s.File) {
+				continue
+			}
 			severities = append(severities, s.Severity)
+			countedTypeFile[s.Type+"\x00"+s.File] = true
+		}
+	}
+	// alwaysGate findings — deterministic failures, leaked secrets, safety, and
+	// user policy — plus Criticals must fail the PR merge regardless of whether
+	// they land on a changed file. The change-scoped AI classifier above drops
+	// off-diff, repo-scope, and Medium alwaysGate findings, which would let a
+	// secret in an unchanged file, a repo-level policy violation, or a test the
+	// PR broke elsewhere pass the PR gate silently. Count them from the raw
+	// snapshot so the PR gate agrees with analyze/test/check-runs on the
+	// must-block set (still subject to --fail-on: alwaysGate bypasses the trust
+	// floor, not the severity threshold). Skip findings the change-scoped and AI
+	// loops above already counted, so BlockingCount reflects distinct blocking
+	// findings rather than counting an on-diff must-block finding twice.
+	if result != nil && result.Snapshot != nil {
+		for _, s := range result.Snapshot.Signals {
+			if trustFloorApplies(s) || !signals.IsGateRelevant(s.Type) {
+				continue // keep only the always-block set (Critical / alwaysGate)
+			}
+			if countedTypeFile[string(s.Type)+"\x00"+s.Location.File] {
+				continue // already counted as a change-scoped or AI blocking finding
+			}
+			severities = append(severities, string(s.Severity))
 		}
 	}
 	gateBlocked, gateSummary := severityGateBlocked(o.Gate, prSeverityBreakdown(severities))
+	// The PR-comment verdict must count only what actually blocks the merge, not
+	// every direct-risk finding — otherwise it says "N findings block this merge"
+	// on a PR that exits 0.
+	if gateBlocked {
+		pr.BlockingCount = countAtOrAbove(o.Gate, prSeverityBreakdown(severities))
+	}
 	gateErr := func() error {
 		if gateBlocked {
 			return fmt.Errorf("%w: --fail-on=%s matched %s", errSeverityGateBlocked, o.Gate, gateSummary)

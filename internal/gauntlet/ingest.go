@@ -148,6 +148,27 @@ type ApplyResult struct {
 
 // classifyFailureSignal maps a failed scenario to the most specific AI signal
 // type based on the scenario name and category.
+// containsWord reports whether w appears in s as a whole token (bounded by
+// non-alphanumeric characters or the string edges), so a short keyword like
+// "search" does not match inside a larger word like "research".
+func containsWord(s, w string) bool {
+	for i := 0; i+len(w) <= len(s); i++ {
+		if s[i:i+len(w)] != w {
+			continue
+		}
+		beforeOK := i == 0 || !isAlphaNum(s[i-1])
+		afterOK := i+len(w) == len(s) || !isAlphaNum(s[i+len(w)])
+		if beforeOK && afterOK {
+			return true
+		}
+	}
+	return false
+}
+
+func isAlphaNum(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= 'A' && b <= 'Z') || (b >= '0' && b <= '9')
+}
+
 func classifyFailureSignal(sr EvalResult) models.SignalType {
 	name := strings.ToLower(sr.Name)
 	switch {
@@ -167,7 +188,9 @@ func classifyFailureSignal(sr EvalResult) models.SignalType {
 		return "chunkingRegression"
 	case strings.Contains(name, "rerank"):
 		return "rerankerRegression"
-	case strings.Contains(name, "retrieval") || strings.Contains(name, "search"):
+	case strings.Contains(name, "retrieval") || containsWord(name, "search"):
+		// `search` is matched as a whole token so "research-*" scenarios are not
+		// misclassified as a retrieval miss (research contains "search").
 		return "retrievalMiss"
 	case strings.Contains(name, "tool_routing") || strings.Contains(name, "tool-routing") || strings.Contains(name, "wrong_tool"):
 		return "toolRoutingError"

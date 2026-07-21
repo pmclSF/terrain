@@ -5,8 +5,9 @@
 // .terrain/shadow-report.jsonl. The user-visible findings are NOT
 // affected.
 //
-// The shadow report lets the team measure the impact of a mechanism
-// before flipping it to live. The regression suites
+// The shadow report records the behavior changes a shadow-state
+// mechanism would have made if it were live, without affecting
+// user-visible findings. The regression suites
 // (internal/regressionsuite) and per-mechanism recall reports
 // (internal/recallharness) consume this data.
 //

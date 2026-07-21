@@ -2,10 +2,10 @@
 // authored documentation and the canonical signal manifest. Drift
 // between what the README / feature-status doc / CHANGELOG promise
 // and what the engine actually ships is the failure mode adopters
-// notice when they evaluate the binary against the marketing claim.
+// notice when they evaluate the binary against the documented behavior.
 // `make truth-verify` catches it before the release does.
 //
-// Scope today (0.2):
+// Scope:
 //
 //  1. Every signal name appearing in docs/release/feature-status.md
 //     under the "Detectors / signal types" sections must reference
@@ -19,24 +19,13 @@
 //     surfaces "stable signals that aren't even in the curated
 //     view" — a different drift shape from the missing-from-code one.
 //
-// Out of scope today (0.3+):
-//
-//   - README command list ⊆ dispatcher: requires a registry refactor;
-//     without it, parsing main.go for the truth is brittle.
-//   - CHANGELOG promotion-claim cross-check: useful but lower
-//     priority; the manifest already drives the per-signal status,
-//     so any "promoted to stable" claim that's wrong is already
-//     visible in `make docs-verify`.
-//   - CI matrix ⊆ compatibility tier doc: useful but distinct
-//     failure mode; lives in workflow YAML rather than markdown.
-//
 // Exit codes:
 //
 //	0 — every documented signal resolves; no orphan stable signals
 //	1 — one or more drifts (output names every offender)
 //	2 — invocation error (missing files, parse failures)
 //
-// Wired into the release-readiness pipeline via `make truth-verify`.
+// Run via `make truth-verify`.
 package main
 
 import (

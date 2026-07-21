@@ -9,6 +9,7 @@ import (
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/signals"
+	"github.com/pmclSF/terrain/internal/terrainconfig"
 )
 
 type testRunOpts struct {
@@ -20,6 +21,9 @@ type testRunOpts struct {
 	Gate            severityGate
 	BaselinePath    string
 	NewFindingsOnly bool
+	// NoTrustFloor opts out of the default remediation-validity gate, matching
+	// `terrain analyze --no-trust-floor`, so both commands gate identically.
+	NoTrustFloor bool
 }
 
 // runTestCommand implements `terrain test`. The canonical CI-mode
@@ -89,6 +93,21 @@ func runTestCommand(o testRunOpts) error {
 		return fmt.Errorf("analyze pipeline failed: %w", perr)
 	}
 	if result != nil && result.Snapshot != nil {
+		// terrain test is the CI-mode wrapper around analyze, so it must see the
+		// prompt-drift detector too — otherwise a drift `terrain analyze` blocks
+		// silently passes here. No base ref in test mode; the diff-free static
+		// prompt↔schema drift (the validated gate-blocker) still fires.
+		if err := appendDriftSignals(result.Snapshot, root, ""); err != nil {
+			return fmt.Errorf("drift detection failed: %w", err)
+		}
+	}
+	// Per-rule findings budget — mirror `terrain analyze` so the CI-mode
+	// wrapper writes the same capped findings.json / JUnit / Step Summary as a
+	// local analyze on the same repo+config.
+	if result != nil && result.Snapshot != nil {
+		applyFindingsBudget(result.Snapshot, root, jsonOut)
+	}
+	if result != nil && result.Snapshot != nil {
 		for _, s := range result.Snapshot.Signals {
 			if wantRule == nil {
 				filtered = append(filtered, s)
@@ -100,18 +119,47 @@ func runTestCommand(o testRunOpts) error {
 		}
 	}
 
-	fxs := findings.FromSignals(filtered, func(t models.SignalType) string {
-		return typeToRuleID[t]
-	})
-	art := findings.NewArtifact(fxs)
+	// Trust floor: terrain test is the CI-mode wrapper around analyze, so it
+	// must apply the same gate semantics. Honor trust_floor from terrain.yaml
+	// so a finding gated in CI reproduces with `terrain analyze` on the same
+	// repo. A malformed config fails closed on source redaction.
+	cfg, cfgErr := terrainconfig.LoadForRoot(root)
+	if cfgErr != nil {
+		logging.L().Warn("terrain test: could not load config; redacting source excerpts to be safe", "err", cfgErr)
+	}
+	// Trust floor is the 0.4.0 default (on); honor `--no-trust-floor` and an
+	// explicit trust_floor: false opt-out from terrain.yaml so `terrain test`
+	// and `terrain analyze` gate identically on the same repo.
+	trustFloor := resolveTrustFloor(false, o.NoTrustFloor, cfg)
+	redact := cfgErr != nil || (cfg != nil && cfg.RedactSource)
+
+	// Build the artifact via the SHARED builder so the Step Summary and JUnit
+	// reflect the same trust-floor demotion as findings.json and the exit code —
+	// otherwise a held-back finding reads as a gate-blocking error on a green run.
+	art := buildFindingsArtifact(root, filtered, redact, trustFloor)
 
 	if result != nil && result.Snapshot != nil {
-		if err := writeFindingsJSON(root, filtered); err != nil {
+		if err := writeFindingsJSON(root, filtered, redact, trustFloor); err != nil {
 			logging.L().Warn("terrain test: writing .terrain/findings.json", "err", err)
 		}
 	}
 
-	gateBlocked, gateSummary := severityGateBlocked(o.Gate, signalSeverityBreakdown(filtered))
+	gateBreakdown := signalSeverityBreakdown(filtered)
+	if trustFloor {
+		// Only heuristic findings without a validated remediation are held back
+		// under the trust floor — identical to analyze. Tell the user what was
+		// held back so a passing required check is never silent about it.
+		raw := gateBreakdown
+		gateBreakdown = trustFloorGateBreakdown(root, filtered)
+		if o.Gate != severityGateNone {
+			if held := trustFloorHeldBack(o.Gate, raw, gateBreakdown); held > 0 {
+				fmt.Fprintf(os.Stderr,
+					"trust floor: %d finding(s) at or above --fail-on=%s held back (no validated auto-fix yet) — they surface in the report but do not block CI. Run --no-trust-floor to gate on severity.\n",
+					held, o.Gate)
+			}
+		}
+	}
+	gateBlocked, gateSummary := severityGateBlocked(o.Gate, gateBreakdown)
 	gateErr := func() error {
 		if gateBlocked {
 			return fmt.Errorf("%w: --fail-on=%s matched %s", errSeverityGateBlocked, o.Gate, gateSummary)
@@ -164,18 +212,21 @@ func runTestCommand(o testRunOpts) error {
 	}
 	if !jsonOut && junitPath == "" && summaryPath == "" {
 		// No artifacts requested — show the findings inline so the
-		// user can see what they would have gotten.
-		if len(filtered) == 0 {
+		// user can see what they would have gotten. Render from the
+		// same trust-floor-demoted artifact (art.Findings) that backs
+		// findings.json, JUnit, and the gate, so the terminal reports
+		// one severity per finding instead of the raw signal severity.
+		if len(art.Findings) == 0 {
 			fmt.Println("No findings.")
 			return nil
 		}
 		fmt.Println()
-		for _, s := range filtered {
-			loc := s.Location.File
-			if s.Location.Line > 0 {
-				loc = fmt.Sprintf("%s:%d", loc, s.Location.Line)
+		for _, f := range art.Findings {
+			loc := f.PrimaryLoc.Path
+			if f.PrimaryLoc.Line > 0 {
+				loc = fmt.Sprintf("%s:%d", loc, f.PrimaryLoc.Line)
 			}
-			fmt.Printf("  [%s] %s  %s\n", s.Severity, s.Type, loc)
+			fmt.Printf("  [%s] %s  %s\n", f.Severity, f.RuleID, loc)
 		}
 	}
 	return gateErr()

@@ -1,20 +1,13 @@
 // Package configdrift implements Terrain's detector for brittle infra-
 // config patterns.
 //
-// Empirical motivation: a meaningful share of unflagged regression-
-// introducing PRs in observed validation data are "config-only" edits
-// (YAML / TOML / JSON / INI / TF) that no existing detector covers.
-//
-// v1 design — analyse-time, not PR-diff-time. Walks tracked-config
-// files and flags structural patterns that are forward-compat hazards:
+// It walks tracked-config files (YAML / TOML / JSON / INI / TF) and
+// flags structural patterns that are forward-compat hazards:
 //
 //   - GitHub Actions workflows pinning third-party actions to mutable
 //     refs (`@main`, `@master`, untagged branches).
 //   - docker-compose / k8s / Helm using `:latest` or empty image tags.
 //   - k8s manifests referencing deprecated `apiVersion`s.
-//
-// v2 (post-0.2.0): consume PR-diff context to flag actual schema
-// changes (key renames / removals / type changes).
 package configdrift
 
 import (
@@ -26,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"github.com/pmclSF/terrain/internal/signals"
 )
 
@@ -40,6 +34,14 @@ type SchemaDriftDetector struct {
 // Detect walks the repo for tracked configs and emits one finding per
 // file with hazards. Multiple hazards on the same file collapse into
 // one finding listing all of them in Metadata.
+//
+// Contract:
+//
+//	CD1.   GH Actions mutable / missing / non-SHA-non-semver refs → mutable-ref.
+//	CD2-4. docker-compose :latest, untagged (port-aware), and v2-schema hazards.
+//	CD5.   Kubernetes deprecated apiVersions.
+//	CD8.   Severity by distinct-hazard count: 1 Low, 2 Medium, >=3 High
+//	       (hazards deduplicated per file).
 func (d *SchemaDriftDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
 	if d == nil || d.Root == "" {
 		return nil
@@ -114,8 +116,8 @@ func classifyConfig(repoRoot, p string) *models.Signal {
 	if kind == "" {
 		return nil
 	}
-	data, err := os.ReadFile(p)
-	if err != nil {
+	data, ok := saferead.File(p, saferead.SourceCap)
+	if !ok {
 		return nil
 	}
 	var hazards []string
@@ -245,8 +247,10 @@ func scanDockerCompose(data []byte) []string {
 	if untaggedCount > 0 {
 		hazards = append(hazards, "docker:untagged-image")
 	}
-	// docker-compose version: '2' is deprecated.
-	if hasLine(data, "version: '2'") || hasLine(data, `version: "2"`) {
+	// docker-compose version 2 schema is deprecated. Match the version
+	// line structurally so quoted ('2', "2.1") and unquoted (2, 2.4)
+	// forms are all caught.
+	if hasComposeV2(data) {
 		hazards = append(hazards, "docker:compose-v2-schema")
 	}
 	return hazards
@@ -284,6 +288,14 @@ func scanKubernetes(data []byte) []string {
 }
 
 // --- helpers ---
+
+// composeV2Line matches a top-level compose `version:` key set to a
+// major-version-2 value, quoted or not (2, 2.0 … 2.4, '2', "2.1").
+var composeV2Line = regexp.MustCompile(`(?m)^\s*version:\s*["']?2(?:\.\d+)?["']?\s*(?:#.*)?$`)
+
+func hasComposeV2(data []byte) bool {
+	return composeV2Line.Match(data)
+}
 
 func hasLine(data []byte, needle string) bool {
 	scanner := bufio.NewScanner(bytes.NewReader(data))

@@ -2,7 +2,6 @@ package aidetect
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
@@ -10,6 +9,7 @@ import (
 	"github.com/pmclSF/terrain/internal/mechanisms"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/runtimeconfig"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"github.com/pmclSF/terrain/internal/signals"
 	"gopkg.in/yaml.v3"
 )
@@ -167,7 +167,7 @@ type evalFinding struct {
 // fixes the multi-provider case while retaining single-finding
 // behavior for the common single-provider shape.
 func analyseEvalConfig(path string) []evalFinding {
-	raw, err := os.ReadFile(path)
+	raw, err := saferead.ReadFile(path)
 	if err != nil {
 		return nil
 	}
@@ -186,9 +186,13 @@ func analyseEvalConfig(path string) []evalFinding {
 		tempState := scanForKey(&node, "temperature")
 		hasModel := scanForKey(&node, "model").present
 		switch {
-		case tempState.present && tempState.numericValue != 0:
+		case tempState.present && tempState.numeric && tempState.numericValue != 0:
 			return []evalFinding{{
 				Explanation: "Eval config sets temperature ≠ 0; runs will be non-deterministic.",
+			}}
+		case tempState.present && !tempState.numeric:
+			return []evalFinding{{
+				Explanation: "Eval config sets temperature to a non-numeric (templated) value; the pinned value can't be verified as deterministic.",
 			}}
 		case !tempState.present && hasModel:
 			return []evalFinding{{
@@ -204,8 +208,10 @@ func analyseEvalConfig(path string) []evalFinding {
 		tempState := scanForKey(prov.node, "temperature")
 		var msg string
 		switch {
-		case tempState.present && tempState.numericValue != 0:
+		case tempState.present && tempState.numeric && tempState.numericValue != 0:
 			msg = fmt.Sprintf("Eval provider %q sets temperature %.2f (≠ 0); runs will be non-deterministic.", prov.label, tempState.numericValue)
+		case tempState.present && !tempState.numeric:
+			msg = fmt.Sprintf("Eval provider %q sets temperature to a non-numeric (templated) value; the pinned value can't be verified as deterministic.", prov.label)
 		case !tempState.present:
 			msg = fmt.Sprintf("Eval provider %q declares a model but does not pin temperature; default sampling is non-deterministic.", prov.label)
 		default:
@@ -287,6 +293,7 @@ func walkProviders(n *yaml.Node, out *[]providerEntry, parentLabel string) {
 // cares about presence + numeric for `temperature` today.
 type keyState struct {
 	present      bool
+	numeric      bool
 	numericValue float64
 }
 
@@ -338,6 +345,7 @@ func scalarToKeyState(v *yaml.Node) keyState {
 	// Try float, then quoted-int representations.
 	var f float64
 	if err := v.Decode(&f); err == nil {
+		state.numeric = true
 		state.numericValue = f
 	}
 	return state

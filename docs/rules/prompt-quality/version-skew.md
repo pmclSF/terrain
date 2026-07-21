@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** observability
 
-## Promotion plan
-
-Detects when the same prompt template is referenced by multiple eval scenarios under different version names.
-
 ## Evidence sources
 
 - `graph-traversal`
@@ -28,9 +24,7 @@ The same prompt template is referenced under different version names across eval
 
 ## 2. Severity & status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 

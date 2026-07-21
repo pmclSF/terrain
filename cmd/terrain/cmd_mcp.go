@@ -11,6 +11,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/findings"
 	"github.com/pmclSF/terrain/internal/mcp"
+	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/terrainconfig"
 )
 
@@ -19,10 +20,11 @@ import (
 // this is the standard MCP transport.
 //
 // Wiring artifacts: reads `.terrain/findings.json` (emitted by every
-// `terrain analyze` run) plus terrain.yaml surfaces and any
-// `.terrain/baselines/*.json` files. Each load step degrades
-// gracefully — a missing file just leaves that field empty so the
-// server stays usable on a fresh repo.
+// `terrain analyze` run) plus terrain.yaml surfaces, any
+// `.terrain/baselines/*.json` files, and `.terrain/snapshots/latest.json`
+// for the eval inventory. Each load step degrades gracefully — a missing
+// file just leaves that field empty so the server stays usable on a fresh
+// repo.
 func runMCPCommand(root string) error {
 	fmt.Fprintf(os.Stderr, "terrain-mcp: starting on stdio, spec version %s\n", mcp.SpecVersion)
 	fmt.Fprintf(os.Stderr, "terrain-mcp: serving from %s\n", root)
@@ -66,6 +68,26 @@ func loadMCPArtifacts(root string) *mcp.Artifacts {
 				FilePath:    s.FilePath,
 				Model:       s.Model,
 			}
+		}
+	}
+
+	// Persisted snapshot — written by `terrain analyze --write-snapshot`.
+	// Its eval inventory feeds the read_eval tool.
+	if data, err := os.ReadFile(filepath.Join(root, ".terrain", "snapshots", "latest.json")); err == nil {
+		var snap models.TestSuiteSnapshot
+		if err := json.Unmarshal(data, &snap); err == nil {
+			for i := range snap.Evals {
+				e := snap.Evals[i]
+				out.Evals[e.EvalID] = mcp.EvalDescriptor{
+					ID:                e.EvalID,
+					Name:              e.Name,
+					Path:              e.Path,
+					Framework:         e.Framework,
+					CoveredSurfaceIDs: e.CoveredSurfaceIDs,
+				}
+			}
+		} else {
+			fmt.Fprintf(os.Stderr, "terrain-mcp: snapshots/latest.json parse: %v\n", err)
 		}
 	}
 

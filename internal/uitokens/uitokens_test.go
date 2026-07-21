@@ -1,6 +1,7 @@
 package uitokens
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -72,6 +73,117 @@ func TestColorWrappers_EmptyStringNoop(t *testing.T) {
 	})
 }
 
+// ── Link role ───────────────────────────────────────────────────────
+
+func TestLinkRole(t *testing.T) {
+	runWithoutColor(t, func() {
+		if got := Link("terrain fix"); got != "terrain fix" {
+			t.Errorf("Link with color off = %q, want plain", got)
+		}
+	})
+	runWithColor(t, func() {
+		got := Link("terrain fix")
+		if !strings.Contains(got, "\x1b[34m") {
+			t.Errorf("Link should use blue (34); got %q", got)
+		}
+		// Link (blue, 34) must be distinct from Accent (cyan, 36).
+		if strings.Contains(got, "\x1b[36m") {
+			t.Errorf("Link should not reuse the accent color; got %q", got)
+		}
+	})
+	runWithColor(t, func() {
+		if Link("") != "" {
+			t.Error("Link on empty string should emit nothing")
+		}
+	})
+}
+
+// ── Glyph ASCII floor ───────────────────────────────────────────────
+
+// runWithUnicode / runWithoutUnicode force the capability flag so glyph
+// tests don't depend on the CI runner's locale.
+func runWithUnicode(t *testing.T, on bool, fn func()) {
+	t.Helper()
+	prev := UnicodeEnabled
+	UnicodeEnabled = on
+	defer func() { UnicodeEnabled = prev }()
+	fn()
+}
+
+func TestGlyphs_UnicodeAndASCII(t *testing.T) {
+	cases := []struct {
+		name    string
+		fn      func() string
+		unicode string
+		ascii   string
+	}{
+		{"OK", GlyphOK, "✓", "ok"},
+		{"Fail", GlyphFail, "✗", "x"},
+		{"Warn", GlyphWarn, "⚠", "!"},
+		{"Finding", GlyphFinding, "●", "*"},
+		{"MeterFull", GlyphMeterFull, "●", "#"},
+		{"MeterEmpty", GlyphMeterEmpty, "○", "-"},
+		{"Chevron", GlyphChevron, "›", ">"},
+		{"Arrow", GlyphArrow, "→", "->"},
+		{"Relates", GlyphRelates, "↔", "<->"},
+		{"Dot", GlyphDot, "·", "-"},
+		{"Bullet", GlyphBullet, "•", "*"},
+		{"Dash", GlyphDash, "—", "-"},
+		{"Up", GlyphUp, "▲", "^"},
+		{"Down", GlyphDown, "▼", "v"},
+	}
+	runWithUnicode(t, true, func() {
+		for _, c := range cases {
+			if got := c.fn(); got != c.unicode {
+				t.Errorf("Glyph%s (unicode) = %q, want %q", c.name, got, c.unicode)
+			}
+		}
+	})
+	runWithUnicode(t, false, func() {
+		for _, c := range cases {
+			got := c.fn()
+			if got != c.ascii {
+				t.Errorf("Glyph%s (ascii floor) = %q, want %q", c.name, got, c.ascii)
+			}
+			// The ASCII floor must actually be ASCII (one byte per rune).
+			if len([]byte(got)) != len([]rune(got)) {
+				t.Errorf("Glyph%s ascii floor %q contains non-ASCII bytes", c.name, got)
+			}
+		}
+	})
+}
+
+// ── Terminal width ──────────────────────────────────────────────────
+
+func TestTerminalWidth_ClampAndFallback(t *testing.T) {
+	cases := []struct {
+		cols string
+		want int
+	}{
+		{"", 80},         // unset → classic default
+		{"100", 100},     // honored
+		{"40", 40},       // lower bound honored
+		{"20", 40},       // below min → clamped up
+		{"5000", 200},    // above max → clamped down
+		{"garbage", 80},  // unparseable → default
+		{"-30", 80},      // negative → default
+		{"  120  ", 120}, // trimmed
+	}
+	for _, c := range cases {
+		prev, had := os.LookupEnv("COLUMNS")
+		os.Setenv("COLUMNS", c.cols)
+		got := TerminalWidth()
+		if had {
+			os.Setenv("COLUMNS", prev)
+		} else {
+			os.Unsetenv("COLUMNS")
+		}
+		if got != c.want {
+			t.Errorf("TerminalWidth() with COLUMNS=%q = %d, want %d", c.cols, got, c.want)
+		}
+	}
+}
+
 // ── Severity badge ──────────────────────────────────────────────────
 
 func TestSeverityBadge_Labels(t *testing.T) {
@@ -119,23 +231,28 @@ func TestSeverityBadge_HighestSeveritiesAreBold(t *testing.T) {
 
 func TestVerdictBadge(t *testing.T) {
 	runWithoutColor(t, func() {
-		cases := []struct {
-			in   string
-			want string
-		}{
-			{"PASS", SymOK + " PASS"},
-			{"pass", SymOK + " PASS"},
-			{"  pass  ", SymOK + " PASS"},
-			{"WARN", SymWarn + " WARN"},
-			{"FAIL", SymFail + " FAIL"},
-			{"unknown", "unknown"},
-		}
-		for _, tc := range cases {
-			got := VerdictBadge(tc.in)
-			if got != tc.want {
-				t.Errorf("VerdictBadge(%q) = %q, want %q", tc.in, got, tc.want)
+		// Force the Unicode form: VerdictBadge routes glyphs through the
+		// capability-aware Glyph* accessors, so the raw-glyph assertions
+		// below only hold when UnicodeEnabled is on.
+		runWithUnicode(t, true, func() {
+			cases := []struct {
+				in   string
+				want string
+			}{
+				{"PASS", SymOK + " PASS"},
+				{"pass", SymOK + " PASS"},
+				{"  pass  ", SymOK + " PASS"},
+				{"WARN", SymWarn + " WARN"},
+				{"FAIL", SymFail + " FAIL"},
+				{"unknown", "unknown"},
 			}
-		}
+			for _, tc := range cases {
+				got := VerdictBadge(tc.in)
+				if got != tc.want {
+					t.Errorf("VerdictBadge(%q) = %q, want %q", tc.in, got, tc.want)
+				}
+			}
+		})
 	})
 }
 

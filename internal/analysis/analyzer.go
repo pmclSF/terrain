@@ -24,6 +24,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/ownership"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"github.com/pmclSF/terrain/internal/testcase"
 	"github.com/pmclSF/terrain/internal/testtype"
 )
@@ -309,7 +310,7 @@ func extractRAGPipelineComponents(root string, codeSurfaces []models.CodeSurface
 		if !ok {
 			return
 		}
-		content, err := os.ReadFile(filepath.Join(root, relPath))
+		content, err := saferead.ReadFile(filepath.Join(root, relPath))
 		if err != nil {
 			return
 		}

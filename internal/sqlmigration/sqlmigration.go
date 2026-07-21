@@ -8,7 +8,7 @@
 //   - Generic versioned migrations in db/migrate/ or migrations/ dirs
 //
 // Terrain consumes the parsed schema to wire columns to code surfaces
-// (R3-I5 field-level narrowing) and to feed the schema/* rules family
+// (field-level narrowing) and to feed the schema/* rules family
 // (hygiene/destructive-migration, lifecycle/schema-drift).
 //
 // Parsing is pattern-based, not a full SQL parser. The extraction
@@ -22,11 +22,12 @@ package sqlmigration
 import (
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // Migration represents one migration file.
@@ -158,9 +159,9 @@ var skipDirs = map[string]bool{
 
 // ParseFile reads and parses a single migration file.
 func ParseFile(path string) (*Migration, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("sqlmigration: read %s: %w", path, err)
+	data, ok := saferead.File(path, saferead.DataCap)
+	if !ok {
+		return nil, fmt.Errorf("sqlmigration: %s is not a readable regular file within the size limit", path)
 	}
 	m := Parse(string(data))
 	if m == nil {

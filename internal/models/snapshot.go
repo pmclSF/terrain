@@ -105,7 +105,6 @@ type SnapshotMeta struct {
 //   - CLI JSON output
 //   - local snapshot persistence
 //   - extension rendering
-//   - future hosted ingestion
 type TestSuiteSnapshot struct {
 	// SnapshotMeta holds schema version and engine provenance.
 	SnapshotMeta SnapshotMeta `json:"snapshotMeta"`

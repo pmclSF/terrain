@@ -23,11 +23,11 @@ package triggergate
 
 import (
 	"bufio"
-	"os"
 	"regexp"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // MechanismName is the canonical name in mechanisms.yaml.
@@ -46,7 +46,7 @@ const MechanismName = "deprecated_test_pattern_trigger_gate"
 // Comments are stripped before matching, so `// import 'enzyme'` does
 // NOT count as an import.
 func ImportsFrom(path string, patterns []string) (bool, error) {
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return false, err
 	}
@@ -134,7 +134,7 @@ func firstNonEmptySubmatch(m []string, indices ...int) string {
 // the test body. The walk handles single/double/backtick strings and
 // `//`/`/* */` comments.
 func IsSetTimeoutAtConfigScope(path string, line int) (bool, error) {
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return false, err
 	}

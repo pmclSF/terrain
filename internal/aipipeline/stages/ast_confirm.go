@@ -20,8 +20,8 @@ import (
 //
 //  2. AST runs but finds no call site, despite the regex stage having
 //     matched an SDK anchor — emit "ast.no_call_despite_regex" with
-//     strong negative weight. This is the negative-gate the precision
-//     stack relies on.
+//     strong negative weight. This is the negative gate that
+//     suppresses regex-only candidates with no reachable call site.
 //
 //  3. AST cannot run (unsupported language, parse failure, file too
 //     large) — record an "ast=unavailable" fallback. Composer applies
@@ -30,7 +30,7 @@ import (
 type ASTConfirm struct {
 	// MaxFileBytes is a hard upper bound. Files larger than this skip
 	// AST parsing and record the "ast=unavailable" fallback. Default
-	// 500 KB — matches the data-agent's empirical break-even.
+	// 500 KB — beyond this the AST parse cost outweighs the added signal.
 	MaxFileBytes int
 }
 
@@ -66,11 +66,8 @@ func (s *ASTConfirm) Run(_ context.Context, c *aipipeline.Candidate) aipipeline.
 	// have no AST-resolvable call (negative atom). Neither job applies
 	// when the regex stage was silent, and tree-sitter parsing every
 	// source file in a large repo is by far the dominant cost of the
-	// pipeline (~95% of files have no SDK signals).
-	//
-	// Measured on the terrain repo (~6k Go files): without the fast
-	// path the pipeline ran 4m23s; with it, well under a second on the
-	// same workload.
+	// pipeline (the large majority of files carry no SDK signal). Skipping
+	// the AST parse for those files is what keeps analysis fast on big repos.
 	if !hasRegexLexicalAtom(c) {
 		return aipipeline.StageResult{Continue: true}
 	}

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"gopkg.in/yaml.v3"
 )
 
@@ -111,7 +112,7 @@ var (
 // extractJSImports extracts relative import paths from a JS/TS test file.
 func extractJSImports(root, relPath string, resolver *jsImportResolver) map[string]bool {
 	absPath := filepath.Join(root, relPath)
-	content, err := os.ReadFile(absPath)
+	content, err := saferead.ReadFile(absPath)
 	if err != nil {
 		return nil
 	}
@@ -364,7 +365,7 @@ func loadTSPathAliasesFromFile(root, path string, seen map[string]bool) []pathAl
 	}
 	seen[abs] = true
 
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return nil
 	}
@@ -490,7 +491,7 @@ func tsBaseURLRelativeToRoot(root, configDir, baseURL string) string {
 }
 
 func loadPackageImportAliases(root string) []pathAlias {
-	data, err := os.ReadFile(filepath.Join(root, "package.json"))
+	data, err := saferead.ReadFile(filepath.Join(root, "package.json"))
 	if err != nil {
 		return nil
 	}
@@ -620,7 +621,7 @@ func loadWorkspacePackages(root string) map[string]string {
 				continue
 			}
 			pkgJSON := filepath.Join(match, "package.json")
-			pkgData, err := os.ReadFile(pkgJSON)
+			pkgData, err := saferead.ReadFile(pkgJSON)
 			if err != nil {
 				continue
 			}
@@ -643,13 +644,13 @@ func loadWorkspacePackages(root string) map[string]string {
 func workspacePatterns(root string) []string {
 	var patterns []string
 
-	if data, err := os.ReadFile(filepath.Join(root, "package.json")); err == nil {
+	if data, err := saferead.ReadFile(filepath.Join(root, "package.json")); err == nil {
 		patterns = append(patterns, parseWorkspacePatterns(data)...)
 	}
-	if data, err := os.ReadFile(filepath.Join(root, "pnpm-workspace.yaml")); err == nil {
+	if data, err := saferead.ReadFile(filepath.Join(root, "pnpm-workspace.yaml")); err == nil {
 		patterns = append(patterns, parsePNPMWorkspacePatterns(data)...)
 	}
-	if data, err := os.ReadFile(filepath.Join(root, "lerna.json")); err == nil {
+	if data, err := saferead.ReadFile(filepath.Join(root, "lerna.json")); err == nil {
 		patterns = append(patterns, parseLernaWorkspacePatterns(data)...)
 	}
 
@@ -756,7 +757,7 @@ var (
 // repos). Mirrors the multi-base pattern from extractPythonImports.
 func extractJavaImports(root, relPath string) map[string]bool {
 	absPath := filepath.Join(root, relPath)
-	content, err := os.ReadFile(absPath)
+	content, err := saferead.ReadFile(absPath)
 	if err != nil {
 		return nil
 	}
@@ -866,7 +867,7 @@ func dirExists(path string) bool {
 // extractPythonImports extracts relative imports from a Python test file.
 func extractPythonImports(root, relPath string) map[string]bool {
 	absPath := filepath.Join(root, relPath)
-	content, err := os.ReadFile(absPath)
+	content, err := saferead.ReadFile(absPath)
 	if err != nil {
 		return nil
 	}
@@ -1035,7 +1036,7 @@ func parseGoImportPaths(absPath string) []string {
 }
 
 func loadGoModulePath(root string) string {
-	data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+	data, err := saferead.ReadFile(filepath.Join(root, "go.mod"))
 	if err != nil {
 		return ""
 	}

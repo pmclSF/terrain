@@ -16,10 +16,6 @@ Test files contain test function signatures but no detectable assertions.
 
 Add assertions to validate behavior — tests without assertions verify nothing.
 
-## Promotion plan
-
-Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role gate that excludes conftest/fixtures/commented-out tests, and framing-stable evaluation.
-
 ## Evidence sources
 
 - `structural-pattern`

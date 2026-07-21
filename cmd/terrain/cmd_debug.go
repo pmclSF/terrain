@@ -12,6 +12,7 @@ import (
 	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/depgraph"
 	"github.com/pmclSF/terrain/internal/metrics"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 func runDepgraph(root string, jsonOutput bool, show string, changed string) error {
@@ -210,7 +211,7 @@ func runDepgraph(root string, jsonOutput bool, show string, changed string) erro
 			if len(pol.Recommendations) > 0 {
 				fmt.Println("Recommendations:")
 				for _, r := range pol.Recommendations {
-					fmt.Printf("  • %s\n", r)
+					fmt.Printf("  %s %s\n", uitokens.GlyphBullet(), r)
 				}
 				fmt.Println()
 			}
@@ -331,7 +332,7 @@ func runDepgraph(root string, jsonOutput bool, show string, changed string) erro
 	if len(pol.Recommendations) > 0 {
 		fmt.Println("Recommendations:")
 		for _, r := range pol.Recommendations {
-			fmt.Printf("  • %s\n", r)
+			fmt.Printf("  %s %s\n", uitokens.GlyphBullet(), r)
 		}
 		fmt.Println()
 	}

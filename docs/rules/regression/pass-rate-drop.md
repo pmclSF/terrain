@@ -16,10 +16,6 @@ The success / total ratio across eval cases dropped past the configured threshol
 
 Inspect per-case eval-regression findings for cases that flipped from pass to fail. If intentional, update the baseline.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/regression/pass_rate_drop.go (DetectPassRateDrop). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `eval-execution`
@@ -36,9 +32,7 @@ The success/total ratio across eval cases dropped from baseline to current past 
 
 ## 2. Severity & status
 
-- **Tier:** stable
-- **Default severity:** high (critical when drop ≥ 25%)
-- **Stable since:** v0.2.0
+Experimental — off by default; enable in `terrain.yaml`. Default severity: high (critical when drop ≥ 25%).
 
 ## 3. What this catches
 
@@ -82,7 +76,7 @@ terrain test --selector regression/pass-rate-drop
 
 ## 10. Stability commitment
 
-Default threshold (0.05) and severity ladder are stable from v0.2.0.
+Default threshold (0.05) and severity ladder are stable.
 
 ## 11. Related rules
 

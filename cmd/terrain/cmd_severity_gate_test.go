@@ -193,6 +193,10 @@ func TestRunAnalyze_GateBlocksOnFixture(t *testing.T) {
 			Root:          root,
 			SlowThreshold: defaultSlowThresholdMs,
 			Gate:          severityGateLow,
+			// Severity-only gating: the fixture's findings carry no validated
+			// remediation, so the default trust floor would not block them.
+			// Opt out to exercise the severity-gate + render-then-gate path.
+			NoTrustFloor: true,
 		})
 	})
 
@@ -218,6 +222,79 @@ func TestRunAnalyze_GateBlocksOnFixture(t *testing.T) {
 	}
 }
 
+// TestRunAnalyze_TrustFloorDefault_DoesNotBlockUnvalidated locks the 0.4.0
+// safety property: by DEFAULT (trust floor on), a fixture whose findings carry
+// no closed-loop-validated remediation does not fail CI even when --fail-on
+// matches. The findings still surface in the report; they just don't block.
+// This is the opposite assertion to TestRunAnalyze_GateBlocksOnFixture (which
+// opts out) — together they pin both sides of the default.
+func TestRunAnalyze_TrustFloorDefault_DoesNotBlockUnvalidated(t *testing.T) {
+	root := fixtureRoot(t)
+
+	stdout, err := captureRun(func() error {
+		return runAnalyze(analyzeRunOpts{
+			Root:          root,
+			SlowThreshold: defaultSlowThresholdMs,
+			Gate:          severityGateLow,
+			// no NoTrustFloor: exercise the default (trust floor ON).
+		})
+	})
+
+	if errors.Is(err, errSeverityGateBlocked) {
+		t.Errorf("default trust floor must NOT block findings without a validated remediation; got a gate block")
+	}
+	if err != nil {
+		t.Fatalf("analyze returned an unexpected error: %v", err)
+	}
+	// The findings still render — the trust floor demotes them, it doesn't hide them.
+	if !strings.Contains(string(stdout), "Terrain") {
+		t.Errorf("report should still render under the trust floor; got: %s", string(stdout))
+	}
+}
+
+// TestRunAnalyze_DriftGates_WhenFixIsValidated is the end-to-end proof of the
+// gate-promotion: prompt-schema-drift is now gate tier, so under the DEFAULT
+// trust floor a drift finding whose correct-side fix is proven (a typo of an
+// existing field) blocks CI — while a drift finding with no confident fix stays
+// advisory. Both halves are asserted on the same detector.
+func TestRunAnalyze_DriftGates_WhenFixIsValidated(t *testing.T) {
+	// Fixable: {user.user_idx} is a one-edit typo of the real field user_id, so
+	// the correct-side producer emits a validated edit_in_place fix.
+	fixable := t.TempDir()
+	if err := os.WriteFile(filepath.Join(fixable, "models.py"),
+		[]byte("from pydantic import BaseModel\n\nclass UserProfile(BaseModel):\n    user_id: str\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(fixable, "prompt.py"),
+		[]byte("import openai\nfrom models import UserProfile\n\ndef build(user: UserProfile) -> str:\n    return f\"\"\"Hi {user.user_idx}.\"\"\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err := captureRun(func() error {
+		return runAnalyze(analyzeRunOpts{Root: fixable, SlowThreshold: defaultSlowThresholdMs, Gate: severityGateHigh})
+	})
+	if !errors.Is(err, errSeverityGateBlocked) {
+		t.Errorf("a drift finding with a validated fix should block CI under the default trust floor; got %v", err)
+	}
+
+	// Not confidently fixable: {user.totally_unrelated} has no near field, so the
+	// producer declines — the finding surfaces but must NOT block by default.
+	advisory := t.TempDir()
+	if err := os.WriteFile(filepath.Join(advisory, "models.py"),
+		[]byte("from pydantic import BaseModel\n\nclass UserProfile(BaseModel):\n    user_id: str\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(advisory, "prompt.py"),
+		[]byte("import openai\nfrom models import UserProfile\n\ndef build(user: UserProfile) -> str:\n    return f\"\"\"Hi {user.totally_unrelated}.\"\"\"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	_, err = captureRun(func() error {
+		return runAnalyze(analyzeRunOpts{Root: advisory, SlowThreshold: defaultSlowThresholdMs, Gate: severityGateHigh})
+	})
+	if errors.Is(err, errSeverityGateBlocked) {
+		t.Errorf("a drift finding with no validated fix must stay advisory (not block) under the default trust floor; got a gate block")
+	}
+}
+
 // TestRunAnalyze_JSONStdoutPurity verifies that with `--json` enabled
 // AND `--fail-on` matching, the JSON snapshot lands on stdout cleanly
 // and is parseable as JSON. The gate message goes to the returned
@@ -232,6 +309,7 @@ func TestRunAnalyze_JSONStdoutPurity(t *testing.T) {
 			JSONOutput:    true,
 			SlowThreshold: defaultSlowThresholdMs,
 			Gate:          severityGateLow,
+			NoTrustFloor:  true, // force the gate-firing path to test JSON purity
 		})
 	})
 
@@ -253,9 +331,10 @@ func TestRunTestCommand_JSONStdoutPurityAndGate(t *testing.T) {
 
 	stdout, err := captureRun(func() error {
 		return runTestCommand(testRunOpts{
-			Root:       root,
-			JSONOutput: true,
-			Gate:       severityGateLow,
+			Root:         root,
+			JSONOutput:   true,
+			Gate:         severityGateLow,
+			NoTrustFloor: true, // force the gate-firing path to test JSON purity
 		})
 	})
 

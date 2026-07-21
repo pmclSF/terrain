@@ -10,7 +10,7 @@ contract.
 ## Status
 
 Single-repo `terrain portfolio` output and multi-repo aggregation via
-`terrain portfolio --from <manifest>` are stable in 0.3.0. Multi-repo
+`terrain portfolio --from <manifest>` are stable in 0.4.0. Multi-repo
 output supports manifest `path` and `snapshotPath` inputs, repo-level
 rollups, owner/tag propagation, and framework-of-record drift findings.
 The cross-repo dependency graph itself remains future work.
@@ -260,7 +260,7 @@ The companion manifest format consumed by
 canonical YAML shape:
 
 ```yaml
-# Schema version. 0.3 ships v1.
+# Schema version. The current release ships v1.
 version: 1
 
 # Optional human-readable label for the manifest.

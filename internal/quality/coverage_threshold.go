@@ -3,10 +3,10 @@ package quality
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // CoverageThresholdDetector checks whether coverage is below a declared
@@ -46,6 +46,10 @@ type istanbulMetric struct {
 
 // Detect looks for coverage data and checks against threshold.
 func (d *CoverageThresholdDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
+	if snap == nil {
+		return nil
+	}
+
 	threshold := d.Threshold
 	if threshold == 0 {
 		threshold = 80.0
@@ -64,7 +68,7 @@ func (d *CoverageThresholdDetector) Detect(snap *models.TestSuiteSnapshot) []mod
 	}
 
 	for _, p := range paths {
-		data, err := os.ReadFile(p)
+		data, err := saferead.ReadFileCap(p, saferead.DataCap)
 		if err != nil {
 			continue
 		}

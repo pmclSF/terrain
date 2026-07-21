@@ -299,11 +299,9 @@ type promptfooResult struct {
 	FailureReason string                   `json:"failureReason,omitempty"`
 	// Error captures provider/runtime errors (Promptfoo v4+ writes a
 	// per-row `error` string when the provider crashed, the assertion
-	// engine errored, or any non-assertion failure occurred). Earlier
-	// revisions wired Promptfoo's `stats.errors` aggregate into
-	// EvalAggregates.Errors, but the row-derived fallback (used when
-	// stats are absent) lumped errored rows into Failures — polluting
-	// aiHallucinationRate's `caseIsScoreable` denominator.
+	// engine errored, or any non-assertion failure occurred). Errored
+	// rows are tracked separately from assertion failures so they are
+	// excluded from scoreable-case denominators.
 	Error string `json:"error,omitempty"`
 	// Cost is Promptfoo's top-level per-case cost (parallel to
 	// `r.Response.TokenUsage.Cost`). Modern Promptfoo emits cost both

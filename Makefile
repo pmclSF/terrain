@@ -9,7 +9,7 @@ GO_OWNED_PKGS := ./cmd/... ./internal/...
 .PHONY: build test lint clean demo benchmark-fetch benchmark-smoke benchmark-full benchmark-stress benchmark-summary benchmark-convert install docs-linkcheck \
        test-golden test-determinism test-schema test-adversarial test-e2e test-cli test-bench golden-update pr-gate release-gate \
        sbom sbom-cyclonedx sbom-spdx release-dry-run go-release-verify js-release-verify extension-verify release-verify \
-       docs-gen docs-verify calibrate bench-baseline bench-gate memory-bench truth-verify voice-lint
+       docs-gen docs-verify calibrate bench-baseline bench-gate memory-bench truth-verify voice-lint no-dead-domains
 
 # Build the CLI binary
 build:
@@ -114,7 +114,21 @@ release-dry-run:
 # PR gate: fast checks required on every PR
 pr-gate:
 	$(MAKE) check
+	$(MAKE) no-dead-domains
 	$(MAKE) test
+
+# Guard: the terrain.dev domain is not live, so it must never appear as a
+# user-facing link (comments, docs, generated artifacts) — a dead link
+# erodes trust. JSON-Schema `$id` URIs under schemas/ and docs/schema/ are
+# machine identifiers in the project's own namespace, not fetchable links,
+# and are excluded. Uses git grep (tracked files only).
+no-dead-domains:
+	@if git grep -n -e 'terrain\.dev' -- ':!Makefile' ':!schemas/' ':!docs/schema/' >/dev/null 2>&1; then \
+		echo "dead 'terrain.dev' user-facing reference(s) in tracked source:"; \
+		git grep -n -e 'terrain\.dev' -- ':!Makefile' ':!schemas/' ':!docs/schema/'; \
+		exit 1; \
+	fi
+	@echo "no-dead-domains: ok"
 
 # Validate regression suites + recall harnesses for shadow→live flips.
 # Loads every YAML under harness/regression-suites/ and

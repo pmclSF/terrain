@@ -45,6 +45,15 @@ func ContextHash(file string, line int) (string, error) {
 	if strings.Contains(clean, "\x00") || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
 		return "", nil
 	}
+	if fi, statErr := os.Lstat(clean); statErr != nil || !fi.Mode().IsRegular() {
+		if statErr == nil || errors.Is(statErr, os.ErrNotExist) {
+			// Missing or non-regular (symlink/device/FIFO): no content to
+			// hash here, so emit the skip sentinel rather than following
+			// the link or erroring the whole flow.
+			return "", nil
+		}
+		return "", fmt.Errorf("contenthash: open %q: %w", clean, statErr)
+	}
 	f, err := os.Open(clean)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {

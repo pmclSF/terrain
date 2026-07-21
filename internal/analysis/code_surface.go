@@ -1,12 +1,12 @@
 package analysis
 
 import (
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // inferSurfacePackage extracts a package identifier from a file path.
@@ -215,7 +215,7 @@ var (
 )
 
 func (e *jsSurfaceExtractor) ExtractSurfaces(root, relPath string) []models.CodeSurface {
-	content, err := os.ReadFile(filepath.Join(root, relPath))
+	content, err := saferead.ReadFile(filepath.Join(root, relPath))
 	if err != nil {
 		return nil
 	}
@@ -509,7 +509,7 @@ var (
 )
 
 func (e *goSurfaceExtractor) ExtractSurfaces(root, relPath string) []models.CodeSurface {
-	content, err := os.ReadFile(filepath.Join(root, relPath))
+	content, err := saferead.ReadFile(filepath.Join(root, relPath))
 	if err != nil {
 		return nil
 	}
@@ -669,7 +669,7 @@ var (
 )
 
 func (e *pythonSurfaceExtractor) ExtractSurfaces(root, relPath string) []models.CodeSurface {
-	content, err := os.ReadFile(filepath.Join(root, relPath))
+	content, err := saferead.ReadFile(filepath.Join(root, relPath))
 	if err != nil {
 		return nil
 	}
@@ -692,8 +692,7 @@ func (e *pythonSurfaceExtractor) ExtractSurfaces(root, relPath string) []models.
 	// Compute once: does this file have an AI marker? Used to gate
 	// the AI-kind classifications below so identifiers containing
 	// substrings like "few_shot" or "eval_metric" don't get classified
-	// as AI surfaces on non-AI Python code. Verified against the
-	// non-AI OSS corpus.
+	// as AI surfaces on non-AI Python code.
 	aiContext := HasAIContextPython(src)
 
 	// Pass 1: Route decorators (@app.route('/path')).
@@ -783,7 +782,7 @@ var (
 )
 
 func (e *javaSurfaceExtractor) ExtractSurfaces(root, relPath string) []models.CodeSurface {
-	content, err := os.ReadFile(filepath.Join(root, relPath))
+	content, err := saferead.ReadFile(filepath.Join(root, relPath))
 	if err != nil {
 		return nil
 	}

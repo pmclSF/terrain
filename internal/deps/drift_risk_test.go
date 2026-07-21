@@ -258,3 +258,102 @@ func writeFile(t *testing.T, path, content string) {
 		t.Fatalf("write: %v", err)
 	}
 }
+
+// depDetect runs the detector against a single manifest in a temp repo root.
+func depDetect(t *testing.T, manifest, content string) []models.Signal {
+	t.Helper()
+	root := t.TempDir()
+	writeFile(t, filepath.Join(root, manifest), content)
+	return (&DriftRiskDetector{Root: root}).Detect(&models.TestSuiteSnapshot{})
+}
+
+func soleFinding(t *testing.T, sigs []models.Signal) models.Signal {
+	t.Helper()
+	if len(sigs) != 1 {
+		t.Fatalf("want exactly 1 finding, got %d: %+v", len(sigs), sigs)
+	}
+	return sigs[0]
+}
+
+func shareOf(t *testing.T, sig models.Signal) float64 {
+	t.Helper()
+	s, _ := sig.Metadata["movingTargetShare"].(float64)
+	return s
+}
+
+// D5: pyproject.toml (Poetry tuple style) — previously an untested ecosystem.
+func TestDriftRiskDetector_PyprojectToml(t *testing.T) {
+	sig := soleFinding(t, depDetect(t, "pyproject.toml", `[dependencies]
+requests = ">=2.28.0"
+django = "*"
+pandas = "~=2.0"
+numpy = ">1.0"
+flask = "==2.3.0"
+`))
+	if eco, _ := sig.Metadata["ecosystem"].(string); eco != "pyproject" {
+		t.Errorf("ecosystem: want pyproject, got %q", eco)
+	}
+	if got := shareOf(t, sig); got != 0.80 {
+		t.Errorf("share: want exactly 0.80 (4 moving / 5), got %v", got)
+	}
+	if sig.Severity != models.SeverityHigh { // share > 0.75 → High
+		t.Errorf("severity: want High, got %v", sig.Severity)
+	}
+}
+
+// D8: Gemfile — previously an untested ecosystem.
+func TestDriftRiskDetector_Gemfile(t *testing.T) {
+	sig := soleFinding(t, depDetect(t, "Gemfile", `gem "rails", "~> 7.0"
+gem "puma"
+gem "sqlite3", "= 1.6.0"
+gem "sass-rails"
+`))
+	if eco, _ := sig.Metadata["ecosystem"].(string); eco != "gemfile" {
+		t.Errorf("ecosystem: want gemfile, got %q", eco)
+	}
+	if got := shareOf(t, sig); got != 0.75 {
+		t.Errorf("share: want exactly 0.75 (3 moving / 4), got %v", got)
+	}
+}
+
+// D3: npm tilde (~1.2.3) is pinned-enough — not a moving target.
+func TestDriftRiskDetector_NPMTildeNotMoving(t *testing.T) {
+	out := depDetect(t, "package.json", `{"dependencies":{"a":"~1.2.3","b":"1.0.0","c":"2.0.0","d":"3.0.0"}}`)
+	if len(out) != 0 {
+		t.Errorf("tilde + exact pins → 0%% moving → no finding; got %d: %+v", len(out), out)
+	}
+}
+
+// D3: npm VCS/protocol specs (git+, file:, workspace:) are moving targets.
+func TestDriftRiskDetector_NPMVCSSpecs(t *testing.T) {
+	sig := soleFinding(t, depDetect(t, "package.json",
+		`{"dependencies":{"a":"git+https://github.com/foo/bar.git","b":"file:../local","c":"workspace:*","e":"link:../pkg","d":"1.0.0"}}`))
+	if got := shareOf(t, sig); got != 0.80 {
+		t.Errorf("share: want 0.80 (4 VCS/proto of 5), got %v", got)
+	}
+	if sig.Severity != models.SeverityHigh { // share > 0.75 → High
+		t.Errorf("severity: want High, got %v", sig.Severity)
+	}
+}
+
+// D2: severity scales by share — Low for 40–50%, Medium for 50–75%. The
+// existing severity test only covered the High (>75%) band.
+func TestDriftRiskDetector_SeverityLowAndMediumRanges(t *testing.T) {
+	low := soleFinding(t, depDetect(t, "package.json",
+		`{"dependencies":{"a":"*","b":"*","c":"1.0.0","d":"2.0.0","e":"3.0.0"}}`)) // 2/5 = 0.40
+	if got := shareOf(t, low); got != 0.40 {
+		t.Errorf("low band: share want 0.40, got %v", got)
+	}
+	if low.Severity != models.SeverityLow {
+		t.Errorf("share 0.40 → want SeverityLow, got %v", low.Severity)
+	}
+
+	med := soleFinding(t, depDetect(t, "package.json",
+		`{"dependencies":{"a":"*","b":"*","c":"*","d":"1.0.0","e":"2.0.0"}}`)) // 3/5 = 0.60
+	if got := shareOf(t, med); got != 0.60 {
+		t.Errorf("medium band: share want 0.60, got %v", got)
+	}
+	if med.Severity != models.SeverityMedium {
+		t.Errorf("share 0.60 → want SeverityMedium, got %v", med.Severity)
+	}
+}

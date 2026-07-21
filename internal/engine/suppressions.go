@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -168,6 +169,20 @@ func applySuppressions(snap *models.TestSuiteSnapshot, root, override string, no
 		result.Entries = expandSuppressionAliases(result.Entries, aliasReg)
 	} else {
 		logging.L().Warn("alias registry unavailable for suppression expansion; entries against pre-split rule_ids will not be expanded", "err", err)
+	}
+
+	// Warn on suppressions whose signal_type is not a known rule (checked AFTER
+	// alias expansion, so legit pre-split ids don't trip it). A typo or a rename
+	// with no alias silently waives nothing — the operator reads it as
+	// "suppressed" while the finding keeps firing and gating.
+	knownTypes := map[string]bool{}
+	for _, m := range signals.Manifest() {
+		knownTypes[string(m.Type)] = true
+	}
+	for _, e := range result.Entries {
+		if st := strings.TrimSpace(e.SignalType); st != "" && !knownTypes[st] {
+			logging.L().Warn("suppressions: unknown signal_type; this entry matches nothing (typo or renamed rule?)", "signal_type", st)
+		}
 	}
 
 	matched, expired := suppression.Apply(snap, result.Entries, now)

@@ -1,26 +1,20 @@
-// Package deffollowing is the intra-repo def-following layer for the
-// assertion-counter family (assertionFreeImport, assertionFreeTest,
-// weakAssertion).
+// Package deffollowing counts assertions transitively across an
+// in-repo function call graph, backing the assertion-counter detectors
+// (assertionFreeImport, assertionFreeTest, weakAssertion).
 //
-// The legacy detectors count assertions by scanning the immediate
-// test body for `assert*` / `expect*` / `t.is*` / `g.Expect*` tokens.
-// That misses helper functions: a test that calls
-// `verifyResponse(actual, expected)` and defines `verifyResponse` in
-// the same repo gets zero assertions, even though the helper makes
-// `expect(actual).toEqual(expected)` inside its body.
+// A plain scan of a test body counts only the assert*/expect*/t.is*/
+// g.Expect* tokens that appear literally in that body. When a test
+// instead calls an in-repo helper (for example verifyResponse(actual,
+// expected)) whose body holds the real assertion, this package follows
+// the call: for each call expression in the test body it looks up the
+// callee's definition in the same repo and counts assertion tokens
+// inside that definition's body as assertions for the calling test.
+// Following is gated by the def_following mechanism and recurses at
+// most MaxDepth levels so a deep call chain still terminates.
 //
-// The fix is structural: when a call expression appears in a test
-// body, look up the callee's definition in-repo; if found, count
-// assertion tokens inside the definition's body as transitive
-// assertions. The mechanism is gated by `a1_def_following` and
-// recurses at most MaxDepth levels so a fixture that pulls through
-// many helpers terminates cleanly.
-//
-// The package is deliberately language-light. For JS/TS, Python, and
-// Go it locates function/class-method definitions via regex anchored
-// at the file scope. Full per-language AST resolution is planned as a
-// follow-on; the structural improvement here clears the dominant FP
-// class for the three consumer detectors.
+// Definition lookup is language-light: for JS/TS, Python, and Go it
+// locates function and class-method definitions with regexes anchored
+// at file scope rather than a full AST.
 package deffollowing
 
 import (
@@ -31,11 +25,12 @@ import (
 	"sync"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"github.com/pmclSF/terrain/internal/shadow"
 )
 
 // MechanismName is the canonical name in mechanisms.yaml.
-const MechanismName = "a1_def_following"
+const MechanismName = "def_following"
 
 // MaxDepth is the recursion ceiling for def-following. The first level
 // is the test body itself; subsequent levels follow named calls into
@@ -264,8 +259,8 @@ func (c *Counter) buildDefIndex() {
 		default:
 			return nil
 		}
-		data, err := os.ReadFile(path)
-		if err != nil {
+		data, ok := saferead.File(path, saferead.SourceCap)
+		if !ok {
 			return nil
 		}
 		c.indexDefinitions(string(data), ext)

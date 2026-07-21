@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** gate
 
-## Promotion plan
-
-Fires when a feature column is derived from the target column (e.g., y_lag1 in features after target encoding).
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -28,9 +24,7 @@ A feature column is derived from the target column, leaking the target into trai
 
 ## 2. Severity & status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 

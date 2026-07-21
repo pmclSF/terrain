@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/astguard"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -21,6 +22,9 @@ import (
 // Each detection carries TierContent or TierSemantic with a confidence score.
 // Non-AI strings are filtered by requiring corroborating AI markers.
 func ParseEmbeddedPrompts(relPath, src, lang string) []models.CodeSurface {
+	if astguard.LooksPathologicalString(src) {
+		return nil
+	}
 	switch lang {
 	case "js":
 		return parseJSPrompts(relPath, src)

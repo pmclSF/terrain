@@ -105,6 +105,9 @@ func ParsePyProject(path string) (*Manifest, error) {
 // direct URL references, and -r / -c includes (resolved as separate
 // dependencies on the referenced file rather than recursing into it).
 func ParseRequirementsTxt(path string) (*Manifest, error) {
+	if fi, statErr := os.Lstat(path); statErr != nil || !fi.Mode().IsRegular() {
+		return nil, fmt.Errorf("requirements: open %s: not a regular file", path)
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("requirements: open %s: %w", path, err)

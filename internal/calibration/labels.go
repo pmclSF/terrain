@@ -1,14 +1,14 @@
 // Package calibration provides ground-truth labels and a runner that
-// measures detector precision/recall against a corpus of fixtures.
+// checks detector output against a set of labeled fixtures during
+// development.
 //
-// The corpus lives under `tests/calibration/`. Each fixture is a directory
+// The fixtures live under `tests/calibration/`. Each fixture is a directory
 // containing a real-world-shaped repository tree plus a `labels.yaml`
 // declaring which signals are expected to fire and which are explicitly
 // expected to NOT fire (false-positive guards).
 //
-// 0.2 ships the infrastructure plus a starter corpus. Scaling to the
-// 50-fixture target documented in `docs/release/0.2.md` is a content
-// effort that runs in parallel with the rest of the milestone.
+// Fixtures are added under `tests/calibration/` over time; the runner
+// checks detector output against whatever fixtures are present.
 package calibration
 
 import (
@@ -27,8 +27,8 @@ type FixtureLabels struct {
 	// convention). Used in reports.
 	Fixture string `yaml:"fixture"`
 
-	// SchemaVersion locks the labels.yaml shape. 1 ships in 0.2; bump
-	// only when fields are removed or repurposed.
+	// SchemaVersion locks the labels.yaml shape. The current shape is
+	// version 1; bump only when fields are removed or repurposed.
 	SchemaVersion int `yaml:"schemaVersion"`
 
 	// Description: one-line context for reviewers ("Real-world Express

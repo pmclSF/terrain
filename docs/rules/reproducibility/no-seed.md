@@ -16,10 +16,6 @@ Stochastic library call (np.random / torch / random / tf.random) in an eval or t
 
 Add a seed call at module scope or in a pytest fixture (np.random.seed(42), torch.manual_seed(42), or transformers.set_seed(42)).
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/reproducibility/no_seed.go (DetectNoSeed). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -36,9 +32,9 @@ A stochastic library call (`np.random.*`, `torch.rand*`, `random.*`, `tf.random.
 
 ## 2. Severity & status
 
-- **Tier:** stable
+Experimental — off by default; enable in `terrain.yaml`.
+
 - **Default severity:** medium
-- **Stable since:** v0.2.0
 - **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
 
 ## 3. What this catches
@@ -66,7 +62,7 @@ The rule fires once per file at the first un-seeded call. It's a structural chec
 - **Seed primitives recognized:** `np.random.seed`, `numpy.random.seed`, `torch.manual_seed`, `torch.cuda.manual_seed*`, `random.seed`, `tf.random.set_seed`, `tensorflow.random.set_seed`, HuggingFace `set_seed` (covers numpy / torch / random).
 - **Stochastic primitives recognized:** `np.random.*`, `numpy.random.*`, `torch.rand` / `torch.randn` / `torch.randint`, `random.random` / `random.choice` / `random.uniform`, `tf.random.*` / `tensorflow.random.*`.
 - **Edge cases handled:** `transformers.set_seed()` is treated as setting numpy / torch / random simultaneously; one signal per file at the first un-seeded site.
-- **Edge cases NOT handled in 0.3.0:** seed calls inside pytest fixtures whose autouse scope covers the test function — flagged with a false positive; suppress via `# terrain:disable` or accept the warning.
+- **Edge cases not handled:** seed calls inside pytest fixtures whose autouse scope covers the test function — flagged with a false positive; suppress via `# terrain:disable` or accept the warning.
 
 ## 6. Worked example
 
@@ -114,7 +110,6 @@ ignore:
 - **Pytest autouse fixture seeds the RNG** — the rule doesn't trace fixture scope; mitigation is to add a module-scope seed redundantly, or accept.
 - **Cryptographic randomness** (`secrets`, `os.urandom`) — not flagged; the rule's vocabulary deliberately excludes crypto sources.
 - **Notebooks vs scripts** — notebooks under `/notebooks/` are flagged. Adopters who treat notebooks as exploratory ignore via path.
-- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 
@@ -124,7 +119,7 @@ terrain test --selector reproducibility/no-seed
 
 ## 10. Stability commitment
 
-Rule ID, default severity, and library / path matchers are stable from v0.2.0.
+Rule ID, default severity, and library / path matchers are stable.
 
 ## 11. Related rules
 

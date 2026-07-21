@@ -11,12 +11,14 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // IngestFile reads a coverage artifact file and returns normalized records.
 // Supports LCOV and Istanbul JSON formats (auto-detected).
 func IngestFile(artifactPath string, runLabel string) (*CoverageArtifact, error) {
-	data, err := os.ReadFile(artifactPath)
+	data, err := saferead.ReadFileCap(artifactPath, saferead.DataCap)
 	if err != nil {
 		return nil, fmt.Errorf("reading coverage artifact: %w", err)
 	}
@@ -28,12 +30,25 @@ func IngestFile(artifactPath string, runLabel string) (*CoverageArtifact, error)
 	var format string
 
 	if strings.HasPrefix(trimmed, "{") || strings.HasPrefix(trimmed, "[") {
-		// Try Istanbul JSON.
-		records, err = parseIstanbul(data)
-		if err != nil {
-			return nil, fmt.Errorf("parsing istanbul coverage: %w", err)
+		// Istanbul JSON comes in two shapes. coverage-summary.json (jest
+		// --coverageReporters=json-summary, nyc) is aggregate-only
+		// ({total:{lines:{pct}}, "<file>":{lines:{...}}}); coverage-final.json is
+		// per-statement ({"<file>":{statementMap,s,...}}). They must be parsed
+		// differently — feeding a summary to the per-statement parser yields
+		// records with 0 lines and a FALSE 0%-coverage gate.
+		if isIstanbulSummary(data) {
+			records, err = parseIstanbulSummary(data)
+			if err != nil {
+				return nil, fmt.Errorf("parsing istanbul summary coverage: %w", err)
+			}
+			format = "istanbul-summary"
+		} else {
+			records, err = parseIstanbul(data)
+			if err != nil {
+				return nil, fmt.Errorf("parsing istanbul coverage: %w", err)
+			}
+			format = "istanbul"
 		}
-		format = "istanbul"
 	} else {
 		// Try LCOV.
 		records, err = parseLCOV(content)
@@ -353,6 +368,155 @@ func parseIstanbul(data []byte) ([]CoverageRecord, error) {
 	return records, nil
 }
 
+// istanbulSummaryMetric is one metric block (lines/statements/functions/branches)
+// in a coverage-summary.json entry.
+type istanbulSummaryMetric struct {
+	Total   int `json:"total"`
+	Covered int `json:"covered"`
+}
+
+// istanbulSummaryEntry is one file's (or the "total" rollup's) aggregate
+// coverage in coverage-summary.json.
+type istanbulSummaryEntry struct {
+	Lines     istanbulSummaryMetric `json:"lines"`
+	Functions istanbulSummaryMetric `json:"functions"`
+	Branches  istanbulSummaryMetric `json:"branches"`
+}
+
+// isIstanbulSummary reports whether the JSON is a coverage-summary.json (a
+// top-level "total" rollup whose value carries a "lines" metric) rather than a
+// per-statement coverage-final.json. coverage-final.json is keyed by file path
+// and never has a "total" key with a "lines" sub-object.
+func isIstanbulSummary(data []byte) bool {
+	var probe map[string]json.RawMessage
+	if err := json.Unmarshal(data, &probe); err != nil {
+		return false
+	}
+	total, ok := probe["total"]
+	if !ok {
+		return false
+	}
+	var metric map[string]json.RawMessage
+	if err := json.Unmarshal(total, &metric); err != nil {
+		return false
+	}
+	_, hasLines := metric["lines"]
+	return hasLines
+}
+
+// parseIstanbulSummary reads coverage-summary.json. It has only aggregate
+// counts per file, so it synthesizes hit maps (the first `covered` entries hit,
+// the rest not) that recomputeCounts derives the correct totals/percentages
+// from — the same shape the rest of the pipeline expects.
+func parseIstanbulSummary(data []byte) ([]CoverageRecord, error) {
+	var entries map[string]istanbulSummaryEntry
+	if err := json.Unmarshal(data, &entries); err != nil {
+		return nil, err
+	}
+	keys := make([]string, 0, len(entries))
+	for k := range entries {
+		if k == "total" {
+			continue // the "total" rollup is not a file
+		}
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	records := make([]CoverageRecord, 0, len(keys))
+	for _, k := range keys {
+		e := entries[k]
+		lc := clampCovered(e.Lines.Total, e.Lines.Covered)
+		fc := clampCovered(e.Functions.Total, e.Functions.Covered)
+		bc := clampCovered(e.Branches.Total, e.Branches.Covered)
+		// Set BOTH the synthesized hit maps AND the aggregate counts: the hit
+		// maps keep recomputeCounts consistent if these records are later merged,
+		// while the aggregate counts are what the coverage summary reads directly
+		// for a single (unmerged) file.
+		records = append(records, CoverageRecord{
+			FilePath:             normalizeCoveragePath(k),
+			LineHits:             synthLineHits(e.Lines.Total, lc),
+			FunctionHits:         synthNamedHits(e.Functions.Total, fc),
+			BranchHits:           synthNamedHits(e.Branches.Total, bc),
+			LineTotalCount:       maxZero(e.Lines.Total),
+			LineCoveredCount:     lc,
+			FunctionTotalCount:   maxZero(e.Functions.Total),
+			FunctionCoveredCount: fc,
+			BranchTotalCount:     maxZero(e.Branches.Total),
+			BranchCoveredCount:   bc,
+		})
+	}
+	return records, nil
+}
+
+func clampCovered(total, covered int) int {
+	if covered < 0 {
+		return 0
+	}
+	if covered > total {
+		return maxZero(total)
+	}
+	return covered
+}
+
+func maxZero(n int) int {
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
+// maxSynthHits bounds the per-file synthesized hit map size. A real source
+// file has far fewer lines/functions/branches than this; the cap only
+// prevents a malformed or hostile coverage-summary.json (whose totals are
+// untrusted ints) from driving an unbounded allocation.
+const maxSynthHits = 1_000_000
+
+// synthLineHits builds a per-line hit map with `total` lines, the first
+// `covered` of them marked hit — enough for recomputeCounts to recover the
+// aggregate line coverage from a summary that carries no per-line data.
+func synthLineHits(total, covered int) map[int]int {
+	if total < 0 {
+		total = 0
+	}
+	if total > maxSynthHits {
+		total = maxSynthHits
+	}
+	if covered > total {
+		covered = total
+	}
+	m := make(map[int]int, total)
+	for i := 1; i <= total; i++ {
+		if i <= covered {
+			m[i] = 1
+		} else {
+			m[i] = 0
+		}
+	}
+	return m
+}
+
+// synthNamedHits is synthLineHits for string-keyed metrics (functions, branches).
+func synthNamedHits(total, covered int) map[string]int {
+	if total < 0 {
+		total = 0
+	}
+	if total > maxSynthHits {
+		total = maxSynthHits
+	}
+	if covered > total {
+		covered = total
+	}
+	m := make(map[string]int, total)
+	for i := 0; i < total; i++ {
+		if i < covered {
+			m[strconv.Itoa(i)] = 1
+		} else {
+			m[strconv.Itoa(i)] = 0
+		}
+	}
+	return m
+}
+
 // normalizeCoveragePath normalizes a file path from coverage artifacts.
 // Strips absolute path prefixes and normalizes separators.
 func normalizeCoveragePath(p string) string {
@@ -360,8 +524,14 @@ func normalizeCoveragePath(p string) string {
 	p = strings.ReplaceAll(p, "\\", "/")
 
 	// Strip common absolute path prefixes.
-	// Look for typical project root markers.
-	markers := []string{"/src/", "/lib/", "/app/", "/packages/"}
+	// Look for typical project root markers, matching the most
+	// package-qualifying marker first: in a monorepo layout like
+	// /repo/packages/<name>/lib/index.js, anchoring on /lib/ would
+	// collapse packages/foo/lib/index.js and packages/bar/lib/index.js
+	// to the same "lib/index.js" key and misattribute coverage. Anchor
+	// on /packages/ first so the package-qualified sub-path is
+	// preserved and distinct files stay distinct.
+	markers := []string{"/packages/", "/src/", "/lib/", "/app/"}
 	for _, m := range markers {
 		if idx := strings.Index(p, m); idx > 0 {
 			return p[idx+1:]

@@ -10,9 +10,8 @@
 //   - A list of reference adversarial inputs that exercise the
 //     vulnerability
 //
-// The library is intentionally curated, not generative. Adopters who
-// want adaptive / model-driven injection inputs use a paid service;
-// terrain ships a stable, reproducible reference set.
+// The library is a fixed, curated set (not generated at runtime), so the
+// emitted inputs are stable and reproducible across releases.
 package injection
 
 // PatternID is the canonical identifier for an injection pattern.

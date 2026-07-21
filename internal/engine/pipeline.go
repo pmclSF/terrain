@@ -831,8 +831,15 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 		if aliasErr != nil {
 			logging.L().Debug("alias registry load failed; disabled_detectors aliases will not expand", "err", aliasErr)
 		}
-		expanded, aliasesHit := expandDisabledDetectors(combined, aliasReg)
-		emitAliasNotes(aliasReg, aliasesHit)
+		expanded, _ := expandDisabledDetectors(combined, aliasReg)
+		// Emit migration NOTEs only for deprecated rule_ids the USER actually
+		// wrote in disabled_detectors — NOT for manifest-default-disabled
+		// detectors (e.g. aiHardcodedAPIKey), whose expansion would otherwise
+		// print a NOTE on every analyze/test run telling users to update config
+		// they never authored.
+		if _, userAliasesHit := expandDisabledDetectors(userDisabled, aliasReg); len(userAliasesHit) > 0 {
+			emitAliasNotes(aliasReg, userAliasesHit)
+		}
 
 		kept := snapshot.Signals[:0]
 		suppressed := 0
@@ -894,7 +901,7 @@ func RunPipelineContext(ctx context.Context, root string, opts ...PipelineOption
 
 	normalizeSignalMetadata(snapshot)
 
-	// Apply severity-from-lift (Tier 5.3): each signal's severity is
+	// Apply severity-from-lift: each signal's severity is
 	// re-evaluated against corpus evidence. Detectors with weak lift get
 	// demoted; detectors with no evidence get fail-closed-capped.
 	// Evidence-attached metadata also lands on the Signal for downstream
@@ -1481,6 +1488,15 @@ func loadBaselineSnapshot(path string) (*models.TestSuiteSnapshot, error) {
 	// multi-repo / multi-month historical snapshots can run several
 	// hundred MB and used to spike RSS by the same amount under
 	// os.ReadFile + json.Unmarshal.
+	// Reject a non-regular baseline before opening: os.Open on a FIFO/named
+	// pipe blocks forever waiting for a writer, wedging the run with no timeout.
+	// os.Stat (unlike os.Open) does not block on a FIFO, and following symlinks
+	// here still allows a legitimately symlinked baseline artifact.
+	if fi, statErr := os.Stat(path); statErr != nil {
+		return nil, fmt.Errorf("read: %w", statErr)
+	} else if !fi.Mode().IsRegular() {
+		return nil, fmt.Errorf("read: baseline %s is not a regular file", path)
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("read: %w", err)

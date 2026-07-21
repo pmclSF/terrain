@@ -37,7 +37,9 @@ type ManifestExportEntry struct {
 	EvidenceSources   []string              `json:"evidenceSources,omitempty"`
 	RuleID            string                `json:"ruleId"`
 	RuleURI           string                `json:"ruleUri,omitempty"`
-	PromotionPlan     string                `json:"promotionPlan,omitempty"`
+	// PromotionPlan is internal-only planning metadata and is never
+	// serialized into the public manifest export.
+	PromotionPlan string `json:"-"`
 }
 
 // ManifestExport is the top-level shape of `docs/signals/manifest.json`.

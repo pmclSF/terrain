@@ -11,8 +11,8 @@
 // comparison against external peers. When benchmark readiness is reported,
 // it describes what dimensions are measurable — not how they rank.
 //
-// This model is designed to be reusable by future hosted product UIs
-// without schema changes.
+// This model is a compact, serializable summary artifact reused across
+// CLI renderers without schema changes.
 package summary
 
 import (
@@ -33,8 +33,8 @@ import (
 
 // ExecutiveSummary is the top-level leadership summary artifact.
 //
-// It is intentionally compact, serializable, and reusable by both
-// CLI renderers and future hosted product UIs.
+// It is intentionally compact, serializable, and reusable across
+// CLI renderers.
 type ExecutiveSummary struct {
 	// Posture describes the overall risk posture by dimension.
 	Posture PostureSummary `json:"posture"`
@@ -866,7 +866,7 @@ func appendCoverageRecommendations(recs []Recommendation, snap *models.TestSuite
 	// Recommend adding unit tests for e2e-only code units.
 	if cs.CoveredOnlyByE2E > 0 {
 		recs = append(recs, Recommendation{
-			What:             fmt.Sprintf("Add unit tests for %d code unit(s) covered only by e2e tests", cs.CoveredOnlyByE2E),
+			What:             fmt.Sprintf("Add unit tests for %d code %s covered only by e2e tests", cs.CoveredOnlyByE2E, plural(cs.CoveredOnlyByE2E, "unit")),
 			Why:              "Code covered only by e2e tests has no fast feedback loop. Failures are expensive to diagnose.",
 			Where:            "see coverage insights for specific functions",
 			EvidenceStrength: models.EvidenceStrong,
@@ -876,7 +876,7 @@ func appendCoverageRecommendations(recs []Recommendation, snap *models.TestSuite
 	// Recommend covering uncovered exported functions.
 	if cs.UncoveredExported > 0 {
 		recs = append(recs, Recommendation{
-			What:             fmt.Sprintf("Add test coverage for %d uncovered exported function(s)", cs.UncoveredExported),
+			What:             fmt.Sprintf("Add test coverage for %d uncovered exported %s", cs.UncoveredExported, plural(cs.UncoveredExported, "function")),
 			Why:              "Public API surface without tests risks silent regressions.",
 			Where:            "see untestedExport signals for specific functions",
 			EvidenceStrength: models.EvidenceStrong,

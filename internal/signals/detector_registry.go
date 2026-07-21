@@ -2,7 +2,6 @@ package signals
 
 import (
 	"fmt"
-	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -46,15 +45,12 @@ func safeDetect(reg DetectorRegistration, fn func() []models.Signal) (out []mode
 	defer func() {
 		if r := recover(); r != nil {
 			out = []models.Signal{{
-				Type:        "detectorPanic",
-				Category:    models.CategoryQuality,
-				Severity:    models.SeverityCritical,
-				Confidence:  1.0,
-				Explanation: fmt.Sprintf("detector %q panicked: %v", reg.Meta.ID, r),
-				SuggestedAction: fmt.Sprintf(
-					"This is a bug. Re-run with --log-level=debug for the stack trace, then file an issue. Stack: %s",
-					string(debug.Stack()),
-				),
+				Type:            SignalDetectorPanic,
+				Category:        models.CategoryQuality,
+				Severity:        models.SeverityCritical,
+				Confidence:      1.0,
+				Explanation:     fmt.Sprintf("detector %q panicked: %v", reg.Meta.ID, r),
+				SuggestedAction: "This is a bug. Re-run with --log-level=debug to capture the stack trace, then file an issue at https://github.com/pmclSF/terrain/issues with the detector ID and the input that triggered the panic.",
 			}}
 		}
 	}()
@@ -508,7 +504,7 @@ func (r *DetectorRegistry) RunWithGraph(snap *models.TestSuiteSnapshot, g *depgr
 				// sees something is wrong instead of getting a quietly
 				// half-empty snapshot.
 				snap.Signals = append(snap.Signals, models.Signal{
-					Type:            "detectorPanic",
+					Type:            SignalDetectorPanic,
 					Category:        models.CategoryQuality,
 					Severity:        models.SeverityCritical,
 					Confidence:      1.0,

@@ -142,17 +142,12 @@ var prioritizedDirections = map[string]struct{}{
 }
 
 // experimentalDirections names directions that run end-to-end on the smoke
-// fixture but have incomplete coverage of real-world conversion patterns.
-// They remain available behind the same CLI surface; users are warned via
+// fixture but do not yet cover all real-world conversion patterns. They remain
+// available behind the same CLI surface and are flagged to users via
 // `terrain convert list`.
 //
-// Tagging policy: any direction calling out to runtime that the round 3 audit
-// flagged as <70% complete on a representative real-world fixture. Promoting
-// out of experimental requires:
-//   - 95%+ post-conversion test pass rate on a labeled fixture corpus
-//     (planned: 0.2 stage corpus per direction)
-//   - documented coverage of assertion variants, lifecycle hooks, and
-//     framework-specific config keys
+// A direction graduates out of experimental once it fully covers assertion
+// variants, lifecycle hooks, and framework-specific config keys.
 var experimentalDirections = map[string]struct{}{
 	"junit4-junit5":       {},
 	"junit5-testng":       {},

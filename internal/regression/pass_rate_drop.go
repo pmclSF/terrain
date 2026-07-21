@@ -28,7 +28,6 @@ func DefaultPassRateDropConfig() PassRateDropConfig {
 // success-count deltas (discrete success/failure outcome). A run
 // can have unchanged scores but a different pass-rate if assertions
 // changed; conversely, scores can drop without the pass rate moving.
-// Adopters typically enable both.
 func DetectPassRateDrop(baseline, current *evaladapter.EvalRun, cfg PassRateDropConfig) []models.Signal {
 	if baseline == nil || current == nil {
 		return nil

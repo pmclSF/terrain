@@ -95,9 +95,8 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	"toolBudgetExceeded":     {Source: SignalSourceGauntlet},
 	"agentFallbackTriggered": {Source: SignalSourceGauntlet},
 
-	// 0.2 AI signals — declared planned per docs/release/0.2.md.
-	// Detection lands in subsequent 0.2 commits; these reservations
-	// keep the catalog and manifest in sync until then.
+	// AI signals whose Source is declared here so the catalog and the
+	// signal manifest stay in sync.
 	"aiSafetyEvalMissing":    {Source: SignalSourceStatic},
 	"aiPromptVersioning":     {Source: SignalSourceStatic},
 	"aiPromptInjectionRisk":  {Source: SignalSourceStatic},
@@ -118,7 +117,7 @@ var SignalCatalog = map[SignalType]SignalCatalogEntry{
 	// detectorPanic is emitted by safeDetect when a registered detector
 	// panics; without it in the catalog, ValidateSnapshot would reject
 	// the entire snapshot the moment any detector panicked, defeating
-	// the panic-recovery shipped in 0.2.
+	// the panic-recovery path.
 	"detectorPanic": {Source: SignalSourceStatic},
 	// detectorBudgetExceeded is emitted by safeDetectWithBudget when
 	// a registered detector exceeds its DetectorMeta.Budget (default

@@ -108,7 +108,11 @@ func announceDismissPolicy(p slash.DismissPolicy) {
 	case p.AllowAnyoneWithCommentAccess:
 		fmt.Fprintln(os.Stderr, "  slash policy: /dismiss accepted from any PR commenter (slash.dismiss.allow_anyone_with_comment_access=true).")
 	case len(p.AllowAuthors) > 0:
-		fmt.Fprintf(os.Stderr, "  slash policy: /dismiss accepted from %d allowlisted authors.\n", len(p.AllowAuthors))
+		noun := "authors"
+		if len(p.AllowAuthors) == 1 {
+			noun = "author"
+		}
+		fmt.Fprintf(os.Stderr, "  slash policy: /dismiss accepted from %d allowlisted %s.\n", len(p.AllowAuthors), noun)
 	default:
 		fmt.Fprintln(os.Stderr, "  slash policy: /dismiss DENY-ALL (no terrain.yaml slash.dismiss configured). The receiver will reply to every /dismiss with a not-authorized notice.")
 		fmt.Fprintln(os.Stderr, "    Set slash.dismiss.allow_authors or slash.dismiss.allow_anyone_with_comment_access in terrain.yaml to enable.")

@@ -9,174 +9,259 @@ import (
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/aidetect"
-	"github.com/pmclSF/terrain/internal/engine"
+	"github.com/pmclSF/terrain/internal/findings"
+	"github.com/pmclSF/terrain/internal/promptcontract"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
-// runDiscover prints the no-args discovery report — a friendly first-touch
-// summary of what Terrain sees in the current repository. Surfaces frameworks,
-// test files, AI surfaces (prompts / evals / model call sites), schema files,
-// and production trace logs. Ends with three copy-pasteable next commands.
+// runDiscover prints the no-args first-run report — the friendly first touch.
+// It leads with comprehension, not a task list:
 //
-// Sections:
-//   - Header: repo + language summary
-//   - What's here: frameworks, test files, AI surfaces, schemas, traces
-//   - What's missing: AI surfaces without eval coverage; absent trace logs
-//   - Suggested next steps: 3 commands tailored to what was found
+//   - MAPPED:  one line proving what Terrain parsed (prompts, schemas, evals).
+//   - ISSUES:  the curated bug-class findings worth acting on (drift), or an
+//     "all clear" reward state.
+//   - HEALTH:  contracts (from the validated drift detector) and AI-surface
+//     eval coverage as a score — not a flood of per-surface line-items.
+//   - NEXT:    the commands to run from here.
 //
-// On an empty repo or a repo with no AI surfaces, the output stays friendly
-// (no flood of zeros) and points at `terrain analyze` as the next step.
+// Rendered through internal/uitokens (see docs/cli-design-tokens.md), so it
+// degrades cleanly to monochrome / ASCII / narrow terminals. On a repo with no
+// AI surfaces it stays friendly and points at `terrain analyze`.
 func runDiscover(root string) error {
 	abs, err := filepath.Abs(root)
 	if err != nil {
 		return err
 	}
 
-	// Discovery is strictly read-only. Use ScanRepo (does not write
-	// .terrain/policy.yaml or .terrain/terrain.yaml). Users who want
-	// the config-generation behavior invoke `terrain init` explicitly.
-	initResult, err := engine.ScanRepo(abs)
-	if err != nil {
-		return fmt.Errorf("repo scan: %w", err)
-	}
-
+	// Discovery is strictly read-only — no scan writes .terrain/. The report
+	// is AI-focused: what prompts/schemas/evals Terrain sees, and the drift
+	// between them. Language/framework inventory lives in `terrain analyze`.
 	aiResult := aidetect.Detect(abs)
 	schemaFiles := detectSchemaFiles(abs)
-	traceLogs := detectTraceLogs(abs)
 
-	// Pick a separator character based on terminal capability.
-	// Box-drawing U+2500 looks great on UTF-8 terminals but renders as
-	// `???` on legacy Windows cmd or any terminal that doesn't
-	// advertise UTF-8. Default to ASCII unless we can confirm UTF-8
-	// support via LANG/LC_ALL/LC_CTYPE. Users with non-standard
-	// locales can force ASCII via TERRAIN_ASCII=1.
-	sepChar := "─"
-	if useASCIIOutput() {
-		sepChar = "-"
-	}
-	sep := strings.Repeat(sepChar, 60)
-
-	fmt.Printf("Terrain — discovery report for %s\n", filepath.Base(abs))
-	fmt.Println(sep)
-	fmt.Println()
-
-	// ── What's here ─────────────────────────────────────────────────
-	fmt.Println("What's here")
-	fmt.Println(sep)
-
-	if len(initResult.Languages) > 0 {
-		fmt.Printf("  Languages:           %s\n", strings.Join(initResult.Languages, ", "))
-	}
-
-	if len(initResult.Frameworks) > 0 {
-		fwNames := uniqueFrameworkNames(initResult.Frameworks)
-		fmt.Printf("  Test frameworks:     %s\n", strings.Join(fwNames, ", "))
-	}
-
-	if initResult.TestFileCount > 0 {
-		fmt.Printf("  Test files:          %d\n", initResult.TestFileCount)
-	}
-
-	if len(aiResult.PromptFiles) > 0 {
-		fmt.Printf("  Prompt files:        %d  %s\n", len(aiResult.PromptFiles), brief(aiResult.PromptFiles, 3))
-	}
-	if len(aiResult.EvalConfigs) > 0 {
-		fmt.Printf("  Eval configs:        %d  %s\n", len(aiResult.EvalConfigs), brief(aiResult.EvalConfigs, 3))
-	}
-	if len(aiResult.ModelFiles) > 0 {
-		fmt.Printf("  Model call sites:    %d files  %s\n", len(aiResult.ModelFiles), brief(aiResult.ModelFiles, 3))
-	}
-	if len(aiResult.DatasetFiles) > 0 {
-		fmt.Printf("  Dataset files:       %d  %s\n", len(aiResult.DatasetFiles), brief(aiResult.DatasetFiles, 3))
-	}
-	if len(schemaFiles) > 0 {
-		fmt.Printf("  Schema files:        %d  %s\n", len(schemaFiles), brief(schemaFiles, 3))
-	}
-	if len(traceLogs) > 0 {
-		fmt.Printf("  Production traces:   %d files  %s\n", len(traceLogs), brief(traceLogs, 3))
-	}
-
-	if initResult.Artifacts != nil {
-		if initResult.Artifacts.CoveragePath != "" {
-			fmt.Printf("  Coverage artifact:   %s (%s)\n",
-				relativeToRoot(initResult.Artifacts.CoveragePath, initResult.Root),
-				initResult.Artifacts.CoverageFormat)
-		}
-	}
+	// The drift detector is the validated, LLM-free flagship — cheap enough
+	// to run on a first touch and precise enough to lead with. Its inventory is
+	// the comprehension proof (it reflects what the detector actually parsed).
+	// Any error is non-fatal: the report still renders its map.
+	inv, drift, _ := promptcontract.AnalyzeRepo(abs)
+	// Surface issues only from the adopter's own code: drop drift whose prompt
+	// lives in a borrowed-fixture directory, matching the same exclusion MAPPED
+	// applies to the schema inventory (detectSchemaFiles). Without this, the
+	// report flags issues in testdata/examples/ it never counted as mapped.
+	drift = filterFixtureDrift(drift)
 
 	fmt.Println()
+	renderDiscoverMap(filepath.Base(abs), inv, aiResult, schemaFiles)
 
-	// ── What's missing ──────────────────────────────────────────────
-	missing := []string{}
-	if len(aiResult.PromptFiles) > 0 && len(aiResult.EvalConfigs) == 0 {
-		missing = append(missing, "Eval configs    — found prompt files but no eval framework config (promptfoo / deepeval / ragas / Great Expectations)")
-	}
-	if len(aiResult.ModelFiles) > 0 && len(aiResult.EvalConfigs) == 0 && len(aiResult.PromptFiles) == 0 {
-		missing = append(missing, "Eval coverage   — model call sites without prompts or evals; `terrain ai findings` will say more")
-	}
-	if len(traceLogs) == 0 && len(aiResult.ModelFiles) > 0 {
-		missing = append(missing, "Trace logs      — point at a directory with `terrain replay <path>` to surface eval coverage gaps")
-	}
-	if initResult.Artifacts == nil || initResult.Artifacts.CoveragePath == "" {
-		if initResult.TestFileCount > 0 {
-			missing = append(missing, "Coverage data   — produce LCOV / Istanbul / cobertura output to unlock coverage signals")
-		}
-	}
-
-	if len(missing) > 0 {
-		fmt.Println("What's missing")
-		fmt.Println(sep)
-		for _, m := range missing {
-			fmt.Printf("  %s\n", m)
-		}
+	// Drift can only fire when a prompt binds to a schema, so its presence is
+	// itself proof of AI surfaces even if the coarser aidetect scan missed them.
+	// Schemas count too: if MAPPED showed a schema, the report must not then
+	// claim "no AI surfaces" — that contradiction is what a prompts-as-template-
+	// files repo (a .txt prompt aidetect can't parse, plus a JSON schema) hits.
+	hasAI := len(aiResult.PromptFiles) > 0 || len(aiResult.ModelFiles) > 0 ||
+		len(aiResult.EvalConfigs) > 0 || inv.Prompts > 0 ||
+		inv.Schemas > 0 || len(schemaFiles) > 0
+	if !hasAI {
 		fmt.Println()
+		fmt.Printf("  %s  no AI surfaces here yet %s\n\n",
+			uitokens.Muted(uitokens.GlyphMeterEmpty()),
+			uitokens.Muted(uitokens.GlyphDash()+" run "+uitokens.Link("terrain analyze")+" for the full posture"))
+		return nil
 	}
 
-	// ── Suggested next steps ────────────────────────────────────────
-	fmt.Println("Next steps")
-	fmt.Println(sep)
-	hasAI := len(aiResult.PromptFiles) > 0 || len(aiResult.ModelFiles) > 0 || len(aiResult.EvalConfigs) > 0
-	switch {
-	case initResult.TestFileCount == 0 && !hasAI:
-		fmt.Println("  Nothing AI-specific detected. Run `terrain analyze` for the full posture report.")
-	case hasAI:
-		fmt.Println("  terrain analyze                  # full posture: signals, coverage, fanout, drift")
-		fmt.Println("  terrain ai findings              # AI eval-gap findings (no API key required)")
-		fmt.Println("  terrain report explain <finding> # drill into a specific finding")
-	default:
-		fmt.Println("  terrain analyze                  # full posture: signals, coverage, fanout, drift")
-		fmt.Println("  terrain report insights          # prioritized next actions")
-		fmt.Println("  terrain report pr                # what does this change put at risk?")
-	}
-	fmt.Println()
-
+	renderDiscoverIssues(drift)
+	renderDiscoverHealth(aiResult, inv, drift)
+	// Suggest `terrain fix` only when a drift actually carries a validated fix
+	// (not merely when drift exists) — so the next-step is never a dead end.
+	renderDiscoverNext(anyFixable(abs, drift))
 	return nil
 }
 
-// brief returns a short string summarizing the first `max` entries.
-// Returns "[paths]" or "[3 paths; …and N more]" depending on length.
-func brief(items []string, max int) string {
-	if len(items) == 0 {
-		return ""
-	}
-	if len(items) <= max {
-		return fmt.Sprintf("[%s]", strings.Join(items, ", "))
-	}
-	return fmt.Sprintf("[%s, …and %d more]", strings.Join(items[:max], ", "), len(items)-max)
-}
-
-// uniqueFrameworkNames deduplicates the framework list by name. Multiple
-// detection sources (config file + dependency + convention) can produce
-// repeated entries — the report just wants the names.
-func uniqueFrameworkNames(frameworks []engine.DetectedFramework) []string {
-	seen := map[string]bool{}
-	out := []string{}
-	for _, fw := range frameworks {
-		if !seen[fw.Name] {
-			seen[fw.Name] = true
-			out = append(out, fw.Name)
+// anyFixable reports whether any drift finding carries a validated correct-side
+// fix (reusing the already-computed drift; no second detector run).
+func anyFixable(abs string, drift []promptcontract.Drift) bool {
+	for _, s := range promptcontract.ToSignals(drift) {
+		f := findings.FromSignal(s, "terrain/ai/prompt-schema-drift")
+		if promptcontract.DriftFix(abs, f) != nil {
+			return true
 		}
 	}
-	sort.Strings(out)
+	return false
+}
+
+// renderDiscoverMap prints the MAPPED line — the comprehension proof: what
+// Terrain parsed, in one scannable row. This is the trust moment.
+func renderDiscoverMap(repo string, inv promptcontract.Inventory, ai *aidetect.DetectResult, schemaFiles []string) {
+	var parts []string
+	add := func(n int, singular string) {
+		if n > 0 {
+			parts = append(parts, fmt.Sprintf("%d %s", n, plural(n, singular)))
+		}
+	}
+	// Prefer the drift analyzer's inventory (it reflects what was actually
+	// parsed); fall back to the coarser scan where it saw more.
+	add(max(inv.PromptFiles, len(ai.PromptFiles)), "prompt")
+	add(max(inv.Schemas, len(schemaFiles)), "schema")
+	add(len(ai.EvalConfigs), "eval")
+	add(len(ai.ModelFiles), "model call site")
+	add(len(ai.DatasetFiles), "dataset")
+
+	fmt.Printf("  %s   %s", uitokens.Muted("MAPPED"), uitokens.Bold(repo))
+	if len(parts) > 0 {
+		fmt.Printf("  %s  %s", uitokens.Muted(uitokens.GlyphDot()), uitokens.Muted(strings.Join(parts, " "+uitokens.GlyphDot()+" ")))
+	}
+	fmt.Println()
+}
+
+// renderDiscoverIssues prints the curated bug-class findings — the value
+// moment. Capped and scannable; the full list lives behind `terrain report`.
+func renderDiscoverIssues(drift []promptcontract.Drift) {
+	fmt.Println()
+	if len(drift) == 0 {
+		fmt.Printf("  %s  %s %s\n\n",
+			uitokens.Ok(uitokens.GlyphOK()),
+			uitokens.Bold("all clear"),
+			uitokens.Muted(uitokens.GlyphDash()+" nothing needs your attention"))
+		return
+	}
+
+	const cap = 3
+	shown := drift
+	if len(shown) > cap {
+		shown = shown[:cap]
+	}
+	label := "THING WORTH A LOOK"
+	if len(drift) > 1 {
+		label = fmt.Sprintf("%d THINGS WORTH A LOOK", len(drift))
+	}
+	fmt.Printf("  %s\n\n", uitokens.Muted(label))
+
+	for _, d := range shown {
+		fmt.Printf("  %s a prompt references a field the schema doesn't declare   %s\n",
+			uitokens.Alert(uitokens.GlyphFinding()), uitokens.Warn("[drift]"))
+		fmt.Printf("    %s   %s\n",
+			uitokens.Muted(fmt.Sprintf("%s:%d", d.PromptPath, d.PromptLine)),
+			uitokens.Accent("{"+d.Variable+"}"))
+		fmt.Printf("    %s\n\n", uitokens.Muted(d.Message))
+	}
+	if len(drift) > cap {
+		fmt.Printf("  %s\n\n", uitokens.Muted(fmt.Sprintf("+ %d more %s %s",
+			len(drift)-cap, uitokens.GlyphDot(), uitokens.Link("terrain report"))))
+	}
+}
+
+// renderDiscoverHealth prints the HEALTH block — the coverage-as-score
+// reframe: contracts as a real drift-derived status, AI-surface eval coverage
+// as a real ratio meter. A precise scored posture comes from `terrain analyze`.
+func renderDiscoverHealth(ai *aidetect.DetectResult, inv promptcontract.Inventory, drift []promptcontract.Drift) {
+	fmt.Printf("  %s\n", uitokens.Muted("HEALTH"))
+
+	// Contracts: derived from the validated drift detector. No denominator to
+	// fake a percentage — show the real state.
+	if inv.Schemas > 0 && inv.Prompts > 0 {
+		contract := uitokens.Ok(healthMeter(1) + "  in sync")
+		if len(drift) > 0 {
+			contract = uitokens.Alert(fmt.Sprintf("%s  %d drifting", healthMeter(0.3), len(drift)))
+		}
+		fmt.Printf("  %s   %s\n", padLabel("prompt "+uitokens.GlyphRelates()+" schema contracts"), contract)
+	}
+
+	// Coverage: fraction of AI surfaces (prompts + model call sites) whose
+	// top-level directory also holds an eval config — the same co-location
+	// heuristic the analyze pipeline uses, computed cheaply here.
+	surfaces := dedupePaths(append(append([]string{}, ai.PromptFiles...), ai.ModelFiles...))
+	if len(surfaces) > 0 {
+		covered := countCovered(surfaces, ai.EvalConfigs)
+		ratio := float64(covered) / float64(len(surfaces))
+		uncovered := len(surfaces) - covered
+		pct := int(ratio*100 + 0.5)
+		note := uitokens.Ok("covered")
+		if uncovered > 0 {
+			note = uitokens.Muted(fmt.Sprintf("%d untested", uncovered))
+		}
+		fmt.Printf("  %s   %s  %s%%  %s\n", padLabel("ai test coverage"), healthMeter(ratio), fmt.Sprintf("%3d", pct), note)
+	}
+}
+
+// renderDiscoverNext prints the next-step commands using the link role.
+func renderDiscoverNext(hasFix bool) {
+	fmt.Println()
+	cmds := []string{}
+	if hasFix {
+		cmds = append(cmds, uitokens.Link("terrain fix"))
+	}
+	cmds = append(cmds, uitokens.Link("terrain analyze"), uitokens.Link("terrain report"))
+	fmt.Printf("  %s %s  %s\n\n",
+		uitokens.Muted("next"), uitokens.Muted(uitokens.GlyphChevron()),
+		strings.Join(cmds, "  "+uitokens.Muted(uitokens.GlyphDot())+"  "))
+}
+
+// healthMeter renders a 10-cell ●/○ meter for a ratio in [0,1], colored by
+// band (≥0.8 green, ≥0.4 yellow, else red). Callers colorize the label; the
+// filled cells here carry the band color, the empty cells stay muted.
+func healthMeter(ratio float64) string {
+	const width = 10
+	if ratio < 0 {
+		ratio = 0
+	}
+	if ratio > 1 {
+		ratio = 1
+	}
+	filled := int(ratio*float64(width) + 0.5)
+	full := strings.Repeat(uitokens.GlyphMeterFull(), filled)
+	empty := strings.Repeat(uitokens.GlyphMeterEmpty(), width-filled)
+	var band func(string) string
+	switch {
+	case ratio >= 0.8:
+		band = uitokens.Ok
+	case ratio >= 0.4:
+		band = uitokens.Warn
+	default:
+		band = uitokens.Alert
+	}
+	return band(full) + uitokens.Muted(empty)
+}
+
+// padLabel right-pads a health-row label to a fixed column so the meters
+// line up. Operates on the plain text (labels here are not pre-colored).
+// (plural lives in cmd_severity_gate.go — reused here.)
+func padLabel(s string) string { return uitokens.PadRight(s, 28) }
+
+// topDir returns the first path segment of a slash- or OS-separated path.
+func topDir(p string) string {
+	p = filepath.ToSlash(p)
+	if i := strings.IndexByte(p, '/'); i >= 0 {
+		return p[:i]
+	}
+	return p
+}
+
+// countCovered counts surfaces whose top-level directory also contains an
+// eval config.
+func countCovered(surfaces, evalConfigs []string) int {
+	evalDirs := map[string]bool{}
+	for _, e := range evalConfigs {
+		evalDirs[topDir(e)] = true
+	}
+	n := 0
+	for _, s := range surfaces {
+		if evalDirs[topDir(s)] {
+			n++
+		}
+	}
+	return n
+}
+
+// dedupePaths returns the input with duplicates removed, order preserved.
+func dedupePaths(in []string) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, p := range in {
+		if !seen[p] {
+			seen[p] = true
+			out = append(out, p)
+		}
+	}
 	return out
 }
 
@@ -235,6 +320,20 @@ func detectSchemaFiles(root string) []string {
 	return out
 }
 
+// filterFixtureDrift drops drift whose prompt lives in a borrowed-fixture
+// directory, so the discovery report's issues stay consistent with the
+// fixture-excluded MAPPED inventory.
+func filterFixtureDrift(drift []promptcontract.Drift) []promptcontract.Drift {
+	out := drift[:0]
+	for _, d := range drift {
+		if isFixturePath(d.PromptPath) {
+			continue
+		}
+		out = append(out, d)
+	}
+	return out
+}
+
 // isFixturePath returns true when the path lives inside a directory
 // commonly used to hold borrowed test fixtures, benchmark inputs, or
 // vendored examples. The discovery report should not surface those as
@@ -255,61 +354,6 @@ func isFixturePath(rel string) bool {
 		}
 	}
 	return false
-}
-
-// detectTraceLogs scans for production LLM-call trace logs: common
-// directory conventions (langfuse / helicone / arize-phoenix /
-// langsmith / llm-logs) and well-known file extensions (.langsmith.jsonl,
-// *.trace.json). Conservative — only surfaces directories that look
-// intentional, and skips anything inside test-fixture / benchmark trees.
-//
-// `traces/` alone is too ambiguous (Prettier, flow, and many other
-// projects have a `traces/` test-fixture dir) so it's only surfaced
-// when it's at the repo root, not buried inside a tree.
-func detectTraceLogs(root string) []string {
-	// Directory names that are unambiguous LLM-trace signals.
-	strongDirs := map[string]bool{
-		"langfuse": true, "helicone": true, "phoenix": true, "langsmith": true,
-		"llm-logs": true, "llm_logs": true, "llm-traces": true,
-	}
-	var out []string
-	_ = filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return nil
-		}
-		if d.IsDir() {
-			base := filepath.Base(path)
-			if shouldSkipDir(base) {
-				return filepath.SkipDir
-			}
-			rel, _ := filepath.Rel(root, path)
-			if isFixturePath(rel) {
-				return nil
-			}
-			if strongDirs[strings.ToLower(base)] {
-				// Found a strong-signal trace directory.
-				out = append(out, rel+"/")
-				return filepath.SkipDir
-			}
-			// `traces/` at the repo root only.
-			if strings.ToLower(base) == "traces" && rel == "traces" {
-				out = append(out, rel+"/")
-				return filepath.SkipDir
-			}
-			return nil
-		}
-		rel, _ := filepath.Rel(root, path)
-		if isFixturePath(rel) {
-			return nil
-		}
-		name := strings.ToLower(d.Name())
-		if strings.HasSuffix(name, ".langsmith.jsonl") || strings.HasSuffix(name, ".trace.json") {
-			out = append(out, rel)
-		}
-		return nil
-	})
-	sort.Strings(out)
-	return out
 }
 
 // shouldSkipDir returns true for common no-scan directories. Mirrors the

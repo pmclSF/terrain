@@ -207,3 +207,51 @@ func TestModelDeprecation_DotVersionedDoesNotMatchUndatedParent(t *testing.T) {
 		})
 	}
 }
+
+// TestModelDeprecation_SuppressesNonUsageContexts locks the precision skips:
+// doctest/REPL examples, prose "e.g." lists, deprecation-map keys, and test
+// files must NOT fire (the model name there is not a live production usage).
+func TestModelDeprecation_SuppressesNonUsageContexts(t *testing.T) {
+	t.Parallel()
+	cases := map[string]struct {
+		rel, body string
+	}{
+		"doctest": {"app/example.py",
+			"def f():\n    \"\"\"\n    >>> client.chat(model=\"gpt-4\")\n    ...     model=\"text-davinci-003\"\n    \"\"\"\n"},
+		"eg-prose": {"app/doc.py",
+			"def g():\n    # model: Model name (e.g., 'gpt-4', 'text-davinci-003')\n    pass\n"},
+		"deprecation-map": {"app/degrade.py",
+			"DEGRADE = {\n    \"gpt-4\": \"gpt-4o-mini\",\n    \"text-davinci-003\": \"gpt-3.5-turbo-0125\",\n}\n"},
+		"test-file": {"packages/core/src/__tests__/router.test.ts",
+			"it('routes', () => { expect(pick('gpt-4')).toBe('text-davinci-003'); });\n"},
+	}
+	for name, c := range cases {
+		name, c := name, c
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			rel := writeFile(t, root, c.rel, c.body)
+			got := (&ModelDeprecationDetector{Root: root}).Detect(&models.TestSuiteSnapshot{
+				TestFiles: []models.TestFile{{Path: rel}},
+			})
+			if len(got) != 0 {
+				t.Errorf("%s should be suppressed, got %d: %+v", name, len(got), got)
+			}
+		})
+	}
+}
+
+// TestModelDeprecation_RealUsageStillFires confirms a genuine model assignment
+// still fires after the skips.
+func TestModelDeprecation_RealUsageStillFires(t *testing.T) {
+	t.Parallel()
+	root := t.TempDir()
+	rel := writeFile(t, root, "app/client.py",
+		"import openai\nclient = openai.OpenAI()\nresp = client.chat.completions.create(model=\"text-davinci-003\", messages=[])\n")
+	got := (&ModelDeprecationDetector{Root: root}).Detect(&models.TestSuiteSnapshot{
+		TestFiles: []models.TestFile{{Path: rel}},
+	})
+	if len(got) != 1 {
+		t.Errorf("real model=deprecated usage should fire, got %d: %+v", len(got), got)
+	}
+}

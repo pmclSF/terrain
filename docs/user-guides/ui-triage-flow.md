@@ -1,7 +1,7 @@
 # UI Drill-Down Hierarchy and Triage Queue
 
 Design specification for future Terrain extension navigation and triage workflow.
-This document describes intended views, not 0.3.0 shipped behavior or implementation. The 0.3.0 extension alpha renders sidebar tree views from CLI JSON as documented in [`../vscode-extension.md`](../vscode-extension.md).
+This document describes intended views, not currently shipped behavior or implementation. The extension alpha renders sidebar tree views from CLI JSON as documented in [`../vscode-extension.md`](../vscode-extension.md).
 
 ## Overview
 

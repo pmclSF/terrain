@@ -8,6 +8,8 @@ import (
 	"sort"
 	"strings"
 	"sync"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 type ExecuteOptions struct {
@@ -135,7 +137,7 @@ func executeSourceConverter(source string, direction Direction, options ExecuteO
 }
 
 func executeSourceConverterFile(source string, direction Direction, options ExecuteOptions, convert sourceConverterFunc) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -295,7 +297,7 @@ func prepareConvertedOutputs(sourceRoot, outputRoot string, files []string, dire
 		go func() {
 			defer wg.Done()
 			for job := range jobs {
-				input, err := os.ReadFile(job.path)
+				input, err := saferead.ReadFile(job.path)
 				if err != nil {
 					results <- preparedConvertedOutputResult{
 						index: job.index,
@@ -426,7 +428,7 @@ func executeCypressToPlaywright(source string, direction Direction, options Exec
 }
 
 func executeCypressToPlaywrightFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -510,7 +512,7 @@ func executeCypressToPlaywrightDirectory(source string, direction Direction, opt
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -558,7 +560,7 @@ func executeCypressToSelenium(source string, direction Direction, options Execut
 }
 
 func executeCypressToSeleniumFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -642,7 +644,7 @@ func executeCypressToSeleniumDirectory(source string, direction Direction, optio
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -690,7 +692,7 @@ func executePlaywrightToCypress(source string, direction Direction, options Exec
 }
 
 func executePlaywrightToCypressFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -774,7 +776,7 @@ func executePlaywrightToCypressDirectory(source string, direction Direction, opt
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -822,7 +824,7 @@ func executeWdioToPlaywright(source string, direction Direction, options Execute
 }
 
 func executeWdioToPlaywrightFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -906,7 +908,7 @@ func executeWdioToPlaywrightDirectory(source string, direction Direction, option
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -954,7 +956,7 @@ func executePlaywrightToWdio(source string, direction Direction, options Execute
 }
 
 func executePlaywrightToWdioFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -1038,7 +1040,7 @@ func executePlaywrightToWdioDirectory(source string, direction Direction, option
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -1086,7 +1088,7 @@ func executeCypressToWdio(source string, direction Direction, options ExecuteOpt
 }
 
 func executeCypressToWdioFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -1170,7 +1172,7 @@ func executeCypressToWdioDirectory(source string, direction Direction, options E
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -1218,7 +1220,7 @@ func executeWdioToCypress(source string, direction Direction, options ExecuteOpt
 }
 
 func executeWdioToCypressFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -1302,7 +1304,7 @@ func executeWdioToCypressDirectory(source string, direction Direction, options E
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -1350,7 +1352,7 @@ func executePuppeteerToPlaywright(source string, direction Direction, options Ex
 }
 
 func executePuppeteerToPlaywrightFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -1434,7 +1436,7 @@ func executePuppeteerToPlaywrightDirectory(source string, direction Direction, o
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -1482,7 +1484,7 @@ func executePlaywrightToPuppeteer(source string, direction Direction, options Ex
 }
 
 func executePlaywrightToPuppeteerFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -1566,7 +1568,7 @@ func executePlaywrightToPuppeteerDirectory(source string, direction Direction, o
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -1614,7 +1616,7 @@ func executeSeleniumToCypress(source string, direction Direction, options Execut
 }
 
 func executeSeleniumToCypressFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -1698,7 +1700,7 @@ func executeSeleniumToCypressDirectory(source string, direction Direction, optio
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -1746,7 +1748,7 @@ func executeSeleniumToPlaywright(source string, direction Direction, options Exe
 }
 
 func executeSeleniumToPlaywrightFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -1830,7 +1832,7 @@ func executeSeleniumToPlaywrightDirectory(source string, direction Direction, op
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -1878,7 +1880,7 @@ func executePlaywrightToSelenium(source string, direction Direction, options Exe
 }
 
 func executePlaywrightToSeleniumFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -1962,7 +1964,7 @@ func executePlaywrightToSeleniumDirectory(source string, direction Direction, op
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -2010,7 +2012,7 @@ func executeTestCafeToPlaywright(source string, direction Direction, options Exe
 }
 
 func executeTestCafeToPlaywrightFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -2094,7 +2096,7 @@ func executeTestCafeToPlaywrightDirectory(source string, direction Direction, op
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}
@@ -2142,7 +2144,7 @@ func executeTestCafeToCypress(source string, direction Direction, options Execut
 }
 
 func executeTestCafeToCypressFile(source string, direction Direction, options ExecuteOptions) (ExecutionResult, error) {
-	input, err := os.ReadFile(source)
+	input, err := saferead.ReadFile(source)
 	if err != nil {
 		return ExecutionResult{}, fmt.Errorf("read source: %w", err)
 	}
@@ -2226,7 +2228,7 @@ func executeTestCafeToCypressDirectory(source string, direction Direction, optio
 	}
 
 	for _, file := range files {
-		input, err := os.ReadFile(file)
+		input, err := saferead.ReadFile(file)
 		if err != nil {
 			return ExecutionResult{}, fmt.Errorf("read source file %s: %w", file, err)
 		}

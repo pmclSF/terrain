@@ -93,6 +93,17 @@ func (d *BlastRadiusHotspotDetector) Detect(_ *models.TestSuiteSnapshot) []model
 	return nil
 }
 
+// DetectWithGraph is the real entry point (Detect requires the graph and
+// returns nil).
+//
+// Contract:
+//
+//	B1/B3. Empty graph, or no file with >=20 total tests → no signals.
+//	B4.    Top ~5% of qualifying files (min 1) are reported.
+//	B5.    Severity by direct-test ratio: total>80 & ratio<0.20 High;
+//	       total>20 & ratio<0.30 Medium; ratio>=0.50 Info; else Low.
+//	B5a.   Pure-conduit barrel/generated files (direct==0, indirect>=30) are
+//	       demoted to Info regardless of blast radius.
 func (d *BlastRadiusHotspotDetector) DetectWithGraph(snap *models.TestSuiteSnapshot, g *depgraph.Graph) []models.Signal {
 	cov := depgraph.AnalyzeCoverage(g)
 	if len(cov.Sources) == 0 {
@@ -137,7 +148,7 @@ func (d *BlastRadiusHotspotDetector) DetectWithGraph(snap *models.TestSuiteSnaps
 
 	var out []models.Signal
 	for i, e := range entries {
-		if i >= cutoff && e.total < blastRadiusMediumThreshold {
+		if i >= cutoff {
 			break
 		}
 

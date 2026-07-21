@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document is a design specification for future impact-analysis views in the Terrain extension. It describes the intended UI contract, not 0.3.0 shipped behavior. The 0.3.0 extension alpha renders sidebar tree views from CLI JSON as documented in [`../vscode-extension.md`](../vscode-extension.md). Future impact views should be powered by the `ImpactResult` JSON output from the engine — no engine logic is duplicated in the UI layer.
+This document is a design specification for future impact-analysis views in the Terrain extension. It describes the intended UI contract, not currently shipped behavior. The extension alpha renders sidebar tree views from CLI JSON as documented in [`../vscode-extension.md`](../vscode-extension.md). Future impact views should be powered by the `ImpactResult` JSON output from the engine — no engine logic is duplicated in the UI layer.
 
 ## Changed Area Summary View
 

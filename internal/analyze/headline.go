@@ -15,12 +15,8 @@ func plural(n int, singular string) string {
 // It evaluates conditions in priority order and returns the first match.
 // All data is already computed in the Report — no new analysis.
 func deriveHeadline(r *Report) string {
-	// Gate-relevant headline: reports Critical + High together against total.
-	// Earlier versions said "N critical signals — review recommended" while
-	// the body of the same report rendered "N total signals, M high" — two
-	// different numbers, one soft tone. Devs reconciled by trusting the
-	// larger number and writing off the headline. New rule: the headline
-	// matches what the gate would block on.
+	// Gate-relevant headline: report Critical + High together against Total so
+	// the headline number matches what the gate would block on.
 	gateRelevant := r.SignalSummary.Critical + r.SignalSummary.High
 	if gateRelevant > 0 {
 		switch {
@@ -85,8 +81,8 @@ func deriveHeadline(r *Report) string {
 	weakCount := len(r.WeakCoverageAreas)
 	if weakCount > 0 {
 		return fmt.Sprintf(
-			"%d source areas have weak or no structural test coverage.",
-			weakCount,
+			"%d source %s with weak or no structural test coverage.",
+			weakCount, plural(weakCount, "area"),
 		)
 	}
 
@@ -106,7 +102,14 @@ func deriveHeadline(r *Report) string {
 		return "No test files detected. Add tests with your framework of choice, then re-run `terrain analyze`."
 	}
 
-	// Healthy default.
+	// Healthy default. Only mention frameworks when at least one was
+	// detected — otherwise "across 0 frameworks" reads as broken.
+	if fwCount == 0 {
+		return fmt.Sprintf(
+			"Your test suite looks healthy: %d test %s.",
+			tfCount, plural(tfCount, "file"),
+		)
+	}
 	return fmt.Sprintf(
 		"Your test suite looks healthy: %d test %s across %d %s.",
 		tfCount, plural(tfCount, "file"),

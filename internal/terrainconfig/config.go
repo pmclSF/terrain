@@ -16,6 +16,8 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // SchemaVersion is the current terrain.yaml schema version.
@@ -45,15 +47,19 @@ type Config struct {
 	// Surfaces declares adopter-named AI/ML surfaces.
 	Surfaces map[string]Surface `yaml:"surfaces,omitempty" json:"surfaces,omitempty"`
 
-	// OnTerrainError is "block" (default, fails closed) or "pass"
-	// (fails open).
-	//
-	// CURRENTLY INERT: parsed but not yet consumed by the engine. The
-	// pipeline always fails closed today; this flag is documented to
-	// reserve the field name so adopter terrain.yaml files don't need
-	// a schema migration when the consumer wiring lands. See
-	// docs/LIMITATIONS.md.
+	// OnTerrainError is "block" (default, fails closed) or "pass" (fails
+	// open). When "pass", an analysis infrastructure error (crash or
+	// timeout) exits 0 instead of failing CI; the default blocks.
+	// Consumed by the analyze command's failure path.
 	OnTerrainError string `yaml:"on_terrain_error,omitempty" json:"on_terrain_error,omitempty"`
+
+	// TrustFloor governs the remediation-validity gate: a finding may block CI
+	// (`--fail-on`) only when its remediation has been closed-loop validated.
+	// Findings whose remediation is unproven (or judge-only) are demoted to
+	// observability. ON by default (0.4.0) — the pointer distinguishes "unset"
+	// (use the default) from an explicit `trust_floor: false` opt-out. The
+	// `--no-trust-floor` flag is the CLI opt-out.
+	TrustFloor *bool `yaml:"trust_floor,omitempty" json:"trust_floor,omitempty"`
 
 	// RedactSource elides code excerpts from emitted artifacts when
 	// adopter codebases have stringent code-confidentiality requirements.
@@ -237,7 +243,10 @@ type ExplainSection struct {
 // When path doesn't exist, Load returns (nil, nil) — terrain.yaml is
 // optional. Callers distinguish "no config" from "invalid config".
 func Load(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+	// saferead rejects a non-regular terrain.yaml (a FIFO/named pipe, device, or
+	// symlink) before reading: a raw os.ReadFile on a FIFO blocks forever
+	// waiting for a writer, so a hostile repo could wedge the whole pre-flight.
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, nil
@@ -264,6 +273,12 @@ func LoadForRoot(root string) (*Config, error) {
 
 // Parse decodes yaml bytes into a Config and validates it.
 func Parse(data []byte) (*Config, error) {
+	// NOTE: intentionally NOT a strict (KnownFields) decode. terrain.yaml is read
+	// by two partial readers — this one (rules/ai/ml/trust_floor/…) and
+	// policy.TerrainConfig (manual_coverage/scenarios/…) — each of which sees the
+	// other's keys as "unknown". Strict decoding here would reject any valid
+	// config that uses the other reader's keys. Typo-catching for terrain.yaml
+	// needs a unified schema, not per-reader strictness.
 	var c Config
 	if err := yaml.Unmarshal(data, &c); err != nil {
 		return nil, fmt.Errorf("terrainconfig: parse: %w", err)
@@ -274,6 +289,17 @@ func Parse(data []byte) (*Config, error) {
 	return &c, nil
 }
 
+// Config contract:
+//
+//	C1. Parse decodes v1 YAML and rejects: wrong version; invalid
+//	    on_terrain_error / ai.framework / ml.registry enums; malformed
+//	    rule and surface keys.
+//	C2. LoadForRoot prefers .terrain/terrain.yaml over a top-level
+//	    terrain.yaml; a missing file is (nil, nil), not an error.
+//	C3. At analyze time: on_terrain_error=pass fails open; redact_source
+//	    strips source excerpts; ai.scenarios_dir / ai.baselines_dir /
+//	    ml.artifacts_dir are honored.
+//
 // Validate enforces the v1 schema's hard constraints.
 func (c *Config) Validate() error {
 	if c.Version != SchemaVersion {

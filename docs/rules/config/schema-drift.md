@@ -16,10 +16,6 @@ An infra-config file (GitHub Actions workflow, docker-compose, Helm values, or k
 
 Pin action refs to a SHA or tagged release. Replace `:latest` and untagged images with explicit versions. Upgrade deprecated apiVersions to their current replacement.
 
-## Promotion plan
-
-Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on config-only PRs.
-
 ## Evidence sources
 
 - `structural-pattern`

@@ -3,8 +3,9 @@ package runtime
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // Jest/Vitest JSON result schema.
@@ -52,7 +53,7 @@ type jestAssertion struct {
 //   - Jest does not natively report retry counts; only Vitest does
 //   - File paths are absolute as reported by the runner
 func ParseJestJSON(path string) (*IngestionResult, error) {
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFileCap(path, saferead.DataCap)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read Jest JSON: %w", err)
 	}
@@ -89,8 +90,10 @@ func ParseJestJSON(path string) (*IngestionResult, error) {
 			if len(a.FailureMessages) > 0 {
 				msg = a.FailureMessages[0]
 				// Truncate very long failure messages for signal display.
-				if len(msg) > 500 {
-					msg = msg[:500] + "..."
+				// Slice on rune boundaries so a multibyte UTF-8 character
+				// is never split into an invalid byte sequence.
+				if r := []rune(msg); len(r) > 500 {
+					msg = string(r[:500]) + "..."
 				}
 			}
 
@@ -133,9 +136,12 @@ func jestStatus(s string) TestStatus {
 		return StatusPassed
 	case "failed":
 		return StatusFailed
-	case "pending", "skipped", "todo":
+	case "pending", "skipped", "todo", "disabled":
 		return StatusSkipped
 	default:
-		return StatusPassed
+		// An unrecognized status (e.g. vitest's "errored") must NOT be counted
+		// as a pass — silently passing an unknown state masks real failures in
+		// the health signals. Treat it as a failure so it surfaces.
+		return StatusFailed
 	}
 }

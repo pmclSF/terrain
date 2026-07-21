@@ -16,10 +16,6 @@ Tests exhibit inconsistent pass/fail behavior across runs.
 
 Stabilize timing, shared state, and external dependency handling.
 
-## Promotion plan
-
-Today's detector is retry-based, not statistical failure-rate. Statistical detection lands in a future release.
-
 ## Evidence sources
 
 - `runtime`

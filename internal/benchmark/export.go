@@ -4,11 +4,10 @@
 //   - privacy-safe: no raw file paths, symbol names, or source code
 //   - segmented: tagged with repo characteristics for meaningful comparison
 //   - versioned: includes the analysis version for compatibility
-//   - hosted-ready: structured for future aggregation without schema changes
+//   - stable: uses a versioned schema so exports remain forward-compatible
 //
-// This package defines the export format and segmentation primitives.
-// The actual hosted benchmarking service is out of scope — this package
-// only produces the local export artifact.
+// This package defines the export format and segmentation primitives
+// and produces the local export artifact.
 package benchmark
 
 import (

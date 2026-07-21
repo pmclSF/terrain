@@ -23,7 +23,7 @@
 //	1 — one or more broken links (output names every offender + source)
 //	2 — invocation error (bad flags, can't read filesystem)
 //
-// Wired into the release-readiness pipeline via `make docs-linkcheck`.
+// Run via `make docs-linkcheck`.
 package main
 
 import (

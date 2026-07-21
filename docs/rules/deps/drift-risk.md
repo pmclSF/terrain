@@ -16,10 +16,6 @@ A dependency manifest has a high share of moving-target version specs (caret, ti
 
 Pin versions or add a lockfile-verification gate. Re-audit the manifest after pinning to confirm the moving-target share drops below the threshold.
 
-## Promotion plan
-
-Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on deps-bump PRs.
-
 ## Evidence sources
 
 - `structural-pattern`

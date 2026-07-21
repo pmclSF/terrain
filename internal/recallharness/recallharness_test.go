@@ -1,6 +1,7 @@
 package recallharness
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
@@ -242,7 +243,11 @@ func TestCheck_EmptyRepoNoCrossRepoWildcard(t *testing.T) {
 }
 
 func TestLoadAll_SkipsReadme(t *testing.T) {
-	harnesses, err := LoadAll("../../harness/recall-harnesses")
+	dir := "../../harness/recall-harnesses"
+	if _, err := os.Stat(dir); os.IsNotExist(err) {
+		t.Skip("harness/ is internal-only and not tracked in the public repo")
+	}
+	harnesses, err := LoadAll(dir)
 	if err != nil {
 		t.Fatalf("LoadAll: %v", err)
 	}

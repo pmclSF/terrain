@@ -16,10 +16,6 @@ A model-loading call (from_pretrained / torch.load / joblib.load / load_model / 
 
 Pin the load to a commit SHA (revision="<sha>" for HuggingFace), a version-suffixed filename (model_v3.0.pt), or a .safetensors-with-checksum format.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/hygiene/model_fixture_unpinned.go (DetectModelFixtureUnpinned). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -36,9 +32,8 @@ A model-loading call uses a path or revision that isn't content-addressed. The u
 
 ## 2. Severity & status
 
-- **Tier:** stable
+- **Status:** experimental — off by default; enable in `terrain.yaml`.
 - **Default severity:** high
-- **Stable since:** v0.2.0
 - **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
 
 ## 3. What this catches
@@ -65,7 +60,7 @@ Model weights are the AI system's behavioral substrate. Two engineers running th
 - **Pinning suppression:**
   - HuggingFace: `revision="<value>"` kwarg where value is NOT `main` / `master` / `latest` / `head` (case-insensitive).
   - Path-based loaders: first positional argument is a string literal that looks pinned (has a 7+-hex segment, a `v<major>.<minor>` version, or ends in `.safetensors`).
-- **Edge cases NOT handled in 0.3.0:** revision passed via a variable rather than a literal (the rule can't prove the variable's value statically); custom loader wrappers that the rule doesn't recognize.
+- **Edge cases not handled:** revision passed via a variable rather than a literal (the rule can't prove the variable's value statically); custom loader wrappers that the rule doesn't recognize.
 
 ## 6. Worked example
 
@@ -109,7 +104,6 @@ ignore:
 
 - **Internal model registry that bypasses HuggingFace conventions** — if the load goes through a wrapper the detector doesn't recognize, it doesn't fire (false negative side). Mitigation: extend the wrapper to call the recognized primitive directly, or accept.
 - **Variable-bound revision** — `revision=cfg.model_revision` doesn't statically resolve; the rule fires. Mitigation: inline the literal at the call site, or ignore via path.
-- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 
@@ -119,7 +113,7 @@ terrain test --selector hygiene/model-fixture-unpinned
 
 ## 10. Stability commitment
 
-Rule ID, severity, recognized loader list, and pinning vocabulary are stable from v0.2.0. New loader patterns are additive and not deprecation-cycled.
+Rule ID, severity, recognized loader list, and pinning vocabulary are stable in the current release. New loader patterns are additive and not deprecation-cycled.
 
 ## 11. Related rules
 

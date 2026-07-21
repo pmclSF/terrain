@@ -16,10 +16,6 @@ An eval case's primary Score dropped from baseline to current past the configure
 
 Inspect the diff for prompt / model / retrieval changes that affect the regressing case(s). If intentional, update the baseline with `terrain ai record`.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/regression/eval_regression.go (DetectEvalRegression). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `eval-execution`
@@ -36,10 +32,7 @@ An eval metric (rubric score, accuracy, F1, AUC, RMSE, calibration error, etc.) 
 
 ## 2. Severity & status
 
-- **Tier:** experimental
-- **Default severity:** high
-- **0.3.0 status:** detector function exists in `internal/regression/eval_regression.go`, but the standalone `evalRegression` rule is not yet wired through the engine registry. Terrain 0.3.0 does ingest eval artifacts into `EvalRuns`, and the eval-data-aware AI detectors consume that envelope.
-- **Configuration:** threshold tuning for the standalone rule lands with registry integration; do not treat this rule as a default-on 0.3.0 gate.
+Experimental — off by default; enable in `terrain.yaml`. Default severity: high. Terrain ingests eval artifacts into eval runs, and the eval-data-aware AI detectors consume that data.
 
 ## 3. What this catches
 
@@ -59,13 +52,12 @@ The rule's hardest case is *stochastic* evals: LLM-driven evals whose results va
 
 ## 5. Detection mechanism
 
-The planned standalone rule lifecycle is **read baseline + current eval run → compare by case/run metric → threshold check**. In 0.3.0, the parser and comparison function exist, while engine-registry invocation remains pending.
+The rule lifecycle is **read baseline + current eval run → compare by case/run metric → threshold check**.
 
-- **0.3.0 artifact inputs:** promptfoo (`--promptfoo-results`), deepeval (`--deepeval-results`), ragas (`--ragas-results`), Great Expectations (`--great-expectations-results`); gauntlet via JSON-format-compatible ingestion path (see `docs/integrations/gauntlet.md`)
-- **0.3.0 consumers:** `aiCostRegression`, `aiHallucinationRate`, and `aiRetrievalRegression` consume `EvalRuns` envelopes where their required cost / grounding / retrieval axes are present.
-- **Planned standalone approach:** compare current and baseline `EvalRun` records case-by-case, then run-level when case IDs do not match.
-- **Planned base strategy:** cached snapshot first, with future support for rerun and CI-artifact strategies once stochastic-eval handling is calibrated.
-- **Edge cases NOT handled in 0.3.0:** standalone `evalRegression` engine invocation, multi-metric weighted comparison, stochastic confidence intervals, and cross-eval correlation analysis.
+- **Artifact inputs:** promptfoo (`--promptfoo-results`), deepeval (`--deepeval-results`), ragas (`--ragas-results`), Great Expectations (`--great-expectations-results`); gauntlet via the JSON-format-compatible ingestion path.
+- **Approach:** compare current and baseline eval-run records case-by-case, then run-level when case IDs do not match.
+- **Base strategy:** cached snapshot by default, with rerun and CI-artifact strategies available.
+- **Edge cases not handled:** multi-metric weighted comparison, stochastic confidence intervals, and cross-eval correlation analysis.
 
 ## 6. Worked example
 
@@ -142,7 +134,6 @@ ignore:
 - **Baseline drift** — if the cached baseline in `.terrain/baselines/` represents a known-bad state (because the adopter accepted a regression previously without updating the baseline), the rule won't fire on subsequent PRs. Mitigation: `terrain accept-snapshot <baseline-id> --yes` per accepted baseline, deliberately.
 - **Eval framework non-determinism** — some frameworks return slightly different results on re-runs even with `temperature: 0` (e.g., due to model serving non-determinism upstream). Adopters affected should switch to `base_strategy: cached` to compare against a pinned baseline rather than re-running.
 - **Threshold set too tight** — adopters with high-variance evals who set a 1% threshold will see frequent false positives. Default 5% is conservative; adopters tune up or down per eval characteristics.
-- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 
@@ -160,11 +151,11 @@ The local diagnostic output is byte-equivalent to the CI surface (local-CI parit
 
 ## 10. Stability commitment
 
-This rule's ID is reserved and stable. Default severity, behavior, and tunable-config schema remain experimental until engine-registry integration lands. Once the rule is wired as a gate, changes follow the normal deprecation contract:
+This rule's ID is reserved and stable. Default severity, behavior, and tunable-config schema remain experimental. Changes follow the normal deprecation contract:
 
 - **Renames:** one-cycle deprecation. None planned.
-- **Default threshold change:** treated as breaking after the first wired gate release.
-- **`base_strategy` default change:** treated as breaking after the first wired gate release.
+- **Default threshold change:** treated as breaking.
+- **`base_strategy` default change:** treated as breaking.
 - **Adapter additions** (new eval-framework adapters): additive; documented in `CHANGELOG.md`.
 - **Tunable-config additions** (new optional keys on the rule block): additive; `terrain.yaml` parsers tolerate unknown optional keys per the schema.
 
@@ -175,4 +166,4 @@ This rule's ID is reserved and stable. Default severity, behavior, and tunable-c
 - `terrain/regression/baseline-not-set` — fires *instead* of this rule when no baseline exists to compare against
 - `terrain/regression/pass-rate-drop` — sibling rule for multi-sample evals; delegates threshold logic to this rule's mechanism
 - `terrain/regression/performance-regression` — same shape, for ML model metrics (accuracy/F1/AUC/RMSE) rather than LLM rubric scores
-- `terrain/regression/calibration-degraded` — preview rule for model calibration regressions (different metric family)
+- `terrain/regression/calibration-degraded` — experimental rule for model calibration regressions (different metric family)

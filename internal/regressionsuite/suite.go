@@ -1,21 +1,12 @@
-// Package regressionsuite is the frozen-TP regression machinery that
-// gates shared-infrastructure module ships.
+// Package regressionsuite loads YAML suites and checks a set of findings
+// against them. A suite lists (rule_id, location) entries that must
+// continue to be reported after a change; a suite reports a failure when
+// more than max_tp_loss of its listed entries are missing from the
+// findings.
 //
-//   - Each shared module (barrel resolver, scope classifier, ASCG, EHR,
-//     SurfaceLiteralPresenceGate, etc.) ships with a frozen suite of
-//     true positives from each consumer detector.
-//   - If a module change drops more than max_tp_loss frozen TPs, the
-//     module's PR is blocked.
-//
-// Workflow:
-//
-//  1. Author of a shared-infrastructure module collects the TPs each
-//     consumer detector currently fires on (from labeled validation
-//     data).
-//  2. The TPs are written into a per-module YAML file under
-//     harness/regression-suites/<module>.yaml.
-//  3. CI runs LoadSuite + Check against the head SHA's findings; a
-//     regression past max_tp_loss fails the build.
+// Use LoadSuite/LoadAll to parse suite YAML, then Suite.Check to compare a
+// suite against a set of Findings; Check returns a Report naming the
+// missing entries and whether the failure threshold was crossed.
 package regressionsuite
 
 import (
@@ -34,13 +25,11 @@ type Suite struct {
 	// today; mismatches return an error so a schema bump can be noticed.
 	SchemaVersion int `yaml:"schema_version"`
 
-	// Module is the human-readable name of the shared module this suite
-	// gates (e.g. "A7-barrel-resolver", "SurfaceLiteralPresenceGate").
+	// Module is the human-readable name of the shared module this suite gates.
 	Module string `yaml:"module"`
 
 	// MaxTPLoss is the maximum number of frozen TPs that can be missing
-	// before the suite reports a failure. 10 is the canonical floor per the
-	// symmetric ≥10%/≥5-TP rule.
+	// before the suite reports a failure.
 	MaxTPLoss int `yaml:"max_tp_loss"`
 
 	// ConsumerDetectors lists the rule_ids whose recall this suite gates.

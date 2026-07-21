@@ -62,10 +62,8 @@ jobs:
   # Matrix-tested across the three OS families we ship binaries for.
   # ubuntu remains the canonical runner (race detector + extended smoke
   # suite); macos and windows run a reduced "does it build and pass unit
-  # tests" check so platform-specific regressions surface in PRs rather
-  # than at release time. Round 4 review flagged single-OS coverage as a
-  # gap; without this matrix windows path-separator and EOL bugs only
-  # showed up after binaries shipped.
+  # tests" check. The multi-OS matrix surfaces windows path-separator and
+  # EOL regressions in PRs rather than after binaries ship.
   go-test:
     strategy:
       fail-fast: false
@@ -99,8 +97,7 @@ jobs:
 
       - name: Verify generated docs are up to date
         if: matrix.extended
-        # Hard-fail gate (carries the 0.1.2 manifest scaffold to enforcement
-        # in 0.2). If you edit internal/signals/manifest.go, run
+        # Hard-fail gate: if you edit internal/signals/manifest.go, run
         # `make docs-gen` and commit docs/signals/manifest.json.
         run: make docs-verify
 
@@ -111,10 +108,10 @@ jobs:
       - name: Determinism gate
         if: matrix.extended
         # Three back-to-back runs against the same fixture must produce
-        # byte-identical snapshots. Round 4 review flagged that determinism
-        # was being asserted by a single-shot test rather than gated in CI;
-        # this step closes that gap. Failure here means a non-deterministic
-        # data path crept in (typically an unsorted map or a timestamp).
+        # byte-identical snapshots; this gates determinism in CI rather than
+        # relying on a single-shot unit test. Failure here means a
+        # non-deterministic data path crept in (typically an unsorted map or
+        # a timestamp).
         run: make test-determinism
 
       - name: Run Go tests

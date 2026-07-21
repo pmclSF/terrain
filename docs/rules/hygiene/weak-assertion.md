@@ -16,10 +16,6 @@ Tests use weak or low-density assertions, reducing defect-catching power.
 
 Add behavior-focused assertions on outputs, state transitions, and side effects.
 
-## Promotion plan
-
-Observability-tier. Gate-tier promotion requires an explicit user-declared policy threshold and framing-stable evaluation.
-
 ## Evidence sources
 
 - `structural-pattern`

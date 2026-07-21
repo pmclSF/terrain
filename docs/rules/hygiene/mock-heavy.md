@@ -16,10 +16,6 @@ Tests rely heavily on mocks and may miss integration-level regressions.
 
 Replace brittle mocks with real collaborators where practical.
 
-## Promotion plan
-
-Observability-tier. Rebuild requires a mock-classifier distinguishing module vs callback mocks.
-
 ## Evidence sources
 
 - `structural-pattern`

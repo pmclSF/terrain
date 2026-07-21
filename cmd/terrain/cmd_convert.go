@@ -13,6 +13,7 @@ import (
 	conv "github.com/pmclSF/terrain/internal/convert"
 	"github.com/pmclSF/terrain/internal/progress"
 	"github.com/pmclSF/terrain/internal/reporting"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 type convertCommandOptions struct {
@@ -200,7 +201,7 @@ func runConvert(source string, opts convertCommandOptions) error {
 	if !opts.JSON && !opts.Plan && !opts.DryRun {
 		label := "Converting"
 		if opts.From != "" && opts.To != "" {
-			label = fmt.Sprintf("Converting %s → %s", opts.From, opts.To)
+			label = fmt.Sprintf("Converting %s %s %s", opts.From, uitokens.GlyphArrow(), opts.To)
 		}
 		sp = progress.NewSpinner(label, false)
 		sp.Start()

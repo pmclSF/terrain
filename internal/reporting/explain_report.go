@@ -224,8 +224,8 @@ func renderChain(w io.Writer, chain *explain.ReasonChain) {
 			prefix = "    → "
 		}
 		fmt.Fprintf(w, "%s%s\n", prefix, step.From)
-		fmt.Fprintf(w, "    → %s  [%s, confidence: %.0f%%]\n",
-			step.To, step.Relationship, step.EdgeConfidence*100)
+		fmt.Fprintf(w, "    %s %s  [%s, confidence: %.0f%%]\n",
+			uitokens.GlyphArrow(), step.To, step.Relationship, step.EdgeConfidence*100)
 	}
 }
 

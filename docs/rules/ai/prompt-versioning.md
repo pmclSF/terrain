@@ -16,10 +16,6 @@ Prompt-kind surface ships without a recognizable version marker (filename suffix
 
 Add a `version:` field, a `_v<N>` filename suffix, or a `# version: ...` comment so downstream consumers can detect content drift.
 
-## Promotion plan
-
-Stays at observability tier until adopter-corpus precision confirms gate-readiness.
-
 ## Evidence sources
 
 - `structural-pattern`

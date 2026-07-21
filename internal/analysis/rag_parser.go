@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/astguard"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -31,6 +32,9 @@ import (
 //
 // Each detection carries TierSemantic with evidence metadata.
 func ParseRAGPipeline(relPath, src, lang string) []models.CodeSurface {
+	if astguard.LooksPathologicalString(src) {
+		return nil
+	}
 	switch lang {
 	case "js":
 		return parseJSRAG(relPath, src)
@@ -38,6 +42,20 @@ func ParseRAGPipeline(relPath, src, lang string) []models.CodeSurface {
 		return parsePythonRAG(relPath, src)
 	default:
 		return nil
+	}
+}
+
+// hasAIContext reports whether the source has any file-level AI signal, used to
+// gate the RAG/framework-inference passes in the production walk (unit tests
+// exercise the parsers directly, without the gate).
+func hasAIContext(src, lang string) bool {
+	switch lang {
+	case "js":
+		return HasAIContextJS(src)
+	case "python":
+		return HasAIContextPython(src)
+	default:
+		return false
 	}
 }
 

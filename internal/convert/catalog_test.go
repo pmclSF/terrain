@@ -65,9 +65,9 @@ func TestLookupDirection_ImplementedDirectionsReportGoNativeRuntime(t *testing.T
 		{"webdriverio", "playwright"},
 	}
 
-	// experimentalCases are directions that round 3 review classified as
-	// C-grade; they dispatch to the Go-native runtime but are not yet
-	// production-ready. See internal/convert/catalog.go for promotion criteria.
+	// experimentalCases are directions that dispatch to the Go-native runtime
+	// but have incomplete coverage of real-world patterns. See
+	// internal/convert/catalog.go for the experimental classification.
 	experimentalCases := [][2]string{
 		{"junit4", "junit5"},
 		{"junit5", "testng"},

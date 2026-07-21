@@ -306,12 +306,14 @@ func TestCrossFileScope_PackageFallback(t *testing.T) {
 }
 
 type fakeResolver struct {
-	sibling bool
-	pkg     bool
+	sibling    bool
+	pkg        bool
+	referenced bool
 }
 
-func (f *fakeResolver) SiblingHasEvalMarker(string) bool { return f.sibling }
-func (f *fakeResolver) PackageHasEvalMarker(string) bool { return f.pkg }
+func (f *fakeResolver) SiblingHasEvalMarker(string) bool    { return f.sibling }
+func (f *fakeResolver) PackageHasEvalMarker(string) bool    { return f.pkg }
+func (f *fakeResolver) SurfaceReferencedByEval(string) bool { return f.referenced }
 
 // helper: searches the candidate's atoms for one with the given RuleID.
 func hasAtom(c *aipipeline.Candidate, ruleID string) bool {

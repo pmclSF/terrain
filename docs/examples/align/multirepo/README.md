@@ -2,8 +2,8 @@
 
 > **Status:** runnable example. The multi-repo manifest
 > format and `terrain portfolio --from <manifest>` aggregator ship in
-> 0.3.0 (see [`internal/portfolio/manifest.go`](../../../../internal/portfolio/manifest.go)).
-> The 0.3.0 aggregator produces repo rollups, owner/tag propagation,
+> 0.4.0 (see [`internal/portfolio/manifest.go`](../../../../internal/portfolio/manifest.go)).
+> The 0.4.0 aggregator produces repo rollups, owner/tag propagation,
 > snapshot-backed inputs, and framework-of-record drift findings.
 
 This example walks through the canonical multi-repo use case: an
@@ -117,9 +117,9 @@ The load-bearing properties of this output:
    `customer-facing` carries into JSON assets and findings, so adopters
    can slice portfolio output without deleting repos from the manifest.
 
-## Why this example matters for 0.3.0
+## Why this example matters for 0.4.0
 
-Multi-repo portfolio aggregation is stable in 0.3.0: an adopter can
+Multi-repo portfolio aggregation is stable in 0.4.0: an adopter can
 point Terrain at a manifest, aggregate saved snapshots or fresh repo
 scans, and see framework drift across the portfolio. Deeper cross-repo
 dependency edges and migration sequencing remain future work.

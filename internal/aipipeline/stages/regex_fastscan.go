@@ -25,7 +25,7 @@ import (
 //
 // Critically, this stage may emit "ast.no_call_despite_regex" as a
 // negative atom when the SDK anchor matched but no real call site
-// was found — the regex-v2 "negative gate" effect. (The AST stage
+// was found — the fast-scan negative-gate effect. (The AST stage
 // can emit a stronger version of this atom; this stage produces a
 // regex-only approximation.)
 type RegexFastscan struct {

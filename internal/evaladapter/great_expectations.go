@@ -3,9 +3,10 @@ package evaladapter
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // GreatExpectationsAdapter ingests Great Expectations Validation Result
@@ -33,7 +34,7 @@ func (GreatExpectationsAdapter) CanIngest(path string) bool {
 	if !strings.HasSuffix(strings.ToLower(path), ".json") {
 		return false
 	}
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return false
 	}
@@ -71,7 +72,7 @@ func (GreatExpectationsAdapter) CanIngest(path string) bool {
 
 // Ingest implements Adapter.
 func (GreatExpectationsAdapter) Ingest(path string) (*EvalRun, error) {
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("ge: read %s: %w", path, err)
 	}
@@ -184,6 +185,7 @@ func (GreatExpectationsAdapter) Ingest(path string) (*EvalRun, error) {
 		// scalar score. This matches the rule layer's expectation that
 		// PrimaryMetric is a comparable scalar per run.
 		run.Stats.PrimaryMetric = float64(run.Stats.Successes) / float64(run.Stats.Total)
+		run.Stats.HasPrimaryMetric = true
 	}
 
 	return run, nil

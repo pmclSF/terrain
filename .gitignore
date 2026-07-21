@@ -2,6 +2,13 @@
 internal/docs/
 !internal/docs/release/
 
+# harness/ holds internal validation data (corpora, recall + regression
+# harnesses, readiness cards) and its methodology — internal-only.
+harness/
+
+# The 0.2.0 product-plan RFC is internal strategy — kept local.
+rfcs/0000-terrain-0.2.0-product-plan.md
+
 cmd/internal/terrain-corpus/
 cmd/internal/terrain-precision/
 

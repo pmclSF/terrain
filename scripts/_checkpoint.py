@@ -13,7 +13,7 @@ Usage — bulk-payload save/load:
     if ck.has('stage1'):
         findings = ck.load('stage1')
     else:
-        findings = expensive_clone_and_scan(...)  # 30 min on 500 repos
+        findings = expensive_clone_and_scan(...)  # long-running stage
         ck.save('stage1', findings)
 
     # Stage 2 runs against findings; if it crashes here, Stage 1 work
@@ -23,7 +23,7 @@ Usage — streaming JSONL writer (for incremental row-by-row work):
 
     with ck.jsonl_writer('ratings') as w:
         for row in candidates:
-            verdict = expensive_oracle_call(row)  # paid per call
+            verdict = expensive_oracle_call(row)  # expensive per-item call
             w.write({'id': row['id'], 'verdict': verdict})
             # crash here only loses the in-flight oracle call; everything
             # written so far is on disk.

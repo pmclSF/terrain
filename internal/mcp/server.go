@@ -22,6 +22,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -37,8 +38,10 @@ const SpecVersion = "2025-11-25"
 // ServerName is the server's name as reported in initialize.
 const ServerName = "terrain-mcp"
 
-// ServerVersion is the Terrain binary version (overridden at build).
-var ServerVersion = "0.3.0"
+// ServerVersion is the Terrain binary version reported in the MCP handshake.
+// main() sets it to the ldflag-injected build version at startup; this literal
+// is only the fallback for direct/library use.
+var ServerVersion = "dev"
 
 // Server is an MCP server that reads JSON-RPC messages from a reader
 // and writes responses to a writer. The default transport is stdio.
@@ -113,7 +116,17 @@ func (s *Server) Serve(ctx context.Context) error {
 			}
 		}
 	}
-	return scanner.Err()
+	// A single message exceeding the scanner buffer surfaces as
+	// bufio.ErrTooLong. Emit a JSON-RPC error so the client learns why the
+	// session ended rather than seeing a silent EOF. The oversized message
+	// was never parsed, so the id is unknown (null).
+	if err := scanner.Err(); err != nil {
+		if errors.Is(err, bufio.ErrTooLong) {
+			_ = s.write(errorResponse(nil, codeInvalidRequest, "message too large"))
+		}
+		return err
+	}
+	return nil
 }
 
 // handle processes one incoming JSON-RPC message and returns the
@@ -128,12 +141,16 @@ func (s *Server) handle(raw []byte) *jsonRPCResponse {
 		return errorResponse(req.ID, codeInvalidRequest, "jsonrpc must be \"2.0\"")
 	}
 
+	// A request with no id member is a notification: the spec forbids any
+	// response, regardless of method. Detect this generically rather than
+	// enumerating individual notification methods.
+	if len(req.ID) == 0 {
+		return nil
+	}
+
 	switch req.Method {
 	case "initialize":
 		return s.handleInitialize(req)
-	case "initialized":
-		// Notification; no response.
-		return nil
 	case "tools/list":
 		return s.handleToolsList(req)
 	case "tools/call":
@@ -217,16 +234,20 @@ func (s *Server) write(resp *jsonRPCResponse) error {
 
 type jsonRPCRequest struct {
 	JSONRPC string          `json:"jsonrpc"`
-	ID      any             `json:"id,omitempty"`
+	ID      json.RawMessage `json:"id,omitempty"`
 	Method  string          `json:"method"`
 	Params  json.RawMessage `json:"params,omitempty"`
 }
 
 type jsonRPCResponse struct {
-	JSONRPC string        `json:"jsonrpc"`
-	ID      any           `json:"id,omitempty"`
-	Result  any           `json:"result,omitempty"`
-	Error   *jsonRPCError `json:"error,omitempty"`
+	JSONRPC string `json:"jsonrpc"`
+	// ID is echoed back byte-for-byte from the request via json.RawMessage,
+	// so large integer ids keep full precision. It has no omitempty: a
+	// response to an unidentifiable request must still carry "id": null per
+	// the JSON-RPC 2.0 spec.
+	ID     json.RawMessage `json:"id"`
+	Result any             `json:"result,omitempty"`
+	Error  *jsonRPCError   `json:"error,omitempty"`
 }
 
 type jsonRPCError struct {
@@ -244,11 +265,13 @@ const (
 	codeInternalError  = -32603
 )
 
-func successResponse(id any, result any) *jsonRPCResponse {
+func successResponse(id json.RawMessage, result any) *jsonRPCResponse {
 	return &jsonRPCResponse{JSONRPC: "2.0", ID: id, Result: result}
 }
 
-func errorResponse(id any, code int, message string) *jsonRPCResponse {
+// errorResponse builds a JSON-RPC error response. A nil id marshals to
+// "id": null, as required for responses to unparseable or id-less requests.
+func errorResponse(id json.RawMessage, code int, message string) *jsonRPCResponse {
 	return &jsonRPCResponse{
 		JSONRPC: "2.0",
 		ID:      id,
@@ -265,8 +288,10 @@ func unmarshalArgs(args json.RawMessage, dst any) error {
 	return json.Unmarshal(args, dst)
 }
 
-// finingByID looks up a finding in the artifact by primary_loc-derived
-// or rule-id-derived key. Format: "<rule_id>:<primary_loc.path>:<line>".
+// findingByID looks up a finding in the artifact by primary_loc-derived
+// or rule-id-derived key. Format: "<rule_id>:<primary_loc.path>:<line>",
+// with ":<column>" appended when a column is present, so findings that
+// share rule_id/path/line but differ by column resolve individually.
 func findingByID(a *findings.Artifact, id string) (*findings.Finding, bool) {
 	if a == nil {
 		return nil, false
@@ -280,5 +305,16 @@ func findingByID(a *findings.Artifact, id string) (*findings.Finding, bool) {
 }
 
 func findingID(f findings.Finding) string {
-	return fmt.Sprintf("%s:%s:%d", f.RuleID, f.PrimaryLoc.Path, f.PrimaryLoc.Line)
+	// Prefer the canonical finding id (detector@path:anchor#hash) that
+	// suppressions, `terrain explain finding`, and the webhook /dismiss path
+	// all reference, so an id copied from MCP resolves on those surfaces.
+	if f.FindingID != "" {
+		return f.FindingID
+	}
+	// Fallback for artifacts built without a located signal.
+	id := fmt.Sprintf("%s:%s:%d", f.RuleID, f.PrimaryLoc.Path, f.PrimaryLoc.Line)
+	if f.PrimaryLoc.Column > 0 {
+		id += fmt.Sprintf(":%d", f.PrimaryLoc.Column)
+	}
+	return id
 }

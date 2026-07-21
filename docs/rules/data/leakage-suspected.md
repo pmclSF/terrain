@@ -16,10 +16,6 @@ Source-level patterns associated with train/test contamination: preprocessing (s
 
 Move scaler/encoder fits to AFTER the split. For time-series, use TimeSeriesSplit or a manual time-based cutoff.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/data/leakage_suspected.go (DetectLeakageSuspected). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -36,9 +32,7 @@ Source-level patterns associated with train/test contamination. Reported metrics
 
 ## 2. Severity & status
 
-- **Tier:** stable
-- **Default severity:** high
-- **Stable since:** v0.2.0
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 
@@ -48,7 +42,7 @@ Source-level patterns associated with train/test contamination. Reported metrics
 
 ## 4. Why this matters
 
-Data leakage is the silent producer of inflated metrics. A 0.95 accuracy that drops to 0.65 in production is almost always traced back to a `fit_transform` on the full dataset, or a random split on temporal data, or a target leak through derived features. The rule operates at the source level — it can't detect every leakage shape, but it surfaces the two most common ones with high enough confidence to gate.
+Data leakage is the silent producer of inflated metrics. A 0.95 accuracy that drops to 0.65 in production is almost always traced back to a `fit_transform` on the full dataset, or a random split on temporal data, or a target leak through derived features. The rule operates at the source level — it can't detect every leakage shape, but it surfaces the two most common ones.
 
 Companion rule: `terrain/data/missing-train-test-split` fires when no split exists at all; this rule fires when a split exists but is used incorrectly.
 
@@ -58,7 +52,7 @@ Companion rule: `terrain/data/missing-train-test-split` fires when no split exis
 - **Path filter:** only training-pathed files (`/train/`, `/training/`, `/models/`, `/notebooks/`, `/experiments/`, `/ml/`, `/pipelines/`).
 - **Pattern: preprocessing leakage.** A `.fit_transform()` / `.fit()` call on a preprocessing class (`StandardScaler` / `MinMaxScaler` / `OneHotEncoder` / `TfidfVectorizer` / `SimpleImputer` / `PowerTransformer` / etc., or a variable named `scaler.` / `encoder.` / `vectorizer.` / `imputer.` / `transformer.`) appears BEFORE the first `train_test_split` call.
 - **Pattern: temporal leakage.** The file has time-series indicators (`pd.to_datetime`, `DatetimeIndex`, `time_series`, `timestamp`, LSTM imports, `.resample(`, `freq=`) AND uses `train_test_split(` AND does NOT use `TimeSeriesSplit(` or `shuffle=False`.
-- **Edge cases NOT handled in 0.3.0:** target leakage (a derived feature column directly mirrors the target), group leakage (rows from the same user split across train/test), nested cross-validation leakage.
+- **Edge cases not handled:** target leakage (a derived feature column directly mirrors the target), group leakage (rows from the same user split across train/test), nested cross-validation leakage.
 
 ## 6. Worked example
 
@@ -110,7 +104,7 @@ terrain test --selector data/leakage-suspected
 
 ## 10. Stability commitment
 
-Rule ID, severity, and the two recognized leakage patterns (preprocessing, temporal) are stable from v0.2.0. New patterns are additive.
+Rule ID, severity, and the two recognized leakage patterns (preprocessing, temporal) are stable. New patterns are additive.
 
 ## 11. Related rules
 

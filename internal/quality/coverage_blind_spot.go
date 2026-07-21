@@ -9,6 +9,18 @@ import (
 type CoverageBlindSpotDetector struct{}
 
 // Detect emits coverageBlindSpot signals from existing coverage insights.
+//
+// Contract:
+//
+//	CB1. nil snapshot / nil / empty CoverageInsights → no signals.
+//	CB2. Only whitelisted insight types fire (only_e2e_coverage,
+//	     only_e2e_unit, uncovered_exported, weak_coverage_diversity).
+//	CB3. Insights identical in (type,path,unitId,description) collapse to one.
+//	CB4. Path!="" → file-level Location; Path=="" → Repository="coverage".
+//	CB5. Severity string maps critical/high/medium/low; unknown → Info.
+//	CB6. Each signal: Type=coverageBlindSpot, Category=Quality,
+//	     Confidence=0.9, EvidenceStrong, SourceCoverage; metadata carries
+//	     insightType always and unitId only when non-empty.
 func (d *CoverageBlindSpotDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
 	if snap == nil || len(snap.CoverageInsights) == 0 {
 		return nil

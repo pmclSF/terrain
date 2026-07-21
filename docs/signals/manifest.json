@@ -35,8 +35,7 @@
         "runtime"
       ],
       "ruleId": "terrain/health/flaky-test",
-      "ruleUri": "docs/rules/health/flaky-test.md",
-      "promotionPlan": "Today's detector is retry-based, not statistical failure-rate. Statistical detection lands in a future release."
+      "ruleUri": "docs/rules/health/flaky-test.md"
     },
     {
       "type": "skippedTest",
@@ -128,8 +127,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/hygiene/weak-assertion",
-      "ruleUri": "docs/rules/hygiene/weak-assertion.md",
-      "promotionPlan": "Observability-tier. Gate-tier promotion requires an explicit user-declared policy threshold and framing-stable evaluation."
+      "ruleUri": "docs/rules/hygiene/weak-assertion.md"
     },
     {
       "type": "mockHeavyTest",
@@ -147,8 +145,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/hygiene/mock-heavy",
-      "ruleUri": "docs/rules/hygiene/mock-heavy.md",
-      "promotionPlan": "Observability-tier. Rebuild requires a mock-classifier distinguishing module vs callback mocks."
+      "ruleUri": "docs/rules/hygiene/mock-heavy.md"
     },
     {
       "type": "testsOnlyMocks",
@@ -166,8 +163,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/quality/tests-only-mocks",
-      "ruleUri": "docs/rules/quality/tests-only-mocks.md",
-      "promotionPlan": "Observability tier. Rebuild target is a repo-aggregate posture metric with multi-dialect assertion counting."
+      "ruleUri": "docs/rules/quality/tests-only-mocks.md"
     },
     {
       "type": "snapshotHeavyTest",
@@ -185,8 +181,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/hygiene/snapshot-heavy",
-      "ruleUri": "docs/rules/hygiene/snapshot-heavy.md",
-      "promotionPlan": "Observability-tier. Gate-tier promotion requires a broader corpus and a framing-stable threshold (e.g. snap\u003e=2 AND ratio\u003e=0.3) plus an explicit user-facing policy declaration."
+      "ruleUri": "docs/rules/hygiene/snapshot-heavy.md"
     },
     {
       "type": "coverageBlindSpot",
@@ -223,8 +218,7 @@
         "coverage"
       ],
       "ruleId": "terrain/quality/coverage-threshold",
-      "ruleUri": "docs/rules/quality/coverage-threshold.md",
-      "promotionPlan": "Severity flips at hard 100%-gap boundary; a smooth gradient lands in a future release per docs/scoring-rubric.md."
+      "ruleUri": "docs/rules/quality/coverage-threshold.md"
     },
     {
       "type": "staticSkippedTest",
@@ -259,8 +253,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "terrain/hygiene/static-skip-unconditional",
-      "promotionPlan": "Preview status. Promotes to stable when broader validation confirms the unconditional / conditional-gate split preserves true positives without inflating false positives."
+      "ruleId": "terrain/hygiene/static-skip-unconditional"
     },
     {
       "type": "staticSkippedTest-conditional-gate",
@@ -277,8 +270,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "terrain/hygiene/static-skip-conditional-gate",
-      "promotionPlan": "Preview status. Promotes to stable when broader validation confirms the conditional-gate variant preserves the intentional-skip true positives that a narrower predicate would drop."
+      "ruleId": "terrain/hygiene/static-skip-conditional-gate"
     },
     {
       "type": "assertionFreeTest",
@@ -296,8 +288,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/hygiene/no-assertions",
-      "ruleUri": "docs/rules/hygiene/no-assertions.md",
-      "promotionPlan": "Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role gate that excludes conftest/fixtures/commented-out tests, and framing-stable evaluation."
+      "ruleUri": "docs/rules/hygiene/no-assertions.md"
     },
     {
       "type": "orphanedTestFile",
@@ -333,8 +324,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/deps/drift-risk",
-      "ruleUri": "docs/rules/deps/drift-risk.md",
-      "promotionPlan": "Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on deps-bump PRs."
+      "ruleUri": "docs/rules/deps/drift-risk.md"
     },
     {
       "type": "depsDriftRisk-strict-pin",
@@ -351,8 +341,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "terrain/deps/drift-strict-pin",
-      "promotionPlan": "Preview status. One half of the dependency-drift split (the other is the caret-policy / unpinned counterpart). Promotes to stable when broader validation confirms regression-PR lift on deps-bump PRs."
+      "ruleId": "terrain/deps/drift-strict-pin"
     },
     {
       "type": "depsDriftRisk-caret-policy",
@@ -362,15 +351,14 @@
       "tier": "observability",
       "title": "Caret-Range Dependency Drift",
       "description": "Dependencies use caret-range specs (`^x.y.z`) in an ecosystem where caret semantics let minor versions drift silently (npm, Poetry, and Cargo each interpret caret differently). The runtime version can change without a manifest edit.",
-      "remediation": "Adopt a stricter pinning policy (tilde, exact, or commit-pinned) where minor-version drift would silently affect runtime behavior.",
+      "remediation": "Adopt a stricter pinning policy (exact or commit-pinned) where minor-version drift would silently affect runtime behavior.",
       "defaultSeverity": "low",
       "confidenceMin": 0.55,
       "confidenceMax": 0.8,
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "terrain/deps/drift-caret-policy",
-      "promotionPlan": "Preview status. One half of the dependency-drift split (the other is the strict-pin counterpart). Promotes to stable when broader validation confirms regression-PR lift on deps-bump PRs."
+      "ruleId": "terrain/deps/drift-caret-policy"
     },
     {
       "type": "configSchemaDrift",
@@ -388,8 +376,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/config/schema-drift",
-      "ruleUri": "docs/rules/config/schema-drift.md",
-      "promotionPlan": "Promotes to stable once broader validation confirms regression-PR lift ≥ 1.5x on config-only PRs."
+      "ruleUri": "docs/rules/config/schema-drift.md"
     },
     {
       "type": "promptFileMissingEval",
@@ -398,7 +385,7 @@
       "status": "experimental",
       "tier": "observability",
       "title": "AI/ML Surface Without Eval Coverage",
-      "description": "An AI/ML surface (prompt, agent, tool definition, model context, or model artifact) has no eval scenario covering it. Across 2000 OSS AI/ML repos, 136 of every 137 detected surfaces have this gap — the dominant AI-testing failure mode.",
+      "description": "An AI/ML surface (prompt, agent, tool definition, model context, or model artifact) has no eval scenario covering it — the dominant AI-testing failure mode.",
       "remediation": "Add an eval scenario (promptfoo / DeepEval / Ragas / framework-specific) that exercises this surface. Use `terrain ai list` to see other uncovered surfaces in the same repo and batch-fix.",
       "defaultSeverity": "medium",
       "confidenceMin": 0.55,
@@ -407,8 +394,7 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/ai/surface-missing-eval",
-      "ruleUri": "docs/rules/ai/surface-missing-eval.md",
-      "promotionPlan": "Promotes to stable once calibration data confirms regression-PR lift on prompt-eval-gap findings."
+      "ruleUri": "docs/rules/ai/surface-missing-eval.md"
     },
     {
       "type": "frameworkMigration",
@@ -444,8 +430,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/migration/migration-blocker",
-      "ruleUri": "docs/rules/migration/migration-blocker.md",
-      "promotionPlan": "Observability-tier. Refresh the trigger set to living migration patterns and drop the enzyme sub-rule once base rates are confirmed."
+      "ruleUri": "docs/rules/migration/migration-blocker.md"
     },
     {
       "type": "deprecatedTestPattern",
@@ -463,8 +448,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/migration/deprecated-pattern",
-      "ruleUri": "docs/rules/migration/deprecated-pattern.md",
-      "promotionPlan": "Observability-tier. Drop the enzyme sub-rule, refresh the trigger set, and add a scope gate distinguishing jest.setTimeout from bare setTimeout in a test body."
+      "ruleUri": "docs/rules/migration/deprecated-pattern.md"
     },
     {
       "type": "dynamicTestGeneration",
@@ -612,8 +596,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/structural/uncovered-ai-surface",
-      "ruleUri": "docs/rules/structural/uncovered-ai-surface.md",
-      "promotionPlan": "Coverage attribution depends on .terrain/terrain.yaml scenario declarations. Precision/recall measurement remains a promotion prerequisite for 0.3.x."
+      "ruleUri": "docs/rules/structural/uncovered-ai-surface.md"
     },
     {
       "type": "phantomEvalScenario",
@@ -631,8 +614,7 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/structural/phantom-eval",
-      "ruleUri": "docs/rules/structural/phantom-eval.md",
-      "promotionPlan": "Stable. Ships at observability tier because a silent eval-coverage gap is informational, not gate-blocking. Severity is High because the failure mode (eval reports passing while running zero tests) silently degrades trust in CI signal."
+      "ruleUri": "docs/rules/structural/phantom-eval.md"
     },
     {
       "type": "untestedPromptFlow",
@@ -650,8 +632,7 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/structural/untested-prompt-flow",
-      "ruleUri": "docs/rules/structural/untested-prompt-flow.md",
-      "promotionPlan": "Detection currently misses prompt flows that go through framework abstractions (LangChain runnables, LlamaIndex query engines). 0.2 ships AST-based prompt-flow tracing; promote once recall measures \u003e=0.8 on the AI fixture corpus."
+      "ruleUri": "docs/rules/structural/untested-prompt-flow.md"
     },
     {
       "type": "blastRadiusHotspot",
@@ -706,8 +687,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/structural/assertion-free-import",
-      "ruleUri": "docs/rules/structural/assertion-free-import.md",
-      "promotionPlan": "Observability-tier. Gate-tier requires a multi-dialect assertion oracle, a path-role test gate, cross-file inherited-assertion resolution, and framing-stable evaluation."
+      "ruleUri": "docs/rules/structural/assertion-free-import.md"
     },
     {
       "type": "capabilityValidationGap",
@@ -726,8 +706,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/structural/capability-gap",
-      "ruleUri": "docs/rules/structural/capability-gap.md",
-      "promotionPlan": "Capability inference is heuristic; will be promoted once the AI taxonomy supports explicit capability tags and precision is validated."
+      "ruleUri": "docs/rules/structural/capability-gap.md"
     },
     {
       "type": "evalFailure",
@@ -744,8 +723,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/eval-failure",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/eval-failure"
     },
     {
       "type": "evalRegression",
@@ -764,8 +742,7 @@
         "eval-execution"
       ],
       "ruleId": "terrain/regression/eval-regression",
-      "ruleUri": "docs/rules/regression/eval-regression.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/regression/eval_regression.go (DetectEvalRegression). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/regression/eval-regression.md"
     },
     {
       "type": "accuracyRegression",
@@ -781,8 +758,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/accuracy-regression",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/accuracy-regression"
     },
     {
       "type": "citationMissing",
@@ -798,8 +774,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/citation-missing",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/citation-missing"
     },
     {
       "type": "retrievalMiss",
@@ -815,8 +790,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/retrieval-miss",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/retrieval-miss"
     },
     {
       "type": "answerGroundingFailure",
@@ -832,8 +806,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/grounding-failure",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/grounding-failure"
     },
     {
       "type": "toolSelectionError",
@@ -849,8 +822,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/tool-selection-error",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/tool-selection-error"
     },
     {
       "type": "schemaParseFailure",
@@ -866,8 +838,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/schema-parse-failure",
-      "promotionPlan": "Planned. Reserved signal type — runtime detector not yet wired."
+      "ruleId": "terrain/ai/schema-parse-failure"
     },
     {
       "type": "safetyFailure",
@@ -884,8 +855,7 @@
         "runtime",
         "policy"
       ],
-      "ruleId": "terrain/ai/safety-failure",
-      "promotionPlan": "Planned. Reserved signal type — runtime detector not yet wired."
+      "ruleId": "terrain/ai/safety-failure"
     },
     {
       "type": "aiPolicyViolation",
@@ -901,8 +871,7 @@
       "evidenceSources": [
         "policy"
       ],
-      "ruleId": "terrain/ai/ai-policy-violation",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/ai-policy-violation"
     },
     {
       "type": "hallucinationDetected",
@@ -918,8 +887,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/hallucination",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/hallucination"
     },
     {
       "type": "latencyRegression",
@@ -935,8 +903,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/latency-regression",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/latency-regression"
     },
     {
       "type": "costRegression",
@@ -952,8 +919,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/cost-regression-umbrella",
-      "promotionPlan": "Planned. Reserved signal type — generic cost-regression umbrella; not yet wired."
+      "ruleId": "terrain/ai/cost-regression-umbrella"
     },
     {
       "type": "contextOverflowRisk",
@@ -970,8 +936,7 @@
         "structural-pattern",
         "runtime"
       ],
-      "ruleId": "terrain/ai/context-overflow",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/context-overflow"
     },
     {
       "type": "wrongSourceSelected",
@@ -987,8 +952,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/wrong-source",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/wrong-source"
     },
     {
       "type": "citationMismatch",
@@ -1004,8 +968,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/citation-mismatch",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/citation-mismatch"
     },
     {
       "type": "staleSourceRisk",
@@ -1021,8 +984,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "terrain/ai/stale-source",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/stale-source"
     },
     {
       "type": "chunkingRegression",
@@ -1038,8 +1000,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/chunking-regression",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/chunking-regression"
     },
     {
       "type": "rerankerRegression",
@@ -1055,8 +1016,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/reranker-regression",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/reranker-regression"
     },
     {
       "type": "topKRegression",
@@ -1072,8 +1032,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/topk-regression",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/topk-regression"
     },
     {
       "type": "toolRoutingError",
@@ -1089,8 +1048,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/tool-routing-error",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/tool-routing-error"
     },
     {
       "type": "toolGuardrailViolation",
@@ -1107,8 +1065,7 @@
         "runtime",
         "policy"
       ],
-      "ruleId": "terrain/ai/tool-guardrail",
-      "promotionPlan": "Planned. Reserved signal type for runtime tool-guardrail violations; the structural side ships as aiToolWithoutSandbox."
+      "ruleId": "terrain/ai/tool-guardrail"
     },
     {
       "type": "toolBudgetExceeded",
@@ -1125,8 +1082,7 @@
         "runtime",
         "policy"
       ],
-      "ruleId": "terrain/ai/tool-budget",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/tool-budget"
     },
     {
       "type": "agentFallbackTriggered",
@@ -1142,8 +1098,7 @@
       "evidenceSources": [
         "runtime"
       ],
-      "ruleId": "terrain/ai/agent-fallback",
-      "promotionPlan": "Planned. Reserved signal type — detector not yet wired."
+      "ruleId": "terrain/ai/agent-fallback"
     },
     {
       "type": "aiSafetyEvalMissing",
@@ -1180,8 +1135,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/ai/prompt-versioning",
-      "ruleUri": "docs/rules/ai/prompt-versioning.md",
-      "promotionPlan": "Stays at observability tier until adopter-corpus precision confirms gate-readiness."
+      "ruleUri": "docs/rules/ai/prompt-versioning.md"
     },
     {
       "type": "aiPromptInjectionRisk",
@@ -1200,8 +1154,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/ai/prompt-injection-risk",
-      "ruleUri": "docs/rules/ai/prompt-injection-risk.md",
-      "promotionPlan": "Off by default. The current pattern-matching predicate over-fires on non-injection prompt templates; the rule will be re-enabled when a structurally precise taint-flow predicate replaces it. Opt in via .terrain/policy.yaml only when an adopter has confirmed the local signal is useful."
+      "ruleUri": "docs/rules/ai/prompt-injection-risk.md"
     },
     {
       "type": "aiHardcodedAPIKey",
@@ -1220,8 +1173,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/ai/hardcoded-api-key",
-      "ruleUri": "docs/rules/ai/hardcoded-api-key.md",
-      "promotionPlan": "Off by default. The current literal-shape predicate is too narrow to fire reliably across typical adopter codebases; capability is preserved via the planned split into aiHardcodedAPIKey-literal-shape + secretScannerCoverageDegraded. Opt in via .terrain/policy.yaml when the local repo shape matches the predicate."
+      "ruleUri": "docs/rules/ai/hardcoded-api-key.md"
     },
     {
       "type": "aiHardcodedAPIKey-literal-shape",
@@ -1238,8 +1190,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "terrain/ai/hardcoded-api-key-literal-shape",
-      "promotionPlan": "Planned. Reserved signal type — the literal-shape half of the API-key split; detector not yet wired."
+      "ruleId": "terrain/ai/hardcoded-api-key-literal-shape"
     },
     {
       "type": "secretScannerCoverageDegraded",
@@ -1256,8 +1207,7 @@
       "evidenceSources": [
         "structural-pattern"
       ],
-      "ruleId": "terrain/ai/secret-scanner-coverage-degraded",
-      "promotionPlan": "Planned. Reserved signal type for the CI-integration gap that pairs with the in-repo key-shape detector."
+      "ruleId": "terrain/ai/secret-scanner-coverage-degraded"
     },
     {
       "type": "aiToolWithoutSandbox",
@@ -1365,8 +1315,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/ai/few-shot-contamination",
-      "ruleUri": "docs/rules/ai/few-shot-contamination.md",
-      "promotionPlan": "Substring-overlap detector ships today; promotes to stable once broader validation tunes the threshold and adds token-level n-gram + semantic-similarity passes."
+      "ruleUri": "docs/rules/ai/few-shot-contamination.md"
     },
     {
       "type": "aiEmbeddingModelChange",
@@ -1384,8 +1333,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/ai/embedding-model-change",
-      "ruleUri": "docs/rules/ai/embedding-model-change.md",
-      "promotionPlan": "Ships the static precondition (embedding referenced + no retrieval coverage) today. The cross-snapshot content-hash diff variant lands once snapshot fingerprints are recorded."
+      "ruleUri": "docs/rules/ai/embedding-model-change.md"
     },
     {
       "type": "aiRetrievalRegression",
@@ -1410,7 +1358,7 @@
       "constName": "SignalAIPromptSchemaDrift",
       "domain": "ai",
       "status": "stable",
-      "tier": "observability",
+      "tier": "gate",
       "title": "Prompt Template References Changed Schema Field",
       "description": "A prompt template references a schema field that this PR removed or whose declared type changed. The template will render with a missing value (or wrong type) once merged.",
       "remediation": "Update the template to use the new schema field, restore the old field, or remove the variable reference.",
@@ -1421,8 +1369,7 @@
         "static"
       ],
       "ruleId": "terrain/ai/prompt-schema-drift",
-      "ruleUri": "docs/rules/ai/prompt-schema-drift.md",
-      "promotionPlan": "Ships at observability tier. Stays at observability until adopter-corpus measurement confirms gate-readiness."
+      "ruleUri": "docs/rules/ai/prompt-schema-drift.md"
     },
     {
       "type": "detectorPanic",
@@ -1514,8 +1461,7 @@
         "manifest"
       ],
       "ruleId": "terrain/reproducibility/version-floating",
-      "ruleUri": "docs/rules/reproducibility/version-floating.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/reproducibility/version_floating.go (DetectVersionFloating). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/reproducibility/version-floating.md"
     },
     {
       "type": "secretsInPrompt",
@@ -1534,8 +1480,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/hygiene/secrets-in-prompt",
-      "ruleUri": "docs/rules/hygiene/secrets-in-prompt.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/hygiene/secrets_in_prompt.go (DetectSecretsInPrompt). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/hygiene/secrets-in-prompt.md"
     },
     {
       "type": "noTestsForCodeUnit",
@@ -1554,8 +1499,7 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/coverage/no-tests",
-      "ruleUri": "docs/rules/coverage/no-tests.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/coverage/no_tests.go (DetectNoTestsForCodeUnit). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/coverage/no-tests.md"
     },
     {
       "type": "noEvalForAISurface",
@@ -1574,8 +1518,7 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/coverage/no-eval",
-      "ruleUri": "docs/rules/coverage/no-eval.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/coverage/no_eval.go (DetectNoEvalForAISurface). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/coverage/no-eval.md"
     },
     {
       "type": "modelFixtureUnpinned",
@@ -1594,8 +1537,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/hygiene/model-fixture-unpinned",
-      "ruleUri": "docs/rules/hygiene/model-fixture-unpinned.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/hygiene/model_fixture_unpinned.go (DetectModelFixtureUnpinned). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/hygiene/model-fixture-unpinned.md"
     },
     {
       "type": "evalNoAssertion",
@@ -1614,8 +1556,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/hygiene/eval-no-assertion",
-      "ruleUri": "docs/rules/hygiene/eval-no-assertion.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/hygiene/eval_no_assertion.go (DetectEvalNoAssertion). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/hygiene/eval-no-assertion.md"
     },
     {
       "type": "noSeed",
@@ -1634,8 +1575,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/reproducibility/no-seed",
-      "ruleUri": "docs/rules/reproducibility/no-seed.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/reproducibility/no_seed.go (DetectNoSeed). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/reproducibility/no-seed.md"
     },
     {
       "type": "missingEnvPinning",
@@ -1654,8 +1594,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/reproducibility/missing-env-pinning",
-      "ruleUri": "docs/rules/reproducibility/missing-env-pinning.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/reproducibility/missing_env_pinning.go (DetectMissingEnvPinning). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/reproducibility/missing-env-pinning.md"
     },
     {
       "type": "piiInEval",
@@ -1674,8 +1613,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/security/pii-in-eval",
-      "ruleUri": "docs/rules/security/pii-in-eval.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/security/pii_in_eval.go (DetectPIIInEval). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/security/pii-in-eval.md"
     },
     {
       "type": "insecureDeserialization",
@@ -1694,8 +1632,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/security/insecure-deserialization",
-      "ruleUri": "docs/rules/security/insecure-deserialization.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/security/insecure_deserialization.go (DetectInsecureDeserialization). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/security/insecure-deserialization.md"
     },
     {
       "type": "missingPerfTest",
@@ -1714,8 +1651,7 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/performance/missing-perf-test",
-      "ruleUri": "docs/rules/performance/missing-perf-test.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/performance/missing_perf_test.go (DetectMissingPerfTest). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/performance/missing-perf-test.md"
     },
     {
       "type": "dataLeakageSuspected",
@@ -1734,8 +1670,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/data/leakage-suspected",
-      "ruleUri": "docs/rules/data/leakage-suspected.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/data/leakage_suspected.go (DetectLeakageSuspected). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/data/leakage-suspected.md"
     },
     {
       "type": "missingTrainTestSplit",
@@ -1754,8 +1689,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/data/missing-train-test-split",
-      "ruleUri": "docs/rules/data/missing-train-test-split.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/data/missing_train_test_split.go (DetectMissingTrainTestSplit). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/data/missing-train-test-split.md"
     },
     {
       "type": "baselineNotSet",
@@ -1774,8 +1708,7 @@
         "eval-execution"
       ],
       "ruleId": "terrain/regression/baseline-not-set",
-      "ruleUri": "docs/rules/regression/baseline-not-set.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/regression/baseline_not_set.go (DetectBaselineNotSet). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/regression/baseline-not-set.md"
     },
     {
       "type": "passRateDrop",
@@ -1794,8 +1727,7 @@
         "eval-execution"
       ],
       "ruleId": "terrain/regression/pass-rate-drop",
-      "ruleUri": "docs/rules/regression/pass-rate-drop.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/regression/pass_rate_drop.go (DetectPassRateDrop). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/regression/pass-rate-drop.md"
     },
     {
       "type": "snapshotMismatch",
@@ -1814,8 +1746,7 @@
         "eval-execution"
       ],
       "ruleId": "terrain/regression/snapshot-mismatch",
-      "ruleUri": "docs/rules/regression/snapshot-mismatch.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/regression/snapshot_mismatch.go (DetectSnapshotMismatch). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/regression/snapshot-mismatch.md"
     },
     {
       "type": "testFailed",
@@ -1835,8 +1766,7 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/regression/test-failed",
-      "ruleUri": "docs/rules/regression/test-failed.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/regression/test_failed.go (DetectTestFailed). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/regression/test-failed.md"
     },
     {
       "type": "performanceRegression",
@@ -1855,8 +1785,7 @@
         "eval-execution"
       ],
       "ruleId": "terrain/regression/performance-regression",
-      "ruleUri": "docs/rules/regression/performance-regression.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/regression/performance_regression.go (DetectPerformanceRegression). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/regression/performance-regression.md"
     },
     {
       "type": "missingBaseline",
@@ -1875,8 +1804,7 @@
         "static"
       ],
       "ruleId": "terrain/coverage/missing-baseline",
-      "ruleUri": "docs/rules/coverage/missing-baseline.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/coverage/missing_baseline.go (DetectMissingBaseline). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/coverage/missing-baseline.md"
     },
     {
       "type": "noIntegrationTest",
@@ -1895,8 +1823,7 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/coverage/no-integration-test",
-      "ruleUri": "docs/rules/coverage/no-integration-test.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/coverage/no_integration_test.go (DetectNoIntegrationTest). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/coverage/no-integration-test.md"
     },
     {
       "type": "noDataValidation",
@@ -1915,8 +1842,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/coverage/no-data-validation",
-      "ruleUri": "docs/rules/coverage/no-data-validation.md",
-      "promotionPlan": "Off by default. Detector function exists at internal/coverage/no_data_validation.go (DetectNoDataValidation). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands."
+      "ruleUri": "docs/rules/coverage/no-data-validation.md"
     },
     {
       "type": "promptBloat",
@@ -1933,8 +1859,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/prompt-quality/prompt-bloat",
-      "ruleUri": "docs/rules/prompt-quality/prompt-bloat.md",
-      "promotionPlan": "Fires when prompt token count exceeds the configured budget."
+      "ruleUri": "docs/rules/prompt-quality/prompt-bloat.md"
     },
     {
       "type": "promptWithoutTemperature",
@@ -1951,8 +1876,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/prompt-quality/prompt-without-temperature",
-      "ruleUri": "docs/rules/prompt-quality/prompt-without-temperature.md",
-      "promotionPlan": "Fires when an LLM SDK call has no temperature kwarg. Defaults differ across SDKs; an explicit value is reproducibility-critical."
+      "ruleUri": "docs/rules/prompt-quality/prompt-without-temperature.md"
     },
     {
       "type": "missingPromptValidator",
@@ -1969,8 +1893,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/prompt-quality/missing-validator",
-      "ruleUri": "docs/rules/prompt-quality/missing-validator.md",
-      "promotionPlan": "Fires when a prompt template has no output-validator schema attached."
+      "ruleUri": "docs/rules/prompt-quality/missing-validator.md"
     },
     {
       "type": "promptVersionSkew",
@@ -1987,8 +1910,7 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/prompt-quality/version-skew",
-      "ruleUri": "docs/rules/prompt-quality/version-skew.md",
-      "promotionPlan": "Detects when the same prompt template is referenced by multiple eval scenarios under different version names."
+      "ruleUri": "docs/rules/prompt-quality/version-skew.md"
     },
     {
       "type": "retrievalWithoutRerank",
@@ -2005,8 +1927,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/retrieval-quality/no-rerank",
-      "ruleUri": "docs/rules/retrieval-quality/no-rerank.md",
-      "promotionPlan": "Flags retrieval pipelines with top_k \u003e 5 and no reranker."
+      "ruleUri": "docs/rules/retrieval-quality/no-rerank.md"
     },
     {
       "type": "coldVectorStore",
@@ -2023,8 +1944,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/retrieval-quality/cold-store",
-      "ruleUri": "docs/rules/retrieval-quality/cold-store.md",
-      "promotionPlan": "Fires when a vector store is initialized but no index-population call exists in the same module."
+      "ruleUri": "docs/rules/retrieval-quality/cold-store.md"
     },
     {
       "type": "agentLoopRisk",
@@ -2041,8 +1961,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/agent-quality/loop-risk",
-      "ruleUri": "docs/rules/agent-quality/loop-risk.md",
-      "promotionPlan": "Stable. Severity is High because the failure mode (unbounded API spend in an agent loop without a budget) is high-impact when it fires; validated against documented public agent-loop incidents."
+      "ruleUri": "docs/rules/agent-quality/loop-risk.md"
     },
     {
       "type": "toolWithoutBudget",
@@ -2059,8 +1978,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/agent-quality/tool-no-budget",
-      "ruleUri": "docs/rules/agent-quality/tool-no-budget.md",
-      "promotionPlan": "Fires when a tool-call-enabled agent has no rate limit or cost ceiling configured."
+      "ruleUri": "docs/rules/agent-quality/tool-no-budget.md"
     },
     {
       "type": "targetLeakage",
@@ -2077,8 +1995,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/data-quality/target-leakage",
-      "ruleUri": "docs/rules/data-quality/target-leakage.md",
-      "promotionPlan": "Fires when a feature column is derived from the target column (e.g., y_lag1 in features after target encoding)."
+      "ruleUri": "docs/rules/data-quality/target-leakage.md"
     },
     {
       "type": "duplicateEvalRows",
@@ -2095,8 +2012,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/data-quality/duplicate-rows",
-      "ruleUri": "docs/rules/data-quality/duplicate-rows.md",
-      "promotionPlan": "Fires when an eval dataset has more than 5% duplicate input rows."
+      "ruleUri": "docs/rules/data-quality/duplicate-rows.md"
     },
     {
       "type": "schemaDrift",
@@ -2113,8 +2029,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/data-quality/schema-drift",
-      "ruleUri": "docs/rules/data-quality/schema-drift.md",
-      "promotionPlan": "Fires when the pipeline output schema has changed between baseline and current run."
+      "ruleUri": "docs/rules/data-quality/schema-drift.md"
     },
     {
       "type": "missingEvalCategories",
@@ -2131,8 +2046,7 @@
         "structural-pattern"
       ],
       "ruleId": "terrain/coverage/missing-eval-categories",
-      "ruleUri": "docs/rules/coverage/missing-eval-categories.md",
-      "promotionPlan": "Fires when an eval suite has happy-path coverage but no adversarial or edge-case categories."
+      "ruleUri": "docs/rules/coverage/missing-eval-categories.md"
     },
     {
       "type": "orphanedEval",
@@ -2149,8 +2063,7 @@
         "graph-traversal"
       ],
       "ruleId": "terrain/coverage/orphaned-eval",
-      "ruleUri": "docs/rules/coverage/orphaned-eval.md",
-      "promotionPlan": "Fires when an eval has no CoveredSurfaceIDs (references no surface)."
+      "ruleUri": "docs/rules/coverage/orphaned-eval.md"
     },
     {
       "type": "coldStartTime",
@@ -2167,8 +2080,7 @@
         "runtime"
       ],
       "ruleId": "terrain/performance/cold-start-time",
-      "ruleUri": "docs/rules/performance/cold-start-time.md",
-      "promotionPlan": "Fires when first-request latency exceeds the configured threshold (e.g., 2x P50)."
+      "ruleUri": "docs/rules/performance/cold-start-time.md"
     },
     {
       "type": "tokenCostBudget",
@@ -2185,8 +2097,7 @@
         "runtime"
       ],
       "ruleId": "terrain/performance/token-cost-budget",
-      "ruleUri": "docs/rules/performance/token-cost-budget.md",
-      "promotionPlan": "Fires when per-run token cost exceeds the configured ceiling."
+      "ruleUri": "docs/rules/performance/token-cost-budget.md"
     }
   ]
 }

@@ -74,19 +74,14 @@ const (
 	SignalToolBudgetExceeded     models.SignalType = "toolBudgetExceeded"
 	SignalAgentFallbackTriggered models.SignalType = "agentFallbackTriggered"
 
-	// 0.2 AI signal types — declared per docs/release/0.2.md as planned.
-	// Detectors land in subsequent commits; the constants and manifest
-	// entries reserve the names and shape so policy rules and tests can
-	// reference them now.
+	// AI signal type names referenced by policy rules and tests.
 	SignalAISafetyEvalMissing   models.SignalType = "aiSafetyEvalMissing"
 	SignalAIPromptVersioning    models.SignalType = "aiPromptVersioning"
 	SignalAIPromptInjectionRisk models.SignalType = "aiPromptInjectionRisk"
 	SignalAIHardcodedAPIKey     models.SignalType = "aiHardcodedAPIKey"
-	// Structural split of aiHardcodedAPIKey. Literal-shape retains
-	// the regex-derived "API-key-shaped string in config" capability
-	// at observability tier. The coverage-degraded half flags the
-	// secret-scanner CI-integration gap. The underlying capability is
-	// preserved across the split.
+	// Structural split of aiHardcodedAPIKey. Literal-shape flags an
+	// API-key-shaped string in config. The coverage-degraded half
+	// flags the secret-scanner CI-integration gap.
 	SignalAIHardcodedAPIKeyLiteralShape models.SignalType = "aiHardcodedAPIKey-literal-shape"
 	SignalSecretScannerCoverageDegraded models.SignalType = "secretScannerCoverageDegraded"
 	SignalAIToolWithoutSandbox          models.SignalType = "aiToolWithoutSandbox"
@@ -106,8 +101,7 @@ const (
 	SignalDetectorMissingInput   models.SignalType = "detectorMissingInput"
 	SignalSuppressionExpired     models.SignalType = "suppressionExpired"
 
-	// Stable-rule signal types — detectors land in subsequent
-	// commits; the constants and manifest entries reserve the names.
+	// Stable-rule signal types.
 	SignalVersionFloating       models.SignalType = "versionFloating"
 	SignalSecretsInPrompt       models.SignalType = "secretsInPrompt"
 	SignalNoTestsForCodeUnit    models.SignalType = "noTestsForCodeUnit"
@@ -138,10 +132,7 @@ const (
 	// deprecated apiVersions).
 	SignalConfigSchemaDrift models.SignalType = "configSchemaDrift"
 
-	// Boundary class — AI/ML surface with no eval coverage. The
-	// detector is empirically grounded: surveys of large OSS AI/ML
-	// repo populations show uncovered surfaces dominate covered ones
-	// by two orders of magnitude.
+	// Boundary class — AI/ML surface with no eval coverage.
 	SignalPromptFileMissingEval models.SignalType = "promptFileMissingEval"
 
 	// Regression family — uses the eval-adapter foundation.
@@ -156,8 +147,7 @@ const (
 	SignalNoIntegrationTest models.SignalType = "noIntegrationTest"
 	SignalNoDataValidation  models.SignalType = "noDataValidation"
 
-	// Preview rules — detection logic ships but rules are default-
-	// off pending broader validation before promotion to Stable.
+	// Preview rules — default-off.
 	SignalPromptBloat              models.SignalType = "promptBloat"
 	SignalPromptWithoutTemperature models.SignalType = "promptWithoutTemperature"
 	SignalMissingPromptValidator   models.SignalType = "missingPromptValidator"

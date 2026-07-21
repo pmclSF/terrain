@@ -443,6 +443,19 @@ func nodeText(n *sitter.Node, src []byte) string {
 
 func stripStringQuotes(s string) string {
 	s = strings.TrimSpace(s)
+	// Drop a leading run of Python string-prefix letters (f/r/b/u, any
+	// case and combination) so prefixed literals like f"etl_dag" or
+	// r'raw_id' strip down to their inner text rather than keeping the
+	// prefix and quotes.
+	for len(s) > 0 {
+		c := s[0]
+		if c == 'f' || c == 'F' || c == 'r' || c == 'R' ||
+			c == 'b' || c == 'B' || c == 'u' || c == 'U' {
+			s = s[1:]
+			continue
+		}
+		break
+	}
 	if len(s) < 2 {
 		return s
 	}

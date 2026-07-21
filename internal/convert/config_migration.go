@@ -5,6 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // ConfigMigrationOptions controls native config migration execution.
@@ -53,6 +55,11 @@ func RunConfigMigration(source string, options ConfigMigrationOptions) (ConfigMi
 		from = DetectConfigFramework(source)
 		autoDetected = from != ""
 		if from == "" {
+			// A missing source path can't be auto-detected either; prefer
+			// the more actionable not-found error over the framework hint.
+			if _, statErr := os.Stat(source); os.IsNotExist(statErr) {
+				return ConfigMigrationResult{}, inputErrorf("source config not found: %s", source)
+			}
 			return ConfigMigrationResult{}, inputErrorf("could not auto-detect source framework from config filename; use --from <framework>")
 		}
 	}
@@ -65,7 +72,7 @@ func RunConfigMigration(source string, options ConfigMigrationOptions) (ConfigMi
 		return ConfigMigrationResult{}, fmt.Errorf("go-native config conversion is not implemented for %s -> %s", direction.From, direction.To)
 	}
 
-	content, err := os.ReadFile(source)
+	content, err := saferead.ReadFile(source)
 	if err != nil {
 		return ConfigMigrationResult{}, fmt.Errorf("read config: %w", err)
 	}

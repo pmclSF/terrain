@@ -832,8 +832,8 @@ func deriveTopInsight(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph.
 	lowCount := cov.BandCounts[depgraph.CoverageBandLow]
 	if lowCount > 0 && cov.SourceCount > 0 {
 		pct := 100 * lowCount / cov.SourceCount
-		return fmt.Sprintf("%d source files (%d%%) have low structural coverage — these are blind spots for change-scoped test selection.",
-			lowCount, pct)
+		return fmt.Sprintf("%d source %s (%d%%) with low structural coverage — blind spots for change-scoped test selection.",
+			lowCount, plural(lowCount, "file"), pct)
 	}
 
 	if r.SkippedTestBurden.SkippedCount > 0 {
@@ -915,10 +915,10 @@ func deriveKeyFindings(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph
 			}
 			candidates = append(candidates, candidate{
 				finding: KeyFinding{
-					Title:    fmt.Sprintf("%d wasteful overlap clusters — tests exercise identical behavior surfaces", wastefulCount),
+					Title:    fmt.Sprintf("%d wasteful overlap %s — tests exercise identical behavior surfaces", wastefulCount, plural(wastefulCount, "cluster")),
 					Severity: sev,
 					Category: "optimization",
-					Metric:   fmt.Sprintf("%d clusters", wastefulCount),
+					Metric:   fmt.Sprintf("%d %s", wastefulCount, plural(wastefulCount, "cluster")),
 				},
 				severityOrder: sevOrd,
 				categoryOrder: 4,
@@ -941,10 +941,10 @@ func deriveKeyFindings(r *Report, fanout *depgraph.FanoutResult, dupes *depgraph
 		}
 		candidates = append(candidates, candidate{
 			finding: KeyFinding{
-				Title:    fmt.Sprintf("%d source files (%d%%) have low structural coverage — blind spots for test selection", lowCount, pct),
+				Title:    fmt.Sprintf("%d source %s (%d%%) with low structural coverage — blind spots for test selection", lowCount, plural(lowCount, "file"), pct),
 				Severity: sev,
 				Category: "coverage_debt",
-				Metric:   fmt.Sprintf("%d files", lowCount),
+				Metric:   fmt.Sprintf("%d %s", lowCount, plural(lowCount, "file")),
 			},
 			severityOrder: sevOrd,
 			categoryOrder: 3,

@@ -3,6 +3,7 @@ package reporting
 import (
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/analyze"
@@ -364,16 +365,26 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 		line(uitokens.H2Sep)
 		line("  Artifacts:  %d (not executable — supplements CI coverage)", r.ManualCoverage.ArtifactCount)
 		if len(r.ManualCoverage.BySource) > 0 {
-			parts := []string{}
-			for src, count := range r.ManualCoverage.BySource {
-				parts = append(parts, fmt.Sprintf("%s: %d", src, count))
+			keys := make([]string, 0, len(r.ManualCoverage.BySource))
+			for src := range r.ManualCoverage.BySource {
+				keys = append(keys, src)
+			}
+			sort.Strings(keys)
+			parts := make([]string, 0, len(keys))
+			for _, src := range keys {
+				parts = append(parts, fmt.Sprintf("%s: %d", src, r.ManualCoverage.BySource[src]))
 			}
 			line("  Sources:    %s", strings.Join(parts, ", "))
 		}
 		if len(r.ManualCoverage.ByCriticality) > 0 {
-			parts := []string{}
-			for crit, count := range r.ManualCoverage.ByCriticality {
-				parts = append(parts, fmt.Sprintf("%s: %d", crit, count))
+			keys := make([]string, 0, len(r.ManualCoverage.ByCriticality))
+			for crit := range r.ManualCoverage.ByCriticality {
+				keys = append(keys, crit)
+			}
+			sort.Strings(keys)
+			parts := make([]string, 0, len(keys))
+			for _, crit := range keys {
+				parts = append(parts, fmt.Sprintf("%s: %d", crit, r.ManualCoverage.ByCriticality[crit]))
 			}
 			line("  Criticality: %s", strings.Join(parts, ", "))
 		}
@@ -381,7 +392,12 @@ func RenderAnalyzeReportV2(w io.Writer, r *analyze.Report) {
 			line("  Areas:      %s", strings.Join(r.ManualCoverage.Areas, ", "))
 		}
 		if r.ManualCoverage.StaleCount > 0 {
-			line("  Stale:      %d artifact(s) have no recent execution date", r.ManualCoverage.StaleCount)
+			verb := "have"
+			if r.ManualCoverage.StaleCount == 1 {
+				verb = "has"
+			}
+			line("  Stale:      %d stale %s %s no recent execution date",
+				r.ManualCoverage.StaleCount, Plural(r.ManualCoverage.StaleCount, "artifact"), verb)
 		}
 		blank()
 	}

@@ -3,11 +3,28 @@ package reporting
 import (
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/framework_migration"
 	"github.com/pmclSF/terrain/internal/uitokens"
 )
+
+// sortedBlockerTypes returns the blocker-type keys ordered by count
+// descending, then name ascending, so report output is deterministic.
+func sortedBlockerTypes(byType map[string]int) []string {
+	keys := make([]string, 0, len(byType))
+	for k := range byType {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if byType[keys[i]] != byType[keys[j]] {
+			return byType[keys[i]] > byType[keys[j]]
+		}
+		return keys[i] < keys[j]
+	})
+	return keys
+}
 
 // RenderMigrationReport writes a migration readiness report to w.
 func RenderMigrationReport(w io.Writer, readiness *framework_migration.ReadinessSummary) {
@@ -43,8 +60,8 @@ func RenderMigrationReport(w io.Writer, readiness *framework_migration.Readiness
 	if readiness.TotalBlockers == 0 {
 		line("  (none detected)")
 	} else {
-		for bt, count := range readiness.BlockersByType {
-			line("  %-26s %d", bt, count)
+		for _, bt := range sortedBlockerTypes(readiness.BlockersByType) {
+			line("  %-26s %d", bt, readiness.BlockersByType[bt])
 		}
 	}
 	blank()
@@ -117,8 +134,8 @@ func RenderMigrationBlockers(w io.Writer, readiness *framework_migration.Readine
 	// Blockers by type
 	line("By Type")
 	line(uitokens.H2Sep)
-	for bt, count := range readiness.BlockersByType {
-		line("  %-26s %d", bt, count)
+	for _, bt := range sortedBlockerTypes(readiness.BlockersByType) {
+		line("  %-26s %d", bt, readiness.BlockersByType[bt])
 	}
 	blank()
 
@@ -272,7 +289,7 @@ func RenderMigrationPreviewScope(w io.Writer, previews []*framework_migration.Pr
 		for _, p := range previews {
 			if p.Difficulty == "high" {
 				line("  %s (%s)", p.File, p.SourceFramework)
-				line("    %d blocker(s)", len(p.Blockers))
+				line("    %d %s", len(p.Blockers), Plural(len(p.Blockers), "blocker"))
 			}
 		}
 		blank()
@@ -285,7 +302,7 @@ func RenderMigrationPreviewScope(w io.Writer, previews []*framework_migration.Pr
 		for _, p := range previews {
 			if p.Difficulty == "medium" {
 				line("  %s (%s)", p.File, p.SourceFramework)
-				line("    %d blocker(s)", len(p.Blockers))
+				line("    %d %s", len(p.Blockers), Plural(len(p.Blockers), "blocker"))
 			}
 		}
 		blank()

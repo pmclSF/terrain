@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // runPreview is the implementation of TestMigrationOptions.Preview.
@@ -88,7 +90,7 @@ func readIfExists(path string) (string, error) {
 			return "", err
 		}
 	}
-	data, err := os.ReadFile(abs)
+	data, err := saferead.ReadFile(abs)
 	if err != nil {
 		return "", err
 	}

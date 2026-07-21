@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** observability
 
-## Promotion plan
-
-Fires when a prompt template has no output-validator schema attached.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -28,9 +24,7 @@ A prompt template that expects structured output has no validator (instructor, g
 
 ## 2. Severity & status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 

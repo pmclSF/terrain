@@ -76,7 +76,11 @@ func walkForEnvReads(node *sitter.Node, src []byte, relPath string, out *[]model
 			if isEnvGetCall(fnText) {
 				if !envCallHasDefault(argsNode, src) {
 					key := firstStringArg(argsNode, src)
-					*out = append(*out, buildMissingEnvSignal(key, fnText, relPath, int(node.StartPoint().Row)+1))
+					// Skip dynamic keys (variable / expression) — we can
+					// only name a literal env var in the finding.
+					if key != "" {
+						*out = append(*out, buildMissingEnvSignal(key, fnText, relPath, int(node.StartPoint().Row)+1))
+					}
 				}
 			}
 		}
@@ -108,7 +112,9 @@ func envCallHasDefault(argsNode *sitter.Node, src []byte) bool {
 	if argsNode == nil {
 		return false
 	}
-	// More than one positional argument means a default is supplied.
+	// More than one positional argument means a default is supplied —
+	// but a `None` default pins nothing (it's the same silent-None
+	// behavior as omitting the default), so it does not suppress.
 	positional := 0
 	for i := 0; i < int(argsNode.NamedChildCount()); i++ {
 		arg := argsNode.NamedChild(i)
@@ -116,8 +122,16 @@ func envCallHasDefault(argsNode *sitter.Node, src []byte) bool {
 			// Check for default="..." kwarg.
 			name := arg.ChildByFieldName("name")
 			if name != nil && string(src[name.StartByte():name.EndByte()]) == "default" {
+				val := arg.ChildByFieldName("value")
+				if val != nil && val.Type() == "none" {
+					continue
+				}
 				return true
 			}
+			continue
+		}
+		if positional == 1 && arg.Type() == "none" {
+			// Second positional argument is a literal None → no real pin.
 			continue
 		}
 		positional++

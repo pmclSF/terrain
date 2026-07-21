@@ -113,7 +113,7 @@ func RenderComparisonReport(w io.Writer, comp *comparison.SnapshotComparison) {
 		line("Framework Changes")
 		line(uitokens.H2Sep)
 		for _, fc := range comp.FrameworkChanges {
-			line("  %s %s (%d files)", fc.Change, fc.Name, fc.Files)
+			line("  %s %s (%d %s)", fc.Change, fc.Name, fc.Files, Plural(fc.Files, "file"))
 		}
 		blank()
 	}

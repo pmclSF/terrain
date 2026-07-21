@@ -22,7 +22,7 @@
 //
 //	Stage 0  RepoShape       — cohort + library/application + manifests (cached)
 //	Stage 1  PathPrefilter   — directory and filename gates
-//	Stage 2  RegexFastscan   — context-window regex atoms (regex-v2 port)
+//	Stage 2  RegexFastscan   — context-window regex atoms
 //	Stage 3  ASTConfirm      — AST-derived call-site atoms via internal/aidetect
 //	Stage 4  CrossFileContext — exports + importer count (deferred; not yet wired)
 //	Stage 5  ChangeScope     — diff-touched / diff-adjacent atoms (per-PR mode)

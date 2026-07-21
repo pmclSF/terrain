@@ -16,10 +16,6 @@ A repository references an embedding model in source code without a retrieval-sh
 
 Add a retrieval eval scenario (Ragas, Promptfoo, or DeepEval) that exercises this surface so embedding swaps surface as a measurable regression.
 
-## Promotion plan
-
-Ships the static precondition (embedding referenced + no retrieval coverage) today. The cross-snapshot content-hash diff variant lands once snapshot fingerprints are recorded.
-
 ## Evidence sources
 
 - `structural-pattern`

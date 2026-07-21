@@ -20,9 +20,8 @@ var errSeverityGateBlocked = errors.New("severity gate blocked")
 // blocking signals into the same SignalBreakdown shape that
 // `analyze.SignalSummary` uses, so `severityGateBlocked` works
 // uniformly across `terrain analyze --fail-on` and
-// `terrain report pr --fail-on`. defends the pitch's
-// "gate changes based on that system as a whole" claim by sharing
-// the gate decision logic, not duplicating it.
+// `terrain report pr --fail-on`, keeping the gate decision consistent
+// across commands by sharing the logic rather than duplicating it.
 //
 // Counted by case-insensitive severity match. Unknown severities
 // are dropped — the renderer is the source of truth for severity
@@ -106,6 +105,34 @@ func parseSeverityGate(s string) (severityGate, error) {
 // summary is a one-line, human-readable description of which severity
 // counts triggered the gate, suitable for printing to stderr before
 // exit.
+// trustFloorHeldBack returns how many gate-relevant findings at or above the
+// --fail-on threshold were held back by the trust floor (present in `raw` but
+// not in the trust-floor-filtered `floored` breakdown). Callers surface this so
+// a build that passes because of the trust floor is never silent about it.
+func trustFloorHeldBack(gate severityGate, raw, floored analyze.SignalBreakdown) int {
+	held := countAtOrAbove(gate, raw) - countAtOrAbove(gate, floored)
+	if held < 0 {
+		return 0
+	}
+	return held
+}
+
+// countAtOrAbove returns how many findings in the breakdown sit at or above the
+// gate's severity threshold — i.e. the count that actually fails the merge.
+func countAtOrAbove(gate severityGate, b analyze.SignalBreakdown) int {
+	switch gate {
+	case severityGateCritical:
+		return b.Critical
+	case severityGateHigh:
+		return b.Critical + b.High
+	case severityGateMedium:
+		return b.Critical + b.High + b.Medium
+	case severityGateLow:
+		return b.Critical + b.High + b.Medium + b.Low
+	}
+	return 0
+}
+
 func severityGateBlocked(gate severityGate, summary analyze.SignalBreakdown) (bool, string) {
 	switch gate {
 	case severityGateNone:

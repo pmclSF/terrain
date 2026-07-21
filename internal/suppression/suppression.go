@@ -54,6 +54,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/aliases"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // pathPkgMatch is `path.Match` with Unix slash semantics — used by
@@ -165,7 +166,7 @@ type LoadResult struct {
 // when the file doesn't exist (no suppressions = legitimate state).
 // Returns a structured error for parse / schema failures.
 func Load(path string) (*LoadResult, error) {
-	body, err := os.ReadFile(path)
+	body, err := saferead.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return &LoadResult{}, nil

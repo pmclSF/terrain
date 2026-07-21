@@ -4,7 +4,7 @@
 
 ## What Terrain is
 
-**Terrain is a pre-flight check for AI/ML systems and the tests around them.** A static analyzer that inspects prompts, retrievers, classical-ML training pipelines, eval coverage, schema-code-test relationships, and the cross-language edges between them — in your PR, before merge. Locally, deterministically, on every push. **No API key required.**
+**Terrain is a pre-flight check for AI/ML systems and the tests around them.** A static analyzer that inspects prompts, retrievers, classical-ML training pipelines, eval coverage, schema-code-test relationships, and schema↔prompt drift across files and languages — in your PR, before merge. Locally, deterministically, on every push. **No API key required.**
 
 Terrain treats unit tests, integration tests, e2e tests, and AI/ML evals as nodes in a single dependency graph. A frontend developer learns in their PR if their change will degrade a downstream AI model's behavior. An ML engineer learns which upstream code paths their prompt edit affects. The analysis spans code, prompt, schema, and eval boundaries.
 
@@ -26,13 +26,14 @@ Terrain makes that protection graph visible before merge. It tells a team where 
 | **ML engineer (LLMs)** | Eval coverage, prompt/schema drift, retrieval quality, model-risk, and scenario-aware gate evidence |
 | **Senior decision-maker** | Release status, limitations, supply-chain artifacts, and reproducible checks — auditable trust profile |
 
-## What 0.3.0 ships
+## What Terrain ships
 
 - **Detection rules across ten categories** — regression, coverage, hygiene, reproducibility, security, performance, fairness, data, lifecycle, and documentation. Stable rules ship default-on when implemented, documented, and covered by tests; preview rules ship default-off while precision measurement and adopter feedback are still in progress.
 - **Three surfaces** for the same diagnostic artifact: CI (status check + JUnit + GitHub annotations + Step Summary), CLI (`terrain test` / `terrain explain`), and an MCP server for AI assistants (Claude Code, Cursor).
-- **Unified graph** that crosses language boundaries: TS/JS ↔ Python/Go/Java via OpenAPI / tRPC / gRPC / GraphQL / HTTP-route inference, plus database schema awareness (Postgres / MySQL / sqlc / gorm / prisma / sqlalchemy) and pipeline awareness (dbt / Airflow / Prefect).
+- **Unified graph** that crosses file and format boundaries: schema↔prompt drift links a schema field to the prompt-template variable that references it (TS/JS ↔ Python/Go/Java), on top of schema-code-test relationships, database schema awareness (Postgres / MySQL / sqlc / gorm / prisma / sqlalchemy), and pipeline awareness (dbt / Airflow / Prefect). General cross-language API-spec edges (OpenAPI / tRPC / gRPC / GraphQL / HTTP-route inference) are planned, not yet shipped.
+- **Trust-floor gate, default-on** — the `--fail-on` gate holds heuristic AI findings back from failing a build until Terrain can prove a fix, while failing tests, regressions, security/safety leaks, `policy.yaml` violations, and any Critical always gate. `terrain fix` applies the validated remediations (dry-run by default; `--apply` writes). Opt out with `--no-trust-floor`.
 - **Multi-repo portfolio aggregation** via `terrain portfolio --from .terrain/repos.yaml`, with manifest-backed repo rollups, owner/tag propagation, snapshot-backed inputs, and framework-of-record drift detection.
-- **Public quality artifacts:** feature-status, limitations, signed release artifacts, docs verification, and benchmark gates. Per-rule readiness cards are harness infrastructure and are not published for 0.3.0 unless a measured `harness/readiness/v0.3.0/` card set is present.
+- **Public quality artifacts:** feature-status, limitations, signed release artifacts, docs verification, and benchmark gates. Per-rule readiness cards are harness infrastructure and are not published unless a measured `harness/readiness/` card set is present for the release.
 - **VS Code extension alpha** reading CLI JSON artifacts; renders findings in sidebar tree views with file reveal. Source and package metadata ship in the repo; Marketplace publication is future work.
 
 ## The trust profile
@@ -45,12 +46,12 @@ What Terrain commits to from the 0.2.0 stable-contract release onward:
 | **JSON output schema** | `version: 1`; one-cycle deprecation cycle on changes |
 | **`terrain.yaml` schema** | Versioned `v1`; closed enumeration for surface types; one-cycle deprecation on changes |
 | **CLI flags** | Stable from 0.2.0; same deprecation contract |
-| **Telemetry** | **No remote telemetry.** No phone home and no crash reports. Optional local-only telemetry writes to `~/.terrain/telemetry.jsonl` when explicitly enabled. Verifiable via `terrain --print-network` (which lists every external call Terrain would make under the current config — none for 0.3.0 analysis) |
-| **Data flow** | Templates tier: zero network calls. LLM provider config is parsed but inactive in 0.3.0; external enrichment is future work and must remain explicit adopter choice when it ships |
+| **Telemetry** | **No remote telemetry.** No phone home and no crash reports. Optional local-only telemetry writes to `~/.terrain/telemetry.jsonl` when explicitly enabled. Verifiable via `terrain --print-network` (which lists every external call Terrain would make under the current config — none for analysis) |
+| **Data flow** | Templates tier: zero network calls. LLM provider config is parsed but inactive; external enrichment is future work and must remain explicit adopter choice when it ships |
 | **Quality** | Release verification, docs consistency checks, fixture coverage, and benchmark gates run per release; per-rule readiness cards remain planned measured artifacts until generated |
 | **License** | Apache 2.0 |
 
-## What 0.3.0 deliberately does *not* do
+## What Terrain deliberately does *not* do
 
 See `docs/LIMITATIONS.md` for the comprehensive list. The major items:
 
@@ -58,11 +59,11 @@ See `docs/LIMITATIONS.md` for the comprehensive list. The major items:
 - **No cross-repo dependency graph edges** — `terrain portfolio --from` aggregates repo-level portfolio data, but gate decisions and code/eval dependency tracing remain per-repo
 - **No observability-tool ingestion** — Honeycomb / Datadog / production-metric-based rules are not in scope today
 - **No marketplace listings** — GitHub Marketplace Action, VS Code Marketplace extension, Claude Skill, and OpenAI listings are not yet published
-- **Analyzed languages** — Go, JavaScript, TypeScript, Python, Java. Ruby, Rust, Kotlin, Swift, Scala, and C# are not analyzed in 0.3.x
+- **Analyzed languages** — Go, JavaScript, TypeScript, Python, Java. Ruby, Rust, Kotlin, Swift, Scala, and C# are not analyzed
 
-These boundaries do not reduce the core value proposition: 0.3.0 is already a local, CI-ready pre-flight check for AI/ML test systems, with stable CLI/schema contracts, signed release artifacts, and documented integration paths.
+These boundaries do not reduce the core value proposition: Terrain is already a local, CI-ready pre-flight check for AI/ML test systems, with stable CLI/schema contracts, signed release artifacts, and documented integration paths.
 
-## What adopting 0.3.0 requires
+## What adopting Terrain requires
 
 | Step | Effort |
 |---|---|
@@ -73,7 +74,7 @@ These boundaries do not reduce the core value proposition: 0.3.0 is already a lo
 | Make `terrain/tests` a required branch-protection check (optional, recommended) | Minutes |
 | Per stable rule that fires unexpectedly: triage as TP or FP, suppress via path-level ignore or severity downgrade in `terrain.yaml` | 60–120 sec per finding (target) |
 
-No proprietary services to sign up for. Terrain itself makes no LLM provider calls in 0.3.0; CI artifacts go only where the adopter's CI workflow publishes them.
+No proprietary services to sign up for. Terrain itself makes no LLM provider calls; CI artifacts go only where the adopter's CI workflow publishes them.
 
 ## The maintenance commitment
 
@@ -119,7 +120,7 @@ Terrain sits in the gap between these — integrates with the eval frameworks an
 
 ## Decision criteria
 
-Adopt Terrain at 0.3.0 if:
+Adopt Terrain if:
 
 - You have AI or ML in production and care about regressions
 - You want failing tests as the gate signal, not bot comments

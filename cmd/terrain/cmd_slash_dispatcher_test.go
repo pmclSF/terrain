@@ -117,7 +117,6 @@ func TestRealDispatcher_DeferredVerbsReturnPlaceholderText(t *testing.T) {
 	d := newRealDispatcher(t.TempDir())
 	cases := []slash.Verb{
 		slash.VerbRefresh,
-		slash.VerbExpand,
 		slash.VerbEscalate,
 	}
 	for _, v := range cases {

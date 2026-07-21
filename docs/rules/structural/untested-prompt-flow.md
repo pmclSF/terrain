@@ -16,10 +16,6 @@ A prompt flows through multiple source files via imports with zero test coverage
 
 Add integration tests at the prompt's consumption points to catch behavioral regressions.
 
-## Promotion plan
-
-Detection currently misses prompt flows that go through framework abstractions (LangChain runnables, LlamaIndex query engines). 0.2 ships AST-based prompt-flow tracing; promote once recall measures >=0.8 on the AI fixture corpus.
-
 ## Evidence sources
 
 - `graph-traversal`

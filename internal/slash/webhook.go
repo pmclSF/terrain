@@ -164,6 +164,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ev.FindingID = hdr
 	}
 
+	// Only act on newly-created comments. An `edited` or `deleted`
+	// action would otherwise re-fire the slash commands in the body
+	// (e.g. re-running /dismiss and re-writing the suppression) every
+	// time the comment is touched. An empty action is accepted so
+	// hand-built / proxied payloads that omit it still work.
+	if ev.Action != "" && ev.Action != "created" {
+		_, _ = w.Write([]byte("ignored (non-created action)"))
+		return
+	}
+
 	// Skip Terrain's own comments to avoid feedback loops.
 	if strings.HasSuffix(strings.ToLower(ev.Sender), "[bot]") {
 		_, _ = w.Write([]byte("ignored (bot sender)"))
@@ -203,6 +213,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if reply != "" {
 			replyLines = append(replyLines, reply)
 		}
+	}
+
+	// Every command produced an empty reply (and there were no parse
+	// errors) — write an explicit body rather than a bare 200 so the
+	// delivery is legible in GitHub's webhook UI.
+	if len(replyLines) == 0 {
+		_, _ = w.Write([]byte("no reply generated"))
+		return
 	}
 
 	body = []byte(strings.Join(replyLines, "\n\n---\n\n"))

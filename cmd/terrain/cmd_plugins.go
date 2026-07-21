@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/pmclSF/terrain/internal/plugin"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // runPlugins dispatches `terrain plugins <verb>`. Two verbs ship today:
@@ -70,7 +71,7 @@ func runPluginsManifest(args []string) error {
 		enc.SetIndent("", "  ")
 		return enc.Encode(m)
 	}
-	fmt.Printf("✓ %s validates against plugin manifest schema v%d.\n", path, plugin.SchemaVersion)
+	fmt.Printf("%s %s validates against plugin manifest schema v%d.\n", uitokens.GlyphOK(), path, plugin.SchemaVersion)
 	fmt.Printf("  ID:          %s\n", m.ID)
 	fmt.Printf("  Name:        %s\n", m.Name)
 	fmt.Printf("  Version:     %s (author: %s)\n", m.Version, m.Author)

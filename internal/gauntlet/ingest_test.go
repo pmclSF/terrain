@@ -232,6 +232,11 @@ func TestClassifyFailureSignal(t *testing.T) {
 		{"step-budget-exceeded", "toolBudgetExceeded"},
 		{"agent-fallback-triggered", "agentFallbackTriggered"},
 		{"generic-scenario", "evalFailure"},
+		// Discrimination: benign names that merely CONTAIN a keyword substring
+		// must not be misclassified. "research" contains "search"; both should
+		// fall through to the generic evalFailure.
+		{"research-assistant-quality", "evalFailure"},
+		{"answer-completeness", "evalFailure"},
 	}
 	for _, tt := range tests {
 		got := classifyFailureSignal(EvalResult{Name: tt.name})

@@ -16,10 +16,6 @@ A dependency is declared without a version pin (unpinned, range-only, or moving 
 
 Pin the dependency to an exact version, commit a lockfile that records the resolved set, or use a content-addressed git SHA reference.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/reproducibility/version_floating.go (DetectVersionFloating). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -37,9 +33,9 @@ A declared dependency has no exact version pin, so subsequent installs may resol
 
 ## 2. Severity & status
 
-- **Tier:** stable
+Experimental — off by default; enable in `terrain.yaml`.
+
 - **Default severity:** medium (high for unpinned runtime deps; one severity step lower for dev / build / optional deps)
-- **Stable since:** v0.2.0
 - **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
 
 ## 3. What this catches
@@ -58,11 +54,10 @@ The rule is deliberately broad. It fires on any non-exact specifier — not just
 
 ## 5. Detection mechanism
 
-The rule consumes parsed dependency manifests from `internal/manifest/` and reads each dependency's `Pinning` classification.
+The rule reads parsed dependency manifests and classifies each dependency's pinning.
 
 - **Approach:** manifest-parse-and-classify (no source AST walk required)
 - **Languages / ecosystems supported:** Python (pyproject.toml PEP-621 + Poetry, requirements.txt PEP-508), Node (package.json dependencies / devDependencies / peerDependencies / optionalDependencies)
-- **Inputs consumed:** the manifest list produced by `internal/manifest/Detect`
 - **Pinning ladder fired against:**
   - `PinningUnpinned` → high severity
   - `PinningRange` → medium severity
@@ -73,7 +68,7 @@ The rule consumes parsed dependency manifests from `internal/manifest/` and read
   - `PinningExact` → suppressed
 - **Section step-down:** runtime deps fire at the severity listed above; dev / build / optional deps fire one step lower.
 - **Edge cases handled:** `#egg=` URL fragments preserved as locator metadata; PEP-508 environment markers (`; python_version >= '3.10'`) noted on the dependency but don't change classification
-- **Edge cases NOT handled in 0.3.0:** lockfile-aware suppression (when `package-lock.json` / `poetry.lock` is present, range pins are effectively pinned). Lockfile-aware suppression is future work.
+- **Edge cases not handled:** lockfile-aware suppression (when `package-lock.json` / `poetry.lock` is present, range pins are effectively pinned).
 
 ## 6. Worked example
 
@@ -131,10 +126,9 @@ rules:
 
 ## 8. False-positive characterization
 
-- **Dependencies with a lockfile** — the most common pattern. A range pin in `package.json` is effectively pinned when `package-lock.json` is committed. 0.3.0 doesn't read lockfiles; lockfile-aware suppression is future work. Mitigation today: downgrade severity to `low` and rely on the lockfile for actual reproducibility.
+- **Dependencies with a lockfile** — the most common pattern. A range pin in `package.json` is effectively pinned when `package-lock.json` is committed. The rule doesn't currently read lockfiles. Mitigation today: downgrade severity to `low` and rely on the lockfile for actual reproducibility.
 - **Git-tag pins** — `git+https://github.com/foo/bar.git@v1.0.0` looks like a moving reference but tags are usually immutable in practice. The rule fires; mitigation is to use a commit SHA, or accept the medium severity.
 - **Editable installs of in-repo packages** — `-e ./path/to/local-pkg` flags as PinningPath and fires at low severity. Generally accurate (the local checkout is what changes), but adopters can ignore via path.
-- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
 ## 9. Reproducibility
 
@@ -150,12 +144,12 @@ terrain test --selector reproducibility/version-floating
 
 ## 10. Stability commitment
 
-This rule's ID, default severity, pinning ladder, and section step-down behavior are stable from v0.2.0. Per the deprecation contract:
+This rule's ID, default severity, pinning ladder, and section step-down behavior are stable. Per the deprecation contract:
 
 - **Default severity changes** — breaking; one-cycle deprecation.
 - **Pinning-ladder changes** (e.g., promoting PinningPath from low to medium) — breaking; deprecation-cycled.
-- **New ecosystems added** (go.mod, Cargo.toml, Gemfile) — additive; documented in `CHANGELOG.md` but not deprecation-cycled. New ecosystems land as part of `internal/manifest/` expansion.
-- **Lockfile-aware suppression** (future work) — additive; reduces fire count without changing existing behavior.
+- **New ecosystems added** (go.mod, Cargo.toml, Gemfile) — additive; documented in `CHANGELOG.md` but not deprecation-cycled.
+- **Lockfile-aware suppression** — additive; reduces fire count without changing existing behavior.
 
 ## 11. Related rules
 

@@ -4,7 +4,7 @@ import "fmt"
 
 // All returns every registered adapter. The order is the dispatch
 // order for AutoIngest — first adapter whose CanIngest returns true
-// is used. The order matches the §10 must-ship list.
+// is used. The dispatch order is fixed and deterministic.
 //
 // CanIngest checks are constructed to be mutually exclusive on real
 // artifacts: promptfoo's outer `results.version` is distinct from

@@ -1,11 +1,12 @@
 package aidetect
 
 import (
-	"os"
+	"context"
 	"path/filepath"
 
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/preview"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // preview_adapters.go wires the preview-tier detectors in
@@ -89,7 +90,7 @@ func (d *PromptWithoutTemperatureDetector) Detect(snap *models.TestSuiteSnapshot
 	if d.Root == "" {
 		return nil
 	}
-	ctx := DetectContext(nil, d.Root)
+	ctx := DetectContext(context.Background(), d.Root)
 	if ctx == nil || len(ctx.CallSites) == 0 {
 		return nil
 	}
@@ -228,7 +229,7 @@ func slurpSourceFiles(root string, exts map[string]bool) map[string][]byte {
 	}
 	out := make(map[string][]byte, len(rels))
 	for _, r := range rels {
-		data, err := os.ReadFile(filepath.Join(root, r))
+		data, err := saferead.ReadFile(filepath.Join(root, r))
 		if err != nil {
 			continue
 		}

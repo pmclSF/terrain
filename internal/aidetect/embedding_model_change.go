@@ -285,6 +285,11 @@ type embeddingHit struct {
 // embedding model identifier that appears, with first-occurrence line.
 // Files that fail to open return nil.
 func scanFileForEmbeddingModels(path string) []embeddingHit {
+	// Refuse symlinks/devices/FIFOs before opening; Lstat inspects the
+	// link itself so it is never followed to an unbounded target.
+	if fi, statErr := os.Lstat(path); statErr != nil || !fi.Mode().IsRegular() {
+		return nil
+	}
 	f, err := os.Open(path)
 	if err != nil {
 		return nil

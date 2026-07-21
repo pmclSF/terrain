@@ -21,7 +21,7 @@ other eval adapters. Axis-specific detectors still require their own
 metadata: cost regression needs per-case cost, retrieval regression
 needs retrieval-quality named scores, and hallucination-rate detection
 needs hallucination or grounding metadata. Great Expectations results
-primarily provide pass/fail validation evidence in 0.3.0.
+primarily provide pass/fail validation evidence in 0.4.0.
 
 ## Wiring it up
 

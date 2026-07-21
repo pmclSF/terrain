@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // PromptfooAdapter ingests `promptfoo eval --output results.json`
@@ -25,7 +26,7 @@ func (PromptfooAdapter) CanIngest(path string) bool {
 	if !strings.HasSuffix(strings.ToLower(path), ".json") {
 		return false
 	}
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return false
 	}
@@ -46,7 +47,7 @@ func (PromptfooAdapter) CanIngest(path string) bool {
 
 // Ingest implements Adapter.
 func (PromptfooAdapter) Ingest(path string) (*EvalRun, error) {
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("promptfoo: read %s: %w", path, err)
 	}
@@ -141,6 +142,7 @@ func (PromptfooAdapter) Ingest(path string) (*EvalRun, error) {
 	}
 	if scoreCount == len(run.Cases) && scoreCount > 0 {
 		run.Stats.PrimaryMetric = scoreSum / float64(scoreCount)
+		run.Stats.HasPrimaryMetric = true
 	}
 
 	return run, nil

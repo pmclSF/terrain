@@ -171,6 +171,11 @@ func varsMustache(body string) []string {
 				return out
 			}
 			name := strings.TrimSpace(body[i+2 : i+2+rel])
+			if strings.ContainsAny(name, "{}") {
+				// Malformed placeholder; skip the stray brace and re-scan.
+				i++
+				continue
+			}
 			if _, dup := seen[name]; !dup {
 				seen[name] = struct{}{}
 				out = append(out, name)
@@ -221,6 +226,14 @@ func renderMustache(body, path string, vars map[string]string) (string, error) {
 				return out.String(), nil
 			}
 			name := strings.TrimSpace(body[i+2 : i+2+rel])
+			if strings.ContainsAny(name, "{}") {
+				// Malformed placeholder (e.g. `{{{x}}` yields name "{x").
+				// Emit the stray brace literally and re-scan from the next
+				// byte rather than inventing a phantom variable name.
+				out.WriteByte(body[i])
+				i++
+				continue
+			}
 			v, ok := vars[name]
 			if !ok {
 				return "", &MissingVarError{Name: name, Path: path}

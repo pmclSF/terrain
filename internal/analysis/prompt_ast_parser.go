@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pmclSF/terrain/internal/astguard"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -35,6 +36,9 @@ const (
 // Detection tier: TierStructural for AST-verified patterns.
 // All detections carry evidence metadata for traceability.
 func ParsePromptAST(relPath, src, lang string) []models.CodeSurface {
+	if astguard.LooksPathologicalString(src) {
+		return nil
+	}
 	switch lang {
 	case "js":
 		return parsePromptASTJS(relPath, src)

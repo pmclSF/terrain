@@ -9,7 +9,7 @@ When enabled, instrumented command paths append JSON lines to `~/.terrain/teleme
 | Field | Example | Purpose |
 |-------|---------|---------|
 | `ts` | `2099-03-31T12:00:00Z` | When the command ran |
-| `version` | `0.3.0` | Terrain version |
+| `version` | `0.4.0` | Terrain version |
 | `command` | `analyze` | Which command was run |
 | `durationMs` | `1450` | Execution time |
 | `sizeBand` | `medium` | Optional test file count band (small/medium/large) |

@@ -3,6 +3,8 @@ package convert
 import (
 	"os"
 	"regexp"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // annotateFileConfidence walks the Files in an ExecutionResult and
@@ -20,7 +22,7 @@ func annotateFileConfidence(result *ExecutionResult) {
 		if f.SourcePath == "" || f.OutputPath == "" {
 			continue
 		}
-		srcBytes, err := os.ReadFile(f.SourcePath)
+		srcBytes, err := saferead.ReadFile(f.SourcePath)
 		if err != nil {
 			continue
 		}
@@ -34,7 +36,7 @@ func annotateFileConfidence(result *ExecutionResult) {
 	// rather than on disk. Cover that path by reading the source
 	// file and pairing with StdoutContent.
 	if result.Mode == "stdout" && result.StdoutContent != "" && len(result.Files) == 0 && result.Source != "" {
-		srcBytes, err := os.ReadFile(result.Source)
+		srcBytes, err := saferead.ReadFile(result.Source)
 		if err == nil {
 			covered, lossy, conf := computeFileConfidence(string(srcBytes), result.StdoutContent)
 			result.Files = append(result.Files, FileResult{

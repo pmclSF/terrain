@@ -12,7 +12,7 @@ The product story lives in [`docs/PRODUCT.md`](docs/PRODUCT.md). This document i
 - **The snapshot is the integration boundary.** `TestSuiteSnapshot` (`internal/models/snapshot.go`) is the serialized artifact at which detection, graph construction, impact analysis, and reporting compose. Anything that can serialize into the snapshot inherits graph traversal, impact analysis, and the diagnostic-rendering pipeline.
 - **Risk must be explainable.** Risk surfaces are derived from signals with transparent scoring, not opaque scores.
 - **Local-first, LLM-free by default.** Terrain analysis runs on a developer machine or CI runner with no accounts, SaaS, or network access required. No LLM API key is ever required. `terrain analyze` makes zero outbound network calls in the default configuration (verifiable via `terrain --print-network`). Install paths download signed binaries from GitHub Releases — that's the only network step.
-- **Privacy boundary.** Default analysis makes no external calls. Some diagnostic artifacts can include repo paths and source excerpts when the adopter publishes them through CI. Aggregate metrics and benchmark exports should stay aggregate-only. `redact_source: true` is parsed for forward compatibility, but source-content redaction is inactive in 0.3.0.
+- **Privacy boundary.** Default analysis makes no external calls. Some diagnostic artifacts can include repo paths and source excerpts when the adopter publishes them through CI. Aggregate metrics and benchmark exports should stay aggregate-only. `redact_source: true` is parsed for forward compatibility, but source-content redaction is inactive in 0.4.0.
 - **Two-tier severity.** Detectors are explicitly classified as `gate` (counts toward `--fail-on=*` gate decisions) or `observability` (informational only). The tier is mandatory on every manifest entry — no implicit default.
 
 ## Pipeline
@@ -38,10 +38,10 @@ Per the three-surface model in [`docs/PRODUCT.md`](docs/PRODUCT.md), Terrain has
 | Surface | Renderers | Interactivity | LLM |
 |---|---|---|---|
 | **CI** | JUnit XML, GitHub check-run annotations, Step Summary, status check | One-shot, passive | Never |
-| **CLI** (`terrain analyze`, `terrain report explain`) | Terminal (cargo-style), JUnit, JSON | Developer-driven; deterministic evidence chains | None in 0.3.0; provider config is reserved for future explicit enrichment |
+| **CLI** (`terrain analyze`, `terrain report explain`) | Terminal (cargo-style), JUnit, JSON | Developer-driven; deterministic evidence chains | None in 0.4.0; provider config is reserved for future explicit enrichment |
 | **Agent** (MCP server) | MCP tool responses to Claude Code / Cursor / Apps SDK | Conversational | The agent's LLM; Terrain only serves local artifact data |
 
-The artifact-as-handoff contract decouples surfaces. The CI surface ships at full quality without LLM features ever existing; no shipped 0.3.0 command contacts an LLM provider.
+The artifact-as-handoff contract decouples surfaces. The CI surface ships at full quality without LLM features ever existing; no shipped 0.4.0 command contacts an LLM provider.
 
 ## Package map
 
@@ -81,8 +81,7 @@ internal/                     Core libraries (see internal/README.md for full li
   testcase/                   Per-language test extraction (AST + regex fallback)
   testtype/                   Test classification (unit / integration / e2e / component / smoke)
 extension/vscode/             VS Code extension alpha source/package
-docs/                         Product, integration, rule, harness documentation
-harness/                      Validation harness (corpora, runner, validators, readiness cards)
+docs/                         Product, integration, and rule documentation
 rfcs/                         RFCs for significant changes (governance per docs/CONTRIBUTING.md)
 ```
 
@@ -135,7 +134,7 @@ Canonical terms used in this doc and across `docs/PRODUCT.md`:
 - **Rule** — configurable detection capability with stable ID (`terrain/<category>/<rule>`), severity default, doc page
 - **Tier** — `gate` (counts toward `--fail-on=*`) or `observability` (informational). Mandatory on every manifest entry — no implicit default.
 - **Cause path** — chain of graph nodes from a finding's primary location back to the change in the PR that caused it
-- **Unified graph** — dependency graph spanning code, tests, surfaces, evals, data, and cross-language edges (bidirectional cause attribution)
+- **Unified graph** — dependency graph spanning code, tests, surfaces, evals, and data, with schema-code-test and schema↔prompt relationships (bidirectional cause attribution)
 
 ## What's stable
 
@@ -158,6 +157,6 @@ Pre-0.2.0 was unstable by design; 0.2.0 is the first release with stability comm
 
 ## Extension architecture
 
-The VS Code extension is intentionally thin. It invokes Terrain's CLI, reads CLI JSON artifacts, and renders sidebar views — no domain logic is duplicated in the extension. At 0.3.0 the extension alpha source/package ships in `extension/vscode/`; Marketplace publication, Problems-pane diagnostics, and full LSP-based integration are future work.
+The VS Code extension is intentionally thin. It invokes Terrain's CLI, reads CLI JSON artifacts, and renders sidebar views — no domain logic is duplicated in the extension. In the current release the extension alpha source/package ships in `extension/vscode/`; Marketplace publication, Problems-pane diagnostics, and full LSP-based integration are future work.
 
 See [`docs/vscode-extension.md`](docs/vscode-extension.md).

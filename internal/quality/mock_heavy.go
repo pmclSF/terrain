@@ -56,10 +56,8 @@ func (d *MockHeavyDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sign
 
 		// Mock-heavy: mocks outnumber assertions, suggesting over-isolation.
 		//
-		// Severity is Low and confidence is 0.35 because the signal has
-		// not held up as a reliable regression predictor. It remains in
-		// experimental status pending redesign; Low severity + low
-		// confidence keeps it visible in extended reports without
+		// Severity is Low and confidence is 0.35: this signal is a weak
+		// indicator, so it stays visible in extended reports without
 		// dominating the gate.
 		if tf.MockCount > tf.AssertionCount {
 			sev := models.SeverityLow

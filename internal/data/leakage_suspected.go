@@ -181,8 +181,9 @@ func buildLeakageSignal(kind, explanation, suggestedAction, relPath string, line
 		EvidenceStrength: models.EvidenceModerate,
 		EvidenceSource:   models.SourceStructuralPattern,
 		Location: models.SignalLocation{
-			File: relPath,
-			Line: line,
+			File:   relPath,
+			Symbol: kind, // distinguishes the FindingID anchor per leakage kind
+			Line:   line,
 		},
 		Explanation: fmt.Sprintf(
 			"Data leakage suspected in %s: %s. Reported metrics may overstate generalization.",

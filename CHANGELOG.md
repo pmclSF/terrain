@@ -5,6 +5,60 @@ All notable changes to Terrain are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] — Trust floor & first-run report
+
+### Added
+
+- **`terrain fix` applies the remediations Terrain can prove.** Today those are
+  the correct-side prompt→schema drift corrections (a prompt reference rewritten
+  to the schema field it should name) and the deps drift-risk caret-pinning fix
+  (a floating `^`/`~` range pinned to a validated version). It is
+  **dry-run by default** — it prints
+  the diff of every ready fix and writes nothing; `--apply` writes them and
+  prints `git diff` to review and a scoped `git restore` on the changed files
+  to undo. Only fixes whose
+  remediation is validated appear; a finding with no proven fix stays advisory.
+- **`terrain` with no arguments is now a first-run report.** One command,
+  no flags, gives you a map of what Terrain sees — your prompts, schemas,
+  and evals — the few issues actually worth a look, and a health readout
+  for prompt↔schema contracts and AI test coverage. It leads with what it
+  understood about your system, not a wall of findings. On a repo with no
+  AI surfaces it stays friendly and points you at `terrain analyze`.
+- **`terrain analyze --no-trust-floor` / `terrain test --no-trust-floor`.**
+  The opt-out for the new default gating behavior (below): restores
+  severity-only gating so any `--fail-on` match blocks CI. Also settable as
+  `trust_floor: false` in `terrain.yaml`.
+
+### Changed
+
+- **A "trust floor" now governs the `--fail-on` gate by default.** Heuristic
+  AI findings fail the build only when Terrain can prove a fix for them, so CI
+  never breaks on a low-confidence finding. Findings that must always gate —
+  failing tests and regressions, security/safety leaks (secrets, PII, insecure
+  deserialization), your own `policy.yaml` violations, and any Critical — still
+  fail the build on severity regardless. When the trust floor holds a finding
+  back, the run prints a one-line notice, so a passing build is never silent
+  about it. To gate every finding on severity, pass `--no-trust-floor` (on
+  `analyze`, `test`, and `report pr` / `check-runs`) or set `trust_floor: false`
+  in `terrain.yaml`.
+- **Terminal output now degrades cleanly everywhere.** Color follows your
+  terminal's own theme (light or dark) via standard ANSI roles, and every
+  glyph has an ASCII fallback for terminals that can't render Unicode
+  (Windows conhost, CI logs, dumb terminals). Set `TERRAIN_ASCII=1` or
+  `NO_COLOR` to force the plain path. The rendering system is documented in
+  [docs/cli-design-tokens.md](docs/cli-design-tokens.md).
+
+### Fixed
+
+- **Fewer false positives in the default AI detectors.** The schema→prompt
+  drift and model-deprecation checks were hardened to suppress
+  structurally-benign matches — base-vs-subclass polymorphism, docstring
+  examples, deprecation-map keys, and test files — so a finding is more likely
+  to be a real issue worth acting on. The PII-in-eval and secrets-in-prompt
+  checks (opt-in) gained the same class of synthetic-value / placeholder
+  suppression.
+
+
 ## [0.3.1] — Homebrew tap auto-update
 
 ### Fixed
@@ -58,12 +112,7 @@ All notable changes to Terrain are documented here. The format follows
   correct command — previously they silently fell through.
 - **MCP `ServerVersion` bumped to `0.3.0`** so the handshake reflects
   the current binary.
-- **Internal-vocabulary leaks scrubbed from public source.** Six
-  `cycle-2`/`cycle-3`/`future cycle` comments rewritten to neutral
-  phrasing in `cmd/terrain/cmd_plugins.go`, `internal/plugin/manifest.go`,
-  `internal/injection/patterns.go`, `internal/aliases/aliases.go`,
-  `docs/scripts/verify_doc_consistency.sh`, and
-  `internal/checkruns/checkruns_history_test.go`.
+- **Removed internal-only wording from public source comments.**
 
 ### Earlier in this cycle
 
@@ -168,8 +217,7 @@ All notable changes to Terrain are documented here. The format follows
   values synthesized from each schema's property types and a
   `MISSING(<name>)` marker where a referenced field is no longer
   present. LLM-free, deterministic, no network. Ships at observability
-  tier; stays at observability until adopter-corpus precision
-  confirms gate-readiness.
+  tier: it emits findings but never blocks CI.
 - **Prompt-template renderer** (`internal/prompttemplate`). Pure
   substitution with two flavors: mustache (`{{name}}`, used in
   `.md`/`.markdown` template files) and Python f-string (`{name}`,
@@ -402,7 +450,7 @@ The headline 0.2 addition. A typed-evidence pipeline (`internal/aipipeline`) rep
 **Precision lift over the path-based baseline:**
 
 - Substantial precision lift over a path-based baseline on representative app-shape repositories.
-- Per-cohort base rates and per-rule weight overrides correct systematic over-suppression observed in earlier hand-tuned models.
+- Per-cohort base rates and per-rule weight overrides tune confidence scoring per detector.
 
 The pipeline emits typed evidence atoms; a weighted-log-odds composer produces a posture-thresholded confidence (observability vs gate). Each rule ships with a per-rule fix scaffold (Promptfoo eval YAML, DeepEval pytest, MLflow/W&B trackers).
 
@@ -455,10 +503,7 @@ through 0.2; in-band deprecation warnings and removal are future work.
 `terrain convert <file> --to <framework>` continues to work via the
 per-file converter — the `convert` namespace dispatcher falls through
 to `runConvertCLI` (single-file mode) for non-verb args, distinct from
-the `migrate` namespace's directory-mode fall-through. Folding
-`policy`/`compare` into `analyze` flags and the `--focus`/`--output`
-flag-collapse from former top-level `focus`/`export` are future work —
-see "Known gaps and future work" below.
+the `migrate` namespace's directory-mode fall-through.
 
 ### Eval framework adapters
 
@@ -627,33 +672,6 @@ closed the verified P0/P1 subset before tag:
   `debug <verb>` verb list to top-level help for parity with the
   other namespace dispatchers; `terrain export benchmark` now
   accepts `--json` (no-op; output is always JSON) for flag parity.
-
-### Known gaps and future work
-
-Items that did not ship in 0.2.0:
-
-- **Scoring v2 band re-anchoring** — needs a labeled repository corpus (not just per-detector fixtures) to derive percentile-based band thresholds.
-- **Conversion top-3 fixture corpora to A-grade with 95% post-conversion pass rate** — bulk content authoring.
-- **Next-stage CLI restructure** — fold `policy` into `analyze --policy=<file>` and `compare` into `analyze --against=<ref>`. Different exit-code semantics; deserves its own review.
-- **Universal flag schema + `--detail 1/2/3`** — this release landed only the namespace dispatchers; flag parity across legacy and namespace paths is still inconsistent (`--root` vs `-root`, `--json` vs `--format json`).
-- **Plugin architecture skeleton** for community adapters — not shipped.
-- **Confidence intervals in `terrain explain` output** — the
-  `ConfidenceDetail` struct ships in SignalV2, but the renderer doesn't
-  surface `IntervalLow`/`IntervalHigh`. Most intervals are author-
-  guessed (`Quality: "heuristic"`) rather than measured.
-- **In-band deprecation warnings on legacy commands** — no mechanism
-  in 0.2; users running `terrain summary` get no hint to switch to
-  `terrain report summary`. Targeted for a patch release.
-- **Manifest entries promoted to ship in 0.2 that didn't promote**:
-  `evalFailure`, `evalRegression`, `accuracyRegression`,
-  `schemaParseFailure`, `safetyFailure`, `aiPolicyViolation`,
-  `toolGuardrailViolation`. Promotion plans updated.
-- **`terrain doctor` ↔ `terrain ai doctor` consolidation** — not yet
-  consolidated.
-- **`terrain ai gate`** — standalone command not yet shipped (today:
-  `terrain ai findings --posture=gate`).
-
-Known gaps and the backlog of follow-up work are tracked in internal release notes.
 
 ## [0.1.2] — Truth-up & foundation
 

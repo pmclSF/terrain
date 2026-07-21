@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** gate
 
-## Promotion plan
-
-Fires when the pipeline output schema has changed between baseline and current run.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -28,9 +24,7 @@ A pipeline's output schema changed between baseline and current runs — column 
 
 ## 2. Severity & status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 

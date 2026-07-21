@@ -14,16 +14,9 @@ import (
 // with zero test or scenario coverage.
 type UncoveredAISurfaceDetector struct{}
 
-// Sub-lane precision tuning. The AI-surface lanes have meaningfully
-// different precision profiles:
-//   - aiPrompt: strongest lane, kept gate-eligible
-//   - aiModel: weakest lane, dominated by name-shape false positives
-//     (Zod schemas, synthesized line-suffix stems, decorator-
-//     injected stems)
-//   - aiDataset: moderate
-//
-// The filters below target the dominant false-positive classes in the
-// aiModel lane:
+// The filters below suppress name-shape false matches in the aiModel
+// lane. Three non-model identifier classes match model-name heuristics
+// but are not addressable LLM surfaces:
 //
 // modelSyntheticStemRe: names like `token_management_L47`, `*_L\d+`
 //
@@ -159,15 +152,12 @@ func (d *UncoveredAISurfaceDetector) DetectWithGraph(snap *models.TestSuiteSnaps
 func severityForAISurfaceType(nt depgraph.NodeType) models.SignalSeverity {
 	switch nt {
 	case depgraph.NodePrompt:
-		// aiPrompt is the strongest sub-lane by validated precision; the
-		// highest severity is preserved for it.
+		// Prompt surfaces carry the highest severity.
 		return models.SeverityHigh
 	case depgraph.NodeModel:
-		// aiModel was the lowest-precision sub-lane pre-filter; even
-		// after isStructuralAIModelFP drops the dominant FP classes,
-		// residual precision is moderate. Demoted to medium until an
-		// LLM-call-site proximity gate (depgraph adjacency to call
-		// sites) lands.
+		// Model surfaces get medium severity: after isStructuralAIModelFP
+		// filters the known non-model name shapes, the remaining matches
+		// are a weaker signal than prompt surfaces.
 		return models.SeverityMedium
 	case depgraph.NodeDataset:
 		return models.SeverityMedium

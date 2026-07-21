@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** observability
 
-## Promotion plan
-
-Fires when an LLM SDK call has no temperature kwarg. Defaults differ across SDKs; an explicit value is reproducibility-critical.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -28,10 +24,7 @@ An LLM SDK call lacks an explicit `temperature` argument. Default temperatures d
 
 ## 2. Severity & status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in via `terrain.yaml`)
-- **Status:** preview — pending validation
-- **Graduation criteria:** false-positive rate ≤ 5%.
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 
@@ -41,7 +34,7 @@ An LLM SDK call lacks an explicit `temperature` argument. Default temperatures d
 
 ## 5. Detection mechanism
 
-AST-level inspection of LLM SDK call sites (consuming the AICallSite records from `internal/aidetect/`). Fires when the call has no `temperature=` kwarg and isn't using a streaming method that pins it implicitly.
+AST-level inspection of detected LLM SDK call sites. Fires when the call has no `temperature=` kwarg and isn't using a streaming method that pins it implicitly.
 
 ## 6. Worked example
 

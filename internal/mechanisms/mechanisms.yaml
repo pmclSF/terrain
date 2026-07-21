@@ -39,7 +39,7 @@ mechanisms:
     consumers:
       - deprecatedTestPattern
 
-  - name: a1_def_following
+  - name: def_following
     state: shadow
     description: |
       Intra-repo def-following for the assertion-counter family. When
@@ -71,7 +71,7 @@ mechanisms:
     consumers:
       - staticSkippedTest
 
-  - name: a7_barrel_resolver
+  - name: barrel_resolver
     state: shadow
     description: |
       Import-graph barrel/re-export hardening. Handles relative sibling
@@ -82,7 +82,7 @@ mechanisms:
       - untestedExport
       - orphanedTestFile
 
-  - name: a3_loop_predicate
+  - name: loop_predicate
     state: shadow
     description: |
       AST loop predicate for dynamicTestGeneration: gates on

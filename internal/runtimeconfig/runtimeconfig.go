@@ -5,9 +5,8 @@
 //	"Any YAML / properties file with import-graph-reachable consumer
 //	 that injects values into an SDK client constructor."
 //
-// Ships at observability tier. The capability is preserved; if the
-// primitive proves too narrow on a labeled sample, demote further —
-// the rule is not retired.
+// Findings from this recognizer default to the observability tier
+// (non-gating).
 //
 // What the recognizer does today:
 //  1. RecognizeFile: parses a YAML or .properties file and reports
@@ -23,6 +22,7 @@
 package runtimeconfig
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -32,6 +32,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/pmclSF/terrain/internal/mechanisms"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // MechanismName is the canonical name in mechanisms.yaml.
@@ -77,9 +78,9 @@ func (r *Report) IsRuntimeConfig() bool {
 // of whether the file is a runtime config — the verdict is in
 // Report.IsRuntimeConfig().
 func RecognizeFile(path, repoRoot string) (*Report, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
+	data, ok := saferead.File(path, saferead.SourceCap)
+	if !ok {
+		return nil, fmt.Errorf("runtimeconfig: %s is not a readable regular file within the size limit", path)
 	}
 	report := &Report{Path: path}
 	switch strings.ToLower(filepath.Ext(path)) {
@@ -213,7 +214,7 @@ func hasLoaderForPath(repoRoot, configPath string) bool {
 		ext := filepath.Ext(p)
 		switch ext {
 		case ".py", ".js", ".ts", ".jsx", ".tsx", ".mjs", ".cjs", ".go", ".java", ".kt":
-			data, _ := os.ReadFile(p)
+			data, _ := saferead.File(p, saferead.SourceCap)
 			if loaderPatternRe.Match(data) {
 				found = true
 				return filepath.SkipAll

@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"os"
 	"regexp"
+	"sort"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 	"github.com/pmclSF/terrain/internal/signals"
 )
 
@@ -16,10 +17,8 @@ import (
 // of Kind=SurfacePrompt) for embedded credentials and emits a Signal
 // per match. Implements terrain/hygiene/secrets-in-prompt.
 //
-// 0.2.0 ships a Go-native regex-based default. The task description
-// (#17) calls for gitleaks library integration; that's the documented
-// followup. The Go-native default covers the high-severity cases at
-// 0.2.0:
+// Uses a Go-native regex set covering the high-severity credential
+// shapes below:
 //
 //   - OpenAI keys (sk-... prefix)
 //   - Anthropic keys (sk-ant-... prefix)
@@ -33,7 +32,7 @@ import (
 func DetectSecretsInPrompt(promptFilePaths []string) []models.Signal {
 	var out []models.Signal
 	for _, path := range promptFilePaths {
-		data, err := os.ReadFile(path)
+		data, err := saferead.ReadFile(path)
 		if err != nil {
 			continue
 		}
@@ -45,6 +44,7 @@ func DetectSecretsInPrompt(promptFilePaths []string) []models.Signal {
 		for k := range matches {
 			kinds = append(kinds, k)
 		}
+		sort.Strings(kinds)
 		out = append(out, models.Signal{
 			Type:             signals.SignalSecretsInPrompt,
 			Category:         models.CategoryAI,
@@ -85,6 +85,46 @@ var secretPatterns = []struct {
 	{"bearer-token", regexp.MustCompile(`(?i)\bbearer\s+[A-Za-z0-9_\-]{20,}\b`)},
 }
 
+// secretPlaceholderMarkers mark a matched credential as a documentation /
+// example / test value rather than a live secret. This mirrors the placeholder
+// defense the sibling hardcoded-api-key detector has always had and this
+// Critical-severity detector previously lacked. Only deliberate human-written
+// phrases are listed — never common digit/hex runs, since a real (random) key
+// can legitimately contain them (that would cause false negatives).
+var secretPlaceholderMarkers = []string{
+	"fake", "placeholder", "example", "dummy", "test-", "test_", "sample",
+	"redacted", "your-key", "your_key", "your-token", "your_token",
+	"xxxxx", "00000",
+}
+
+func isSecretPlaceholder(match string) bool {
+	low := strings.ToLower(match)
+	for _, m := range secretPlaceholderMarkers {
+		if strings.Contains(low, m) {
+			return true
+		}
+	}
+	return hasLowSecretEntropy(match)
+}
+
+// hasLowSecretEntropy returns true when the string is dominated by a single
+// repeated character — the shape of a doc placeholder, never a real key.
+func hasLowSecretEntropy(s string) bool {
+	if len(s) < 12 {
+		return false
+	}
+	counts := map[byte]int{}
+	for i := 0; i < len(s); i++ {
+		counts[s[i]]++
+	}
+	for _, c := range counts {
+		if c*2 > len(s) {
+			return true
+		}
+	}
+	return false
+}
+
 func scanSecretPatterns(data []byte) map[string]int {
 	out := map[string]int{}
 	scanner := bufio.NewScanner(bytes.NewReader(data))
@@ -92,8 +132,12 @@ func scanSecretPatterns(data []byte) map[string]int {
 	for scanner.Scan() {
 		line := scanner.Bytes()
 		for _, p := range secretPatterns {
-			if p.pattern.Find(line) != nil {
+			for _, loc := range p.pattern.FindAllIndex(line, -1) {
+				if isSecretPlaceholder(string(line[loc[0]:loc[1]])) {
+					continue // documentation / example / placeholder credential
+				}
 				out[p.name]++
+				break // one count per line per kind
 			}
 		}
 	}

@@ -116,5 +116,11 @@ func truncate(s string, max int) string {
 	if len(s) <= max {
 		return s
 	}
-	return s[:max-3] + "..."
+	// Truncate on a rune boundary so a multibyte character is never cut
+	// mid-sequence, which would emit invalid UTF-8 into the explanation.
+	r := []rune(s)
+	if len(r) <= max {
+		return s
+	}
+	return string(r[:max-3]) + "..."
 }

@@ -7,10 +7,12 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // TestRunDiscover_EmptyRepo checks the no-args discovery report stays friendly
-// on an empty directory and routes to the right next-step suggestion.
+// on a repo with no AI surfaces and points at the full posture command.
 func TestRunDiscover_EmptyRepo(t *testing.T) {
 	tmp := t.TempDir()
 
@@ -20,23 +22,25 @@ func TestRunDiscover_EmptyRepo(t *testing.T) {
 		}
 	})
 
-	if !strings.Contains(out, "Terrain — discovery report") {
-		t.Errorf("expected header in output, got: %s", out)
+	if !strings.Contains(out, "MAPPED") {
+		t.Errorf("expected the MAPPED line, got: %s", out)
 	}
-	if !strings.Contains(out, "Nothing AI-specific detected") {
-		t.Errorf("expected empty-repo guidance, got: %s", out)
+	if !strings.Contains(out, "no AI surfaces here yet") {
+		t.Errorf("expected the no-AI friendly line, got: %s", out)
 	}
 	if !strings.Contains(out, "terrain analyze") {
 		t.Errorf("expected next-step pointer at `terrain analyze`, got: %s", out)
 	}
 }
 
-// TestRunDiscover_AIRepo verifies the report surfaces AI surfaces when present
-// and routes to the AI-first next-step suggestions.
+// TestRunDiscover_AIRepo verifies the report leads with the MAPPED comprehension
+// line, shows the HEALTH block, and offers next-step commands when AI surfaces
+// are present.
 func TestRunDiscover_AIRepo(t *testing.T) {
 	tmp := t.TempDir()
 
-	// Seed a minimal AI-shaped layout: a prompt file + an eval config.
+	// Seed a minimal AI-shaped layout: a prompt file + an eval config + a
+	// model call site importing an AI SDK (so the drift analyzer engages).
 	mustWrite(t, filepath.Join(tmp, "prompts", "answer.txt"),
 		"You are a helpful assistant. {{user_input}}")
 	mustWrite(t, filepath.Join(tmp, "evals", "promptfoo.yaml"),
@@ -50,13 +54,19 @@ func TestRunDiscover_AIRepo(t *testing.T) {
 		}
 	})
 
-	if !strings.Contains(out, "terrain ai findings") {
-		t.Errorf("expected ai-findings next-step pointer when AI surfaces present, got: %s", out)
+	if !strings.Contains(out, "MAPPED") {
+		t.Errorf("expected the MAPPED comprehension line, got: %s", out)
+	}
+	if strings.Contains(out, "no AI surfaces here yet") {
+		t.Errorf("AI repo should not report zero surfaces, got: %s", out)
+	}
+	if !strings.Contains(out, "next") || !strings.Contains(out, "terrain analyze") {
+		t.Errorf("expected next-step commands, got: %s", out)
 	}
 }
 
-// TestRunDiscover_TestRepo verifies the report doesn't suggest `ai findings`
-// when there are tests but no AI surfaces.
+// TestRunDiscover_TestRepo verifies a repo with tests but no AI surfaces stays
+// in the friendly no-AI state rather than fabricating an AI report.
 func TestRunDiscover_TestRepo(t *testing.T) {
 	tmp := t.TempDir()
 
@@ -71,12 +81,137 @@ func TestRunDiscover_TestRepo(t *testing.T) {
 		}
 	})
 
-	if !strings.Contains(out, "terrain report insights") {
-		t.Errorf("expected non-AI next-step routing to `terrain report insights`, got: %s", out)
+	if !strings.Contains(out, "no AI surfaces here yet") {
+		t.Errorf("expected the no-AI state on a non-AI repo, got: %s", out)
 	}
-	if strings.Contains(out, "terrain ai findings") {
-		t.Errorf("did not expect AI next-step on non-AI repo, got: %s", out)
+	if strings.Contains(out, "HEALTH") {
+		t.Errorf("did not expect a HEALTH block on a non-AI repo, got: %s", out)
 	}
+}
+
+// TestRunDiscover_DriftIssue verifies the report surfaces a real prompt↔schema
+// drift as a curated issue and reflects it in the contracts health line.
+func TestRunDiscover_DriftIssue(t *testing.T) {
+	tmp := t.TempDir()
+	mustWrite(t, filepath.Join(tmp, "models.py"),
+		"from pydantic import BaseModel\n\nclass UserProfile(BaseModel):\n    name: str\n")
+	mustWrite(t, filepath.Join(tmp, "prompt.py"),
+		"import openai\nfrom models import UserProfile\n\n"+
+			"def build(user: UserProfile) -> str:\n"+
+			"    return f\"\"\"Hello {user.user_id}.\"\"\"\n")
+
+	out := captureStdout(t, func() {
+		if err := runDiscover(tmp); err != nil {
+			t.Fatalf("runDiscover: %v", err)
+		}
+	})
+
+	if !strings.Contains(out, "[drift]") {
+		t.Errorf("expected a drift issue card, got: %s", out)
+	}
+	if !strings.Contains(out, "drifting") {
+		t.Errorf("expected the contracts health line to show drifting, got: %s", out)
+	}
+	// The MAPPED line must show the actual parsed counts (the comprehension proof).
+	if !strings.Contains(out, "1 prompt") || !strings.Contains(out, "1 schema") {
+		t.Errorf("expected MAPPED counts '1 prompt', '1 schema', got: %s", out)
+	}
+	// This drift ({user.user_id} vs field name) is not a typo of an existing
+	// field, so the producer declines — `terrain fix` must NOT be suggested.
+	if strings.Contains(out, "terrain fix") {
+		t.Errorf("non-fixable drift must not advertise `terrain fix`, got: %s", out)
+	}
+}
+
+// TestRunDiscover_FixableDriftSuggestsFix pairs with the above: a drift that IS
+// a typo of a real field carries a validated fix, so `terrain fix` is suggested.
+func TestRunDiscover_FixableDriftSuggestsFix(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "models.py"),
+		"from pydantic import BaseModel\n\nclass UserProfile(BaseModel):\n    user_id: str\n")
+	mustWrite(t, filepath.Join(root, "prompt.py"),
+		"import openai\nfrom models import UserProfile\n\ndef build(user: UserProfile) -> str:\n    return f\"\"\"Hi {user.user_idx}.\"\"\"\n")
+
+	out := captureStdout(t, func() {
+		if err := runDiscover(root); err != nil {
+			t.Fatalf("runDiscover: %v", err)
+		}
+	})
+	if !strings.Contains(out, "terrain fix") {
+		t.Errorf("a fixable typo drift should suggest `terrain fix`, got: %s", out)
+	}
+}
+
+// TestRunDiscover_AllClearAndInSync locks the reward states: a consistent AI
+// repo (schema + prompt, no drift) shows "all clear", the contracts line reads
+// "in sync", and no drift artifacts appear.
+func TestRunDiscover_AllClearAndInSync(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, "models.py"),
+		"from pydantic import BaseModel\n\nclass UserProfile(BaseModel):\n    user_id: str\n    name: str\n")
+	mustWrite(t, filepath.Join(root, "prompt.py"),
+		"import openai\nfrom models import UserProfile\n\ndef build(user: UserProfile) -> str:\n    return f\"\"\"Hi {user.name} ({user.user_id}).\"\"\"\n")
+
+	out := captureStdout(t, func() {
+		if err := runDiscover(root); err != nil {
+			t.Fatalf("runDiscover: %v", err)
+		}
+	})
+	if !strings.Contains(out, "all clear") {
+		t.Errorf("consistent repo should show 'all clear', got: %s", out)
+	}
+	if !strings.Contains(out, "in sync") {
+		t.Errorf("consistent repo contracts line should read 'in sync', got: %s", out)
+	}
+	if strings.Contains(out, "[drift]") || strings.Contains(out, "drifting") {
+		t.Errorf("consistent repo must show no drift artifacts, got: %s", out)
+	}
+}
+
+// TestDiscoverHealthHelpers unit-tests the coverage-score logic directly (it is
+// not exercised by the minimal fixtures, since aidetect doesn't classify their
+// surfaces): the co-location coverage count, the meter band boundaries, and the
+// path helpers.
+func TestDiscoverHealthHelpers(t *testing.T) {
+	// countCovered: a surface is covered when an eval config shares its top dir.
+	surfaces := []string{"src/agent/chat.py", "src/agent/tools.py", "lib/util.py"}
+	evals := []string{"src/agent/eval_chat.yaml"} // top dir "src"
+	if got := countCovered(surfaces, evals); got != 2 {
+		t.Errorf("countCovered = %d, want 2 (both src/ surfaces covered)", got)
+	}
+	if got := countCovered(surfaces, nil); got != 0 {
+		t.Errorf("countCovered with no evals = %d, want 0", got)
+	}
+
+	// topDir + dedupePaths.
+	if topDir("a/b/c.py") != "a" || topDir("solo.py") != "solo.py" {
+		t.Errorf("topDir wrong: %q / %q", topDir("a/b/c.py"), topDir("solo.py"))
+	}
+	if got := dedupePaths([]string{"x", "x", "y"}); len(got) != 2 {
+		t.Errorf("dedupePaths = %v, want 2 distinct", got)
+	}
+
+	// healthMeter: filled cells scale with ratio. Force the Unicode glyphs on so
+	// the count is deterministic regardless of the test runner's locale.
+	prevU := uitokens.UnicodeEnabled
+	uitokens.UnicodeEnabled = true
+	defer func() { uitokens.UnicodeEnabled = prevU }()
+	if full := countRune(healthMeter(1.0), '●'); full != 10 {
+		t.Errorf("healthMeter(1.0) filled cells = %d, want 10", full)
+	}
+	if empty := countRune(healthMeter(0.0), '○'); empty != 10 {
+		t.Errorf("healthMeter(0.0) empty cells = %d, want 10", empty)
+	}
+}
+
+func countRune(s string, r rune) int {
+	n := 0
+	for _, c := range s {
+		if c == r {
+			n++
+		}
+	}
+	return n
 }
 
 // TestIsFixturePath spot-checks the heuristic that prevents the report from

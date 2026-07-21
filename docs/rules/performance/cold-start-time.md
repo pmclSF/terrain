@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** observability
 
-## Promotion plan
-
-Fires when first-request latency exceeds the configured threshold (e.g., 2x P50).
-
 ## Evidence sources
 
 - `runtime`
@@ -28,9 +24,7 @@ The first request's latency in a fresh process exceeds the configured threshold 
 
 ## 2. Severity & status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 

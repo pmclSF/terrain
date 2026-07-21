@@ -37,6 +37,11 @@ type PRAnalysis struct {
 
 	// ProtectionGapCount is the number of protection gaps.
 	ProtectionGapCount int `json:"protectionGapCount"`
+	// BlockingCount is the number of findings that actually fail the merge gate
+	// (gate-relevant, trust-floor-blockable, at or above --fail-on). The
+	// PR-comment verdict counts these — NOT every direct-risk finding — so it
+	// never says "N findings block this merge" on a run that exits 0.
+	BlockingCount int `json:"blockingCount"`
 
 	// TotalTestCount is the total number of tests in the repository.
 	TotalTestCount int `json:"totalTestCount"`

@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** observability
 
-## Promotion plan
-
-Fires when a tool-call-enabled agent has no rate limit or cost ceiling configured.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -26,11 +22,9 @@ Confidence interval: 0.75–0.90.
 
 An agent has tool-calling enabled but no rate limit, call ceiling, or per-tool cost cap. Adversarial inputs can trigger unbounded tool calls.
 
-## 2. Severity & status
+## 2. Status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Experimental — off by default; enable in `terrain.yaml`.
 
 ## 3. What this catches
 

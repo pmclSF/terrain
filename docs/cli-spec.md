@@ -4,13 +4,17 @@ The complete reference for every command and flag the `terrain` binary accepts. 
 
 Repository-scoped commands accept `--root PATH` (defaults to current directory). Machine-readable commands accept `--json`. Run `terrain <command> --help` for the live flag list.
 
-## Surface — canonical 14 + legacy aliases
+How terminal output is rendered — color roles, the glyph set and its ASCII floor, and the `NO_COLOR` / non-TTY / non-UTF-8 / width degradation rules — is specified in [CLI design tokens](cli-design-tokens.md).
+
+## Surface — canonical commands + legacy aliases
 
 Canonical commands route through namespace dispatchers (`terrain report`, `terrain migrate`, `terrain config`, `terrain debug`, `terrain ai`):
 
 | Canonical | What it does |
 |---|---|
+| `terrain` (no args) | First-run report: a map of what Terrain sees, the few issues worth acting on, and a health readout. Read-only. |
 | `terrain analyze` | Full snapshot pipeline; the headline command. Writes `.terrain/findings.json` after every run. |
+| `terrain fix` | Apply validated remediations (today, prompt→schema drift corrections). Dry-run by default; `--apply` writes. |
 | `terrain test` | CI-mode wrapper around analyze: emits JUnit XML and a markdown step-summary (point `--summary` at `$GITHUB_STEP_SUMMARY` for GitHub Actions). |
 | `terrain init [path]` | First-run scaffolder — runs analyze + emits a starter `.terrain/` layout including an annotated `policy.yaml.example`. |
 | `terrain report <verb>` | Read-side views: `summary`, `insights`, `metrics`, `explain`, `show`, `impact`, `pr`, `posture`, `select-tests` |
@@ -23,7 +27,7 @@ Canonical commands route through namespace dispatchers (`terrain report`, `terra
 | `terrain config <verb>` | Workspace prefs: `feedback`, `telemetry` |
 | `terrain doctor [path]` | Diagnostics for current setup. Surfaces registry, alias-registry, gitignore, and per-rule policy-override state. |
 | `terrain mcp [--root <dir>]` | Start the [Model Context Protocol](https://modelcontextprotocol.io) server on stdio for AI coding assistants. Reads `.terrain/findings.json` from the last analyze run. |
-| `terrain portfolio` | Portfolio analysis. Single-repo output and `terrain portfolio --from <manifest>` multi-repo aggregation are stable in 0.3.0. |
+| `terrain portfolio` | Portfolio analysis. Single-repo output and `terrain portfolio --from <manifest>` multi-repo aggregation are stable. |
 | `terrain serve` | Local HTTP server with HTML report + JSON API (default port 8421, 127.0.0.1 only) |
 | `terrain version` | Version, commit, build date, snapshot schema version |
 
@@ -39,6 +43,34 @@ Flags:
 ---
 
 ## Core commands
+
+### `terrain` (no arguments)
+
+The first-run report — the friendly first touch. With no subcommand and no
+flags, `terrain` prints a compact, scannable view:
+
+- **MAPPED** — one line proving what Terrain parsed (prompts, schemas, evals).
+- **Issues** — the curated bug-class findings worth acting on (schema↔prompt
+  drift), or an "all clear" state when there is nothing.
+- **HEALTH** — prompt↔schema contract status and AI test-coverage as a score,
+  not a flood of per-surface line-items.
+- **next** — the commands to run from here.
+
+It is read-only (writes nothing under `.terrain/`), fast (runs the validated,
+key-free drift check), and renders cleanly on any terminal — color follows your
+theme, glyphs fall back to ASCII where needed (see
+[CLI design tokens](cli-design-tokens.md)). On a repo with no AI surfaces it
+stays friendly and points at `terrain analyze`.
+
+### `terrain fix`
+
+Applies the closed-loop-validated remediations Terrain can prove — today, the correct-side prompt→schema drift corrections (a prompt reference rewritten to the schema field it should name). Only fixes whose remediation is validated appear here; a finding with no proven fix stays advisory (`terrain report`).
+
+**Dry-run by default.** With no flags, `terrain fix` prints the diff of every ready fix and writes nothing. It is the one command that edits source, so it never does so without `--apply`.
+
+Flags:
+- `--apply` — write the fixes to disk. Applies to a fixpoint (each fix is recomputed from the current source, so multiple fixes in one file can't clobber each other): review with `git diff`, undo with `git restore -- <changed files>`.
+- `--root PATH` — repository root (defaults to current directory; a positional path also works).
 
 ### `terrain init`
 
@@ -64,8 +96,11 @@ Flags:
 - `--ragas-results PATH` — Ragas eval result JSON file; comma-separated for multiple.
 - `--great-expectations-results PATH` — Great Expectations Validation Result JSON file; comma-separated for multiple.
 - `--slow-threshold MS` — slow-test threshold in milliseconds (default: 5000).
-- `--fail-on=LEVEL` — gate the build; exits code 6 when any finding meets the threshold. `LEVEL` ∈ `low | medium | high | critical`.
+- `--fail-on=LEVEL` — gate the build; exits code 6 when a *blocking* finding meets the threshold. `LEVEL` ∈ `low | medium | high | critical`. Under the default trust floor, a finding blocks only when its remediation is closed-loop validated (see below).
+- `--no-trust-floor` — opt out of the default remediation-validity gate, restoring severity-only gating so any `--fail-on` match blocks. `--trust-floor` forces it on (it is already the default). Also settable as `trust_floor: false` / `true` in `terrain.yaml`.
 - `--baseline PATH` + `--new-findings-only` — filter to regressions only (onboarding pattern for repos with existing debt).
+
+**Trust floor (default on).** The trust floor holds back the *heuristic* findings from failing a build until Terrain can prove a fix for them — so a build never breaks on a low-confidence AI finding we can't yet help you resolve. It does **not** apply to findings that must always gate: **failing tests and regressions, security/safety leaks (secrets, PII, insecure deserialization), your own `policy.yaml` violations, and any Critical**. Those block on severity regardless — an auto-fix is never a prerequisite for failing CI on a leaked secret or a broken test. When the trust floor holds a finding back, the run prints a one-line notice (`N AI finding(s) held back … run --no-trust-floor to gate on severity`) so a passing build is never silent about it. Pass `--no-trust-floor` (or `trust_floor: false` in `terrain.yaml`) to gate every finding on severity.
 
 Artifacts written:
 - `.terrain/findings.json` — canonical Finding artifact (schema version 1), written after every run. Stable shape; downstream consumers (`terrain mcp`, IDE plugins, third-party SARIF uploaders) read from this file. Gitignored by the template `terrain init` writes.

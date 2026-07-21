@@ -5,7 +5,6 @@ package models
 // TestFile represents a discovered test file and the key facts Terrain knows
 // about it.
 //
-// Over time, this model will become one of the central objects in the product.
 // It connects:
 //   - structure (where the file lives, what framework it uses)
 //   - quality (assertions, mocks, snapshots)
@@ -30,7 +29,7 @@ type TestFile struct {
 	FrameworkDetectorID string `json:"frameworkDetectorId,omitempty"`
 
 	// Owner is the resolved owner for this file if known.
-	// This may come from CODEOWNERS, config, or future ownership inference.
+	// This may come from CODEOWNERS or config.
 	Owner string `json:"owner,omitempty"`
 
 	// TestCount is the estimated number of tests in the file.

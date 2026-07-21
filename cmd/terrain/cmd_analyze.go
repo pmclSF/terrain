@@ -13,6 +13,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/pmclSF/terrain/internal/aidetect"
 	"github.com/pmclSF/terrain/internal/analysis"
 	"github.com/pmclSF/terrain/internal/analyze"
 	"github.com/pmclSF/terrain/internal/atomicfile"
@@ -23,7 +24,9 @@ import (
 	"github.com/pmclSF/terrain/internal/logging"
 	"github.com/pmclSF/terrain/internal/models"
 	"github.com/pmclSF/terrain/internal/policy"
+	"github.com/pmclSF/terrain/internal/promptcontract"
 	"github.com/pmclSF/terrain/internal/promptflow"
+	"github.com/pmclSF/terrain/internal/remediate"
 	"github.com/pmclSF/terrain/internal/reporting"
 	"github.com/pmclSF/terrain/internal/sarif"
 	"github.com/pmclSF/terrain/internal/signals"
@@ -157,9 +160,7 @@ func relativeToRoot(path, root string) string {
 
 // analyzeRunOpts collects every input runAnalyze takes. Replaces a
 // seventeen-positional-argument signature with one struct so future
-// flag additions stop expanding the call site. // recovery (PR #140) introduced the struct; gate + timeout fields
-// were already on the previous positional signature and are
-// preserved here.
+// flag additions stop expanding the call site.
 type analyzeRunOpts struct {
 	Root                   string
 	JSONOutput             bool
@@ -183,6 +184,13 @@ type analyzeRunOpts struct {
 	NewFindingsOnly        bool
 	EnablePreview          bool
 	Diag                   bool
+	// TrustFloor forces the remediation-validity gate ON (explicit
+	// `--trust-floor`). It is ON by default in 0.4.0; NoTrustFloor is the
+	// opt-out. When both are false the default (on) applies.
+	TrustFloor bool
+	// NoTrustFloor forces the remediation-validity gate OFF (`--no-trust-floor`),
+	// restoring severity-only gating. Takes precedence over the default and config.
+	NoTrustFloor bool
 	// BaseRef, when set, enables the prompt-template/schema drift
 	// detector (aiPromptSchemaDrift). The detector compares schemas
 	// at HEAD against schemas at this ref via `git show <ref>:<path>`.
@@ -215,8 +223,30 @@ func runAnalyze(o analyzeRunOpts) error {
 	// the AI-context gate so private LLM SDKs corroborate detection.
 	// Missing or invalid config is non-fatal — gate falls back to
 	// the canonical marker list.
-	if cfg, err := terrainconfig.LoadForRoot(root); err == nil && cfg != nil && cfg.AI != nil && len(cfg.AI.AIMarkers) > 0 {
-		analysis.SetCustomAIMarkers(cfg.AI.AIMarkers)
+	cfg, cfgErr := terrainconfig.LoadForRoot(root)
+	if cfgErr != nil {
+		// Invalid terrain.yaml must not silently disable source redaction;
+		// warn here and fail closed at the emit site below.
+		logging.L().Warn("terrain analyze: could not load config; redacting source excerpts to be safe", "err", cfgErr)
+	}
+	// Trust floor: ON by default; opt out via --no-trust-floor or
+	// trust_floor: false in terrain.yaml.
+	trustFloor := resolveTrustFloor(o.TrustFloor, o.NoTrustFloor, cfg)
+	if cfg != nil && cfg.AI != nil {
+		if len(cfg.AI.AIMarkers) > 0 {
+			analysis.SetCustomAIMarkers(cfg.AI.AIMarkers)
+		}
+		// ai.scenarios_dir augments the recognized eval directories so
+		// evals in a non-standard location are discovered.
+		if cfg.AI.ScenariosDir != "" {
+			aidetect.SetCustomEvalDirs([]string{cfg.AI.ScenariosDir})
+		}
+		// ai.baselines_dir: when no explicit --baseline is given, auto-load
+		// the canonical baseline `terrain accept-snapshot` writes there.
+		baselinePath = resolveBaselinePath(root, baselinePath, cfg)
+	}
+	if cfg != nil && cfg.ML != nil && cfg.ML.ArtifactsDir != "" {
+		analysis.SetModelArtifactDirs([]string{cfg.ML.ArtifactsDir})
 	}
 
 	parsedRuntime := parseRuntimePaths(runtimePaths)
@@ -301,6 +331,15 @@ func runAnalyze(o analyzeRunOpts) error {
 		if !jsonOutput {
 			analyzeFailureRemediation(err, root, timeout)
 		}
+		// on_terrain_error: pass lets adopters fail open — an analysis
+		// infrastructure error (crash/timeout) exits 0 instead of
+		// blocking the merge. Default (block / unset) fails closed.
+		if cfg != nil && cfg.OnTerrainError == "pass" {
+			if !jsonOutput {
+				fmt.Fprintln(os.Stderr, "terrain: on_terrain_error=pass — analysis failed; exiting 0 (fail-open).")
+			}
+			return nil
+		}
 		return fmt.Errorf("analysis failed: %w", err)
 	}
 
@@ -315,7 +354,7 @@ func runAnalyze(o analyzeRunOpts) error {
 		result.Diagnostics.Render(os.Stderr)
 	}
 
-	if err := appendPromptSchemaDriftSignals(result.Snapshot, root, o.BaseRef); err != nil {
+	if err := appendDriftSignals(result.Snapshot, root, o.BaseRef); err != nil {
 		return err
 	}
 
@@ -360,20 +399,57 @@ func runAnalyze(o analyzeRunOpts) error {
 	// gate check was at the bottom and the json/sarif/annotation
 	// branches early-returned before reaching it — `terrain analyze
 	// --json --fail-on=medium` silently exited 0 even with matching
-	// findings. The "JSON stdout purity" property the launch-readiness
-	// review asked for requires that the renderer completes (stdout
+	// findings. The "JSON stdout purity" property requires that the
+	// renderer completes (stdout
 	// stays a valid JSON document) AND the gate decision returns via
 	// the error channel (so main.go writes the gate message to stderr,
 	// not stdout).
 	// Gate decisions use the observability-tier-excluding summary so
 	// findings from detectors that explicitly ship at observability tier
 	// stay informational and don't block CI.
-	gateBlocked, gateSummary := severityGateBlocked(gate, report.GateRelevantSummary)
+	gateRelevant := report.GateRelevantSummary
+	if trustFloor {
+		// Under the trust floor, only findings with a closed-loop-validated
+		// remediation may block CI; recompute the gate-relevant breakdown
+		// excluding unproven/judge-only remediations. Then tell the user what
+		// was held back, so a build that passes because of the trust floor is
+		// never silent (a demoted High/Critical AI finding hiding behind a green
+		// build is the worst failure mode).
+		floored := trustFloorGateBreakdown(root, result.Snapshot.Signals)
+		if gate != severityGateNone {
+			if held := trustFloorHeldBack(gate, gateRelevant, floored); held > 0 {
+				fmt.Fprintf(os.Stderr,
+					"trust floor: %d finding(s) at or above --fail-on=%s held back (no validated auto-fix yet) — they surface in the report but do not block CI. Run --no-trust-floor to gate on severity.\n",
+					held, gate)
+			}
+		}
+		gateRelevant = floored
+	}
+	gateBlocked, gateSummary := severityGateBlocked(gate, gateRelevant)
 	gateErr := func() error {
 		if gateBlocked {
 			return fmt.Errorf("%w: --fail-on=%s matched %s", errSeverityGateBlocked, gate, gateSummary)
 		}
 		return nil
+	}
+
+	// Persist the snapshot and .terrain/findings.json BEFORE any output-format
+	// branch can return, so every format (sarif, annotations, html, json, text)
+	// leaves the same on-disk artifacts. Earlier revisions placed these after
+	// the sarif/annotation branches, so `--format sarif` (or `--format
+	// annotations`) returned before writing findings.json — silently breaking
+	// the "always write .terrain/findings.json" contract for a CI job that
+	// uploads SARIF and also reads findings.json with a second tool. `--write-
+	// snapshot` persists here regardless of format for the same reason. The
+	// file is small and gitignored; emission failure is non-fatal so a
+	// read-only filesystem doesn't break the user-facing report.
+	if writeSnap {
+		if err := persistSnapshot(result.Snapshot, root); err != nil {
+			return err
+		}
+	}
+	if err := writeFindingsJSON(root, result.Snapshot.Signals, cfgErr != nil || (cfg != nil && cfg.RedactSource), trustFloor); err != nil {
+		logging.L().Warn("terrain analyze: writing .terrain/findings.json", "err", err)
 	}
 
 	if sarifOutput {
@@ -392,27 +468,6 @@ func runAnalyze(o analyzeRunOpts) error {
 	if annotationOutput {
 		reporting.RenderGitHubAnnotations(os.Stdout, report)
 		return gateErr()
-	}
-
-	// `--write-snapshot` runs first so it persists regardless of the
-	// output format. Earlier revisions placed the persist call after
-	// the rendering switch, so `--write-snapshot --json` returned from
-	// the JSON branch before the snapshot was written — the canonical
-	// CI shape (capture JSON to stdout, save snapshot to disk) silently
-	// dropped the snapshot.
-	if writeSnap {
-		if err := persistSnapshot(result.Snapshot, root); err != nil {
-			return err
-		}
-	}
-
-	// Always write .terrain/findings.json so downstream consumers
-	// (terrain mcp, IDE plugins, CI tooling) have a stable artifact
-	// to read after every analyze. The file is small and gitignored;
-	// emission failure is non-fatal so a read-only filesystem doesn't
-	// break the user-facing report.
-	if err := writeFindingsJSON(root, result.Snapshot.Signals); err != nil {
-		logging.L().Warn("terrain analyze: writing .terrain/findings.json", "err", err)
 	}
 
 	if strings.EqualFold(strings.TrimSpace(format), "html") {
@@ -460,7 +515,60 @@ func runAnalyze(o analyzeRunOpts) error {
 // lookup. Signals whose type is unmapped (e.g. an experimental
 // detector ahead of its manifest entry) are dropped — the canonical
 // Finding shape requires a rule_id.
-func writeFindingsJSON(root string, sigs []models.Signal) error {
+// resolveBaselinePath picks the baseline snapshot path: an explicit
+// --baseline wins; otherwise, if ai.baselines_dir is set and contains a
+// latest.json file (the canonical path `terrain accept-snapshot` writes),
+// that is used. Returns empty when neither applies.
+func resolveBaselinePath(root, explicit string, cfg *terrainconfig.Config) string {
+	if explicit != "" {
+		return explicit
+	}
+	if cfg == nil || cfg.AI == nil || cfg.AI.BaselinesDir == "" {
+		return ""
+	}
+	candidate := filepath.Join(root, cfg.AI.BaselinesDir, "latest.json")
+	if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+		return candidate
+	}
+	return ""
+}
+
+// redactSourceForRoot reports whether terrain.yaml at root requests
+// source-excerpt redaction. A missing config means no redaction (the opt-in
+// default); an INVALID config fails closed — redact rather than risk leaking
+// source excerpts a malformed config meant to hide.
+func redactSourceForRoot(root string) bool {
+	cfg, err := terrainconfig.LoadForRoot(root)
+	if err != nil {
+		return true
+	}
+	return cfg != nil && cfg.RedactSource
+}
+
+func writeFindingsJSON(root string, sigs []models.Signal, redactSource, trustFloor bool) error {
+	art := buildFindingsArtifact(root, sigs, redactSource, trustFloor)
+	terrainDir, err := safeTerrainDir(root)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(terrainDir, 0o755); err != nil {
+		return fmt.Errorf("create .terrain/: %w", err)
+	}
+	var buf bytes.Buffer
+	if err := art.WriteJSON(&buf); err != nil {
+		return err
+	}
+	path := filepath.Join(terrainDir, "findings.json")
+	return atomicfile.WriteFile(path, buf.Bytes(), 0o644)
+}
+
+// buildFindingsArtifact converts signals to the canonical findings.Artifact —
+// attaching validated remediations and applying the trust-floor demotion — so
+// EVERY surface built from it (findings.json, the Step Summary, JUnit, SARIF)
+// reflects the same gate decision and severities. Rendering a CI artifact from
+// a non-demoted report is what made a passing (exit-0) build show a held-back
+// drift finding as a gate-blocking "error" in JUnit and the Step Summary.
+func buildFindingsArtifact(root string, sigs []models.Signal, redactSource, trustFloor bool) *findings.Artifact {
 	typeToRuleID := map[models.SignalType]string{}
 	for _, entry := range signals.Manifest() {
 		if entry.RuleID != "" {
@@ -476,18 +584,134 @@ func writeFindingsJSON(root string, sigs []models.Signal) error {
 	fxs := findings.FromSignals(filtered, func(t models.SignalType) string {
 		return typeToRuleID[t]
 	})
+	// Attach structured, mechanically-applicable remediations where a producer
+	// exists; rules without one stay judge-only (text suggestion).
+	defaultFixRegistry().Attach(root, fxs)
+	demoteHeldBackFindings(fxs, filtered, root, trustFloor)
 	art := findings.NewArtifact(fxs)
-
-	terrainDir := filepath.Join(root, ".terrain")
-	if err := os.MkdirAll(terrainDir, 0o755); err != nil {
-		return fmt.Errorf("create .terrain/: %w", err)
+	if redactSource {
+		art.RedactSource()
 	}
-	var buf bytes.Buffer
-	if err := art.WriteJSON(&buf); err != nil {
+	return art
+}
+
+// demoteHeldBackFindings demotes (Error→Warning) and provenance-marks the
+// findings the trust floor holds back, using the SAME gateBlockable predicate
+// the gate uses — so it touches exactly the non-Critical AI findings without a
+// validated fix, never a deterministic / Critical / user-policy finding the
+// gate still blocks on. fxs must be index-parallel to filtered.
+func demoteHeldBackFindings(fxs []findings.Finding, filtered []models.Signal, root string, trustFloor bool) {
+	if !trustFloor {
+		return
+	}
+	blockable := gateBlockable(root, true)
+	if blockable == nil {
+		return
+	}
+	for i := range fxs {
+		if i >= len(filtered) {
+			break
+		}
+		s := filtered[i]
+		if !signals.IsGateRelevant(s.Type) || blockable(s) {
+			continue
+		}
+		if fxs[i].Severity == findings.SeverityError {
+			fxs[i].Severity = findings.SeverityWarning
+		}
+		if fxs[i].Metadata == nil {
+			fxs[i].Metadata = map[string]any{}
+		}
+		fxs[i].Metadata[remediate.GateMetadataKey] = true
+	}
+}
+
+// safeTerrainDir returns root/.terrain, refusing when .terrain is a symlink —
+// a repo committing `.terrain` as a symlink out of the tree would otherwise
+// redirect artifact writes (findings.json, snapshots) outside the repo root.
+func safeTerrainDir(root string) (string, error) {
+	dir := filepath.Join(root, ".terrain")
+	if fi, err := os.Lstat(dir); err == nil && fi.Mode()&os.ModeSymlink != 0 {
+		return "", fmt.Errorf(".terrain is a symlink; refusing to write artifacts outside the repository")
+	}
+	return dir, nil
+}
+
+// appendDriftSignals runs both prompt-drift detectors and appends their
+// signals to the snapshot. EVERY CI-blocking surface — analyze, test,
+// report check-runs, and report pr — must call this so the validated
+// prompt→schema drift detector (the flagship gate-blocker) fires everywhere,
+// not only on `terrain analyze`. Grafting drift onto individual command entry
+// points is what let `terrain test` and the required check-run silently pass a
+// drift a plain `analyze` blocked. baseRef enables the git-diff prompt/template
+// path; the diff-free static prompt↔schema path always runs.
+func appendDriftSignals(snap *models.TestSuiteSnapshot, root, baseRef string) error {
+	if snap == nil {
+		return nil
+	}
+	if err := appendPromptSchemaDriftSignals(snap, root, baseRef); err != nil {
 		return err
 	}
-	path := filepath.Join(terrainDir, "findings.json")
-	return atomicfile.WriteFile(path, buf.Bytes(), 0o644)
+	if err := appendPromptContractDriftSignals(snap, root); err != nil {
+		return err
+	}
+	// Apply terrain.yaml config filters LAST, over the complete signal set
+	// (pipeline signals plus the drift signals just appended), so `rules: off`
+	// and `ignore.paths` reach drift too. Every gating surface calls this
+	// helper, so the filter lands consistently on analyze/test/check-runs/pr.
+	applyTerrainConfigFilters(snap, root)
+	return nil
+}
+
+// applyTerrainConfigFilters drops signals a repo's terrain.yaml turns off via
+// `rules.<id>: off` or excludes via `ignore.paths` / `ignore.rules` — documented
+// knobs that were otherwise inert. (`rules.<id>.severity` is deliberately not
+// applied: its error/warning/off vocabulary does not map onto the
+// critical/high/medium/low signal severities the gate uses; only the
+// unambiguous `off` drop is honored.) No-op without a terrain.yaml or config.
+func applyTerrainConfigFilters(snap *models.TestSuiteSnapshot, root string) {
+	if snap == nil {
+		return
+	}
+	cfg, err := terrainconfig.LoadForRoot(root)
+	if err != nil || cfg == nil {
+		return
+	}
+	if len(cfg.Rules) == 0 && len(cfg.Ignore.Paths) == 0 && len(cfg.Ignore.Rules) == 0 {
+		return
+	}
+	lookup := ruleIDForSignalType()
+	// dropped reports whether a signal is turned off or path-ignored by
+	// config. Applied to snap.Signals AND each per-file TestFiles[i].Signals
+	// so every surface that reads signals (including `terrain explain`, which
+	// consumes tf.Signals) sees the same config-filtered set.
+	dropped := func(sig models.Signal) bool {
+		ruleID := lookup(sig.Type)
+		if ruleID == "" {
+			return false
+		}
+		if cfg.SeverityFor(ruleID, "") == "off" {
+			return true
+		}
+		return cfg.IsPathIgnored(sig.Location.File, ruleID)
+	}
+	kept := snap.Signals[:0]
+	for _, sig := range snap.Signals {
+		if !dropped(sig) {
+			kept = append(kept, sig)
+		}
+	}
+	snap.Signals = kept
+	for i := range snap.TestFiles {
+		fileSigs := snap.TestFiles[i].Signals
+		fileKept := fileSigs[:0]
+		for _, sig := range fileSigs {
+			if !dropped(sig) {
+				fileKept = append(fileKept, sig)
+			}
+		}
+		snap.TestFiles[i].Signals = fileKept
+	}
 }
 
 // appendPromptSchemaDriftSignals runs the prompt-template / schema
@@ -518,6 +742,44 @@ func appendPromptSchemaDriftSignals(snap *models.TestSuiteSnapshot, root, baseRe
 		snap.Signals = append(snap.Signals, promptflow.ToSignals(findings)...)
 	}
 	return nil
+}
+
+// appendPromptContractDriftSignals runs the diff-free static prompt↔schema
+// consistency check (internal/promptcontract) over the whole repo and appends
+// the drift as SignalAIPromptSchemaDrift — the same rule as the git-diff path,
+// but reaching Python code prompts bound to in-repo schemas without needing a
+// base ref. Signals already present at the same type+file+line (e.g. emitted by
+// the git-diff path) are not re-added, so the two paths never double-count.
+func appendPromptContractDriftSignals(snap *models.TestSuiteSnapshot, root string) error {
+	if snap == nil {
+		return nil
+	}
+	drift, err := promptcontract.AnalyzeInRepo(root)
+	if err != nil {
+		return fmt.Errorf("aiPromptSchemaDrift(static): %w", err)
+	}
+	if len(drift) == 0 {
+		return nil
+	}
+	seen := map[string]bool{}
+	for _, s := range snap.Signals {
+		if s.Type == signals.SignalAIPromptSchemaDrift {
+			seen[driftDedupKey(string(s.Type), s.Location.File, s.Location.Line)] = true
+		}
+	}
+	for _, s := range promptcontract.ToSignals(drift) {
+		key := driftDedupKey(string(s.Type), s.Location.File, s.Location.Line)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		snap.Signals = append(snap.Signals, s)
+	}
+	return nil
+}
+
+func driftDedupKey(typ, file string, line int) string {
+	return fmt.Sprintf("%s\x00%s\x00%d", typ, file, line)
 }
 
 // applyFindingsBudget caps each rule's findings at terrain.yaml's

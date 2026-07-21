@@ -14,8 +14,12 @@
     },
     "rule_id": {
       "type": "string",
-      "pattern": "^terrain/[a-z]+/[a-z0-9-]+$",
-      "description": "Stable rule identifier. Format: terrain/<category>/<rule-name>, lowercase, hyphenated."
+      "pattern": "^terrain/[a-z][a-z-]*/[a-z0-9-]+$",
+      "description": "Stable rule identifier. Format: terrain/<category>/<rule-name>, lowercase; both segments may be hyphenated (e.g. terrain/prompt-quality/version-skew)."
+    },
+    "finding_id": {
+      "type": "string",
+      "description": "Canonical per-finding identifier (detector@path:anchor#hash) referenced by suppressions, `terrain explain finding`, and the MCP/webhook surfaces. Optional."
     },
     "severity": {
       "type": "string",
@@ -160,6 +164,30 @@
         "command": {
           "type": "string",
           "description": "If the suggestion can be applied by running a command, the command. Optional."
+        },
+        "fix": {
+          "$ref": "#/$defs/fix",
+          "description": "Structured, mechanically-applicable remediation. Present only when the fix can be applied and re-verified without human work; absent for judge-only suggestions."
+        }
+      }
+    },
+    "fix": {
+      "type": "object",
+      "required": ["kind", "path"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["new_file", "edit_in_place"],
+          "description": "Selects the applier. new_file writes content to a path that should not already exist; edit_in_place replaces the full contents of an existing path."
+        },
+        "path": {
+          "type": "string",
+          "description": "Repo-relative file the fix targets."
+        },
+        "content": {
+          "type": "string",
+          "description": "File body (new_file) or replacement text."
         }
       }
     }

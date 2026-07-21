@@ -139,6 +139,7 @@ func classifyDeserializationCall(text string) (deserializationCall, bool) {
 //	torch.load(path, weights_only=True)            → safe at PyTorch ≥2.0
 //	yaml.load(stream, Loader=yaml.SafeLoader)      → safe
 //	yaml.load(stream, Loader=SafeLoader)           → safe
+//	yaml.load(stream, yaml.SafeLoader)             → safe (positional Loader)
 //
 // Returns true when the call site declares the safe option.
 func isExplicitlySafe(call deserializationCall, argsNode *sitter.Node, src []byte) bool {
@@ -174,22 +175,32 @@ func hasKeywordArg(argsNode *sitter.Node, src []byte, name, value string) bool {
 }
 
 func hasYAMLSafeLoader(argsNode *sitter.Node, src []byte) bool {
+	posIndex := 0
 	for i := 0; i < int(argsNode.NamedChildCount()); i++ {
 		arg := argsNode.NamedChild(i)
-		if arg.Type() != "keyword_argument" {
+		if arg.Type() == "keyword_argument" {
+			k := arg.ChildByFieldName("name")
+			v := arg.ChildByFieldName("value")
+			if k == nil || v == nil {
+				continue
+			}
+			if string(src[k.StartByte():k.EndByte()]) == "Loader" {
+				loader := string(src[v.StartByte():v.EndByte()])
+				if strings.HasSuffix(loader, "SafeLoader") || strings.HasSuffix(loader, "CSafeLoader") {
+					return true
+				}
+			}
 			continue
 		}
-		k := arg.ChildByFieldName("name")
-		v := arg.ChildByFieldName("value")
-		if k == nil || v == nil {
-			continue
-		}
-		if string(src[k.StartByte():k.EndByte()]) == "Loader" {
-			loader := string(src[v.StartByte():v.EndByte()])
+		// Positional argument. yaml.load(stream, Loader): the 2nd
+		// positional (index 1) is the Loader.
+		if posIndex == 1 {
+			loader := string(src[arg.StartByte():arg.EndByte()])
 			if strings.HasSuffix(loader, "SafeLoader") || strings.HasSuffix(loader, "CSafeLoader") {
 				return true
 			}
 		}
+		posIndex++
 	}
 	return false
 }

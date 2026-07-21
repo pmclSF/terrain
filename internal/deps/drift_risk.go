@@ -1,27 +1,13 @@
-// Package deps implements Terrain detectors for dependency-manifest
-// drift risk.
+// Package deps implements Terrain's dependency-manifest drift-risk
+// detector.
 //
-// Empirical motivation: bot-authored PRs (renovate / dependabot / etc.)
-// regress at multiples of the validation baseline, and a meaningful
-// share of all unflagged regression-introducing PRs observed are bot
-// or deps-bump shaped — a class no other detector in the roster
-// targets.
-//
-// v1 design — analyze-time, not PR-diff-time:
-//
-//   - Walk repo for manifest files (package.json, requirements.txt,
-//     Cargo.toml, go.mod, etc.).
-//   - Parse dep specifiers per ecosystem.
-//   - Compute the share of each manifest's deps that use "moving-
-//     target" version specs (e.g. `*`, `latest`, unbounded `^`/`~`
-//     ranges, untagged Git refs).
-//   - Fire one finding per manifest whose moving-target share
-//     exceeds a threshold (default 40%).
-//
-// v2 (post-0.2.0): consume PR-diff context so we can flag specific
-// bumps in PR review. v1 catches the static "manifest is risky-by-
-// construction" pattern that correlates with the bot-PR regression
-// class.
+// It walks the repository for manifest files (package.json,
+// requirements.txt, Cargo.toml, go.mod, etc.), parses each ecosystem's
+// version specifiers, and computes the share of a manifest's
+// dependencies that use "moving-target" specs (e.g. `*`, `latest`,
+// unbounded `^`/`~` ranges, untagged Git refs). It fires one finding
+// per manifest whose moving-target share exceeds a threshold
+// (default 40%).
 package deps
 
 import (
@@ -74,6 +60,15 @@ var trackedManifests = []string{
 
 // Detect walks the repo for tracked manifests and emits a finding
 // per manifest with high moving-target share.
+//
+// Contract:
+//
+//	D1.   Fires when totalDeps>=3 AND movingTargetShare>=0.40.
+//	D2.   Severity: share>0.75 High, 0.50–0.75 Medium, 0.40–0.50 Low.
+//	D3-8. Per-ecosystem classification — npm (^/~/*/latest/ranges/VCS moving;
+//	      only exact `1.2.3` pinned), pip, pyproject (Poetry tuple + PEP 621
+//	      array), cargo
+//	      (bare-semver moving), go.mod (pseudo-versions moving), gemfile.
 func (d *DriftRiskDetector) Detect(snap *models.TestSuiteSnapshot) []models.Signal {
 	if d == nil || d.Root == "" {
 		return nil
@@ -150,7 +145,7 @@ func (d *DriftRiskDetector) Detect(snap *models.TestSuiteSnapshot) []models.Sign
 			Explanation: "Dependency manifest `" + rel + "` has " +
 				itoa(stats.MovingTargets) + " of " + itoa(stats.TotalDeps) +
 				" deps using moving-target version specs (no version pin, range, or `latest`). " +
-				"Bot-authored bumps to this manifest correlate with elevated regression rates in public-OSS data.",
+				"Unpinned specs let an install resolve to a different version than was tested, so a dependency bump can change behavior with no manifest edit or review.",
 			SuggestedAction: "Pin deps to specific versions (or narrow ranges with upper bounds). Configure renovate/dependabot to group + test bumps before auto-merging. Consider `--ignore-scripts` for install steps.",
 			Metadata: map[string]any{
 				"manifest":          name,
@@ -190,7 +185,18 @@ type manifestStats struct {
 	CaretIssues int
 }
 
+// maxManifestSize caps the bytes read per manifest (256 KB). A real
+// package.json / requirements.txt / pyproject.toml is a few KB; a larger one
+// is generated or hostile. The cap plus the regular-file check stop a manifest
+// symlinked to /dev/zero or a huge file from growing memory unbounded.
+const maxManifestSize = 256 * 1024
+
 func analyseManifest(path string) (manifestStats, bool) {
+	// Lstat (not Stat) rejects a symlink on its own type without following it,
+	// so a manifest symlinked to a device or huge file never reaches ReadFile.
+	if fi, statErr := os.Lstat(path); statErr != nil || !fi.Mode().IsRegular() || fi.Size() > maxManifestSize {
+		return manifestStats{}, false
+	}
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return manifestStats{}, false
@@ -223,8 +229,9 @@ type npmManifest struct {
 }
 
 // npmMovingTarget matches version specs that are "moving target" —
-// no upper bound, `latest`, `*`, plain Git refs, etc. Pinned exact
-// specs (`1.2.3`) and tight ranges (`~1.2.3`) are NOT moving target.
+// no upper bound, `latest`, `*`, plain Git refs, etc. Only an exact
+// pin (`1.2.3`) is NOT a moving target; caret (`^1.2.3`) and tilde
+// (`~1.2.3`) ranges both float and are treated as moving.
 var npmMovingTarget = regexp.MustCompile(
 	`^(?:\*|latest|next|x|\.x|>=?|\^\d|\~\d|git\+|file:|workspace:|link:|http)`)
 
@@ -257,7 +264,7 @@ func analyseNPM(data []byte) manifestStats {
 
 // isNPMMovingTarget classifies an npm version specifier.
 //   - `1.2.3`           → not moving (exact pin)
-//   - `~1.2.3`          → not moving (tight)
+//   - `~1.2.3`          → MOVING (allows patch bumps)
 //   - `^1.2.3`          → MOVING (allows minor + patch bumps)
 //   - `>=1.0.0`         → MOVING
 //   - `*` / `latest`    → MOVING
@@ -290,6 +297,12 @@ func analysePipRequirements(data []byte) manifestStats {
 			line = strings.TrimSpace(line[:i])
 		}
 		stats.TotalDeps++
+		// Strip the environment marker / URL clause so classification
+		// runs on the requirement portion only. Otherwise a bare
+		// unpinned package like `requests; sys_platform == "linux"`
+		// would be misread (the marker's operators leak into the
+		// range check, or its absence of `<`/`>` hides a bare name).
+		line = stripPipRequirementSuffix(line)
 		// Exact pin (`pkg==1.2.3`) is NOT moving.
 		if pipExactPin.MatchString(line) {
 			continue
@@ -309,17 +322,34 @@ func analysePipRequirements(data []byte) manifestStats {
 
 // --- Python pyproject.toml ---
 
-// pyprojectDep matches `name = "spec"` lines inside [dependencies] /
-// [tool.poetry.dependencies] / dependencies = [...] blocks. Very
-// rough; full TOML parsing is overkill for the drift heuristic.
+// pyprojectDep matches Poetry-style `name = "spec"` tuple lines inside
+// [tool.poetry.dependencies] blocks. Very rough; full TOML parsing is
+// overkill for the drift heuristic.
 var pyprojectDep = regexp.MustCompile(`(?m)^\s*([a-zA-Z0-9_\-]+)\s*=\s*"([^"]*)"`)
-var pyprojectArrayDep = regexp.MustCompile(`"([a-zA-Z0-9_\-\[\]]+)\s*([=<>~!]+\s*[\d.\*]+)?"`)
+
+// pyprojectArrayHeader matches the opening of a PEP 621
+// `dependencies = [` list (both the top-level `[project]` dependencies
+// and each `[project.optional-dependencies]` group whose value is an
+// array of requirement strings), so the quoted requirements inside can
+// be scanned. Non-dependency arrays (classifiers, keywords, authors)
+// are excluded by entry-level filtering below.
+var pyprojectArrayHeader = regexp.MustCompile(`(?m)^\s*(?:dependencies|[a-zA-Z0-9_\-]+)\s*=\s*\[`)
+
+// pyprojectArrayEntry matches a single quoted requirement string.
+var pyprojectArrayEntry = regexp.MustCompile(`"([^"]+)"`)
 
 func analysePyProject(data []byte) manifestStats {
 	stats := manifestStats{Ecosystem: "pyproject"}
 	src := string(data)
-	// Tuple-style: name = "spec"
+	// Poetry tuple-style: name = "spec".
 	for _, m := range pyprojectDep.FindAllStringSubmatch(src, -1) {
+		name := strings.TrimSpace(m[1])
+		// The Python interpreter constraint is not a package and cannot be
+		// pinned like one; excluding it prevents inflating the moving-target
+		// share and the reported movingTargetDeps count.
+		if name == "python" || name == "requires-python" {
+			continue
+		}
 		spec := strings.TrimSpace(m[2])
 		// Skip non-dep keys (description, version, etc.).
 		if !looksLikeDepSpec(spec) {
@@ -330,11 +360,95 @@ func analysePyProject(data []byte) manifestStats {
 			stats.MovingTargets++
 		}
 	}
+	// PEP 621 array-style: dependencies = ["requests>=2.0", "numpy", ...]
+	// and [project.optional-dependencies] groups. Scan each `key = [ ... ]`
+	// span and classify every quoted requirement string with the pip rules.
+	for _, span := range pyprojectArraySpans(src) {
+		for _, m := range pyprojectArrayEntry.FindAllStringSubmatch(span, -1) {
+			req := strings.TrimSpace(m[1])
+			if !looksLikePyProjectRequirement(req) {
+				continue
+			}
+			// Ignore the interpreter constraint if it appears here.
+			if strings.HasPrefix(req, "python") && looksLikeDepSpec(strings.TrimPrefix(req, "python")) {
+				continue
+			}
+			stats.TotalDeps++
+			if classifyPipRequirementMoving(req) {
+				stats.MovingTargets++
+			}
+		}
+	}
 	return stats
+}
+
+// pyprojectArraySpans returns the text inside each `key = [ ... ]` block
+// found in src, so array-style dependency lists can be scanned for
+// quoted requirement strings.
+func pyprojectArraySpans(src string) []string {
+	var spans []string
+	for _, loc := range pyprojectArrayHeader.FindAllStringIndex(src, -1) {
+		// loc[1] points just past the opening `[`; find the matching `]`.
+		rest := src[loc[1]:]
+		if end := strings.IndexByte(rest, ']'); end >= 0 {
+			spans = append(spans, rest[:end])
+		}
+	}
+	return spans
+}
+
+// classifyPipRequirementMoving reports whether a pip-style requirement
+// string (e.g. `requests>=2.0`, `numpy`, `flask==2.0.1`) resolves to a
+// moving target, using the same rules as analysePipRequirements.
+func classifyPipRequirementMoving(req string) bool {
+	req = stripPipRequirementSuffix(req)
+	// Exact pin (`pkg==1.2.3`) is NOT moving.
+	if pipExactPin.MatchString(req) {
+		return false
+	}
+	// No specifier at all (`pkg`) IS moving.
+	if pipMovingTarget.MatchString(req) {
+		return true
+	}
+	// Loose range without exact (`pkg>=1.0`) IS moving.
+	if pipLooseRange.MatchString(req) {
+		return true
+	}
+	return false
+}
+
+// stripPipRequirementSuffix removes a PEP 508 environment marker
+// (`; python_version < "3.8"`) and a direct-URL reference
+// (`pkg @ https://…`) from a requirement, returning just the
+// name+specifier portion so drift classification isn't confused by
+// operators inside the marker or URL.
+func stripPipRequirementSuffix(req string) string {
+	if i := strings.Index(req, ";"); i >= 0 {
+		req = req[:i]
+	}
+	if i := strings.Index(req, "@"); i >= 0 {
+		req = req[:i]
+	}
+	return strings.TrimSpace(req)
 }
 
 func looksLikeDepSpec(s string) bool {
 	return strings.ContainsAny(s, "<>=~^!*") || s == "*" || s == ""
+}
+
+// pyProjectReqName matches the leading package-name token of a PEP 621
+// requirement string (letters/digits, then name characters).
+var pyProjectReqName = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._\-]*`)
+
+// looksLikePyProjectRequirement reports whether a quoted array entry is
+// plausibly a PEP 621 dependency requirement rather than a classifier
+// trove string, keyword, or author entry. Requirements begin with a
+// package name and never contain the `::` trove separator.
+func looksLikePyProjectRequirement(s string) bool {
+	if s == "" || strings.Contains(s, "::") {
+		return false
+	}
+	return pyProjectReqName.MatchString(s)
 }
 
 // --- Cargo.toml ---

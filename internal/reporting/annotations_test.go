@@ -20,8 +20,8 @@ func TestRenderGitHubAnnotations_SeverityMapping(t *testing.T) {
 	}
 	for _, tt := range tests {
 		r := &analyze.Report{
-			KeyFindings: []analyze.KeyFinding{
-				{Title: "Test finding", Severity: tt.severity, Category: "coverage_debt"},
+			Signals: []analyze.FindingRecord{
+				{RuleID: "terrain/coverage/blind-spot", Type: "coverageBlindSpot", Severity: tt.severity},
 			},
 		}
 		var buf bytes.Buffer
@@ -32,37 +32,35 @@ func TestRenderGitHubAnnotations_SeverityMapping(t *testing.T) {
 	}
 }
 
-func TestRenderGitHubAnnotations_CoverageWithFiles(t *testing.T) {
+func TestRenderGitHubAnnotations_OnePerSignalWithLocation(t *testing.T) {
 	r := &analyze.Report{
-		KeyFindings: []analyze.KeyFinding{
-			{Title: "Weak coverage", Severity: "high", Category: "coverage_debt"},
-		},
-		WeakCoverageAreas: []analyze.WeakArea{
-			{Path: "src/api/handlers.go"},
-			{Path: "src/api/routes.go"},
+		Signals: []analyze.FindingRecord{
+			{RuleID: "terrain/ai/prompt-schema-drift", Type: "aiPromptSchemaDrift", Severity: "high", File: "app.py", Line: 4, Evidence: "prompt references a missing field"},
+			{RuleID: "terrain/quality/untested-export", Type: "untestedExport", Severity: "medium", File: "api/routes.go", Line: 12},
 		},
 	}
 	var buf bytes.Buffer
 	RenderGitHubAnnotations(&buf, r)
 	lines := strings.Split(strings.TrimSpace(buf.String()), "\n")
 	if len(lines) != 2 {
-		t.Fatalf("expected 2 annotations (one per file), got %d: %v", len(lines), lines)
+		t.Fatalf("expected one annotation per signal (2), got %d: %v", len(lines), lines)
 	}
-	if !strings.Contains(lines[0], "file=src/api/handlers.go") {
-		t.Errorf("expected file annotation, got: %s", lines[0])
+	if !strings.Contains(lines[0], "file=app.py,line=4") {
+		t.Errorf("expected file+line location, got: %s", lines[0])
+	}
+	if !strings.Contains(lines[0], "prompt references a missing field") {
+		t.Errorf("expected evidence in message, got: %s", lines[0])
 	}
 }
 
-func TestRenderGitHubAnnotations_MetricInMessage(t *testing.T) {
+func TestRenderGitHubAnnotations_SkipsBlankRuleID(t *testing.T) {
 	r := &analyze.Report{
-		KeyFindings: []analyze.KeyFinding{
-			{Title: "Duplicate tests", Severity: "medium", Category: "optimization", Metric: "340 tests"},
-		},
+		Signals: []analyze.FindingRecord{{Type: "x", Severity: "high"}},
 	}
 	var buf bytes.Buffer
 	RenderGitHubAnnotations(&buf, r)
-	if !strings.Contains(buf.String(), "(340 tests)") {
-		t.Errorf("expected metric in message, got: %s", buf.String())
+	if buf.Len() != 0 {
+		t.Errorf("expected no annotation for a blank RuleID, got: %q", buf.String())
 	}
 }
 

@@ -14,6 +14,7 @@ import (
 
 	"github.com/pmclSF/terrain/internal/atomicfile"
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // Artifact is the complete output of a terrain ai run.
@@ -269,7 +270,7 @@ func hashFile(root, relPath string) string {
 }
 
 func hashFileAbs(path string) string {
-	data, err := os.ReadFile(path)
+	data, err := saferead.ReadFile(path)
 	if err != nil {
 		return ""
 	}

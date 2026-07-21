@@ -354,7 +354,7 @@ func TestComputeOverallPosture_ExplanationContent(t *testing.T) {
 				{Dimension: "health", Band: "strong"},
 				{Dimension: "coverage_depth", Band: "strong"},
 			},
-			"All 2 dimension(s) are strong",
+			"All 2 dimensions are strong",
 		},
 		{
 			"moderate names worst dimension",

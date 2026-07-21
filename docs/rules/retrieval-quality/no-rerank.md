@@ -8,10 +8,6 @@
 **Lifecycle status:** experimental  
 **Gating tier:** observability
 
-## Promotion plan
-
-Flags retrieval pipelines with top_k > 5 and no reranker.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -28,9 +24,9 @@ A retrieval pipeline returns `top_k > 5` documents without a reranking step. Rec
 
 ## 2. Severity & status
 
-- **Tier:** preview
-- **Default severity:** off (opt-in)
-- **Status:** preview — pending validation
+Experimental — off by default; enable in `terrain.yaml`.
+
+- **Default severity:** low
 
 ## 3. What this catches
 

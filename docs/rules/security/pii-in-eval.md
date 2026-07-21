@@ -16,10 +16,6 @@ An eval-directory file contains PII-shaped values (emails, phone numbers, SSNs, 
 
 Replace PII in the eval dataset with synthetic equivalents (Faker, Mimesis, mockaroo) or apply a redaction pass before committing.
 
-## Promotion plan
-
-Off by default. Detector function exists at internal/security/pii_in_eval.go (DetectPIIInEval). Pipeline integration pending: the detector's input shape is not yet fed through the engine registry. Stays at experimental until that wiring lands. Opt in via `.terrain/policy.yaml` only after pipeline integration lands.
-
 ## Evidence sources
 
 - `structural-pattern`
@@ -36,9 +32,9 @@ An eval-directory file contains PII-shaped values — emails, phone numbers, SSN
 
 ## 2. Severity & status
 
-- **Tier:** stable
+Experimental — off by default; enable in `terrain.yaml`.
+
 - **Default severity:** critical
-- **Stable since:** v0.2.0
 - **Configurable via `terrain.yaml`:** yes — see [configuration.md](../../configuration.md)
 
 ## 3. What this catches
@@ -59,14 +55,14 @@ The rule fires on a structural fact — PII-shaped values in eval-directory file
 - **Approach:** path filter (eval directories) + content scan with PII regex vocabulary.
 - **Paths considered:** `/eval/`, `/evals/`, `/evaluations/`, `/__evals__/`.
 - **File types scanned:** `.yaml`, `.yml`, `.json`, `.jsonl`, `.csv`, `.tsv`, `.txt`, `.py`, `.md`. Binary / model artifact extensions skipped.
-- **PII vocabulary in 0.3.0:**
+- **PII vocabulary:**
   - Email — `local@domain.tld`
   - US SSN — 3-2-4 digit groups with leading digit ≠ 9
   - US phone — NPA-NXX-XXXX with optional `+1` and any separator
   - IPv4 — dotted-quad
   - Credit card — 13-19 digit run with optional separators, leading digit 3/4/5/6
 - **Confidence ladder:** single PII kind = 0.75; two kinds = 0.88; three or more = 0.95. Multi-kind matches are harder to explain as false positives.
-- **Edge cases NOT handled in 0.3.0:** Microsoft Presidio integration for richer NER (names, addresses, custom entity types). Track follow-up: `internal/security/presidio_adapter.go` opt-in path.
+- **Edge cases not handled:** richer named-entity detection (names, addresses, custom entity types) beyond the regex vocabulary above.
 
 ## 6. Worked example
 
@@ -109,9 +105,8 @@ ignore:
 - **Synthetic data that happens to match a PII regex** (for example, famously fictitious phone-number values can still match the US phone pattern). Mitigation: ignore via path, or downgrade to high.
 - **Email-shaped strings in code samples** (e.g., `email_regex = r"[A-Za-z0-9._%+\-]+@..."`). The rule scans line-by-line and doesn't distinguish a regex literal from data. Mitigation: ignore the file, or move the example out of `/evals/`.
 - **Test fixtures intentionally using `example.com` / `noreply@example.com`** — `example.com` is RFC-2606 reserved for examples but the regex matches. Mitigation: same.
-- **Measurement status:** no measured 0.3.0 readiness card is published for this rule yet; use the documented false-positive patterns and release feature status until one exists.
 
-When a measured readiness card is published for this rule, it carries the FP-rate evidence for the release. Adopters report false positives via the GitHub issue tracker with the originating snippet.
+Adopters report false positives via the GitHub issue tracker with the originating snippet.
 
 ## 9. Reproducibility
 
@@ -121,7 +116,7 @@ terrain test --selector security/pii-in-eval
 
 ## 10. Stability commitment
 
-Rule ID, severity, and the current PII vocabulary (email / SSN / phone-us / IPv4 / credit-card) are stable from v0.2.0. Adding new entity types is additive and documented in CHANGELOG; removing types from the default set is deprecation-cycled.
+Rule ID, severity, and the current PII vocabulary (email / SSN / phone-us / IPv4 / credit-card) are stable. Adding new entity types is additive and documented in CHANGELOG; removing types from the default set is deprecation-cycled.
 
 ## 11. Related rules
 

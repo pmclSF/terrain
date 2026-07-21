@@ -92,7 +92,17 @@ func Analyze(after Discoveries, before map[string][]byte) ([]Finding, error) {
 		if findings[i].TemplatePath != findings[j].TemplatePath {
 			return findings[i].TemplatePath < findings[j].TemplatePath
 		}
-		return findings[i].Risk.Variable < findings[j].Risk.Variable
+		if findings[i].Risk.Variable != findings[j].Risk.Variable {
+			return findings[i].Risk.Variable < findings[j].Risk.Variable
+		}
+		// Tiebreak on schema path then change kind so two findings that
+		// share (template, variable) — the same field name changed in two
+		// schemas — always sort into a stable order, regardless of the
+		// filesystem walk order that produced them.
+		if findings[i].SchemaPath != findings[j].SchemaPath {
+			return findings[i].SchemaPath < findings[j].SchemaPath
+		}
+		return findings[i].Risk.Change.Kind < findings[j].Risk.Change.Kind
 	})
 	return findings, nil
 }
@@ -101,14 +111,17 @@ func parsePropertyTypes(body []byte) map[string]string {
 	out := map[string]string{}
 	var doc struct {
 		Properties map[string]struct {
-			Type string `json:"type"`
+			// RawMessage (not string) so nullable/union array types
+			// (`["string","null"]`) parse instead of being silently
+			// dropped — the same shape schemadiff already handles.
+			Type json.RawMessage `json:"type"`
 		} `json:"properties"`
 	}
 	if err := json.Unmarshal(body, &doc); err != nil {
 		return out
 	}
 	for name, prop := range doc.Properties {
-		out[name] = prop.Type
+		out[name] = schemadiff.NormalizeType(prop.Type)
 	}
 	return out
 }
@@ -131,18 +144,22 @@ func makeVars(vars []string, props map[string]string) map[string]string {
 }
 
 func synthesize(typ string) string {
-	switch typ {
-	case "string":
-		return "example_string"
-	case "integer":
-		return "42"
-	case "number":
-		return "3.14"
-	case "boolean":
-		return "true"
-	default:
-		return "example"
+	// Union/nullable types render as "a|b" (e.g. "string|null"); synthesize
+	// from the first non-null member so a nullable field still shows a
+	// representative value rather than the generic fallback.
+	for _, part := range strings.Split(typ, "|") {
+		switch part {
+		case "string":
+			return "example_string"
+		case "integer":
+			return "42"
+		case "number":
+			return "3.14"
+		case "boolean":
+			return "true"
+		}
 	}
+	return "example"
 }
 
 // RenderFinding produces a markdown block describing one finding for

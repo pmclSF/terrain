@@ -46,9 +46,16 @@ func emitPython(cases []BoundaryCase, opts EmitOptions) string {
 	fmt.Fprintf(&b, "# generated from the schema's declared types.\n\n")
 	fmt.Fprintf(&b, "import pytest\n\n")
 	byField := groupByField(cases)
+	seen := map[string]int{}
 	for _, field := range sortedFields(byField) {
 		fieldCases := byField[field]
 		safeName := safePythonIdent(field)
+		if n := seen[safeName]; n > 0 {
+			seen[safeName] = n + 1
+			safeName = fmt.Sprintf("%s_%d", safeName, n+1)
+		} else {
+			seen[safeName] = 1
+		}
 		fmt.Fprintf(&b, "@pytest.mark.parametrize(\"value, why\", [\n")
 		for _, c := range fieldCases {
 			fmt.Fprintf(&b, "    (%s, %q),\n", pythonRepr(c.Value), c.Why)
@@ -89,7 +96,7 @@ func emitTypeScript(cases []BoundaryCase, opts EmitOptions) string {
 			fmt.Fprintf(&b, "    { value: %s, why: %q },\n", tsRepr(c.Value), c.Why)
 		}
 		fmt.Fprintf(&b, "  ];\n")
-		fmt.Fprintf(&b, "  it.each(cases)('handles %%s', async ({ value, why }) => {\n")
+		fmt.Fprintf(&b, "  it.each(cases)('handles $why', async ({ value, why }) => {\n")
 		fmt.Fprintf(&b, "    const payload = { %q: value };\n", field)
 		fmt.Fprintf(&b, "    const result = await yourPromptInvoke(payload);\n")
 		fmt.Fprintf(&b, "    expect(handlesBoundary(result, value)).toBe(true);\n")

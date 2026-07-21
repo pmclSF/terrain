@@ -1,36 +1,9 @@
-// Package cli provides the command registry that enumerates the
-// CLI surface for Terrain. The registry is the source of truth for
-// command names, pillar mappings, and one-line descriptions —
-// feeding `terrain --help`, `terrain doctor`, and the truth-verify
-// gate.
-//
-// # Status in 0.2.0
-//
-// This is the foundation: the Command type, Pillar enum, and a
-// thread-safe Register/All API. The existing dispatcher in
-// cmd/terrain/main.go is NOT migrated to consume from the
-// registry yet — that's 0.2.x work. The registry is additive: any
-// caller (printUsage, doctor, truth-verify, docs-gen) can read
-// from it today without forcing the dispatcher to become
-// registry-driven.
-//
-// # Why a separate package
-//
-// Putting the registry under cmd/terrain/ would couple it to the
-// CLI binary's package and make it un-importable from
-// internal/signals (where truth-verify will eventually want to
-// cross-check command names against the manifest). internal/cli
-// is the right home: importable from anywhere in the tree, no
-// dependencies on cmd/.
-//
-// What the registry does NOT do
-//
-//   - Argument parsing. Each command keeps owning its own flag.FlagSet.
-//   - Dispatch. The big switch in main.go stays the source of truth
-//     for how arguments map to runFoo() calls, until a 0.2.x PR
-//     migrates it.
-//   - Help-text generation. printUsage can opt in to read from
-//     here, but doesn't have to.
+// Package cli provides the command registry: the source of truth for
+// command names, pillar mappings, and one-line descriptions, consumed
+// by terrain --help, doctor, and docs generation. It does not do
+// argument parsing, dispatch, or help-text generation; each command
+// keeps owning its own flag.FlagSet and the main dispatcher owns the
+// mapping from arguments to command handlers.
 package cli
 
 import (

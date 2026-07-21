@@ -1,6 +1,7 @@
 package findings
 
 import (
+	"github.com/pmclSF/terrain/internal/identity"
 	"github.com/pmclSF/terrain/internal/models"
 )
 
@@ -15,13 +16,31 @@ func FromSignal(s models.Signal, ruleID string) Finding {
 	return Finding{
 		Version:      1,
 		RuleID:       ruleID,
+		FindingID:    identity.BuildFindingID(string(s.Type), s.Location.File, s.Location.Symbol, s.Location.Line),
 		Severity:     severityFromSignal(s.Severity),
 		PrimaryLoc:   Location{Path: s.Location.File, Line: s.Location.Line},
 		ShortMessage: shortMessage(s),
 		LongMessage:  s.Explanation,
-		DocsURL:      "docs/rules/" + relRuleDoc(ruleID) + ".md",
+		Suggestions:  suggestionsFromSignal(s),
+		DocsURL:      "https://github.com/pmclSF/terrain/blob/main/docs/rules/" + relRuleDoc(ruleID) + ".md",
 		Metadata:     copyMetadata(s.Metadata),
 	}
+}
+
+// suggestionsFromSignal lifts the detector's SuggestedAction onto the
+// canonical finding. Historically this text was dropped in conversion, so
+// the user-facing artifact carried no remediation at all. The text-only
+// Suggestion is the judge-only floor; detectors that emit a structured,
+// mechanically-applicable Fix populate Suggestion.Fix separately upstream.
+func suggestionsFromSignal(s models.Signal) []Suggestion {
+	if s.SuggestedAction == "" {
+		return nil
+	}
+	sg := Suggestion{Text: s.SuggestedAction}
+	if s.Location.File != "" {
+		sg.AppliesTo = &Location{Path: s.Location.File, Line: s.Location.Line}
+	}
+	return []Suggestion{sg}
 }
 
 // FromSignals is a convenience over a slice; ruleIDLookup maps
@@ -62,10 +81,11 @@ func shortMessage(s models.Signal) string {
 	if s.Explanation == "" {
 		return string(s.Type) + " finding"
 	}
-	if len(s.Explanation) <= 140 {
+	r := []rune(s.Explanation)
+	if len(r) <= 140 {
 		return s.Explanation
 	}
-	return s.Explanation[:137] + "..."
+	return string(r[:137]) + "..."
 }
 
 // relRuleDoc returns the rule-doc path suffix for a ruleID. Input

@@ -1,12 +1,12 @@
 package analysis
 
 import (
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // DetectExtraAISurfaces broadens the set of AI surfaces beyond the
@@ -49,7 +49,7 @@ func DetectExtraAISurfaces(root string, testFiles []models.TestFile, existing []
 		if _, ok := contentScanLanguages[ext]; !ok {
 			continue
 		}
-		content, err := os.ReadFile(filepath.Join(root, rel))
+		content, err := saferead.ReadFile(filepath.Join(root, rel))
 		if err != nil {
 			continue
 		}
@@ -158,6 +158,14 @@ func detectDatasetSurfaces(testPaths map[string]bool, sourceFiles []string) []mo
 // tree and emits one SurfaceModel per file. Mirrors detectDatasetSurfaces
 // for the model-artifact case; kept separate to preserve the
 // dataset/model distinction in detection logs.
+//
+// Contract:
+//
+//	M1. A file with a known model extension is a SurfaceModel anywhere.
+//	M2. With ml.artifacts_dir configured, an extensionless file under that
+//	    dir is also a SurfaceModel (augment, not replace).
+//	M3. Files under node_modules/ or vendor/, and test-path files, are
+//	    never SurfaceModels.
 func detectModelArtifactSurfaces(testPaths map[string]bool, sourceFiles []string) []models.CodeSurface {
 	var out []models.CodeSurface
 	for _, rel := range sourceFiles {
@@ -165,23 +173,62 @@ func detectModelArtifactSurfaces(testPaths map[string]bool, sourceFiles []string
 			continue
 		}
 		ext := strings.ToLower(relPathExt(rel))
-		if !modelArtifactExtensions[ext] {
+		knownExt := modelArtifactExtensions[ext]
+		// A configured ml.artifacts_dir additionally recognizes
+		// extensionless weight blobs under that dir; known extensions
+		// still match anywhere in the tree.
+		inArtifactDir := pathUnderAny(rel, modelArtifactDirs)
+		if !knownExt && !(inArtifactDir && ext == "") {
 			continue
 		}
 		if strings.HasPrefix(rel, "node_modules/") || strings.HasPrefix(rel, "vendor/") {
 			continue
 		}
 		name := strings.TrimSuffix(filepath.Base(rel), ext)
+		reason := "Saved model artifact (extension " + ext + ") referenced in repo tree"
+		if !knownExt {
+			reason = "File under configured ml.artifacts_dir treated as a model artifact"
+		}
 		out = append(out, models.CodeSurface{
 			SurfaceID:     models.BuildSurfaceID(rel, name, ""),
 			Path:          rel,
 			Name:          name,
 			Kind:          models.SurfaceModel,
-			Reason:        "Saved model artifact (extension " + ext + ") referenced in repo tree",
+			Reason:        reason,
 			DetectionTier: "content",
 		})
 	}
 	return out
+}
+
+// modelArtifactDirs holds adopter-configured ml.artifacts_dir directories.
+// Files under these dirs are recognized as model artifacts even without a
+// known extension. Read-only after the CLI sets it once at startup.
+var modelArtifactDirs []string
+
+// SetModelArtifactDirs registers adopter-configured ml.artifacts_dir
+// directories (terrain.yaml). Normalized to lower-case forward-slash;
+// empties dropped. Call once at CLI startup after terrain.yaml load.
+func SetModelArtifactDirs(dirs []string) {
+	out := make([]string, 0, len(dirs))
+	for _, d := range dirs {
+		d = strings.Trim(strings.ReplaceAll(strings.ToLower(strings.TrimSpace(d)), "\\", "/"), "/")
+		if d != "" {
+			out = append(out, d)
+		}
+	}
+	modelArtifactDirs = out
+}
+
+// pathUnderAny reports whether rel sits within any of the given dirs.
+func pathUnderAny(rel string, dirs []string) bool {
+	norm := strings.ReplaceAll(strings.ToLower(rel), "\\", "/")
+	for _, d := range dirs {
+		if norm == d || strings.HasPrefix(norm, d+"/") || strings.Contains(norm, "/"+d+"/") {
+			return true
+		}
+	}
+	return false
 }
 
 // dbCursorPatterns matches database / ORM calls that frequently
@@ -241,24 +288,33 @@ func detectDBCursorSurfaces(rel, src string) []models.CodeSurface {
 var vectorSearchPatterns = []struct {
 	rx   *regexp.Regexp
 	name string
+	// weak marks patterns that are not self-evidently AI/retrieval on their
+	// own (they can match plain JSON keys or generic call shapes). These
+	// only fire in files that also carry an AI signal, mirroring the
+	// fileLooksAIRelated gate on the DB-cursor path.
+	weak bool
 }{
 	// pgvector: SELECT ... ORDER BY embedding <-> '[...]' or <#>, <=>
 	{rx: regexp.MustCompile(`embedding\s*<(?:->|#>|=>)\s*`), name: "pgvector_query"},
 	// Elasticsearch knn / kNN search.
 	{rx: regexp.MustCompile(`(?i)\bknn_search\b`), name: "es_knn_search"},
-	{rx: regexp.MustCompile(`"knn"\s*:`), name: "es_knn_query"},
+	{rx: regexp.MustCompile(`"knn"\s*:`), name: "es_knn_query", weak: true},
 	// Weaviate REST.
 	{rx: regexp.MustCompile(`(?i)/v1/objects.*nearVector`), name: "weaviate_rest"},
 	// In-memory FAISS index types.
 	{rx: regexp.MustCompile(`\bfaiss\.Index(?:FlatL2|IVFFlat|HNSWFlat)\b`), name: "faiss_in_memory_index"},
 	// Generic .search( with vector args.
-	{rx: regexp.MustCompile(`\.search\(\s*query_vector\b`), name: "generic_vector_search"},
+	{rx: regexp.MustCompile(`\.search\(\s*query_vector\b`), name: "generic_vector_search", weak: true},
 }
 
 func detectVectorSearchSurfaces(rel, src string) []models.CodeSurface {
 	var out []models.CodeSurface
 	seen := map[string]bool{}
+	aiRelated := fileLooksAIRelated(src)
 	for _, p := range vectorSearchPatterns {
+		if p.weak && !aiRelated {
+			continue
+		}
 		loc := p.rx.FindStringIndex(src)
 		if loc == nil {
 			continue

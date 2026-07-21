@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pmclSF/terrain/internal/atomicfile"
+	"github.com/pmclSF/terrain/internal/uitokens"
 )
 
 // runAcceptSnapshotCommand implements `terrain accept-snapshot`.
@@ -46,13 +47,13 @@ func runAcceptSnapshotCommand(root string, yes bool) error {
 	default:
 		fmt.Printf("Replacing baseline recorded at %s\n", baseline.RecordedAt)
 		if delta := baseline.CaseCount - current.CaseCount; delta != 0 {
-			fmt.Printf("  Case count: %d → %d (delta %+d)\n", baseline.CaseCount, current.CaseCount, -delta)
+			fmt.Printf("  Case count: %d %s %d (delta %+d)\n", baseline.CaseCount, uitokens.GlyphArrow(), current.CaseCount, -delta)
 		}
 		if delta := baseline.Successes - current.Successes; delta != 0 {
-			fmt.Printf("  Successes:  %d → %d (delta %+d)\n", baseline.Successes, current.Successes, -delta)
+			fmt.Printf("  Successes:  %d %s %d (delta %+d)\n", baseline.Successes, uitokens.GlyphArrow(), current.Successes, -delta)
 		}
 		if delta := baseline.Failures - current.Failures; delta != 0 {
-			fmt.Printf("  Failures:   %d → %d (delta %+d)\n", baseline.Failures, current.Failures, -delta)
+			fmt.Printf("  Failures:   %d %s %d (delta %+d)\n", baseline.Failures, uitokens.GlyphArrow(), current.Failures, -delta)
 		}
 	}
 	fmt.Println()

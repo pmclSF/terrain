@@ -28,7 +28,7 @@ func runConfigNamespaceCLI(args []string) error {
 	if len(args) == 0 || isHelpArg(args[0]) {
 		printConfigUsage()
 		if len(args) == 0 {
-			return fmt.Errorf("terrain config: missing verb")
+			return cliUsageError{message: "terrain config: missing verb"}
 		}
 		return nil
 	}
@@ -36,7 +36,7 @@ func runConfigNamespaceCLI(args []string) error {
 	verb := args[0]
 	if !configVerbs[verb] {
 		printConfigUsage()
-		return fmt.Errorf("unknown config verb %q (valid: feedback, telemetry)", verb)
+		return cliUsageError{message: fmt.Sprintf("unknown config verb %q (valid: feedback, telemetry)", verb)}
 	}
 
 	rest := args[1:]
@@ -105,7 +105,7 @@ func runConfigTelemetryCLI(args []string) error {
 		fmt.Println("Telemetry:", telemetry.Status())
 	default:
 		fmt.Fprintf(os.Stderr, "unknown telemetry subcommand: %q\n", args[0])
-		return fmt.Errorf("unknown telemetry option")
+		return cliUsageError{message: "unknown telemetry option"}
 	}
 	return nil
 }

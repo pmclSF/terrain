@@ -18,7 +18,7 @@ func TestLoad_EmbeddedYAMLParses(t *testing.T) {
 	names := reg.Names()
 	mustInclude := []string{
 		"surface_literal_presence_gate",
-		"a7_barrel_resolver",
+		"barrel_resolver",
 		"ascg_live_vs_catalog",
 	}
 	for _, want := range mustInclude {
@@ -154,7 +154,7 @@ func TestApplyCLIOverrides(t *testing.T) {
 	}
 	overrides := []string{
 		"surface_literal_presence_gate=on",
-		"a7_barrel_resolver=off",
+		"barrel_resolver=off",
 	}
 	if err := reg.ApplyCLIOverrides(overrides); err != nil {
 		t.Fatalf("ApplyCLIOverrides: %v", err)
@@ -162,8 +162,8 @@ func TestApplyCLIOverrides(t *testing.T) {
 	if reg.State("surface_literal_presence_gate") != StateOn {
 		t.Errorf("surface_literal_presence_gate not flipped to on")
 	}
-	if reg.State("a7_barrel_resolver") != StateOff {
-		t.Errorf("a7_barrel_resolver not flipped to off")
+	if reg.State("barrel_resolver") != StateOff {
+		t.Errorf("barrel_resolver not flipped to off")
 	}
 }
 

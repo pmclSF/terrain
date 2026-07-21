@@ -3,13 +3,13 @@ package aidetect
 import (
 	"crypto/sha256"
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // DeriveEvals auto-generates AI/eval scenarios from detected code
@@ -71,7 +71,7 @@ func deriveFromEvalTests(root string, testFiles []models.TestFile, surfacesByPat
 		}
 
 		// Read the test file to find which surfaces it imports.
-		content, err := os.ReadFile(filepath.Join(root, tf.Path))
+		content, err := saferead.ReadFile(filepath.Join(root, tf.Path))
 		if err != nil {
 			continue
 		}
@@ -126,7 +126,7 @@ func deriveFromAIImports(root string, testFiles []models.TestFile, detection *De
 			continue
 		}
 
-		content, err := os.ReadFile(filepath.Join(root, tf.Path))
+		content, err := saferead.ReadFile(filepath.Join(root, tf.Path))
 		if err != nil {
 			continue
 		}
@@ -186,7 +186,7 @@ func deriveFromAIImports(root string, testFiles []models.TestFile, detection *De
 
 // deriveFromPromptfooConfig creates scenarios from promptfoo config files.
 func deriveFromPromptfooConfig(root, configPath string, prompts map[string]string) []models.Eval {
-	data, err := os.ReadFile(filepath.Join(root, configPath))
+	data, err := saferead.ReadFile(filepath.Join(root, configPath))
 	if err != nil {
 		return nil
 	}
@@ -291,13 +291,50 @@ func resolveImportPath(fromFile, importPath string) string {
 	return resolved
 }
 
+// customEvalDirs holds adopter-configured eval/scenario directories from
+// terrain.yaml `ai.scenarios_dir`. They augment (never replace) the built-in
+// eval-dir names so evals in a non-standard location are still discovered.
+// Read-only after the CLI sets it once at startup.
+var customEvalDirs []string
+
+// SetCustomEvalDirs registers adopter-configured eval/scenario directories
+// (terrain.yaml ai.scenarios_dir). Entries are normalized to lower-case,
+// forward-slash, trimmed of surrounding slashes; empties are dropped.
+// Intended to be called once at CLI startup after terrain.yaml load;
+// calling concurrently with active detection is not supported.
+func SetCustomEvalDirs(dirs []string) {
+	out := make([]string, 0, len(dirs))
+	for _, d := range dirs {
+		d = strings.Trim(strings.ReplaceAll(strings.ToLower(strings.TrimSpace(d)), "\\", "/"), "/")
+		if d != "" {
+			out = append(out, d)
+		}
+	}
+	customEvalDirs = out
+}
+
 // IsEvalTestPath returns true if the path is within a known eval directory.
+//
+// Contract:
+//
+//	E1. Built-in eval dir names (eval, evals, evaluations, __evals__,
+//	    benchmarks) always match.
+//	E2. ai.scenarios_dir entries (via SetCustomEvalDirs) augment the set;
+//	    matching is case-insensitive and slash-normalized.
+//	E3. Unrelated paths never match.
 func IsEvalTestPath(path string) bool {
 	lower := strings.ToLower(path)
-	parts := strings.Split(strings.ReplaceAll(lower, "\\", "/"), "/")
+	norm := strings.ReplaceAll(lower, "\\", "/")
+	parts := strings.Split(norm, "/")
 	for _, p := range parts {
 		switch p {
 		case "eval", "evals", "evaluations", "__evals__", "benchmarks":
+			return true
+		}
+	}
+	// Adopter-configured scenario directories (ai.scenarios_dir).
+	for _, d := range customEvalDirs {
+		if norm == d || strings.HasPrefix(norm, d+"/") || strings.Contains(norm, "/"+d+"/") {
 			return true
 		}
 	}

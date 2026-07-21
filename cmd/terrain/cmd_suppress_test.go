@@ -133,7 +133,9 @@ func TestLooksLikeISODate(t *testing.T) {
 		{"2099-12-31", true},
 		{"2026/08/01", false},
 		{"08-01-2026", false},
-		{"2099-8-1", false}, // not zero-padded
+		{"2099-8-1", false},   // not zero-padded
+		{"2026-13-45", false}, // well-shaped but not a real calendar date
+		{"2026-02-30", false}, // impossible day for February
 		{"", false},
 		{"abc", false},
 	}

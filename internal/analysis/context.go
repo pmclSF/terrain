@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	"github.com/pmclSF/terrain/internal/models"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // parallelForEachIndexCtx is like parallelForEachIndex but checks ctx.Done()
@@ -335,7 +336,7 @@ func ExtractFixturesCtx(ctx context.Context, root string, testFiles []models.Tes
 	results := make([][]models.FixtureSurface, len(testFiles))
 	parallelForEachIndexCtx(ctx, len(testFiles), func(i int) {
 		tf := &testFiles[i]
-		content, err := os.ReadFile(filepath.Join(root, tf.Path))
+		content, err := saferead.ReadFile(filepath.Join(root, tf.Path))
 		if err != nil {
 			return
 		}

@@ -10,11 +10,11 @@ func TestExtractMechanismOverrides_Equals(t *testing.T) {
 		"analyze",
 		"--mechanisms.surface_literal_presence_gate=on",
 		"--root", ".",
-		"--mechanisms.a7_barrel_resolver=shadow",
+		"--mechanisms.barrel_resolver=shadow",
 	})
 	wantOverrides := []string{
 		"surface_literal_presence_gate=on",
-		"a7_barrel_resolver=shadow",
+		"barrel_resolver=shadow",
 	}
 	wantRest := []string{"analyze", "--root", "."}
 	if !reflect.DeepEqual(overrides, wantOverrides) {

@@ -35,7 +35,7 @@ Tier 1 means a pre-built binary ships and `go test ./...` runs in CI on every PR
 | RSpec | Ruby | Tier 2 |
 | Karma, Jasmine, Tap, AVA, WebdriverIO, Puppeteer | JS/TS | Tier 2 |
 
-Tier 1 = stable detector + structural model + at least one recall-regression fixture. Tier 2 = detected and counted with shallower structural modeling. Tier 2 framework support does not imply full source-language analysis: RSpec/Ruby artifacts are detected and counted, but Ruby source is not analyzed in 0.3.0.
+Tier 1 = stable detector + structural model + at least one recall-regression fixture. Tier 2 = detected and counted with shallower structural modeling. Tier 2 framework support does not imply full source-language analysis: RSpec/Ruby artifacts are detected and counted, but Ruby source is not analyzed in 0.4.0.
 
 ## AI eval frameworks
 
@@ -50,7 +50,7 @@ Per-case score and failure-reason data flow into the snapshot's `EvalRuns` envel
 
 ## Schemas + ORMs
 
-The cross-language graph resolves prompt / RAG / API references across language boundaries through:
+Terrain extracts schema definitions from these sources, then correlates their fields with prompt-template references (the schema↔prompt drift detector) across files and languages:
 
 | Source | Notes |
 |---|---|

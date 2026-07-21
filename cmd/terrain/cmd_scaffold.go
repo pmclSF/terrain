@@ -32,7 +32,7 @@ func runScaffold(args []string) error {
 
 	if *schemaPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--schema is required")
+		return cliUsageError{message: "--schema is required"}
 	}
 	body, err := os.ReadFile(*schemaPath)
 	if err != nil {

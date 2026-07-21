@@ -8,6 +8,9 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/pmclSF/terrain/internal/astguard"
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // DetectResult holds all AI/ML detection findings for a repository.
@@ -116,7 +119,7 @@ func detectConfigFiles(root string, result *DetectResult) {
 func detectDependencies(root string, result *DetectResult) {
 	// Check package.json
 	pkgPath := filepath.Join(root, "package.json")
-	if data, err := os.ReadFile(pkgPath); err == nil {
+	if data, err := saferead.ReadFile(pkgPath); err == nil {
 		var pkg map[string]interface{}
 		if json.Unmarshal(data, &pkg) == nil {
 			allDeps := map[string]string{}
@@ -148,7 +151,7 @@ func detectDependencies(root string, result *DetectResult) {
 
 	// Check pyproject.toml (simple string matching, no TOML parser to avoid deps).
 	pyPath := filepath.Join(root, "pyproject.toml")
-	if data, err := os.ReadFile(pyPath); err == nil {
+	if data, err := saferead.ReadFile(pyPath); err == nil {
 		content := string(data)
 		for _, sig := range KnownFrameworks {
 			for _, key := range sig.DependencyKeys {
@@ -166,7 +169,7 @@ func detectDependencies(root string, result *DetectResult) {
 
 	// Check requirements.txt
 	reqPath := filepath.Join(root, "requirements.txt")
-	if data, err := os.ReadFile(reqPath); err == nil {
+	if data, err := saferead.ReadFile(reqPath); err == nil {
 		content := string(data)
 		for _, sig := range KnownFrameworks {
 			for _, key := range sig.DependencyKeys {
@@ -184,7 +187,7 @@ func detectDependencies(root string, result *DetectResult) {
 
 	// Check go.mod (Go module declarations).
 	goModPath := filepath.Join(root, "go.mod")
-	if data, err := os.ReadFile(goModPath); err == nil {
+	if data, err := saferead.ReadFile(goModPath); err == nil {
 		content := string(data)
 		for _, sig := range KnownFrameworks {
 			for _, key := range sig.DependencyKeys {
@@ -205,7 +208,7 @@ func detectDependencies(root string, result *DetectResult) {
 
 	// Check Maven pom.xml.
 	pomPath := filepath.Join(root, "pom.xml")
-	if data, err := os.ReadFile(pomPath); err == nil {
+	if data, err := saferead.ReadFile(pomPath); err == nil {
 		content := string(data)
 		for _, sig := range KnownFrameworks {
 			for _, key := range sig.DependencyKeys {
@@ -224,7 +227,7 @@ func detectDependencies(root string, result *DetectResult) {
 	// Check Gradle build.gradle / build.gradle.kts.
 	for _, name := range []string{"build.gradle", "build.gradle.kts"} {
 		gradlePath := filepath.Join(root, name)
-		data, err := os.ReadFile(gradlePath)
+		data, err := saferead.ReadFile(gradlePath)
 		if err != nil {
 			continue
 		}
@@ -317,12 +320,26 @@ func detectFromSourceCtx(ctx context.Context, root string, result *DetectResult)
 			return nil
 		}
 
+		// Reject non-regular files (symlink to /dev/zero, devices, FIFOs) and
+		// oversize files before reading. os.ReadFile follows symlinks, so
+		// checking length only after the read would pull an unbounded stream
+		// into memory first; stat-then-read caps it up front.
+		if info, infoErr := d.Info(); infoErr != nil || !info.Mode().IsRegular() || info.Size() > maxSourceFileSize {
+			return nil
+		}
 		data, err := os.ReadFile(path)
-		if err != nil || len(data) > maxSourceFileSize {
+		if err != nil {
 			return nil
 		}
 		content := string(data)
 		rel, _ := filepath.Rel(root, path)
+
+		// Skip source whose bracket nesting would make tree-sitter parsing and
+		// per-node traversal pathologically slow (a crafted file of thousands of
+		// nested/unclosed brackets). Real code never approaches the threshold.
+		if astguard.LooksPathological(data) {
+			return nil
+		}
 
 		// Go and Java take only the AST detection path. Substring
 		// matching on those languages' source produces false positives

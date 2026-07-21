@@ -10,15 +10,11 @@
 
 ## Summary
 
-An AI/ML surface (prompt, agent, tool definition, model context, or model artifact) has no eval scenario covering it. Across 2000 OSS AI/ML repos, 136 of every 137 detected surfaces have this gap — the dominant AI-testing failure mode.
+An AI/ML surface (prompt, agent, tool definition, model context, or model artifact) has no eval scenario covering it — the dominant AI-testing failure mode.
 
 ## Remediation
 
 Add an eval scenario (promptfoo / DeepEval / Ragas / framework-specific) that exercises this surface. Use `terrain ai list` to see other uncovered surfaces in the same repo and batch-fix.
-
-## Promotion plan
-
-Promotes to stable once calibration data confirms regression-PR lift on prompt-eval-gap findings.
 
 ## Evidence sources
 

@@ -7,7 +7,7 @@
 // Boundary cases per JSON Schema type:
 //   - string:  empty, whitespace, max-length, unicode-edge, sql/code-injection-shaped, null-byte
 //   - integer: 0, -1, MAX_INT, MIN_INT
-//   - number:  0.0, -0.0, NaN-shaped, infinity-shaped, very-large, very-small
+//   - number:  0.0, -0.0, very-large (near double max), very-small (near double min), negative-fractional
 //   - boolean: true, false
 //   - array:   empty, singleton, many
 //   - null:    null

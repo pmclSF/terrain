@@ -215,9 +215,9 @@ func resolvePostureBand(bands []string) PostureBand {
 }
 
 // buildPostureExplanation produces a human-readable sentence
-// describing the dimension's current band. 0.2.0 polish: branches on
-// dimension polarity so risk-shaped dimensions read with risk
-// language ("Structural risk is low") instead of the awkward
+// describing the dimension's current band. It branches on dimension
+// polarity so risk-shaped dimensions read with risk language
+// ("Structural risk is low") instead of the awkward
 // "Structural risk posture is strong" which inverts on the natural-
 // English read.
 func buildPostureExplanation(dim Dimension, band PostureBand, drivers []string, total int) string {

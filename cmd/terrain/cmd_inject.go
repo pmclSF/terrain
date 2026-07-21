@@ -34,7 +34,7 @@ func runInject(args []string) error {
 
 	if *promptPath == "" {
 		fs.Usage()
-		return fmt.Errorf("--prompt is required")
+		return cliUsageError{message: "--prompt is required"}
 	}
 	body, err := os.ReadFile(*promptPath)
 	if err != nil {

@@ -9,24 +9,20 @@
 //
 //   - Method + Path (REST) or Type + Field (GraphQL)
 //   - FieldsRead: the response fields a client could consume, used
-//     by R3-I5 field-level narrowing — only when those fields are
+//     by field-level impact narrowing — only when those fields are
 //     touched by the diff does impact propagate.
-//
-// gRPC + tRPC parsing are followup work. tRPC needs TypeScript source
-// analysis (router definitions are code, not a schema file); gRPC
-// needs .proto parsing. Both are valuable but bigger lifts than the
-// declarative-spec parsing this package targets.
 package apispec
 
 import (
 	"encoding/json"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/pmclSF/terrain/internal/saferead"
 )
 
 // ContractKind identifies the contract format.
@@ -73,7 +69,7 @@ type Operation struct {
 	Summary string
 
 	// FieldsRead lists the response field paths a client could read
-	// (R3-I5). For OpenAPI: the schema's property names at depth=1.
+	// used by field-level narrowing. For OpenAPI: the schema's property names at depth=1.
 	// For GraphQL: the inner fields of the operation's return type.
 	// Empty when the contract doesn't declare a response schema.
 	FieldsRead []string
@@ -140,10 +136,11 @@ func parseFile(path string) (*APIContract, error) {
 		return ParseTRPCFile(path)
 	case strings.HasSuffix(lower, ".yaml"), strings.HasSuffix(lower, ".yml"),
 		strings.HasSuffix(lower, ".json"):
-		// Could be OpenAPI; sniff content.
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return nil, err
+		// Could be OpenAPI; sniff content. DataCap: real specs can be
+		// several MB. saferead rejects a symlink/device before the read.
+		data, ok := saferead.File(path, saferead.DataCap)
+		if !ok {
+			return nil, nil
 		}
 		if looksLikeOpenAPI(data) {
 			return ParseOpenAPI(data)
@@ -321,9 +318,9 @@ func sortStrings(s []string) {
 
 // ParseGraphQLFile reads a .graphql / .gql schema file.
 func ParseGraphQLFile(path string) (*APIContract, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("apispec: read %s: %w", path, err)
+	data, ok := saferead.File(path, saferead.DataCap)
+	if !ok {
+		return nil, fmt.Errorf("apispec: %s is not a readable regular file within the size limit", path)
 	}
 	c := ParseGraphQL(string(data))
 	c.Path = path

@@ -149,7 +149,7 @@ func computeOverallPosture(dimensions []models.DimensionPostureResult) overallPo
 	dimLabel := strings.Join(dimLabels, ", ")
 	switch band {
 	case measurement.PostureStrong:
-		explanation = fmt.Sprintf("All %d dimension(s) are strong.", resolved)
+		explanation = fmt.Sprintf("All %d %s are strong.", resolved, Plural(resolved, "dimension"))
 	case measurement.PostureModerate:
 		explanation = fmt.Sprintf("Room for improvement in %s.", dimLabel)
 	case measurement.PostureWeak:
