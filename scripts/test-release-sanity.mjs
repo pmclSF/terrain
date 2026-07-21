@@ -17,14 +17,14 @@ async function readText(relPath) {
   return fs.readFile(path.join(rootDir, relPath), 'utf8');
 }
 
-test('release package versions are aligned to 0.3.1', async () => {
+test('release package versions are aligned to 0.4.0', async () => {
   const rootPackage = await readJSON('package.json');
   const rootLock = await readJSON('package-lock.json');
   const extensionPackage = await readJSON('extension/vscode/package.json');
   const extensionLock = await readJSON('extension/vscode/package-lock.json');
   const legacyVSCodePackage = await readJSON('vscode/package.json');
 
-  assert.equal(rootPackage.version, '0.3.1');
+  assert.equal(rootPackage.version, '0.4.0');
   assert.equal(rootLock.version, rootPackage.version);
   assert.equal(rootLock.packages[''].version, rootPackage.version);
   assert.equal(extensionPackage.version, rootPackage.version);
@@ -85,7 +85,7 @@ test('AI gate preserves structured JSON and documented exit codes', async () => 
   assert.match(workflow, /reason<<TERRAIN_AI_REASON/);
 });
 
-test('0.3.0 public claims avoid known overstatements', async () => {
+test('0.4.0 public claims avoid known overstatements', async () => {
   const readme = await readText('README.md');
   const overview = await readText('docs/OVERVIEW.md');
   const limitations = await readText('docs/LIMITATIONS.md');
@@ -103,13 +103,13 @@ test('0.3.0 public claims avoid known overstatements', async () => {
   const releaseVSCodeReadme = await readText('extension/vscode/README.md');
 
   assert.doesNotMatch(readme, /Go, Java, and Ruby/);
-  assert.match(readme, /Ruby source is not analyzed in 0\.3\.0/);
+  assert.match(readme, /Ruby source is not analyzed/);
   assert.match(readme, /Windows on amd64/);
   assert.doesNotMatch(readme, /0\.91\+ similarity/);
   assert.doesNotMatch(readme, /xfail markers older than 180 days/);
 
   assert.doesNotMatch(overview, /Marketplace-published/);
-  assert.match(limitations, /not Marketplace-published in 0\.3\.0/);
+  assert.match(limitations, /not Marketplace-published/);
   assert.doesNotMatch(limitations, /Marketplace-published but/);
 
   for (const doc of [overview, limitations]) {
@@ -118,11 +118,11 @@ test('0.3.0 public claims avoid known overstatements', async () => {
 
   assert.match(
     cliSpec,
-    /terrain portfolio --from <manifest>` multi-repo aggregation are stable in 0\.3\.0/
+    /`terrain portfolio --from <manifest>` multi-repo aggregation are stable/
   );
   assert.match(
     featureStatus,
-    /multi-repo aggregation via `terrain portfolio --from <manifest>` are stable in 0\.3\.0/
+    /multi-repo aggregation via `terrain portfolio --from <manifest>` are stable/
   );
   for (const flag of [
     '--promptfoo-results',
@@ -147,7 +147,7 @@ test('0.3.0 public claims avoid known overstatements', async () => {
   assert.doesNotMatch(releaseVSCodeReadme, /all 22\+ signal types/);
   assert.match(
     gauntletIntegration,
-    /`terrain ai run` does not invoke Gauntlet in 0\.3\.0/
+    /`terrain ai run` does not invoke Gauntlet in 0\.4\.0/
   );
   assert.doesNotMatch(
     gauntletIntegration,
@@ -167,20 +167,17 @@ test('0.3.0 public claims avoid known overstatements', async () => {
   );
   for (const doc of [cliSpec, featureStatus]) {
     assert.doesNotMatch(doc, /portfolio --from <manifest>.*future work/);
-    assert.doesNotMatch(doc, /aggregation is not wired in 0\.3\.0/);
+    assert.doesNotMatch(doc, /aggregation is not wired in 0\.4\.0/);
     assert.doesNotMatch(doc, /portfolio --from <manifest>.*experimental/);
   }
 
-  assert.match(
-    provider,
-    /tool calls not implemented for this provider in 0\.3\.0/
-  );
+  assert.match(provider, /tool calls not implemented for this provider/);
   assert.doesNotMatch(
     provider,
     /tool calls not implemented for this provider at 0\.2\.0/
   );
 
-  assert.match(securityData, /No LLM provider is contacted in 0\.3\.0/);
+  assert.match(securityData, /No LLM provider is contacted in 0\.4\.0/);
   assert.match(
     securityData,
     /npm binary matrix is macOS\/Linux amd64\+arm64 and Windows amd64/
@@ -195,18 +192,18 @@ test('0.3.0 public claims avoid known overstatements', async () => {
   );
   assert.match(
     product,
-    /provider config is parsed for forward compatibility but no shipped command contacts an LLM provider/
+    /[Pp]rovider config is parsed for forward compatibility but no shipped command contacts an LLM provider/
   );
   assert.match(
     securityData,
-    /source-content redaction is not active in 0\.3\.0/
+    /source-content redaction is not active in 0\.4\.0/
   );
   assert.match(
     product,
-    /`on_terrain_error: pass` field is parsed but inactive in 0\.3\.0/
+    /`on_terrain_error: pass` field is parsed but inactive/
   );
-  assert.match(design, /source-content redaction is inactive in 0\.3\.0/);
-  assert.match(design, /no shipped 0\.3\.0 command contacts an LLM provider/);
+  assert.match(design, /source-content redaction is inactive in 0\.4\.0/);
+  assert.match(design, /no shipped 0\.4\.0 command contacts an LLM provider/);
   for (const doc of [readme, overview, securityData, product, design]) {
     assert.doesNotMatch(doc, /Optional LLM tiers/);
     assert.doesNotMatch(doc, /Optional LLM-enhanced features layer on/);
